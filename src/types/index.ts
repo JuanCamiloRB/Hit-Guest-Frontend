@@ -41,6 +41,8 @@ export interface Reservation {
     userId?: string
     checkIn: Date
     checkOut: Date
-    status: "CONFIRMED" | "PENDING" | "CANCELLED" | "CHECKED_IN" | "CHECKED_OUT"
+    nights: number
+    status: "CONFIRMED" | "PENDING" | "CANCELLED" | "CHECKED_IN" | "CHECKED_OUT" | "LINK_SENT" | "PENDING_CONTRACT" | "NO_STARTED"
+    source: "Airbnb" | "Booking" | "Direct"
     totalPrice: number
 }

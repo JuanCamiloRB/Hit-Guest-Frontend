@@ -2,14 +2,19 @@ import { z } from "zod"
 
 export const loginSchema = z.object({
     email: z.string().email({
-        message: "Please enter a valid email address.",
-    }),
-    password: z.string().min(6, {
-        message: "Password must be at least 6 characters.",
+        message: "Por favor, introduce un correo electrónico válido.",
     }),
 })
 
 export type LoginFormData = z.infer<typeof loginSchema>
+
+export const otpSchema = z.object({
+    otp: z.string().length(6, {
+        message: "El código OTP debe tener 6 dígitos.",
+    }),
+})
+
+export type OtpFormData = z.infer<typeof otpSchema>
 
 export type PermissionAction = "READ" | "CREATE" | "UPDATE" | "DELETE"
 export type PermissionModule = "RESERVATIONS" | "PROPERTIES" | "USERS" | "BILLING"
@@ -45,7 +50,8 @@ export interface AuthState {
 }
 
 export interface AuthService {
-    loginWithEmail(data: LoginFormData): Promise<User>
+    requestOtp(email: string): Promise<void>
+    verifyOtp(email: string, otp: string): Promise<User>
     loginWithGoogle(): Promise<User>
     logout(): Promise<void>
 }

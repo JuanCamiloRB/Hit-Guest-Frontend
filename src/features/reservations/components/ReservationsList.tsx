@@ -7,14 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 
 // Mock data
-import { mockReservations } from "../data/mock-reservations"
-
-// ... 
+import { mockDashboardReservations } from "../data/mock-dashboard-data"
 
 export default function ReservationsList() {
     return (
         <div className="space-y-4">
-            <DataTable columns={columns} data={mockReservations} filterColumn="guestName" />
+            <DataTable columns={columns} data={mockDashboardReservations} />
         </div>
     )
 }

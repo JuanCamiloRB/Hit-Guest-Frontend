@@ -1,12 +1,4 @@
 import { Metadata } from "next"
-import ReservationsList from "@/features/reservations/components/ReservationsList"
-import { ReservationDialog } from "@/features/reservations/components/ReservationDialog"
-
-export const metadata: Metadata = {
-    title: "Reservations - Hit Guest",
-    description: "Manage your reservations",
-}
-
 import {
     Tabs,
     TabsContent,
@@ -14,6 +6,13 @@ import {
     TabsTrigger,
 } from "@/components/ui/tabs"
 import { ReservationsCalendar } from "@/features/reservations/components/ReservationsCalendar"
+import ReservationsList from "@/features/reservations/components/ReservationsList"
+import { ReservationDialog } from "@/features/reservations/components/ReservationDialog"
+
+export const metadata: Metadata = {
+    title: "Reservations - Hit Guest",
+    description: "Manage your reservations",
+}
 
 export default function ReservationsPage() {
     return (

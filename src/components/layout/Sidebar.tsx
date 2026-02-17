@@ -15,7 +15,17 @@ import {
     Home,
     Zap,
     Puzzle,
+    MoreVertical,
+    LogOut,
 } from "lucide-react"
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useState } from "react"
 import * as React from "react"
 import { useAuth } from "@/features/auth/hooks/use-auth"
@@ -25,7 +35,7 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> { }
 
 export function Sidebar({ className }: SidebarProps) {
     const pathname = usePathname()
-    const { user } = useAuth()
+    const { user, logout } = useAuth()
     const [isMounted, setIsMounted] = React.useState(false)
 
     React.useEffect(() => {
@@ -125,22 +135,44 @@ export function Sidebar({ className }: SidebarProps) {
 
             {/* Profile Footer */}
             <div className="p-4 border-t border-white/10 bg-white/5">
-                <div className="flex items-center gap-3">
-                    <UiAvatar className="h-10 w-10 border border-white/20">
-                        <AvatarFallback className="bg-white/20 text-white font-bold">
-                            {isMounted ? (user?.firstName?.[0] || "J") : "H"}
-                            {isMounted ? (user?.lastName?.[0] || "D") : "G"}
-                        </AvatarFallback>
-                    </UiAvatar>
-                    <div className="flex flex-col overflow-hidden">
-                        <p className="text-sm font-semibold text-white truncate">
-                            {isMounted ? `${user?.firstName} ${user?.lastName}` : "HIT Guest"}
-                        </p>
-                        <p className="text-[10px] font-medium text-white/50 uppercase tracking-tight">
-                            {isMounted ? "Super Admin" : "Cargando..."}
-                        </p>
-                    </div>
-                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <button className="flex items-center gap-3 w-full hover:bg-white/5 p-2 rounded-lg transition-colors text-left focus:outline-none">
+                            <UiAvatar className="h-10 w-10 border border-white/20">
+                                <AvatarFallback className="bg-white/20 text-white font-bold">
+                                    {isMounted ? (user?.firstName?.[0] || "J") : "H"}
+                                    {isMounted ? (user?.lastName?.[0] || "D") : "G"}
+                                </AvatarFallback>
+                            </UiAvatar>
+                            <div className="flex flex-col overflow-hidden flex-1">
+                                <p className="text-sm font-semibold text-white truncate">
+                                    {isMounted ? `${user?.firstName} ${user?.lastName}` : "HIT Guest"}
+                                </p>
+                                <p className="text-[10px] font-medium text-white/50 uppercase tracking-tight">
+                                    {isMounted ? "Super Admin" : "Cargando..."}
+                                </p>
+                            </div>
+                            <MoreVertical className="h-4 w-4 text-white/40" />
+                        </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56" side="top">
+                        <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                            <Users className="mr-2 h-4 w-4" />
+                            <span>Perfil</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                            <Settings className="mr-2 h-4 w-4" />
+                            <span>Configuración</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={logout}>
+                            <LogOut className="mr-2 h-4 w-4" />
+                            <span>Cerrar Sesión</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
         </div>
     )

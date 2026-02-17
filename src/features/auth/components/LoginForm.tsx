@@ -19,7 +19,17 @@ import Link from "next/link"
 type UserAuthFormProps = React.HTMLAttributes<HTMLDivElement>
 
 export function LoginForm({ className, ...props }: UserAuthFormProps) {
-    const { form, isLoading, onSubmit, showPassword, togglePasswordVisibility, error } = useLogin()
+    const {
+        emailForm,
+        otpForm,
+        isLoading,
+        onRequestOtp,
+        onVerifyOtp,
+        step,
+        email,
+        resetFlow,
+        error,
+    } = useLogin()
     const [isMounted, setIsMounted] = React.useState(false)
 
     React.useEffect(() => {
@@ -34,93 +44,103 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                     <span>{error}</span>
                 </div>
             )}
-            <Form {...form}>
-                <form onSubmit={onSubmit}>
-                    <div className="grid gap-4">
-                        <FormField
-                            control={form.control}
-                            name="email"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Correo electrónico</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                id="email"
-                                                placeholder="nombre@hitguest.com"
-                                                type="email"
-                                                autoCapitalize="none"
-                                                autoComplete="email"
-                                                autoCorrect="off"
-                                                disabled={isLoading}
-                                                className="pl-9"
-                                                {...field}
-                                            />
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="password"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Contraseña</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                id="password"
-                                                placeholder="••••••••"
-                                                type={showPassword ? "text" : "password"}
-                                                autoCapitalize="none"
-                                                autoComplete="current-password"
-                                                disabled={isLoading}
-                                                className="pl-9 pr-9"
-                                                {...field}
-                                            />
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                                                onClick={togglePasswordVisibility}
-                                            >
-                                                {showPassword ? (
-                                                    <Eye className="h-4 w-4 text-muted-foreground" />
-                                                ) : (
-                                                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                                                )}
-                                            </Button>
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <div className="flex justify-end">
-                            <Link
-                                href="/forgot-password"
-                                className="text-sm font-medium text-pink-flamingo hover:text-pink-flamingo/80"
+
+            {step === "email" ? (
+                <Form {...emailForm}>
+                    <form onSubmit={onRequestOtp}>
+                        <div className="grid gap-4">
+                            <FormField
+                                control={emailForm.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem id="email-form-item">
+                                        <FormLabel>Correo electrónico</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    id="email"
+                                                    placeholder="nombre@hitguest.com"
+                                                    type="email"
+                                                    autoCapitalize="none"
+                                                    autoComplete="email"
+                                                    autoCorrect="off"
+                                                    disabled={isLoading}
+                                                    className="pl-9"
+                                                    {...field}
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button
+                                disabled={isLoading}
+                                className="bg-caribbean-green hover:bg-caribbean-green/90 text-primary font-bold shadow-sm"
                             >
-                                ¿Olvidaste tu contraseña?
-                            </Link>
+                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Enviar código
+                            </Button>
                         </div>
-                        <Button
-                            disabled={isLoading}
-                            className="bg-caribbean-green hover:bg-caribbean-green/90 text-primary font-bold shadow-sm"
-                        >
-                            {isLoading && (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            )}
-                            Iniciar Sesión
-                        </Button>
-                    </div>
-                </form>
-            </Form>
+                    </form>
+                </Form>
+            ) : (
+                <Form {...otpForm}>
+                    <form onSubmit={onVerifyOtp}>
+                        <div className="grid gap-4">
+                            <div className="bg-muted/50 p-4 rounded-lg text-center">
+                                <p className="text-sm text-muted-foreground mb-1">
+                                    Hemos enviado un código a:
+                                </p>
+                                <p className="text-sm font-semibold">{email}</p>
+                            </div>
+                            <FormField
+                                control={otpForm.control}
+                                name="otp"
+                                render={({ field }) => (
+                                    <FormItem id="otp-form-item">
+                                        <div className="flex justify-between items-center mb-2">
+                                            <FormLabel className="m-0">Código OTP</FormLabel>
+                                            <button
+                                                type="button"
+                                                onClick={resetFlow}
+                                                className="text-[12px] text-pink-flamingo hover:underline"
+                                            >
+                                                Cambiar correo
+                                            </button>
+                                        </div>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                <Input
+                                                    id="otp"
+                                                    placeholder="123456"
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    maxLength={6}
+                                                    disabled={isLoading}
+                                                    className="pl-9 text-center tracking-[1em] font-mono text-lg"
+                                                    {...field}
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <Button
+                                disabled={isLoading}
+                                className="bg-caribbean-green hover:bg-caribbean-green/90 text-primary font-bold shadow-sm"
+                            >
+                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Verificar e Iniciar Sesión
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+            )}
         </div>
     )
 }
