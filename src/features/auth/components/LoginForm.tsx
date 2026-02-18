@@ -14,6 +14,7 @@ import {
     FormLabel,
 } from "@/components/ui/form"
 import { useLogin } from "../hooks/use-login"
+import { Honeypot } from "./Honeypot"
 import Link from "next/link"
 
 type UserAuthFormProps = React.HTMLAttributes<HTMLDivElement>
@@ -29,6 +30,10 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
         email,
         resetFlow,
         error,
+        timer,
+        canResend,
+        onResendOtp,
+        honeypotProps,
     } = useLogin()
     const [isMounted, setIsMounted] = React.useState(false)
 
@@ -48,6 +53,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
             {step === "email" ? (
                 <Form {...emailForm}>
                     <form onSubmit={onRequestOtp}>
+                        <Honeypot {...honeypotProps} />
                         <div className="grid gap-4">
                             <FormField
                                 control={emailForm.control}
@@ -88,6 +94,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
             ) : (
                 <Form {...otpForm}>
                     <form onSubmit={onVerifyOtp}>
+                        <Honeypot {...honeypotProps} />
                         <div className="grid gap-4">
                             <div className="bg-muted/50 p-4 rounded-lg text-center">
                                 <p className="text-sm text-muted-foreground mb-1">
@@ -130,13 +137,38 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                     </FormItem>
                                 )}
                             />
-                            <Button
-                                disabled={isLoading}
-                                className="bg-caribbean-green hover:bg-caribbean-green/90 text-primary font-bold shadow-sm"
-                            >
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Verificar e Iniciar Sesión
-                            </Button>
+
+                            <div className="flex flex-col gap-3">
+                                <Button
+                                    disabled={isLoading}
+                                    className="bg-caribbean-green hover:bg-caribbean-green/90 text-primary font-bold shadow-sm w-full"
+                                >
+                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Verificar e Iniciar Sesión
+                                </Button>
+
+                                <div className="text-center">
+                                    {timer > 0 ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            Podrás solicitar un nuevo código en{" "}
+                                            <span className="font-medium text-foreground">
+                                                {Math.floor(timer / 60)}:
+                                                {(timer % 60).toString().padStart(2, "0")}
+                                            </span>
+                                        </p>
+                                    ) : (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            className="text-xs text-pink-flamingo hover:text-pink-flamingo/90 hover:bg-pink-flamingo/10 h-auto py-2"
+                                            onClick={onResendOtp}
+                                            disabled={isLoading || !canResend}
+                                        >
+                                            Solicitar un nuevo código
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
                     </form>
                 </Form>

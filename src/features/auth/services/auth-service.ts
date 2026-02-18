@@ -1,5 +1,13 @@
 import { AuthService, LoginFormData, User } from "../types"
 
+const API_URL_HIT = process.env.NEXT_PUBLIC_API_URL_HIT || "https://www.kunas.co/api/v1"
+const API_URL_GUEST = process.env.NEXT_PUBLIC_API_URL_GUEST || "https://www.kunas.co/api/v1/hitguest"
+
+const API_URL = API_URL_HIT
+
+// TOGGLE THIS VIA .env (NEXT_PUBLIC_ENABLE_MOCKS)
+const USE_MOCK_AUTH = process.env.NEXT_PUBLIC_ENABLE_MOCKS === "true"
+
 class AuthServiceImpl implements AuthService {
     // Simulated "database" user
     private mockUser: User = {
@@ -14,50 +22,116 @@ class AuthServiceImpl implements AuthService {
     private simulatedOtps: Map<string, string> = new Map()
 
     async requestOtp(email: string): Promise<void> {
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 1500))
+        if (USE_MOCK_AUTH) {
+            await new Promise((resolve) => setTimeout(resolve, 1500))
+            const otp = Math.floor(100000 + Math.random() * 900000).toString()
+            this.simulatedOtps.set(email, otp)
+            console.log(`[MOCK API] OTP for ${email}: ${otp}`)
+            return
+        }
 
-        // Generate a 6-digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString()
-        this.simulatedOtps.set(email, otp)
+        try {
+            const response = await fetch(`${API_URL}/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            })
 
-        // Simulating Mailgun sending
-        console.log("%c--- SIMULATED MAILGUN ---", "color: #ff00ff; font-weight: bold;")
-        console.log(`%cTo: ${email}`, "color: #333;")
-        console.log(`%cSubject: Tu código de acceso para Hit Guest`, "color: #333;")
-        console.log(`%cCódigo OTP: ${otp}`, "color: #00ff00; font-size: 14px; font-weight: bold;")
-        console.log("%c---------------------------", "color: #ff00ff; font-weight: bold;")
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
 
-        // Also log to regular console for easy copy-paste
-        console.log(`[SIMULATION] OTP for ${email}: ${otp}`)
+                if (response.status === 404) {
+                    throw new Error("No encontramos una cuenta con este correo.")
+                }
+
+                throw new Error(errorData.message || "Error al solicitar OTP")
+            }
+        } catch (error: any) {
+            throw new Error(error.message || "Error de conexión")
+        }
     }
 
     async verifyOtp(email: string, otp: string): Promise<User> {
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 1500))
+        if (USE_MOCK_AUTH) {
+            await new Promise((resolve) => setTimeout(resolve, 1500))
+            const storedOtp = this.simulatedOtps.get(email)
+            if (otp === storedOtp || (email === "admin@hitguest.com" && otp === "123456")) {
+                this.simulatedOtps.delete(email)
+                return { ...this.mockUser, email }
+            } else {
+                throw new Error("Código inválido o expirado (Mock)")
+            }
+        }
 
-        const storedOtp = this.simulatedOtps.get(email)
+        try {
+            const response = await fetch(`${API_URL}/otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email, otp }),
+            })
 
-        if (otp === storedOtp || (email === "admin@hitguest.com" && otp === "123456")) {
-            console.log(`OTP verified successfully for: ${email}`)
-            this.simulatedOtps.delete(email) // Clean up
-            return { ...this.mockUser, email: email }
-        } else {
-            throw new Error("El código OTP es incorrecto o ha expirado")
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+
+                if (response.status === 401) {
+                    throw new Error("Código inválido o expirado.")
+                }
+
+                throw new Error(errorData.message || "Error de verificación")
+            }
+
+            const data = await response.json()
+            return {
+                id: data.user.uuid || "USR-DEFAULT",
+                uuid: data.user.uuid,
+                token: data.token,
+                email: data.user.email,
+                firstName: data.user.name || "Usuario",
+                lastName: "",
+                role: "PRINCIPAL", // Assuming role comes from backend or default
+                isPrincipal: true,
+            }
+        } catch (error: any) {
+            throw new Error(error.message || "Error de verificación")
+        }
+    }
+
+    async resendOtp(email: string): Promise<void> {
+        if (USE_MOCK_AUTH) {
+            await new Promise((resolve) => setTimeout(resolve, 1000))
+            console.log(`[MOCK API] Resending OTP for ${email}...`)
+            const otp = Math.floor(100000 + Math.random() * 900000).toString()
+            this.simulatedOtps.set(email, otp)
+            console.log(`[MOCK API] New OTP: ${otp}`)
+            return
+        }
+
+        try {
+            const response = await fetch(`${API_URL}/resend-otp`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            })
+
+            if (response.status === 429) {
+                throw new Error("Por favor espera unos minutos antes de solicitar otro código.")
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.message || "Error al reenviar OTP")
+            }
+        } catch (error: any) {
+            throw new Error(error.message || "Error de conexión")
         }
     }
 
     async loginWithGoogle(): Promise<User> {
-        // Simulate API delay
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        console.log("Redirecting to Google...")
-        return this.mockUser
+        throw new Error("Google Login not implemented yet")
     }
 
     async logout(): Promise<void> {
-        await new Promise((resolve) => setTimeout(resolve, 500))
-        console.log("Logged out - Sesión terminada")
+        return Promise.resolve()
     }
 }
 

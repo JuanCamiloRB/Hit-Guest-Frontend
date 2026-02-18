@@ -34,6 +34,8 @@ export interface RoleDefinition {
 
 export interface User {
     id: string
+    uuid?: string // from API
+    token?: string // from API
     email: string
     firstName: string
     lastName: string
@@ -52,6 +54,7 @@ export interface AuthState {
 export interface AuthService {
     requestOtp(email: string): Promise<void>
     verifyOtp(email: string, otp: string): Promise<User>
+    resendOtp(email: string): Promise<void> // Added
     loginWithGoogle(): Promise<User>
     logout(): Promise<void>
 }
