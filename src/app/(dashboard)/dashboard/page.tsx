@@ -1,64 +1,29 @@
-"use client"
-
 import { mockDashboardReservations } from "@/features/reservations/data/mock-dashboard-data"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { columns } from "@/features/reservations/components/columns"
+import { DataTable } from "@/components/shared/data-table"
+import { StatsCards } from "@/features/dashboard/components/StatsCards"
+import { DashboardHeader } from "@/features/dashboard/components/DashboardHeader"
 
 export default function DashboardPage() {
     return (
-        <div style={{ padding: "20px", fontFamily: "sans-serif" }}>
-            <h1>Tablero de Operaciones</h1>
-            <p>Gestión de reservas y automatizaciones activas</p>
+        <div className="flex flex-col gap-8 p-6 lg:p-10">
+            <DashboardHeader />
 
-            <hr />
+            <StatsCards />
 
-            <div style={{ margin: "20px 0" }}>
-                <h2>Métricas</h2>
-                <ul style={{ listStyle: "none", padding: 0 }}>
-                    <li><strong>CHECK-INS HOY:</strong> 4</li>
-                    <li><strong>CHECK-OUTS HOY:</strong> 2</li>
-                    <li><strong>PENDIENTES:</strong> 8</li>
-                    <li><strong>INGRESOS (FEB):</strong> $14.5M COP</li>
-                </ul>
+            <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold text-slate-800">
+                        Lista de Reservas
+                    </h2>
+                </div>
+
+                <DataTable
+                    columns={columns}
+                    data={mockDashboardReservations}
+                    filterColumn="guestName"
+                />
             </div>
-
-            <hr />
-
-            <h2>Lista de Reservas</h2>
-            <table border={1} cellPadding={10} style={{ borderCollapse: "collapse", width: "100%" }}>
-                <thead>
-                    <tr style={{ textAlign: "left" }}>
-                        <th>Huésped</th>
-                        <th>Alojamiento</th>
-                        <th>Fechas</th>
-                        <th>Origen</th>
-                        <th>Estado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {mockDashboardReservations.map((res) => (
-                        <tr key={res.id}>
-                            <td>
-                                <div>{res.guestName}</div>
-                            </td>
-                            <td>
-                                <div>{res.propertyName}</div>
-                                <small>{res.unitName}</small>
-                            </td>
-                            <td>
-                                <div>{format(res.checkIn, "d MMM", { locale: es })} – {format(res.checkOut, "d MMM", { locale: es })}</div>
-                                <small>{res.nights} noches</small>
-                            </td>
-                            <td>{res.source}</td>
-                            <td>{res.status}</td>
-                            <td>
-                                <button onClick={() => alert(`ID: ${res.id}`)}>Ver detalles</button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
         </div>
     )
 }

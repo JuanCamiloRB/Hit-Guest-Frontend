@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card"
-import { CalendarDays, LogOut, MoreHorizontal, Wallet } from "lucide-react"
+import { CalendarDays, LogOut, Clock, Wallet } from "lucide-react"
 
 export function StatsCards() {
     return (
@@ -31,7 +31,7 @@ export function StatsCards() {
                 <CardContent className="p-6">
                     <div className="flex items-center justify-between space-y-0 pb-2">
                         <span className="text-xs font-semibold uppercase text-muted-foreground flex items-center gap-2">
-                            <MoreHorizontal className="h-4 w-4 text-amber-400" />
+                            <Clock className="h-4 w-4 text-amber-400" />
                             PENDIENTES
                         </span>
                         <div className="h-2 w-2 rounded-full bg-amber-400" />
