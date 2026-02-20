@@ -2,6 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table"
 import { MoreVertical, Calendar, Home, Briefcase, Globe, Package2 } from "lucide-react"
+import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -38,7 +39,12 @@ export const columns: ColumnDef<Reservation>[] = [
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                        <span className="font-medium text-sm text-slate-900">{name}</span>
+                        <Link
+                            href={`/dashboard/reservations/${row.original.id}`}
+                            className="font-medium text-sm text-slate-900 hover:text-indigo-600 hover:underline cursor-pointer"
+                        >
+                            {name}
+                        </Link>
                         {/* Could add email or phone if available in data */}
                     </div>
                 </div>
@@ -142,7 +148,11 @@ export const columns: ColumnDef<Reservation>[] = [
                             >
                                 Copiar ID
                             </DropdownMenuItem>
-                            <DropdownMenuItem>Ver detalles</DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/reservations/${payment.id}`}>
+                                    Ver detalles
+                                </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuItem>Mensaje</DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

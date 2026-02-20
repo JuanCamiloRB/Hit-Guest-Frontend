@@ -10,15 +10,15 @@ import ReservationsList from "@/features/reservations/components/ReservationsLis
 import { ReservationDialog } from "@/features/reservations/components/ReservationDialog"
 
 export const metadata: Metadata = {
-    title: "Reservations - Hit Guest",
-    description: "Manage your reservations",
+    title: "Operaciones - Hit Guest",
+    description: "Gestión detallada de reservas",
 }
 
 export default function ReservationsPage() {
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
             <div className="flex items-center justify-between space-y-2">
-                <h2 className="text-3xl font-bold tracking-tight">Reservations</h2>
+                <h2 className="text-3xl font-bold tracking-tight">Operaciones</h2>
                 <ReservationDialog />
             </div>
             <Tabs defaultValue="list" className="space-y-4">

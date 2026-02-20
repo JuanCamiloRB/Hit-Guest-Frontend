@@ -50,7 +50,7 @@ export function Sidebar({ className }: SidebarProps) {
             active: pathname === "/dashboard",
         },
         {
-            label: "Reservas",
+            label: "Operaciones",
             icon: CalendarDays,
             href: "/dashboard/reservations",
             active: pathname.startsWith("/dashboard/reservations"),
