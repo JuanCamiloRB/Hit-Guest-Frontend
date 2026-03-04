@@ -17,7 +17,8 @@ import { ProfileForm } from "@/features/auth/components/ProfileForm"
 import { UserManagement } from "@/features/users/components/UserManagement"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Users, User, CreditCard } from "lucide-react"
+import { Users, User, Building2 } from "lucide-react"
+import { ClientSettings } from "@/features/clients/components/ClientSettings"
 
 export function SettingsContent() {
     const { user, isLoading } = useAuth()
@@ -39,10 +40,16 @@ export function SettingsContent() {
                     Mi Perfil
                 </TabsTrigger>
                 {user.isPrincipal && (
-                    <TabsTrigger value="team">
-                        <Users className="mr-2 h-4 w-4" />
-                        Equipo
-                    </TabsTrigger>
+                    <>
+                        <TabsTrigger value="client">
+                            <Building2 className="mr-2 h-4 w-4" />
+                            Alojamiento
+                        </TabsTrigger>
+                        <TabsTrigger value="team">
+                            <Users className="mr-2 h-4 w-4" />
+                            Equipo
+                        </TabsTrigger>
+                    </>
                 )}
             </TabsList>
 
@@ -61,19 +68,35 @@ export function SettingsContent() {
             </TabsContent>
 
             {user.isPrincipal && (
-                <TabsContent value="team" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Gestión de Equipo</CardTitle>
-                            <CardDescription>
-                                Administra los usuarios secundarios y sus permisos.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <UserManagement />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
+                <>
+                    <TabsContent value="client" className="space-y-4">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Información del Alojamiento</CardTitle>
+                                <CardDescription>
+                                    Gestiona los datos fiscales y de contacto de tu hotel o empresa.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ClientSettings clientId={user.clientId} />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    <TabsContent value="team" className="space-y-4">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Gestión de Equipo</CardTitle>
+                                <CardDescription>
+                                    Administra los usuarios secundarios y sus permisos.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <UserManagement />
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </>
             )}
         </Tabs>
     )

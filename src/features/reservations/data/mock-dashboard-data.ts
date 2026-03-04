@@ -13,8 +13,16 @@ export const mockDashboardReservations: Reservation[] = [
         nights: 3,
         source: "Airbnb",
         status: "LINK_SENT",
-        totalPrice: 0, // Not shown in table
-        userId: "U_MG"
+        totalPrice: 0,
+        userId: "U_MG",
+        automationStatus: {
+            link: "success",
+            checkin: "success",
+            contract: "success",
+            code: "pending",
+            tra: "pending",
+            sire: "none",
+        }
     },
     {
         id: "RES-CR-002",
@@ -27,9 +35,17 @@ export const mockDashboardReservations: Reservation[] = [
         checkOut: new Date("2026-02-20"),
         nights: 4,
         source: "Booking",
-        status: "PENDING", // Check-in Pendiente mapped to PENDING or custom
+        status: "PENDING",
         totalPrice: 0,
-        userId: "U_CR"
+        userId: "U_CR",
+        automationStatus: {
+            link: "success",
+            checkin: "pending",
+            contract: "pending",
+            code: "none",
+            tra: "none",
+            sire: "none",
+        }
     },
     {
         id: "RES-AB-003",
@@ -42,9 +58,17 @@ export const mockDashboardReservations: Reservation[] = [
         checkOut: new Date("2026-02-17"),
         nights: 2,
         source: "Airbnb",
-        status: "CONFIRMED", // Completado mapped to CONFIRMED or CHECKED_OUT depending on logic, using CONFIRMED for green check
+        status: "CONFIRMED",
         totalPrice: 0,
-        userId: "U_AB"
+        userId: "U_AB",
+        automationStatus: {
+            link: "success",
+            checkin: "success",
+            contract: "success",
+            code: "success",
+            tra: "success",
+            sire: "none",
+        }
     },
     {
         id: "RES-JH-004",
@@ -59,7 +83,15 @@ export const mockDashboardReservations: Reservation[] = [
         source: "Direct",
         status: "NO_STARTED",
         totalPrice: 0,
-        userId: "U_JH"
+        userId: "U_JH",
+        automationStatus: {
+            link: "pending",
+            checkin: "none",
+            contract: "pending",
+            code: "none",
+            tra: "none",
+            sire: "none",
+        }
     },
     {
         id: "RES-EP-005",
@@ -72,9 +104,17 @@ export const mockDashboardReservations: Reservation[] = [
         checkOut: new Date("2026-02-16"),
         nights: 2,
         source: "Airbnb",
-        status: "CHECKED_OUT", // Salida (Check-out)
+        status: "CHECKED_OUT",
         totalPrice: 0,
-        userId: "U_EP"
+        userId: "U_EP",
+        automationStatus: {
+            link: "success",
+            checkin: "success",
+            contract: "success",
+            code: "success",
+            tra: "success",
+            sire: "success",
+        }
     },
     {
         id: "RES-LM-006",
@@ -89,6 +129,14 @@ export const mockDashboardReservations: Reservation[] = [
         source: "Booking",
         status: "PENDING_CONTRACT",
         totalPrice: 0,
-        userId: "U_LM"
+        userId: "U_LM",
+        automationStatus: {
+            link: "success",
+            checkin: "pending",
+            contract: "pending",
+            code: "none",
+            tra: "none",
+            sire: "none",
+        }
     }
 ]

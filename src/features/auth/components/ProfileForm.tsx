@@ -23,6 +23,10 @@ const profileSchema = z.object({
     firstName: z.string().min(2, "Nombre es requerido"),
     lastName: z.string().min(2, "Apellido es requerido"),
     email: z.string().email("Email inválido"),
+    phone: z.string().min(5, "Teléfono es requerido"),
+    address: z.string().default(""),
+    city: z.string().default(""),
+    country: z.string().default(""),
 })
 
 type ProfileValues = z.infer<typeof profileSchema>
@@ -35,11 +39,15 @@ export function ProfileForm({ user }: ProfileFormProps) {
     const [isLoading, setIsLoading] = useState(false)
 
     const form = useForm<ProfileValues>({
-        resolver: zodResolver(profileSchema),
+        resolver: zodResolver(profileSchema) as any,
         defaultValues: {
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
+            phone: user.phone || "",
+            address: user.address || "",
+            city: user.city || "",
+            country: user.country || "",
         },
     })
 
@@ -92,15 +100,72 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         <FormItem>
                             <FormLabel>Correo Electrónico</FormLabel>
                             <FormControl>
-                                <Input placeholder="nombre@ejemplo.com" {...field} />
+                                <Input placeholder="nombre@ejemplo.com" {...field} disabled />
                             </FormControl>
                             <FormDescription>
-                                Este correo se usará para tus inicios de sesión.
+                                El correo electrónico no se puede cambiar por seguridad.
                             </FormDescription>
                             <FormMessage />
                         </FormItem>
                     )}
                 />
+
+                <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Teléfono / Whatsapp</FormLabel>
+                            <FormControl>
+                                <Input placeholder="+57 ..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Dirección</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Calle 123 #45-67" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="city"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Ciudad</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Bogotá" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="country"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>País</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="Colombia" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
                 <Button type="submit" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Guardar Cambios

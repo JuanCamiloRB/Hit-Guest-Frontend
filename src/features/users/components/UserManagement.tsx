@@ -29,6 +29,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { User, PREDEFINED_ROLES, UserRole } from "@/features/auth/types"
 import { userService } from "../services/user-service"
+import { useAuthStore } from "@/lib/store/auth-store"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
     Dialog,
     DialogContent,
@@ -59,28 +61,51 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
 
+interface UserPermissions {
+    reservations: string[]
+    properties: string[]
+}
+
 const userSchema = z.object({
     firstName: z.string().min(2, "Nombre es requerido"),
     lastName: z.string().min(2, "Apellido es requerido"),
     email: z.string().email("Email inválido"),
+    phone: z.string().min(5, "Teléfono es requerido"),
+    address: z.string().default(""),
+    city: z.string().default(""),
+    country: z.string().default(""),
     role: z.enum(["SECONDARY_MANAGER", "SECONDARY_STAFF", "VIEWER"] as [string, ...string[]]),
+    permissions: z.object({
+        reservations: z.array(z.string()).default(["READ"]),
+        properties: z.array(z.string()).default(["READ"]),
+    }).default({ reservations: ["READ"], properties: ["READ"] })
 })
 
 type UserFormValues = z.infer<typeof userSchema>
 
 export function UserManagement() {
+    const { user: currentUser } = useAuthStore()
     const [users, setUsers] = useState<User[]>([])
+    const [editingUser, setEditingUser] = useState<User | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     const form = useForm<UserFormValues>({
-        resolver: zodResolver(userSchema),
+        resolver: zodResolver(userSchema) as any,
         defaultValues: {
             firstName: "",
             lastName: "",
             email: "",
+            phone: "",
+            address: "",
+            city: "",
+            country: "",
             role: "SECONDARY_STAFF",
+            permissions: {
+                reservations: ["READ"],
+                properties: ["READ"]
+            }
         },
     })
 
@@ -98,19 +123,75 @@ export function UserManagement() {
         fetchUsers()
     }, [])
 
+    useEffect(() => {
+        if (!isDialogOpen) {
+            setEditingUser(null)
+            form.reset({
+                firstName: "",
+                lastName: "",
+                email: "",
+                phone: "",
+                address: "",
+                city: "",
+                country: "",
+                role: "SECONDARY_STAFF",
+                permissions: {
+                    reservations: ["READ"],
+                    properties: ["READ"]
+                }
+            })
+        }
+    }, [isDialogOpen, form])
+
+    const handleEdit = (user: User) => {
+        setEditingUser(user)
+        form.reset({
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            phone: user.phone || "",
+            address: user.address || "",
+            city: user.city || "",
+            country: user.country || "",
+            role: user.role as any,
+            permissions: {
+                reservations: user.permissions?.reservations || ["READ"],
+                properties: user.permissions?.properties || ["READ"]
+            }
+        })
+        setIsDialogOpen(true)
+    }
+
     const onSubmit = async (data: UserFormValues) => {
         setIsSubmitting(true)
         try {
-            await userService.createUser({
-                ...data,
-                role: data.role as UserRole
-            })
-            toast.success("Usuario creado", {
-                description: "Se ha enviado una invitación al correo electrónico."
-            })
+            const userData = {
+                firstName: data.firstName,
+                lastName: data.lastName,
+                email: data.email,
+                phone: data.phone,
+                address: data.address,
+                city: data.city,
+                country: data.country,
+                role: data.role as UserRole,
+                clientId: currentUser?.clientId || "CLT-001",
+                permissions: data.permissions
+            }
+
+            if (editingUser) {
+                await userService.updateUser(editingUser.id, userData)
+                toast.success("Usuario actualizado")
+            } else {
+                await userService.createUser(userData)
+                toast.success("Usuario invitado", {
+                    description: "Se ha enviado una invitación al correo electrónico."
+                })
+            }
+
             setIsDialogOpen(false)
             fetchUsers()
-            form.reset()
+        } catch (error) {
+            toast.error("Error al procesar la solicitud")
         } finally {
             setIsSubmitting(false)
         }
@@ -145,9 +226,13 @@ export function UserManagement() {
                     </DialogTrigger>
                     <DialogContent>
                         <DialogHeader>
-                            <DialogTitle>Invitar Usuario</DialogTitle>
+                            <DialogTitle>
+                                {editingUser ? "Editar Usuario" : "Invitar Usuario"}
+                            </DialogTitle>
                             <DialogDescription>
-                                Los usuarios secundarios tendrán acceso según el rol asignado.
+                                {editingUser
+                                    ? "Modifica los datos y permisos del usuario."
+                                    : "Los usuarios secundarios tendrán acceso según el rol asignado."}
                             </DialogDescription>
                         </DialogHeader>
                         <Form {...form}>
@@ -193,34 +278,174 @@ export function UserManagement() {
                                         </FormItem>
                                     )}
                                 />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="phone"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Teléfono / Whatsapp</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="+57 ..." {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="role"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Rol</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Seleccionar rol" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {PREDEFINED_ROLES.filter(r => r.id !== "PRINCIPAL").map(role => (
+                                                            <SelectItem key={role.id} value={role.id}>
+                                                                {role.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                                 <FormField
                                     control={form.control}
-                                    name="role"
+                                    name="address"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Rol</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Seleccionar rol" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {PREDEFINED_ROLES.filter(r => r.id !== "PRINCIPAL").map(role => (
-                                                        <SelectItem key={role.id} value={role.id}>
-                                                            {role.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <FormLabel>Dirección</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} />
+                                            </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="city"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Ciudad</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="country"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>País</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-8 pt-4 border-t">
+                                    <div className="space-y-4">
+                                        <FormLabel className="text-xs uppercase font-bold text-muted-foreground tracking-wider italic">
+                                            Permisos Reservas
+                                        </FormLabel>
+                                        <div className="grid grid-cols-1 gap-y-2">
+                                            {[
+                                                { id: "READ", label: "Consultar" },
+                                                { id: "CREATE", label: "Crear" },
+                                                { id: "UPDATE", label: "Modificar" },
+                                                { id: "DELETE", label: "Eliminar" }
+                                            ].map((action) => (
+                                                <FormField
+                                                    key={action.id}
+                                                    control={form.control}
+                                                    name="permissions.reservations"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    checked={field.value?.includes(action.id)}
+                                                                    onCheckedChange={(checked) => {
+                                                                        return checked
+                                                                            ? field.onChange([...field.value, action.id])
+                                                                            : field.onChange(
+                                                                                field.value?.filter(
+                                                                                    (value) => value !== action.id
+                                                                                )
+                                                                            )
+                                                                    }}
+                                                                />
+                                                            </FormControl>
+                                                            <FormLabel className="text-sm font-normal cursor-pointer">
+                                                                {action.label}
+                                                            </FormLabel>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <FormLabel className="text-xs uppercase font-bold text-muted-foreground tracking-wider italic">
+                                            Permisos Propiedades
+                                        </FormLabel>
+                                        <div className="grid grid-cols-1 gap-y-2">
+                                            {[
+                                                { id: "READ", label: "Consultar" },
+                                                { id: "CREATE", label: "Crear" },
+                                                { id: "UPDATE", label: "Modificar" },
+                                                { id: "DELETE", label: "Eliminar" }
+                                            ].map((action) => (
+                                                <FormField
+                                                    key={action.id}
+                                                    control={form.control}
+                                                    name="permissions.properties"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    checked={field.value?.includes(action.id)}
+                                                                    onCheckedChange={(checked) => {
+                                                                        return checked
+                                                                            ? field.onChange([...field.value, action.id])
+                                                                            : field.onChange(
+                                                                                field.value?.filter(
+                                                                                    (value) => value !== action.id
+                                                                                )
+                                                                            )
+                                                                    }}
+                                                                />
+                                                            </FormControl>
+                                                            <FormLabel className="text-sm font-normal cursor-pointer">
+                                                                {action.label}
+                                                            </FormLabel>
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                                 <DialogFooter>
                                     <Button type="submit" disabled={isSubmitting}>
                                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Crear Invitación
+                                        {editingUser ? "Guardar Cambios" : "Crear Invitación"}
                                     </Button>
                                 </DialogFooter>
                             </form>
@@ -282,8 +507,8 @@ export function UserManagement() {
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
                                                         <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                        <DropdownMenuItem disabled>
-                                                            <Shield className="mr-2 h-4 w-4" /> Editar Permisos
+                                                        <DropdownMenuItem onClick={() => handleEdit(user)}>
+                                                            <Shield className="mr-2 h-4 w-4" /> Editar Usuario / Permisos
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem

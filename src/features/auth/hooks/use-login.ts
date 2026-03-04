@@ -74,7 +74,7 @@ export function useLogin() {
             await authService.requestOtp(values.email)
             setEmail(values.email)
             setStep("otp")
-            startTimer(300) // 5 minutes = 300 seconds
+            startTimer(180) // 3 minutes = 180 seconds
             toast.success("Código enviado", {
                 description: `Hemos enviado un código a ${values.email}`,
             })
@@ -121,7 +121,7 @@ export function useLogin() {
         setIsLoading(true)
         try {
             await authService.resendOtp(email)
-            startTimer(300)
+            startTimer(180)
             toast.success("Código reenviado", {
                 description: `Se ha enviado un nuevo código a ${email}.`
             })

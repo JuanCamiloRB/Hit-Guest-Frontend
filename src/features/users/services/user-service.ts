@@ -3,14 +3,20 @@ import { User, PREDEFINED_ROLES } from "@/features/auth/types"
 export const mockUsers: User[] = [
     {
         id: "USR-001",
+        clientId: "CLT-001",
         email: "admin@hitguest.com",
         firstName: "Juan",
         lastName: "Rodriguez",
+        phone: "+57 300 000 0000",
+        address: "Calle 123",
+        city: "Bogotá",
+        country: "Colombia",
         role: "PRINCIPAL",
         isPrincipal: true,
     },
     {
         id: "USR-002",
+        clientId: "CLT-001",
         email: "manager@hitguest.com",
         firstName: "Camilo",
         lastName: "Gomez",
@@ -19,6 +25,7 @@ export const mockUsers: User[] = [
     },
     {
         id: "USR-003",
+        clientId: "CLT-001",
         email: "staff@hitguest.com",
         firstName: "Lucia",
         lastName: "Perez",

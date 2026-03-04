@@ -7,15 +7,15 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
     return (
-        <div className="flex h-screen overflow-hidden bg-background">
+        <div className="flex min-h-screen flex-col md:flex-row bg-background">
             {/* Desktop Sidebar */}
-            <aside className="hidden w-64 md:block flex-shrink-0">
-                <Sidebar className="w-full" />
+            <aside className="sticky top-0 hidden w-64 h-screen md:block flex-shrink-0 z-20">
+                <Sidebar className="w-full h-full" />
             </aside>
 
-            <div className="flex flex-1 flex-col overflow-hidden">
+            <div className="flex flex-1 flex-col min-w-0">
                 <Header />
-                <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-muted/10">
+                <main className="flex-1 p-4 md:p-6 bg-muted/10">
                     {children}
                 </main>
             </div>

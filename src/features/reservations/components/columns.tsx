@@ -16,14 +16,16 @@ import { Reservation } from "@/types"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { StatusBadge } from "./StatusBadge"
+import { AutomationTrafficLight } from "./AutomationTrafficLight"
 
 export const columns: ColumnDef<Reservation>[] = [
     {
         accessorKey: "guestName",
-        header: "HUÉSPED",
+        header: "HUÉSPED / ALOJAMIENTO",
         cell: ({ row }) => {
-            const name = row.getValue("guestName") as string
-            const initials = name
+            const reservation = row.original
+            const guestName = reservation.guestName
+            const initials = guestName
                 .split(" ")
                 .map((n) => n[0])
                 .join("")
@@ -31,40 +33,30 @@ export const columns: ColumnDef<Reservation>[] = [
                 .slice(0, 2)
 
             return (
-                <div className="flex items-center gap-3">
-                    <Avatar className="h-9 w-9 bg-purple-100 text-purple-600">
-                        {/* Placeholder for avatar image if available in future */}
-                        <AvatarFallback className="bg-purple-100 text-purple-600 font-medium">
+                <div className="flex items-center gap-3 py-1">
+                    <Avatar className="h-10 w-10 bg-purple-100 text-purple-600 shrink-0">
+                        <AvatarFallback className="bg-purple-100 text-purple-600 font-semibold">
                             {initials}
                         </AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col">
+                    <div className="flex flex-col min-w-0">
                         <Link
-                            href={`/dashboard/reservations/${row.original.id}`}
-                            className="font-medium text-sm text-slate-900 hover:text-indigo-600 hover:underline cursor-pointer"
+                            href={`/dashboard/reservations/${reservation.id}`}
+                            className="font-bold text-sm text-slate-900 hover:text-indigo-600 transition-colors truncate"
                         >
-                            {name}
+                            {guestName}
                         </Link>
-                        {/* Could add email or phone if available in data */}
+                        <div className="flex flex-col -mt-0.5">
+                            <span className="text-xs text-slate-500 truncate font-medium">
+                                {reservation.propertyName}
+                            </span>
+                            {reservation.unitName !== reservation.propertyName && (
+                                <span className="text-[10px] text-muted-foreground truncate italic opacity-80">
+                                    {reservation.unitName}
+                                </span>
+                            )}
+                        </div>
                     </div>
-                </div>
-            )
-        }
-    },
-    {
-        accessorKey: "propertyName",
-        header: "ALOJAMIENTO",
-        cell: ({ row }) => {
-            const reservation = row.original
-            return (
-                <div className="flex flex-col">
-                    <span className="text-sm text-slate-600">
-                        {reservation.propertyName}
-                    </span>
-                    {/* Assuming unitName is distinct or important */}
-                    {reservation.unitName !== reservation.propertyName && (
-                        <span className="text-xs text-muted-foreground">{reservation.unitName}</span>
-                    )}
                 </div>
             )
         }
@@ -79,7 +71,7 @@ export const columns: ColumnDef<Reservation>[] = [
 
             return (
                 <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium text-slate-900">
+                    <span className="text-sm font-medium text-slate-900 text-nowrap">
                         {format(checkIn, "d MMM", { locale: es })} – {format(checkOut, "d MMM", { locale: es })}
                     </span>
                     <span className="text-xs text-muted-foreground bg-slate-100 px-1.5 py-0.5 rounded w-fit">
@@ -121,25 +113,29 @@ export const columns: ColumnDef<Reservation>[] = [
         }
     },
     {
-        accessorKey: "status",
-        header: "ESTADO",
+        accessorKey: "automationStatus",
+        header: "ESTADO Y OPERACIONES",
         cell: ({ row }) => {
-            return <StatusBadge status={row.getValue("status")} />
+            return (
+                <div className="flex justify-start">
+                    <AutomationTrafficLight status={row.getValue("automationStatus")} />
+                </div>
+            )
         },
     },
     {
         id: "actions",
-        header: "ACCIONES",
+        header: () => <div className="text-center">ACCIONES</div>,
         cell: ({ row }) => {
             const payment = row.original
 
             return (
-                <div className="text-right">
+                <div className="flex justify-center min-w-[100px]">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400">
+                            <Button variant="ghost" className="h-10 w-10 p-0 text-slate-400 hover:text-indigo-600 transition-colors bg-slate-50/50 hover:bg-indigo-50">
                                 <span className="sr-only">Open menu</span>
-                                <MoreVertical className="h-4 w-4" />
+                                <MoreVertical className="h-6 w-6" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">

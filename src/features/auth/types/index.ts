@@ -16,6 +16,30 @@ export const otpSchema = z.object({
 
 export type OtpFormData = z.infer<typeof otpSchema>
 
+export const registerSchema = z.object({
+    person_type_id: z.enum(["1", "2"], {
+        message: "Debes seleccionar un tipo de perfil",
+    }),
+    companyName: z.string().optional(),
+    name: z.string().min(2, "El nombre es requerido"),
+    lastname: z.string().min(1, "El apellido es requerido"),
+    email: z.string().email("Email inválido"),
+    phone: z.string().min(5, "El teléfono es requerido"),
+    country: z.string().min(2, "El país es requerido"),
+}).superRefine((data, ctx) => {
+    if (data.person_type_id === "2") {
+        if (!data.companyName || data.companyName.trim().length < 2) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "La razón social es requerida para empresas",
+                path: ["companyName"],
+            });
+        }
+    }
+})
+
+export type RegisterFormData = z.infer<typeof registerSchema>
+
 export type PermissionAction = "READ" | "CREATE" | "UPDATE" | "DELETE"
 export type PermissionModule = "RESERVATIONS" | "PROPERTIES" | "USERS" | "BILLING"
 
@@ -26,6 +50,18 @@ export interface Permission {
 
 export type UserRole = "PRINCIPAL" | "SECONDARY_MANAGER" | "SECONDARY_STAFF" | "VIEWER"
 
+export interface Client {
+    id: string
+    name: string
+    taxId?: string
+    address?: string
+    city?: string
+    country?: string
+    phone?: string
+    email?: string
+    status: "ACTIVE" | "INACTIVE"
+}
+
 export interface RoleDefinition {
     id: UserRole
     name: string
@@ -34,14 +70,23 @@ export interface RoleDefinition {
 
 export interface User {
     id: string
+    clientId: string // New: Links user to a Client
     uuid?: string // from API
     token?: string // from API
     email: string
     firstName: string
     lastName: string
+    phone?: string
+    address?: string
+    city?: string
+    country?: string
     avatar?: string
     role: UserRole
     isPrincipal: boolean
+    permissions?: {
+        reservations?: string[]
+        properties?: string[]
+    }
 }
 
 export interface AuthState {
@@ -54,7 +99,8 @@ export interface AuthState {
 export interface AuthService {
     requestOtp(email: string): Promise<void>
     verifyOtp(email: string, otp: string): Promise<User>
-    resendOtp(email: string): Promise<void> // Added
+    resendOtp(email: string): Promise<void>
+    register(data: RegisterFormData): Promise<void> // Request registration (sends OTP)
     loginWithGoogle(): Promise<User>
     logout(): Promise<void>
 }

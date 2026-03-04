@@ -173,6 +173,17 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                     </form>
                 </Form>
             )}
+            <div className="mt-4 text-center text-sm">
+                <p className="text-muted-foreground">
+                    ¿No tienes cuenta?{" "}
+                    <Link
+                        href="/register"
+                        className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors underline-offset-4 hover:underline"
+                    >
+                        Regístrate aquí
+                    </Link>
+                </p>
+            </div>
         </div>
     )
 }
