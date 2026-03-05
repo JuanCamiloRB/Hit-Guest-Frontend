@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
-import { Lato, Open_Sans } from "next/font/google";
+import { Gabarito, Poppins } from "next/font/google";
 import "./globals.css";
 
-const lato = Lato({
-  variable: "--font-lato",
+const gabarito = Gabarito({
+  variable: "--font-gabarito",
   subsets: ["latin"],
-  weight: ["100", "300", "400", "700", "900"],
+  weight: ["700", "800"], // Bold focused
 });
 
-const openSans = Open_Sans({
-  variable: "--font-open-sans",
+const poppins = Poppins({
+  variable: "--font-poppins",
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -26,7 +27,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${lato.variable} ${openSans.variable} antialiased font-secondary`}
+        className={`${gabarito.variable} ${poppins.variable} antialiased font-secondary`}
       >
         {children}
       </body>

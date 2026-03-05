@@ -8,11 +8,15 @@ export const mockUsers: User[] = [
         firstName: "Juan",
         lastName: "Rodriguez",
         phone: "+57 300 000 0000",
-        address: "Calle 123",
+        address: "Calle 123 #45-67",
         city: "Bogotá",
         country: "Colombia",
         role: "PRINCIPAL",
         isPrincipal: true,
+        permissions: {
+            reservations: ["READ", "CREATE", "UPDATE", "DELETE"],
+            properties: ["READ", "CREATE", "UPDATE", "DELETE"]
+        }
     },
     {
         id: "USR-002",
@@ -20,8 +24,16 @@ export const mockUsers: User[] = [
         email: "manager@hitguest.com",
         firstName: "Camilo",
         lastName: "Gomez",
+        phone: "+57 311 222 3333",
+        address: "Av. Siempre Viva 123",
+        city: "Medellín",
+        country: "Colombia",
         role: "SECONDARY_MANAGER",
         isPrincipal: false,
+        permissions: {
+            reservations: ["READ", "CREATE", "UPDATE", "DELETE"],
+            properties: ["READ", "CREATE", "UPDATE", "DELETE"]
+        }
     },
     {
         id: "USR-003",
@@ -29,8 +41,16 @@ export const mockUsers: User[] = [
         email: "staff@hitguest.com",
         firstName: "Lucia",
         lastName: "Perez",
+        phone: "+57 322 444 5555",
+        address: "Carrera 7 #100-20",
+        city: "Cali",
+        country: "Colombia",
         role: "SECONDARY_STAFF",
         isPrincipal: false,
+        permissions: {
+            reservations: ["READ", "CREATE"],
+            properties: ["READ"]
+        }
     }
 ]
 

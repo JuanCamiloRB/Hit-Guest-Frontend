@@ -13,15 +13,27 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
 import { ProfileForm } from "@/features/auth/components/ProfileForm"
 import { UserManagement } from "@/features/users/components/UserManagement"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Users, User, Building2 } from "lucide-react"
 import { ClientSettings } from "@/features/clients/components/ClientSettings"
+import { useSearchParams } from "next/navigation"
+import { useState, useEffect } from "react"
 
 export function SettingsContent() {
     const { user, isLoading } = useAuth()
+    const searchParams = useSearchParams()
+    const tabParam = searchParams.get("tab")
+    const [activeTab, setActiveTab] = useState("profile")
+
+    useEffect(() => {
+        if (tabParam && ["profile", "client", "team"].includes(tabParam)) {
+            setActiveTab(tabParam)
+        }
+    }, [tabParam])
 
     if (isLoading || !user) {
         return (
@@ -33,8 +45,11 @@ export function SettingsContent() {
     }
 
     return (
-        <Tabs defaultValue="profile" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className={cn(
+                "grid w-full",
+                user.isPrincipal ? "grid-cols-3 lg:w-[600px]" : "grid-cols-1 lg:w-[200px]"
+            )}>
                 <TabsTrigger value="profile">
                     <User className="mr-2 h-4 w-4" />
                     Mi Perfil
@@ -47,7 +62,7 @@ export function SettingsContent() {
                         </TabsTrigger>
                         <TabsTrigger value="team">
                             <Users className="mr-2 h-4 w-4" />
-                            Equipo
+                            Usuarios
                         </TabsTrigger>
                     </>
                 )}

@@ -1,6 +1,6 @@
 import { apiClient } from "@/lib/api-client"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL_HIT || "https://www.kunas.co/api/v1/auth"
+const API_BASE_URL = "https://www.kunas.co/api/v1"
 const APP_API_TOKEN = process.env.NEXT_PUBLIC_APP_API_TOKEN
 
 const DEFAULT_HEADERS = {
@@ -14,38 +14,46 @@ export interface CatalogOption {
 }
 
 export class CatalogService {
-    // Note: The user mentioned they will create these endpoints. 
-    // I am setting up the structure with common naming conventions.
+    private async fetchCatalog(categoryName: string): Promise<CatalogOption[]> {
+        const url = `${API_BASE_URL}/catalogs?status[eq]=ACT&catalogCategoryName[eq]=${categoryName}`
+        try {
+            const response = await fetch(url, { headers: DEFAULT_HEADERS })
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+
+            const result = await response.json()
+            const rawOptions = result.data || result
+
+            return rawOptions.map((item: any) => ({
+                id: item.uuid || item.id || String(item.value),
+                name: item.name || item.description || item.label || "Sin nombre"
+            }))
+        } catch (error) {
+            console.warn(`Catalog API (${categoryName}) failed`, error)
+            return []
+        }
+    }
 
     async getPersonTypes(): Promise<CatalogOption[]> {
-        try {
-            // Using a generic catalog endpoint as placeholder
-            const response = await fetch(`${API_URL}/catalogs/person-types`, {
-                headers: DEFAULT_HEADERS
-            })
-            if (!response.ok) return [{ id: "1", name: "Individual" }, { id: "2", name: "Empresa" }]
-            const data = await response.json()
-            return data.data || data
-        } catch (error) {
-            console.warn("Catalog API failed, falling back to static options", error)
+        const types = await this.fetchCatalog("person_type")
+        if (types.length === 0) {
             return [
                 { id: "1", name: "Individual" },
                 { id: "2", name: "Empresa" }
             ]
         }
+        return types
+    }
+
+    async getIdentificationTypes(): Promise<CatalogOption[]> {
+        return this.fetchCatalog("identification_type")
+    }
+
+    async getStatusRecords(): Promise<CatalogOption[]> {
+        return this.fetchCatalog("status_record")
     }
 
     async getCountries(): Promise<CatalogOption[]> {
-        try {
-            const response = await fetch(`${API_URL}/catalogs/countries`, {
-                headers: DEFAULT_HEADERS
-            })
-            if (!response.ok) return []
-            const data = await response.json()
-            return data.data || data
-        } catch (error) {
-            return []
-        }
+        return this.fetchCatalog("country")
     }
 }
 

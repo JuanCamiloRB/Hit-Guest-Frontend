@@ -12,6 +12,8 @@ export const mockReservations: Reservation[] = [
         checkIn: new Date("2026-03-01"),
         checkOut: new Date("2026-03-05"),
         status: "CONFIRMED",
+        nights: 4,
+        source: "Airbnb",
         totalPrice: 480.00
     },
     {
@@ -25,6 +27,8 @@ export const mockReservations: Reservation[] = [
         checkIn: new Date("2026-03-10"),
         checkOut: new Date("2026-03-12"),
         status: "PENDING",
+        nights: 2,
+        source: "Booking",
         totalPrice: 190.00
     },
     {
@@ -38,6 +42,8 @@ export const mockReservations: Reservation[] = [
         checkIn: new Date("2026-02-28"),
         checkOut: new Date("2026-03-02"),
         status: "CHECKED_IN",
+        nights: 2,
+        source: "Direct",
         totalPrice: 250.00
     },
     {
@@ -51,6 +57,8 @@ export const mockReservations: Reservation[] = [
         checkIn: new Date("2026-03-15"),
         checkOut: new Date("2026-03-20"),
         status: "CONFIRMED",
+        nights: 5,
+        source: "Airbnb",
         totalPrice: 600.00
     }
 ]

@@ -16,6 +16,7 @@ import {
 import { useLogin } from "../hooks/use-login"
 import { Honeypot } from "./Honeypot"
 import Link from "next/link"
+import { Logo } from "@/components/ui/Logo"
 
 type UserAuthFormProps = React.HTMLAttributes<HTMLDivElement>
 
@@ -42,7 +43,13 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
     }, [])
 
     return (
-        <div className={cn("grid gap-6", className)} {...props}>
+        <div className={cn("grid gap-8 bg-white p-8 rounded-2xl shadow-xl border border-border/50", className)} {...props}>
+            <div className="flex flex-col items-center gap-2 text-center mb-2">
+                <Logo className="h-12 w-auto" />
+                <p className="text-sm text-muted-foreground font-secondary mt-1">
+                    Gestión inteligente para hospitalidad
+                </p>
+            </div>
             {isMounted && error && (
                 <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md flex items-center gap-2 border border-destructive/20 animate-in fade-in zoom-in duration-200">
                     <AlertCircle className="h-4 w-4 shrink-0" />
@@ -83,10 +90,10 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             />
                             <Button
                                 disabled={isLoading}
-                                className="bg-caribbean-green hover:bg-caribbean-green/90 text-primary font-bold shadow-sm"
+                                className="bg-primary hover:bg-primary/90 text-white font-bold h-11"
                             >
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Enviar código
+                                Continuar con el acceso
                             </Button>
                         </div>
                     </form>
@@ -112,7 +119,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                             <button
                                                 type="button"
                                                 onClick={resetFlow}
-                                                className="text-[12px] text-pink-flamingo hover:underline"
+                                                className="text-[12px] text-brand-blue font-semibold hover:underline"
                                             >
                                                 Cambiar correo
                                             </button>
@@ -141,7 +148,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             <div className="flex flex-col gap-3">
                                 <Button
                                     disabled={isLoading}
-                                    className="bg-caribbean-green hover:bg-caribbean-green/90 text-primary font-bold shadow-sm w-full"
+                                    className="bg-brand-blue hover:bg-brand-blue/90 text-white font-bold h-11 w-full"
                                 >
                                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Verificar e Iniciar Sesión
@@ -160,7 +167,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                         <Button
                                             type="button"
                                             variant="ghost"
-                                            className="text-xs text-pink-flamingo hover:text-pink-flamingo/90 hover:bg-pink-flamingo/10 h-auto py-2"
+                                            className="text-xs text-brand-purple hover:text-brand-purple/90 hover:bg-brand-purple/10 h-auto py-2"
                                             onClick={onResendOtp}
                                             disabled={isLoading || !canResend}
                                         >
@@ -178,7 +185,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                     ¿No tienes cuenta?{" "}
                     <Link
                         href="/register"
-                        className="font-semibold text-indigo-600 hover:text-indigo-500 transition-colors underline-offset-4 hover:underline"
+                        className="font-semibold text-brand-blue hover:text-brand-blue/80 transition-colors underline-offset-4 hover:underline"
                     >
                         Regístrate aquí
                     </Link>

@@ -1,9 +1,8 @@
 import { AuthService, LoginFormData, RegisterFormData, User } from "../types"
 
-const API_URL_HIT = process.env.NEXT_PUBLIC_API_URL_HIT || "https://www.kunas.co/api/v1/auth"
-const API_URL_GUEST = process.env.NEXT_PUBLIC_API_URL_GUEST || "https://www.kunas.co/api/v1/auth"
+const API_URL_AUTH = process.env.NEXT_PUBLIC_API_URL_HIT || "https://www.kunas.co/api/v1/auth"
+const API_URL_CLIENTS = "https://www.kunas.co/api/v1/clients"
 
-const API_URL = API_URL_HIT
 const APP_API_TOKEN = process.env.NEXT_PUBLIC_APP_API_TOKEN || ""
 
 // TOGGLE THIS VIA .env (NEXT_PUBLIC_ENABLE_MOCKS)
@@ -38,7 +37,7 @@ class AuthServiceImpl implements AuthService {
         }
 
         try {
-            const response = await fetch(`${API_URL}/login`, {
+            const response = await fetch(`${API_URL_AUTH}/login`, {
                 method: "POST",
                 headers: DEFAULT_HEADERS,
                 body: JSON.stringify({ email }),
@@ -59,7 +58,7 @@ class AuthServiceImpl implements AuthService {
     }
 
     async verifyOtp(email: string, otp: string): Promise<User> {
-        if (USE_MOCK_AUTH || this.simulatedOtps.has(email)) {
+        if (USE_MOCK_AUTH || (this.simulatedOtps.has(email) && email !== "admin@hitguest.com")) {
             await new Promise((resolve) => setTimeout(resolve, 1500))
             const storedOtp = this.simulatedOtps.get(email)
             if (otp === storedOtp || (email === "admin@hitguest.com" && otp === "123456")) {
@@ -71,7 +70,7 @@ class AuthServiceImpl implements AuthService {
         }
 
         try {
-            const response = await fetch(`${API_URL}/verify-otp`, {
+            const response = await fetch(`${API_URL_AUTH}/verify-otp`, {
                 method: "POST",
                 headers: DEFAULT_HEADERS,
                 body: JSON.stringify({ email, otp }),
@@ -126,7 +125,7 @@ class AuthServiceImpl implements AuthService {
         }
 
         try {
-            const response = await fetch(`${API_URL}/resend-otp`, {
+            const response = await fetch(`${API_URL_AUTH}/resend-otp`, {
                 method: "POST",
                 headers: DEFAULT_HEADERS,
                 body: JSON.stringify({ email }),
@@ -146,63 +145,46 @@ class AuthServiceImpl implements AuthService {
     }
 
     async register(data: RegisterFormData): Promise<void> {
-        // FORCE MOCK MODE: The real endpoint does not exist yet
-        await new Promise((resolve) => setTimeout(resolve, 1500))
-        const finalName = data.person_type_id === "2" ? data.companyName : data.name;
-        console.log(`[MOCK API] Registering Client: ${finalName} and Admin: ${data.email}`)
-        const otp = Math.floor(100000 + Math.random() * 900000).toString()
-        this.simulatedOtps.set(data.email, otp)
-        console.log(`[MOCK API] OTP for registration: ${otp}`)
-        return
-
-        // --- REAL API CODE (Commented out until backend is ready) ---
-        /*
         if (USE_MOCK_AUTH) {
-            try {
-                // Using the exact structure specified in the Clients schema
-                // If it's a business (type 2), use companyName as the primary name, 
-                // and concatenate name/lastname as the contact's lastname field.
-                const finalName = data.person_type_id === "2" ? data.companyName : data.name;
-                const finalLastName = data.person_type_id === "2" 
-                    ? `${data.name} ${data.lastname}`.trim() 
-                    : data.lastname;
-
-                const payload = {
-                    person_type_id: data.person_type_id,
-                    name: finalName,
-                    lastname: finalLastName,
-                    email: data.email,
-                    phone: data.phone,
-                    country: data.country,
-                }
-
-                console.log("[AuthService] Sending form payload:", payload)
-
-                const response = await fetch(`${API_URL}/register`, {
-                    method: "POST",
-                    headers: DEFAULT_HEADERS,
-                    body: JSON.stringify(payload),
-                })
-
-                if (!response.ok) {
-                    const errorText = await response.text()
-                    console.error("[AuthService] Registration failed with status:", response.status, errorText)
-
-                    let errorData: any = {}
-                    try {
-                        errorData = JSON.parse(errorText)
-                    } catch (e) {
-                        // Not JSON
-                    }
-
-                    throw new Error(errorData.message || errorData.error || `Error del servidor (${response.status})`)
-                }
-            } catch (error: any) {
-                console.error("[AuthService] Registration exception:", error)
-                throw new Error(error.message || "Error de conexión")
-            }
+            await new Promise((resolve) => setTimeout(resolve, 1500))
+            const finalName = data.person_type_id === "2" ? data.companyName : data.name;
+            console.log(`[MOCK API] Registering Client: ${finalName} and Admin: ${data.email}`)
+            const otp = Math.floor(100000 + Math.random() * 900000).toString()
+            this.simulatedOtps.set(data.email, otp)
+            console.log(`[MOCK API] OTP for registration (Mock): ${otp}`)
+            return
         }
-        */
+
+        try {
+            // Mapping form data to Client API expected fields
+            const payload = {
+                person_type_id: parseInt(data.person_type_id),
+                name: data.person_type_id === "2" ? data.companyName : data.name,
+                lastname: data.lastname,
+                email: data.email,
+                phone: data.phone,
+                country: data.country,
+            }
+
+            console.log("[AuthService] Sending registration payload:", payload)
+
+            const response = await fetch(API_URL_CLIENTS, {
+                method: "POST",
+                headers: DEFAULT_HEADERS,
+                body: JSON.stringify(payload),
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                console.error("[AuthService] Registration failed:", errorData)
+                throw new Error(errorData.message || errorData.error || `Error en el registro (${response.status})`)
+            }
+
+            console.log("[AuthService] Registration successful, OTP should have been sent to:", data.email)
+        } catch (error: any) {
+            console.error("[AuthService] Registration exception:", error)
+            throw new Error(error.message || "Error de conexión durante el registro")
+        }
     }
 
     async loginWithGoogle(): Promise<User> {

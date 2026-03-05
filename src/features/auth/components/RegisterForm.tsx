@@ -47,19 +47,28 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
         { id: "1", name: "Individual" },
         { id: "2", name: "Empresa (Negocio)" }
     ])
+    const [countries, setCountries] = React.useState<CatalogOption[]>([])
 
     React.useEffect(() => {
-        const fetchTypes = async () => {
+        const fetchData = async () => {
             try {
-                const types = await catalogService.getPersonTypes()
+                const [types, countryList] = await Promise.all([
+                    catalogService.getPersonTypes(),
+                    catalogService.getCountries()
+                ])
+
                 if (types && types.length > 0) {
                     setPersonTypes(types)
                 }
+
+                if (countryList && countryList.length > 0) {
+                    setCountries(countryList)
+                }
             } catch (error) {
-                console.warn("Failed to fetch person types", error)
+                console.warn("Failed to fetch catalogs", error)
             }
         }
-        fetchTypes()
+        fetchData()
     }, [])
 
     if (isSuccess) {
@@ -235,17 +244,34 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>País</FormLabel>
-                                        <FormControl>
-                                            <div className="relative">
-                                                <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                <Input
-                                                    placeholder="Ej: Colombia"
-                                                    disabled={isLoading}
-                                                    className="pl-9"
-                                                    {...field}
-                                                />
-                                            </div>
-                                        </FormControl>
+                                        {countries.length > 0 ? (
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder="Selecciona tu país" />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>
+                                                    {countries.map((country) => (
+                                                        <SelectItem key={country.id} value={country.id}>
+                                                            {country.name}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        ) : (
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                    <Input
+                                                        placeholder="Ej: Colombia"
+                                                        disabled={isLoading}
+                                                        className="pl-9"
+                                                        {...field}
+                                                    />
+                                                </div>
+                                            </FormControl>
+                                        )}
                                         <FormMessage />
                                     </FormItem>
                                 )}

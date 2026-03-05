@@ -99,7 +99,7 @@ export function Sidebar({ className }: SidebarProps) {
                     className={cn(
                         "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
                         item.active
-                            ? "bg-purple-heart text-white"
+                            ? "bg-brand-blue text-white"
                             : "text-white/70 hover:text-white hover:bg-white/5"
                     )}
                 >
@@ -158,16 +158,20 @@ export function Sidebar({ className }: SidebarProps) {
                     <DropdownMenuContent align="end" className="w-56" side="top">
                         <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
-                            <Users className="mr-2 h-4 w-4" />
-                            <span>Perfil</span>
+                        <DropdownMenuItem asChild>
+                            <Link href="/dashboard/settings" className="flex items-center w-full cursor-pointer">
+                                <Users className="mr-2 h-4 w-4" />
+                                <span>Perfil</span>
+                            </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
-                            <Settings className="mr-2 h-4 w-4" />
-                            <span>Configuración</span>
+                        <DropdownMenuItem asChild>
+                            <Link href="/dashboard/settings" className="flex items-center w-full cursor-pointer">
+                                <Settings className="mr-2 h-4 w-4" />
+                                <span>Configuración</span>
+                            </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={logout}>
+                        <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer" onClick={logout}>
                             <LogOut className="mr-2 h-4 w-4" />
                             <span>Cerrar Sesión</span>
                         </DropdownMenuItem>

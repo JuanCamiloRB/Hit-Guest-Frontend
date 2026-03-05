@@ -297,15 +297,15 @@ export function UserManagement() {
                                         name="role"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Rol</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormLabel>Rol / Perfil</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value} disabled={editingUser?.isPrincipal}>
                                                     <FormControl>
                                                         <SelectTrigger>
                                                             <SelectValue placeholder="Seleccionar rol" />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        {PREDEFINED_ROLES.filter(r => r.id !== "PRINCIPAL").map(role => (
+                                                        {PREDEFINED_ROLES.map(role => (
                                                             <SelectItem key={role.id} value={role.id}>
                                                                 {role.name}
                                                             </SelectItem>
@@ -359,88 +359,76 @@ export function UserManagement() {
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-8 pt-4 border-t">
-                                    <div className="space-y-4">
-                                        <FormLabel className="text-xs uppercase font-bold text-muted-foreground tracking-wider italic">
-                                            Permisos Reservas
-                                        </FormLabel>
-                                        <div className="grid grid-cols-1 gap-y-2">
-                                            {[
-                                                { id: "READ", label: "Consultar" },
-                                                { id: "CREATE", label: "Crear" },
-                                                { id: "UPDATE", label: "Modificar" },
-                                                { id: "DELETE", label: "Eliminar" }
-                                            ].map((action) => (
-                                                <FormField
-                                                    key={action.id}
-                                                    control={form.control}
-                                                    name="permissions.reservations"
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                                            <FormControl>
-                                                                <Checkbox
-                                                                    checked={field.value?.includes(action.id)}
-                                                                    onCheckedChange={(checked) => {
-                                                                        return checked
-                                                                            ? field.onChange([...field.value, action.id])
-                                                                            : field.onChange(
-                                                                                field.value?.filter(
-                                                                                    (value) => value !== action.id
-                                                                                )
-                                                                            )
-                                                                    }}
-                                                                />
-                                                            </FormControl>
-                                                            <FormLabel className="text-sm font-normal cursor-pointer">
-                                                                {action.label}
-                                                            </FormLabel>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            ))}
-                                        </div>
+                                <div className="pt-4 border-t space-y-4">
+                                    <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest">
+                                        <Shield className="h-4 w-4" />
+                                        <span>Matriz de Permisos</span>
                                     </div>
 
-                                    <div className="space-y-4">
-                                        <FormLabel className="text-xs uppercase font-bold text-muted-foreground tracking-wider italic">
-                                            Permisos Propiedades
-                                        </FormLabel>
-                                        <div className="grid grid-cols-1 gap-y-2">
-                                            {[
-                                                { id: "READ", label: "Consultar" },
-                                                { id: "CREATE", label: "Crear" },
-                                                { id: "UPDATE", label: "Modificar" },
-                                                { id: "DELETE", label: "Eliminar" }
-                                            ].map((action) => (
-                                                <FormField
-                                                    key={action.id}
-                                                    control={form.control}
-                                                    name="permissions.properties"
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-                                                            <FormControl>
+                                    <div className="rounded-xl border bg-slate-50/50 overflow-hidden">
+                                        <div className="grid grid-cols-5 bg-slate-100/80 border-b text-[10px] font-bold uppercase tracking-wider text-muted-foreground p-3">
+                                            <div className="col-span-1">Módulo</div>
+                                            <div className="text-center">Ver</div>
+                                            <div className="text-center">Crear</div>
+                                            <div className="text-center">Editar</div>
+                                            <div className="text-center">Borrar</div>
+                                        </div>
+
+                                        <div className="divide-y divide-slate-100">
+                                            {/* Reservations Row */}
+                                            <div className="grid grid-cols-5 items-center p-3 hover:bg-white transition-colors">
+                                                <div className="col-span-1 text-sm font-medium">Reservas</div>
+                                                {["READ", "CREATE", "UPDATE", "DELETE"].map((action) => (
+                                                    <div key={action} className="flex justify-center">
+                                                        <FormField
+                                                            control={form.control}
+                                                            name="permissions.reservations"
+                                                            render={({ field }) => (
                                                                 <Checkbox
-                                                                    checked={field.value?.includes(action.id)}
+                                                                    disabled={editingUser?.isPrincipal}
+                                                                    checked={field.value?.includes(action)}
                                                                     onCheckedChange={(checked) => {
-                                                                        return checked
-                                                                            ? field.onChange([...field.value, action.id])
-                                                                            : field.onChange(
-                                                                                field.value?.filter(
-                                                                                    (value) => value !== action.id
-                                                                                )
-                                                                            )
+                                                                        const newValue = checked
+                                                                            ? [...(field.value || []), action]
+                                                                            : field.value?.filter((v: string) => v !== action)
+                                                                        field.onChange(newValue)
                                                                     }}
                                                                 />
-                                                            </FormControl>
-                                                            <FormLabel className="text-sm font-normal cursor-pointer">
-                                                                {action.label}
-                                                            </FormLabel>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            ))}
+                                                            )}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {/* Properties Row */}
+                                            <div className="grid grid-cols-5 items-center p-3 hover:bg-white transition-colors">
+                                                <div className="col-span-1 text-sm font-medium">Propiedades</div>
+                                                {["READ", "CREATE", "UPDATE", "DELETE"].map((action) => (
+                                                    <div key={action} className="flex justify-center">
+                                                        <FormField
+                                                            control={form.control}
+                                                            name="permissions.properties"
+                                                            render={({ field }) => (
+                                                                <Checkbox
+                                                                    disabled={editingUser?.isPrincipal}
+                                                                    checked={field.value?.includes(action)}
+                                                                    onCheckedChange={(checked) => {
+                                                                        const newValue = checked
+                                                                            ? [...(field.value || []), action]
+                                                                            : field.value?.filter((v: string) => v !== action)
+                                                                        field.onChange(newValue)
+                                                                    }}
+                                                                />
+                                                            )}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
+                                    <p className="text-[10px] text-muted-foreground italic px-1">
+                                        * Los usuarios principales tienen todos los permisos habilitados por defecto.
+                                    </p>
                                 </div>
                                 <DialogFooter>
                                     <Button type="submit" disabled={isSubmitting}>
@@ -483,12 +471,31 @@ export function UserManagement() {
                                     <TableRow key={user.id}>
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="font-medium">{user.firstName} {user.lastName}</span>
+                                                <span className="font-medium text-slate-900">{user.firstName} {user.lastName}</span>
                                                 <span className="text-xs text-muted-foreground">{user.email}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant={user.isPrincipal ? "default" : "secondary"}>
+                                            {user.phone ? (
+                                                <a
+                                                    href={`https://wa.me/${user.phone.replace(/\D/g, '')}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-green-600 transition-colors group"
+                                                >
+                                                    <span className="h-5 w-5 rounded-full bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                                                        <svg className="h-3 w-3 fill-green-600" viewBox="0 0 24 24">
+                                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.94 3.659 1.437 5.63 1.438h.001c6.536 0 11.871-5.335 11.874-11.892.003-3.176-1.233-6.162-3.483-8.411z" />
+                                                        </svg>
+                                                    </span>
+                                                    {user.phone}
+                                                </a>
+                                            ) : (
+                                                <span className="text-xs text-muted-foreground italic">No asignado</span>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={user.isPrincipal ? "default" : "secondary"} className="font-medium">
                                                 {PREDEFINED_ROLES.find(r => r.id === user.role)?.name || user.role}
                                             </Badge>
                                         </TableCell>
@@ -498,28 +505,30 @@ export function UserManagement() {
                                             </Badge>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            {!user.isPrincipal && (
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end">
-                                                        <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                        <DropdownMenuItem onClick={() => handleEdit(user)}>
-                                                            <Shield className="mr-2 h-4 w-4" /> Editar Usuario / Permisos
-                                                        </DropdownMenuItem>
-                                                        <DropdownMenuSeparator />
-                                                        <DropdownMenuItem
-                                                            className="text-destructive"
-                                                            onClick={() => handleDelete(user.id)}
-                                                        >
-                                                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            )}
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon">
+                                                        <MoreHorizontal className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
+                                                    <DropdownMenuItem onClick={() => handleEdit(user)}>
+                                                        <Shield className="mr-2 h-4 w-4" /> Editar Usuario / Permisos
+                                                    </DropdownMenuItem>
+                                                    {!user.isPrincipal && (
+                                                        <>
+                                                            <DropdownMenuSeparator />
+                                                            <DropdownMenuItem
+                                                                className="text-destructive"
+                                                                onClick={() => handleDelete(user.id)}
+                                                            >
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                                            </DropdownMenuItem>
+                                                        </>
+                                                    )}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
                                 ))

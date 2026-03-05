@@ -1,12 +1,16 @@
 "use client"
 
+import * as React from "react"
+import Link from "next/link"
 import { MobileSidebar } from "./Sidebar"
 import {
     Search,
     Bell,
     CircleHelp,
     CircleUserRound,
-    Package2
+    Building2,
+    Users,
+    LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,8 +23,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-import * as React from "react"
+import { Logo } from "@/components/ui/Logo"
 
 export function Header() {
     const { user, logout } = useAuth()
@@ -35,12 +38,9 @@ export function Header() {
             <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
                     <MobileSidebar />
-                    <div className="hidden md:flex items-center gap-2 text-primary">
-                        <Package2 className="h-6 w-6" />
-                        <h1 className="text-lg font-bold tracking-tight text-slate-900">HIT Guest</h1>
-                    </div>
-                    {/* Mobile title */}
-                    <h1 className="md:hidden text-lg font-bold tracking-tight text-slate-900">HIT Guest</h1>
+                    <Link href="/dashboard" className="flex items-center gap-2">
+                        <Logo variant="full" className="text-primary" />
+                    </Link>
                 </div>
             </div>
 
@@ -75,14 +75,31 @@ export function Header() {
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem>Mi Perfil</DropdownMenuItem>
-                            <DropdownMenuItem>Configuración</DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href="/dashboard/settings?tab=profile" className="cursor-pointer">
+                                    <CircleUserRound className="mr-2 h-4 w-4" />
+                                    <span>Mi Perfil</span>
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href="/dashboard/settings?tab=client" className="cursor-pointer">
+                                    <Building2 className="mr-2 h-4 w-4" />
+                                    <span>Alojamiento</span>
+                                </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                                <Link href="/dashboard/settings?tab=team" className="cursor-pointer">
+                                    <Users className="mr-2 h-4 w-4" />
+                                    <span>Usuarios</span>
+                                </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                                 className="text-destructive focus:text-destructive cursor-pointer"
                                 onClick={logout}
                             >
-                                Cerrar Sesión
+                                <LogOut className="mr-2 h-4 w-4" />
+                                <span>Cerrar Sesión</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
