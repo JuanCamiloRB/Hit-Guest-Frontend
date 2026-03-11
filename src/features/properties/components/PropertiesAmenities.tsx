@@ -15,6 +15,8 @@ import {
     FormLabel,
 } from "@/components/ui/form"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Sparkles } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 const commonAmenities = [
     { id: "wifi", label: "WiFi" },
@@ -36,11 +38,12 @@ export function PropertiesAmenities() {
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Amenidades</CardTitle>
-                <CardDescription>
-                    Selecciona las amenidades disponibles en esta propiedad.
-                </CardDescription>
+            <CardHeader className="border-b bg-slate-50/50">
+                <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                    <Sparkles className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                    Amenidades de la Propiedad
+                </CardTitle>
+                <CardDescription>Selecciona las características y servicios incluidos en este alojamiento.</CardDescription>
             </CardHeader>
             <CardContent>
                 <FormField
@@ -58,7 +61,7 @@ export function PropertiesAmenities() {
                                             return (
                                                 <FormItem
                                                     key={item.id}
-                                                    className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4"
+                                                    className="data-[state=checked]:bg-[var(--color-brand-purple)] data-[state=checked]:border-[var(--color-brand-purple)] rounded-md border p-4"
                                                 >
                                                     <FormControl>
                                                         <Checkbox

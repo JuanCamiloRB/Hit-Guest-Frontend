@@ -45,24 +45,42 @@ export function SettingsContent() {
     }
 
     return (
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className={cn(
-                "grid w-full",
+                "grid w-full h-auto bg-slate-100/50 p-1 border border-slate-200/60 rounded-xl shadow-sm",
                 user.isPrincipal ? "grid-cols-3 lg:w-[600px]" : "grid-cols-1 lg:w-[200px]"
             )}>
-                <TabsTrigger value="profile">
-                    <User className="mr-2 h-4 w-4" />
-                    Mi Perfil
+                <TabsTrigger
+                    value="profile"
+                    className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                >
+                    <User className={cn(
+                        "mr-2 h-4 w-4 transition-colors",
+                        activeTab === "profile" ? "text-white" : "text-[var(--color-brand-purple)]"
+                    )} />
+                    <span className="font-bold">Mi Perfil</span>
                 </TabsTrigger>
                 {user.isPrincipal && (
                     <>
-                        <TabsTrigger value="client">
-                            <Building2 className="mr-2 h-4 w-4" />
-                            Alojamiento
+                        <TabsTrigger
+                            value="client"
+                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                        >
+                            <Building2 className={cn(
+                                "mr-2 h-4 w-4 transition-colors",
+                                activeTab === "client" ? "text-white" : "text-[var(--color-brand-purple)]"
+                            )} />
+                            <span className="font-bold">Alojamiento</span>
                         </TabsTrigger>
-                        <TabsTrigger value="team">
-                            <Users className="mr-2 h-4 w-4" />
-                            Usuarios
+                        <TabsTrigger
+                            value="team"
+                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                        >
+                            <Users className={cn(
+                                "mr-2 h-4 w-4 transition-colors",
+                                activeTab === "team" ? "text-white" : "text-[var(--color-brand-purple)]"
+                            )} />
+                            <span className="font-bold">Usuarios</span>
                         </TabsTrigger>
                     </>
                 )}

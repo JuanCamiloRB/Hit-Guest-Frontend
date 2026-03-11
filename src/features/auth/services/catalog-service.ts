@@ -1,7 +1,7 @@
 import { apiClient } from "@/lib/api-client"
 
-const API_BASE_URL = "https://www.kunas.co/api/v1"
-const APP_API_TOKEN = process.env.NEXT_PUBLIC_APP_API_TOKEN
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL_GUEST?.replace("/auth", "") || "https://www.kunas.co/api/v1").trim()
+const APP_API_TOKEN = (process.env.NEXT_PUBLIC_APP_API_TOKEN || "").trim()
 
 const DEFAULT_HEADERS = {
     "Authorization": `Bearer ${APP_API_TOKEN}`
@@ -21,10 +21,11 @@ export class CatalogService {
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
 
             const result = await response.json()
+            console.log(`[CatalogService] Successfully fetched ${categoryName}`)
             const rawOptions = result.data || result
 
             return rawOptions.map((item: any) => ({
-                id: item.uuid || item.id || String(item.value),
+                id: String(item.uuid || item.id || item.value),
                 name: item.name || item.description || item.label || "Sin nombre"
             }))
         } catch (error) {

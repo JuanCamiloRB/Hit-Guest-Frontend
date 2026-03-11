@@ -8,7 +8,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { Upload, X } from "lucide-react"
+import { Upload, X, Camera } from "lucide-react"
 import { useFormContext } from "react-hook-form"
 import { useRef } from "react"
 
@@ -37,10 +37,13 @@ export function PropertiesPhotos() {
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Fotos</CardTitle>
+            <CardHeader className="border-b bg-slate-50/50">
+                <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                    <Camera className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                    Galería de Fotos
+                </CardTitle>
                 <CardDescription>
-                    Sube imágenes de tu propiedad. Arrastra y suelta para reordenar.
+                    Sube fotos de alta calidad para atraer a más huéspedes. La primera imagen será la portada.
                 </CardDescription>
             </CardHeader>
             <CardContent>

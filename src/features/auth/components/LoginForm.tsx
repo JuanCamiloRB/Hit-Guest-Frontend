@@ -17,6 +17,8 @@ import { useLogin } from "../hooks/use-login"
 import { Honeypot } from "./Honeypot"
 import Link from "next/link"
 import { Logo } from "@/components/ui/Logo"
+import { useTranslation } from "@/hooks/useTranslation"
+import { useLanguageStore } from "@/store/useLanguageStore"
 
 type UserAuthFormProps = React.HTMLAttributes<HTMLDivElement>
 
@@ -42,12 +44,29 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
         setIsMounted(true)
     }, [])
 
+    const { t } = useTranslation()
+    const { language, setLanguage } = useLanguageStore()
+
+    const toggleLanguage = () => {
+        setLanguage(language === "en" ? "es" : "en")
+    }
+
     return (
         <div className={cn("grid gap-8 bg-white p-8 rounded-2xl shadow-xl border border-border/50", className)} {...props}>
             <div className="flex flex-col items-center gap-2 text-center mb-2">
+                <div className="absolute top-4 right-4 z-50">
+                    <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={toggleLanguage}
+                        className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                    >
+                        {language === "en" ? "ES" : "EN"}
+                    </Button>
+                </div>
                 <Logo className="h-12 w-auto" />
                 <p className="text-sm text-muted-foreground font-secondary mt-1">
-                    Gestión inteligente para hospitalidad
+                    {t('common.welcome')} - Gestión inteligente para hospitalidad
                 </p>
             </div>
             {isMounted && error && (
@@ -90,9 +109,9 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             />
                             <Button
                                 disabled={isLoading}
-                                className="bg-primary hover:bg-primary/90 text-white font-bold h-11"
+                                className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300 h-11"
                             >
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                 Continuar con el acceso
                             </Button>
                         </div>
@@ -148,9 +167,9 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             <div className="flex flex-col gap-3">
                                 <Button
                                     disabled={isLoading}
-                                    className="bg-brand-blue hover:bg-brand-blue/90 text-white font-bold h-11 w-full"
+                                    className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300 h-11 w-full"
                                 >
-                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                     Verificar e Iniciar Sesión
                                 </Button>
 

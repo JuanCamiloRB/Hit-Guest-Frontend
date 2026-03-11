@@ -46,7 +46,7 @@ export default function UserList() {
                     </p>
                 </div>
                 <UserDialog trigger={
-                    <Button>
+                    <Button className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300">
                         <Plus className="mr-2 h-4 w-4" /> Add Member
                     </Button>
                 } />

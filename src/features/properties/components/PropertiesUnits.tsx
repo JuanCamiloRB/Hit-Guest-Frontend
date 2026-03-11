@@ -33,7 +33,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Plus, Trash2, Edit2 } from "lucide-react"
+import { Plus, Trash2, Edit2, Building } from "lucide-react"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import { useState } from "react"
 import { Switch } from "@/components/ui/switch"
@@ -93,12 +93,20 @@ export function PropertiesUnits() {
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                        <CardTitle>Unidades (Alojamientos)</CardTitle>
+                        <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                            <Building className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                            Unidades (Alojamientos)
+                        </CardTitle>
                         <CardDescription>
                             Gestiona las unidades disponibles para reservar en esta propiedad.
                         </CardDescription>
                     </div>
-                    <Button type="button" size="sm" onClick={handleOpenAddDialog}>
+                    <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleOpenAddDialog}
+                        className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold px-4 rounded-lg shadow-sm transition-all"
+                    >
                         <Plus className="mr-2 h-4 w-4" /> Añadir Unidad
                     </Button>
 
@@ -184,8 +192,8 @@ export function PropertiesUnits() {
                                     </div>
 
                                     {unitForm.inheritWifi ? (
-                                        <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-lg space-y-1">
-                                            <p className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">Información Heredada</p>
+                                        <div className="p-3 bg-[var(--color-brand-purple)]/5 border border-[var(--color-brand-purple)]/10 rounded-lg space-y-1">
+                                            <p className="text-[10px] text-[var(--color-brand-purple)] font-bold uppercase tracking-wider">Información Heredada</p>
                                             <div className="grid grid-cols-2 gap-2 text-xs">
                                                 <div><span className="text-muted-foreground">Red:</span> <span className="font-medium text-slate-700">{propWifiNetwork || 'No definida'}</span></div>
                                                 <div><span className="text-muted-foreground">Clave:</span> <span className="font-medium text-slate-700">{propWifiPassword || 'No definida'}</span></div>
@@ -238,7 +246,11 @@ export function PropertiesUnits() {
                             </div>
                             <DialogFooter>
                                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                                <Button type="button" onClick={handleSaveUnit}>
+                                <Button
+                                    type="button"
+                                    onClick={handleSaveUnit}
+                                    className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold"
+                                >
                                     {editingIndex !== null ? "Guardar Cambios" : "Añadir Unidad"}
                                 </Button>
                             </DialogFooter>
@@ -269,7 +281,7 @@ export function PropertiesUnits() {
                         ) : (
                             fields.map((field: any, index) => (
                                 <TableRow key={field.id}>
-                                    <TableCell className="font-bold text-indigo-600">{field.number || '-'}</TableCell>
+                                    <TableCell className="font-bold text-[var(--color-brand-purple)]">{field.number || '-'}</TableCell>
                                     <TableCell className="font-medium text-slate-900">{field.name || 'Unidad sin nombre'}</TableCell>
                                     <TableCell className="text-xs text-slate-500">
                                         {field.type === 'ENTIRE_PLACE' ? 'Alojamiento Entero' :

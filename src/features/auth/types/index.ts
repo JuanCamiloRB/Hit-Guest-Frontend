@@ -17,12 +17,11 @@ export const otpSchema = z.object({
 export type OtpFormData = z.infer<typeof otpSchema>
 
 export const registerSchema = z.object({
-    person_type_id: z.enum(["1", "2"], {
+    person_type_id: z.string({
         message: "Debes seleccionar un tipo de perfil",
     }),
     companyName: z.string().optional(),
     name: z.string().min(2, "El nombre es requerido"),
-    lastname: z.string().min(1, "El apellido es requerido"),
     email: z.string().email("Email inválido"),
     phone: z.string().min(5, "El teléfono es requerido"),
     country: z.string().min(2, "El país es requerido"),
@@ -75,7 +74,6 @@ export interface User {
     token?: string // from API
     email: string
     firstName: string
-    lastName: string
     phone?: string
     address?: string
     city?: string
@@ -109,7 +107,7 @@ export interface AuthService {
 export const PREDEFINED_ROLES: RoleDefinition[] = [
     {
         id: "PRINCIPAL",
-        name: "Usuario Principal (Admin)",
+        name: "Administrador",
         permissions: [
             { module: "RESERVATIONS", actions: ["READ", "CREATE", "UPDATE", "DELETE"] },
             { module: "PROPERTIES", actions: ["READ", "CREATE", "UPDATE", "DELETE"] },
@@ -119,7 +117,7 @@ export const PREDEFINED_ROLES: RoleDefinition[] = [
     },
     {
         id: "SECONDARY_MANAGER",
-        name: "Gestor Secundario",
+        name: "Secundario",
         permissions: [
             { module: "RESERVATIONS", actions: ["READ", "CREATE", "UPDATE", "DELETE"] },
             { module: "PROPERTIES", actions: ["READ", "CREATE", "UPDATE", "DELETE"] },

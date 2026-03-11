@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select"
 import { useRegister } from "../hooks/use-register"
 import { catalogService, CatalogOption } from "../services/catalog-service"
+import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { Honeypot } from "./Honeypot"
 import Link from "next/link"
 
@@ -59,6 +60,24 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
 
                 if (types && types.length > 0) {
                     setPersonTypes(types)
+
+                    // Sync default if not found in fetched types
+                    const currentTypeId = form.getValues("person_type_id")
+                    if (!types.some(t => t.id === currentTypeId)) {
+                        const bizType = types.find(t =>
+                            t.name.toLowerCase().includes("empresa") ||
+                            t.name.toLowerCase().includes("business") ||
+                            t.name.toLowerCase().includes("jurídica") ||
+                            t.name.toLowerCase().includes("juridica")
+                        )
+                        if (bizType) {
+                            form.setValue("person_type_id", bizType.id)
+                        } else if (types.length > 1) {
+                            form.setValue("person_type_id", types[1].id) // Fallback to 2nd option
+                        } else if (types.length > 0) {
+                            form.setValue("person_type_id", types[0].id)
+                        }
+                    }
                 }
 
                 if (countryList && countryList.length > 0) {
@@ -74,8 +93,8 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
     if (isSuccess) {
         return (
             <div className="flex flex-col items-center justify-center space-y-4 text-center animate-in fade-in zoom-in duration-300">
-                <div className="h-12 w-12 rounded-full bg-caribbean-green/20 flex items-center justify-center border border-caribbean-green/30">
-                    <CheckCircle2 className="h-6 w-6 text-caribbean-green" />
+                <div className="h-12 w-12 rounded-full bg-[var(--color-brand-blue)]/10 flex items-center justify-center border border-[var(--color-brand-blue)]/20">
+                    <CheckCircle2 className="h-6 w-6 text-[var(--color-brand-blue)]" />
                 </div>
                 <div className="space-y-2">
                     <h3 className="text-xl font-bold">¡Cuenta Activada!</h3>
@@ -84,7 +103,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                     </p>
                 </div>
                 <div className="w-full flex justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-caribbean-green" />
+                    <Loader2 className="h-6 w-6 animate-spin text-[var(--color-brand-blue)]" />
                 </div>
             </div>
         )
@@ -101,8 +120,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                     </p>
                     <button
                         onClick={resetRegistration}
-                        className="text-xs text-caribbean-green hover:underline mt-1"
-                    >
+                        className="text-xs text-[var(--color-brand-blue)] hover:underline mt-1"                    >
                         Cambiar correo / Reiniciar
                     </button>
                 </div>
@@ -122,7 +140,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                     <Button
                         disabled={isLoading || otpValue.length !== 6}
                         onClick={() => onVerifyOtp(otpValue)}
-                        className="bg-caribbean-green hover:bg-caribbean-green/90 text-primary font-bold shadow-sm h-12"
+                        className="bg-[var(--color-brand-blue)] hover:bg-[#4a5be0] text-primary-foreground font-bold shadow-sm h-12"
                     >
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Activar Cuenta e Iniciar Sesión
@@ -132,7 +150,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                         <button
                             onClick={onResendOtp}
                             disabled={isLoading}
-                            className="text-caribbean-green hover:underline"
+                            className="text-[var(--color-brand-blue)] hover:underline"
                         >
                             Reenviar (Mock)
                         </button>
@@ -147,16 +165,22 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
             <Form {...form}>
                 <form onSubmit={onRegister}>
                     <Honeypot {...honeypotProps} />
-                    <div className="grid gap-4">
+                    <div className="grid gap-5 bg-card/80 backdrop-blur-sm border border-[var(--color-brand-blue)]/10 rounded-xl p-6 shadow-lg shadow-[var(--color-brand-blue)]/5 relative">
+                        {/* Subtle top highlight for premium feel */}
+                        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-brand-blue)]/40 to-transparent rounded-t-xl" />
+
                         <FormField
                             control={form.control}
                             name="person_type_id"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Tipo de Perfil</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select
+                                        onValueChange={field.onChange}
+                                        value={field.value}
+                                    >
                                         <FormControl>
-                                            <SelectTrigger>
+                                            <SelectTrigger className="w-full h-11">
                                                 <SelectValue placeholder="Selecciona el tipo de perfil" />
                                             </SelectTrigger>
                                         </FormControl>
@@ -180,12 +204,12 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     <FormItem>
                                         <FormLabel>Razón Social (Nombre de la Empresa)</FormLabel>
                                         <FormControl>
-                                            <div className="relative">
-                                                <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                            <div className="relative group">
+                                                <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
                                                 <Input
                                                     placeholder="Ej: Apartamentos del Mar SAS"
                                                     disabled={isLoading}
-                                                    className="pl-9"
+                                                    className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
                                                     {...field}
                                                 />
                                             </div>
@@ -195,41 +219,24 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 )}
                             />
                         )}
-                        <FormField
-                            control={form.control}
-                            name="name"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Nombre</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                placeholder="Ej: Juan"
-                                                disabled={isLoading}
-                                                className="pl-9"
-                                                {...field}
-                                            />
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
                         <div className="grid grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
-                                name="lastname"
+                                name="name"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Apellido</FormLabel>
+                                        <FormLabel>
+                                            {form.watch("person_type_id") === "2"
+                                                ? "Nombre del Usuario"
+                                                : "Nombre completo"}
+                                        </FormLabel>
                                         <FormControl>
-                                            <div className="relative">
-                                                <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                            <div className="relative group">
+                                                <User className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
                                                 <Input
-                                                    placeholder="Ej: Perez"
+                                                    placeholder="Ej: Juan Pérez"
                                                     disabled={isLoading}
-                                                    className="pl-9"
+                                                    className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
                                                     {...field}
                                                 />
                                             </div>
@@ -245,9 +252,9 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     <FormItem>
                                         <FormLabel>País</FormLabel>
                                         {countries.length > 0 ? (
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <Select onValueChange={field.onChange} value={field.value}>
                                                 <FormControl>
-                                                    <SelectTrigger>
+                                                    <SelectTrigger className="w-full">
                                                         <SelectValue placeholder="Selecciona tu país" />
                                                     </SelectTrigger>
                                                 </FormControl>
@@ -261,12 +268,12 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             </Select>
                                         ) : (
                                             <FormControl>
-                                                <div className="relative">
-                                                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                <div className="relative group">
+                                                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
                                                     <Input
                                                         placeholder="Ej: Colombia"
                                                         disabled={isLoading}
-                                                        className="pl-9"
+                                                        className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
                                                         {...field}
                                                     />
                                                 </div>
@@ -284,13 +291,13 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 <FormItem>
                                     <FormLabel>Correo electrónico</FormLabel>
                                     <FormControl>
-                                        <div className="relative">
-                                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <div className="relative group">
+                                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
                                             <Input
                                                 placeholder="nombre@empresa.com"
                                                 type="email"
                                                 disabled={isLoading}
-                                                className="pl-9"
+                                                className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
                                                 {...field}
                                             />
                                         </div>
@@ -299,38 +306,42 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 </FormItem>
                             )}
                         />
-                        <FormField
-                            control={form.control}
-                            name="phone"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Teléfono / Whatsapp</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                            <Input
-                                                placeholder="+57 300 ..."
+                        <div className="grid gap-2">
+                            <FormLabel>{form.watch("person_type_id") === "2" ? "Business phone" : "Phone"}</FormLabel>
+                            <FormField
+                                control={form.control}
+                                name="phone"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormControl>
+                                            <PhoneInputField
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                placeholder="300 123 4567"
                                                 disabled={isLoading}
-                                                className="pl-9"
-                                                {...field}
                                             />
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <Button
-                            disabled={isLoading}
-                            className="bg-caribbean-green hover:bg-caribbean-green/90 text-primary font-bold shadow-sm"
-                        >
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Crear Cuenta
-                        </Button>
-                        <Link href="/login" className="flex items-center justify-center text-sm text-muted-foreground hover:text-primary transition-colors">
-                            <ArrowLeft className="mr-2 h-4 w-4" />
-                            Volver al inicio de sesión
-                        </Link>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <div className="pt-2">
+                            <Button
+                                disabled={isLoading}
+                                className="w-full bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300 h-11 rounded-lg border border-transparent"
+                            >
+                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
+                                Crear Cuenta
+                            </Button>
+                        </div>
+
+                        <div className="pt-4 border-t border-border/40 text-center">
+                            <Link href="/login" className="inline-flex items-center justify-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors hover:underline">
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Volver al inicio de sesión
+                            </Link>
+                        </div>
                     </div>
                 </form>
             </Form>

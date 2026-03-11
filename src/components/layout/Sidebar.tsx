@@ -56,22 +56,10 @@ export function Sidebar({ className }: SidebarProps) {
             active: pathname.startsWith("/dashboard/reservations"),
         },
         {
-            label: "Automatizaciones",
-            icon: Zap,
-            href: "/dashboard/automations",
-            active: pathname.startsWith("/dashboard/automations"),
-        },
-        {
             label: "Propiedades",
             icon: Home,
             href: "/dashboard/properties",
             active: pathname.startsWith("/dashboard/properties"),
-        },
-        {
-            label: "Huéspedes",
-            icon: Users,
-            href: "/dashboard/guests",
-            active: pathname.startsWith("/dashboard/guests"),
         },
     ]
 
@@ -81,12 +69,6 @@ export function Sidebar({ className }: SidebarProps) {
             icon: Settings,
             href: "/dashboard/settings",
             active: pathname.startsWith("/dashboard/settings"),
-        },
-        {
-            label: "Integraciones",
-            icon: Puzzle,
-            href: "/dashboard/integrations",
-            active: pathname.startsWith("/dashboard/integrations"),
         },
     ]
 
@@ -140,13 +122,12 @@ export function Sidebar({ className }: SidebarProps) {
                         <button className="flex items-center gap-3 w-full hover:bg-white/5 p-2 rounded-lg transition-colors text-left focus:outline-none">
                             <UiAvatar className="h-10 w-10 border border-white/20">
                                 <AvatarFallback className="bg-white/20 text-white font-bold">
-                                    {isMounted ? (user?.firstName?.[0] || "J") : "H"}
-                                    {isMounted ? (user?.lastName?.[0] || "D") : "G"}
+                                    {isMounted ? (user?.firstName?.split(' ').map(n => n[0]).join('').slice(0, 2) || "U") : "H"}
                                 </AvatarFallback>
                             </UiAvatar>
                             <div className="flex flex-col overflow-hidden flex-1">
                                 <p className="text-sm font-semibold text-white truncate">
-                                    {isMounted ? `${user?.firstName} ${user?.lastName}` : "HIT Guest"}
+                                    {isMounted ? user?.firstName : "HIT Guest"}
                                 </p>
                                 <p className="text-[10px] font-medium text-white/50 uppercase tracking-tight">
                                     {isMounted ? "Super Admin" : "Cargando..."}

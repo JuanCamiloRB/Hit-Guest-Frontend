@@ -1,5 +1,7 @@
 import { Metadata } from "next"
 import { SettingsContent } from "./SettingsContent"
+import { Suspense } from "react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export const metadata: Metadata = {
     title: "Configuración - Hit Guest",
@@ -12,7 +14,14 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between space-y-2">
                 <h2 className="text-3xl font-bold tracking-tight">Configuración</h2>
             </div>
-            <SettingsContent />
+            <Suspense fallback={
+                <div className="space-y-4">
+                    <Skeleton className="h-10 w-[300px]" />
+                    <Skeleton className="h-[400px] w-full" />
+                </div>
+            }>
+                <SettingsContent />
+            </Suspense>
         </div>
     )
 }

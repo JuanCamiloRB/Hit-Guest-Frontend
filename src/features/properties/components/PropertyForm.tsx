@@ -3,10 +3,12 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, Trash2 } from "lucide-react"
+import { Loader2, Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, Upload, X } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { cn } from "@/lib/utils"
 import {
     Form,
     FormControl,
@@ -47,6 +49,7 @@ import { PropertiesLocation } from "./PropertiesLocation"
 import { PropertiesUnits } from "./PropertiesUnits"
 import { PropertiesPhotos } from "./PropertiesPhotos"
 import { PropertiesAmenities } from "./PropertiesAmenities"
+import { PropertiesAutomation } from "./PropertiesAutomation"
 import { Switch } from "@/components/ui/switch"
 import { deleteProperty, updateProperty } from "../services/properties"
 
@@ -77,6 +80,13 @@ const propertySchema = z.object({
         name: z.string()
     })).optional(),
     units: z.array(z.any()).optional(),
+    automationSettings: z.object({
+        welcome_message: z.boolean(),
+        checkin_instructions: z.boolean(),
+        digital_key: z.boolean(),
+        online_checkin: z.boolean(),
+        cleaning_task: z.boolean(),
+    }),
 })
 
 interface PropertyFormProps {
@@ -87,6 +97,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [activeTab, setActiveTab] = useState("details")
     const router = useRouter()
 
     const form = useForm<z.infer<typeof propertySchema>>({
@@ -102,6 +113,13 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             geoLocation: initialData.geoLocation || {
                 latitude: 10.3910,
                 longitude: -75.4794
+            },
+            automationSettings: initialData.automationSettings || {
+                welcome_message: true,
+                checkin_instructions: true,
+                digital_key: false,
+                online_checkin: true,
+                cleaning_task: true,
             }
         } : {
             name: "",
@@ -127,6 +145,13 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             roomTypes: [],
             units: [],
+            automationSettings: {
+                welcome_message: true,
+                checkin_instructions: true,
+                digital_key: false,
+                online_checkin: true,
+                cleaning_task: true,
+            },
         },
     })
 
@@ -177,19 +202,70 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <Tabs defaultValue="details" className="space-y-4">
-                    <TabsList>
-                        <TabsTrigger value="details">Detalles</TabsTrigger>
-                        <TabsTrigger value="location">Ubicación</TabsTrigger>
-                        <TabsTrigger value="units">Unidades</TabsTrigger>
-                        <TabsTrigger value="photos">Fotos</TabsTrigger>
-                        <TabsTrigger value="automation">Automatización</TabsTrigger>
+                <Tabs defaultValue="details" onValueChange={(v) => setActiveTab(v)} className="space-y-6">
+                    <TabsList className={cn(
+                        "grid w-full h-auto bg-slate-100/50 p-1 border border-slate-200/60 rounded-xl shadow-sm",
+                        "grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+                    )}>
+                        <TabsTrigger
+                            value="details"
+                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                        >
+                            <Info className={cn(
+                                "mr-2 h-4 w-4 transition-colors",
+                                activeTab === "details" ? "text-white" : "text-[var(--color-brand-purple)]"
+                            )} />
+                            <span className="font-bold">Detalles</span>
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="location"
+                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                        >
+                            <MapPin className={cn(
+                                "mr-2 h-4 w-4 transition-colors",
+                                activeTab === "location" ? "text-white" : "text-[var(--color-brand-purple)]"
+                            )} />
+                            <span className="font-bold">Ubicación</span>
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="units"
+                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                        >
+                            <Building className={cn(
+                                "mr-2 h-4 w-4 transition-colors",
+                                activeTab === "units" ? "text-white" : "text-[var(--color-brand-purple)]"
+                            )} />
+                            <span className="font-bold">Unidades</span>
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="photos"
+                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                        >
+                            <Camera className={cn(
+                                "mr-2 h-4 w-4 transition-colors",
+                                activeTab === "photos" ? "text-white" : "text-[var(--color-brand-purple)]"
+                            )} />
+                            <span className="font-bold">Fotos</span>
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="automation"
+                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                        >
+                            <Sparkles className={cn(
+                                "mr-2 h-4 w-4 transition-colors",
+                                activeTab === "automation" ? "text-white" : "text-[var(--color-brand-purple)]"
+                            )} />
+                            <span className="font-bold">Automatización</span>
+                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="details" className="space-y-4">
                         <Card>
-                            <CardHeader>
-                                <CardTitle>Detalles de la Propiedad</CardTitle>
+                            <CardHeader className="border-b bg-slate-50/50">
+                                <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                                    <LayoutDashboard className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                                    Detalles de la Propiedad
+                                </CardTitle>
                                 <CardDescription>
                                     Información básica y administrativa de la propiedad.
                                 </CardDescription>
@@ -205,6 +281,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                                 <FormControl>
                                                     <Input placeholder="Hotel Oasis" {...field} />
                                                 </FormControl>
+                                                <FormDescription>El nombre comercial que verán los huéspedes.</FormDescription>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -350,17 +427,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     </TabsContent>
 
                     <TabsContent value="automation" className="space-y-4">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Reglas de Automatización</CardTitle>
-                                <CardDescription>Configura mensajes y tareas automáticas para esta propiedad.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center justify-center h-24 bg-muted/20 border border-dashed rounded text-muted-foreground">
-                                    Espacio para la Configuración de Automatización
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <PropertiesAutomation />
                     </TabsContent>
                 </Tabs>
 
@@ -394,7 +461,11 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         </Dialog>
                     ) : <div />}
 
-                    <Button type="submit" disabled={isLoading}>
+                    <Button
+                        type="submit"
+                        disabled={isLoading}
+                        className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold h-11 px-8 rounded-lg shadow-sm transition-all"
+                    >
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {initialData ? "Actualizar Propiedad" : "Crear Propiedad"}
                     </Button>

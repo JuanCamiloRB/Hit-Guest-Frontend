@@ -17,11 +17,12 @@ import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { User } from "../../auth/types"
 import { useState } from "react"
-import { Loader2 } from "lucide-react"
+import { Loader2, User as UserIcon, Mail, Phone, MapPin, Building, Globe, Languages } from "lucide-react"
+import { PhoneInputField } from "@/components/ui/phone-input-field"
+import { useLanguageStore } from "@/store/useLanguageStore"
 
 const profileSchema = z.object({
     firstName: z.string().min(2, "Nombre es requerido"),
-    lastName: z.string().min(2, "Apellido es requerido"),
     email: z.string().email("Email inválido"),
     phone: z.string().min(5, "Teléfono es requerido"),
     address: z.string().default(""),
@@ -37,12 +38,12 @@ interface ProfileFormProps {
 
 export function ProfileForm({ user }: ProfileFormProps) {
     const [isLoading, setIsLoading] = useState(false)
+    const { language, setLanguage } = useLanguageStore()
 
     const form = useForm<ProfileValues>({
         resolver: zodResolver(profileSchema) as any,
         defaultValues: {
             firstName: user.firstName,
-            lastName: user.lastName,
             email: user.email,
             phone: user.phone || "",
             address: user.address || "",
@@ -70,23 +71,13 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         control={form.control}
                         name="firstName"
                         render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Nombre</FormLabel>
+                            <FormItem className="col-span-1 md:col-span-2">
+                                <FormLabel>Nombre completo</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Juan" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="lastName"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Apellido</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="Rodriguez" {...field} />
+                                    <div className="relative group">
+                                        <UserIcon className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                        <Input placeholder="Juan Pérez" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -100,7 +91,10 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         <FormItem>
                             <FormLabel>Correo Electrónico</FormLabel>
                             <FormControl>
-                                <Input placeholder="nombre@ejemplo.com" {...field} disabled />
+                                <div className="relative group">
+                                    <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                    <Input placeholder="nombre@ejemplo.com" {...field} disabled className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
+                                </div>
                             </FormControl>
                             <FormDescription>
                                 El correo electrónico no se puede cambiar por seguridad.
@@ -117,7 +111,11 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         <FormItem>
                             <FormLabel>Teléfono / Whatsapp</FormLabel>
                             <FormControl>
-                                <Input placeholder="+57 ..." {...field} />
+                                <PhoneInputField
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    placeholder="300 123 4567"
+                                />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -131,7 +129,10 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         <FormItem>
                             <FormLabel>Dirección</FormLabel>
                             <FormControl>
-                                <Input placeholder="Calle 123 #45-67" {...field} />
+                                <div className="relative group">
+                                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                    <Input placeholder="Calle 123 #45-67" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
+                                </div>
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -146,7 +147,10 @@ export function ProfileForm({ user }: ProfileFormProps) {
                             <FormItem>
                                 <FormLabel>Ciudad</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Bogotá" {...field} />
+                                    <div className="relative group">
+                                        <Building className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                        <Input placeholder="Bogotá" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -159,15 +163,50 @@ export function ProfileForm({ user }: ProfileFormProps) {
                             <FormItem>
                                 <FormLabel>País</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Colombia" {...field} />
+                                    <div className="relative group">
+                                        <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                        <Input placeholder="Colombia" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
                 </div>
-                <Button type="submit" disabled={isLoading}>
-                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+
+                <div className="space-y-3">
+                    <FormLabel className="flex items-center gap-2">
+                        <Languages className="h-4 w-4" />
+                        Idioma de la Interfaz
+                    </FormLabel>
+                    <div className="flex gap-4">
+                        <Button 
+                            type="button" 
+                            variant={language === 'es' ? 'default' : 'outline'}
+                            onClick={() => setLanguage('es')}
+                            className={language === 'es' ? 'bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20' : ''}
+                        >
+                            Español
+                        </Button>
+                        <Button 
+                            type="button" 
+                            variant={language === 'en' ? 'default' : 'outline'}
+                            onClick={() => setLanguage('en')}
+                            className={language === 'en' ? 'bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20' : ''}
+                        >
+                            English
+                        </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        El idioma se guarda automáticamente y se aplica a toda la aplicación.
+                    </p>
+                </div>
+                <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300"
+                >
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                     Guardar Cambios
                 </Button>
             </form>

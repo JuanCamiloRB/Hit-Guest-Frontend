@@ -26,13 +26,13 @@ export default function RegisterPage() {
                 </div>
             </div>
             <div className="lg:p-8 flex items-center bg-background">
-                <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
-                    <div className="flex flex-col space-y-2 text-center sm:text-left mb-4">
+                <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[450px]">
+                    <div className="flex flex-col space-y-2 text-center sm:text-left mb-2">
                         <h1 className="text-3xl font-sans font-bold tracking-tight text-primary">
                             Crea tu cuenta
                         </h1>
-                        <p className="text-sm text-muted-foreground font-secondary">
-                            Gestiona tus propiedades con infraestructura confiable.
+                        <p className="text-[15px] text-muted-foreground font-secondary leading-relaxed">
+                            Gestiona tus propiedades con nuestra infraestructura confiable y profesional.
                         </p>
                     </div>
                     <RegisterForm />

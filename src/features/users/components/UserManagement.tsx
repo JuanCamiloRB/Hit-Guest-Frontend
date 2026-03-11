@@ -19,6 +19,7 @@ import {
     Trash2,
     Loader2
 } from "lucide-react"
+import { PhoneInputField } from "@/components/ui/phone-input-field"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -68,7 +69,6 @@ interface UserPermissions {
 
 const userSchema = z.object({
     firstName: z.string().min(2, "Nombre es requerido"),
-    lastName: z.string().min(2, "Apellido es requerido"),
     email: z.string().email("Email inválido"),
     phone: z.string().min(5, "Teléfono es requerido"),
     address: z.string().default(""),
@@ -95,7 +95,6 @@ export function UserManagement() {
         resolver: zodResolver(userSchema) as any,
         defaultValues: {
             firstName: "",
-            lastName: "",
             email: "",
             phone: "",
             address: "",
@@ -128,7 +127,6 @@ export function UserManagement() {
             setEditingUser(null)
             form.reset({
                 firstName: "",
-                lastName: "",
                 email: "",
                 phone: "",
                 address: "",
@@ -147,7 +145,6 @@ export function UserManagement() {
         setEditingUser(user)
         form.reset({
             firstName: user.firstName,
-            lastName: user.lastName,
             email: user.email,
             phone: user.phone || "",
             address: user.address || "",
@@ -167,7 +164,6 @@ export function UserManagement() {
         try {
             const userData = {
                 firstName: data.firstName,
-                lastName: data.lastName,
                 email: data.email,
                 phone: data.phone,
                 address: data.address,
@@ -219,7 +215,7 @@ export function UserManagement() {
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-primary hover:bg-primary/90">
+                        <Button className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300">
                             <UserPlus className="mr-2 h-4 w-4" />
                             Nuevo Usuario
                         </Button>
@@ -237,34 +233,19 @@ export function UserManagement() {
                         </DialogHeader>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="firstName"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Nombre</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="lastName"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Apellido</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
+                                <FormField
+                                    control={form.control}
+                                    name="firstName"
+                                    render={({ field }) => (
+                                        <FormItem className="col-span-2">
+                                            <FormLabel>Nombre completo</FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Ej: Juan Pérez" {...field} />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
                                 <FormField
                                     control={form.control}
                                     name="email"
@@ -278,20 +259,26 @@ export function UserManagement() {
                                         </FormItem>
                                     )}
                                 />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="phone"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Teléfono / Whatsapp</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="+57 ..." {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="col-span-2">
+                                        <FormField
+                                            control={form.control}
+                                            name="phone"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Teléfono / Whatsapp</FormLabel>
+                                                    <FormControl>
+                                                        <PhoneInputField
+                                                            value={field.value}
+                                                            onChange={field.onChange}
+                                                            placeholder="300 123 4567"
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
                                     <FormField
                                         control={form.control}
                                         name="role"
@@ -431,7 +418,7 @@ export function UserManagement() {
                                     </p>
                                 </div>
                                 <DialogFooter>
-                                    <Button type="submit" disabled={isSubmitting}>
+                                    <Button type="submit" disabled={isSubmitting} className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300">
                                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         {editingUser ? "Guardar Cambios" : "Crear Invitación"}
                                     </Button>
@@ -471,7 +458,7 @@ export function UserManagement() {
                                     <TableRow key={user.id}>
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <span className="font-medium text-slate-900">{user.firstName} {user.lastName}</span>
+                                                <span className="font-medium text-slate-900">{user.firstName}</span>
                                                 <span className="text-xs text-muted-foreground">{user.email}</span>
                                             </div>
                                         </TableCell>
@@ -552,7 +539,7 @@ export function UserManagement() {
                             <div key={user.id} className="p-4 space-y-3">
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <p className="font-medium">{user.firstName} {user.lastName}</p>
+                                        <p className="font-medium">{user.firstName}</p>
                                         <p className="text-xs text-muted-foreground">{user.email}</p>
                                     </div>
                                     {!user.isPrincipal && (
@@ -579,6 +566,6 @@ export function UserManagement() {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     )
 }

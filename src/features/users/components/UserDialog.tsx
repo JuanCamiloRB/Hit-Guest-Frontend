@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { Loader2 } from "lucide-react"
+import { PhoneInputField } from "@/components/ui/phone-input-field"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -35,8 +36,8 @@ import { toast } from "sonner"
 import { useState } from "react"
 
 const userSchema = z.object({
-    name: z.string().min(2, "Name must be at least 2 characters"),
-    email: z.string().email("Invalid email address"),
+    name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
+    email: z.string().email("Email inválido"),
     role: z.enum(["ADMIN", "STAFF"]),
     phone: z.string().optional(),
 })
@@ -66,8 +67,8 @@ export function UserDialog({ trigger }: UserDialogProps) {
         setTimeout(() => {
             setIsLoading(false)
             setOpen(false)
-            toast.success("User created", {
-                description: `${values.name} has been added to the team.`,
+            toast.success("Usuario creado", {
+                description: `${values.name} ha sido añadido al equipo.`,
             })
             form.reset()
         }, 1000)
@@ -80,9 +81,9 @@ export function UserDialog({ trigger }: UserDialogProps) {
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle>Add Team Member</DialogTitle>
+                    <DialogTitle>Agregar Miembro del Equipo</DialogTitle>
                     <DialogDescription>
-                        Create a new user and assign a role. They will receive an email to set their password.
+                        Crea un nuevo usuario y asigna un rol. Recibirán un correo para configurar su contraseña.
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
@@ -92,9 +93,9 @@ export function UserDialog({ trigger }: UserDialogProps) {
                             name="name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Full Name</FormLabel>
+                                    <FormLabel>Nombre completo</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="John Doe" {...field} />
+                                        <Input placeholder="Juan Pérez" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -118,9 +119,13 @@ export function UserDialog({ trigger }: UserDialogProps) {
                             name="phone"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Phone (Optional)</FormLabel>
+                                    <FormLabel>Teléfono (Opcional)</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="+57 300 123 4567" {...field} />
+                                        <PhoneInputField
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            placeholder="300 123 4567"
+                                        />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -131,11 +136,11 @@ export function UserDialog({ trigger }: UserDialogProps) {
                             name="role"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Role</FormLabel>
+                                    <FormLabel>Rol</FormLabel>
                                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
-                                                <SelectValue placeholder="Select a role" />
+                                                <SelectValue placeholder="Seleccionar un rol" />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
@@ -148,9 +153,9 @@ export function UserDialog({ trigger }: UserDialogProps) {
                             )}
                         />
                         <DialogFooter>
-                            <Button type="submit" disabled={isLoading}>
+                            <Button type="submit" disabled={isLoading} className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300">
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Create User
+                                Crear Usuario
                             </Button>
                         </DialogFooter>
                     </form>

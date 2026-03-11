@@ -1,16 +1,26 @@
 import { AuthService, LoginFormData, RegisterFormData, User } from "../types"
+import { COUNTRY_CODES } from "../constants"
 
-const API_URL_AUTH = process.env.NEXT_PUBLIC_API_URL_HIT || "https://www.kunas.co/api/v1/auth"
-const API_URL_CLIENTS = "https://www.kunas.co/api/v1/clients"
-
-const APP_API_TOKEN = process.env.NEXT_PUBLIC_APP_API_TOKEN || ""
+const API_URL_AUTH = (process.env.NEXT_PUBLIC_API_URL_HIT || "https://www.kunas.co/api/v1/auth").trim()
+const API_URL_CLIENTS = (process.env.NEXT_PUBLIC_API_URL_GUEST || "https://www.kunas.co/api/v1/clients").trim()
 
 // TOGGLE THIS VIA .env (NEXT_PUBLIC_ENABLE_MOCKS)
-const USE_MOCK_AUTH = process.env.NEXT_PUBLIC_ENABLE_MOCKS === "true"
+const USE_MOCK_AUTH = (process.env.NEXT_PUBLIC_ENABLE_MOCKS || "").trim() === "true"
 
-const DEFAULT_HEADERS = {
-    "Content-Type": "application/json",
-    ...(APP_API_TOKEN ? { "Authorization": `Bearer ${APP_API_TOKEN}` } : {})
+const getHeaders = (includeAuth = true) => {
+    const headers: any = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    if (includeAuth) {
+        const token = (process.env.NEXT_PUBLIC_APP_API_TOKEN || "").trim()
+        if (token) {
+            headers["Authorization"] = `Bearer ${token}`
+        }
+    }
+
+    return headers
 }
 
 class AuthServiceImpl implements AuthService {
@@ -19,8 +29,7 @@ class AuthServiceImpl implements AuthService {
         id: "USR-001",
         clientId: "CLT-001",
         email: "admin@hitguest.com",
-        firstName: "Admin",
-        lastName: "User",
+        firstName: "Juan Rodriguez",
         role: "PRINCIPAL",
         isPrincipal: true,
     }
@@ -28,62 +37,97 @@ class AuthServiceImpl implements AuthService {
     private simulatedOtps: Map<string, string> = new Map()
 
     async requestOtp(email: string): Promise<void> {
+        const normalizedEmail = email.trim().toLowerCase()
         if (USE_MOCK_AUTH) {
             await new Promise((resolve) => setTimeout(resolve, 1500))
             const otp = Math.floor(100000 + Math.random() * 900000).toString()
-            this.simulatedOtps.set(email, otp)
-            console.log(`[MOCK API] OTP for ${email}: ${otp}`)
+            this.simulatedOtps.set(normalizedEmail, otp)
+            console.log(`[MOCK API] OTP for ${normalizedEmail}: ${otp}`)
             return
         }
 
         try {
-            const response = await fetch(`${API_URL_AUTH}/login`, {
-                method: "POST",
-                headers: DEFAULT_HEADERS,
-                body: JSON.stringify({ email }),
+            console.log("[AuthService] Requesting OTP for:", normalizedEmail)
+            const headers = getHeaders(true)
+            const body = JSON.stringify({ email: normalizedEmail })
+
+            console.log("[AuthService] Request Details:", {
+                url: `${API_URL_AUTH}/login`,
+                headers,
+                body
             })
 
+            const response = await fetch(`${API_URL_AUTH}/login`, {
+                method: "POST",
+                headers,
+                body,
+            })
+
+            console.log("[AuthService] Login response status:", response.status)
+
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
+                const errorText = await response.text().catch(() => "No response body")
+                console.error("[AuthService] Login error response:", errorText)
+
+                let errorData: any = {}
+                try { errorData = JSON.parse(errorText) } catch (e) { }
 
                 if (response.status === 404) {
                     throw new Error("No encontramos una cuenta con este correo.")
                 }
 
-                throw new Error(errorData.message || "Error al solicitar OTP")
+                throw new Error(errorData.message || `Error del servidor (${response.status})`)
             }
         } catch (error: any) {
+            console.error("[AuthService] RequestOtp exception:", error)
             throw new Error(error.message || "Error de conexión")
         }
     }
 
     async verifyOtp(email: string, otp: string): Promise<User> {
-        if (USE_MOCK_AUTH || (this.simulatedOtps.has(email) && email !== "admin@hitguest.com")) {
+        const normalizedEmail = email.trim().toLowerCase()
+        if (USE_MOCK_AUTH || (this.simulatedOtps.has(normalizedEmail) && normalizedEmail !== "admin@hitguest.com")) {
             await new Promise((resolve) => setTimeout(resolve, 1500))
-            const storedOtp = this.simulatedOtps.get(email)
-            if (otp === storedOtp || (email === "admin@hitguest.com" && otp === "123456")) {
-                this.simulatedOtps.delete(email)
-                return { ...this.mockUser, email }
+            const storedOtp = this.simulatedOtps.get(normalizedEmail)
+            if (otp === storedOtp || (normalizedEmail === "admin@hitguest.com" && otp === "123456")) {
+                this.simulatedOtps.delete(normalizedEmail)
+                return { ...this.mockUser, email: normalizedEmail }
             } else {
                 throw new Error("Código inválido o expirado (Mock)")
             }
         }
 
         try {
-            const response = await fetch(`${API_URL_AUTH}/verify-otp`, {
-                method: "POST",
-                headers: DEFAULT_HEADERS,
-                body: JSON.stringify({ email, otp }),
+            console.log("[AuthService] Verifying OTP for:", normalizedEmail)
+            const headers = getHeaders(true) // Re-enabled: server returns 500 without it
+            const body = JSON.stringify({ email: normalizedEmail, otp, otp_code: otp })
+
+            console.log("[AuthService] Verify Request Details:", {
+                url: `${API_URL_AUTH}/verify-otp`,
+                headers,
+                body
             })
 
+            const response = await fetch(`${API_URL_AUTH}/verify-otp`, {
+                method: "POST",
+                headers,
+                body,
+            })
+
+            console.log("[AuthService] Verify response status:", response.status)
+
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
+                const errorText = await response.text().catch(() => "No response body")
+                console.error("[AuthService] Verify OTP error response:", errorText)
+
+                let errorData: any = {}
+                try { errorData = JSON.parse(errorText) } catch (e) { }
 
                 if (response.status === 401) {
                     throw new Error("Código inválido o expirado.")
                 }
 
-                throw new Error(errorData.message || "Error de verificación")
+                throw new Error(errorData.message || `Error de verificación (${response.status})`)
             }
 
             const data = await response.json()
@@ -93,19 +137,15 @@ class AuthServiceImpl implements AuthService {
             const token = data.token || data.data?.token || data.access_token
 
             // Special mapping for the latest API response structure
-            const fullName = userResponse?.name || ""
-            const nameParts = fullName.trim().split(/\s+/)
-            const firstName = nameParts[0] || "Usuario"
-            const lastName = nameParts.slice(1).join(" ") || ""
+            const firstName = userResponse?.name || "Usuario"
 
             return {
                 id: userResponse?.uuid || userResponse?.id || "USR-DEFAULT",
                 clientId: userResponse?.client_uuid || userResponse?.clientId || "CLT-001",
                 uuid: userResponse?.uuid || userResponse?.id,
                 token: token,
-                email: userResponse?.email || email,
+                email: userResponse?.email || normalizedEmail,
                 firstName: firstName,
-                lastName: lastName,
                 role: userResponse?.role || "PRINCIPAL",
                 isPrincipal: userResponse?.isPrincipal ?? true,
             }
@@ -115,36 +155,63 @@ class AuthServiceImpl implements AuthService {
     }
 
     async resendOtp(email: string): Promise<void> {
+        const normalizedEmail = email.trim().toLowerCase()
         if (USE_MOCK_AUTH) {
             await new Promise((resolve) => setTimeout(resolve, 1000))
-            console.log(`[MOCK API] Resending OTP for ${email}...`)
+            console.log(`[MOCK API] Resending OTP for ${normalizedEmail}...`)
             const otp = Math.floor(100000 + Math.random() * 900000).toString()
-            this.simulatedOtps.set(email, otp)
+            this.simulatedOtps.set(normalizedEmail, otp)
             console.log(`[MOCK API] New OTP: ${otp}`)
             return
         }
 
         try {
+            console.log("[AuthService] Resending OTP for:", normalizedEmail)
+            const headers = getHeaders(true) // Re-enabled: server returns 500 without it
+            const body = JSON.stringify({ email: normalizedEmail })
+
+            console.log("[AuthService] Resend Request Details:", {
+                url: `${API_URL_AUTH}/resend-otp`,
+                headers,
+                body
+            })
+
             const response = await fetch(`${API_URL_AUTH}/resend-otp`, {
                 method: "POST",
-                headers: DEFAULT_HEADERS,
-                body: JSON.stringify({ email }),
+                headers,
+                body,
             })
+
+            console.log("[AuthService] Resend response status:", response.status)
 
             if (response.status === 429) {
                 throw new Error("Por favor espera unos minutos antes de solicitar otro código.")
             }
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                throw new Error(errorData.message || "Error al reenviar OTP")
+                const errorText = await response.text().catch(() => "No response body")
+                console.error("[AuthService] Resend error response:", errorText)
+                let errorData: any = {}
+                try { errorData = JSON.parse(errorText) } catch (e) { }
+                throw new Error(errorData.message || `Error al reenviar OTP (${response.status})`)
             }
         } catch (error: any) {
+            console.error("[AuthService] ResendOtp exception:", error)
             throw new Error(error.message || "Error de conexión")
         }
     }
 
     async register(data: RegisterFormData): Promise<void> {
+        // ALWAYS use mock auth for registration until the API is ready
+        await new Promise((resolve) => setTimeout(resolve, 1500))
+        const finalName = data.person_type_id === "2" ? data.companyName : data.name;
+        console.log(`[MOCK API] Registering Client: ${finalName} and Admin: ${data.email}`)
+        const otp = Math.floor(100000 + Math.random() * 900000).toString()
+        this.simulatedOtps.set(data.email, otp)
+        console.log(`[MOCK API] OTP for registration (Mock): ${otp}`)
+        return
+
+        /* Backend temporarily disabled due to 401 Unauthorized errors
         if (USE_MOCK_AUTH) {
             await new Promise((resolve) => setTimeout(resolve, 1500))
             const finalName = data.person_type_id === "2" ? data.companyName : data.name;
@@ -156,21 +223,25 @@ class AuthServiceImpl implements AuthService {
         }
 
         try {
-            // Mapping form data to Client API expected fields
+
+            const phoneCodeObj = COUNTRY_CODES.find(c => c.country === data.phoneCode)
+            const numericCode = phoneCodeObj?.code || ""
+
             const payload = {
                 person_type_id: parseInt(data.person_type_id),
                 name: data.person_type_id === "2" ? data.companyName : data.name,
-                lastname: data.lastname,
                 email: data.email,
-                phone: data.phone,
+                phone: `${numericCode}${data.phone}`,
                 country: data.country,
             }
 
+            const headers = getHeaders()
             console.log("[AuthService] Sending registration payload:", payload)
+            console.log("[AuthService] Using headers:", headers)
 
             const response = await fetch(API_URL_CLIENTS, {
                 method: "POST",
-                headers: DEFAULT_HEADERS,
+                headers: headers,
                 body: JSON.stringify(payload),
             })
 
@@ -185,6 +256,7 @@ class AuthServiceImpl implements AuthService {
             console.error("[AuthService] Registration exception:", error)
             throw new Error(error.message || "Error de conexión durante el registro")
         }
+        */
     }
 
     async loginWithGoogle(): Promise<User> {

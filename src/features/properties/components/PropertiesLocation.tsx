@@ -82,10 +82,10 @@ export function PropertiesLocation() {
 
     return (
         <Card className="border-slate-200 shadow-sm">
-            <CardHeader>
+            <CardHeader className="border-b bg-slate-50/50">
                 <CardTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-indigo-500" />
-                    Ubicación
+                    <MapPin className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                    Ubicación de la Propiedad
                 </CardTitle>
                 <CardDescription>
                     Ubica tu propiedad en el mapa. Puedes buscar la dirección o arrastrar el pin manualmente para precisión exacta.
@@ -116,11 +116,11 @@ export function PropertiesLocation() {
                     <Button
                         type="button"
                         variant="secondary"
-                        className="h-11 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold"
+                        className="h-11 px-6 bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold transition-all shadow-sm"
                         onClick={handleGeocode}
                         disabled={isSearching}
                     >
-                        {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
+                        {isSearching ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <Search className="h-4 w-4 mr-2 text-white" />}
                         Buscar
                     </Button>
                 </div>
@@ -157,7 +157,7 @@ export function PropertiesLocation() {
                 <div className="aspect-video w-full rounded-xl bg-slate-100 border-2 border-slate-200 relative overflow-hidden shadow-inner group">
                     <MapComponent lat={lat} lng={lng} onChange={handleMapChange} />
                     <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Badge className="bg-white/90 text-indigo-600 border border-indigo-100 shadow-sm backdrop-blur-sm px-3 py-1 font-bold">
+                        <Badge className="bg-white/90 text-[var(--color-brand-purple)] border border-[var(--color-brand-purple)]/20 shadow-sm backdrop-blur-sm px-3 py-1 font-bold">
                             Arrastra el pin para ajustar
                         </Badge>
                     </div>
@@ -217,8 +217,8 @@ export function PropertiesLocation() {
                     />
                 </div>
 
-                <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 space-y-3">
-                    <p className="text-xs font-bold text-indigo-600 uppercase tracking-widest">Coordenadas Exactas</p>
+                <div className="bg-[var(--color-brand-purple)]/5 p-4 rounded-xl border border-[var(--color-brand-purple)]/10 space-y-3">
+                    <p className="text-xs font-bold text-[var(--color-brand-purple)] uppercase tracking-widest">Coordenadas Exactas</p>
                     <div className="grid grid-cols-2 gap-4">
                         <FormField
                             control={form.control}

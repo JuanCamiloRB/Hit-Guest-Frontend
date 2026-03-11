@@ -23,10 +23,9 @@ export function useRegister() {
     const form = useForm<RegisterFormData>({
         resolver: zodResolver(registerSchema),
         defaultValues: {
-            person_type_id: "1" as const,
+            person_type_id: "2",
             companyName: "",
             name: "",
-            lastname: "",
             email: "",
             phone: "",
             country: "",
@@ -100,10 +99,9 @@ export function useRegister() {
         setIsSuccess(false)
         setError(null)
         form.reset({
-            person_type_id: "1" as const,
+            person_type_id: "2",
             companyName: "",
             name: "",
-            lastname: "",
             email: "",
             phone: "",
             country: "",

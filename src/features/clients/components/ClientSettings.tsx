@@ -15,7 +15,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
 import { useEffect, useState } from "react"
-import { Loader2 } from "lucide-react"
+import { Loader2, Building2, CreditCard, Mail, Phone, MapPin, Building, Globe } from "lucide-react"
+import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { clientService } from "../services/client-service"
 import { Client } from "@/features/auth/types"
 
@@ -116,7 +117,10 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                         <FormItem>
                             <FormLabel>Nombre del Alojamiento / Empresa</FormLabel>
                             <FormControl>
-                                <Input placeholder="Hotel ..." {...field} />
+                                <div className="relative group">
+                                    <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                    <Input placeholder="Hotel ..." {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
+                                </div>
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -130,7 +134,10 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                         <FormItem>
                             <FormLabel>NIT / RUT / Tax ID</FormLabel>
                             <FormControl>
-                                <Input placeholder="900.123.456-1" {...field} />
+                                <div className="relative group">
+                                    <CreditCard className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                    <Input placeholder="900.123.456-1" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
+                                </div>
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -145,7 +152,10 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                             <FormItem>
                                 <FormLabel>Correo Institucional</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="contacto@hotel.com" {...field} />
+                                    <div className="relative group">
+                                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                        <Input placeholder="contacto@hotel.com" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -158,7 +168,11 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                             <FormItem>
                                 <FormLabel>Teléfono de Contacto</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="+57 ..." {...field} />
+                                    <PhoneInputField
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                        placeholder="300 123 4567"
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -173,7 +187,10 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                         <FormItem>
                             <FormLabel>Dirección Principal</FormLabel>
                             <FormControl>
-                                <Input placeholder="Calle ..." {...field} />
+                                <div className="relative group">
+                                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                    <Input placeholder="Calle ..." {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
+                                </div>
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -188,7 +205,10 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                             <FormItem>
                                 <FormLabel>Ciudad</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Santa Marta" {...field} />
+                                    <div className="relative group">
+                                        <Building className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                        <Input placeholder="Santa Marta" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -201,7 +221,10 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                             <FormItem>
                                 <FormLabel>País</FormLabel>
                                 <FormControl>
-                                    <Input placeholder="Colombia" {...field} />
+                                    <div className="relative group">
+                                        <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                        <Input placeholder="Colombia" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -209,8 +232,12 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                     />
                 </div>
 
-                <Button type="submit" disabled={isSaving}>
-                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button
+                    type="submit"
+                    disabled={isSaving}
+                    className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300"
+                >
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                     Guardar Cambios del Alojamiento
                 </Button>
             </form>
