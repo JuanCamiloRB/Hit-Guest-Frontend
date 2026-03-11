@@ -25,5 +25,19 @@ export const es = {
     description: "Gestión de reservas y automatizaciones activas",
     filters: "Filtros",
     newReservation: "Nueva Reserva",
+  },
+  newReservation: {
+    title: "Nueva reserva",
+    subtitle: "Al completar la reserva obtendrás el link del check-in online",
+    guestName: "Titular de la reserva",
+    country: "País / Nacionalidad",
+    accommodation: "Alojamiento",
+    channel: "Canal",
+    checkIn: "Fecha de llegada",
+    checkOut: "Fecha de salida",
+    totalPrice: "Precio total de la reserva",
+    guests: "Personas",
+    whatsapp: "Whatsapp",
+    email: "Email",
   }
 } as const;

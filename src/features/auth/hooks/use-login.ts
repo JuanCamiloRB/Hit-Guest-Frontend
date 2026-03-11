@@ -7,6 +7,8 @@ import { toast } from "sonner"
 import { authService } from "../services/auth-service"
 import { LoginFormData, loginSchema, OtpFormData, otpSchema } from "../types"
 import { useAuthStore } from "@/lib/store/auth-store"
+import { useLanguageStore } from "@/store/useLanguageStore"
+import { Language, dictionaries } from "@/lib/i18n/dictionaries"
 
 import { useRouter } from "next/navigation"
 import { useFormSecurity } from "./use-form-security"
@@ -97,6 +99,12 @@ export function useLogin() {
         try {
             const user = await authService.verifyOtp(email, values.otp)
             setSession(user)
+            
+            // Sync user backend language with local persistence if available
+            if (user.language && Object.keys(dictionaries).includes(user.language.toLowerCase())) {
+                useLanguageStore.getState().setLanguage(user.language.toLowerCase() as Language)
+            }
+            
             toast.success("¡Bienvenido de nuevo!", {
                 description: `Sesión iniciada correctamente`,
             })

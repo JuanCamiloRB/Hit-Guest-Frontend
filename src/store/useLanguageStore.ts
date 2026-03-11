@@ -29,14 +29,11 @@ export const useLanguageStore = create<LanguageState>()(
         const savedData = localStorage.getItem('language-store');
         
         if (!savedData) {
-          // If no saved preference, try to detect from browser
-          const browserLang = navigator.language.split('-')[0].toLowerCase();
-          const supportedLang = Object.keys(dictionaries).includes(browserLang) 
-            ? (browserLang as Language) 
-            : 'en';
+          // If no saved preference, set explicit default to Spanish to not overwrite potential backend settings later
+          const defaultLang = 'es';
             
-          set({ language: supportedLang });
-          document.documentElement.lang = supportedLang;
+          set({ language: defaultLang });
+          document.documentElement.lang = defaultLang;
         } else {
            // Ensure html lang matches saved state on initial load
            try {

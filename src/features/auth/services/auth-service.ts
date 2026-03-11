@@ -148,6 +148,7 @@ class AuthServiceImpl implements AuthService {
                 firstName: firstName,
                 role: userResponse?.role || "PRINCIPAL",
                 isPrincipal: userResponse?.isPrincipal ?? true,
+                language: userResponse?.Locale,
             }
         } catch (error: any) {
             throw new Error(error.message || "Error de verificación")

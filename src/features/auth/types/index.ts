@@ -81,6 +81,7 @@ export interface User {
     avatar?: string
     role: UserRole
     isPrincipal: boolean
+    language?: string
     permissions?: {
         reservations?: string[]
         properties?: string[]
