@@ -68,6 +68,23 @@ import Link from "next/link"
 export function OperationsPanel({ reservationId }: { reservationId: string }) {
     // Determine data based on ID, fallback to default or Maria's data for demo
     const data = detailedMockReservations[reservationId] || detailedMockReservations["RES-MG-001"];
+    const checkIn = new Date(data.checkIn || data.arrival_date || new Date())
+    const checkOut = new Date(data.checkOut || data.departure_date || new Date())
+    const totalPrice = data.totalPrice ?? data.total_price ?? 0
+    const guestName = data.guestName || "Huésped"
+    const source = data.source || "Direct"
+    const status = data.status || "PENDING"
+    const externalId = data.externalId || data.external_id || "N/A"
+    const propertyName = data.propertyName || "Propiedad"
+    const unitName = data.unitName || "Unidad"
+    const automationStatus = data.automationStatus || {
+        link: "none",
+        checkin: "none",
+        contract: "none",
+        code: "none",
+        tra: "none",
+        sire: "none",
+    } as AutomationStatusType
 
     const automationStatuses: { label: string; icon: any; statusKey: keyof AutomationStatusType }[] = [
         { label: "Link", icon: Send, statusKey: "link" },
@@ -127,16 +144,16 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                 <div className="flex items-center gap-4">
                                     <div className="relative">
                                         <Avatar className="h-16 w-16 bg-red-50 border-2 border-red-50 p-1">
-                                            <AvatarImage src="/images/guest-placeholder.png" alt={data.guestName} />
+                                            <AvatarImage src="/images/guest-placeholder.png" alt={data.guestName || "Guest"} />
                                             <AvatarFallback className="bg-red-100 text-red-500 font-bold">
-                                                {data.guestName.split(" ").map(n => n[0]).join("")}
+                                                {(data.guestName || "Guest").split(" ").map(n => n[0]).join("")}
                                             </AvatarFallback>
                                         </Avatar>
                                     </div>
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-2">
-                                            <h2 className="text-2xl font-bold text-slate-900 leading-none">{data.guestName}</h2>
-                                            {data.source === "Airbnb" && (
+                                            <h2 className="text-2xl font-bold text-slate-900 leading-none">{guestName}</h2>
+                                            {source === "Airbnb" && (
                                                 <Badge className="bg-rose-100 text-rose-500 border-none px-1.5 py-0 text-[10px] font-bold uppercase tracking-tight">
                                                     ▲ ICAL IMPORT
                                                 </Badge>
@@ -150,18 +167,18 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                                 <span>Reserva Externa</span>
                                             </div>
                                             <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                                            <span className="text-slate-500 text-sm font-medium">Plataforma {data.source}</span>
+                                            <span className="text-slate-500 text-sm font-medium">Plataforma {source}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1">
                                     <Badge className={cn(
                                         "px-3 py-1 text-[11px] font-bold uppercase tracking-wider mb-1",
-                                        data.status === "CONFIRMED" ? "bg-emerald-50 text-emerald-500 border-emerald-100" : "bg-amber-50 text-amber-500 border-amber-100"
+                                        status === "CONFIRMED" ? "bg-emerald-50 text-emerald-500 border-emerald-100" : "bg-amber-50 text-amber-500 border-amber-100"
                                     )}>
-                                        {data.status === "CONFIRMED" ? "CONFIRMADA" : "PENDIENTE"}
+                                        {status === "CONFIRMED" ? "CONFIRMADA" : "PENDIENTE"}
                                     </Badge>
-                                    <span className="text-slate-400 text-xs font-medium">ID: {data.externalId}</span>
+                                    <span className="text-slate-400 text-xs font-medium">ID: {externalId}</span>
                                 </div>
                             </div>
 
@@ -173,8 +190,8 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Propiedad</span>
-                                        <h3 className="text-lg font-bold text-slate-800 leading-snug">{data.propertyName}</h3>
-                                        <span className="text-sm text-slate-500">{data.unitName}</span>
+                                        <h3 className="text-lg font-bold text-slate-800 leading-snug">{propertyName}</h3>
+                                        <span className="text-sm text-slate-500">{unitName}</span>
                                     </div>
                                 </div>
 
@@ -185,13 +202,13 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Estancia</span>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-lg font-bold text-slate-800 leading-snug">{format(data.checkIn, "d MMM", { locale: es })}</span>
+                                            <span className="text-lg font-bold text-slate-800 leading-snug">{format(checkIn, "d MMM", { locale: es })}</span>
                                             <ChevronRight size={14} className="text-slate-300 mt-0.5" />
-                                            <span className="text-lg font-bold text-slate-800 leading-snug">{format(data.checkOut, "d MMM", { locale: es })}</span>
+                                            <span className="text-lg font-bold text-slate-800 leading-snug">{format(checkOut, "d MMM", { locale: es })}</span>
                                         </div>
                                         <div className="flex items-center gap-3 text-sm text-slate-400 font-medium">
-                                            <span>{format(data.checkIn, "HH:mm")}</span>
-                                            <span>{format(data.checkOut, "HH:mm")}</span>
+                                            <span>{format(checkIn, "HH:mm")}</span>
+                                            <span>{format(checkOut, "HH:mm")}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -202,7 +219,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total</span>
-                                        <h3 className="text-lg font-bold text-slate-800 leading-snug">${data.totalPrice.toLocaleString("es-CO")} COP</h3>
+                                        <h3 className="text-lg font-bold text-slate-800 leading-snug">${totalPrice.toLocaleString("es-CO")} COP</h3>
                                         <span className="text-sm text-slate-500 font-medium">Pagado • Stripe</span>
                                     </div>
                                 </div>
@@ -217,8 +234,8 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                             key={autom.label}
                                             icon={autom.icon}
                                             label={autom.label}
-                                            status={getStatusText(data.automationStatus[autom.statusKey], autom.label)}
-                                            variant={data.automationStatus[autom.statusKey]}
+                                            status={getStatusText(automationStatus[autom.statusKey], autom.label)}
+                                            variant={automationStatus[autom.statusKey]}
                                         />
                                     ))}
                                 </div>
@@ -297,7 +314,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         <CardContent className="p-6">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-200">Total Reserva</span>
                             <div className="flex items-center justify-between mt-1 mb-6">
-                                <h3 className="text-3xl font-bold tracking-tight">${data.totalPrice.toLocaleString("es-CO")} COP</h3>
+                                <h3 className="text-3xl font-bold tracking-tight">${totalPrice.toLocaleString("es-CO")} COP</h3>
                                 <div className="p-2 bg-white/20 rounded-lg">
                                     <CreditCard size={20} />
                                 </div>

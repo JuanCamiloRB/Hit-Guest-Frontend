@@ -24,10 +24,15 @@ export function useRegister() {
         resolver: zodResolver(registerSchema),
         defaultValues: {
             person_type_id: "2",
+            identificationTypeId: "",
+            identificationNumber: "",
             companyName: "",
             name: "",
+            lastname: "",
             email: "",
             phone: "",
+            city: "",
+            state: "",
             country: "",
         },
     })
@@ -100,10 +105,15 @@ export function useRegister() {
         setError(null)
         form.reset({
             person_type_id: "2",
+            identificationTypeId: "",
+            identificationNumber: "",
             companyName: "",
             name: "",
+            lastname: "",
             email: "",
             phone: "",
+            city: "",
+            state: "",
             country: "",
         })
     }

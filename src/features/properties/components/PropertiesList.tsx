@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import { Property, Unit } from "@/types"
 import { PropertyCard } from "./PropertyCard"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, Home, LayoutGrid, List } from "lucide-react"
+import { Plus, Search, Filter, Home, LayoutGrid, List, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import {
@@ -29,37 +29,60 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { mockUnits, mockProperties } from "../services/properties"
+import { getProperties, getUnits } from "../services/properties"
+import { useEffect } from "react"
 
 export function PropertiesList() {
+    const [properties, setProperties] = useState<Property[]>([])
+    const [units, setUnits] = useState<Unit[]>([])
+    const [isLoading, setIsLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("ALL")
     const [propertyFilter, setPropertyFilter] = useState<string>("ALL")
 
+    const fetchData = async () => {
+        setIsLoading(true)
+        try {
+            const [propsData, unitsData] = await Promise.all([
+                getProperties(),
+                getUnits()
+            ])
+            setProperties(propsData)
+            setUnits(unitsData)
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        fetchData()
+    }, [])
+
     const filteredProperties = useMemo(() => {
-        return mockProperties.filter((property: Property) => {
+        return properties.filter((property: Property) => {
             const matchesSearch =
                 property.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                property.address.line1.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                property.address.city.toLowerCase().includes(searchQuery.toLowerCase())
+                (property.address?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+                (property.city?.toLowerCase() || "").includes(searchQuery.toLowerCase())
 
-            const matchesStatus = statusFilter === "ALL" || property.status === statusFilter
+            const matchesStatus = statusFilter === "ALL" || 
+                (statusFilter === "ACTIVE" ? property.status_record_id === 1 : property.status_record_id === 2)
             return matchesSearch && matchesStatus
         })
-    }, [searchQuery, statusFilter])
+    }, [searchQuery, statusFilter, properties])
 
     const filteredUnits = useMemo(() => {
-        return mockUnits.filter((unit: Unit) => {
-            const property = mockProperties.find((p: Property) => p.id === unit.propertyId)
+        return units.filter((unit: Unit) => {
+            const property = properties.find((p: Property) => p.id === unit.property_id)
             const matchesSearch =
                 unit.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                unit.number.toLowerCase().includes(searchQuery.toLowerCase())
+                (unit.extra?.rooms && unit.extra.rooms[0]?.roomNumber?.toString().includes(searchQuery.toLowerCase()))
 
-            const matchesStatus = statusFilter === "ALL" || unit.status === statusFilter
-            const matchesProperty = propertyFilter === "ALL" || unit.propertyId === propertyFilter
+            const matchesStatus = statusFilter === "ALL" || unit.extra?.status === statusFilter
+            const matchesProperty = propertyFilter === "ALL" || unit.property_id.toString() === propertyFilter
             return matchesSearch && matchesStatus && matchesProperty
         })
-    }, [searchQuery, statusFilter, propertyFilter])
+    }, [searchQuery, statusFilter, propertyFilter, units, properties])
 
     return (
         <div className="space-y-6">
@@ -115,7 +138,12 @@ export function PropertiesList() {
                 </div>
 
                 <TabsContent value="properties" className="space-y-6 outline-none">
-                    {filteredProperties.length === 0 ? (
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border shadow-sm">
+                            <Loader2 className="h-10 w-10 text-indigo-600 animate-spin mb-4" />
+                            <p className="text-slate-500 font-medium">Cargando propiedades...</p>
+                        </div>
+                    ) : filteredProperties.length === 0 ? (
                         <div className="text-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
                             <div className="bg-slate-100 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <Home className="h-8 w-8 text-slate-400" />
@@ -126,14 +154,20 @@ export function PropertiesList() {
                     ) : (
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {filteredProperties.map((property: Property) => (
-                                <PropertyCard key={property.id} property={property} />
+                                <PropertyCard key={property.id} property={property} onUpdate={fetchData} />
                             ))}
                         </div>
                     )}
                 </TabsContent>
 
                 <TabsContent value="units" className="space-y-6 outline-none">
-                    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border shadow-sm">
+                            <Loader2 className="h-10 w-10 text-indigo-600 animate-spin mb-4" />
+                            <p className="text-slate-500 font-medium">Cargando alojamientos...</p>
+                        </div>
+                    ) : (
+                        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
                         <div className="p-4 border-b bg-slate-50 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <LayoutGrid size={18} className="text-indigo-600" />
@@ -147,8 +181,8 @@ export function PropertiesList() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="ALL">Todas las Propiedades</SelectItem>
-                                        {mockProperties.map((p: Property) => (
-                                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                        {properties.map((p: Property) => (
+                                            <SelectItem key={p.id.toString()} value={p.id.toString()}>{p.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -174,25 +208,32 @@ export function PropertiesList() {
                                     </TableRow>
                                 ) : (
                                     filteredUnits.map((unit: Unit) => {
-                                        const property = mockProperties.find((p: Property) => p.id === unit.propertyId)
+                                        const property = properties.find((p: Property) => p.id === unit.property_id)
+                                        const status = unit.extra?.status || "ACTIVE"
+                                        const roomNumber = unit.extra?.rooms?.[0]?.roomNumber
+                                        const maxOccupancy = unit.extra?.maxOccupancy
+                                        const startPrice = unit.extra?.startPrice
+
                                         return (
-                                            <TableRow key={unit.id} className="hover:bg-slate-50/50 transition-colors">
-                                                <TableCell className="font-bold text-indigo-600">{unit.number}</TableCell>
+                                            <TableRow key={unit.id.toString()} className="hover:bg-slate-50/50 transition-colors">
+                                                <TableCell className="font-bold text-indigo-600">
+                                                    {roomNumber || "-"}
+                                                </TableCell>
                                                 <TableCell className="font-medium">{unit.name}</TableCell>
                                                 <TableCell className="text-slate-500 text-sm">{property?.name}</TableCell>
                                                 <TableCell>
                                                     <div className={cn(
                                                         "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                                                        unit.status === "ACTIVE"
+                                                        status === "ACTIVE"
                                                             ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
                                                             : "bg-slate-100 text-slate-500 border border-slate-200"
                                                     )}>
-                                                        {unit.status === "ACTIVE" ? "Activo" : "Inactivo"}
+                                                        {status === "ACTIVE" ? "Activo" : "Inactivo"}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-sm">{unit.capacity} Huéspedes</TableCell>
+                                                <TableCell className="text-sm">{maxOccupancy || "-"} Huéspedes</TableCell>
                                                 <TableCell className="text-right font-bold text-slate-900">
-                                                    ${unit.pricePerNight?.toLocaleString()}
+                                                    {startPrice ? `$${startPrice.toLocaleString()}` : "-"}
                                                 </TableCell>
                                             </TableRow>
                                         )
@@ -201,6 +242,7 @@ export function PropertiesList() {
                             </TableBody>
                         </Table>
                     </div>
+                    )}
                 </TabsContent>
             </Tabs>
         </div>

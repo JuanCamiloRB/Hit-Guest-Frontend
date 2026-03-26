@@ -60,7 +60,7 @@ export function PhoneInputField({
                     value={currentCode}
                     disabled={disabled}
                 >
-                    <SelectTrigger className="w-full h-9 px-2 group-focus-within:ring-[var(--color-brand-blue)]/30">
+                    <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 px-2 group-focus-within:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -83,7 +83,7 @@ export function PhoneInputField({
                         disabled={disabled}
                         value={currentNumber}
                         onChange={handleNumberChange}
-                        className="pl-9 h-9 focus-visible:ring-[var(--color-brand-blue)]/30 w-full"
+                        className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all w-full"
                     />
                 </div>
             </div>

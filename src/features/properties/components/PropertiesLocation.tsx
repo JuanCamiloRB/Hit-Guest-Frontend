@@ -1,3 +1,4 @@
+"use client"
 import { MapPin, Globe, Search, Loader2 } from "lucide-react"
 import { useFormContext } from "react-hook-form"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form"
@@ -29,18 +30,19 @@ export function PropertiesLocation() {
     const [isSearching, setIsSearching] = useState(false)
 
     // Default to Cartagena, Colombia if no lat/lng
-    const lat = form.watch("geoLocation.latitude") || 10.3910
-    const lng = form.watch("geoLocation.longitude") || -75.4794
+    const lat = form.watch("latitude") || 10.3910
+    const lng = form.watch("longitude") || -75.4794
 
     const handleMapChange = useCallback((newLat: number, newLng: number) => {
-        form.setValue("geoLocation.latitude", newLat, { shouldValidate: true, shouldDirty: true })
-        form.setValue("geoLocation.longitude", newLng, { shouldValidate: true, shouldDirty: true })
+        form.setValue("latitude", newLat, { shouldValidate: true, shouldDirty: true })
+        form.setValue("longitude", newLng, { shouldValidate: true, shouldDirty: true })
     }, [form])
 
     const handleGeocode = async () => {
-        const address = form.getValues("address.line1")
-        const city = form.getValues("address.city")
-        const country = form.getValues("address.country")
+        const address = form.getValues("address")
+        const city = form.getValues("city")
+        // Note: country_id is a number, we might need a country catalog to get the name for geocoding
+        // For now, we'll just use address and city
 
         if (!address && !city) {
             toast.error("Dirección insuficiente", {
@@ -51,7 +53,7 @@ export function PropertiesLocation() {
 
         setIsSearching(true)
         try {
-            const query = encodeURIComponent(`${address}, ${city}, ${country}`)
+            const query = encodeURIComponent(`${address}, ${city}`)
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`)
             const data = await response.json()
 
@@ -60,8 +62,8 @@ export function PropertiesLocation() {
                 const newLat = parseFloat(result.lat)
                 const newLng = parseFloat(result.lon)
 
-                form.setValue("geoLocation.latitude", newLat)
-                form.setValue("geoLocation.longitude", newLng)
+                form.setValue("latitude", newLat)
+                form.setValue("longitude", newLng)
 
                 toast.success("Ubicación encontrada", {
                     description: "El marcador se ha movido a la dirección encontrada.",
@@ -95,7 +97,7 @@ export function PropertiesLocation() {
                 <div className="flex gap-2 items-end">
                     <FormField
                         control={form.control}
-                        name="address.line1"
+                        name="address"
                         render={({ field }) => (
                             <FormItem className="flex-1">
                                 <FormLabel className="text-slate-700 font-semibold">Dirección Principal</FormLabel>
@@ -128,7 +130,7 @@ export function PropertiesLocation() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
-                        name="address.line2"
+                        name="address_detail"
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="text-slate-700 font-semibold">Dirección Línea 2 (Opcional)</FormLabel>
@@ -141,12 +143,12 @@ export function PropertiesLocation() {
                     />
                     <FormField
                         control={form.control}
-                        name="address.postal_code"
+                        name="state"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-slate-700 font-semibold">Código Postal</FormLabel>
+                                <FormLabel className="text-slate-700 font-semibold">Estado/Depto</FormLabel>
                                 <FormControl>
-                                    <Input className="h-11 border-slate-200" placeholder="130001" {...field} />
+                                    <Input className="h-11 border-slate-200" placeholder="Bolívar" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -166,7 +168,7 @@ export function PropertiesLocation() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
                         control={form.control}
-                        name="address.city"
+                        name="city"
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="text-slate-700 font-semibold">Ciudad</FormLabel>
@@ -183,46 +185,31 @@ export function PropertiesLocation() {
                     />
                     <FormField
                         control={form.control}
-                        name="address.state"
+                        name="country_id"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-slate-700 font-semibold">Estado/Depto</FormLabel>
+                                <FormLabel className="text-slate-700 font-semibold">País (ID)</FormLabel>
                                 <FormControl>
                                     <Input
+                                        type="number"
                                         className="h-11 border-slate-200"
-                                        placeholder="Bolívar"
+                                        placeholder="1"
                                         {...field}
+                                        onChange={(e) => field.onChange(parseInt(e.target.value))}
                                     />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
-                    <FormField
-                        control={form.control}
-                        name="address.country"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel className="text-slate-700 font-semibold">País</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        className="h-11 border-slate-200"
-                                        placeholder="Colombia"
-                                        {...field}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </div>
+</div>
 
                 <div className="bg-[var(--color-brand-purple)]/5 p-4 rounded-xl border border-[var(--color-brand-purple)]/10 space-y-3">
                     <p className="text-xs font-bold text-[var(--color-brand-purple)] uppercase tracking-widest">Coordenadas Exactas</p>
                     <div className="grid grid-cols-2 gap-4">
                         <FormField
                             control={form.control}
-                            name="geoLocation.latitude"
+                            name="latitude"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-[10px] text-slate-500 uppercase">Latitud</FormLabel>
@@ -239,7 +226,7 @@ export function PropertiesLocation() {
                         />
                         <FormField
                             control={form.control}
-                            name="geoLocation.longitude"
+                            name="longitude"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-[10px] text-slate-500 uppercase">Longitud</FormLabel>
@@ -260,7 +247,7 @@ export function PropertiesLocation() {
 
                 <FormField
                     control={form.control}
-                    name="timeZone"
+                    name="timezone"
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel className="text-slate-700 font-semibold">Zona Horaria (Confirmar)</FormLabel>

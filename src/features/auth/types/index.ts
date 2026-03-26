@@ -20,11 +20,18 @@ export const registerSchema = z.object({
     person_type_id: z.string({
         message: "Debes seleccionar un tipo de perfil",
     }),
+    identificationTypeId: z.string({
+        message: "Debes seleccionar un tipo de identificación",
+    }),
+    identificationNumber: z.string().min(3, "El número es requerido").max(30, "Máximo 30 caracteres"),
     companyName: z.string().optional(),
-    name: z.string().min(2, "El nombre es requerido"),
-    email: z.string().email("Email inválido"),
-    phone: z.string().min(5, "El teléfono es requerido"),
-    country: z.string().min(2, "El país es requerido"),
+    name: z.string().min(2, "El nombre es requerido").max(120, "Máximo 120 caracteres"),
+    lastname: z.string().max(120, "Máximo 120 caracteres").optional(),
+    email: z.string().email("Email inválido").max(60, "Máximo 60 caracteres"),
+    phone: z.string().min(5, "El teléfono es requerido").max(60, "Máximo 60 caracteres"),
+    city: z.string().min(2, "La ciudad es requerida").max(120, "Máximo 120 caracteres"),
+    state: z.string().min(2, "El estado es requerido").max(120, "Máximo 120 caracteres"),
+    country: z.string().min(1, "El país es requerido"),
 }).superRefine((data, ctx) => {
     if (data.person_type_id === "2") {
         if (!data.companyName || data.companyName.trim().length < 2) {
@@ -32,6 +39,14 @@ export const registerSchema = z.object({
                 code: z.ZodIssueCode.custom,
                 message: "La razón social es requerida para empresas",
                 path: ["companyName"],
+            });
+        }
+    } else {
+        if (!data.lastname || data.lastname.trim().length < 2) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: "El apellido es requerido",
+                path: ["lastname"],
             });
         }
     }

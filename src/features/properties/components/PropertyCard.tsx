@@ -22,9 +22,12 @@ import { Badge } from "@/components/ui/badge"
 import { Property } from "@/types"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { togglePropertyStatus } from "../services/properties"
+import { toast } from "sonner"
 
 interface PropertyCardProps {
     property: Property
+    onUpdate?: () => void
 }
 
 const TypeIcon = ({ type }: { type?: string }) => {
@@ -49,12 +52,22 @@ const TypeLabel = ({ type }: { type?: string }) => {
     }
 }
 
-export function PropertyCard({ property }: PropertyCardProps) {
+export function PropertyCard({ property, onUpdate }: PropertyCardProps) {
+    const handleToggleStatus = async (e: React.MouseEvent) => {
+        e.preventDefault()
+        try {
+            await togglePropertyStatus(property.id, property.status_record_id)
+            toast.success(property.status_record_id === 1 ? "Propiedad desactivada" : "Propiedad activada")
+            onUpdate?.()
+        } catch (error) {
+            toast.error("Error al actualizar el estado")
+        }
+    }
     return (
         <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-slate-200">
             <div className="relative aspect-video">
                 <Image
-                    src={property.thumbnailUrl || "/placeholder.svg"}
+                    src={property.extra?.thumbnailUrl || "/placeholder.svg"}
                     alt={property.name}
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
@@ -63,19 +76,19 @@ export function PropertyCard({ property }: PropertyCardProps) {
 
                 <div className="absolute top-2 left-2 flex gap-1">
                     <Badge className="bg-white/90 text-slate-900 border-none shadow-sm backdrop-blur-sm flex gap-1.5 items-center px-2 py-0.5">
-                        <TypeIcon type={property.type} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">{TypeLabel({ type: property.type })}</span>
+                        <TypeIcon type={property.extra?.type} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">{TypeLabel({ type: property.extra?.type })}</span>
                     </Badge>
                 </div>
 
                 <Badge
-                    variant={property.status === "ACTIVE" ? "default" : "secondary"}
+                    variant={property.status_record_id === 1 ? "default" : "secondary"}
                     className={cn(
                         "absolute right-2 top-2 px-2 py-0.5 text-[10px] font-bold border-none shadow-sm",
-                        property.status === "ACTIVE" ? "bg-emerald-500" : "bg-slate-500"
+                        property.status_record_id === 1 ? "bg-emerald-500" : "bg-slate-500"
                     )}
                 >
-                    {property.status === "ACTIVE" ? "ACTIVO" : "INACTIVO"}
+                    {property.status_record_id === 1 ? "ACTIVO" : "INACTIVO"}
                 </Badge>
             </div>
             <CardHeader className="p-4 space-y-3">
@@ -86,7 +99,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
                         </h3>
                         <div className="flex items-center text-xs text-slate-500">
                             <MapPin className="mr-1 h-3 w-3 text-indigo-400" />
-                            {property.address.city}, {property.address.country}
+                            {property.city || "Sin ciudad"}, {property.state || "Sin estado"}
                         </div>
                     </div>
                     <DropdownMenu>
@@ -102,10 +115,20 @@ export function PropertyCard({ property }: PropertyCardProps) {
                                     Editar Detalles
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>Automatizaciones</DropdownMenuItem>
+                             <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/properties/${property.id}?tab=automation`} className="flex items-center">
+                                    Automatizaciones
+                                </Link>
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive font-medium">
-                                Desactivar Propiedad
+                            <DropdownMenuItem 
+                                className={cn(
+                                    "font-medium cursor-pointer",
+                                    property.status_record_id === 1 ? "text-destructive" : "text-emerald-600"
+                                )}
+                                onClick={handleToggleStatus}
+                            >
+                                {property.status_record_id === 1 ? "Desactivar Propiedad" : "Activar Propiedad"}
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

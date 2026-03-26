@@ -16,25 +16,38 @@ import {
 } from "@/components/ui/form"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Sparkles } from "lucide-react"
+import { useEffect, useState } from "react"
+import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { cn } from "@/lib/utils"
-
-const commonAmenities = [
-    { id: "wifi", label: "WiFi" },
-    { id: "pool", label: "Piscina" },
-    { id: "parking", label: "Parqueo Gratis" },
-    { id: "ac", label: "Aire Acondicionado" },
-    { id: "kitchen", label: "Cocina" },
-    { id: "tv", label: "TV" },
-    { id: "washer", label: "Lavadora" },
-    { id: "dryer", label: "Secadora" },
-    { id: "heating", label: "Calefacción" },
-    { id: "workspace", label: "Zona de Trabajo" },
-    { id: "gym", label: "Gimnasio" },
-    { id: "pet_friendly", label: "Se admiten mascotas" },
-]
 
 export function PropertiesAmenities() {
     const form = useFormContext()
+    const [amenities, setAmenities] = useState<CatalogOption[]>([])
+
+    useEffect(() => {
+        const fetchAmenities = async () => {
+            const list = await catalogService.getAmenities()
+            if (list.length > 0) {
+                setAmenities(list)
+            } else {
+                setAmenities([
+                    { id: "wifi", name: "WiFi" },
+                    { id: "pool", name: "Piscina" },
+                    { id: "parking", name: "Parqueo Gratis" },
+                    { id: "ac", name: "Aire Acondicionado" },
+                    { id: "kitchen", name: "Cocina" },
+                    { id: "tv", name: "TV" },
+                    { id: "washer", name: "Lavadora" },
+                    { id: "dryer", name: "Secadora" },
+                    { id: "heating", name: "Calefacción" },
+                    { id: "workspace", name: "Zona de Trabajo" },
+                    { id: "gym", name: "Gimnasio" },
+                    { id: "pet_friendly", name: "Se admiten mascotas" },
+                ])
+            }
+        }
+        fetchAmenities()
+    }, [])
 
     return (
         <Card>
@@ -52,7 +65,7 @@ export function PropertiesAmenities() {
                     render={() => (
                         <FormItem>
                             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                                {commonAmenities.map((item) => (
+                                {amenities.map((item) => (
                                     <FormField
                                         key={item.id}
                                         control={form.control}
@@ -78,7 +91,7 @@ export function PropertiesAmenities() {
                                                         />
                                                     </FormControl>
                                                     <FormLabel className="font-normal cursor-pointer text-sm w-full leading-snug">
-                                                        {item.label}
+                                                        {item.name}
                                                     </FormLabel>
                                                 </FormItem>
                                             )

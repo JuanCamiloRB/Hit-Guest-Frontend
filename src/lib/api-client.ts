@@ -8,6 +8,9 @@ export async function request<T>(
         ...options,
         headers: {
             "Content-Type": "application/json",
+            "Accept-Language": "es",
+            "X-Locale": "es",
+            "X-App-Locale": "es",
             ...options?.headers,
         },
     })

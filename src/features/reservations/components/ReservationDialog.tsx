@@ -46,7 +46,7 @@ import { toast } from "sonner"
 const reservationSchema = z.object({
     guestName: z.string().min(2, "Guest name is required"),
     propertyId: z.string().min(1, "Property is required"),
-    unitId: z.string().min(1, "Unit is required"),
+    listingId: z.string().min(1, "Listing is required"),
     dates: z.object({
         from: z.date().optional(),
         to: z.date().optional(),
@@ -64,7 +64,7 @@ export function ReservationDialog() {
         defaultValues: {
             guestName: "",
             propertyId: "",
-            unitId: "",
+            listingId: "",
             status: "PENDING",
             totalPrice: 0,
             dates: {
@@ -138,10 +138,10 @@ export function ReservationDialog() {
                             />
                             <FormField
                                 control={form.control}
-                                name="unitId"
+                                name="listingId"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Unit</FormLabel>
+                                        <FormLabel>Alojamiento (Listing)</FormLabel>
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                             <FormControl>
                                                 <SelectTrigger>

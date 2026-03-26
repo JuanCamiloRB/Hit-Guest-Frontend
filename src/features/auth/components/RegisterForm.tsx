@@ -46,15 +46,17 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
     const [otpValue, setOtpValue] = React.useState("")
     const [personTypes, setPersonTypes] = React.useState<CatalogOption[]>([
         { id: "1", name: "Individual" },
-        { id: "2", name: "Empresa (Negocio)" }
+        { id: "2", name: "Business" }
     ])
+    const [identificationTypes, setIdentificationTypes] = React.useState<CatalogOption[]>([])
     const [countries, setCountries] = React.useState<CatalogOption[]>([])
 
     React.useEffect(() => {
         const fetchData = async () => {
             try {
-                const [types, countryList] = await Promise.all([
+                const [types, idTypes, countryList] = await Promise.all([
                     catalogService.getPersonTypes(),
+                    catalogService.getIdentificationTypes(),
                     catalogService.getCountries()
                 ])
 
@@ -78,6 +80,10 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             form.setValue("person_type_id", types[0].id)
                         }
                     }
+                }
+                
+                if (idTypes && idTypes.length > 0) {
+                    setIdentificationTypes(idTypes)
                 }
 
                 if (countryList && countryList.length > 0) {
@@ -165,7 +171,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
             <Form {...form}>
                 <form onSubmit={onRegister}>
                     <Honeypot {...honeypotProps} />
-                    <div className="grid gap-5 bg-card/80 backdrop-blur-sm border border-[var(--color-brand-blue)]/10 rounded-xl p-6 shadow-lg shadow-[var(--color-brand-blue)]/5 relative">
+                    <div className="grid gap-5 bg-white border border-slate-200 rounded-2xl p-8 shadow-xl shadow-slate-200/50 relative">
                         {/* Subtle top highlight for premium feel */}
                         <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-brand-blue)]/40 to-transparent rounded-t-xl" />
 
@@ -180,13 +186,13 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                         value={field.value}
                                     >
                                         <FormControl>
-                                            <SelectTrigger className="w-full h-11">
+                                            <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all">
                                                 <SelectValue placeholder="Selecciona el tipo de perfil" />
                                             </SelectTrigger>
                                         </FormControl>
-                                        <SelectContent>
+                                        <SelectContent className="rounded-xl shadow-xl border-slate-100">
                                             {personTypes.map((type) => (
-                                                <SelectItem key={type.id} value={type.id}>
+                                                <SelectItem key={type.id} value={type.id} className="cursor-pointer focus:bg-[var(--color-brand-blue)]/5 transition-colors">
                                                     {type.name}
                                                 </SelectItem>
                                             ))}
@@ -209,7 +215,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                                 <Input
                                                     placeholder="Ej: Apartamentos del Mar SAS"
                                                     disabled={isLoading}
-                                                    className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
+                                                    className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
                                                     {...field}
                                                 />
                                             </div>
@@ -219,7 +225,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 )}
                             />
                         )}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
                                 name="name"
@@ -227,16 +233,16 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     <FormItem>
                                         <FormLabel>
                                             {form.watch("person_type_id") === "2"
-                                                ? "Nombre del Usuario"
-                                                : "Nombre completo"}
+                                                ? "Nombre del Usuario Principal"
+                                                : "Nombre"}
                                         </FormLabel>
                                         <FormControl>
                                             <div className="relative group">
                                                 <User className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
                                                 <Input
-                                                    placeholder="Ej: Juan Pérez"
+                                                    placeholder="Ej: Juan"
                                                     disabled={isLoading}
-                                                    className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
+                                                    className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
                                                     {...field}
                                                 />
                                             </div>
@@ -245,6 +251,125 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     </FormItem>
                                 )}
                             />
+                            {form.watch("person_type_id") === "1" && (
+                                <FormField
+                                    control={form.control}
+                                    name="lastname"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Apellido</FormLabel>
+                                            <FormControl>
+                                                <div className="relative group">
+                                                    <User className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                                    <Input
+                                                        placeholder="Ej: Pérez"
+                                                        disabled={isLoading}
+                                                        className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                        {...field}
+                                                    />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="identificationTypeId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Tipo de Identificación</FormLabel>
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            value={field.value}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all">
+                                                    <SelectValue placeholder="Selecciona el tipo" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl shadow-xl border-slate-100">
+                                                {identificationTypes.map((type) => (
+                                                    <SelectItem key={type.id} value={type.id} className="cursor-pointer focus:bg-[var(--color-brand-blue)]/5 transition-colors">
+                                                        {type.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="identificationNumber"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Número de Identificación</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="Ej: 12345678"
+                                                disabled={isLoading}
+                                                className="h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Correo electrónico</FormLabel>
+                                        <FormControl>
+                                            <div className="relative group">
+                                                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                                <Input
+                                                    placeholder="nombre@empresa.com"
+                                                    type="email"
+                                                    disabled={isLoading}
+                                                    className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                    {...field}
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <div className="grid gap-2">
+                                <FormLabel>{form.watch("person_type_id") === "2" ? "Teléfono de empresa" : "Teléfono"}</FormLabel>
+                                <FormField
+                                    control={form.control}
+                                    name="phone"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormControl>
+                                                <PhoneInputField
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    placeholder="300 123 4567"
+                                                    disabled={isLoading}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <FormField
                                 control={form.control}
                                 name="country"
@@ -252,15 +377,28 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     <FormItem>
                                         <FormLabel>País</FormLabel>
                                         {countries.length > 0 ? (
-                                            <Select onValueChange={field.onChange} value={field.value}>
+                                            <Select 
+                                                onValueChange={(val) => {
+                                                    field.onChange(val)
+                                                    const selected = countries.find(c => c.id === val)
+                                                    const prefix = selected?.extra?.phone_prefix || selected?.extra?.dial_code || selected?.extra?.code
+                                                    if (prefix) {
+                                                        const currentPhone = form.getValues("phone")
+                                                        if (!currentPhone.startsWith("+")) {
+                                                            form.setValue("phone", `${prefix.startsWith("+") ? prefix : "+" + prefix}${currentPhone}`)
+                                                        }
+                                                    }
+                                                }} 
+                                                value={field.value}
+                                            >
                                                 <FormControl>
-                                                    <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder="Selecciona tu país" />
+                                                    <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all">
+                                                        <SelectValue placeholder="País" />
                                                     </SelectTrigger>
                                                 </FormControl>
-                                                <SelectContent>
+                                                <SelectContent className="rounded-xl shadow-xl border-slate-100">
                                                     {countries.map((country) => (
-                                                        <SelectItem key={country.id} value={country.id}>
+                                                        <SelectItem key={country.id} value={country.id} className="cursor-pointer focus:bg-[var(--color-brand-blue)]/5 transition-colors">
                                                             {country.name}
                                                         </SelectItem>
                                                     ))}
@@ -273,7 +411,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                                     <Input
                                                         placeholder="Ej: Colombia"
                                                         disabled={isLoading}
-                                                        className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
+                                                        className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
                                                         {...field}
                                                     />
                                                 </div>
@@ -283,42 +421,36 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     </FormItem>
                                 )}
                             />
-                        </div>
-                        <FormField
-                            control={form.control}
-                            name="email"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Correo electrónico</FormLabel>
-                                    <FormControl>
-                                        <div className="relative group">
-                                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
-                                            <Input
-                                                placeholder="nombre@empresa.com"
-                                                type="email"
-                                                disabled={isLoading}
-                                                className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
-                                                {...field}
-                                            />
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <div className="grid gap-2">
-                            <FormLabel>{form.watch("person_type_id") === "2" ? "Business phone" : "Phone"}</FormLabel>
                             <FormField
                                 control={form.control}
-                                name="phone"
+                                name="state"
                                 render={({ field }) => (
                                     <FormItem>
+                                        <FormLabel>Estado / Depto</FormLabel>
                                         <FormControl>
-                                            <PhoneInputField
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                placeholder="300 123 4567"
+                                            <Input
+                                                placeholder="Ej: Valle"
                                                 disabled={isLoading}
+                                                className="h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="city"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Ciudad</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="Ej: Cali"
+                                                disabled={isLoading}
+                                                className="h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                {...field}
                                             />
                                         </FormControl>
                                         <FormMessage />

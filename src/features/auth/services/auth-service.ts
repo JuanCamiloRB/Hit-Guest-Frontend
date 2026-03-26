@@ -148,7 +148,7 @@ class AuthServiceImpl implements AuthService {
                 firstName: firstName,
                 role: userResponse?.role || "PRINCIPAL",
                 isPrincipal: userResponse?.isPrincipal ?? true,
-                language: userResponse?.Locale,
+                language: userResponse?.locale || userResponse?.Locale,
             }
         } catch (error: any) {
             throw new Error(error.message || "Error de verificación")
@@ -203,16 +203,6 @@ class AuthServiceImpl implements AuthService {
     }
 
     async register(data: RegisterFormData): Promise<void> {
-        // ALWAYS use mock auth for registration until the API is ready
-        await new Promise((resolve) => setTimeout(resolve, 1500))
-        const finalName = data.person_type_id === "2" ? data.companyName : data.name;
-        console.log(`[MOCK API] Registering Client: ${finalName} and Admin: ${data.email}`)
-        const otp = Math.floor(100000 + Math.random() * 900000).toString()
-        this.simulatedOtps.set(data.email, otp)
-        console.log(`[MOCK API] OTP for registration (Mock): ${otp}`)
-        return
-
-        /* Backend temporarily disabled due to 401 Unauthorized errors
         if (USE_MOCK_AUTH) {
             await new Promise((resolve) => setTimeout(resolve, 1500))
             const finalName = data.person_type_id === "2" ? data.companyName : data.name;
@@ -224,16 +214,17 @@ class AuthServiceImpl implements AuthService {
         }
 
         try {
-
-            const phoneCodeObj = COUNTRY_CODES.find(c => c.country === data.phoneCode)
-            const numericCode = phoneCodeObj?.code || ""
-
             const payload = {
-                person_type_id: parseInt(data.person_type_id),
+                personTypeId: parseInt(data.person_type_id),
+                identificationTypeId: parseInt(data.identificationTypeId),
+                identificationNumber: data.identificationNumber,
                 name: data.person_type_id === "2" ? data.companyName : data.name,
+                lastname: data.person_type_id === "2" ? "-" : (data.lastname || "-"),
                 email: data.email,
-                phone: `${numericCode}${data.phone}`,
-                country: data.country,
+                phone: data.phone,
+                city: data.city,
+                state: data.state,
+                countryId: parseInt(data.country),
             }
 
             const headers = getHeaders()
@@ -257,7 +248,6 @@ class AuthServiceImpl implements AuthService {
             console.error("[AuthService] Registration exception:", error)
             throw new Error(error.message || "Error de conexión durante el registro")
         }
-        */
     }
 
     async loginWithGoogle(): Promise<User> {

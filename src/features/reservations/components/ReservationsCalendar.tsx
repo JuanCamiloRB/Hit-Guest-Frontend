@@ -60,9 +60,12 @@ export function ReservationsCalendar() {
                 ))}
 
                 {days.map((day, dayIdx) => {
-                    const dayReservations = mockReservations.filter(res =>
-                        isWithinInterval(day, { start: res.checkIn, end: res.checkOut })
-                    )
+                    const dayReservations = mockReservations.filter(res => {
+                        const start = res.checkIn || res.arrival_date
+                        const end = res.checkOut || res.departure_date
+                        if (!start || !end) return false
+                        return isWithinInterval(day, { start: new Date(start), end: new Date(end) })
+                    })
 
                     return (
                         <div
@@ -81,11 +84,11 @@ export function ReservationsCalendar() {
 
                             {dayReservations.map(res => (
                                 <div
-                                    key={res.id}
+                                    key={String(res.id)}
                                     className="text-xs truncate bg-primary/10 text-primary px-1 py-0.5 rounded cursor-pointer hover:bg-primary/20"
-                                    title={`${res.guestName} (${res.status})`}
+                                    title={`${res.guestName || "Guest"} (${res.status || "N/A"})`}
                                 >
-                                    {res.guestName}
+                                    {res.guestName || "Guest"}
                                 </div>
                             ))}
                         </div>

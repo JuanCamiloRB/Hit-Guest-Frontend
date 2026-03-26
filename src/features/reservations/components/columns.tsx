@@ -24,7 +24,7 @@ export const columns: ColumnDef<Reservation>[] = [
         header: "HUÉSPED / ALOJAMIENTO",
         cell: ({ row }) => {
             const reservation = row.original
-            const guestName = reservation.guestName
+            const guestName = reservation.guestName || "Huésped"
             const initials = guestName
                 .split(" ")
                 .map((n) => n[0])
@@ -65,9 +65,9 @@ export const columns: ColumnDef<Reservation>[] = [
         accessorKey: "checkIn",
         header: "FECHAS",
         cell: ({ row }) => {
-            const checkIn = new Date(row.original.checkIn)
-            const checkOut = new Date(row.original.checkOut)
-            const nights = row.original.nights
+            const checkIn = new Date(row.original.checkIn || row.original.arrival_date || new Date())
+            const checkOut = new Date(row.original.checkOut || row.original.departure_date || new Date())
+            const nights = row.original.nights || 0
 
             return (
                 <div className="flex flex-col gap-1">
@@ -140,7 +140,7 @@ export const columns: ColumnDef<Reservation>[] = [
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                                onClick={() => navigator.clipboard.writeText(payment.id)}
+                                onClick={() => navigator.clipboard.writeText(String(payment.id))}
                             >
                                 Copiar ID
                             </DropdownMenuItem>
