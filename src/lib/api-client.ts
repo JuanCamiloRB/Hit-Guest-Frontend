@@ -21,8 +21,8 @@ export async function request<T>(
         throw new ApiError(response.status, data as ApiErrorResponse)
     }
 
-    // Based on user requirement: Success returns { data: ... }
-    return (data as ApiResponse<T>).data
+    // Support both { data: T } and direct T responses
+    return (data as any).data !== undefined ? (data as any).data : data
 }
 
 export const apiClient = {
