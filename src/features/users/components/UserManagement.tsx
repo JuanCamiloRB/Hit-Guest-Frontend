@@ -15,7 +15,6 @@ import {
     Plus,
     MoreHorizontal,
     Shield,
-    UserPlus,
     Trash2,
     Loader2
 } from "lucide-react"
@@ -31,6 +30,7 @@ import {
 import { User, PREDEFINED_ROLES, UserRole } from "@/features/auth/types"
 import { userService } from "../services/user-service"
 import { useAuthStore } from "@/lib/store/auth-store"
+import { catalogService, CatalogOption } from "../../auth/services/catalog-service"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
     Dialog,
@@ -86,6 +86,7 @@ type UserFormValues = z.infer<typeof userSchema>
 export function UserManagement() {
     const { user: currentUser } = useAuthStore()
     const [users, setUsers] = useState<User[]>([])
+    const [countries, setCountries] = useState<CatalogOption[]>([])
     const [editingUser, setEditingUser] = useState<User | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -119,7 +120,16 @@ export function UserManagement() {
     }
 
     useEffect(() => {
-        fetchUsers()
+        const fetchData = async () => {
+            await fetchUsers()
+            try {
+                const countriesData = await catalogService.getCountries()
+                setCountries(countriesData)
+            } catch (error) {
+                console.error("Error fetching countries:", error)
+            }
+        }
+        fetchData()
     }, [])
 
     useEffect(() => {
@@ -205,95 +215,99 @@ export function UserManagement() {
     }
 
     return (
-        <div className="space-y-4">
-            <div className="flex justify-between items-center">
+        <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h3 className="text-lg font-medium">Usuarios Secundarios</h3>
-                    <p className="text-sm text-muted-foreground">
-                        Gestiona el acceso de tu equipo y asigna roles predefinidos.
+                    <h3 className="text-xl font-black text-slate-900">Gestión de Equipo</h3>
+                    <p className="text-sm text-slate-500">
+                        Administra los usuarios secundarios y sus permisos.
                     </p>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
-                        <Button className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300">
-                            <UserPlus className="mr-2 h-4 w-4" />
+                        <Button className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-black uppercase tracking-widest px-6 h-11 rounded-xl shadow-lg shadow-[var(--color-brand-purple)]/20 hover:shadow-xl transition-all duration-300">
+                            <Plus className="mr-2 h-5 w-5" />
                             Nuevo Usuario
                         </Button>
                     </DialogTrigger>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>
+                    <DialogContent className="max-w-xl p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+                        <DialogHeader className="p-6 pb-0">
+                            <DialogTitle className="text-2xl font-black text-slate-900">
                                 {editingUser ? "Editar Usuario" : "Invitar Usuario"}
                             </DialogTitle>
-                            <DialogDescription>
+                            <DialogDescription className="text-slate-500 font-medium">
                                 {editingUser
                                     ? "Modifica los datos y permisos del usuario."
                                     : "Los usuarios secundarios tendrán acceso según el rol asignado."}
                             </DialogDescription>
                         </DialogHeader>
                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                <FormField
-                                    control={form.control}
-                                    name="firstName"
-                                    render={({ field }) => (
-                                        <FormItem className="col-span-2">
-                                            <FormLabel>Nombre completo</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Ej: Juan Pérez" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Email</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <div className="grid grid-cols-3 gap-4">
-                                    <div className="col-span-2">
-                                        <FormField
-                                            control={form.control}
-                                            name="phone"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Teléfono / Whatsapp</FormLabel>
-                                                    <FormControl>
-                                                        <PhoneInputField
-                                                            value={field.value}
-                                                            onChange={field.onChange}
-                                                            placeholder="300 123 4567"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-5">
+                                <div className="grid grid-cols-1 gap-5">
+                                    <FormField
+                                        control={form.control}
+                                        name="firstName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-slate-900 font-bold">Nombre completo</FormLabel>
+                                                <FormControl>
+                                                    <div className="relative group">
+                                                        <Input placeholder="Ej: Juan Pérez" {...field} className="h-11 rounded-xl border-slate-200 focus-visible:ring-[var(--color-brand-purple)] bg-slate-50/30" />
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="email"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-slate-900 font-bold">Email</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="email@ejemplo.com" {...field} className="h-11 rounded-xl border-slate-200 focus-visible:ring-[var(--color-brand-purple)] bg-slate-50/30" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <FormField
+                                        control={form.control}
+                                        name="phone"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-slate-900 font-bold">Teléfono / Whatsapp</FormLabel>
+                                                <FormControl>
+                                                    <PhoneInputField
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        placeholder="300 123 4567"
+                                                        className="h-11 rounded-xl"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                     <FormField
                                         control={form.control}
                                         name="role"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Rol / Perfil</FormLabel>
+                                                <FormLabel className="text-slate-900 font-bold">Rol / Perfil</FormLabel>
                                                 <Select onValueChange={field.onChange} defaultValue={field.value} disabled={editingUser?.isPrincipal}>
                                                     <FormControl>
-                                                        <SelectTrigger>
+                                                        <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/30 focus:ring-[var(--color-brand-purple)]">
                                                             <SelectValue placeholder="Seleccionar rol" />
                                                         </SelectTrigger>
                                                     </FormControl>
-                                                    <SelectContent>
+                                                    <SelectContent className="rounded-xl border-slate-200">
                                                         {PREDEFINED_ROLES.map(role => (
-                                                            <SelectItem key={role.id} value={role.id}>
+                                                            <SelectItem key={role.id} value={role.id} className="rounded-lg">
                                                                 {role.name}
                                                             </SelectItem>
                                                         ))}
@@ -304,28 +318,38 @@ export function UserManagement() {
                                         )}
                                     />
                                 </div>
+
                                 <FormField
                                     control={form.control}
                                     name="address"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Dirección</FormLabel>
+                                            <FormLabel className="text-slate-900 font-bold">Dirección</FormLabel>
                                             <FormControl>
-                                                <Input {...field} />
+                                                <Input
+                                                    placeholder="Calle 123 #45-67"
+                                                    {...field}
+                                                    className="h-11 bg-white border-slate-200 rounded-xl focus-visible:ring-[var(--color-brand-purple)]"
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                                <div className="grid grid-cols-2 gap-4">
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField
                                         control={form.control}
                                         name="city"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Ciudad</FormLabel>
+                                                <FormLabel className="text-slate-900 font-bold">Ciudad</FormLabel>
                                                 <FormControl>
-                                                    <Input {...field} />
+                                                    <Input
+                                                        placeholder="Santa Marta"
+                                                        {...field}
+                                                        className="h-11 bg-white border-slate-200 rounded-xl focus-visible:ring-[var(--color-brand-purple)]"
+                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -336,24 +360,35 @@ export function UserManagement() {
                                         name="country"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>País</FormLabel>
-                                                <FormControl>
-                                                    <Input {...field} />
-                                                </FormControl>
+                                                <FormLabel className="text-slate-900 font-bold">País</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value}>
+                                                    <FormControl>
+                                                        <SelectTrigger className="h-11 bg-white border-slate-200 rounded-xl focus:ring-[var(--color-brand-purple)]">
+                                                            <SelectValue placeholder="Selecciona un país" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent className="rounded-xl shadow-xl border-slate-100 max-h-[200px]">
+                                                        {countries.map((country) => (
+                                                            <SelectItem key={country.id} value={country.name} className="cursor-pointer focus:bg-[var(--color-brand-purple)]/5 transition-colors">
+                                                                {country.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                 </div>
 
-                                <div className="pt-4 border-t space-y-4">
-                                    <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest">
-                                        <Shield className="h-4 w-4" />
+                                <div className="pt-2 space-y-4">
+                                    <div className="flex items-center gap-2 text-slate-900 font-black text-[10px] uppercase tracking-widest px-1">
+                                        <Shield className="h-4 w-4 text-[var(--color-brand-purple)]" />
                                         <span>Matriz de Permisos</span>
                                     </div>
 
-                                    <div className="rounded-xl border bg-slate-50/50 overflow-hidden">
-                                        <div className="grid grid-cols-5 bg-slate-100/80 border-b text-[10px] font-bold uppercase tracking-wider text-muted-foreground p-3">
+                                    <div className="rounded-2xl border border-slate-100 bg-slate-50/30 overflow-hidden shadow-inner">
+                                        <div className="grid grid-cols-5 bg-white/80 border-b border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-400 p-3">
                                             <div className="col-span-1">Módulo</div>
                                             <div className="text-center">Ver</div>
                                             <div className="text-center">Crear</div>
@@ -362,63 +397,44 @@ export function UserManagement() {
                                         </div>
 
                                         <div className="divide-y divide-slate-100">
-                                            {/* Reservations Row */}
-                                            <div className="grid grid-cols-5 items-center p-3 hover:bg-white transition-colors">
-                                                <div className="col-span-1 text-sm font-medium">Reservas</div>
-                                                {["READ", "CREATE", "UPDATE", "DELETE"].map((action) => (
-                                                    <div key={action} className="flex justify-center">
-                                                        <FormField
-                                                            control={form.control}
-                                                            name="permissions.reservations"
-                                                            render={({ field }) => (
-                                                                <Checkbox
-                                                                    disabled={editingUser?.isPrincipal}
-                                                                    checked={field.value?.includes(action)}
-                                                                    onCheckedChange={(checked) => {
-                                                                        const newValue = checked
-                                                                            ? [...(field.value || []), action]
-                                                                            : field.value?.filter((v: string) => v !== action)
-                                                                        field.onChange(newValue)
-                                                                    }}
-                                                                />
-                                                            )}
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            {/* Properties Row */}
-                                            <div className="grid grid-cols-5 items-center p-3 hover:bg-white transition-colors">
-                                                <div className="col-span-1 text-sm font-medium">Propiedades</div>
-                                                {["READ", "CREATE", "UPDATE", "DELETE"].map((action) => (
-                                                    <div key={action} className="flex justify-center">
-                                                        <FormField
-                                                            control={form.control}
-                                                            name="permissions.properties"
-                                                            render={({ field }) => (
-                                                                <Checkbox
-                                                                    disabled={editingUser?.isPrincipal}
-                                                                    checked={field.value?.includes(action)}
-                                                                    onCheckedChange={(checked) => {
-                                                                        const newValue = checked
-                                                                            ? [...(field.value || []), action]
-                                                                            : field.value?.filter((v: string) => v !== action)
-                                                                        field.onChange(newValue)
-                                                                    }}
-                                                                />
-                                                            )}
-                                                        />
-                                                    </div>
-                                                ))}
-                                            </div>
+                                            {[
+                                                { id: "reservations", label: "Reservas" },
+                                                { id: "properties", label: "Propiedades" }
+                                            ].map((module) => (
+                                                <div key={module.id} className="grid grid-cols-5 items-center p-3.5 hover:bg-white transition-colors">
+                                                    <div className="col-span-1 text-sm font-bold text-slate-700">{module.label}</div>
+                                                    {["READ", "CREATE", "UPDATE", "DELETE"].map((action) => (
+                                                        <div key={action} className="flex justify-center">
+                                                            <FormField
+                                                                control={form.control}
+                                                                name={`permissions.${module.id}` as any}
+                                                                render={({ field }) => (
+                                                                    <Checkbox
+                                                                        disabled={editingUser?.isPrincipal}
+                                                                        checked={(field.value as string[])?.includes(action)}
+                                                                        onCheckedChange={(checked) => {
+                                                                            const currentValue = (field.value as string[]) || []
+                                                                            const newValue = checked
+                                                                                ? [...currentValue, action]
+                                                                                : currentValue.filter((v: string) => v !== action)
+                                                                            field.onChange(newValue)
+                                                                        }}
+                                                                        className="h-5 w-5 rounded-md data-[state=checked]:bg-[var(--color-brand-purple)] data-[state=checked]:border-[var(--color-brand-purple)]"
+                                                                    />
+                                                                )}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ))}
                                         </div>
                                     </div>
-                                    <p className="text-[10px] text-muted-foreground italic px-1">
+                                    <p className="text-[10px] text-slate-400 italic px-1 font-medium">
                                         * Los usuarios principales tienen todos los permisos habilitados por defecto.
                                     </p>
                                 </div>
-                                <DialogFooter>
-                                    <Button type="submit" disabled={isSubmitting} className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300">
+                                <DialogFooter className="pt-4">
+                                    <Button type="submit" disabled={isSubmitting} className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-black uppercase tracking-widest w-full h-12 rounded-xl shadow-lg shadow-[var(--color-brand-purple)]/20 hover:shadow-xl transition-all duration-300">
                                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         {editingUser ? "Guardar Cambios" : "Crear Invitación"}
                                     </Button>
@@ -429,140 +445,188 @@ export function UserManagement() {
                 </Dialog>
             </div>
 
-            <div className="rounded-md border overflow-hidden">
+            <div className="rounded-2xl border border-slate-100 bg-white overflow-hidden shadow-sm shadow-slate-200/50 mt-4">
                 <div className="overflow-x-auto">
                     <Table className="hidden md:table">
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Usuario</TableHead>
-                                <TableHead>Rol</TableHead>
-                                <TableHead>Estado</TableHead>
-                                <TableHead className="text-right">Acciones</TableHead>
+                        <TableHeader className="bg-slate-50/50">
+                            <TableRow className="hover:bg-transparent border-slate-100">
+                                <TableHead className="py-4 font-black uppercase tracking-widest text-[10px] text-slate-400">Usuario</TableHead>
+                                <TableHead className="py-4 font-black uppercase tracking-widest text-[10px] text-slate-400">Rol / Contacto</TableHead>
+                                <TableHead className="py-4 font-black uppercase tracking-widest text-[10px] text-slate-400">Estado</TableHead>
+                                <TableHead className="py-4 font-black uppercase tracking-widest text-[10px] text-slate-400 text-right pr-6">Acciones</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">
-                                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                                    <TableCell colSpan={4} className="h-32 text-center">
+                                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-[var(--color-brand-purple)]" />
                                     </TableCell>
                                 </TableRow>
                             ) : users.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
-                                        No hay usuarios secundarios registrados.
+                                    <TableCell colSpan={4} className="h-32 text-center text-slate-400 font-medium">
+                                        No hay usuarios registrados.
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                users.map((user) => (
-                                    <TableRow key={user.id}>
-                                        <TableCell>
-                                            <div className="flex flex-col">
-                                                <span className="font-medium text-slate-900">{user.firstName}</span>
-                                                <span className="text-xs text-muted-foreground">{user.email}</span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            {user.phone ? (
-                                                <a
-                                                    href={`https://wa.me/${user.phone.replace(/\D/g, '')}`}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-green-600 transition-colors group"
-                                                >
-                                                    <span className="h-5 w-5 rounded-full bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
-                                                        <svg className="h-3 w-3 fill-green-600" viewBox="0 0 24 24">
-                                                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.94 3.659 1.437 5.63 1.438h.001c6.536 0 11.871-5.335 11.874-11.892.003-3.176-1.233-6.162-3.483-8.411z" />
-                                                        </svg>
-                                                    </span>
-                                                    {user.phone}
-                                                </a>
-                                            ) : (
-                                                <span className="text-xs text-muted-foreground italic">No asignado</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant={user.isPrincipal ? "default" : "secondary"} className="font-medium">
-                                                {PREDEFINED_ROLES.find(r => r.id === user.role)?.name || user.role}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
-                                                Activo
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon">
-                                                        <MoreHorizontal className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                    <DropdownMenuItem onClick={() => handleEdit(user)}>
-                                                        <Shield className="mr-2 h-4 w-4" /> Editar Usuario / Permisos
-                                                    </DropdownMenuItem>
-                                                    {!user.isPrincipal && (
-                                                        <>
-                                                            <DropdownMenuSeparator />
-                                                            <DropdownMenuItem
-                                                                className="text-destructive"
-                                                                onClick={() => handleDelete(user.id)}
-                                                            >
-                                                                <Trash2 className="mr-2 h-4 w-4" /> Eliminar
-                                                            </DropdownMenuItem>
-                                                        </>
+                                users.map((u) => {
+                                    const roleInfo = PREDEFINED_ROLES.find(r => r.id === u.role)
+                                    const roleName = roleInfo?.name || u.role
+                                    
+                                    // Custom badge colors
+                                    const getRoleBadgeClasses = (roleId: string) => {
+                                        if (u.isPrincipal) return "bg-[#1E1B4B] text-white border-none px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wide"
+                                        if (roleId === 'SECONDARY_MANAGER') return "bg-[#5467FA] text-white border-none px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wide"
+                                        if (roleId === 'SECONDARY_STAFF') return "bg-[var(--color-brand-purple)] text-white border-none px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wide"
+                                        return "bg-slate-100 text-slate-600 border-none px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wide"
+                                    }
+
+                                    return (
+                                        <TableRow key={u.id} className="border-slate-100 hover:bg-slate-50/30 transition-colors">
+                                            <TableCell className="py-4">
+                                                <div className="flex flex-col gap-0.5">
+                                                    <span className="font-bold text-slate-900">{u.firstName}</span>
+                                                    <span className="text-xs text-slate-400 font-medium lowercase tracking-tight">{u.email}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex flex-col gap-1.5">
+                                                    {u.phone ? (
+                                                        <a
+                                                            href={`https://wa.me/${u.phone.replace(/\D/g, '')}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center gap-2 group"
+                                                        >
+                                                            <div className="h-7 w-7 rounded-full bg-green-50 flex items-center justify-center group-hover:bg-green-100 transition-colors">
+                                                                <svg className="h-3.5 w-3.5 fill-green-600" viewBox="0 0 24 24">
+                                                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.94 3.659 1.437 5.63 1.438h.001c6.536 0 11.871-5.335 11.874-11.892.003-3.176-1.233-6.162-3.483-8.411z" />
+                                                                </svg>
+                                                            </div>
+                                                            <span className="text-sm font-medium text-slate-500 group-hover:text-green-600 transition-colors">
+                                                                {u.phone}
+                                                            </span>
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-300 italic font-medium">No contact</span>
                                                     )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex flex-col gap-2">
+                                                    <Badge className={getRoleBadgeClasses(u.role)}>
+                                                        {roleName}
+                                                        {u.isPrincipal && " (Admin)"}
+                                                    </Badge>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-4">
+                                                <div className="flex items-center justify-end gap-3 pr-2">
+                                                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50/50 font-bold text-[10px] tracking-tight px-3 py-0.5 rounded-full">
+                                                        Activo
+                                                    </Badge>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-100">
+                                                                <MoreHorizontal className="h-4 w-4 text-slate-400" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="rounded-xl border-slate-100 shadow-xl">
+                                                            <DropdownMenuLabel className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-3 py-2">Acciones</DropdownMenuLabel>
+                                                            <DropdownMenuItem onClick={() => handleEdit(u)} className="rounded-lg mx-1 cursor-pointer">
+                                                                <Shield className="mr-2 h-4 w-4 text-slate-400" /> 
+                                                                <span className="font-bold text-slate-700">Editar Permisos</span>
+                                                            </DropdownMenuItem>
+                                                            {!u.isPrincipal && (
+                                                                <>
+                                                                    <DropdownMenuSeparator className="bg-slate-50" />
+                                                                    <DropdownMenuItem
+                                                                        className="text-destructive focus:text-destructive rounded-lg mx-1 cursor-pointer"
+                                                                        onClick={() => handleDelete(u.id)}
+                                                                    >
+                                                                        <Trash2 className="mr-2 h-4 w-4" /> 
+                                                                        <span className="font-bold">Eliminar</span>
+                                                                    </DropdownMenuItem>
+                                                                </>
+                                                            )}
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </div>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })
                             )}
                         </TableBody>
                     </Table>
                 </div>
 
                 {/* Mobile Card View */}
-                <div className="md:hidden divide-y">
+                <div className="md:hidden divide-y divide-slate-100">
                     {isLoading ? (
-                        <div className="p-8 text-center">
-                            <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                        <div className="p-8 text-center text-[var(--color-brand-purple)]">
+                            <Loader2 className="h-8 w-8 animate-spin mx-auto" />
                         </div>
                     ) : users.length === 0 ? (
-                        <div className="p-8 text-center text-muted-foreground">
+                        <div className="p-8 text-center text-slate-400 font-medium">
                             No hay usuarios registrados.
                         </div>
                     ) : (
-                        users.map((user) => (
-                            <div key={user.id} className="p-4 space-y-3">
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-medium">{user.firstName}</p>
-                                        <p className="text-xs text-muted-foreground">{user.email}</p>
+                        users.map((u) => {
+                            const roleInfo = PREDEFINED_ROLES.find(r => r.id === u.role)
+                            const roleName = roleInfo?.name || u.role
+                            
+                            return (
+                                <div key={u.id} className="p-5 space-y-4 hover:bg-slate-50/50 transition-colors">
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex flex-col gap-0.5">
+                                            <p className="font-bold text-slate-900">{u.firstName}</p>
+                                            <p className="text-xs text-slate-400 font-medium">{u.email}</p>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => handleEdit(u)}>
+                                                <Shield className="h-4 w-4 text-slate-400" />
+                                            </Button>
+                                            {!u.isPrincipal && (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => handleDelete(u.id)}
+                                                    className="text-destructive h-8 w-8 rounded-full"
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            )}
+                                        </div>
                                     </div>
-                                    {!user.isPrincipal && (
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={() => handleDelete(user.id)}
-                                            className="text-destructive"
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <Badge className={
+                                            u.isPrincipal ? "bg-[#1E1B4B] text-white border-none" :
+                                            u.role === 'SECONDARY_MANAGER' ? "bg-[#5467FA] text-white border-none" :
+                                            "bg-[var(--color-brand-purple)] text-white border-none"
+                                        }>
+                                            {roleName}
+                                            {u.isPrincipal && " (Admin)"}
+                                        </Badge>
+                                        <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50/50 text-[10px] font-bold px-2.5">
+                                            Activo
+                                        </Badge>
+                                    </div>
+                                    {u.phone && (
+                                        <a
+                                            href={`https://wa.me/${u.phone.replace(/\D/g, '')}`}
+                                            className="inline-flex items-center gap-2 text-xs font-bold text-green-600 hover:text-green-700 bg-green-50/50 px-3 py-1.5 rounded-full transition-colors"
                                         >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
+                                            <svg className="h-3 w-3 fill-green-600" viewBox="0 0 24 24">
+                                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L0 24l6.335-1.662c1.72.94 3.659 1.437 5.63 1.438h.001c6.536 0 11.871-5.335 11.874-11.892.003-3.176-1.233-6.162-3.483-8.411z" />
+                                            </svg>
+                                            <span>WhatsApp: {u.phone}</span>
+                                        </a>
                                     )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Badge variant={user.isPrincipal ? "default" : "secondary"}>
-                                        {PREDEFINED_ROLES.find(r => r.id === user.role)?.name || user.role}
-                                    </Badge>
-                                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50 text-[10px]">
-                                        Activo
-                                    </Badge>
-                                </div>
-                            </div>
-                        ))
+                            )
+                        })
                     )}
                 </div>
             </div>

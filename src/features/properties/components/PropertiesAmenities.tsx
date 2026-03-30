@@ -19,9 +19,10 @@ import { Sparkles } from "lucide-react"
 import { useEffect, useState } from "react"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { cn } from "@/lib/utils"
+import { PropertyFormData } from "../types"
 
 export function PropertiesAmenities() {
-    const form = useFormContext()
+    const { control, watch, setValue } = useFormContext<PropertyFormData>()
     const [amenities, setAmenities] = useState<CatalogOption[]>([])
 
     useEffect(() => {
@@ -60,46 +61,40 @@ export function PropertiesAmenities() {
             </CardHeader>
             <CardContent>
                 <FormField
-                    control={form.control}
+                    control={control}
                     name="amenities"
                     render={() => (
-                        <FormItem>
-                            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                                {amenities.map((item) => (
-                                    <FormField
-                                        key={item.id}
-                                        control={form.control}
-                                        name="amenities"
-                                        render={({ field }) => {
-                                            return (
-                                                <FormItem
-                                                    key={item.id}
-                                                    className="data-[state=checked]:bg-[var(--color-brand-purple)] data-[state=checked]:border-[var(--color-brand-purple)] rounded-md border p-4"
-                                                >
-                                                    <FormControl>
-                                                        <Checkbox
-                                                            checked={field.value?.includes(item.id)}
-                                                            onCheckedChange={(checked) => {
-                                                                return checked
-                                                                    ? field.onChange([...(field.value || []), item.id])
-                                                                    : field.onChange(
-                                                                        field.value?.filter(
-                                                                            (value: string) => value !== item.id
-                                                                        )
-                                                                    )
-                                                            }}
-                                                        />
-                                                    </FormControl>
-                                                    <FormLabel className="font-normal cursor-pointer text-sm w-full leading-snug">
-                                                        {item.name}
-                                                    </FormLabel>
-                                                </FormItem>
-                                            )
-                                        }}
-                                    />
-                                ))}
-                            </div>
-                        </FormItem>
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                            {amenities.map((item) => (
+                                <FormField
+                                    key={item.id}
+                                    control={control}
+                                    name="amenities"
+                                    render={({ field }) => (
+                                        <FormItem
+                                            key={item.id}
+                                            className="data-[state=checked]:bg-[var(--color-brand-purple)] data-[state=checked]:border-[var(--color-brand-purple)] rounded-md border p-4"
+                                        >
+                                            <FormControl>
+                                                <Checkbox
+                                                    checked={field.value?.includes(item.id)}
+                                                    onCheckedChange={(checked) => {
+                                                        const current = field.value || [];
+                                                        const next = checked
+                                                            ? [...current, item.id]
+                                                            : current.filter((val: any) => val !== item.id);
+                                                        field.onChange(next);
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            <FormLabel className="font-normal cursor-pointer text-sm w-full leading-snug">
+                                                {item.name}
+                                            </FormLabel>
+                                        </FormItem>
+                                    )}
+                                />
+                            ))}
+                        </div>
                     )}
                 />
             </CardContent>

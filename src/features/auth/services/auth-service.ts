@@ -1,8 +1,15 @@
 import { AuthService, LoginFormData, RegisterFormData, User } from "../types"
 import { COUNTRY_CODES } from "../constants"
+import { useAuthStore } from "@/lib/store/auth-store"
 
-const API_URL_AUTH = (process.env.NEXT_PUBLIC_API_URL_HIT || "https://www.kunas.co/api/v1/auth").trim()
-const API_URL_CLIENTS = (process.env.NEXT_PUBLIC_API_URL_GUEST || "https://www.kunas.co/api/v1/clients").trim()
+// Base URLs - endpoints are appended below
+const API_BASE_HIT = (process.env.NEXT_PUBLIC_API_URL_HIT || "https://www.kunas.co/api/v1").trim().replace(/\/$/, '').replace(/\/auth$/, '').replace(/\/hitguest$/, '')
+const API_BASE_HITGUEST = (process.env.NEXT_PUBLIC_API_URL_GUEST || `${API_BASE_HIT}/hitguest`).trim().replace(/\/$/, '')
+
+// Constructed endpoints
+const API_URL_AUTH = `${API_BASE_HIT}/auth`
+const API_URL_ACCOUNT = `${API_BASE_HIT}/account`
+const API_URL_CLIENTS = API_BASE_HITGUEST.includes('/clients') ? API_BASE_HITGUEST : `${API_BASE_HITGUEST}/clients`
 
 // TOGGLE THIS VIA .env (NEXT_PUBLIC_ENABLE_MOCKS)
 const USE_MOCK_AUTH = (process.env.NEXT_PUBLIC_ENABLE_MOCKS || "").trim() === "true"
@@ -11,16 +18,39 @@ const getHeaders = (includeAuth = true) => {
     const headers: any = {
         "Content-Type": "application/json",
         "Accept": "application/json",
+        "Accept-Language": "es",
+        "X-Locale": "es",
+        "X-App-Locale": "es",
     }
 
     if (includeAuth) {
-        const token = (process.env.NEXT_PUBLIC_APP_API_TOKEN || "").trim()
+        const state = useAuthStore.getState()
+        const sessionToken = state.user?.token
+        const envToken = (process.env.NEXT_PUBLIC_APP_API_TOKEN || "").trim()
+        
+        // Prioritize session token from login
+        const token = sessionToken || envToken
+        
         if (token) {
             headers["Authorization"] = `Bearer ${token}`
         }
     }
 
     return headers
+}
+
+const ERROR_MAPPINGS: Record<string, string> = {
+    "errors.validation.client.identification_number.exists": "Este número de identificación ya está registrado.",
+    "errors.validation.client.identificationNumber.exists": "Este número de identificación ya está registrado.",
+    "The email has already been taken.": "Este correo electrónico ya está en uso.",
+    "email_already_registered": "Este correo electrónico ya está en uso.",
+    "auth.otp.invalid": "El código ingresado es inválido o ha expirado.",
+    "auth.otp.expired": "El código ha expirado, por favor solicita uno nuevo.",
+}
+
+const translateError = (msg: string): string => {
+    const trimmed = msg.trim()
+    return ERROR_MAPPINGS[trimmed] || trimmed
 }
 
 class AuthServiceImpl implements AuthService {
@@ -51,32 +81,23 @@ class AuthServiceImpl implements AuthService {
             const headers = getHeaders(true)
             const body = JSON.stringify({ email: normalizedEmail })
 
-            console.log("[AuthService] Request Details:", {
-                url: `${API_URL_AUTH}/login`,
-                headers,
-                body
-            })
-
             const response = await fetch(`${API_URL_AUTH}/login`, {
                 method: "POST",
                 headers,
                 body,
             })
 
-            console.log("[AuthService] Login response status:", response.status)
-
             if (!response.ok) {
                 const errorText = await response.text().catch(() => "No response body")
-                console.error("[AuthService] Login error response:", errorText)
-
+                console.error("[AuthService] Login failed:", errorText)
                 let errorData: any = {}
                 try { errorData = JSON.parse(errorText) } catch (e) { }
 
-                if (response.status === 404) {
-                    throw new Error("No encontramos una cuenta con este correo.")
+                if (errorData.errors) {
+                    const messages = Object.values(errorData.errors).flat().map((msg: any) => translateError(String(msg)))
+                    throw new Error(messages.join(" \n "))
                 }
-
-                throw new Error(errorData.message || `Error del servidor (${response.status})`)
+                throw new Error(translateError(errorData.message || `Error (${response.status})`))
             }
         } catch (error: any) {
             console.error("[AuthService] RequestOtp exception:", error)
@@ -98,46 +119,27 @@ class AuthServiceImpl implements AuthService {
         }
 
         try {
-            console.log("[AuthService] Verifying OTP for:", normalizedEmail)
-            const headers = getHeaders(true) // Re-enabled: server returns 500 without it
-            const body = JSON.stringify({ email: normalizedEmail, otp, otp_code: otp })
-
-            console.log("[AuthService] Verify Request Details:", {
-                url: `${API_URL_AUTH}/verify-otp`,
-                headers,
-                body
-            })
-
             const response = await fetch(`${API_URL_AUTH}/verify-otp`, {
                 method: "POST",
-                headers,
-                body,
+                headers: getHeaders(true),
+                body: JSON.stringify({ email: normalizedEmail, otp }),
             })
-
-            console.log("[AuthService] Verify response status:", response.status)
 
             if (!response.ok) {
                 const errorText = await response.text().catch(() => "No response body")
-                console.error("[AuthService] Verify OTP error response:", errorText)
-
                 let errorData: any = {}
                 try { errorData = JSON.parse(errorText) } catch (e) { }
 
-                if (response.status === 401) {
-                    throw new Error("Código inválido o expirado.")
+                if (errorData.errors) {
+                    const messages = Object.values(errorData.errors).flat().map((msg: any) => translateError(String(msg)))
+                    throw new Error(messages.join(" \n "))
                 }
-
-                throw new Error(errorData.message || `Error de verificación (${response.status})`)
+                throw new Error(translateError(errorData.message || `Error (${response.status})`))
             }
 
             const data = await response.json()
-            console.log("[AuthService] Verify OTP response:", data)
-
             const userResponse = data.user || data.data?.user || data
             const token = data.token || data.data?.token || data.access_token
-
-            // Special mapping for the latest API response structure
-            const firstName = userResponse?.name || "Usuario"
 
             return {
                 id: userResponse?.uuid || userResponse?.id || "USR-DEFAULT",
@@ -145,7 +147,7 @@ class AuthServiceImpl implements AuthService {
                 uuid: userResponse?.uuid || userResponse?.id,
                 token: token,
                 email: userResponse?.email || normalizedEmail,
-                firstName: firstName,
+                firstName: userResponse?.name || "Usuario",
                 role: userResponse?.role || "PRINCIPAL",
                 isPrincipal: userResponse?.isPrincipal ?? true,
                 language: userResponse?.locale || userResponse?.Locale,
@@ -157,45 +159,28 @@ class AuthServiceImpl implements AuthService {
 
     async resendOtp(email: string): Promise<void> {
         const normalizedEmail = email.trim().toLowerCase()
-        if (USE_MOCK_AUTH) {
-            await new Promise((resolve) => setTimeout(resolve, 1000))
-            console.log(`[MOCK API] Resending OTP for ${normalizedEmail}...`)
-            const otp = Math.floor(100000 + Math.random() * 900000).toString()
-            this.simulatedOtps.set(normalizedEmail, otp)
-            console.log(`[MOCK API] New OTP: ${otp}`)
-            return
-        }
-
         try {
-            console.log("[AuthService] Resending OTP for:", normalizedEmail)
-            const headers = getHeaders(true) // Re-enabled: server returns 500 without it
-            const body = JSON.stringify({ email: normalizedEmail })
-
-            console.log("[AuthService] Resend Request Details:", {
-                url: `${API_URL_AUTH}/resend-otp`,
-                headers,
-                body
-            })
-
             const response = await fetch(`${API_URL_AUTH}/resend-otp`, {
                 method: "POST",
-                headers,
-                body,
+                headers: getHeaders(true),
+                body: JSON.stringify({ email: normalizedEmail }),
             })
-
-            console.log("[AuthService] Resend response status:", response.status)
-
-            if (response.status === 429) {
-                throw new Error("Por favor espera unos minutos antes de solicitar otro código.")
-            }
 
             if (!response.ok) {
                 const errorText = await response.text().catch(() => "No response body")
-                console.error("[AuthService] Resend error response:", errorText)
                 let errorData: any = {}
                 try { errorData = JSON.parse(errorText) } catch (e) { }
-                throw new Error(errorData.message || `Error al reenviar OTP (${response.status})`)
+
+                if (errorData.errors) {
+                    const messages = Object.values(errorData.errors).flat().map((msg: any) => translateError(String(msg)))
+                    throw new Error(messages.join(" \n "))
+                }
+                throw new Error(translateError(errorData.message || `Error (${response.status})`))
             }
+            
+            // MOCK OTP for development as per user request
+            this.simulatedOtps.set(normalizedEmail, "000000")
+            console.log(`[AuthService] MOCK OTP generated for ${normalizedEmail}: 000000`)
         } catch (error: any) {
             console.error("[AuthService] ResendOtp exception:", error)
             throw new Error(error.message || "Error de conexión")
@@ -216,34 +201,53 @@ class AuthServiceImpl implements AuthService {
         try {
             const payload = {
                 personTypeId: parseInt(data.person_type_id),
+                name: data.person_type_id === "2" ? (data.companyName || "").trim() : data.name.trim(),
+                lastname: data.person_type_id === "2" ? "-" : (data.lastname?.trim() || "-"),
                 identificationTypeId: parseInt(data.identificationTypeId),
-                identificationNumber: data.identificationNumber,
-                name: data.person_type_id === "2" ? data.companyName : data.name,
-                lastname: data.person_type_id === "2" ? "-" : (data.lastname || "-"),
-                email: data.email,
-                phone: data.phone,
-                city: data.city,
-                state: data.state,
-                countryId: parseInt(data.country),
+                identificationNumber: data.identificationNumber.trim(),
+                email: data.email.trim().toLowerCase(),
+                phone: data.phone.trim(),
+                city: data.city.trim(),
+                state: data.state.trim(),
+                countryId: parseInt(data.country) || 48,
             }
 
             const headers = getHeaders()
+            console.log("[AuthService] Registration URL:", `${API_URL_ACCOUNT}/register`)
             console.log("[AuthService] Sending registration payload:", payload)
             console.log("[AuthService] Using headers:", headers)
 
-            const response = await fetch(API_URL_CLIENTS, {
+            const response = await fetch(`${API_URL_ACCOUNT}/register`, {
                 method: "POST",
                 headers: headers,
                 body: JSON.stringify(payload),
             })
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}))
-                console.error("[AuthService] Registration failed:", errorData)
-                throw new Error(errorData.message || errorData.error || `Error en el registro (${response.status})`)
+                const errorText = await response.text().catch(() => "No response body")
+                console.error("[AuthService] Registration failed (status " + response.status + "):", errorText)
+
+                let errorData: any = {}
+                try { errorData = JSON.parse(errorText) } catch (e) { /* not JSON */ }
+
+                // Collect and translate all validation errors
+                if (errorData.errors) {
+                    const messages = Object.values(errorData.errors)
+                        .flat()
+                        .map((msg: any) => translateError(String(msg)))
+                    throw new Error(messages.join(" \n "))
+                }
+
+                throw new Error(translateError(errorData.message || errorData.error || `Error en el registro (${response.status})`))
             }
 
+            const responseData = await response.json().catch(() => ({}))
+            console.log("[AuthService] Registration successful response:", responseData)
             console.log("[AuthService] Registration successful, OTP should have been sent to:", data.email)
+
+            // MOCK OTP for development as per user request
+            this.simulatedOtps.set(data.email.trim().toLowerCase(), "000000")
+            console.log(`[AuthService] MOCK OTP generated for ${data.email}: 000000`)
         } catch (error: any) {
             console.error("[AuthService] Registration exception:", error)
             throw new Error(error.message || "Error de conexión durante el registro")
@@ -255,7 +259,17 @@ class AuthServiceImpl implements AuthService {
     }
 
     async logout(): Promise<void> {
-        return Promise.resolve()
+        if (USE_MOCK_AUTH) return Promise.resolve()
+        
+        try {
+            const response = await fetch(`${API_URL_AUTH}/logout`, {
+                method: "POST",
+                headers: getHeaders(true)
+            })
+            console.log("[AuthService] Logout response status:", response.status)
+        } catch (error) {
+            console.error("[AuthService] Logout error:", error)
+        }
     }
 }
 

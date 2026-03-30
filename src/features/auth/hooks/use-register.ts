@@ -125,6 +125,7 @@ export function useRegister() {
         isSuccess,
         registeredEmail,
         error,
+        setError,
         onRegister: form.handleSubmit(onRegister),
         onVerifyOtp,
         onResendOtp,

@@ -3,8 +3,8 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2, Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, Upload, X, Shield } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Loader2, Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, Shield } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -21,7 +21,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     Tabs,
@@ -41,7 +41,9 @@ import {
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
+    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
@@ -52,49 +54,12 @@ import { PropertiesAmenities } from "./PropertiesAmenities"
 import { PropertiesAutomation } from "./PropertiesAutomation"
 import { PropertiesPolicies } from "./PropertiesPolicies"
 import { Switch } from "@/components/ui/switch"
-import { deleteProperty, updateProperty, createProperty } from "../services/properties"
-import { AlertCircle } from "lucide-react"
+import { propertyFormSchema, PropertyFormData, apiResponseToFormData } from "../types"
+import { propertiesService } from "../services/properties-service"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { groupTimezonesByRegion } from "@/lib/catalog-utils"
 import { GroupedCatalogOption } from "@/types/catalogs"
-import { useEffect } from "react"
-import { useSearchParams } from "next/navigation"
-import { SelectGroup, SelectLabel } from "@/components/ui/select"
-
-const propertySchema = z.object({
-    name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-    external_id: z.string().optional(),
-    description: z.string().optional(),
-    email: z.string().email("Email inválido"),
-    phone: z.string().optional(),
-    address: z.string().min(5, "La dirección es obligatoria"),
-    address_detail: z.string().optional(),
-    city: z.string().min(2, "La ciudad es obligatoria"),
-    state: z.string().optional(),
-    country_id: z.number(),
-    latitude: z.number().optional(),
-    longitude: z.number().optional(),
-    timezone: z.string().min(1, "La zona horaria es obligatoria"),
-    status_record_id: z.number(),
-    
-    // Fields that will be stored in 'extra'
-    type: z.string().optional(),
-    thumbnailUrl: z.string().optional(),
-    startPrice: z.number().min(0).optional(),
-    currency: z.string().optional(),
-    roomTypes: z.array(z.any()).optional(),
-    units: z.array(z.any()).optional(),
-    policies: z.array(z.any()).optional(),
-    amenities: z.array(z.union([z.string(), z.number()])).optional(),
-    images: z.array(z.string()).optional(),
-    automationSettings: z.object({
-        welcome_message: z.boolean(),
-        checkin_instructions: z.boolean(),
-        digital_key: z.boolean(),
-        online_checkin: z.boolean(),
-        cleaning_task: z.boolean(),
-    }).optional(),
-})
+import { AlertCircle } from "lucide-react"
 
 interface PropertyFormProps {
     initialData?: any
@@ -130,8 +95,8 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         fetchCatalogs()
     }, [])
 
-    const form = useForm<z.infer<typeof propertySchema>>({
-        resolver: zodResolver(propertySchema),
+    const form = useForm<PropertyFormData>({
+        resolver: zodResolver(propertyFormSchema) as any,
         defaultValues: initialData ? {
             ...initialData,
             name: initialData.name || "",
@@ -140,28 +105,31 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             email: initialData.email || "",
             phone: initialData.phone || "",
             address: initialData.address || "",
-            address_detail: initialData.address_detail || "",
+            addressDetail: initialData.address_detail || "",
             city: initialData.city || "",
             state: initialData.state || "",
-            country_id: initialData.country_id || 1,
+            countryId: initialData.country_id || 48,
             timezone: initialData.timezone || "",
-            status_record_id: initialData.status_record_id || 1,
+            statusRecordId: initialData.status_record_id || 6,
 
-            // Parse latitude/longitude from geo_location string "lat,lng"
-            latitude: initialData.geo_location ? parseFloat(initialData.geo_location.split(',')[0]) : 10.3910,
-            longitude: initialData.geo_location ? parseFloat(initialData.geo_location.split(',')[1]) : -75.4794,
+            // Parse latitude/longitude from geo_location string "lat,lng" 
+            // or use defaults
+            latitude: initialData.latitude ? parseFloat(initialData.latitude) : 
+                     (initialData.geo_location ? parseFloat(initialData.geo_location.split(',')[0]) : 0),
+            longitude: initialData.longitude ? parseFloat(initialData.longitude) :
+                      (initialData.geo_location ? parseFloat(initialData.geo_location.split(',')[1]) : 0),
             
             // Map from extra
             type: initialData.extra?.type || "HOTEL",
-            thumbnailUrl: initialData.extra?.thumbnailUrl || "",
-            startPrice: initialData.extra?.startPrice || 0,
+            thumbnailUrl: initialData.extra?.thumbnail_url || initialData.extra?.thumbnailUrl || "",
+            startPrice: initialData.extra?.start_price || initialData.extra?.startPrice || 0,
             currency: initialData.extra?.currency || "COP",
-            roomTypes: initialData.extra?.roomTypes || [],
+            roomTypes: initialData.extra?.room_types || initialData.extra?.roomTypes || [],
             units: initialData.units || [],
             policies: initialData.extra?.policies || [],
             amenities: initialData.extra?.amenities || [],
-            images: initialData.extra?.images || [],
-            automationSettings: initialData.extra?.automationSettings || {
+            picturesUrl: initialData.extra?.pictures_url || initialData.extra?.picturesUrl || [],
+            automationSettings: initialData.extra?.automation_settings || initialData.extra?.automationSettings || {
                 welcome_message: true,
                 checkin_instructions: true,
                 digital_key: false,
@@ -175,71 +143,43 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             email: "",
             phone: "",
             address: "",
-            address_detail: "",
+            addressDetail: "",
             city: "",
             state: "",
-            country_id: 1,
-            geo_location: "10.3910,-75.4794",
+            countryId: 48,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            status_record_id: 1,
+            statusRecordId: 6,
             type: "HOTEL",
-            thumbnailUrl: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&auto=format&fit=crop&q=60",
+            thumbnailUrl: "",
             startPrice: 0,
             currency: "COP",
-            roomTypes: [],
+            latitude: 10.3910,
+            longitude: -75.4794,
+            amenities: [],
+            picturesUrl: [],
             units: [],
             policies: [],
-            amenities: [],
-            images: [],
+            roomTypes: [],
             automationSettings: {
                 welcome_message: true,
                 checkin_instructions: true,
                 digital_key: false,
                 online_checkin: true,
                 cleaning_task: true,
-            },
-        },
+            }
+        }
     })
 
-    async function onSubmit(values: z.infer<typeof propertySchema>) {
+    async function onSubmit(values: PropertyFormData) {
         setIsLoading(true)
         try {
-            // Map flat form values to Property structure with extra JSON
-            const propertyData: any = {
-                name: values.name,
-                external_id: values.external_id,
-                description: values.description,
-                email: values.email,
-                phone: values.phone,
-                address: values.address,
-                address_detail: values.address_detail,
-                city: values.city,
-                state: values.state,
-                country_id: values.country_id,
-                geo_location: `${values.latitude},${values.longitude}`,
-                timezone: values.timezone,
-                status_record_id: values.status_record_id,
-                extra: {
-                    type: values.type,
-                    thumbnailUrl: values.thumbnailUrl,
-                    startPrice: values.startPrice,
-                    currency: values.currency,
-                    roomTypes: values.roomTypes,
-                    policies: values.policies,
-                    amenities: values.amenities,
-                    images: values.images,
-                    automationSettings: values.automationSettings,
-                },
-                units: values.units // In a real app, this would be handled separately
-            }
-
-            if (initialData?.id) {
-                await updateProperty(initialData.id, propertyData)
+            if (initialData?.uuid) {
+                await propertiesService.update(initialData.uuid, values)
                 toast.success("Propiedad actualizada", {
                     description: `${values.name} ha sido actualizada exitosamente.`,
                 })
             } else {
-                await createProperty(propertyData)
+                await propertiesService.create(values)
                 toast.success("Propiedad creada", {
                     description: `${values.name} ha sido creada exitosamente.`,
                 })
@@ -255,10 +195,12 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     }
 
     async function onDelete() {
-        if (!initialData?.id) return
+        const uuidToDelete = initialData?.uuid || initialData?.id // Service expects uuid
+        if (!uuidToDelete) return
+        
         setIsDeleting(true)
         try {
-            await deleteProperty(initialData.id)
+            await propertiesService.delete(uuidToDelete)
             toast.success("Propiedad eliminada", {
                 description: "La propiedad ha sido eliminada exitosamente.",
             })
@@ -274,7 +216,18 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     }
 
     const onInvalid = (errors: any) => {
-        console.error("Validation errors:", errors)
+        console.group("Property Form Validation Failures")
+        console.error("Errors object:", errors)
+        console.log("Stringified Errors:", JSON.stringify(errors, null, 2))
+        console.log("Current Form Values:", form.getValues())
+        console.log("Form State:", {
+            isDirty: form.formState.isDirty,
+            isValid: form.formState.isValid,
+            isSubmitting: form.formState.isSubmitting,
+            errors: form.formState.errors
+        })
+        console.log("Field Keys with Errors:", Object.keys(errors))
+        console.groupEnd()
         setIsValidationErrorOpen(true)
     }
 
@@ -436,7 +389,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     />
                                     <FormField
                                         control={form.control}
-                                        name="status_record_id"
+                                        name="statusRecordId"
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Estado</FormLabel>
@@ -504,7 +457,10 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                                     <Input 
                                                         type="number" 
                                                         {...field} 
-                                                        onChange={e => field.onChange(parseFloat(e.target.value))}
+                                                        onChange={e => {
+                                                            const val = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                                                            field.onChange(isNaN(val) ? 0 : val);
+                                                        }}
                                                         onKeyDown={(e) => {
                                                             if (["e", "E", "+", "-"].includes(e.key)) {
                                                                 e.preventDefault();

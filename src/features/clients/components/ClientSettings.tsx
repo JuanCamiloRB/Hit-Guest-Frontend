@@ -14,6 +14,14 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { catalogService, CatalogOption } from "../../auth/services/catalog-service"
 import { useEffect, useState } from "react"
 import { Loader2, Building2, CreditCard, Mail, Phone, MapPin, Building, Globe } from "lucide-react"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
@@ -48,6 +56,7 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
     const [isLoading, setIsLoading] = useState(true)
     const [isSaving, setIsSaving] = useState(false)
     const [client, setClient] = useState<Client | null>(null)
+    const [countries, setCountries] = useState<CatalogOption[]>([])
 
     const form = useForm<ClientFormValues>({
         resolver: zodResolver(clientSchema) as any,
@@ -63,26 +72,30 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
     })
 
     useEffect(() => {
-        async function fetchClient() {
+        async function fetchData() {
             try {
-                const data = await clientService.getClient(clientId)
-                setClient(data)
+                const [clientData, countriesData] = await Promise.all([
+                    clientService.getClient(clientId),
+                    catalogService.getCountries()
+                ])
+                setClient(clientData)
+                setCountries(countriesData)
                 form.reset({
-                    name: data.name,
-                    taxId: data.taxId || "",
-                    address: data.address || "",
-                    city: data.city || "",
-                    country: data.country || "",
-                    phone: data.phone || "",
-                    email: data.email || "",
+                    name: clientData.name,
+                    taxId: clientData.taxId || "",
+                    address: clientData.address || "",
+                    city: clientData.city || "",
+                    country: clientData.country || "",
+                    phone: clientData.phone || "",
+                    email: clientData.email || "",
                 })
             } catch (error) {
-                toast.error("Error al cargar los datos del hotel")
+                toast.error("Error al cargar los datos")
             } finally {
                 setIsLoading(false)
             }
         }
-        fetchClient()
+        fetchData()
     }, [clientId, form])
 
     async function onSubmit(data: ClientFormValues) {
@@ -109,18 +122,15 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-xl">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-2xl">
                 <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Nombre del Alojamiento / Empresa</FormLabel>
+                            <FormLabel className="text-slate-900 font-bold">Nombre del Alojamiento / Empresa</FormLabel>
                             <FormControl>
-                                <div className="relative group">
-                                    <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
-                                    <Input placeholder="Hotel ..." {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
-                                </div>
+                                <Input placeholder="Hotel ..." {...field} className="h-11 bg-white border-slate-200 rounded-xl focus-visible:ring-[var(--color-brand-purple)] focus-visible:border-[var(--color-brand-purple)]" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -132,30 +142,24 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                     name="taxId"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>NIT / RUT / Tax ID</FormLabel>
+                            <FormLabel className="text-slate-900 font-bold">NIT / RUT / Tax ID</FormLabel>
                             <FormControl>
-                                <div className="relative group">
-                                    <CreditCard className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
-                                    <Input placeholder="900.123.456-1" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
-                                </div>
+                                <Input placeholder="900.123.456-1" {...field} className="h-11 bg-white border-slate-200 rounded-xl focus-visible:ring-[var(--color-brand-purple)] focus-visible:border-[var(--color-brand-purple)]" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                         control={form.control}
                         name="email"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Correo Institucional</FormLabel>
+                                <FormLabel className="text-slate-900 font-bold">Correo Institucional</FormLabel>
                                 <FormControl>
-                                    <div className="relative group">
-                                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
-                                        <Input placeholder="contacto@hotel.com" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
-                                    </div>
+                                    <Input placeholder="contacto@hotel.com" {...field} className="h-11 bg-white border-slate-200 rounded-xl focus-visible:ring-[var(--color-brand-purple)] focus-visible:border-[var(--color-brand-purple)]" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -166,12 +170,13 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                         name="phone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Teléfono de Contacto</FormLabel>
+                                <FormLabel className="text-slate-900 font-bold">Teléfono de Contacto</FormLabel>
                                 <FormControl>
                                     <PhoneInputField
                                         value={field.value}
                                         onChange={field.onChange}
                                         placeholder="300 123 4567"
+                                        className="h-11 rounded-xl"
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -185,30 +190,24 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                     name="address"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Dirección Principal</FormLabel>
+                            <FormLabel className="text-slate-900 font-bold">Dirección Principal</FormLabel>
                             <FormControl>
-                                <div className="relative group">
-                                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
-                                    <Input placeholder="Calle ..." {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
-                                </div>
+                                <Input placeholder="Calle ..." {...field} className="h-11 bg-white border-slate-200 rounded-xl focus-visible:ring-[var(--color-brand-purple)]" />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
                     )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField
                         control={form.control}
                         name="city"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Ciudad</FormLabel>
+                                <FormLabel className="text-slate-900 font-bold">Ciudad</FormLabel>
                                 <FormControl>
-                                    <div className="relative group">
-                                        <Building className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
-                                        <Input placeholder="Santa Marta" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
-                                    </div>
+                                    <Input placeholder="Santa Marta" {...field} className="h-11 bg-white border-slate-200 rounded-xl focus-visible:ring-[var(--color-brand-purple)]" />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -219,27 +218,37 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                         name="country"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>País</FormLabel>
-                                <FormControl>
-                                    <div className="relative group">
-                                        <Globe className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
-                                        <Input placeholder="Colombia" {...field} className="pl-9 focus-visible:ring-[var(--color-brand-blue)]" />
-                                    </div>
-                                </FormControl>
+                                <FormLabel className="text-slate-900 font-bold">País</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-11 bg-white border-slate-200 rounded-xl focus:ring-[var(--color-brand-purple)]">
+                                            <SelectValue placeholder="Selecciona un país" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent className="rounded-xl shadow-xl border-slate-100 max-h-[200px]">
+                                        {countries.map((country) => (
+                                            <SelectItem key={country.id} value={country.name} className="cursor-pointer focus:bg-[var(--color-brand-purple)]/5 transition-colors">
+                                                {country.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
                 </div>
 
-                <Button
-                    type="submit"
-                    disabled={isSaving}
-                    className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300"
-                >
-                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
-                    Guardar Cambios del Alojamiento
-                </Button>
+                <div className="pt-4 flex flex-col sm:flex-row gap-4">
+                    <Button
+                        type="submit"
+                        disabled={isSaving}
+                        className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-black uppercase tracking-widest px-8 md:w-auto w-full h-11 rounded-xl shadow-lg shadow-[var(--color-brand-purple)]/20 hover:shadow-xl hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300 transform active:scale-[0.98]"
+                    >
+                        {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
+                        Guardar Cambios del Alojamiento
+                    </Button>
+                </div>
             </form>
         </Form>
     )

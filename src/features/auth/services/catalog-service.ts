@@ -1,10 +1,21 @@
+import { useAuthStore } from "@/lib/store/auth-store"
 import { apiClient } from "@/lib/api-client"
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL_GUEST?.replace("/auth", "") || "https://www.kunas.co/api/v1").trim()
-const APP_API_TOKEN = (process.env.NEXT_PUBLIC_APP_API_TOKEN || "").trim()
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL_HIT || process.env.NEXT_PUBLIC_API_URL_GUEST || "https://www.kunas.co/api/v1")
+    .trim()
+    .replace(/\/$/, '')
+    .replace(/\/auth$/, '')
+    .replace(/\/hitguest$/, '')
 
-const DEFAULT_HEADERS = {
-    "Authorization": `Bearer ${APP_API_TOKEN}`
+const getHeaders = () => {
+    const state = useAuthStore.getState()
+    const sessionToken = state.user?.token
+    const envToken = (process.env.NEXT_PUBLIC_APP_API_TOKEN || "").trim()
+    const token = sessionToken || envToken
+    
+    return {
+        "Authorization": `Bearer ${token}`
+    }
 }
 
 export interface CatalogOption {
@@ -21,7 +32,7 @@ export class CatalogService {
         try {
             const response = await fetch(url, { 
                 headers: {
-                    ...DEFAULT_HEADERS,
+                    ...getHeaders(),
                     "Accept-Language": currentLang,
                     "X-Locale": currentLang,
                     "X-App-Locale": currentLang
@@ -84,7 +95,7 @@ export class CatalogService {
         try {
             const response = await fetch(url, { 
                 headers: {
-                    ...DEFAULT_HEADERS,
+                    ...getHeaders(),
                     "Accept-Language": lang,
                     "X-Locale": lang,
                     "X-App-Locale": lang
@@ -121,7 +132,7 @@ export class CatalogService {
         // Based on user: GET api/v1/catalogs/category/timezones
         const url = `${API_BASE_URL}/catalogs/category/timezones`
         try {
-            const response = await fetch(url, { headers: DEFAULT_HEADERS })
+            const response = await fetch(url, { headers: getHeaders() })
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
 
             const result = await response.json()

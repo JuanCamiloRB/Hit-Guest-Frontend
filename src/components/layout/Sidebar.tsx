@@ -13,7 +13,6 @@ import {
     Users,
     Menu,
     Home,
-    Zap,
     Puzzle,
     MoreVertical,
     LogOut,
@@ -30,6 +29,8 @@ import { useState } from "react"
 import * as React from "react"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { Avatar as UiAvatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+
+import { Logo } from "@/components/ui/Logo"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> { }
 
@@ -53,13 +54,13 @@ export function Sidebar({ className }: SidebarProps) {
             label: "Operaciones",
             icon: CalendarDays,
             href: "/dashboard/reservations",
-            active: pathname.startsWith("/dashboard/reservations"),
+            active: pathname?.startsWith("/dashboard/reservations"),
         },
         {
             label: "Propiedades",
             icon: Home,
             href: "/dashboard/properties",
-            active: pathname.startsWith("/dashboard/properties"),
+            active: pathname?.startsWith("/dashboard/properties"),
         },
     ]
 
@@ -68,69 +69,83 @@ export function Sidebar({ className }: SidebarProps) {
             label: "Configuración",
             icon: Settings,
             href: "/dashboard/settings",
-            active: pathname.startsWith("/dashboard/settings"),
+            active: pathname?.startsWith("/dashboard/settings"),
         },
     ]
 
     const renderMenuItems = (items: typeof mainMenu) => (
-        <div className="space-y-1">
-            {items.map((item) => (
-                <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                        "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        item.active
-                            ? "bg-brand-blue text-white"
-                            : "text-white/70 hover:text-white hover:bg-white/5"
-                    )}
-                >
-                    <item.icon className={cn(
-                        "mr-3 h-5 w-5",
-                        item.active ? "text-white" : "text-white/60 group-hover:text-white"
-                    )} />
-                    {item.label}
-                </Link>
-            ))}
+        <div className="space-y-2.5">
+            {items.map((item) => {
+                const Icon = item.icon;
+                return (
+                    <Link
+                        key={item.href}
+                        href={item.href}
+                        className={cn(
+                            "group flex items-center px-4 py-2.5 text-sm font-bold rounded-xl transition-all duration-200 border",
+                            item.active
+                                ? "bg-white text-[var(--color-brand-purple)] shadow-2xl border-white/20"
+                                : "bg-black/30 text-white hover:bg-black/50 border-white/5 hover:border-white/20"
+                        )}
+                    >
+                        <Icon className={cn(
+                            "mr-3 h-5 w-5 transition-transform duration-200 group-hover:scale-110",
+                            item.active ? "text-[var(--color-brand-purple)]" : "text-white/80 group-hover:text-white"
+                        )} />
+                        {item.label}
+                    </Link>
+                )
+            })}
         </div>
     )
 
+    if (!isMounted) return <div className={cn("hidden md:flex flex-col h-screen bg-brand-purple", className)} />;
+
     return (
-        <div className={cn("flex flex-col h-screen bg-primary text-white border-r border-white/10", className)}>
-            <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8">
-                {/* Logo Section can be here or in Header, image 2 doesn't show it at the top of the menu itself but image 1 shows it in header */}
+        <div className={cn("flex flex-col h-screen bg-brand-purple text-white border-r border-white/10 shadow-2xl overflow-hidden", className)}>
+            <ScrollArea className="flex-1 px-4">
+                <div className="py-8 space-y-8">
+                    {/* Logo Section */}
+                    <div className="px-3 mb-6 flex items-center gap-3">
+                         <Logo variant="full" className="text-white" showText={true} />
+                    </div>
 
-                <section className="space-y-4">
-                    <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-white/40">
-                        Menú Principal
-                    </h3>
-                    {renderMenuItems(mainMenu)}
-                </section>
+                    <section className="space-y-4">
+                        <div className="px-4">
+                            <span className="text-[13px] font-black uppercase tracking-widest text-white/90 block">
+                                Menú Principal
+                            </span>
+                        </div>
+                        {renderMenuItems(mainMenu)}
+                    </section>
 
-                <section className="space-y-4">
-                    <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-white/40">
-                        Sistema
-                    </h3>
-                    {renderMenuItems(systemMenu)}
-                </section>
-            </div>
+                    <section className="space-y-4">
+                        <div className="px-4">
+                            <span className="text-[13px] font-black uppercase tracking-widest text-white/90 block">
+                                Sistema
+                            </span>
+                        </div>
+                        {renderMenuItems(systemMenu)}
+                    </section>
+                </div>
+            </ScrollArea>
 
             {/* Profile Footer */}
-            <div className="p-4 border-t border-white/10 bg-white/5">
+            <div className="p-4 border-t border-white/10 bg-black/40 backdrop-blur-md">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <button className="flex items-center gap-3 w-full hover:bg-white/5 p-2 rounded-lg transition-colors text-left focus:outline-none">
-                            <UiAvatar className="h-10 w-10 border border-white/20">
-                                <AvatarFallback className="bg-white/20 text-white font-bold">
-                                    {isMounted ? (user?.firstName?.split(' ').map(n => n[0]).join('').slice(0, 2) || "U") : "H"}
+                        <button className="flex items-center gap-3 w-full hover:bg-black/20 p-3 rounded-xl transition-all text-left focus:outline-none border border-white/5 hover:border-white/20 shadow-inner">
+                            <UiAvatar className="h-10 w-10 border-2 border-white/20 shadow-lg">
+                                <AvatarFallback className="bg-black/40 text-white font-bold">
+                                    {user?.firstName ? user.firstName.slice(0, 2).toUpperCase() : "HG"}
                                 </AvatarFallback>
                             </UiAvatar>
                             <div className="flex flex-col overflow-hidden flex-1">
-                                <p className="text-sm font-semibold text-white truncate">
-                                    {isMounted ? user?.firstName : "HIT Guest"}
+                                <p className="text-sm font-bold text-white truncate">
+                                    {user?.firstName || "Usuario"}
                                 </p>
-                                <p className="text-[10px] font-medium text-white/50 uppercase tracking-tight">
-                                    {isMounted ? "Super Admin" : "Cargando..."}
+                                <p className="text-[10px] font-black text-white/60 uppercase tracking-tighter">
+                                    {user?.role === 'PRINCIPAL' || user?.isPrincipal ? "Super Admin" : "Gestor"}
                                 </p>
                             </div>
                             <MoreVertical className="h-4 w-4 text-white/40" />
@@ -140,13 +155,13 @@ export function Sidebar({ className }: SidebarProps) {
                         <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem asChild>
-                            <Link href="/dashboard/settings" className="flex items-center w-full cursor-pointer">
+                            <Link href="/dashboard/settings?tab=profile" className="flex items-center w-full cursor-pointer">
                                 <Users className="mr-2 h-4 w-4" />
                                 <span>Perfil</span>
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
-                            <Link href="/dashboard/settings" className="flex items-center w-full cursor-pointer">
+                            <Link href="/dashboard/settings?tab=client" className="flex items-center w-full cursor-pointer">
                                 <Settings className="mr-2 h-4 w-4" />
                                 <span>Configuración</span>
                             </Link>

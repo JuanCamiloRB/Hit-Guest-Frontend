@@ -16,7 +16,7 @@ export function DashboardHeader() {
                 <div className="flex items-center text-sm text-muted-foreground mb-1">
                     <span>{t('dashboard.home')}</span>
                     <span className="mx-2">›</span>
-                    <span className="text-indigo-600 font-medium">{t('dashboard.title')}</span>
+                    <span className="text-brand-purple font-medium">{t('dashboard.title')}</span>
                 </div>
                 <h2 className="text-3xl font-bold tracking-tight text-slate-900">{t('dashboard.title')}</h2>
                 <p className="text-muted-foreground mt-1">
@@ -29,7 +29,7 @@ export function DashboardHeader() {
                     {t('dashboard.filters')}
                 </Button>
                 <Button 
-                    className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white gap-2"
+                    className="bg-brand-purple hover:bg-brand-purple/90 text-white gap-2 shadow-lg shadow-brand-purple/20 transition-all"
                     onClick={() => setIsReservationOpen(true)}
                 >
                     <Plus className="h-4 w-4" />

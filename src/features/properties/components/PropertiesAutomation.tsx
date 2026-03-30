@@ -73,8 +73,10 @@ const automationRules = [
     }
 ]
 
+import { PropertyFormData } from "../types"
+
 export function PropertiesAutomation() {
-    const { control } = useFormContext()
+    const { control } = useFormContext<PropertyFormData>()
 
     return (
         <div className="space-y-6">
@@ -122,7 +124,7 @@ export function PropertiesAutomation() {
                                         </div>
                                         <FormField
                                             control={control}
-                                            name={`automationSettings.${rule.id}`}
+                                            name={`automationSettings.${rule.id}` as any}
                                             render={({ field }) => (
                                                 <FormItem className="flex items-center space-x-2">
                                                     <FormControl>

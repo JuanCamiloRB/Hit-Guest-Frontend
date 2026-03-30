@@ -1,6 +1,7 @@
 "use client"
 
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 import {
     Select,
     SelectContent,
@@ -16,13 +17,15 @@ interface PhoneInputProps {
     onChange?: (value: string) => void;
     disabled?: boolean;
     placeholder?: string;
+    className?: string;
 }
 
 export function PhoneInputField({
     value = "",
     onChange,
     disabled = false,
-    placeholder = "300 123 4567"
+    placeholder = "300 123 4567",
+    className
 }: PhoneInputProps) {
 
     let currentCode = "Colombia"
@@ -52,16 +55,24 @@ export function PhoneInputField({
         onChange?.(`${prefix}${newNumber}`)
     }
 
+    const countryObj = COUNTRY_CODES.find(c => c.country === currentCode)
+    const currentFlag = countryObj?.flag || "🇨🇴"
+
     return (
-        <div className="flex gap-3 items-start w-full">
+        <div className={cn("flex gap-3 items-start w-full", className)}>
             <div className="w-[110px] flex-shrink-0">
                 <Select
                     onValueChange={handleCodeChange}
                     value={currentCode}
                     disabled={disabled}
                 >
-                    <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 px-2 group-focus-within:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all">
-                        <SelectValue />
+                    <SelectTrigger className="w-full h-11 rounded-xl border-slate-200 px-3 group-focus-within:ring-[var(--color-brand-purple)]/20 shadow-sm transition-all focus:ring-[var(--color-brand-purple)]">
+                        <SelectValue>
+                            <span className="flex items-center gap-2">
+                                <span>{currentFlag}</span>
+                                <span>{countryObj?.code}</span>
+                            </span>
+                        </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                         {COUNTRY_CODES.map((c) => (
@@ -77,13 +88,13 @@ export function PhoneInputField({
             </div>
             <div className="flex-1">
                 <div className="relative group">
-                    <Phone className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                    <Phone className="absolute left-3 top-3.5 h-4 w-4 text-slate-400 group-focus-within:text-[var(--color-brand-purple)] transition-colors" />
                     <Input
                         placeholder={placeholder}
                         disabled={disabled}
                         value={currentNumber}
                         onChange={handleNumberChange}
-                        className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all w-full"
+                        className="pl-9 h-11 rounded-xl border-slate-200 focus-visible:ring-[var(--color-brand-purple)]/20 focus-visible:border-[var(--color-brand-purple)] shadow-sm transition-all w-full bg-white"
                     />
                 </div>
             </div>

@@ -90,7 +90,9 @@ export function ReservationDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>Open Reservation Dialog</Button>
+                <Button className="bg-brand-purple hover:bg-brand-purple/90 text-white shadow-lg shadow-brand-purple/20 transition-all duration-300">
+                    Open Reservation Dialog
+                </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>

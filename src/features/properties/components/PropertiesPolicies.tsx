@@ -2,6 +2,7 @@
 
 import { Shield, Clock, Info, CheckCircle2 } from "lucide-react"
 import { useFormContext, useFieldArray } from "react-hook-form"
+import { PropertyFormData } from "../types"
 import {
     Card,
     CardContent,

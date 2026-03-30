@@ -46,6 +46,7 @@ import { useState, useEffect } from "react"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
+import { PropertyFormData } from "../types"
 
 const defaultUnit = {
     name: "",
@@ -78,7 +79,7 @@ const defaultUnit = {
 }
 
 export function PropertiesUnits() {
-    const { control, watch } = useFormContext()
+    const { control, watch } = useFormContext<PropertyFormData>()
     const propWifiNetwork = watch("wifiNetwork")
     const propWifiPassword = watch("wifiPassword")
 

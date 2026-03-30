@@ -16,6 +16,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 
+import { PropertyFormData } from "../types"
+
 const MapComponent = dynamic(() => import("./MapComponent"), {
     ssr: false,
     loading: () => (
@@ -26,7 +28,7 @@ const MapComponent = dynamic(() => import("./MapComponent"), {
 })
 
 export function PropertiesLocation() {
-    const form = useFormContext()
+    const form = useFormContext<PropertyFormData>()
     const [isSearching, setIsSearching] = useState(false)
 
     // Default to Cartagena, Colombia if no lat/lng
@@ -130,7 +132,7 @@ export function PropertiesLocation() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
-                        name="address_detail"
+                        name="addressDetail"
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="text-slate-700 font-semibold">Dirección Línea 2 (Opcional)</FormLabel>
@@ -185,7 +187,7 @@ export function PropertiesLocation() {
                     />
                     <FormField
                         control={form.control}
-                        name="country_id"
+                        name="countryId"
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="text-slate-700 font-semibold">País (ID)</FormLabel>
@@ -195,7 +197,10 @@ export function PropertiesLocation() {
                                         className="h-11 border-slate-200"
                                         placeholder="1"
                                         {...field}
-                                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                        onChange={(e) => {
+                                            const val = e.target.value === "" ? 48 : parseInt(e.target.value);
+                                            field.onChange(isNaN(val) ? 48 : val);
+                                        }}
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -218,7 +223,10 @@ export function PropertiesLocation() {
                                             type="number"
                                             className="h-10 bg-white border-slate-200"
                                             {...field}
-                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(parseFloat(e.target.value))}
+                                            onChange={(e) => {
+                                                const val = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                                                field.onChange(isNaN(val) ? 0 : val);
+                                            }}
                                         />
                                     </FormControl>
                                 </FormItem>
@@ -235,7 +243,10 @@ export function PropertiesLocation() {
                                             type="number"
                                             className="h-10 bg-white border-slate-200"
                                             {...field}
-                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(parseFloat(e.target.value))}
+                                            onChange={(e) => {
+                                                const val = e.target.value === "" ? 0 : parseFloat(e.target.value);
+                                                field.onChange(isNaN(val) ? 0 : val);
+                                            }}
                                         />
                                     </FormControl>
                                 </FormItem>

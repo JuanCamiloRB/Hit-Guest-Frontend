@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Mail, User, Building2, Phone, ArrowLeft, CheckCircle2, MapPin } from "lucide-react"
+import { Loader2, Mail, User, Building2, Phone, ArrowLeft, CheckCircle2, MapPin, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -21,6 +21,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 import { useRegister } from "../hooks/use-register"
 import { catalogService, CatalogOption } from "../services/catalog-service"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
@@ -36,6 +44,8 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
         isAwaitingOtp,
         isSuccess,
         registeredEmail,
+        error,
+        setError,
         onRegister,
         onVerifyOtp,
         onResendOtp,
@@ -324,112 +334,112 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Correo electrónico</FormLabel>
+                                    <FormControl>
+                                        <div className="relative group">
+                                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                            <Input
+                                                placeholder="nombre@empresa.com"
+                                                type="email"
+                                                disabled={isLoading}
+                                                className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                {...field}
+                                            />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <div className="grid gap-2">
+                            <FormLabel>{form.watch("person_type_id") === "2" ? "Teléfono de empresa" : "Teléfono"}</FormLabel>
                             <FormField
                                 control={form.control}
-                                name="email"
+                                name="phone"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Correo electrónico</FormLabel>
+                                        <FormControl>
+                                            <PhoneInputField
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                placeholder="300 123 4567"
+                                                disabled={isLoading}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        <FormField
+                            control={form.control}
+                            name="country"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>País</FormLabel>
+                                    {countries.length > 0 ? (
+                                        <Select 
+                                            onValueChange={(val) => {
+                                                field.onChange(val)
+                                                const selected = countries.find(c => c.id === val)
+                                                const prefix = selected?.extra?.phone_prefix || selected?.extra?.dial_code || selected?.extra?.code
+                                                if (prefix) {
+                                                    const currentPhone = form.getValues("phone")
+                                                    if (!currentPhone.startsWith("+")) {
+                                                        form.setValue("phone", `${prefix.startsWith("+") ? prefix : "+" + prefix}${currentPhone}`)
+                                                    }
+                                                }
+                                            }} 
+                                            value={field.value}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all">
+                                                    <SelectValue placeholder="Selecciona un país" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl shadow-xl border-slate-100 max-h-[200px]">
+                                                {countries.map((country) => (
+                                                    <SelectItem key={country.id} value={country.id} className="cursor-pointer focus:bg-[var(--color-brand-blue)]/5 transition-colors">
+                                                        {country.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
                                         <FormControl>
                                             <div className="relative group">
-                                                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                                <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
                                                 <Input
-                                                    placeholder="nombre@empresa.com"
-                                                    type="email"
+                                                    placeholder="Ej: Colombia"
                                                     disabled={isLoading}
                                                     className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
                                                     {...field}
                                                 />
                                             </div>
                                         </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <div className="grid gap-2">
-                                <FormLabel>{form.watch("person_type_id") === "2" ? "Teléfono de empresa" : "Teléfono"}</FormLabel>
-                                <FormField
-                                    control={form.control}
-                                    name="phone"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormControl>
-                                                <PhoneInputField
-                                                    value={field.value}
-                                                    onChange={field.onChange}
-                                                    placeholder="300 123 4567"
-                                                    disabled={isLoading}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
                                     )}
-                                />
-                            </div>
-                        </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="country"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>País</FormLabel>
-                                        {countries.length > 0 ? (
-                                            <Select 
-                                                onValueChange={(val) => {
-                                                    field.onChange(val)
-                                                    const selected = countries.find(c => c.id === val)
-                                                    const prefix = selected?.extra?.phone_prefix || selected?.extra?.dial_code || selected?.extra?.code
-                                                    if (prefix) {
-                                                        const currentPhone = form.getValues("phone")
-                                                        if (!currentPhone.startsWith("+")) {
-                                                            form.setValue("phone", `${prefix.startsWith("+") ? prefix : "+" + prefix}${currentPhone}`)
-                                                        }
-                                                    }
-                                                }} 
-                                                value={field.value}
-                                            >
-                                                <FormControl>
-                                                    <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all">
-                                                        <SelectValue placeholder="País" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent className="rounded-xl shadow-xl border-slate-100">
-                                                    {countries.map((country) => (
-                                                        <SelectItem key={country.id} value={country.id} className="cursor-pointer focus:bg-[var(--color-brand-blue)]/5 transition-colors">
-                                                            {country.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        ) : (
-                                            <FormControl>
-                                                <div className="relative group">
-                                                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
-                                                    <Input
-                                                        placeholder="Ej: Colombia"
-                                                        disabled={isLoading}
-                                                        className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
-                                                        {...field}
-                                                    />
-                                                </div>
-                                            </FormControl>
-                                        )}
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
                                 name="state"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Estado / Depto</FormLabel>
+                                        <FormLabel>Estado / Departamento</FormLabel>
                                         <FormControl>
                                             <Input
-                                                placeholder="Ej: Valle"
+                                                placeholder="Ej: Valle del Cauca"
                                                 disabled={isLoading}
                                                 className="h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
                                                 {...field}
@@ -477,6 +487,40 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                     </div>
                 </form>
             </Form>
+
+            <Dialog open={!!error} onOpenChange={(open) => !open && setError(null)}>
+                <DialogContent className="sm:max-w-[425px] rounded-2xl border-none shadow-2xl">
+                    <DialogHeader>
+                        <div className="flex items-center gap-3 text-destructive mb-2 px-1">
+                            <div className="bg-destructive/10 p-2 rounded-full">
+                                <AlertCircle className="h-6 w-6" />
+                            </div>
+                            <DialogTitle className="text-xl font-bold">Error en el Registro</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-slate-600 px-1 pt-1">
+                            {error}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 my-4 space-y-3">
+                        <p className="text-sm font-medium text-slate-800">
+                            Parece que hubo un inconveniente con los datos ingresados:
+                        </p>
+                        <ul className="text-xs text-slate-600 space-y-2 list-disc pl-5 font-medium">
+                            <li>Verifica que el correo no esté registrado previamente.</li>
+                            <li>Asegúrate de que el número de identificación sea correcto.</li>
+                            <li>Comprueba tu conexión a internet e intenta nuevamente.</li>
+                        </ul>
+                    </div>
+                    <DialogFooter className="px-1 pb-1">
+                        <Button 
+                            className="w-full bg-[var(--color-brand-blue)] hover:bg-[#4a5be0] text-white font-bold h-11 rounded-xl shadow-lg shadow-[var(--color-brand-blue)]/20 transition-all"
+                            onClick={() => setError(null)}
+                        >
+                            Entendido, voy a revisar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }

@@ -20,7 +20,7 @@ export function Logo({ className, variant = "full", showText = true, ...props }:
                 <rect x="0" y="0" width="20" height="70" />
                 <rect x="20" y="30" width="20" height="20" />
                 <rect x="40" y="30" width="20" height="40" />
-                <rect x="40" y="0" width="20" height="20" fill="#9D4CF2" />
+                <rect x="40" y="0" width="20" height="20" fill="currentColor" />
             </svg>
         )
     }
@@ -28,7 +28,7 @@ export function Logo({ className, variant = "full", showText = true, ...props }:
     return (
         <div className={cn("flex items-center gap-2", className)}>
             <svg
-                viewBox="0 0 220 70"
+                viewBox="0 0 250 70"
                 fill="currentColor"
                 xmlns="http://www.w3.org/2000/svg"
                 className="h-10 w-auto"
@@ -42,7 +42,7 @@ export function Logo({ className, variant = "full", showText = true, ...props }:
                 <rect x="40" y="30" width="20" height="40" />
 
                 {/* Purple dot of i */}
-                <rect x="40" y="0" width="20" height="20" fill="#9D4CF2" />
+                <rect x="40" y="0" width="20" height="20" fill="currentColor" />
 
                 {/* T / Gamma shape */}
                 <rect x="70" y="0" width="20" height="70" />

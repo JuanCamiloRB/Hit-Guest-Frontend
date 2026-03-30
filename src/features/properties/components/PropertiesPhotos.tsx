@@ -11,10 +11,11 @@ import {
 import { Upload, X, Camera } from "lucide-react"
 import { useFormContext } from "react-hook-form"
 import { useRef } from "react"
+import { PropertyFormData } from "../types"
 
 export function PropertiesPhotos() {
-    const { watch, setValue } = useFormContext()
-    const images = watch("images") || []
+    const { watch, setValue } = useFormContext<PropertyFormData>()
+    const picturesUrl = watch("picturesUrl") || []
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,12 +25,12 @@ export function PropertiesPhotos() {
             // In a real app, you would upload to a server and get URLs.
             // For now, let's create local blob URLs to preview.
             const newImageUrls = filesArray.map(file => URL.createObjectURL(file))
-            setValue("images", [...images, ...newImageUrls], { shouldValidate: true, shouldDirty: true })
+            setValue("picturesUrl", [...picturesUrl, ...newImageUrls], { shouldValidate: true, shouldDirty: true })
         }
     }
 
     const removeImage = (indexToRemove: number) => {
-        setValue("images", images.filter((_: string, index: number) => index !== indexToRemove), {
+        setValue("picturesUrl", picturesUrl.filter((_: string, index: number) => index !== indexToRemove), {
             shouldValidate: true,
             shouldDirty: true,
         })
@@ -48,7 +49,7 @@ export function PropertiesPhotos() {
             </CardHeader>
             <CardContent>
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                    {images.map((url: string, index: number) => (
+                    {picturesUrl.map((url: string, index: number) => (
                         <div key={index} className="aspect-video relative rounded-md overflow-hidden group border">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
