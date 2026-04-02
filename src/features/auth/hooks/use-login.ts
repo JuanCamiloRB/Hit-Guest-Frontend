@@ -110,10 +110,10 @@ export function useLogin() {
             toast.error("Error de verificación", {
                 description: err.message || "El código ingresado no es válido.",
             })
-        } finally {
             setIsLoading(false)
             setLoading(false)
         }
+
     }
 
     async function onResendOtp() {

@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { PropertyForm } from "@/features/properties/components/PropertyForm"
-import { getPropertyById } from "@/features/properties/services/properties"
+import { propertiesService } from "@/features/properties/services/properties-service"
+import { listingsService } from "@/features/properties/services/listings-service"
+import { apiResponseToFormData } from "@/features/properties/types"
 import { Property } from "@/types"
 import { Loader2 } from "lucide-react"
 
@@ -16,10 +18,38 @@ export default function EditPropertyPage() {
         async function loadProperty() {
             if (typeof id !== "string") return
             try {
-                const data = await getPropertyById(id)
-                setProperty(data)
+                console.log("[EditPropertyPage] Loading property: ", id)
+                
+                // Fetch property and listings in parallel for efficiency
+                const [apiProperty, listings] = await Promise.all([
+                    propertiesService.getByUuid(id),
+                    listingsService.listByProperty(id)
+                ])
+                
+                if (!apiProperty) {
+                    setProperty(null)
+                    return
+                }
+                
+                // Inyect units into the property object for the mapper
+                const propertyWithUnits = {
+                    ...apiProperty,
+                    units: listings || []
+                }
+                
+                // Convert API response to form-ready structure
+                const formData = apiResponseToFormData(propertyWithUnits)
+                
+                // Ensure uuid is preserved for the form's update logic
+                const formInitialData = {
+                    ...formData,
+                    uuid: id
+                }
+                
+                setProperty(formInitialData as any)
             } catch (error) {
-                console.error("Error loading property:", error)
+                console.error("[EditPropertyPage] Error loading property data:", error)
+                setProperty(null)
             } finally {
                 setIsLoading(false)
             }

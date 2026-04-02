@@ -51,6 +51,7 @@ import { PropertiesPhotos } from "./PropertiesPhotos"
 import { PropertiesAmenities } from "./PropertiesAmenities"
 import { PropertiesAutomation } from "./PropertiesAutomation"
 import { Switch } from "@/components/ui/switch"
+<<<<<<< Updated upstream
 import { deleteProperty, updateProperty } from "../services/properties"
 
 const propertySchema = z.object({
@@ -88,6 +89,15 @@ const propertySchema = z.object({
         cleaning_task: z.boolean(),
     }),
 })
+=======
+import { propertyFormSchema, PropertyFormData, apiResponseToFormData } from "../types"
+import { propertiesService } from "../services/properties-service"
+import { listingsService } from "../services/listings-service"
+import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
+import { groupTimezonesByRegion } from "@/lib/catalog-utils"
+import { GroupedCatalogOption } from "@/types/catalogs"
+import { AlertCircle } from "lucide-react"
+>>>>>>> Stashed changes
 
 interface PropertyFormProps {
     initialData?: any
@@ -100,6 +110,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     const [activeTab, setActiveTab] = useState("details")
     const router = useRouter()
 
+<<<<<<< Updated upstream
     const form = useForm<z.infer<typeof propertySchema>>({
         resolver: zodResolver(propertySchema),
         defaultValues: initialData ? {
@@ -122,9 +133,34 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                 cleaning_task: true,
             }
         } : {
+=======
+    useEffect(() => {
+        const tab = searchParams.get("tab")
+        if (tab) {
+            setActiveTab(tab)
+        }
+    }, [searchParams])
+
+    useEffect(() => {
+        const fetchCatalogs = async () => {
+            const [timezones, statuses] = await Promise.all([
+                catalogService.getTimezones(),
+                catalogService.getStatusRecords()
+            ])
+            setGroupedTimezones(groupTimezonesByRegion(timezones))
+            if (statuses.length > 0) setStatusRecords(statuses)
+        }
+        fetchCatalogs()
+    }, [])
+
+    const form = useForm<PropertyFormData>({
+        resolver: zodResolver(propertyFormSchema) as any,
+        defaultValues: initialData || {
+>>>>>>> Stashed changes
             name: "",
             internalName: "",
             description: "",
+<<<<<<< Updated upstream
             type: "HOTEL",
             status: "ACTIVE",
             thumbnailUrl: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&auto=format&fit=crop&q=60",
@@ -143,6 +179,29 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             startPrice: 0,
             currency: "COP",
             timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+=======
+            email: "",
+            phone: "",
+            address: "",
+            addressDetail: "",
+            city: "",
+            state: "",
+            countryId: 48,
+            latitude: 0,
+            longitude: 0,
+            timezone: "America/Bogota",
+            statusRecordId: 6,
+            type: "HOTEL",
+            startPrice: "",
+            currency: "COP",
+            amenities: [],
+            wifiNetwork: "",
+            wifiPassword: "",
+            picturesUrl: [],
+            thumbnailUrl: "",
+            units: [],
+            policies: [],
+>>>>>>> Stashed changes
             roomTypes: [],
             units: [],
             automationSettings: {
@@ -155,6 +214,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         },
     })
 
+<<<<<<< Updated upstream
     async function onSubmit(values: z.infer<typeof propertySchema>) {
         setIsLoading(true)
         try {
@@ -169,13 +229,39 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                 toast.success("Propiedad creada", {
                     description: `${values.name} ha sido creada exitosamente.`,
                 })
+=======
+    // Reset form when initialData arrives from async fetch
+    useEffect(() => {
+        if (initialData) {
+            form.reset(initialData)
+        }
+    }, [initialData, form])
+
+
+    async function onSubmit(values: PropertyFormData) {
+        setIsLoading(true)
+        try {
+            console.log("[PropertyForm] Starting save process...")
+            let propertyUuid = initialData?.uuid
+
+            // 1. Save main property data
+            if (propertyUuid) {
+                await propertiesService.update(propertyUuid, values)
+                toast.success("Propiedad actualizada")
+            } else {
+                const response = await propertiesService.create(values)
+                propertyUuid = response.uuid
+                toast.success("Propiedad creada")
+>>>>>>> Stashed changes
             }
+
+            toast.info("Cambios sincronizados correctamente.")
             router.push("/dashboard/properties")
         } catch (error) {
+            console.error("[PropertyForm] Save error:", error)
             toast.error("Error al guardar", {
-                description: "Hubo un problema al intentar guardar los cambios.",
+                description: "Hubo un problema al intentar guardar los cambios o las unidades.",
             })
-        } finally {
             setIsLoading(false)
         }
     }
@@ -277,7 +363,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                         name="name"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Nombre de la Propiedad</FormLabel>
+                                                <FormLabel>Nombre de la Propiedad <span className="text-destructive">*</span></FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="Hotel Oasis" {...field} />
                                                 </FormControl>
@@ -305,10 +391,42 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField
                                         control={form.control}
+<<<<<<< Updated upstream
+=======
+                                        name="email"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Email de Contacto <span className="text-destructive">*</span></FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="info@hotel.com" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="phone"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Teléfono</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="+57 ..." {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+>>>>>>> Stashed changes
                                         name="type"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Tipo de Propiedad</FormLabel>
+                                                <FormLabel>Tipo de Propiedad <span className="text-destructive">*</span></FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="Hotel, Apartamento, etc." {...field} />
                                                 </FormControl>
@@ -321,8 +439,13 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                         name="status"
                                         render={({ field }) => (
                                             <FormItem>
+<<<<<<< Updated upstream
                                                 <FormLabel>Estado</FormLabel>
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
+=======
+                                                <FormLabel>Estado <span className="text-destructive">*</span></FormLabel>
+                                                <Select onValueChange={(v) => field.onChange(parseInt(v))} defaultValue={String(field.value)}>
+>>>>>>> Stashed changes
                                                     <FormControl>
                                                         <SelectTrigger>
                                                             <SelectValue placeholder="Seleccionar estado" />
@@ -373,9 +496,24 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                         name="startPrice"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Precio Inicial</FormLabel>
+                                                <FormLabel>Precio Inicial <span className="text-destructive">*</span></FormLabel>
                                                 <FormControl>
+<<<<<<< Updated upstream
                                                     <Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+=======
+                                                    <Input 
+                                                        type="number" 
+                                                        placeholder="0.00"
+                                                        {...field} 
+                                                        value={field.value ?? ""}
+                                                        onChange={(e) => field.onChange(e.target.value)}
+                                                        onKeyDown={(e) => {
+                                                            if (["e", "E", "+", "-"].includes(e.key)) {
+                                                                e.preventDefault();
+                                                            }
+                                                        }}
+                                                    />
+>>>>>>> Stashed changes
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -443,10 +581,12 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                             <DialogContent>
                                 <DialogHeader>
                                     <DialogTitle>¿Estás completamente seguro?</DialogTitle>
-                                    <DialogDescription>
-                                        Esta acción no se puede deshacer. Esto eliminará permanentemente la propiedad
-                                        y todos sus datos asociados.
-                                    </DialogDescription>
+                                    <DialogHeader>
+                                        <DialogDescription>
+                                            Esta acción no se puede deshacer. Esto eliminará permanentemente la propiedad
+                                            y todos sus datos asociados.
+                                        </DialogDescription>
+                                    </DialogHeader>
                                 </DialogHeader>
                                 <DialogFooter>
                                     <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeleting}>
@@ -471,6 +611,42 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     </Button>
                 </div>
             </form>
+<<<<<<< Updated upstream
+=======
+
+            <Dialog open={isValidationErrorOpen} onOpenChange={setIsValidationErrorOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <div className="flex items-center gap-3 text-destructive mb-2">
+                            <AlertCircle className="h-6 w-6" />
+                            <DialogTitle className="text-xl">Información Faltante</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-slate-600">
+                            No se pudo crear la propiedad porque faltan algunos campos obligatorios. 
+                            Por favor, revisa todas las pestañas (Detalles, Ubicación, Alojamientos, etc.) y completa la información marcada en rojo.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 my-4">
+                        <h4 className="font-bold text-sm mb-2 text-slate-800">Campos comunes obligatorios:</h4>
+                        <ul className="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
+                            <li>Nombre de la propiedad</li>
+                            <li>Correo electrónico</li>
+                            <li>Dirección, Ciudad y Estado</li>
+                            <li>Tipo de propiedad</li>
+                            <li>Precio Inicial</li>
+                        </ul>
+                    </div>
+                    <DialogFooter>
+                        <Button 
+                            className="w-full bg-indigo-600 hover:bg-indigo-700"
+                            onClick={() => setIsValidationErrorOpen(false)}
+                        >
+                            Entendido, voy a revisar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+>>>>>>> Stashed changes
         </Form>
     )
 }

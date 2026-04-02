@@ -22,7 +22,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { useRegister } from "../hooks/use-register"
-import { catalogService, CatalogOption } from "../services/catalog-service"
+import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { Honeypot } from "./Honeypot"
 import Link from "next/link"
@@ -174,7 +174,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             name="person_type_id"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Tipo de Perfil</FormLabel>
+                                    <FormLabel>Tipo de Perfil <span className="text-destructive">*</span></FormLabel>
                                     <Select
                                         onValueChange={field.onChange}
                                         value={field.value}
@@ -205,7 +205,10 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                         <FormLabel>Razón Social (Nombre de la Empresa)</FormLabel>
                                         <FormControl>
                                             <div className="relative group">
-                                                <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                                <Building2 className={cn(
+                                                    "absolute left-3 top-2.5 h-4 w-4 transition-colors",
+                                                    form.formState.errors.companyName ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
+                                                )} />
                                                 <Input
                                                     placeholder="Ej: Apartamentos del Mar SAS"
                                                     disabled={isLoading}
@@ -227,12 +230,21 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     <FormItem>
                                         <FormLabel>
                                             {form.watch("person_type_id") === "2"
+<<<<<<< Updated upstream
                                                 ? "Nombre del Usuario"
                                                 : "Nombre completo"}
+=======
+                                                ? "Nombre del Usuario Principal"
+                                                : "Nombre"}
+                                            <span className="text-destructive"> *</span>
+>>>>>>> Stashed changes
                                         </FormLabel>
                                         <FormControl>
                                             <div className="relative group">
-                                                <User className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                                <User className={cn(
+                                                    "absolute left-3 top-2.5 h-4 w-4 transition-colors",
+                                                    form.formState.errors.name ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
+                                                )} />
                                                 <Input
                                                     placeholder="Ej: Juan Pérez"
                                                     disabled={isLoading}
@@ -269,7 +281,14 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                         ) : (
                                             <FormControl>
                                                 <div className="relative group">
+<<<<<<< Updated upstream
                                                     <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+=======
+                                                    <User className={cn(
+                                                        "absolute left-3 top-2.5 h-4 w-4 transition-colors",
+                                                        form.formState.errors.lastname ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
+                                                    )} />
+>>>>>>> Stashed changes
                                                     <Input
                                                         placeholder="Ej: Colombia"
                                                         disabled={isLoading}
@@ -278,7 +297,59 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                                     />
                                                 </div>
                                             </FormControl>
+<<<<<<< Updated upstream
                                         )}
+=======
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="identificationTypeId"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Tipo de Identificación <span className="text-destructive">*</span></FormLabel>
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            value={field.value}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all">
+                                                    <SelectValue placeholder="Selecciona el tipo" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl shadow-xl border-slate-100">
+                                                {identificationTypes.map((type) => (
+                                                    <SelectItem key={type.id} value={type.id} className="cursor-pointer focus:bg-[var(--color-brand-blue)]/5 transition-colors">
+                                                        {type.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="identificationNumber"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Número de Identificación <span className="text-destructive">*</span></FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="Ej: 12345678"
+                                                disabled={isLoading}
+                                                className="h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                {...field}
+                                            />
+                                        </FormControl>
+>>>>>>> Stashed changes
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -289,10 +360,13 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             name="email"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Correo electrónico</FormLabel>
+                                    <FormLabel>Correo electrónico <span className="text-destructive">*</span></FormLabel>
                                     <FormControl>
                                         <div className="relative group">
-                                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                            <Mail className={cn(
+                                                "absolute left-3 top-2.5 h-4 w-4 transition-colors",
+                                                form.formState.errors.email ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
+                                            )} />
                                             <Input
                                                 placeholder="nombre@empresa.com"
                                                 type="email"
@@ -307,7 +381,11 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             )}
                         />
                         <div className="grid gap-2">
+<<<<<<< Updated upstream
                             <FormLabel>{form.watch("person_type_id") === "2" ? "Business phone" : "Phone"}</FormLabel>
+=======
+                            <FormLabel>{form.watch("person_type_id") === "2" ? "Teléfono de empresa" : "Teléfono"} <span className="text-destructive">*</span></FormLabel>
+>>>>>>> Stashed changes
                             <FormField
                                 control={form.control}
                                 name="phone"
@@ -326,6 +404,100 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 )}
                             />
                         </div>
+<<<<<<< Updated upstream
+=======
+
+                        <FormField
+                            control={form.control}
+                            name="country"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>País <span className="text-destructive">*</span></FormLabel>
+                                    {countries.length > 0 ? (
+                                        <Select 
+                                            onValueChange={(val) => {
+                                                field.onChange(val)
+                                                const selected = countries.find(c => c.id === val)
+                                                const prefix = selected?.extra?.phone_prefix || selected?.extra?.dial_code || selected?.extra?.code
+                                                if (prefix) {
+                                                    const currentPhone = form.getValues("phone")
+                                                    if (!currentPhone.startsWith("+")) {
+                                                        form.setValue("phone", `${prefix.startsWith("+") ? prefix : "+" + prefix}${currentPhone}`)
+                                                    }
+                                                }
+                                            }} 
+                                            value={field.value}
+                                        >
+                                            <FormControl>
+                                                <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all">
+                                                    <SelectValue placeholder="Selecciona un país" />
+                                                </SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent className="rounded-xl shadow-xl border-slate-100 max-h-[200px]">
+                                                {countries.map((country) => (
+                                                    <SelectItem key={country.id} value={country.id} className="cursor-pointer focus:bg-[var(--color-brand-blue)]/5 transition-colors">
+                                                        {country.name}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    ) : (
+                                        <FormControl>
+                                            <div className="relative group">
+                                                <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                                <Input
+                                                    placeholder="Ej: Colombia"
+                                                    disabled={isLoading}
+                                                    className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                    {...field}
+                                                />
+                                            </div>
+                                        </FormControl>
+                                    )}
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                control={form.control}
+                                name="state"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Estado / Departamento <span className="text-destructive">*</span></FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="Ej: Valle del Cauca"
+                                                disabled={isLoading}
+                                                className="h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="city"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Ciudad <span className="text-destructive">*</span></FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="Ej: Cali"
+                                                disabled={isLoading}
+                                                className="h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+>>>>>>> Stashed changes
                         <div className="pt-2">
                             <Button
                                 disabled={isLoading}

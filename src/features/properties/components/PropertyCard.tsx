@@ -98,11 +98,19 @@ export function PropertyCard({ property }: PropertyCardProps) {
                         <DropdownMenuContent align="end" className="w-[180px]">
                             <DropdownMenuLabel>Gestión</DropdownMenuLabel>
                             <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/properties/${property.id}`} className="flex items-center">
+                                <Link href={`/dashboard/properties/${property.uuid}`} className="flex items-center">
                                     Editar Detalles
                                 </Link>
                             </DropdownMenuItem>
+<<<<<<< Updated upstream
                             <DropdownMenuItem>Automatizaciones</DropdownMenuItem>
+=======
+                             <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/properties/${property.uuid}?tab=automation`} className="flex items-center">
+                                    Automatizaciones
+                                </Link>
+                            </DropdownMenuItem>
+>>>>>>> Stashed changes
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive font-medium">
                                 Desactivar Propiedad
@@ -110,22 +118,10 @@ export function PropertyCard({ property }: PropertyCardProps) {
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
-
-                <div className="flex items-center gap-4 text-[11px] font-medium text-slate-500 bg-slate-50 p-2 rounded-lg">
-                    <div className="flex items-center">
-                        <BedDouble className="mr-1.5 h-3.5 w-3.5 text-indigo-500" />
-                        <span>3 Unidades</span>
-                    </div>
-                    <div className="h-3 w-px bg-slate-200" />
-                    <div className="flex items-center">
-                        <User className="mr-1.5 h-3.5 w-3.5 text-indigo-500" />
-                        <span>12 Huéspedes</span>
-                    </div>
-                </div>
             </CardHeader>
             <CardFooter className="p-4 pt-0">
                 <Button variant="outline" className="w-full border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all font-semibold" asChild>
-                    <Link href={`/dashboard/properties/${property.id}`}>Gestionar</Link>
+                    <Link href={`/dashboard/properties/${property.uuid}`}>Gestionar</Link>
                 </Button>
             </CardFooter>
         </Card>

@@ -31,6 +31,10 @@ import {
 import { User, PREDEFINED_ROLES, UserRole } from "@/features/auth/types"
 import { userService } from "../services/user-service"
 import { useAuthStore } from "@/lib/store/auth-store"
+<<<<<<< Updated upstream
+=======
+import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
+>>>>>>> Stashed changes
 import { Checkbox } from "@/components/ui/checkbox"
 import {
     Dialog,

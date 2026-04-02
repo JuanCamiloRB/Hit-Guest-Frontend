@@ -86,7 +86,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                 name="email"
                                 render={({ field }) => (
                                     <FormItem id="email-form-item">
-                                        <FormLabel>Correo electrónico</FormLabel>
+                                        <FormLabel>Correo electrónico <span className="text-destructive">*</span></FormLabel>
                                         <FormControl>
                                             <div className="relative">
                                                 <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -134,7 +134,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                 render={({ field }) => (
                                     <FormItem id="otp-form-item">
                                         <div className="flex justify-between items-center mb-2">
-                                            <FormLabel className="m-0">Código OTP</FormLabel>
+                                            <FormLabel className="m-0">Código OTP <span className="text-destructive">*</span></FormLabel>
                                             <button
                                                 type="button"
                                                 onClick={resetFlow}

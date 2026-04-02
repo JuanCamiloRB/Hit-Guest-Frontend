@@ -15,6 +15,18 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+<<<<<<< Updated upstream
+=======
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
+import { useEffect, useState } from "react"
+>>>>>>> Stashed changes
 import { User } from "../../auth/types"
 import { useState } from "react"
 import { Loader2, User as UserIcon, Mail, Phone, MapPin, Building, Globe, Languages } from "lucide-react"

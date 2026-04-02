@@ -98,7 +98,7 @@ export function PropertiesLocation() {
                         name="address.line1"
                         render={({ field }) => (
                             <FormItem className="flex-1">
-                                <FormLabel className="text-slate-700 font-semibold">Dirección Principal</FormLabel>
+                                <FormLabel className="text-slate-700 font-semibold">Dirección Principal <span className="text-destructive">*</span></FormLabel>
                                 <FormControl>
                                     <div className="relative">
                                         <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -144,7 +144,11 @@ export function PropertiesLocation() {
                         name="address.postal_code"
                         render={({ field }) => (
                             <FormItem>
+<<<<<<< Updated upstream
                                 <FormLabel className="text-slate-700 font-semibold">Código Postal</FormLabel>
+=======
+                                <FormLabel className="text-slate-700 font-semibold">Estado/Depto <span className="text-destructive">*</span></FormLabel>
+>>>>>>> Stashed changes
                                 <FormControl>
                                     <Input className="h-11 border-slate-200" placeholder="130001" {...field} />
                                 </FormControl>
@@ -169,7 +173,7 @@ export function PropertiesLocation() {
                         name="address.city"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-slate-700 font-semibold">Ciudad</FormLabel>
+                                <FormLabel className="text-slate-700 font-semibold">Ciudad <span className="text-destructive">*</span></FormLabel>
                                 <FormControl>
                                     <Input
                                         className="h-11 border-slate-200"
@@ -186,7 +190,11 @@ export function PropertiesLocation() {
                         name="address.state"
                         render={({ field }) => (
                             <FormItem>
+<<<<<<< Updated upstream
                                 <FormLabel className="text-slate-700 font-semibold">Estado/Depto</FormLabel>
+=======
+                                <FormLabel className="text-slate-700 font-semibold">País (ID) <span className="text-destructive">*</span></FormLabel>
+>>>>>>> Stashed changes
                                 <FormControl>
                                     <Input
                                         className="h-11 border-slate-200"

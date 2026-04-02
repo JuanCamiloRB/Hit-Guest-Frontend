@@ -1,41 +1,86 @@
-import { ApiResponse, ApiError, ApiErrorResponse } from "@/types/api"
+import { ApiError, ApiErrorResponse } from "@/types/api"
+import { useAuthStore } from "@/lib/store/auth-store"
+import { CONFIG } from "@/lib/config"
 
 export async function request<T>(
     url: string,
     options?: RequestInit
 ): Promise<T> {
+    const state = useAuthStore.getState()
+    const sessionToken = state.user?.token
+    const appToken = CONFIG.APP_API_TOKEN
+    
+    // Prioritize session token (login) over static app token
+    const token = sessionToken || appToken
+    
+    // Handle headers safely
+    const customHeaders = options?.headers 
+        ? (Object.fromEntries(new Headers(options.headers as any).entries())) 
+        : {}
+
+    const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Accept-Language": "es",
+        "X-Locale": "es",
+        "X-App-Locale": "es",
+        ...customHeaders,
+    }
+
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
         ...options,
+<<<<<<< Updated upstream
         headers: {
             "Content-Type": "application/json",
             ...options?.headers,
         },
+=======
+        headers,
+>>>>>>> Stashed changes
     })
 
-    const data = await response.json()
+    let data: any
+    try {
+        data = await response.json()
+    } catch (e) {
+        data = { message: "Could not parse response" }
+    }
 
     if (!response.ok) {
         throw new ApiError(response.status, data as ApiErrorResponse)
     }
 
+<<<<<<< Updated upstream
     // Based on user requirement: Success returns { data: ... }
     return (data as ApiResponse<T>).data
+=======
+    // Support both { data: T } and direct T responses
+    return data?.data !== undefined ? data.data : data
+>>>>>>> Stashed changes
 }
 
 export const apiClient = {
-    get: <T>(url: string, options?: RequestInit) => request<T>(url, { ...options, method: "GET" }),
-    post: <T>(url: string, body: any, options?: RequestInit) =>
+    get: <T>(url: string, options?: RequestInit) => 
+        request<T>(url, { ...options, method: "GET" }),
+    
+    post: <T>(url: string, body?: any, options?: RequestInit) =>
         request<T>(url, {
             ...options,
             method: "POST",
-            body: JSON.stringify(body),
+            body: body ? JSON.stringify(body) : undefined,
         }),
-    put: <T>(url: string, body: any, options?: RequestInit) =>
+    
+    put: <T>(url: string, body?: any, options?: RequestInit) =>
         request<T>(url, {
             ...options,
             method: "PUT",
-            body: JSON.stringify(body),
+            body: body ? JSON.stringify(body) : undefined,
         }),
+    
     delete: <T>(url: string, options?: RequestInit) =>
         request<T>(url, { ...options, method: "DELETE" }),
 }

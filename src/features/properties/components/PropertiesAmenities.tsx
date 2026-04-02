@@ -16,6 +16,11 @@ import {
 } from "@/components/ui/form"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Sparkles } from "lucide-react"
+<<<<<<< Updated upstream
+=======
+import { useEffect, useState } from "react"
+import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
+>>>>>>> Stashed changes
 import { cn } from "@/lib/utils"
 
 const commonAmenities = [

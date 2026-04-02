@@ -29,13 +29,76 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
+<<<<<<< Updated upstream
 import { mockUnits, mockProperties } from "../services/properties"
+=======
+import { propertiesService } from "../services/properties-service"
+import { apiResponseToFormData } from "../types"
+import { useEffect } from "react"
+>>>>>>> Stashed changes
 
 export function PropertiesList() {
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("ALL")
     const [propertyFilter, setPropertyFilter] = useState<string>("ALL")
 
+<<<<<<< Updated upstream
+=======
+    const fetchData = async () => {
+        setIsLoading(true)
+        try {
+            // Fetch properties from real API
+            const apiProperties = await propertiesService.list()
+            
+            // Convert API response to Property format
+            const convertedProperties: Property[] = apiProperties.map((apiProp, index) => {
+                const formData = apiResponseToFormData(apiProp)
+                return {
+                    id: index + 1, // Use index as numeric ID
+                    uuid: apiProp.uuid,
+                    user_id: 1, // Placeholder numeric user_id
+                    name: formData.name,
+                    description: formData.description || "",
+                    email: formData.email,
+                    phone: formData.phone,
+                    address: formData.address,
+                    address_detail: formData.addressDetail,
+                    city: formData.city,
+                    state: formData.state,
+                    country_id: formData.countryId,
+                    geo_location: formData.latitude && formData.longitude 
+                        ? `${formData.latitude},${formData.longitude}` 
+                        : null,
+                    timezone: formData.timezone,
+                    status_record_id: formData.statusRecordId,
+                    created_at: apiProp.createdAt,
+                    updated_at: apiProp.updatedAt,
+                    extra: {
+                        ...apiProp.extra,
+                        type: formData.type,
+                        thumbnailUrl: formData.thumbnailUrl,
+                        startPrice: formData.startPrice,
+                        currency: formData.currency,
+                    }
+                } as unknown as Property
+            })
+            
+            setProperties(convertedProperties)
+            setUnits([]) // Units will be fetched separately if needed
+        } catch (error) {
+            console.error("[PropertiesList] Error fetching properties:", error)
+            setProperties([])
+            setUnits([])
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        fetchData()
+    }, [])
+
+>>>>>>> Stashed changes
     const filteredProperties = useMemo(() => {
         return mockProperties.filter((property: Property) => {
             const matchesSearch =

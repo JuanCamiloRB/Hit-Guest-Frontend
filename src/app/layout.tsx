@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Gabarito, Poppins } from "next/font/google";
 import { LanguageProvider } from "@/components/LanguageProvider";
+import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
 const gabarito = Gabarito({
@@ -30,7 +31,10 @@ export default function RootLayout({
       <body
         className={`${gabarito.variable} ${poppins.variable} antialiased font-secondary`}
       >
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider>
+          {children}
+          <Toaster />
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -51,6 +51,7 @@
 }
 
 :root {
+<<<<<<< Updated upstream
   --radius: 0.75rem;
   --background: #F9FBFA;
   --foreground: #1a1a1a;
@@ -67,11 +68,19 @@
   /* Brand Purple */
   --accent-foreground: #ffffff;
 
+=======
+  --radius: 0.625rem;
+  --primary: \#222755;
+  --primary-foreground: \#F9FBFA;
+  --secondary: \#5467FA;
+  --secondary-foreground: \#222755;
+  --accent: \#F9FBFA;
+  --accent-foreground: \#222755;
+>>>>>>> Stashed changes
   --success: #71f5a4;
-  /* Keeping Caribbean Green for UI success state */
   --warning: #FFB800;
-  /* Amarillo */
   --neutral: #9CA3AF;
+<<<<<<< Updated upstream
   /* Gris */
 
   --card: #ffffff;
@@ -96,6 +105,33 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(255, 255, 255, 0.1);
   --sidebar-ring: #222755;
+=======
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+>>>>>>> Stashed changes
 }
 
 .dark {
@@ -135,11 +171,47 @@
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    @apply border-border outline-ring/50;
   }
 
   body {
     @apply bg-background text-foreground;
-    @apply bg-background text-foreground;
+  }
+<<<<<<< Updated upstream
+}
+=======
+
+  html {
+    @apply font-sans;
+  }
+
+  /* Hide number input spinners globally */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
 }
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-spinner::-webkit-inner-spin-button,
+  .no-spinner::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .no-spinner {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+}
+>>>>>>> Stashed changes
