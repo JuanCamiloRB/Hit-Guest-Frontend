@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useParams } from "next/navigation"
 import { PropertyForm } from "@/features/properties/components/PropertyForm"
 import { propertiesService } from "@/features/properties/services/properties-service"
@@ -83,7 +83,9 @@ export default function EditPropertyPage() {
                     Edita los detalles, unidades y configuraciones de {property.name}.
                 </p>
             </div>
-            <PropertyForm initialData={property} />
+            <Suspense fallback={<div className="h-20 w-full animate-pulse bg-slate-100 rounded-lg" />}>
+                <PropertyForm initialData={property} />
+            </Suspense>
         </div>
     )
 }

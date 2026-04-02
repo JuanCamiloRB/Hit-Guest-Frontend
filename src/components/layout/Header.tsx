@@ -39,23 +39,24 @@ export function Header() {
     }, [])
 
     return (
-        <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b bg-white px-4 md:px-8 shadow-sm">
-            <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
+        <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 md:px-10 shadow-sm transition-all duration-300">
+            <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
                     <MobileSidebar />
-                    <Link href="/dashboard" className="flex items-center gap-2">
-                        <Logo variant="full" className="text-primary" />
+                    <Link href="/dashboard" className="hidden md:block transition-transform hover:scale-[1.02] active:scale-[0.98]">
+                        <Logo variant="full" className="h-10 w-auto" />
                     </Link>
                 </div>
             </div>
 
-            <div className="flex flex-1 items-center justify-end gap-4 md:gap-6">
-                {/* Search Bar */}
-                <div className="relative hidden lg:flex items-center max-w-sm w-full">
-                    <Search className="absolute left-3 h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-1 items-center justify-end gap-6 md:gap-8">
+                {/* Search Bar - Modernized */}
+                <div className="relative hidden lg:flex items-center max-w-md w-full group">
+                    <div className="absolute inset-0 bg-slate-100/50 rounded-2xl transition-all group-focus-within:bg-white group-focus-within:ring-4 group-focus-within:ring-[var(--color-brand-purple)]/10" />
+                    <Search className="absolute left-4 h-4 w-4 text-slate-400 group-focus-within:text-[var(--color-brand-purple)] transition-colors z-10" />
                     <Input
                         placeholder={t('common.search')}
-                        className="pl-9 bg-slate-50 border border-slate-200 focus-visible:ring-primary/20 focus-visible:border-primary/50 transition-colors"
+                        className="relative z-10 pl-11 h-12 bg-transparent border-none focus-visible:ring-0 transition-all placeholder:text-slate-400 text-sm font-medium"
                     />
                 </div>
 

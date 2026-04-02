@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Property, Unit } from "@/types"
 import { PropertyCard } from "./PropertyCard"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, Home, LayoutGrid, List } from "lucide-react"
+import { Plus, Search, Filter, Home, LayoutGrid, List, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import {
@@ -29,39 +29,37 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-<<<<<<< Updated upstream
-import { mockUnits, mockProperties } from "../services/properties"
-=======
 import { propertiesService } from "../services/properties-service"
 import { apiResponseToFormData } from "../types"
-import { useEffect } from "react"
->>>>>>> Stashed changes
 
 export function PropertiesList() {
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("ALL")
     const [propertyFilter, setPropertyFilter] = useState<string>("ALL")
+    const [properties, setProperties] = useState<Property[]>([])
+    const [units, setUnits] = useState<Unit[]>([])
+    const [isLoading, setIsLoading] = useState(true)
 
-<<<<<<< Updated upstream
-=======
     const fetchData = async () => {
         setIsLoading(true)
         try {
-            // Fetch properties from real API
             const apiProperties = await propertiesService.list()
             
-            // Convert API response to Property format
             const convertedProperties: Property[] = apiProperties.map((apiProp, index) => {
                 const formData = apiResponseToFormData(apiProp)
                 return {
-                    id: index + 1, // Use index as numeric ID
+                    id: index + 1,
                     uuid: apiProp.uuid,
-                    user_id: 1, // Placeholder numeric user_id
+                    user_id: 1,
                     name: formData.name,
                     description: formData.description || "",
                     email: formData.email,
                     phone: formData.phone,
-                    address: formData.address,
+                    address: {
+                        line1: formData.address,
+                        city: formData.city,
+                        country: "Colombia"
+                    },
                     address_detail: formData.addressDetail,
                     city: formData.city,
                     state: formData.state,
@@ -71,6 +69,7 @@ export function PropertiesList() {
                         : null,
                     timezone: formData.timezone,
                     status_record_id: formData.statusRecordId,
+                    status: formData.statusRecordId === 1 ? "ACTIVE" : "INACTIVE",
                     created_at: apiProp.createdAt,
                     updated_at: apiProp.updatedAt,
                     extra: {
@@ -84,7 +83,8 @@ export function PropertiesList() {
             })
             
             setProperties(convertedProperties)
-            setUnits([]) // Units will be fetched separately if needed
+            // Units mapping if applicable
+            setUnits([]) 
         } catch (error) {
             console.error("[PropertiesList] Error fetching properties:", error)
             setProperties([])
@@ -98,31 +98,29 @@ export function PropertiesList() {
         fetchData()
     }, [])
 
->>>>>>> Stashed changes
     const filteredProperties = useMemo(() => {
-        return mockProperties.filter((property: Property) => {
+        return properties.filter((property: Property) => {
             const matchesSearch =
                 property.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                property.address.line1.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                property.address.city.toLowerCase().includes(searchQuery.toLowerCase())
+                (property.address?.line1 || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (property.address?.city || "").toLowerCase().includes(searchQuery.toLowerCase())
 
             const matchesStatus = statusFilter === "ALL" || property.status === statusFilter
             return matchesSearch && matchesStatus
         })
-    }, [searchQuery, statusFilter])
+    }, [properties, searchQuery, statusFilter])
 
     const filteredUnits = useMemo(() => {
-        return mockUnits.filter((unit: Unit) => {
-            const property = mockProperties.find((p: Property) => p.id === unit.propertyId)
+        return units.filter((unit: Unit) => {
             const matchesSearch =
-                unit.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                unit.number.toLowerCase().includes(searchQuery.toLowerCase())
+                unit.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                (unit.number || "").toLowerCase().includes(searchQuery.toLowerCase())
 
             const matchesStatus = statusFilter === "ALL" || unit.status === statusFilter
             const matchesProperty = propertyFilter === "ALL" || unit.propertyId === propertyFilter
             return matchesSearch && matchesStatus && matchesProperty
         })
-    }, [searchQuery, statusFilter, propertyFilter])
+    }, [units, searchQuery, statusFilter, propertyFilter])
 
     return (
         <div className="space-y-6">
@@ -178,7 +176,12 @@ export function PropertiesList() {
                 </div>
 
                 <TabsContent value="properties" className="space-y-6 outline-none">
-                    {filteredProperties.length === 0 ? (
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
+                            <Loader2 className="h-10 w-10 text-indigo-600 animate-spin mb-4" />
+                            <p className="text-slate-500 font-medium">Cargando propiedades...</p>
+                        </div>
+                    ) : filteredProperties.length === 0 ? (
                         <div className="text-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
                             <div className="bg-slate-100 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <Home className="h-8 w-8 text-slate-400" />
@@ -210,8 +213,8 @@ export function PropertiesList() {
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="ALL">Todas las Propiedades</SelectItem>
-                                        {mockProperties.map((p: Property) => (
-                                            <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                        {properties.map((p: Property) => (
+                                            <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
@@ -237,7 +240,7 @@ export function PropertiesList() {
                                     </TableRow>
                                 ) : (
                                     filteredUnits.map((unit: Unit) => {
-                                        const property = mockProperties.find((p: Property) => p.id === unit.propertyId)
+                                        const property = properties.find((p: Property) => p.id === unit.propertyId)
                                         return (
                                             <TableRow key={unit.id} className="hover:bg-slate-50/50 transition-colors">
                                                 <TableCell className="font-bold text-indigo-600">{unit.number}</TableCell>

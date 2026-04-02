@@ -33,14 +33,7 @@ export async function request<T>(
 
     const response = await fetch(url, {
         ...options,
-<<<<<<< Updated upstream
-        headers: {
-            "Content-Type": "application/json",
-            ...options?.headers,
-        },
-=======
         headers,
->>>>>>> Stashed changes
     })
 
     let data: any
@@ -54,13 +47,8 @@ export async function request<T>(
         throw new ApiError(response.status, data as ApiErrorResponse)
     }
 
-<<<<<<< Updated upstream
-    // Based on user requirement: Success returns { data: ... }
-    return (data as ApiResponse<T>).data
-=======
     // Support both { data: T } and direct T responses
     return data?.data !== undefined ? data.data : data
->>>>>>> Stashed changes
 }
 
 export const apiClient = {

@@ -4,61 +4,49 @@ import { cn } from "@/lib/utils"
 interface LogoProps extends React.SVGProps<SVGSVGElement> {
     variant?: "full" | "icon"
     showText?: boolean
+    isWhite?: boolean
 }
 
-export function Logo({ className, variant = "full", showText = true, ...props }: LogoProps) {
-    if (variant === "icon") {
-        return (
-            <svg
-                viewBox="0 0 70 70"
-                fill="currentColor"
-                xmlns="http://www.w3.org/2000/svg"
-                className={cn("h-10 w-10", className)}
-                {...props}
-            >
-                {/* H / i stylized mark */}
-                <rect x="0" y="0" width="20" height="70" />
-                <rect x="20" y="30" width="20" height="20" />
-                <rect x="40" y="30" width="20" height="40" />
-                <rect x="40" y="0" width="20" height="20" fill="#9D4CF2" />
-            </svg>
-        )
-    }
+export function Logo({ className, variant = "full", showText = true, isWhite = false, ...props }: LogoProps) {
+    const mainColor = isWhite ? "#ffffff" : "#1E224E" // Official Brand Navy
+    const dotColor = "#9D4CF2" // Keep dot purple as requested by user
+
+    // Replicating exactly the HIT logo proportions from image
+    const LogoIcon = () => (
+        <svg
+            viewBox="0 0 100 66"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className={cn(variant === "icon" ? "h-10 w-auto" : "h-11 w-auto", className)}
+            {...props}
+        >
+            {/* H Part */}
+            <rect x="0" y="0" width="14" height="66" fill={mainColor} />
+            <rect x="14" y="24" width="22" height="15" fill={mainColor} />
+            <rect x="36" y="24" width="14" height="42" fill={mainColor} />
+            
+            {/* dot of i */}
+            <rect x="36" y="0" width="14" height="18" fill={dotColor} />
+            
+            {/* T/r Part */}
+            <rect x="56" y="0" width="14" height="66" fill={mainColor} />
+            <rect x="70" y="0" width="30" height="18" fill={mainColor} />
+        </svg>
+    )
+
+    if (variant === "icon") return <LogoIcon />
 
     return (
-        <div className={cn("flex items-center gap-2", className)}>
-            <svg
-                viewBox="0 0 220 70"
-                fill="currentColor"
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-10 w-auto"
-                {...props}
-            >
-                {/* Left vertical of H */}
-                <rect x="0" y="0" width="20" height="70" />
-                {/* Horizontal crossbar of H */}
-                <rect x="20" y="30" width="20" height="20" />
-                {/* Right vertical of H (lower part) */}
-                <rect x="40" y="30" width="20" height="40" />
-
-                {/* Purple dot of i */}
-                <rect x="40" y="0" width="20" height="20" fill="#9D4CF2" />
-
-                {/* T / Gamma shape */}
-                <rect x="70" y="0" width="20" height="70" />
-                <rect x="90" y="0" width="25" height="20" />
-
-                {showText && (
-                    <text
-                        x="130"
-                        y="52"
-                        fill="currentColor"
-                        className="font-sans font-bold text-[36px] tracking-tight"
-                    >
-                        Guest
-                    </text>
-                )}
-            </svg>
+        <div className={cn("flex items-center gap-1", className)}>
+            <LogoIcon />
+            {showText && (
+                <span className={cn(
+                    "font-sans font-black text-[22px] leading-none tracking-tighter uppercase translate-y-[1px]",
+                    isWhite ? "text-white" : "text-[#1E224E]"
+                )}>
+                    Guest
+                </span>
+            )}
         </div>
     )
 }

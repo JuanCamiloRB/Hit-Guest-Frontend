@@ -17,7 +17,7 @@ export default function RegisterPage() {
                 </div>
 
                 <div className="relative z-20 flex flex-col items-center space-y-6 text-center">
-                    <Logo variant="full" className="h-16 w-auto text-white" />
+                    <Logo variant="full" className="h-16 w-auto" isWhite={true} />
                     <div>
                         <p className="text-lg text-blue-100/80 max-w-sm font-secondary">
                             Comienza hoy a automatizar la gestión de tus propiedades de forma profesional.

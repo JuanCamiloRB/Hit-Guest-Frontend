@@ -23,15 +23,16 @@ export interface User {
 export type PropertyType = 'HOTEL' | 'APARTAHOTEL' | 'BUILDING' | 'HOUSE' | 'RESORT' | 'HOSTEL'
 
 export interface Property {
-    id: string
+    id: string | number
+    uuid: string
     createdAt: string
     updatedAt: string
     name: string
-    internalName: string
-    description: string
+    internalName?: string
+    description?: string
     type: string
     status: "ACTIVE" | "INACTIVE"
-    thumbnailUrl: string
+    thumbnailUrl?: string
     address: {
         line1: string
         line2?: string
@@ -40,13 +41,13 @@ export interface Property {
         state?: string
         country: string
     }
-    geoLocation: {
+    geoLocation?: {
         latitude: number
         longitude: number
     }
-    startPrice: number
-    currency: string
-    timeZone: string
+    startPrice?: number
+    currency?: string
+    timeZone?: string
     rating?: {
         average: number
         count: number
@@ -58,8 +59,9 @@ export interface Property {
 }
 
 export interface Unit {
-    id: string
-    propertyId: string
+    id: string | number
+    uuid?: string
+    propertyId: string | number
     name: string
     number: string
     type: "ENTIRE_PLACE" | "PRIVATE_ROOM" | "SHARED_ROOM"

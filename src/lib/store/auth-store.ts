@@ -25,7 +25,12 @@ export const useAuthStore = create<AuthStore>()(
             setError: (error: string | null) => set({ error }),
         }),
         {
-            name: "auth-storage", // name of the item in storage (localStorage for now)
+            name: "auth-storage", // name of the item in storage
+            // Only persist user and authentication status
+            partialize: (state) => ({
+                user: state.user,
+                isAuthenticated: state.isAuthenticated,
+            }),
         }
     )
 )

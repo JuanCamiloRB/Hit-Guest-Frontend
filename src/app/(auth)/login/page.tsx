@@ -17,7 +17,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="relative z-20 flex flex-col items-center space-y-6 text-center">
-                    <Logo variant="full" className="h-16 w-auto text-white" />
+                    <Logo variant="full" className="h-16 w-auto transition-all hover:scale-105" isWhite={true} />
                     <div>
                         <p className="text-lg text-blue-100/80 max-w-sm font-secondary">
                             Automatización inteligente para la gestión de propiedades y experiencias hoteleras.

@@ -1,3 +1,5 @@
+"use client"
+
 import { MapPin, Globe, Search, Loader2 } from "lucide-react"
 import { useFormContext } from "react-hook-form"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form"
@@ -28,19 +30,19 @@ export function PropertiesLocation() {
     const form = useFormContext()
     const [isSearching, setIsSearching] = useState(false)
 
-    // Default to Cartagena, Colombia if no lat/lng
-    const lat = form.watch("geoLocation.latitude") || 10.3910
-    const lng = form.watch("geoLocation.longitude") || -75.4794
+    // Using flat structure from PropertyFormData
+    const lat = form.watch("latitude") || 10.3910
+    const lng = form.watch("longitude") || -75.4794
 
     const handleMapChange = useCallback((newLat: number, newLng: number) => {
-        form.setValue("geoLocation.latitude", newLat, { shouldValidate: true, shouldDirty: true })
-        form.setValue("geoLocation.longitude", newLng, { shouldValidate: true, shouldDirty: true })
+        form.setValue("latitude", newLat, { shouldValidate: true, shouldDirty: true })
+        form.setValue("longitude", newLng, { shouldValidate: true, shouldDirty: true })
     }, [form])
 
     const handleGeocode = async () => {
-        const address = form.getValues("address.line1")
-        const city = form.getValues("address.city")
-        const country = form.getValues("address.country")
+        const address = form.getValues("address")
+        const city = form.getValues("city")
+        const state = form.getValues("state")
 
         if (!address && !city) {
             toast.error("Dirección insuficiente", {
@@ -51,7 +53,7 @@ export function PropertiesLocation() {
 
         setIsSearching(true)
         try {
-            const query = encodeURIComponent(`${address}, ${city}, ${country}`)
+            const query = encodeURIComponent(`${address}, ${city}, ${state}, Colombia`)
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`)
             const data = await response.json()
 
@@ -60,8 +62,8 @@ export function PropertiesLocation() {
                 const newLat = parseFloat(result.lat)
                 const newLng = parseFloat(result.lon)
 
-                form.setValue("geoLocation.latitude", newLat)
-                form.setValue("geoLocation.longitude", newLng)
+                form.setValue("latitude", newLat)
+                form.setValue("longitude", newLng)
 
                 toast.success("Ubicación encontrada", {
                     description: "El marcador se ha movido a la dirección encontrada.",
@@ -91,11 +93,11 @@ export function PropertiesLocation() {
                     Ubica tu propiedad en el mapa. Puedes buscar la dirección o arrastrar el pin manualmente para precisión exacta.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 pt-6">
                 <div className="flex gap-2 items-end">
                     <FormField
                         control={form.control}
-                        name="address.line1"
+                        name="address"
                         render={({ field }) => (
                             <FormItem className="flex-1">
                                 <FormLabel className="text-slate-700 font-semibold">Dirección Principal <span className="text-destructive">*</span></FormLabel>
@@ -128,7 +130,7 @@ export function PropertiesLocation() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
-                        name="address.line2"
+                        name="addressDetail"
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="text-slate-700 font-semibold">Dirección Línea 2 (Opcional)</FormLabel>
@@ -141,16 +143,12 @@ export function PropertiesLocation() {
                     />
                     <FormField
                         control={form.control}
-                        name="address.postal_code"
+                        name="state"
                         render={({ field }) => (
                             <FormItem>
-<<<<<<< Updated upstream
-                                <FormLabel className="text-slate-700 font-semibold">Código Postal</FormLabel>
-=======
                                 <FormLabel className="text-slate-700 font-semibold">Estado/Depto <span className="text-destructive">*</span></FormLabel>
->>>>>>> Stashed changes
                                 <FormControl>
-                                    <Input className="h-11 border-slate-200" placeholder="130001" {...field} />
+                                    <Input className="h-11 border-slate-200" placeholder="Bolívar" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -159,7 +157,7 @@ export function PropertiesLocation() {
                 </div>
 
                 <div className="aspect-video w-full rounded-xl bg-slate-100 border-2 border-slate-200 relative overflow-hidden shadow-inner group">
-                    <MapComponent lat={lat} lng={lng} onChange={handleMapChange} />
+                    <MapComponent lat={Number(lat)} lng={Number(lng)} onChange={handleMapChange} />
                     <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                         <Badge className="bg-white/90 text-[var(--color-brand-purple)] border border-[var(--color-brand-purple)]/20 shadow-sm backdrop-blur-sm px-3 py-1 font-bold">
                             Arrastra el pin para ajustar
@@ -170,7 +168,7 @@ export function PropertiesLocation() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
                         control={form.control}
-                        name="address.city"
+                        name="city"
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="text-slate-700 font-semibold">Ciudad <span className="text-destructive">*</span></FormLabel>
@@ -186,38 +184,35 @@ export function PropertiesLocation() {
                         )}
                     />
                     <FormField
-                        control={form.control}
-                        name="address.state"
-                        render={({ field }) => (
-                            <FormItem>
-<<<<<<< Updated upstream
-                                <FormLabel className="text-slate-700 font-semibold">Estado/Depto</FormLabel>
-=======
-                                <FormLabel className="text-slate-700 font-semibold">País (ID) <span className="text-destructive">*</span></FormLabel>
->>>>>>> Stashed changes
-                                <FormControl>
-                                    <Input
-                                        className="h-11 border-slate-200"
-                                        placeholder="Bolívar"
-                                        {...field}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
+                         control={form.control}
+                         name="countryId"
+                         render={({ field }) => (
+                             <FormItem>
+                                 <FormLabel className="text-slate-700 font-semibold">País (ID) <span className="text-destructive">*</span></FormLabel>
+                                 <FormControl>
+                                     <Input
+                                         type="number"
+                                         className="h-11 border-slate-200"
+                                         placeholder="48"
+                                         {...field}
+                                         onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                     />
+                                 </FormControl>
+                                 <FormMessage />
+                             </FormItem>
+                         )}
                     />
-                    <FormField
+                     <FormField
                         control={form.control}
-                        name="address.country"
+                        name="timezone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-slate-700 font-semibold">País</FormLabel>
+                                <FormLabel className="text-slate-700 font-semibold">Zona Horaria</FormLabel>
                                 <FormControl>
-                                    <Input
-                                        className="h-11 border-slate-200"
-                                        placeholder="Colombia"
-                                        {...field}
-                                    />
+                                    <div className="relative">
+                                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <Input className="pl-9 h-11 border-slate-200" {...field} />
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -230,7 +225,7 @@ export function PropertiesLocation() {
                     <div className="grid grid-cols-2 gap-4">
                         <FormField
                             control={form.control}
-                            name="geoLocation.latitude"
+                            name="latitude"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-[10px] text-slate-500 uppercase">Latitud</FormLabel>
@@ -239,7 +234,8 @@ export function PropertiesLocation() {
                                             type="number"
                                             className="h-10 bg-white border-slate-200"
                                             {...field}
-                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(parseFloat(e.target.value))}
+                                            value={field.value ?? ""}
+                                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                                         />
                                     </FormControl>
                                 </FormItem>
@@ -247,7 +243,7 @@ export function PropertiesLocation() {
                         />
                         <FormField
                             control={form.control}
-                            name="geoLocation.longitude"
+                            name="longitude"
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="text-[10px] text-slate-500 uppercase">Longitud</FormLabel>
@@ -256,7 +252,8 @@ export function PropertiesLocation() {
                                             type="number"
                                             className="h-10 bg-white border-slate-200"
                                             {...field}
-                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => field.onChange(parseFloat(e.target.value))}
+                                            value={field.value ?? ""}
+                                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                                         />
                                     </FormControl>
                                 </FormItem>
@@ -265,24 +262,6 @@ export function PropertiesLocation() {
                     </div>
                     <p className="text-[10px] text-slate-400 italic">Estas coordenadas se actualizan automáticamente al mover el pin en el mapa.</p>
                 </div>
-
-                <FormField
-                    control={form.control}
-                    name="timeZone"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="text-slate-700 font-semibold">Zona Horaria (Confirmar)</FormLabel>
-                            <FormControl>
-                                <div className="relative">
-                                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                    <Input className="pl-9 h-11 border-slate-200" {...field} />
-                                </div>
-                            </FormControl>
-                            <FormDescription>Detectada automáticamente, por favor confirma que sea correcta.</FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
             </CardContent>
         </Card>
     )

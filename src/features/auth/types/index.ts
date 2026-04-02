@@ -17,20 +17,17 @@ export const otpSchema = z.object({
 export type OtpFormData = z.infer<typeof otpSchema>
 
 export const registerSchema = z.object({
-<<<<<<< Updated upstream
-    person_type_id: z.string({
-        message: "Debes seleccionar un tipo de perfil",
-    }),
-=======
     person_type_id: z.string().min(1, "Debes seleccionar un tipo de perfil"),
     identificationTypeId: z.string().min(1, "Debes seleccionar un tipo de identificación"),
     identificationNumber: z.string().min(3, "El número es requerido").max(30, "Máximo 30 caracteres"),
->>>>>>> Stashed changes
     companyName: z.string().optional(),
     name: z.string().min(2, "El nombre es requerido"),
+    lastname: z.string().min(2, "El apellido es requerido"),
     email: z.string().email("Email inválido"),
     phone: z.string().min(5, "El teléfono es requerido"),
     country: z.string().min(2, "El país es requerido"),
+    state: z.string().min(2, "El estado es requerido"),
+    city: z.string().min(2, "La ciudad es requerida"),
 }).superRefine((data, ctx) => {
     if (data.person_type_id === "2") {
         if (!data.companyName || data.companyName.trim().length < 2) {

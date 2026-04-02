@@ -2,12 +2,10 @@
 
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { Loader2, Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, Upload, X } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { Loader2, Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, AlertCircle } from "lucide-react"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"
 import {
     Form,
@@ -21,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     Tabs,
@@ -50,54 +48,9 @@ import { PropertiesUnits } from "./PropertiesUnits"
 import { PropertiesPhotos } from "./PropertiesPhotos"
 import { PropertiesAmenities } from "./PropertiesAmenities"
 import { PropertiesAutomation } from "./PropertiesAutomation"
-import { Switch } from "@/components/ui/switch"
-<<<<<<< Updated upstream
-import { deleteProperty, updateProperty } from "../services/properties"
-
-const propertySchema = z.object({
-    name: z.string().min(2, "El nombre debe tener al menos 2 caracteres"),
-    internalName: z.string().min(2, "El nombre interno es obligatorio"),
-    description: z.string().optional(),
-    type: z.string().min(1, "El tipo es obligatorio"),
-    status: z.enum(['ACTIVE', 'INACTIVE']),
-    thumbnailUrl: z.string().min(1, "La URL de la imagen es obligatoria"),
-    address: z.object({
-        line1: z.string().min(5, "La dirección es obligatoria"),
-        line2: z.string().optional(),
-        postal_code: z.string().optional(),
-        city: z.string().min(2, "La ciudad es obligatoria"),
-        state: z.string().optional(),
-        country: z.string().min(2, "El país es obligatorio"),
-    }),
-    geoLocation: z.object({
-        latitude: z.number(),
-        longitude: z.number(),
-    }),
-    startPrice: z.number().min(0, "El precio debe ser mayor o igual a 0"),
-    currency: z.string().min(3, "Código de moneda obligatorio (ej: COP)"),
-    timeZone: z.string().min(1, "La zona horaria es obligatoria"),
-    roomTypes: z.array(z.object({
-        id: z.union([z.string(), z.number()]),
-        name: z.string()
-    })).optional(),
-    units: z.array(z.any()).optional(),
-    automationSettings: z.object({
-        welcome_message: z.boolean(),
-        checkin_instructions: z.boolean(),
-        digital_key: z.boolean(),
-        online_checkin: z.boolean(),
-        cleaning_task: z.boolean(),
-    }),
-})
-=======
-import { propertyFormSchema, PropertyFormData, apiResponseToFormData } from "../types"
+import { propertyFormSchema, PropertyFormData } from "../types"
 import { propertiesService } from "../services/properties-service"
-import { listingsService } from "../services/listings-service"
 import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
-import { groupTimezonesByRegion } from "@/lib/catalog-utils"
-import { GroupedCatalogOption } from "@/types/catalogs"
-import { AlertCircle } from "lucide-react"
->>>>>>> Stashed changes
 
 interface PropertyFormProps {
     initialData?: any
@@ -107,33 +60,13 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     const [isLoading, setIsLoading] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+    const [isValidationErrorOpen, setIsValidationErrorOpen] = useState(false)
     const [activeTab, setActiveTab] = useState("details")
+    const [statusRecords, setStatusRecords] = useState<CatalogOption[]>([])
+    
     const router = useRouter()
+    const searchParams = useSearchParams()
 
-<<<<<<< Updated upstream
-    const form = useForm<z.infer<typeof propertySchema>>({
-        resolver: zodResolver(propertySchema),
-        defaultValues: initialData ? {
-            ...initialData,
-            status: initialData.status as any,
-            address: initialData.address || {
-                line1: "",
-                city: "",
-                country: "Colombia"
-            },
-            geoLocation: initialData.geoLocation || {
-                latitude: 10.3910,
-                longitude: -75.4794
-            },
-            automationSettings: initialData.automationSettings || {
-                welcome_message: true,
-                checkin_instructions: true,
-                digital_key: false,
-                online_checkin: true,
-                cleaning_task: true,
-            }
-        } : {
-=======
     useEffect(() => {
         const tab = searchParams.get("tab")
         if (tab) {
@@ -143,11 +76,9 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
 
     useEffect(() => {
         const fetchCatalogs = async () => {
-            const [timezones, statuses] = await Promise.all([
-                catalogService.getTimezones(),
+            const [statuses] = await Promise.all([
                 catalogService.getStatusRecords()
             ])
-            setGroupedTimezones(groupTimezonesByRegion(timezones))
             if (statuses.length > 0) setStatusRecords(statuses)
         }
         fetchCatalogs()
@@ -156,30 +87,9 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     const form = useForm<PropertyFormData>({
         resolver: zodResolver(propertyFormSchema) as any,
         defaultValues: initialData || {
->>>>>>> Stashed changes
             name: "",
-            internalName: "",
+            external_id: "",
             description: "",
-<<<<<<< Updated upstream
-            type: "HOTEL",
-            status: "ACTIVE",
-            thumbnailUrl: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&auto=format&fit=crop&q=60",
-            address: {
-                line1: "",
-                line2: "",
-                postal_code: "",
-                city: "",
-                state: "",
-                country: "Colombia",
-            },
-            geoLocation: {
-                latitude: 10.3910,
-                longitude: -75.4794,
-            },
-            startPrice: 0,
-            currency: "COP",
-            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-=======
             email: "",
             phone: "",
             address: "",
@@ -187,10 +97,10 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             city: "",
             state: "",
             countryId: 48,
-            latitude: 0,
-            longitude: 0,
+            latitude: 10.3910,
+            longitude: -75.4794,
             timezone: "America/Bogota",
-            statusRecordId: 6,
+            statusRecordId: 1,
             type: "HOTEL",
             startPrice: "",
             currency: "COP",
@@ -198,12 +108,10 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             wifiNetwork: "",
             wifiPassword: "",
             picturesUrl: [],
-            thumbnailUrl: "",
+            thumbnailUrl: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&auto=format&fit=crop&q=60",
             units: [],
             policies: [],
->>>>>>> Stashed changes
             roomTypes: [],
-            units: [],
             automationSettings: {
                 welcome_message: true,
                 checkin_instructions: true,
@@ -214,22 +122,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         },
     })
 
-<<<<<<< Updated upstream
-    async function onSubmit(values: z.infer<typeof propertySchema>) {
-        setIsLoading(true)
-        try {
-            if (initialData?.id) {
-                await updateProperty(initialData.id, values)
-                toast.success("Propiedad actualizada", {
-                    description: `${values.name} ha sido actualizada exitosamente.`,
-                })
-            } else {
-                // In a real app we'd call a createProperty service here
-                await new Promise((resolve) => setTimeout(resolve, 1000))
-                toast.success("Propiedad creada", {
-                    description: `${values.name} ha sido creada exitosamente.`,
-                })
-=======
     // Reset form when initialData arrives from async fetch
     useEffect(() => {
         if (initialData) {
@@ -237,14 +129,12 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         }
     }, [initialData, form])
 
-
     async function onSubmit(values: PropertyFormData) {
         setIsLoading(true)
         try {
-            console.log("[PropertyForm] Starting save process...")
+            console.log("[PropertyForm] Starting save process...", values)
             let propertyUuid = initialData?.uuid
 
-            // 1. Save main property data
             if (propertyUuid) {
                 await propertiesService.update(propertyUuid, values)
                 toast.success("Propiedad actualizada")
@@ -252,7 +142,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                 const response = await propertiesService.create(values)
                 propertyUuid = response.uuid
                 toast.success("Propiedad creada")
->>>>>>> Stashed changes
             }
 
             toast.info("Cambios sincronizados correctamente.")
@@ -260,17 +149,17 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         } catch (error) {
             console.error("[PropertyForm] Save error:", error)
             toast.error("Error al guardar", {
-                description: "Hubo un problema al intentar guardar los cambios o las unidades.",
+                description: "Hubo un problema al intentar guardar los cambios.",
             })
             setIsLoading(false)
         }
     }
 
     async function onDelete() {
-        if (!initialData?.id) return
+        if (!initialData?.uuid) return
         setIsDeleting(true)
         try {
-            await deleteProperty(initialData.id)
+            await propertiesService.delete(initialData.uuid)
             toast.success("Propiedad eliminada", {
                 description: "La propiedad ha sido eliminada exitosamente.",
             })
@@ -288,7 +177,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <Tabs defaultValue="details" onValueChange={(v) => setActiveTab(v)} className="space-y-6">
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)} className="space-y-6">
                     <TabsList className={cn(
                         "grid w-full h-auto bg-slate-100/50 p-1 border border-slate-200/60 rounded-xl shadow-sm",
                         "grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
@@ -356,7 +245,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     Información básica y administrativa de la propiedad.
                                 </CardDescription>
                             </CardHeader>
-                            <CardContent className="space-y-4">
+                            <CardContent className="space-y-4 pt-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField
                                         control={form.control}
@@ -374,7 +263,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     />
                                     <FormField
                                         control={form.control}
-                                        name="internalName"
+                                        name="external_id"
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Nombre Interno (ID)</FormLabel>
@@ -391,8 +280,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField
                                         control={form.control}
-<<<<<<< Updated upstream
-=======
                                         name="email"
                                         render={({ field }) => (
                                             <FormItem>
@@ -422,7 +309,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField
                                         control={form.control}
->>>>>>> Stashed changes
                                         name="type"
                                         render={({ field }) => (
                                             <FormItem>
@@ -436,24 +322,27 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     />
                                     <FormField
                                         control={form.control}
-                                        name="status"
+                                        name="statusRecordId"
                                         render={({ field }) => (
                                             <FormItem>
-<<<<<<< Updated upstream
-                                                <FormLabel>Estado</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-=======
                                                 <FormLabel>Estado <span className="text-destructive">*</span></FormLabel>
-                                                <Select onValueChange={(v) => field.onChange(parseInt(v))} defaultValue={String(field.value)}>
->>>>>>> Stashed changes
+                                                <Select onValueChange={(v) => field.onChange(parseInt(v))} value={String(field.value)}>
                                                     <FormControl>
                                                         <SelectTrigger>
                                                             <SelectValue placeholder="Seleccionar estado" />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value="ACTIVE">Activo</SelectItem>
-                                                        <SelectItem value="INACTIVE">Inactivo</SelectItem>
+                                                        {statusRecords.length > 0 ? (
+                                                            statusRecords.map(s => (
+                                                                <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                                                            ))
+                                                        ) : (
+                                                            <>
+                                                                <SelectItem value="1">Activo</SelectItem>
+                                                                <SelectItem value="2">Inactivo</SelectItem>
+                                                            </>
+                                                        )}
                                                     </SelectContent>
                                                 </Select>
                                                 <FormMessage />
@@ -498,9 +387,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                             <FormItem>
                                                 <FormLabel>Precio Inicial <span className="text-destructive">*</span></FormLabel>
                                                 <FormControl>
-<<<<<<< Updated upstream
-                                                    <Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
-=======
                                                     <Input 
                                                         type="number" 
                                                         placeholder="0.00"
@@ -513,7 +399,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                                             }
                                                         }}
                                                     />
->>>>>>> Stashed changes
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -536,7 +421,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
 
                                 <FormField
                                     control={form.control}
-                                    name="timeZone"
+                                    name="timezone"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Zona Horaria</FormLabel>
@@ -581,12 +466,10 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                             <DialogContent>
                                 <DialogHeader>
                                     <DialogTitle>¿Estás completamente seguro?</DialogTitle>
-                                    <DialogHeader>
-                                        <DialogDescription>
-                                            Esta acción no se puede deshacer. Esto eliminará permanentemente la propiedad
-                                            y todos sus datos asociados.
-                                        </DialogDescription>
-                                    </DialogHeader>
+                                    <DialogDescription>
+                                        Esta acción no se puede deshacer. Esto eliminará permanentemente la propiedad
+                                        y todos sus datos asociados.
+                                    </DialogDescription>
                                 </DialogHeader>
                                 <DialogFooter>
                                     <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeleting}>
@@ -611,8 +494,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     </Button>
                 </div>
             </form>
-<<<<<<< Updated upstream
-=======
 
             <Dialog open={isValidationErrorOpen} onOpenChange={setIsValidationErrorOpen}>
                 <DialogContent className="sm:max-w-[425px]">
@@ -646,7 +527,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
->>>>>>> Stashed changes
         </Form>
     )
 }

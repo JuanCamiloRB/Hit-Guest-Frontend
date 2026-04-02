@@ -3,6 +3,7 @@ import { Property, Unit } from "@/types"
 export const mockProperties: Property[] = [
     {
         id: "1",
+        uuid: "prop-uuid-1",
         createdAt: "2024-01-01T12:00:00Z",
         updatedAt: "2024-01-01T12:00:00Z",
         name: "Hotel Oasis",
@@ -36,6 +37,7 @@ export const mockProperties: Property[] = [
     },
     {
         id: "2",
+        uuid: "prop-uuid-2",
         createdAt: "2024-01-05T10:00:00Z",
         updatedAt: "2024-01-06T15:00:00Z",
         name: "Edificio Atalaya",
@@ -72,6 +74,7 @@ export const mockProperties: Property[] = [
 export const mockUnits: Unit[] = [
     {
         id: "unit-101",
+        uuid: "unit-uuid-101",
         propertyId: "1",
         name: "Suite Junior",
         number: "101",
@@ -84,6 +87,7 @@ export const mockUnits: Unit[] = [
     },
     {
         id: "unit-102",
+        uuid: "unit-uuid-102",
         propertyId: "1",
         name: "Suite Junior",
         number: "102",
@@ -96,6 +100,7 @@ export const mockUnits: Unit[] = [
     },
     {
         id: "unit-301",
+        uuid: "unit-uuid-301",
         propertyId: "2",
         name: "301 Edificio Atalaya",
         number: "301",

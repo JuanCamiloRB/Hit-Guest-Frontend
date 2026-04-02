@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { MoreHorizontal, MapPin, BedDouble, Building, Hotel, Home as HomeIcon, Palmtree, User } from "lucide-react"
+import { MoreHorizontal, MapPin, Building, Hotel, Home as HomeIcon, Palmtree } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -50,6 +50,9 @@ const TypeLabel = ({ type }: { type?: string }) => {
 }
 
 export function PropertyCard({ property }: PropertyCardProps) {
+    // Determine the identifier to use for detail links
+    const propertyId = property.uuid || property.id
+
     return (
         <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-slate-200">
             <div className="relative aspect-video">
@@ -86,7 +89,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
                         </h3>
                         <div className="flex items-center text-xs text-slate-500">
                             <MapPin className="mr-1 h-3 w-3 text-indigo-400" />
-                            {property.address.city}, {property.address.country}
+                            {property.address?.city || "Ciudad"}, {property.address?.country || "País"}
                         </div>
                     </div>
                     <DropdownMenu>
@@ -98,19 +101,15 @@ export function PropertyCard({ property }: PropertyCardProps) {
                         <DropdownMenuContent align="end" className="w-[180px]">
                             <DropdownMenuLabel>Gestión</DropdownMenuLabel>
                             <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/properties/${property.uuid}`} className="flex items-center">
+                                <Link href={`/dashboard/properties/${propertyId}`} className="flex items-center">
                                     Editar Detalles
                                 </Link>
                             </DropdownMenuItem>
-<<<<<<< Updated upstream
-                            <DropdownMenuItem>Automatizaciones</DropdownMenuItem>
-=======
-                             <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/properties/${property.uuid}?tab=automation`} className="flex items-center">
+                            <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/properties/${propertyId}?tab=automation`} className="flex items-center">
                                     Automatizaciones
                                 </Link>
                             </DropdownMenuItem>
->>>>>>> Stashed changes
                             <DropdownMenuSeparator />
                             <DropdownMenuItem className="text-destructive font-medium">
                                 Desactivar Propiedad
@@ -121,7 +120,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
             </CardHeader>
             <CardFooter className="p-4 pt-0">
                 <Button variant="outline" className="w-full border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all font-semibold" asChild>
-                    <Link href={`/dashboard/properties/${property.uuid}`}>Gestionar</Link>
+                    <Link href={`/dashboard/properties/${propertyId}`}>Gestionar</Link>
                 </Button>
             </CardFooter>
         </Card>

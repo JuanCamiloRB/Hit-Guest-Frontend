@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { Suspense } from "react"
 import { PropertyForm } from "@/features/properties/components/PropertyForm"
 
 export const metadata: Metadata = {
@@ -12,7 +13,9 @@ export default function NewPropertyPage() {
             <div className="flex items-center justify-between space-y-2">
                 <h2 className="text-3xl font-bold tracking-tight">Nueva Propiedad</h2>
             </div>
-            <PropertyForm />
+            <Suspense fallback={<div className="h-20 w-full animate-pulse bg-slate-100 rounded-lg" />}>
+                <PropertyForm />
+            </Suspense>
         </div>
     )
 }

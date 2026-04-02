@@ -30,6 +30,7 @@ import { useState } from "react"
 import * as React from "react"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { Avatar as UiAvatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Logo } from "@/components/ui/Logo"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> { }
 
@@ -96,22 +97,65 @@ export function Sidebar({ className }: SidebarProps) {
     )
 
     return (
-        <div className={cn("flex flex-col h-screen bg-primary text-white border-r border-white/10", className)}>
-            <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8">
-                {/* Logo Section can be here or in Header, image 2 doesn't show it at the top of the menu itself but image 1 shows it in header */}
+        <div className={cn("flex flex-col h-screen bg-[var(--color-brand-purple)] text-white border-r border-white/10", className)}>
+            <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8 no-scrollbar">
+                {/* Logo Section - Restored to Sidebar */}
+                <div className="px-3 mb-2">
+                    <Link href="/dashboard" className="flex items-center gap-2">
+                        <Logo isWhite className="h-9 w-auto" />
+                    </Link>
+                </div>
 
                 <section className="space-y-4">
-                    <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-white/40">
+                    <h3 className="px-3 text-[10px] font-bold uppercase tracking-widest text-white/40">
                         Menú Principal
                     </h3>
-                    {renderMenuItems(mainMenu)}
+                    <div className="space-y-1">
+                        {mainMenu.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={cn(
+                                    "group flex items-center px-4 py-2.5 text-sm font-bold rounded-xl transition-all duration-200",
+                                    item.active
+                                        ? "bg-white text-[var(--color-brand-purple)] shadow-lg shadow-black/10"
+                                        : "text-white/80 hover:text-white hover:bg-white/10"
+                                )}
+                            >
+                                <item.icon className={cn(
+                                    "mr-3 h-5 w-5 transition-colors",
+                                    item.active ? "text-[var(--color-brand-purple)]" : "text-white/60 group-hover:text-white"
+                                )} />
+                                {item.label}
+                            </Link>
+                        ))}
+                    </div>
                 </section>
 
                 <section className="space-y-4">
-                    <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-white/40">
+                    <h3 className="px-3 text-[10px] font-bold uppercase tracking-widest text-white/40">
                         Sistema
                     </h3>
-                    {renderMenuItems(systemMenu)}
+                    <div className="space-y-1">
+                        {systemMenu.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                className={cn(
+                                    "group flex items-center px-4 py-2.5 text-sm font-bold rounded-xl transition-all duration-200",
+                                    item.active
+                                        ? "bg-white text-[var(--color-brand-purple)] shadow-lg shadow-black/10"
+                                        : "text-white/80 hover:text-white hover:bg-white/10"
+                                )}
+                            >
+                                <item.icon className={cn(
+                                    "mr-3 h-5 w-5 transition-colors",
+                                    item.active ? "text-[var(--color-brand-purple)]" : "text-white/60 group-hover:text-white"
+                                )} />
+                                {item.label}
+                            </Link>
+                        ))}
+                    </div>
                 </section>
             </div>
 

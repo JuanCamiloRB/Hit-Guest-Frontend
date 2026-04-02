@@ -48,36 +48,29 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
         { id: "1", name: "Individual" },
         { id: "2", name: "Empresa (Negocio)" }
     ])
+    const [identificationTypes, setIdentificationTypes] = React.useState<CatalogOption[]>([
+        { id: "1", name: "Cédula de Ciudadanía" },
+        { id: "2", name: "NIT" },
+        { id: "3", name: "Cédula de Extranjería" },
+        { id: "4", name: "Pasaporte" }
+    ])
     const [countries, setCountries] = React.useState<CatalogOption[]>([])
 
     React.useEffect(() => {
         const fetchData = async () => {
             try {
-                const [types, countryList] = await Promise.all([
+                const [types, idTypes, countryList] = await Promise.all([
                     catalogService.getPersonTypes(),
+                    catalogService.getIdentificationTypes(),
                     catalogService.getCountries()
                 ])
 
                 if (types && types.length > 0) {
                     setPersonTypes(types)
-
-                    // Sync default if not found in fetched types
-                    const currentTypeId = form.getValues("person_type_id")
-                    if (!types.some(t => t.id === currentTypeId)) {
-                        const bizType = types.find(t =>
-                            t.name.toLowerCase().includes("empresa") ||
-                            t.name.toLowerCase().includes("business") ||
-                            t.name.toLowerCase().includes("jurídica") ||
-                            t.name.toLowerCase().includes("juridica")
-                        )
-                        if (bizType) {
-                            form.setValue("person_type_id", bizType.id)
-                        } else if (types.length > 1) {
-                            form.setValue("person_type_id", types[1].id) // Fallback to 2nd option
-                        } else if (types.length > 0) {
-                            form.setValue("person_type_id", types[0].id)
-                        }
-                    }
+                }
+                
+                if (idTypes && idTypes.length > 0) {
+                    setIdentificationTypes(idTypes)
                 }
 
                 if (countryList && countryList.length > 0) {
@@ -160,13 +153,14 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
         )
     }
 
+    const isCompany = form.watch("person_type_id") === "2"
+
     return (
         <div className={cn("grid gap-6", className)} {...props}>
             <Form {...form}>
                 <form onSubmit={onRegister}>
                     <Honeypot {...honeypotProps} />
                     <div className="grid gap-5 bg-card/80 backdrop-blur-sm border border-[var(--color-brand-blue)]/10 rounded-xl p-6 shadow-lg shadow-[var(--color-brand-blue)]/5 relative">
-                        {/* Subtle top highlight for premium feel */}
                         <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-brand-blue)]/40 to-transparent rounded-t-xl" />
 
                         <FormField
@@ -196,23 +190,24 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 </FormItem>
                             )}
                         />
-                        {form.watch("person_type_id") === "2" && (
+
+                        {isCompany && (
                             <FormField
                                 control={form.control}
                                 name="companyName"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Razón Social (Nombre de la Empresa)</FormLabel>
+                                        <FormLabel>Razón Social (Nombre de la Empresa) <span className="text-destructive">*</span></FormLabel>
                                         <FormControl>
                                             <div className="relative group">
                                                 <Building2 className={cn(
-                                                    "absolute left-3 top-2.5 h-4 w-4 transition-colors",
+                                                    "absolute left-3 top-3 h-4 w-4 transition-colors",
                                                     form.formState.errors.companyName ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
                                                 )} />
                                                 <Input
                                                     placeholder="Ej: Apartamentos del Mar SAS"
                                                     disabled={isLoading}
-                                                    className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
+                                                    className="pl-9 h-11 focus-visible:ring-[var(--color-brand-blue)]/30"
                                                     {...field}
                                                 />
                                             </div>
@@ -222,33 +217,27 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 )}
                             />
                         )}
-                        <div className="grid grid-cols-2 gap-4">
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
                                 name="name"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>
-                                            {form.watch("person_type_id") === "2"
-<<<<<<< Updated upstream
-                                                ? "Nombre del Usuario"
-                                                : "Nombre completo"}
-=======
-                                                ? "Nombre del Usuario Principal"
-                                                : "Nombre"}
+                                            {isCompany ? "Nombre del Usuario Principal" : "Nombre"}
                                             <span className="text-destructive"> *</span>
->>>>>>> Stashed changes
                                         </FormLabel>
                                         <FormControl>
                                             <div className="relative group">
                                                 <User className={cn(
-                                                    "absolute left-3 top-2.5 h-4 w-4 transition-colors",
+                                                    "absolute left-3 top-3 h-4 w-4 transition-colors",
                                                     form.formState.errors.name ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
                                                 )} />
                                                 <Input
-                                                    placeholder="Ej: Juan Pérez"
+                                                    placeholder="Ej: Juan"
                                                     disabled={isLoading}
-                                                    className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
+                                                    className="pl-9 h-11 focus-visible:ring-[var(--color-brand-blue)]/30"
                                                     {...field}
                                                 />
                                             </div>
@@ -259,52 +248,31 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             />
                             <FormField
                                 control={form.control}
-                                name="country"
+                                name="lastname"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>País</FormLabel>
-                                        {countries.length > 0 ? (
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger className="w-full">
-                                                        <SelectValue placeholder="Selecciona tu país" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    {countries.map((country) => (
-                                                        <SelectItem key={country.id} value={country.id}>
-                                                            {country.name}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        ) : (
-                                            <FormControl>
-                                                <div className="relative group">
-<<<<<<< Updated upstream
-                                                    <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
-=======
-                                                    <User className={cn(
-                                                        "absolute left-3 top-2.5 h-4 w-4 transition-colors",
-                                                        form.formState.errors.lastname ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
-                                                    )} />
->>>>>>> Stashed changes
-                                                    <Input
-                                                        placeholder="Ej: Colombia"
-                                                        disabled={isLoading}
-                                                        className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
-                                                        {...field}
-                                                    />
-                                                </div>
-                                            </FormControl>
-<<<<<<< Updated upstream
-                                        )}
-=======
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
+                                        <FormLabel>
+                                            {isCompany ? "Apellido del Usuario Principal" : "Apellido"}
+                                            <span className="text-destructive"> *</span>
+                                        </FormLabel>
+                                        <FormControl>
+                                            <div className="relative group">
+                                                <User className={cn(
+                                                    "absolute left-3 top-3 h-4 w-4 transition-colors",
+                                                    form.formState.errors.lastname ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
+                                                )} />
+                                                <Input
+                                                    placeholder="Ej: Pérez"
+                                                    disabled={isLoading}
+                                                    className="pl-9 h-11 focus-visible:ring-[var(--color-brand-blue)]/30"
+                                                    {...field}
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -325,7 +293,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             </FormControl>
                                             <SelectContent className="rounded-xl shadow-xl border-slate-100">
                                                 {identificationTypes.map((type) => (
-                                                    <SelectItem key={type.id} value={type.id} className="cursor-pointer focus:bg-[var(--color-brand-blue)]/5 transition-colors">
+                                                    <SelectItem key={type.id} value={type.id} className="cursor-pointer">
                                                         {type.name}
                                                     </SelectItem>
                                                 ))}
@@ -349,12 +317,12 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                                 {...field}
                                             />
                                         </FormControl>
->>>>>>> Stashed changes
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
                         </div>
+
                         <FormField
                             control={form.control}
                             name="email"
@@ -364,14 +332,14 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     <FormControl>
                                         <div className="relative group">
                                             <Mail className={cn(
-                                                "absolute left-3 top-2.5 h-4 w-4 transition-colors",
+                                                "absolute left-3 top-3 h-4 w-4 transition-colors",
                                                 form.formState.errors.email ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
                                             )} />
                                             <Input
                                                 placeholder="nombre@empresa.com"
                                                 type="email"
                                                 disabled={isLoading}
-                                                className="pl-9 focus-visible:ring-[var(--color-brand-blue)]/30"
+                                                className="pl-9 h-11 focus-visible:ring-[var(--color-brand-blue)]/30"
                                                 {...field}
                                             />
                                         </div>
@@ -380,32 +348,25 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 </FormItem>
                             )}
                         />
-                        <div className="grid gap-2">
-<<<<<<< Updated upstream
-                            <FormLabel>{form.watch("person_type_id") === "2" ? "Business phone" : "Phone"}</FormLabel>
-=======
-                            <FormLabel>{form.watch("person_type_id") === "2" ? "Teléfono de empresa" : "Teléfono"} <span className="text-destructive">*</span></FormLabel>
->>>>>>> Stashed changes
-                            <FormField
-                                control={form.control}
-                                name="phone"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormControl>
-                                            <PhoneInputField
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                placeholder="300 123 4567"
-                                                disabled={isLoading}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-<<<<<<< Updated upstream
-=======
+
+                        <FormField
+                            control={form.control}
+                            name="phone"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>{isCompany ? "Teléfono de empresa" : "Teléfono"} <span className="text-destructive">*</span></FormLabel>
+                                    <FormControl>
+                                        <PhoneInputField
+                                            value={field.value}
+                                            onChange={field.onChange}
+                                            placeholder="300 123 4567"
+                                            disabled={isLoading}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
                         <FormField
                             control={form.control}
@@ -421,8 +382,9 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                                 const prefix = selected?.extra?.phone_prefix || selected?.extra?.dial_code || selected?.extra?.code
                                                 if (prefix) {
                                                     const currentPhone = form.getValues("phone")
-                                                    if (!currentPhone.startsWith("+")) {
-                                                        form.setValue("phone", `${prefix.startsWith("+") ? prefix : "+" + prefix}${currentPhone}`)
+                                                    if (!currentPhone?.startsWith("+")) {
+                                                        const cleanPrefix = prefix.startsWith("+") ? prefix : "+" + prefix
+                                                        form.setValue("phone", `${cleanPrefix}${currentPhone || ""}`)
                                                     }
                                                 }
                                             }} 
@@ -435,7 +397,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             </FormControl>
                                             <SelectContent className="rounded-xl shadow-xl border-slate-100 max-h-[200px]">
                                                 {countries.map((country) => (
-                                                    <SelectItem key={country.id} value={country.id} className="cursor-pointer focus:bg-[var(--color-brand-blue)]/5 transition-colors">
+                                                    <SelectItem key={country.id} value={country.id}>
                                                         {country.name}
                                                     </SelectItem>
                                                 ))}
@@ -444,11 +406,11 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     ) : (
                                         <FormControl>
                                             <div className="relative group">
-                                                <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
                                                 <Input
                                                     placeholder="Ej: Colombia"
                                                     disabled={isLoading}
-                                                    className="pl-9 h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                    className="pl-9 h-11 rounded-lg border-slate-200 shadow-sm"
                                                     {...field}
                                                 />
                                             </div>
@@ -470,7 +432,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <Input
                                                 placeholder="Ej: Valle del Cauca"
                                                 disabled={isLoading}
-                                                className="h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                className="h-11 rounded-lg border-slate-200 shadow-sm"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -488,7 +450,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <Input
                                                 placeholder="Ej: Cali"
                                                 disabled={isLoading}
-                                                className="h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                className="h-11 rounded-lg border-slate-200 shadow-sm"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -497,11 +459,12 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 )}
                             />
                         </div>
->>>>>>> Stashed changes
+
                         <div className="pt-2">
                             <Button
+                                type="submit"
                                 disabled={isLoading}
-                                className="w-full bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300 h-11 rounded-lg border border-transparent"
+                                className="w-full bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300 h-11 rounded-lg"
                             >
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                 Crear Cuenta

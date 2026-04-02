@@ -14,8 +14,6 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
-<<<<<<< Updated upstream
-=======
 import {
     Select,
     SelectContent,
@@ -24,7 +22,6 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
->>>>>>> Stashed changes
 import { useEffect, useState } from "react"
 import { Loader2, Building2, CreditCard, Mail, Phone, MapPin, Building, Globe } from "lucide-react"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
