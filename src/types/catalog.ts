@@ -41,6 +41,7 @@ export type CatalogCategoryName =
   | 'bed_type'              // bed configuration type
   | 'bath_type'             // bathroom type
   | 'cancellation_policy'   // cancellation policy type
+  | 'property_type'         // property classification type
 
 export interface CatalogFilter {
   status?: 'ACT' | 'INA'

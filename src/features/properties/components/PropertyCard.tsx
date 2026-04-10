@@ -27,22 +27,36 @@ interface PropertyCardProps {
     property: Property
 }
 
-const TypeIcon = ({ type }: { type?: string }) => {
-    switch (type) {
-        case 'HOTEL': return <Hotel className="h-3 w-3" />
-        case 'BUILDING': return <Building className="h-3 w-3" />
-        case 'HOUSE': return <HomeIcon className="h-3 w-3" />
+const TypeIcon = ({ type }: { type?: string | number }) => {
+    const t = String(type || '').toUpperCase()
+    switch (t) {
+        case 'HOTEL':
+        case '101': 
+            return <Hotel className="h-3 w-3" />
+        case 'BUILDING':
+        case '102':
+        case 'APARTMENT': 
+        case 'APARTAHOTEL':
+            return <Building className="h-3 w-3" />
+        case 'HOUSE':
+        case '100': 
+            return <HomeIcon className="h-3 w-3" />
         case 'RESORT': return <Palmtree className="h-3 w-3" />
         default: return <Building className="h-3 w-3" />
     }
 }
 
-const TypeLabel = ({ type }: { type?: string }) => {
-    switch (type) {
-        case 'HOTEL': return 'Hotel'
+const TypeLabel = ({ type }: { type?: string | number }) => {
+    const t = String(type || '').toUpperCase()
+    switch (t) {
+        case 'HOTEL':
+        case '101': return 'Hotel'
         case 'APARTAHOTEL': return 'Apartahotel'
-        case 'BUILDING': return 'Edificio'
-        case 'HOUSE': return 'Casa / Villa'
+        case 'BUILDING':
+        case '102':
+        case 'APARTMENT': return 'Apartamento / Edificio'
+        case 'HOUSE':
+        case '100': return 'Casa / Villa'
         case 'RESORT': return 'Resort'
         case 'HOSTAL': return 'Hostal'
         default: return 'Propiedad'
@@ -54,7 +68,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
     const propertyId = property.uuid || property.id
 
     return (
-        <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-slate-200">
+        <Card className="overflow-hidden group hover:shadow-2xl hover:shadow-brand-purple/10 transition-all duration-500 border-[var(--color-brand-purple)]/10 hover:border-[var(--color-brand-purple)]/30 rounded-2xl bg-white/50 backdrop-blur-sm">
             <div className="relative aspect-video">
                 <Image
                     src={property.thumbnailUrl || "/placeholder.svg"}
@@ -84,11 +98,11 @@ export function PropertyCard({ property }: PropertyCardProps) {
             <CardHeader className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div className="grid gap-1">
-                        <h3 className="font-bold text-lg leading-tight text-slate-900 group-hover:text-indigo-600 transition-colors">
+                        <h3 className="font-extrabold text-lg leading-tight text-[var(--color-brand-navy)] group-hover:text-[var(--color-brand-purple)] transition-colors duration-300">
                             {property.name}
                         </h3>
-                        <div className="flex items-center text-xs text-slate-500">
-                            <MapPin className="mr-1 h-3 w-3 text-indigo-400" />
+                        <div className="flex items-center text-xs text-[var(--color-brand-navy)]/60 font-medium">
+                            <MapPin className="mr-1 h-3.3 w-3.3 text-[var(--color-brand-blue)]" />
                             {property.address?.city || "Ciudad"}, {property.address?.country || "País"}
                         </div>
                     </div>
@@ -119,7 +133,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
                 </div>
             </CardHeader>
             <CardFooter className="p-4 pt-0">
-                <Button variant="outline" className="w-full border-slate-200 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all font-semibold" asChild>
+                <Button variant="outline" className="w-full border-[var(--color-brand-purple)]/20 text-[var(--color-brand-navy)] hover:bg-[var(--color-brand-purple)] hover:text-white hover:border-transparent transition-all duration-300 font-bold rounded-xl shadow-sm hover:shadow-lg hover:shadow-brand-purple/20" asChild>
                     <Link href={`/dashboard/properties/${propertyId}`}>Gestionar</Link>
                 </Button>
             </CardFooter>

@@ -97,7 +97,7 @@ export function Sidebar({ className }: SidebarProps) {
     )
 
     return (
-        <div className={cn("flex flex-col h-screen bg-[var(--color-brand-purple)] text-white border-r border-white/10", className)}>
+        <div className={cn("flex flex-col h-screen bg-[var(--color-brand-navy)] text-white border-r border-white/5", className)}>
             <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8 no-scrollbar">
                 {/* Logo Section - Restored to Sidebar */}
                 <div className="px-3 mb-2">
@@ -118,13 +118,13 @@ export function Sidebar({ className }: SidebarProps) {
                                 className={cn(
                                     "group flex items-center px-4 py-2.5 text-sm font-bold rounded-xl transition-all duration-200",
                                     item.active
-                                        ? "bg-white text-[var(--color-brand-purple)] shadow-lg shadow-black/10"
-                                        : "text-white/80 hover:text-white hover:bg-white/10"
+                                        ? "bg-[var(--color-brand-purple)] text-white shadow-lg shadow-black/20"
+                                        : "text-white/70 hover:text-white hover:bg-white/5"
                                 )}
                             >
                                 <item.icon className={cn(
                                     "mr-3 h-5 w-5 transition-colors",
-                                    item.active ? "text-[var(--color-brand-purple)]" : "text-white/60 group-hover:text-white"
+                                    item.active ? "text-white" : "text-white/60 group-hover:text-white"
                                 )} />
                                 {item.label}
                             </Link>
@@ -144,13 +144,13 @@ export function Sidebar({ className }: SidebarProps) {
                                 className={cn(
                                     "group flex items-center px-4 py-2.5 text-sm font-bold rounded-xl transition-all duration-200",
                                     item.active
-                                        ? "bg-white text-[var(--color-brand-purple)] shadow-lg shadow-black/10"
-                                        : "text-white/80 hover:text-white hover:bg-white/10"
+                                        ? "bg-[var(--color-brand-purple)] text-white shadow-lg shadow-black/20"
+                                        : "text-white/70 hover:text-white hover:bg-white/5"
                                 )}
                             >
                                 <item.icon className={cn(
                                     "mr-3 h-5 w-5 transition-colors",
-                                    item.active ? "text-[var(--color-brand-purple)]" : "text-white/60 group-hover:text-white"
+                                    item.active ? "text-white" : "text-white/60 group-hover:text-white"
                                 )} />
                                 {item.label}
                             </Link>

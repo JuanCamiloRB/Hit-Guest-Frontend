@@ -73,13 +73,16 @@ class AuthServiceImpl implements AuthService {
     async register(data: RegisterFormData): Promise<void> {
         try {
             const payload = {
-                person_type_id: parseInt(data.person_type_id),
+                personTypeId: parseInt(data.person_type_id),
                 name: data.person_type_id === "2" ? data.companyName : data.name,
+                lastname: data.person_type_id === "2" ? undefined : data.lastname,
                 email: data.email,
                 phone: data.phone,
-                country: data.country,
-                identification_type_id: parseInt(data.identificationTypeId),
-                identification_number: data.identificationNumber,
+                countryId: parseInt(data.country) || data.country, // Just in case it's a UUID, keep fallback
+                state: data.state,
+                city: data.city,
+                identificationTypeId: parseInt(data.identificationTypeId),
+                identificationNumber: data.identificationNumber,
             }
             await apiClient.post(`${API_BASE}/account/register`, payload)
         } catch (error: any) {

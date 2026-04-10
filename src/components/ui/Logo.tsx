@@ -8,8 +8,8 @@ interface LogoProps extends React.SVGProps<SVGSVGElement> {
 }
 
 export function Logo({ className, variant = "full", showText = true, isWhite = false, ...props }: LogoProps) {
-    const mainColor = isWhite ? "#ffffff" : "#1E224E" // Official Brand Navy
-    const dotColor = "#9D4CF2" // Keep dot purple as requested by user
+    const mainColor = isWhite ? "#ffffff" : "#222755" // White for sidebar, Navy for header
+    const dotColor = "#9D4CF2" // Always the brand purple dot as requested
 
     // Replicating exactly the HIT logo proportions from image
     const LogoIcon = () => (
@@ -42,7 +42,7 @@ export function Logo({ className, variant = "full", showText = true, isWhite = f
             {showText && (
                 <span className={cn(
                     "font-sans font-black text-[22px] leading-none tracking-tighter uppercase translate-y-[1px]",
-                    isWhite ? "text-white" : "text-[#1E224E]"
+                    isWhite ? "text-white" : "text-[#222755]"
                 )}>
                     Guest
                 </span>

@@ -15,10 +15,11 @@ URL_BASE_HIT = 'https://www.kunas.co/api/v1'
 3. [Endpoints de Catálogos](#endpoints-de-catálogos)
 4. [Endpoints de Países](#endpoints-de-países)
 5. [Endpoints de Propiedades](#endpoints-de-propiedades)
-6. [Categorías de Catálogos](#categorías-de-catálogos)
-7. [Estructura de Base de Datos](#estructura-de-base-de-datos)
-8. [Ejemplos de Payloads](#ejemplos-de-payloads)
-9. [Validaciones y Reglas](#validaciones-y-reglas)
+6. [Endpoints de Listings (Alojamientos)](#endpoints-de-listings-alojamientos)
+7. [Categorías de Catálogos](#categorías-de-catálogos)
+8. [Estructura de Base de Datos](#estructura-de-base-datos)
+9. [Ejemplos de Payloads](#ejemplos-de-payloads)
+10. [Validaciones y Reglas](#validaciones-y-reglas)
 
 ---
 
@@ -207,14 +208,33 @@ GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=person_type
 # Obtener tipos de identificación
 GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=identification_type
 
-# Obtener estados de registro
+# Obtener estados de registro (⚠️ Retorna 500 - Bug Conocido)
 GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=status_record
+# ⚠️ KNOWN BUG: Este endpoint retorna HTTP 500 Internal Server Error.
+# El frontend usa valores hardcodeados como fallback: { id: '6', name: 'Activo' }, { id: '7', name: 'Inactivo' }
 
 # Obtener amenidades
 GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=amenities
 
 # Obtener fuentes PMS
 GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=source_pms
+
+# Obtener tipos de propiedad
+GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=property_type
+
+# Obtener tipos de cama (⚠️ Retorna 500 - Bug Conocido)
+GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=bed_type
+# ⚠️ KNOWN BUG: Este endpoint retorna HTTP 500 Internal Server Error.
+# El frontend ya no requiere estos catálogos (UI simplificada a número de camas).
+
+# Obtener tipos de baño (⚠️ Retorna 500 - Bug Conocido)
+GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=bath_type
+# ⚠️ KNOWN BUG: Este endpoint retorna HTTP 500 Internal Server Error.
+# El frontend ya no requiere estos catálogos (UI simplificada a número de baños).
+
+# Obtener políticas de cancelación (posible 500 - verificar)
+GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=cancellation_policy
+# Frontend usa valores hardcodeados como fallback si el endpoint falla.
 ```
 
 **Respuesta Exitosa:**
@@ -268,6 +288,79 @@ GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=source_pms
 ```
 
 ---
+
+### 3. Obtener Monedas (Currencies)
+
+**Endpoint:** `GET /v1/catalogs/category/currencies`
+
+Devuelve la lista de monedas disponibles filtradas por las Américas + EUR. No requiere autenticación especial. La respuesta usa `code` como identificador, distinto al patrón `id/name` del resto de catálogos.
+
+**Parámetros:** Ninguno requerido.
+
+**Respuesta Exitosa (`200 OK`):**
+```json
+{
+    "data": [
+        { "code": "ANG", "name": "Netherlands Antillean guilder" },
+        { "code": "ARS", "name": "Argentine peso" },
+        { "code": "AWG", "name": "Aruban florin" },
+        { "code": "BBD", "name": "Barbadian dollar" },
+        { "code": "BMD", "name": "Bermudian dollar" },
+        { "code": "BOB", "name": "Bolivian boliviano" },
+        { "code": "BRL", "name": "Brazilian real" },
+        { "code": "BSD", "name": "Bahamian dollar" },
+        { "code": "BZD", "name": "Belize dollar" },
+        { "code": "CAD", "name": "Canadian dollar" },
+        { "code": "CLP", "name": "Chilean peso" },
+        { "code": "COP", "name": "Colombian peso" },
+        { "code": "CRC", "name": "Costa Rican colón" },
+        { "code": "CUP", "name": "Cuban peso" },
+        { "code": "DKK", "name": "Danish krone" },
+        { "code": "DOP", "name": "Dominican peso" },
+        { "code": "EUR", "name": "Euro" },
+        { "code": "FKP", "name": "Falkland Islands pound" },
+        { "code": "GBP", "name": "British pound" },
+        { "code": "GTQ", "name": "Guatemalan quetzal" },
+        { "code": "GYD", "name": "Guyanese dollar" },
+        { "code": "HNL", "name": "Honduran lempira" },
+        { "code": "HTG", "name": "Haitian gourde" },
+        { "code": "JMD", "name": "Jamaican dollar" },
+        { "code": "KYD", "name": "Cayman Islands dollar" },
+        { "code": "MXN", "name": "Mexican peso" },
+        { "code": "NIO", "name": "Nicaraguan córdoba" },
+        { "code": "PAB", "name": "Panamanian balboa" },
+        { "code": "PEN", "name": "Peruvian sol" },
+        { "code": "PYG", "name": "Paraguayan guarani" },
+        { "code": "SRD", "name": "Surinamese dollar" },
+        { "code": "TTD", "name": "Trinidad and Tobago dollar" },
+        { "code": "USD", "name": "United States dollar" },
+        { "code": "UYU", "name": "Uruguayan peso" },
+        { "code": "VES", "name": "Bolívar" },
+        { "code": "XCD", "name": "East Caribbean dollar" }
+    ]
+}
+```
+
+**Campos de la respuesta:**
+
+| Campo  | Tipo   | Descripción |
+|--------|--------|-------------|
+| `code` | string | Código ISO 4217 de la moneda. Se usa como identificador (`value`) en el selector del frontend. |
+| `name` | string | Nombre descriptivo de la moneda en inglés. |
+
+> **Nota:** El formato de respuesta difiere de otros catálogos — usa `{ data: [{ code, name }] }` en lugar de `{ data: [{ id, name }] }`. El parser en `getCurrencies()` mapea `code → id` para normalizar la estructura `CatalogOption`.
+
+**Integración en el frontend:**
+
+- **Servicio:** `catalogsService.getCurrencies()` en `src/services/catalogs-service.ts`
+  - Llama a `GET /v1/catalogs/category/currencies`
+  - Mapea `{ code, name }` → `CatalogOption { id: code, name: "${code} - ${name}" }`
+- **Uso en UI:** Selector de moneda en el diálogo de unidades (`PropertiesUnits.tsx`) — tab General, al lado del campo "Precio Inicial por Noche"
+- **Persistencia:** La moneda seleccionada se guarda en `extra.currency` del listing (`POST/PUT /v1/listings`)
+- **Valor por defecto:** `"COP"` (hrederado del valor por defecto de la propiedad)
+
+---
+
 
 ## Endpoints de Países
 
@@ -350,6 +443,7 @@ GET /countries?currency[eq]=COP
 **Payload:**
 ```json
 {
+  "propertyTypeId": 102,
   "name": "Propiedad 2",
   "description": "nueva descripcion 2",
   "email": "algun@email.com",
@@ -369,12 +463,13 @@ GET /countries?currency[eq]=COP
     ],
     "checkIn": "15:00",
     "checkOut": "11:00",
-    "cancellationPolicy": "Estricta: Reembolso del 50% hasta 7 días antes de la llegada.",
+    "cancellationPolicy": "Estricta: Reembolso del 50% hasta 7 días antes de la llegada. updated",
     "amenities": [46, 50, 79, 88],
     "wifiDetails": {
-      "network": "VillaSol_Guest",
-      "password": "vacacionesperfectas2026"
-    }
+      "network": "VillaSol_Guest_updated",
+      "password": "vacacionesperfectas2026-updated"
+    },
+    "currency": "COP"
   },
   "externalPmsIds": [
     {
@@ -402,6 +497,7 @@ GET /countries?currency[eq]=COP
 - `latitude`: Opcional, entre -90 y 90, requerido si se envía longitude
 - `longitude`: Opcional, entre -180 y 180, requerido si se envía latitude
 - `timezone`: Opcional, máximo 120 caracteres, debe ser timezone válido
+- `propertyTypeId`: Requerido, debe existir en catálogos (catalog_category_id = 14)
 - `statusRecordId`: Requerido, debe existir en catálogos (catalog_category_id = 3)
 - `extra.picturesUrl`: Opcional, array de URLs válidas, máximo 500 caracteres cada una
 - `extra.checkIn`: Opcional, formato hora (HH:mm), máximo 10 caracteres
@@ -721,6 +817,79 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 ```
 
 **Nota:** Este endpoint restaura una propiedad previamente eliminada (limpia el campo `deleted_at`)
+---
+
+## Endpoints de Listings (Alojamientos)
+
+### 1. Crear Listing / Unidad
+
+**Endpoint:** `POST /listings`
+
+Este endpoint permite crear una unidad o alojamiento (listing) asociado a una propiedad existente de forma dinámica.
+
+**Mecanismo de Herencia de la Propiedad:**
+Para evitar redundancia, el backend implementa una funcionalidad inteligente de herencia para campos comunes de `extra` (`checkIn`, `checkOut`, `cancellationPolicy`, `amenities`, y `wifiDetails`).
+- **Si el campo NO se envía en el payload:** El listing heredará automáticamente el valor que tiene configurado su propiedad padre.
+- **Si el campo SÍ se envía en el payload:** El valor provisto sobrescribirá la herencia, dándole a este listing información específica y personalizada que reemplaza la info de la propiedad.
+
+**Payload de Ejemplo:**
+```json
+{
+    "propertyUuid": "019d3b98-ad49-7055-8904-1c8794f4d18f",
+    "roomTypeId": 16,
+    "name": "Apto 102",
+    "internalName": "AP102",
+    "description": "nueva descripcion 2",
+    "thumbnailUrl": "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1476977613990701381/original/f1b3ed75-901d-4b4c-90e2-9be250641371.jpeg?im_w=720",
+    "contactName": "Persona encargada 2",
+    "contactEmail": "algun@email.com",
+    "contactPhone": "+5730030030000",
+    "extra": {
+        "picturesUrl": [
+            "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1476977613990701381/original/f1b3ed75-901d-4b4c-90e2-9be250641371.jpeg?im_w=720",
+            "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1476977613990701381/original/b09c9e50-0ec9-4713-96c3-09f4e1712fcc.jpeg?im_w=720"
+        ],
+        "bedRoom": 2,
+        "bathRoom": 1,
+        "rooms": 2,
+        "maxOccupancy": 4,
+        "minNights": 2,
+        "maxNights": 30,
+        "startPrice": 150000,  // Precio inicial por noche
+        "currency": "COP"      // Moneda (opcional, default: COP)
+        
+        // --- CAMPOS HEREDABLES --- (Opcionales)
+        // Si NO incluyes estos campos, heredarán los valores de la propiedad:
+        // "checkIn": "15:00",
+        // "checkOut": "12:00",
+        // "cancellationPolicy": "Estricta: Reembolso del 50%",
+        // "amenities": [46, 50, 79, 88, 76, 47],
+        // "wifiDetails": {
+        //     "network": "VillaSol_Guest_apto101",
+        //     "password": "vacacionesperfectas2026-apto101"
+        // }
+    },
+    "externalPmsIds": [
+        {
+            "sourcePmsId": 100,
+            "externalId": "1476977613990701381"
+        }
+    ],
+    "statusRecordId": 6
+}
+```
+
+**Validaciones y Campos Clave:**
+- `propertyUuid`: Requerido. UUID de la propiedad madre.
+- `roomTypeId`: Requerido. Tipo de habitación (catalog_category_id = 5).
+- `name`: Requerido. Nombre principal de la unidad.
+- `internalName`: Opcional. Nombre de uso interno para la administración.
+- `extra.picturesUrl`: Opcional. Array de URLs de fotos.
+- `extra.bedRoom`, `extra.bathRoom`, `extra.rooms`, `extra.maxOccupancy`: Detalles capacidad de la unidad.
+- `extra.startPrice`: Opcional. Precio inicial por noche (número).
+- `extra.currency`: Opcional. Moneda del precio (default: "COP").
+- `externalPmsIds`: Opcional. Útil para mapear el listing desde otras plataformas PMS (catalog_category_id = 12 para el pms source id).
+- `statusRecordId`: Requerido. Estado general de la unidad.
 
 ---
 
@@ -741,6 +910,7 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 | 11 | `listing_document_type` | Tipo de documento de listing | Documentos asociados a listings |
 | 12 | `source_pms` | Sistema PMS fuente | Sistemas de gestión de propiedades |
 | 13 | `person_verification` | Verificación de persona | Tipos de verificación de identidad |
+| 14 | `property_type` | Tipo de propiedad | Clasificación de propiedades (Hotel, Apartamento, etc.) |
 
 ---
 

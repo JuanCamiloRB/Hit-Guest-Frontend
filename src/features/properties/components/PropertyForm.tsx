@@ -39,7 +39,9 @@ import {
 import {
     Select,
     SelectContent,
+    SelectGroup,
     SelectItem,
+    SelectLabel,
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
@@ -48,9 +50,10 @@ import { PropertiesUnits } from "./PropertiesUnits"
 import { PropertiesPhotos } from "./PropertiesPhotos"
 import { PropertiesAmenities } from "./PropertiesAmenities"
 import { PropertiesAutomation } from "./PropertiesAutomation"
-import { propertyFormSchema, PropertyFormData } from "../types"
+import { propertyFormSchema, PropertyFormData, apiResponseToFormData } from "../types"
 import { propertiesService } from "../services/properties-service"
-import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
+import { listingsService } from "../services/listings-service"
+import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 
 interface PropertyFormProps {
     initialData?: any
@@ -58,6 +61,22 @@ interface PropertyFormProps {
 
 export function PropertyForm({ initialData }: PropertyFormProps) {
     const [isLoading, setIsLoading] = useState(false)
+    const [propertyTypes, setPropertyTypes] = useState<CatalogOption[]>([])
+    const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
+
+    useEffect(() => {
+        async function loadCatalogs() {
+            try {
+                const [propertyTypesData] = await Promise.all([
+                    catalogService.getPropertyTypes()
+                ])
+                setPropertyTypes(propertyTypesData)
+            } finally {
+                setIsLoadingCatalogs(false)
+            }
+        }
+        loadCatalogs()
+    }, [])
     const [isDeleting, setIsDeleting] = useState(false)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isValidationErrorOpen, setIsValidationErrorOpen] = useState(false)
@@ -76,17 +95,27 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
 
     useEffect(() => {
         const fetchCatalogs = async () => {
-            const [statuses] = await Promise.all([
-                catalogService.getStatusRecords()
-            ])
-            if (statuses.length > 0) setStatusRecords(statuses)
+            try {
+                const [statuses] = await Promise.all([
+                    catalogService.getStatusRecords()
+                ])
+                if (statuses.length > 0) setStatusRecords(statuses)
+            } catch (error) {
+                console.error("[PropertyForm] Error fetching calendars/statuses:", error)
+                // Fallback for status records since it's a critical dropdown
+                setStatusRecords([
+                    { id: "1", name: "Activo" },
+                    { id: "2", name: "Inactivo" }
+                ])
+            }
         }
         fetchCatalogs()
     }, [])
 
+
     const form = useForm<PropertyFormData>({
         resolver: zodResolver(propertyFormSchema) as any,
-        defaultValues: initialData || {
+        defaultValues: (initialData ? { ...apiResponseToFormData(initialData), uuid: initialData.uuid } : {
             name: "",
             external_id: "",
             description: "",
@@ -96,14 +125,11 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             addressDetail: "",
             city: "",
             state: "",
-            countryId: 48,
-            latitude: 10.3910,
-            longitude: -75.4794,
-            timezone: "America/Bogota",
-            statusRecordId: 1,
-            type: "HOTEL",
-            startPrice: "",
-            currency: "COP",
+            countryId: 0,
+            latitude: 0,
+            longitude: 0,
+            statusRecordId: 6,
+            propertyTypeId: 102,
             amenities: [],
             wifiNetwork: "",
             wifiPassword: "",
@@ -119,13 +145,15 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                 online_checkin: true,
                 cleaning_task: true,
             },
-        },
+        } as any),
     })
 
     // Reset form when initialData arrives from async fetch
+    // Preserve uuid so child components can watch('uuid') to know they are in edit mode
     useEffect(() => {
         if (initialData) {
-            form.reset(initialData)
+            const transformedData = { ...apiResponseToFormData(initialData), uuid: initialData.uuid }
+            form.reset(transformedData)
         }
     }, [initialData, form])
 
@@ -138,14 +166,56 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             if (propertyUuid) {
                 await propertiesService.update(propertyUuid, values)
                 toast.success("Propiedad actualizada")
+                router.push("/dashboard/properties")
             } else {
                 const response = await propertiesService.create(values)
-                propertyUuid = response.uuid
+                propertyUuid = response.uuid || (response as any).data?.uuid
                 toast.success("Propiedad creada")
+ 
+                // Restore manual creation: units MUST be created via separate /listings endpoint
+                const pendingUnits = values.units || []
+                if (pendingUnits.length > 0 && propertyUuid) {
+                    let created = 0
+                    for (const u of pendingUnits as any[]) {
+                        try {
+                            const { extra = {} as any, ...rest } = u
+                            const {
+                                inheritWifi, inheritSchedule, inheritPolicies,
+                                wifiDetails, checkIn, checkOut, cancellationPolicy,
+                                ...cleanExtra
+                            } = extra as any
+ 
+                            if (!inheritWifi)     cleanExtra.wifiDetails = wifiDetails
+                            if (!inheritSchedule) { cleanExtra.checkIn = checkIn; cleanExtra.checkOut = checkOut }
+                            if (!inheritPolicies) cleanExtra.cancellationPolicy = cancellationPolicy
+ 
+                            const unitPrice = Number(u.price || rest.price) || 0
+                            cleanExtra.startPrice = unitPrice  // Backend mapea extra.startPrice
+ 
+                            await listingsService.create({
+                                propertyUuid,
+                                name:          u.name,
+                                internalName:  u.internalName,
+                                roomTypeId:    Number(u.roomTypeId) || 1,
+                                description:   u.description,
+                                thumbnailUrl:  u.thumbnailUrl,
+                                contactName:   u.contactName,
+                                contactEmail:  u.contactEmail,
+                                contactPhone:  u.contactPhone,
+                                statusRecordId: u.isActive !== false ? 6 : 7,
+                                extra:         cleanExtra,
+                            })
+                            created++
+                        } catch (uErr) {
+                            console.error("[PropertyForm] Error creating listing:", uErr)
+                        }
+                    }
+                    if (created > 0) toast.info(`${created} unidad(es) añadida(s).`)
+                }
+ 
+                // Redirect to edit page
+                router.push(`/dashboard/properties/${propertyUuid}?tab=units`)
             }
-
-            toast.info("Cambios sincronizados correctamente.")
-            router.push("/dashboard/properties")
         } catch (error) {
             console.error("[PropertyForm] Save error:", error)
             toast.error("Error al guardar", {
@@ -309,13 +379,30 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField
                                         control={form.control}
-                                        name="type"
+                                        name="propertyTypeId"
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Tipo de Propiedad <span className="text-destructive">*</span></FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Hotel, Apartamento, etc." {...field} />
-                                                </FormControl>
+                                                <Select onValueChange={(v) => field.onChange(parseInt(v))} value={String(field.value)}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Seleccionar tipo de propiedad" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {propertyTypes.length > 0 ? (
+                                                            propertyTypes.map(t => (
+                                                                <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                                                            ))
+                                                        ) : (
+                                                            <>
+                                                                <SelectItem value="102">Apartamento</SelectItem>
+                                                                <SelectItem value="100">Casa</SelectItem>
+                                                                <SelectItem value="101">Hotel</SelectItem>
+                                                            </>
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -373,60 +460,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                             <FormLabel>Descripción</FormLabel>
                                             <FormControl>
                                                 <Textarea placeholder="Una hermosa propiedad..." className="min-h-[100px]" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
-                                    <FormField
-                                        control={form.control}
-                                        name="startPrice"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Precio Inicial <span className="text-destructive">*</span></FormLabel>
-                                                <FormControl>
-                                                    <Input 
-                                                        type="number" 
-                                                        placeholder="0.00"
-                                                        {...field} 
-                                                        value={field.value ?? ""}
-                                                        onChange={(e) => field.onChange(e.target.value)}
-                                                        onKeyDown={(e) => {
-                                                            if (["e", "E", "+", "-"].includes(e.key)) {
-                                                                e.preventDefault();
-                                                            }
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="currency"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Moneda</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="COP" {...field} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-
-                                <FormField
-                                    control={form.control}
-                                    name="timezone"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Zona Horaria</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="America/Bogota" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -514,7 +547,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                             <li>Correo electrónico</li>
                             <li>Dirección, Ciudad y Estado</li>
                             <li>Tipo de propiedad</li>
-                            <li>Precio Inicial</li>
                         </ul>
                     </div>
                     <DialogFooter>

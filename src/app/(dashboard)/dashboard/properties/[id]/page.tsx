@@ -31,11 +31,14 @@ export default function EditPropertyPage() {
                     return
                 }
                 
-                // Inyect units into the property object for the mapper
-                const propertyWithUnits = {
-                    ...apiProperty,
-                    units: listings || []
-                }
+                // Units are saved in extra.units of the property payload.
+                // The /listings endpoint will only have entries if listings were
+                // created via POST /listings separately (not currently the case).
+                // So: prefer API listings if they exist, otherwise let
+                // apiResponseToFormData read from extra.units naturally.
+                const propertyWithUnits = listings && listings.length > 0
+                    ? { ...apiProperty, listings }
+                    : apiProperty
                 
                 // Convert API response to form-ready structure
                 const formData = apiResponseToFormData(propertyWithUnits)

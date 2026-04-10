@@ -22,7 +22,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { catalogsService, CatalogOption } from "@/services/catalogs-service"
+import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { useEffect, useState } from "react"
 import { User } from "../../auth/types"
 import { Loader2, User as UserIcon, Mail, Phone, MapPin, Building, Globe, Languages } from "lucide-react"
@@ -64,7 +64,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
     useEffect(() => {
         async function loadCountries() {
-            const data = await catalogsService.getCountries()
+            const data = await catalogService.getCountries()
             setCountries(data)
         }
         loadCountries()

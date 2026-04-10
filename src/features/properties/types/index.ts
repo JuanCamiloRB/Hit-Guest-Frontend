@@ -17,10 +17,13 @@ export interface PropertyApiPayload {
     externalId?: string | null
     timezone?: string | null
     statusRecordId: number
+    propertyTypeId: number
     // top level fields (potential server column support)
     price?: number | string | null
     start_price?: number | string | null
     startPrice?: number | string | null
+    amenity_ids?: (string | number)[]
+    amenities?: (string | number)[]
     
     extra?: {
         picturesUrl?: string[]
@@ -37,11 +40,13 @@ export interface PropertyApiPayload {
         start_price?: number        // Production API snake_case
         internal_name?: string | null // Production API actual field for "Nombre Interno"
         currency?: string
+        propertyTypeId?: number | string | null // Support for catalogs
         thumbnailUrl?: string
         thumbnail_url?: string      // Production API snake_case
         automationSettings?: any
         policies?: any[]
         roomTypes?: any[]
+        price?: number | string | null
         units?: any[]
     } | null
     externalPmsIds?: {
@@ -59,7 +64,8 @@ export interface PropertyExtra {
     amenities?: number[]
     wifiDetails?: WifiDetails | null
     // UI-specific extras (flexible)
-    type?: string
+    type?: string                 // Backward compatibility
+    propertyTypeId?: number | string | null
     internalName?: string
     internal_name?: string | null
     thumbnailUrl?: string
@@ -67,6 +73,7 @@ export interface PropertyExtra {
     startPrice?: number
     start_price?: number | null
     currency?: string
+    price?: number | string | null
     roomTypes?: any[]
     automationSettings?: AutomationSettings
 }
@@ -112,6 +119,8 @@ export interface PropertyApiResponse {
     timezone?: string | null
     status_record_id?: number        
     statusRecordId?: number
+    propertyTypeId?: number
+    property_type_id?: number
     statusRecord?: {                
         id: number
         name: string
@@ -141,7 +150,8 @@ export interface PropertyApiResponse {
             network?: string | null
             password?: string | null
         } | null
-        type?: string
+        type?: string                 // Backward compatibility
+        propertyTypeId?: number | string | null
         internal_name?: string | null // Capture "Nombre Interno" from production API
         startPrice?: number
         start_price?: number        // snake_case alternative from some endpoints
@@ -150,6 +160,7 @@ export interface PropertyApiResponse {
         thumbnail_url?: string      // snake_case alternative from some endpoints
         automationSettings?: any
         policies?: any[]
+        price?: number | string | null
         roomTypes?: any[]
     }
     // integration / external IDs
@@ -165,6 +176,8 @@ export interface PropertyApiResponse {
     price?: number | string | null
     start_price?: number | string | null
     startPrice?: number | string | null
+    amenity_ids?: (string | number)[]
+    amenities?: (string | number)[]
     
     createdAt?: string
     updatedAt?: string
@@ -190,9 +203,7 @@ export const propertyFormSchema = z.object({
     external_id: z.string().max(60).optional(),
     timezone: z.string().max(120, "Máximo 120 caracteres").optional(),
     statusRecordId: z.number().int().positive(),
-    type: z.string().min(1, "El tipo de propiedad es obligatorio").max(60),
-    startPrice: z.coerce.number().min(1, "El precio inicial debe ser un número mayor a 0"),
-    currency: z.string().min(1, "La moneda es obligatoria").max(10),
+    propertyTypeId: z.coerce.number().min(1, "El tipo de propiedad es obligatorio"),
     thumbnailUrl: z.string().optional(),
 
     // Extra fields
@@ -252,29 +263,38 @@ export function formDataToApiPayload(data: PropertyFormData): PropertyApiPayload
         longitude: (data.longitude !== undefined && data.longitude !== null) ? String(data.longitude) : "0.00000000",
         timezone: data.timezone || "America/Bogota",
         statusRecordId: data.statusRecordId,
+        propertyTypeId: Number(data.propertyTypeId),
         
-        // Final attempt Price persistence: Top level (potential columns)
-        price: Number(data.startPrice) || 0,
-        start_price: Number(data.startPrice) || 0,
-        startPrice: Number(data.startPrice) || 0,
-        
+        // Redundancy for all potential server column names/expectations
+        amenities: (data.amenities || []).map(a => {
+            const str = String(a)
+            const parsed = parseInt(str)
+            return /^\d+$/.test(str) ? parsed : str
+        }),
+        amenity_ids: (data.amenities || []).map(a => {
+            const str = String(a)
+            const parsed = parseInt(str)
+            return /^\d+$/.test(str) ? parsed : str
+        }),
+
         extra: {
-            type: data.type,
-            // Ensure numeric for production validation rules inside extra
-            start_price: Number(data.startPrice) || 0,
-            startPrice: Number(data.startPrice) || 0,
             internal_name: data.external_id || null, 
-            currency: data.currency,
+            currency: "COP", // Default to COP if not provided
             thumbnailUrl: data.thumbnailUrl,
             thumbnail_url: data.thumbnailUrl,
             checkIn: data.checkIn,
             checkOut: data.checkOut,
             cancellationPolicy: data.cancellationPolicy,
             amenities: (data.amenities || []).map(a => {
-                // API expects numbers, but UI works with strings
-                if (typeof a === 'object' && a?.id) return Number(a.id);
-                const parsed = parseInt(String(a));
-                return isNaN(parsed) ? a : parsed;
+                // If it's already a number, keep it
+                if (typeof a === 'number') return a;
+                // If it's a string, try to parse it, but keep as string if it looks like a UUID or fails
+                const str = String(a);
+                const parsed = parseInt(str);
+                // Simple numeric ID check (only digits)
+                if (/^\d+$/.test(str)) return parsed;
+                // Otherwise return the string as-is (handling UUIDs for backend)
+                return str;
             }),
             wifiDetails: {
                 network: data.wifiNetwork,
@@ -284,17 +304,7 @@ export function formDataToApiPayload(data: PropertyFormData): PropertyApiPayload
             automationSettings: data.automationSettings,
             policies: data.policies,
             roomTypes: data.roomTypes,
-            // Units stored in extra since there is no separate listings endpoint
-            units: (data.units || []).map((u: any) => {
-                // Strip react-hook-form internal id and UI-only fields before persisting
-                const { id: _rhfId, customFields: _cf, ...rest } = u
-                return {
-                    ...rest,
-                    price: Number(u.price) || 0,
-                }
-            }),
         },
-        // units are NOT sent here — they are saved inside extra.units above
         ...(data.externalPmsIds && data.externalPmsIds.length > 0 ? {
             externalPmsIds: data.externalPmsIds.map((id: any) => ({
                 sourcePmsId: id.sourcePmsId,
@@ -363,49 +373,96 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
         timezone: apiData.timezone || location.timezone || "America/Bogota",
         external_id: external_id,
         statusRecordId: apiData.statusRecordId || apiData.status_record_id || apiData.statusRecord?.id || 6,
-        type: extra.type || "HOTEL",
-        // Check both camelCase and snake_case for price and thumbnail
-        startPrice: Number(apiData.price || apiData.start_price || apiData.startPrice || extra.start_price || extra.startPrice || 0),
-        currency: extra.currency || "COP",
+        propertyTypeId: Number(apiData.propertyTypeId || apiData.property_type_id || extra.propertyTypeId || extra.type || 102), // default to 102 if missing
         thumbnailUrl: extra.thumbnail_url || extra.thumbnailUrl || "",
         checkIn: extra.checkIn || "",
         checkOut: extra.checkOut || "",
         cancellationPolicy: extra.cancellationPolicy || "",
-        amenities: (extra.amenities || []).map((a: any) => {
-            // UI expect strings for checkboxes checks against catalogs
-            if (typeof a === 'object' && a?.id) return String(a.id)
-            return String(a)
-        }),
+        amenities: (() => {
+            // Priority: extra.amenities → apiData.amenities → apiData.amenity_ids
+            const raw = (extra.amenities || apiData.amenities || apiData.amenity_ids || [])
+            return (raw as any[]).map((a: any) => {
+                if (typeof a === 'object' && a?.id) return String(a.id)
+                return String(a)
+            })
+        })(),
         wifiNetwork: wifi.network || "",
         wifiPassword: wifi.password || "",
         picturesUrl: (extra as any).picturesUrl || (extra as any).pictures_url || [],
-        units: (
-            // Priority: extra.units (our persisted format) → top-level units/listings (legacy API response)
-            (extra as any).units ||
-            apiData.units ||
-            apiData.listings ||
-            []
-        ).map((u: any) => ({
-            ...u,
-            id: u.id || Math.random(),
-            uuid: u.uuid,
-            name: u.name || "",
-            internal_name: u.internal_name || "",
-            room_type_id: u.room_type_id || 1,
-            price: u.price || u.total_price || u.start_price || u.extra?.startPrice || u.extra?.total_price || "",
-            customFields: u.customFields || [],
-            extra: u.extra || {
-                max_occupancy: 2,
-                min_nights: 1,
-                max_nights: 30,
-                check_in: "15:00",
-                check_out: "11:00",
-                bed_room: { type: "KING", count: 1, bedsCount: 1 },
-                bath_room: { type: "PRIVATE", count: 1 },
-                amenities: [],
-                pictures_url: [],
+        // Deduplicate units from all possible sources (API often returns them in multiple places)
+        units: (() => {
+            const rawUnits = [
+                ...(apiData.units || []),
+                ...(apiData.listings || []),
+                ...((extra as any).units || [])
+            ]
+            
+            const uniqueMap = new Map()
+            rawUnits.forEach((u: any) => {
+                const key = u.uuid || `${u.name}-${u.internalName || u.internal_name}`
+                const uExtra = u.extra || {}
+                const hasPrice = Number(uExtra.startPrice || uExtra.start_price || u.startPrice || u.start_price || u.price || 0) > 0
+                
+                if (!uniqueMap.has(key)) {
+                    uniqueMap.set(key, u)
+                } else if (hasPrice) {
+                    // PRIORITIZE: If this version has a price and the existing one didn't, overwrite it
+                    const existing = uniqueMap.get(key)
+                    const exExtra = existing.extra || {}
+                    const existingPrice = Number(exExtra.startPrice || exExtra.start_price || existing.startPrice || existing.start_price || existing.price || 0)
+                    
+                    if (existingPrice === 0) {
+                        uniqueMap.set(key, u)
+                    }
+                }
+            })
+
+            return Array.from(uniqueMap.values())
+        })().map((u: any) => {
+            const extraData = u.extra || {}
+            // Determine if fields were inherited
+            const hasWifi = !!extraData.wifiDetails
+            const hasSchedule = !!extraData.checkIn || !!extraData.checkOut
+            const hasPolicies = !!extraData.cancellationPolicy
+
+            return {
+                ...u,
+                id: u.uuid || u.id || Math.random(),
+                name: u.name || "",
+                internalName: u.internalName || u.internal_name || "",
+                description: u.description || "",
+                thumbnailUrl: u.thumbnailUrl || u.thumbnail_url || "",
+                // roomType can come as nested { id, name } or flat roomTypeId / room_type_id
+                roomTypeId: String(u.roomType?.id || u.roomTypeId || u.room_type_id || "1"),
+                // contact can come as nested { name, email, phone } or flat camelCase/snake_case
+                contactName:  u.contact?.name  || u.contactName  || u.contact_name  || "",
+                contactEmail: u.contact?.email || u.contactEmail || u.contact_email || "",
+                contactPhone: u.contact?.phone || u.contactPhone || u.contact_phone || "",
+                // Robust price mapping: Include u.startPrice (camelCase at top-level) which the API is returning
+                price: extraData.startPrice || extraData.start_price || extraData.price || u.startPrice || u.start_price || u.total_price || u.price || "",
+                // statusRecord can come as nested { id } or flat statusRecordId / status_record_id
+                isActive: u.isActive ?? (u.statusRecord?.id === 6 || u.statusRecordId === 6 || u.status_record_id === 6 || u.status === "ACT") ?? true,
+                statusRecordId: u.statusRecord?.id || u.statusRecordId || u.status_record_id || 6,
+                customFields: u.customFields || [],
+                extra: {
+                    maxOccupancy: extraData.maxOccupancy || extraData.max_occupancy || 2,
+                    minNights: extraData.minNights || extraData.min_nights || 1,
+                    maxNights: extraData.maxNights || extraData.max_nights || 30,
+                    checkIn: extraData.checkIn || extraData.check_in || "15:00",
+                    checkOut: extraData.checkOut || extraData.check_out || "11:00",
+                    bedRoom: extraData.bedRoom || extraData.bed_room?.bedsCount || 1,
+                    bathRoom: extraData.bathRoom || extraData.bath_room?.count || 1,
+                    rooms: extraData.rooms || 1,
+                    amenities: extraData.amenities || [],
+                    picturesUrl: extraData.picturesUrl || extraData.pictures_url || [],
+                    wifiDetails: extraData.wifiDetails || extraData.wifi_details || { network: "", password: "" },
+                    cancellationPolicy: extraData.cancellationPolicy || extraData.cancellation_policy || "STANDARD",
+                    inheritWifi: !hasWifi,
+                    inheritSchedule: !hasSchedule,
+                    inheritPolicies: !hasPolicies,
+                }
             }
-        })),
+        }),
         policies: extra.policies || [],
         roomTypes: (extra as any).roomTypes || (extra as any).room_types || [],
         automationSettings: extra.automationSettings || {

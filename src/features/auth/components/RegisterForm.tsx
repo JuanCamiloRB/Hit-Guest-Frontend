@@ -22,7 +22,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { useRegister } from "../hooks/use-register"
-import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
+import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { Honeypot } from "./Honeypot"
 import Link from "next/link"

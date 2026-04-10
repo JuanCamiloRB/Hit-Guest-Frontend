@@ -21,7 +21,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
+import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { useEffect, useState } from "react"
 import { Loader2, Building2, CreditCard, Mail, Phone, MapPin, Building, Globe } from "lucide-react"
 import { PhoneInputField } from "@/components/ui/phone-input-field"

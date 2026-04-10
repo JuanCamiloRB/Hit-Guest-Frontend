@@ -66,7 +66,8 @@ class PropertiesService {
 
     // ── UPDATE ──
     async update(uuid: string, data: PropertyFormData): Promise<PropertyApiResponse> {
-        const payload: PropertyApiPayload = formDataToApiPayload(data)
+        // Inject uuid so formDataToApiPayload knows this is an UPDATE and omits units
+        const payload: PropertyApiPayload = formDataToApiPayload({ ...data, uuid } as any)
         const url = `${API_BASE}/properties/${uuid}`
 
         try {

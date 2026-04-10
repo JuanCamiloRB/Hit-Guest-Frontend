@@ -17,7 +17,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Sparkles, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
+import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { cn } from "@/lib/utils"
 
 export function PropertiesAmenities() {

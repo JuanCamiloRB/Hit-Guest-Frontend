@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { propertiesService } from "../services/properties-service"
+import { listingsService } from "../services/listings-service"
 import { apiResponseToFormData } from "../types"
 
 export function PropertiesList() {
@@ -43,12 +44,15 @@ export function PropertiesList() {
     const fetchData = async () => {
         setIsLoading(true)
         try {
-            const apiProperties = await propertiesService.list()
+            const [apiProperties, apiUnits] = await Promise.all([
+                propertiesService.list(),
+                listingsService.list()
+            ])
             
             const convertedProperties: Property[] = apiProperties.map((apiProp, index) => {
                 const formData = apiResponseToFormData(apiProp)
                 return {
-                    id: index + 1,
+                    id: apiProp.uuid || String(index + 1),
                     uuid: apiProp.uuid,
                     user_id: 1,
                     name: formData.name,
@@ -69,24 +73,42 @@ export function PropertiesList() {
                         : null,
                     timezone: formData.timezone,
                     status_record_id: formData.statusRecordId,
-                    status: formData.statusRecordId === 1 ? "ACTIVE" : "INACTIVE",
+                    status: formData.statusRecordId === 1 || formData.statusRecordId === 6 ? "ACTIVE" : "INACTIVE",
+                    type: String(apiProp.propertyTypeId || apiProp.property_type_id || formData.propertyTypeId || apiProp.extra?.propertyTypeId || apiProp.extra?.type || "102"),
                     created_at: apiProp.createdAt,
                     updated_at: apiProp.updatedAt,
                     extra: {
                         ...apiProp.extra,
-                        type: formData.type,
+                        propertyTypeId: formData.propertyTypeId,
+                        type: apiProp.extra?.type || (formData.propertyTypeId === 101 ? "HOTEL" : "BUILDING"),
                         thumbnailUrl: formData.thumbnailUrl,
-                        startPrice: formData.startPrice,
-                        currency: formData.currency,
                     }
                 } as unknown as Property
             })
             
             setProperties(convertedProperties)
-            // Units mapping if applicable
-            setUnits([]) 
+            
+            const convertedUnits: Unit[] = apiUnits.map((u: any, index) => {
+                const uPrice = Number(u.price || u.start_price || u.startPrice || u.total_price || u.extra?.startPrice || 0)
+                const isActive = (u.statusRecordId === 1 || u.statusRecordId === 6 || u.status_record_id === 1 || u.status_record_id === 6 || u.statusRecord?.id === 1 || u.statusRecord?.id === 6)
+                
+                return {
+                    id: u.uuid || String(index + 1),
+                    uuid: u.uuid,
+                    propertyId: u.propertyUuid || u.property_uuid || u.property_id || "", 
+                    name: u.name,
+                    number: u.internalName || u.internal_name || "",
+                    type: "ENTIRE_PLACE", 
+                    capacity: u.extra?.maxOccupancy || u.extra?.max_occupancy || u.maxOccupancy || 2,
+                    amenities: [],
+                    pricePerNight: uPrice,
+                    status: isActive ? "ACTIVE" : "INACTIVE",
+                    inheritWifi: false
+                } as Unit
+            })
+            setUnits(convertedUnits) 
         } catch (error) {
-            console.error("[PropertiesList] Error fetching properties:", error)
+            console.error("[PropertiesList] Error fetching data:", error)
             setProperties([])
             setUnits([])
         } finally {
@@ -126,44 +148,50 @@ export function PropertiesList() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-slate-900">Propiedades y Alojamientos</h2>
-                    <p className="text-slate-500 text-sm">
+                    <h2 className="text-3xl font-extrabold tracking-tight text-[var(--color-brand-navy)] drop-shadow-sm">Propiedades y Alojamientos</h2>
+                    <p className="text-[var(--color-brand-navy)]/60 text-sm font-medium">
                         Gestiona tus propiedades, unidades y configuraciones de automatización.
                     </p>
                 </div>
-                <Button asChild className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
+                <Button asChild className="bg-gradient-to-r from-[var(--color-brand-purple)] to-[var(--color-brand-blue)] hover:opacity-90 text-white shadow-lg shadow-brand-purple/20 border-none px-6 h-11 transition-all duration-300 transform hover:scale-[1.02]">
                     <Link href="/dashboard/properties/new">
-                        <Plus className="mr-2 h-4 w-4" /> Añadir Propiedad
+                        <Plus className="mr-2 h-5 w-5" /> Añadir Propiedad
                     </Link>
                 </Button>
             </div>
 
             <Tabs defaultValue="properties" className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-2 rounded-xl border shadow-sm">
-                    <TabsList className="grid grid-cols-2 w-full md:w-[400px]">
-                        <TabsTrigger value="properties" className="gap-2">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-2 rounded-2xl border-[1.5px] border-[var(--color-brand-purple)]/20 shadow-xl shadow-brand-purple/5">
+                    <TabsList className="grid grid-cols-2 w-full md:w-[400px] bg-slate-100/50 p-1.5 h-12">
+                        <TabsTrigger 
+                            value="properties" 
+                            className="gap-2 rounded-lg data-[state=active]:bg-[var(--color-brand-navy)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
+                        >
                             <Home className="h-4 w-4" /> Propiedades
                         </TabsTrigger>
-                        <TabsTrigger value="units" className="gap-2">
+                        <TabsTrigger 
+                            value="units" 
+                            className="gap-2 rounded-lg data-[state=active]:bg-[var(--color-brand-navy)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
+                        >
                             <List className="h-4 w-4" /> Alojamientos
                         </TabsTrigger>
                     </TabsList>
 
                     <div className="flex flex-1 items-center gap-3 px-2">
                         <div className="relative flex-1 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-brand-purple)]/50" />
                             <Input
                                 placeholder="Buscar por nombre o número..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 h-10 border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
+                                className="pl-9 h-10 border-[var(--color-brand-purple)]/10 bg-white focus:border-[var(--color-brand-purple)] focus:ring-[var(--color-brand-purple)] transition-all"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
                             <SelectTrigger className="w-[140px] h-10 border-slate-200">
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 pointer-events-none">
                                     <Filter className="h-3 w-3 text-slate-400" />
-                                    <span>{statusFilter === "ALL" ? "Estado" : statusFilter === "ACTIVE" ? "Activo" : "Inactivo"}</span>
+                                    <SelectValue placeholder="Estado" />
                                 </div>
                             </SelectTrigger>
                             <SelectContent>
@@ -177,9 +205,9 @@ export function PropertiesList() {
 
                 <TabsContent value="properties" className="space-y-6 outline-none">
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                            <Loader2 className="h-10 w-10 text-indigo-600 animate-spin mb-4" />
-                            <p className="text-slate-500 font-medium">Cargando propiedades...</p>
+                        <div className="flex flex-col items-center justify-center py-24 bg-gradient-to-b from-white to-slate-50 rounded-3xl border-[2px] border-dashed border-[var(--color-brand-purple)]/20">
+                            <Loader2 className="h-12 w-12 text-[var(--color-brand-purple)] animate-spin mb-4" />
+                            <p className="text-[var(--color-brand-navy)]/60 font-bold tracking-wide">Preparando tus propiedades...</p>
                         </div>
                     ) : filteredProperties.length === 0 ? (
                         <div className="text-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
@@ -199,11 +227,13 @@ export function PropertiesList() {
                 </TabsContent>
 
                 <TabsContent value="units" className="space-y-6 outline-none">
-                    <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-                        <div className="p-4 border-b bg-slate-50 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <LayoutGrid size={18} className="text-indigo-600" />
-                                <h3 className="font-bold text-slate-800">Listado de Alojamientos</h3>
+                    <div className="bg-white rounded-2xl border-[1.5px] border-[var(--color-brand-purple)]/10 shadow-2xl shadow-brand-purple/5 overflow-hidden">
+                        <div className="p-5 border-b bg-gradient-to-r from-[var(--color-brand-purple)]/[0.03] to-[var(--color-brand-blue)]/[0.03] flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-[var(--color-brand-purple)] p-2 rounded-lg text-white">
+                                    <LayoutGrid size={20} />
+                                </div>
+                                <h3 className="font-extrabold text-[var(--color-brand-navy)] text-lg">Listado de Alojamientos</h3>
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Filtrar por Propiedad:</span>
@@ -221,14 +251,14 @@ export function PropertiesList() {
                             </div>
                         </div>
                         <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-[100px]">Número</TableHead>
-                                    <TableHead>Nombre Alojamiento</TableHead>
-                                    <TableHead>Propiedad</TableHead>
-                                    <TableHead>Estado</TableHead>
-                                    <TableHead>Capacidad</TableHead>
-                                    <TableHead className="text-right">Precio</TableHead>
+                            <TableHeader className="bg-slate-50/50">
+                                <TableRow className="hover:bg-transparent border-b-[var(--color-brand-purple)]/10">
+                                    <TableHead className="w-[100px] font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Número</TableHead>
+                                    <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Nombre Alojamiento</TableHead>
+                                    <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Propiedad</TableHead>
+                                    <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Estado</TableHead>
+                                    <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Capacidad</TableHead>
+                                    <TableHead className="text-right font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Precio</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -242,10 +272,10 @@ export function PropertiesList() {
                                     filteredUnits.map((unit: Unit) => {
                                         const property = properties.find((p: Property) => p.id === unit.propertyId)
                                         return (
-                                            <TableRow key={unit.id} className="hover:bg-slate-50/50 transition-colors">
-                                                <TableCell className="font-bold text-indigo-600">{unit.number}</TableCell>
-                                                <TableCell className="font-medium">{unit.name}</TableCell>
-                                                <TableCell className="text-slate-500 text-sm">{property?.name}</TableCell>
+                                            <TableRow key={unit.id} className="hover:bg-[var(--color-brand-purple)]/[0.02] transition-colors border-b-[var(--color-brand-purple)]/5">
+                                                <TableCell className="font-bold text-[var(--color-brand-purple)]">{unit.number}</TableCell>
+                                                <TableCell className="font-bold text-[var(--color-brand-navy)]">{unit.name}</TableCell>
+                                                <TableCell className="text-[var(--color-brand-navy)]/60 text-sm font-medium">{property?.name}</TableCell>
                                                 <TableCell>
                                                     <div className={cn(
                                                         "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
@@ -256,8 +286,8 @@ export function PropertiesList() {
                                                         {unit.status === "ACTIVE" ? "Activo" : "Inactivo"}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-sm">{unit.capacity} Huéspedes</TableCell>
-                                                <TableCell className="text-right font-bold text-slate-900">
+                                                <TableCell className="text-sm font-medium text-[var(--color-brand-navy)]/70">{unit.capacity} Huéspedes</TableCell>
+                                                <TableCell className="text-right font-extrabold text-[var(--color-brand-navy)]">
                                                     ${unit.pricePerNight?.toLocaleString()}
                                                 </TableCell>
                                             </TableRow>

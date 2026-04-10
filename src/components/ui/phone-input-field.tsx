@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select"
 import { Phone, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { catalogsService } from "@/services/catalogs-service"
+import { catalogService } from "@/features/auth/services/catalog-service"
 
 interface PhoneInputProps {
     value?: string;
@@ -31,7 +31,7 @@ export function PhoneInputField({
     useEffect(() => {
         async function loadCountries() {
             try {
-                const data = await catalogsService.getCountries()
+                const data = await catalogService.getCountries()
                 setCountries(data)
             } finally {
                 setIsLoading(false)
@@ -84,7 +84,7 @@ export function PhoneInputField({
                     value={matchedCountry?.name || (countries.find(c => c.extra?.phone_prefix === currentPrefix)?.name || "Colombia")}
                     disabled={disabled}
                 >
-                    <SelectTrigger className="w-full h-11 px-3 bg-slate-50/50 border-slate-200 focus:ring-[var(--color-brand-purple)]/20 rounded-xl">
+                    <SelectTrigger className="w-full !h-11 px-3 bg-slate-50/50 border-slate-200 focus:ring-[var(--color-brand-purple)]/20 rounded-xl">
                         <div className="flex items-center gap-2">
                             <span className="text-sm">+{currentPrefix}</span>
                         </div>

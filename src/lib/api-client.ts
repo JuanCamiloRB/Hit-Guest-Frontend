@@ -10,9 +10,6 @@ export async function request<T>(
     const sessionToken = state.user?.token
     const appToken = CONFIG.APP_API_TOKEN
     
-    // Prioritize session token (login) over static app token
-    const token = sessionToken || appToken
-    
     // Handle headers safely
     const customHeaders = options?.headers 
         ? (Object.fromEntries(new Headers(options.headers as any).entries())) 
@@ -27,8 +24,10 @@ export async function request<T>(
         ...customHeaders,
     }
 
-    if (token) {
-        headers["Authorization"] = `Bearer ${token}`
+    // Priority: sessionToken > appToken
+    const finalToken = sessionToken || appToken
+    if (finalToken) {
+        headers["Authorization"] = `Bearer ${finalToken}`
     }
 
     const response = await fetch(url, {

@@ -39,45 +39,48 @@ import { useState, useEffect } from "react"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
-import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
+import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { listingsService } from "../services/listings-service"
 
 const defaultUnit = {
     name: "",
-    internal_name: "",
-    room_type_id: 1,
-    thumbnail_url: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=60",
-    contact_name: "",
-    contact_email: "",
-    contact_phone: "",
-    status_record_id: 1,
-    isActive: true, // UI state
+    internalName: "",
+    roomTypeId: 1,
+    thumbnailUrl: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=60",
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
+    statusRecordId: 6,
+    isActive: true,
     extra: {
-        pictures_url: [],
-        bed_room: { type: "SINGLE", count: 1, bedsCount: 1 },
-        bath_room: { type: "PRIVATE", count: 1 },
+        currency: "COP",
+        picturesUrl: [],
+        bedRoom: 1,
+        bathRoom: 1,
         rooms: 1,
-        max_occupancy: 2,
-        min_nights: 1,
-        max_nights: 30,
-        channels: [],
-        check_in: "15:00",
-        check_out: "11:00",
-        wifi_details: { ssid: "", pwd: "" },
+        maxOccupancy: 2,
+        minNights: 1,
+        maxNights: 30,
+        checkIn: "15:00",
+        checkOut: "11:00",
+        wifiDetails: { network: "", password: "" },
         amenities: [],
-        cancellation_policy: "STANDARD",
+        cancellationPolicy: "STANDARD",
         inheritWifi: true,
+        inheritSchedule: true,
+        inheritPolicies: true,
     },
-    // UI specific/temporary fields
     price: "",
-    customFields: [] as { name: string; value: string; id: string }[]
 }
 
 export function PropertiesUnits() {
     const { control, watch } = useFormContext()
     const propWifiNetwork = watch("wifiNetwork")
     const propWifiPassword = watch("wifiPassword")
+    // uuid is injected by the edit page — undefined for new properties
+    const propertyUuid: string | undefined = watch("uuid")
 
     const { fields, append, remove, update } = useFieldArray({
         control,
@@ -88,21 +91,14 @@ export function PropertiesUnits() {
     const [editingIndex, setEditingIndex] = useState<number | null>(null)
     const [unitForm, setUnitForm] = useState({ ...defaultUnit })
     const [roomTypes, setRoomTypes] = useState<CatalogOption[]>([])
-    const [bedTypes, setBedTypes] = useState<CatalogOption[]>([])
-    const [bathTypes, setBathTypes] = useState<CatalogOption[]>([])
-    const [cancellationPolicies, setCancellationPolicies] = useState<CatalogOption[]>([])
+    const [currencies, setCurrencies] = useState<CatalogOption[]>([])
 
     useEffect(() => {
-        Promise.all([
-            catalogService.getRoomTypes(),
-            catalogService.getBedTypes(),
-            catalogService.getBathTypes(),
-            catalogService.getCancellationPolicies(),
-        ]).then(([rooms, beds, baths, policies]) => {
+        catalogService.getRoomTypes().then((rooms) => {
             if (rooms.length > 0) setRoomTypes(rooms)
-            setBedTypes(beds)
-            setBathTypes(baths)
-            setCancellationPolicies(policies)
+        })
+        catalogService.getCurrencies().then((curr) => {
+            if (curr.length > 0) setCurrencies(curr)
         })
     }, [])
 
@@ -113,12 +109,40 @@ export function PropertiesUnits() {
     }
 
     const handleOpenEditDialog = (index: number) => {
-        setUnitForm(fields[index] as any)
+        const raw = fields[index] as any
+        // Normalize: API returns nested objects; flatten to camelCase for the form
+        const normalized = {
+            ...raw,
+            internalName:  raw.internalName  || raw.internal_name  || "",
+            // API returns roomType: { id, name } — flatten to roomTypeId
+            roomTypeId:    raw.roomType?.id  || raw.roomTypeId    || raw.room_type_id    || 1,
+            // API returns contact: { name, email, phone } — flatten
+            contactName:   raw.contact?.name  || raw.contactName   || raw.contact_name   || "",
+            contactEmail:  raw.contact?.email || raw.contactEmail  || raw.contact_email  || "",
+            contactPhone:  raw.contact?.phone || raw.contactPhone  || raw.contact_phone  || "",
+            description:   raw.description   || "",
+            thumbnailUrl:  raw.thumbnailUrl  || raw.thumbnail_url  || "",
+            price:         raw.extra?.startPrice || raw.extra?.price || raw.price || raw.total_price || raw.start_price || "",
+            // API returns statusRecord: { id } — determine isActive
+            isActive:      raw.isActive ?? (raw.statusRecord?.id === 6 || raw.statusRecordId === 6 || raw.status_record_id === 6) ?? true,
+            statusRecordId: raw.statusRecord?.id || raw.statusRecordId || raw.status_record_id || 6,
+            extra: {
+                ...defaultUnit.extra,
+                ...(raw.extra || {}),
+                currency: raw.extra?.currency || "COP",
+                // Ensure wifi nulls become empty strings for controlled inputs
+                wifiDetails: {
+                    network:  raw.extra?.wifiDetails?.network  ?? "",
+                    password: raw.extra?.wifiDetails?.password ?? "",
+                },
+            },
+        }
+        setUnitForm(normalized)
         setEditingIndex(index)
         setIsDialogOpen(true)
     }
 
-    const handleSaveUnit = () => {
+    const handleSaveUnit = async () => {
         if (!unitForm.name || unitForm.name.trim().length < 2) {
             toast.error("El nombre de la unidad es requerido", {
                 description: "Por favor asigna un nombre de al menos 2 caracteres.",
@@ -126,12 +150,124 @@ export function PropertiesUnits() {
             return
         }
 
-        if (editingIndex !== null) {
-            update(editingIndex, unitForm)
+        // ── Existing property: persist via API immediately ──
+        if (propertyUuid) {
+            try {
+                // Build the payload matching POST /listings schema
+                const { extra = {} as any, ...rest } = unitForm as any
+                const {
+                    inheritWifi,
+                    inheritSchedule,
+                    inheritPolicies,
+                    wifiDetails,
+                    checkIn,
+                    checkOut,
+                    cancellationPolicy,
+                    ...cleanExtra
+                } = extra
+
+                if (!inheritWifi)      cleanExtra.wifiDetails = wifiDetails
+                if (!inheritSchedule)  { cleanExtra.checkIn = checkIn; cleanExtra.checkOut = checkOut }
+                if (!inheritPolicies)  cleanExtra.cancellationPolicy = cancellationPolicy
+
+                // Store price purely inside extra as requested by the backend
+                const unitPrice = Number(unitForm.price) || 0
+                cleanExtra.startPrice = unitPrice
+
+                const payload = {
+                    propertyUuid,
+                    name:          rest.name,
+                    internalName:  rest.internalName  || undefined,
+                    roomTypeId:    Number(rest.roomTypeId) || 1,
+                    description:   rest.description   || undefined,
+                    thumbnailUrl:  rest.thumbnailUrl   || undefined,
+                    contactName:   rest.contactName    || undefined,
+                    contactEmail:  rest.contactEmail   || undefined,
+                    contactPhone:  rest.contactPhone   || undefined,
+                    statusRecordId: unitForm.isActive !== false ? 6 : 7,
+                    extra: cleanExtra,
+                }
+
+                // UPDATE also needs price at top-level (PUT /listings accepts it; POST does not)
+                const updatePayload = { ...payload, price: unitPrice, start_price: unitPrice }
+
+                if (editingIndex !== null && (unitForm as any).uuid) {
+                    // UPDATE existing listing — use updatePayload which includes root-level price (PUT accepts it)
+                    const updated = await listingsService.update((unitForm as any).uuid, updatePayload as any)
+                    const apiData = updated?.data || {}
+                    // Rebuild local state: price comes from extra.startPrice
+                    const refreshed = {
+                        ...unitForm,
+                        ...apiData,
+                        roomTypeId:    apiData.roomType?.id    || unitForm.roomTypeId,
+                        contactName:   apiData.contact?.name   || unitForm.contactName,
+                        contactEmail:  apiData.contact?.email  || unitForm.contactEmail,
+                        contactPhone:  apiData.contact?.phone  || unitForm.contactPhone,
+                        isActive:      apiData.statusRecord ? apiData.statusRecord.id === 6 : unitForm.isActive,
+                        // Restore price checking root and extra
+                        price:         apiData.price || apiData.startPrice || apiData.start_price || apiData.extra?.price || apiData.extra?.startPrice || unitForm.price,
+                        extra: {
+                            ...unitForm.extra,
+                            ...(apiData.extra || {}),
+                            startPrice: Number(unitForm.price) || 0,
+                            price: Number(unitForm.price) || 0,
+                            currency:   apiData.extra?.currency || unitForm.extra.currency,
+                        },
+                    }
+                    update(editingIndex, refreshed)
+                    toast.success("Unidad actualizada")
+                } else {
+                    // CREATE new listing
+                    const created = await listingsService.create(payload as any)
+                    const apiData = created?.data || {}
+                    const savedUnit = {
+                        ...unitForm,
+                        uuid: apiData.uuid || created?.uuid,
+                        // Restore price checking root and extra
+                        price: apiData.price || apiData.startPrice || apiData.start_price || apiData.extra?.price || apiData.extra?.startPrice || unitForm.price,
+                        extra: {
+                            ...unitForm.extra,
+                            ...(apiData.extra || {}),
+                            startPrice: Number(unitForm.price) || 0,
+                            price: Number(unitForm.price) || 0,
+                            currency:   apiData.extra?.currency || unitForm.extra.currency,
+                        },
+                    }
+                    append(savedUnit)
+                    toast.success("Unidad creada correctamente")
+                }
+            } catch (err) {
+                console.error("[PropertiesUnits] Error saving listing:", err)
+                toast.error("Error al guardar la unidad", {
+                    description: "Intenta de nuevo o guarda la propiedad completa.",
+                })
+                return
+            }
         } else {
-            append(unitForm)
+            // ── New property: keep in local form state, will be saved with the property ──
+            if (editingIndex !== null) {
+                update(editingIndex, unitForm)
+            } else {
+                append(unitForm)
+            }
         }
+
         setIsDialogOpen(false)
+    }
+
+    const handleRemoveUnit = async (index: number) => {
+        const unit = fields[index] as any
+        if (propertyUuid && unit.uuid) {
+            try {
+                await listingsService.delete(unit.uuid)
+                toast.success("Unidad eliminada")
+            } catch (err) {
+                console.error("[PropertiesUnits] Error deleting listing:", err)
+                toast.error("Error al eliminar la unidad")
+                return
+            }
+        }
+        remove(index)
     }
 
     return (
@@ -193,27 +329,27 @@ export function PropertiesUnits() {
                                                     <Input
                                                         id="name"
                                                         placeholder="Suite Junior"
-                                                        value={unitForm.name}
+                                                        value={unitForm.name ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, name: e.target.value })}
                                                     />
                                                 </div>
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="internal_name">Nombre Interno / Número</Label>
+                                                    <Label htmlFor="internalName">Nombre Interno / Número</Label>
                                                     <Input
-                                                        id="internal_name"
+                                                        id="internalName"
                                                         placeholder="Ej. SJ-101"
-                                                        value={unitForm.internal_name}
-                                                        onChange={(e) => setUnitForm({ ...unitForm, internal_name: e.target.value })}
+                                                        value={unitForm.internalName ?? ""}
+                                                        onChange={(e) => setUnitForm({ ...unitForm, internalName: e.target.value })}
                                                     />
                                                 </div>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="room_type_id">Categoría del Alojamiento</Label>
+                                                    <Label htmlFor="roomTypeId">Categoría del Alojamiento</Label>
                                                     <Select
-                                                        value={String(unitForm.room_type_id)}
-                                                        onValueChange={(value) => setUnitForm({ ...unitForm, room_type_id: parseInt(value) })}
+                                                        value={String(unitForm.roomTypeId)}
+                                                        onValueChange={(value) => setUnitForm({ ...unitForm, roomTypeId: parseInt(value) })}
                                                     >
                                                         <SelectTrigger>
                                                             <SelectValue placeholder="Seleccionar tipo" />
@@ -238,10 +374,10 @@ export function PropertiesUnits() {
                                                     <Input
                                                         id="maxOccupancy"
                                                         type="number"
-                                                        value={unitForm.extra.max_occupancy}
+                                                        value={unitForm.extra.maxOccupancy ?? 2}
                                                         onChange={(e) => setUnitForm({ 
                                                             ...unitForm, 
-                                                            extra: { ...unitForm.extra, max_occupancy: parseInt(e.target.value) || 0 } 
+                                                            extra: { ...unitForm.extra, maxOccupancy: parseInt(e.target.value) || 0 } 
                                                         })}
                                                     />
                                                 </div>
@@ -249,150 +385,139 @@ export function PropertiesUnits() {
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="price">Precio Inicial por Noche (COP)</Label>
+                                                    <Label htmlFor="currency">Moneda</Label>
+                                                    <Select
+                                                        value={unitForm.extra.currency ?? "COP"}
+                                                        onValueChange={(val) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, currency: val } })}
+                                                    >
+                                                        <SelectTrigger id="currency">
+                                                            <SelectValue placeholder="COP" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {currencies.length > 0 ? (
+                                                                currencies.map(c => (
+                                                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                                                ))
+                                                            ) : (
+                                                                <>
+                                                                    <SelectItem value="ARS">ARS - Argentine peso</SelectItem>
+                                                                    <SelectItem value="CAD">CAD - Canadian dollar</SelectItem>
+                                                                    <SelectItem value="CLP">CLP - Chilean peso</SelectItem>
+                                                                    <SelectItem value="COP">COP - Colombian peso</SelectItem>
+                                                                    <SelectItem value="USD">USD - United States dollar</SelectItem>
+                                                                    <SelectItem value="EUR">EUR - Euro</SelectItem>
+                                                                    <SelectItem value="MXN">MXN - Mexican peso</SelectItem>
+                                                                </>
+                                                            )}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="price">Precio Inicial por Noche</Label>
                                                     <Input
                                                         id="price"
                                                         type="number"
                                                         placeholder="250000"
-                                                        value={unitForm.price}
+                                                        value={unitForm.price ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, price: e.target.value })}
-                                                    />
-                                                </div>
-                                                <div className="grid gap-2">
-                                                    <Label htmlFor="contact_name">Nombre de Contacto</Label>
-                                                    <Input
-                                                        id="contact_name"
-                                                        placeholder="Nombre del encargado"
-                                                        value={unitForm.contact_name}
-                                                        onChange={(e) => setUnitForm({ ...unitForm, contact_name: e.target.value })}
                                                     />
                                                 </div>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="contact_email">Correo Electrónico <span className="text-destructive">*</span></Label>
+                                                    <Label htmlFor="contactName">Nombre de Contacto</Label>
                                                     <Input
-                                                        id="contact_email"
-                                                        type="email"
-                                                        placeholder="ejemplo@kunas.co"
-                                                        value={unitForm.contact_email}
-                                                        onChange={(e) => setUnitForm({ ...unitForm, contact_email: e.target.value })}
+                                                        id="contactName"
+                                                        placeholder="Nombre del encargado"
+                                                        value={unitForm.contactName ?? ""}
+                                                        onChange={(e) => setUnitForm({ ...unitForm, contactName: e.target.value })}
                                                     />
                                                 </div>
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="contact_phone">Teléfono de Contacto</Label>
+                                                    <Label htmlFor="contactPhone">Teléfono de Contacto</Label>
                                                     <Input
-                                                        id="contact_phone"
+                                                        id="contactPhone"
                                                         placeholder="+57..."
-                                                        value={unitForm.contact_phone}
-                                                        onChange={(e) => setUnitForm({ ...unitForm, contact_phone: e.target.value })}
+                                                        value={unitForm.contactPhone ?? ""}
+                                                        onChange={(e) => setUnitForm({ ...unitForm, contactPhone: e.target.value })}
                                                     />
                                                 </div>
                                             </div>
 
-                                            <div className="space-y-3 pt-4 border-t">
-                                                <div className="flex items-center justify-between">
-                                                    <h4 className="text-[10px] font-bold uppercase text-slate-400">Campos Personalizados</h4>
-                                                    <Button 
-                                                        type="button" 
-                                                        size="sm" 
-                                                        variant="ghost" 
-                                                        onClick={() => setUnitForm({
-                                                            ...unitForm,
-                                                            customFields: [...(unitForm.customFields || []), { id: Math.random().toString(), name: "", value: "" }]
-                                                        })}
-                                                        className="h-6 text-[10px] text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50"
-                                                    >
-                                                        <Plus className="h-3 w-3 mr-1" /> Añadir Campo
-                                                    </Button>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="contactEmail">Correo Electrónico <span className="text-destructive">*</span></Label>
+                                                    <Input
+                                                        id="contactEmail"
+                                                        type="email"
+                                                        placeholder="ejemplo@kunas.co"
+                                                        value={unitForm.contactEmail ?? ""}
+                                                        onChange={(e) => setUnitForm({ ...unitForm, contactEmail: e.target.value })}
+                                                    />
                                                 </div>
-                                                
-                                                {(unitForm.customFields || []).length > 0 && (
-                                                    <div className="space-y-2">
-                                                        {unitForm.customFields.map((cf, idx) => (
-                                                            <div key={cf.id} className="flex gap-2 items-center">
-                                                                <Input 
-                                                                    placeholder="Nombre" 
-                                                                    value={cf.name} 
-                                                                    onChange={(e) => {
-                                                                        const newFields = [...unitForm.customFields]
-                                                                        newFields[idx].name = e.target.value
-                                                                        setUnitForm({ ...unitForm, customFields: newFields })
-                                                                    }}
-                                                                    className="h-8 text-xs flex-1"
-                                                                />
-                                                                <Input 
-                                                                    placeholder="Valor" 
-                                                                    value={cf.value || ""} 
-                                                                    onChange={(e) => {
-                                                                        const newFields = [...unitForm.customFields]
-                                                                        newFields[idx].value = e.target.value
-                                                                        setUnitForm({ ...unitForm, customFields: newFields })
-                                                                    }}
-                                                                    className="h-8 text-xs flex-1"
-                                                                />
-                                                                <Button 
-                                                                    type="button" 
-                                                                    variant="ghost" 
-                                                                    size="icon" 
-                                                                    onClick={() => {
-                                                                        const newFields = unitForm.customFields.filter((_, i) => i !== idx)
-                                                                        setUnitForm({ ...unitForm, customFields: newFields })
-                                                                    }}
-                                                                    className="h-8 w-8 text-slate-300 hover:text-destructive"
-                                                                >
-                                                                    <Trash2 className="h-4 w-4" />
-                                                                </Button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
                                             </div>
+
+
                                         </TabsContent>
 
                                         <TabsContent value="amenities" className="space-y-6">
                                             <div className="space-y-4">
-                                                <div className="flex items-center gap-2">
-                                                    <Clock className="h-4 w-4 text-[var(--color-brand-purple)]" />
-                                                    <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">Horarios</h4>
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock className="h-4 w-4 text-[var(--color-brand-purple)]" />
+                                                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">Horarios</h4>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Heredar de Propiedad</span>
+                                                        <Switch
+                                                            checked={unitForm.extra.inheritSchedule}
+                                                            onCheckedChange={(checked) => setUnitForm({ 
+                                                                ...unitForm, 
+                                                                extra: { ...unitForm.extra, inheritSchedule: checked } 
+                                                            })}
+                                                        />
+                                                    </div>
                                                 </div>
-                                                <div className="grid grid-cols-2 gap-6 p-4 bg-slate-50 rounded-xl border">
-                                                    <div className="space-y-3">
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Check-in</p>
-                                                        <div className="grid grid-cols-1 gap-2">
-                                                            <div className="space-y-1">
-                                                                <Label className="text-[10px]">Hora</Label>
-                                                                <Input 
-                                                                    type="time" 
-                                                                    value={unitForm.extra.check_in}
-                                                                    onChange={(e) => setUnitForm({ 
-                                                                        ...unitForm, 
-                                                                        extra: { ...unitForm.extra, check_in: e.target.value }
-                                                                    })}
-                                                                    className="h-8 text-xs"
-                                                                />
+                                                
+                                                {!unitForm.extra.inheritSchedule && (
+                                                    <div className="grid grid-cols-2 gap-6 p-4 bg-slate-50 rounded-xl border">
+                                                        <div className="space-y-3">
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Check-in</p>
+                                                            <div className="grid grid-cols-1 gap-2">
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-[10px]">Hora</Label>
+                                                                    <Input 
+                                                                        type="time" 
+                                                                        value={unitForm.extra.checkIn ?? ""}
+                                                                        onChange={(e) => setUnitForm({ 
+                                                                            ...unitForm, 
+                                                                            extra: { ...unitForm.extra, checkIn: e.target.value }
+                                                                        })}
+                                                                        className="h-8 text-xs"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-3 border-l pl-6">
+                                                            <p className="text-[10px] font-bold text-slate-400 uppercase">Check-out</p>
+                                                            <div className="grid grid-cols-1 gap-2">
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-[10px]">Hora</Label>
+                                                                    <Input 
+                                                                        type="time"
+                                                                        value={unitForm.extra.checkOut ?? ""}
+                                                                        onChange={(e) => setUnitForm({ 
+                                                                            ...unitForm, 
+                                                                            extra: { ...unitForm.extra, checkOut: e.target.value }
+                                                                        })}
+                                                                        className="h-8 text-xs"
+                                                                    />
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <div className="space-y-3 border-l pl-6">
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase">Check-out</p>
-                                                        <div className="grid grid-cols-1 gap-2">
-                                                            <div className="space-y-1">
-                                                                <Label className="text-[10px]">Hora</Label>
-                                                                <Input 
-                                                                    type="time"
-                                                                    value={unitForm.extra.check_out}
-                                                                    onChange={(e) => setUnitForm({ 
-                                                                        ...unitForm, 
-                                                                        extra: { ...unitForm.extra, check_out: e.target.value }
-                                                                    })}
-                                                                    className="h-8 text-xs"
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                )}
                                             </div>
 
                                             <div className="space-y-4 pt-4 border-t">
@@ -420,12 +545,12 @@ export function PropertiesUnits() {
                                                             <Input
                                                                 id="unitWifiNetwork"
                                                                 placeholder="Red específica"
-                                                                value={unitForm.extra.wifi_details.ssid}
+                                                                value={unitForm.extra.wifiDetails?.network ?? ""}
                                                                 onChange={(e) => setUnitForm({ 
                                                                     ...unitForm, 
                                                                     extra: { 
                                                                         ...unitForm.extra, 
-                                                                        wifi_details: { ...unitForm.extra.wifi_details, ssid: e.target.value } 
+                                                                        wifiDetails: { ...unitForm.extra.wifiDetails, network: e.target.value } 
                                                                     } 
                                                                 })}
                                                             />
@@ -435,12 +560,12 @@ export function PropertiesUnits() {
                                                             <Input
                                                                 id="unitWifiPassword"
                                                                 placeholder="Clave específica"
-                                                                value={unitForm.extra.wifi_details.pwd}
+                                                                value={unitForm.extra.wifiDetails?.password ?? ""}
                                                                 onChange={(e) => setUnitForm({ 
                                                                     ...unitForm, 
                                                                     extra: { 
                                                                         ...unitForm.extra, 
-                                                                        wifi_details: { ...unitForm.extra.wifi_details, pwd: e.target.value } 
+                                                                        wifiDetails: { ...unitForm.extra.wifiDetails, password: e.target.value } 
                                                                     } 
                                                                 })}
                                                             />
@@ -457,36 +582,17 @@ export function PropertiesUnits() {
                                                         <BedDouble className="h-4 w-4 text-indigo-500" />
                                                         <h4 className="text-xs font-bold uppercase text-slate-600">Dormitorios</h4>
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-3">
+                                                    <div className="grid grid-cols-1 gap-3">
                                                         <div className="space-y-1">
-                                                            <Label className="text-[10px]">Cant. Camas</Label>
+                                                            <Label className="text-[10px]">Cant. Habitaciones / Camas</Label>
                                                             <Input 
                                                                 type="number" 
-                                                                value={unitForm.extra.bed_room.bedsCount}
+                                                                value={unitForm.extra.bedRoom ?? 1}
                                                                 onChange={(e) => setUnitForm({
                                                                     ...unitForm,
-                                                                    extra: { ...unitForm.extra, bed_room: { ...unitForm.extra.bed_room, bedsCount: parseInt(e.target.value) || 1 } }
+                                                                    extra: { ...unitForm.extra, bedRoom: parseInt(e.target.value) || 1 }
                                                                 })}
                                                             />
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <Label className="text-[10px]">Tipo</Label>
-                                                            <Select 
-                                                                value={unitForm.extra.bed_room.type}
-                                                                onValueChange={(val) => setUnitForm({
-                                                                    ...unitForm,
-                                                                    extra: { ...unitForm.extra, bed_room: { ...unitForm.extra.bed_room, type: val } }
-                                                                })}
-                                                            >
-                                                                <SelectTrigger className="h-10 text-xs">
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {bedTypes.map(bt => (
-                                                                        <SelectItem key={bt.id} value={String(bt.id)}>{bt.name}</SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -496,36 +602,17 @@ export function PropertiesUnits() {
                                                         <Bath className="h-4 w-4 text-indigo-500" />
                                                         <h4 className="text-xs font-bold uppercase text-slate-600">Baños</h4>
                                                     </div>
-                                                    <div className="grid grid-cols-2 gap-3">
+                                                    <div className="grid grid-cols-1 gap-3">
                                                         <div className="space-y-1">
                                                             <Label className="text-[10px]">Cantidad</Label>
                                                             <Input 
                                                                 type="number" 
-                                                                value={unitForm.extra.bath_room.count}
+                                                                value={unitForm.extra.bathRoom ?? 1}
                                                                 onChange={(e) => setUnitForm({
                                                                     ...unitForm,
-                                                                    extra: { ...unitForm.extra, bath_room: { ...unitForm.extra.bath_room, count: parseInt(e.target.value) || 1 } }
+                                                                    extra: { ...unitForm.extra, bathRoom: parseInt(e.target.value) || 1 }
                                                                 })}
                                                             />
-                                                        </div>
-                                                        <div className="space-y-1">
-                                                            <Label className="text-[10px]">Tipo</Label>
-                                                            <Select 
-                                                                value={unitForm.extra.bath_room.type}
-                                                                onValueChange={(val) => setUnitForm({
-                                                                    ...unitForm,
-                                                                    extra: { ...unitForm.extra, bath_room: { ...unitForm.extra.bath_room, type: val } }
-                                                                })}
-                                                            >
-                                                                <SelectTrigger className="h-10 text-xs">
-                                                                    <SelectValue />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {bathTypes.map(bt => (
-                                                                        <SelectItem key={bt.id} value={String(bt.id)}>{bt.name}</SelectItem>
-                                                                    ))}
-                                                                </SelectContent>
-                                                            </Select>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -533,14 +620,58 @@ export function PropertiesUnits() {
                                         </TabsContent>
 
                                         <TabsContent value="policies" className="space-y-4">
-                                            <div className="bg-[var(--color-brand-purple)]/5 border border-[var(--color-brand-purple)]/10 rounded-xl p-4 flex gap-3">
-                                                <Shield className="h-5 w-5 text-[var(--color-brand-purple)] shrink-0 mt-0.5" />
-                                                <div className="space-y-1">
-                                                    <p className="text-sm font-bold text-[var(--color-brand-purple)]">Políticas del Tipo de Alojamiento</p>
-                                                    <p className="text-xs text-[var(--color-brand-purple)]/80 leading-relaxed">
-                                                        Este tipo de habitación heredará las políticas generales de la propiedad. Puedes definir políticas específicas o excepciones en la integración final.
-                                                    </p>
+                                            <div className="space-y-4 pt-2">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <Shield className="h-4 w-4 text-[var(--color-brand-purple)]" />
+                                                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">Políticas</h4>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Heredar de Propiedad</span>
+                                                        <Switch
+                                                            checked={unitForm.extra.inheritPolicies}
+                                                            onCheckedChange={(checked) => setUnitForm({ 
+                                                                ...unitForm, 
+                                                                extra: { ...unitForm.extra, inheritPolicies: checked } 
+                                                            })}
+                                                        />
+                                                    </div>
                                                 </div>
+
+                                                {unitForm.extra.inheritPolicies ? (
+                                                    <div className="bg-[var(--color-brand-purple)]/5 border border-[var(--color-brand-purple)]/10 rounded-xl p-4 flex gap-3">
+                                                        <Shield className="h-5 w-5 text-[var(--color-brand-purple)] shrink-0 mt-0.5" />
+                                                        <div className="space-y-1">
+                                                            <p className="text-sm font-bold text-[var(--color-brand-purple)]">Políticas del Tipo de Alojamiento</p>
+                                                            <p className="text-xs text-[var(--color-brand-purple)]/80 leading-relaxed">
+                                                                Este tipo de habitación heredará las políticas generales de la propiedad. Puedes definir políticas específicas o excepciones en la integración final.
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="bg-slate-50 p-4 rounded-xl border space-y-4">
+                                                        <div className="space-y-2">
+                                                            <Label className="text-xs">Política de Cancelación Específica</Label>
+                                                            <Select 
+                                                                value={unitForm.extra.cancellationPolicy ?? ""}
+                                                                onValueChange={(val) => setUnitForm({
+                                                                    ...unitForm,
+                                                                    extra: { ...unitForm.extra, cancellationPolicy: val }
+                                                                })}
+                                                            >
+                                                                <SelectTrigger className="h-10 text-xs">
+                                                                    <SelectValue placeholder="Selecciona una política (Ej: Flexible)" />
+                                                                </SelectTrigger>
+                                                                <SelectContent>
+                                                                    <SelectItem value="FLEXIBLE">Flexible (Reembolso completo hasta 24h antes)</SelectItem>
+                                                                    <SelectItem value="MODERATE">Moderada (Reembolso completo hasta 5 días antes)</SelectItem>
+                                                                    <SelectItem value="STRICT_14">Estricta (Reembolso completo hasta 14 días antes)</SelectItem>
+                                                                    <SelectItem value="NON_REFUNDABLE">No Reembolsable</SelectItem>
+                                                                </SelectContent>
+                                                            </Select>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </TabsContent>
                                     </Tabs>
@@ -583,10 +714,10 @@ export function PropertiesUnits() {
                         ) : (
                             fields.map((field: any, index) => (
                                 <TableRow key={field.id}>
-                                    <TableCell className="font-bold text-[var(--color-brand-purple)]">{field.internal_name || '-'}</TableCell>
+                                    <TableCell className="font-bold text-[var(--color-brand-purple)]">{field.internalName || field.internal_name || '-'}</TableCell>
                                     <TableCell className="font-medium text-slate-900">{field.name || 'Unidad sin nombre'}</TableCell>
                                     <TableCell className="text-sm">
-                                        {field.extra?.max_occupancy || 0} Huéspedes
+                                        {field.extra?.maxOccupancy || field.extra?.max_occupancy || 0} Huéspedes
                                     </TableCell>
                                     <TableCell>
                                         <div className={cn(
@@ -599,13 +730,13 @@ export function PropertiesUnits() {
                                         </div>
                                     </TableCell>
                                     <TableCell className="text-right font-semibold text-slate-700">
-                                        ${Number(field.price || 0).toLocaleString()}
+                                        ${Number(field.price || field.extra?.startPrice || field.extra?.price || 0).toLocaleString()}
                                     </TableCell>
                                     <TableCell className="text-right space-x-1 flex justify-end">
                                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-indigo-600" onClick={() => handleOpenEditDialog(index)}>
                                             <Edit2 className="h-4 w-4" />
                                         </Button>
-                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => remove(index)}>
+                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveUnit(index)}>
                                             <Trash2 className="h-4 w-4" />
                                         </Button>
                                     </TableCell>

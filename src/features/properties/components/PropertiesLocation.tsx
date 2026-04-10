@@ -3,10 +3,20 @@
 import { MapPin, Globe, Search, Loader2 } from "lucide-react"
 import { useFormContext } from "react-hook-form"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import {
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import {
     Card,
     CardContent,
@@ -29,10 +39,29 @@ const MapComponent = dynamic(() => import("./MapComponent"), {
 export function PropertiesLocation() {
     const form = useFormContext()
     const [isSearching, setIsSearching] = useState(false)
+    const [countries, setCountries] = useState<any[]>([])
+    const [timezoneGroups, setTimezoneGroups] = useState<{group: string, options: CatalogOption[]}[]>([])
+    const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
+
+    useEffect(() => {
+        async function loadCatalogs() {
+            try {
+                const [countriesData, timezonesData] = await Promise.all([
+                    catalogService.getCountries(),
+                    catalogService.getTimezonesGrouped()
+                ])
+                setCountries(countriesData)
+                setTimezoneGroups(timezonesData)
+            } finally {
+                setIsLoadingCatalogs(false)
+            }
+        }
+        loadCatalogs()
+    }, [])
 
     // Using flat structure from PropertyFormData
-    const lat = form.watch("latitude") || 10.3910
-    const lng = form.watch("longitude") || -75.4794
+    const lat = form.watch("latitude") || 0
+    const lng = form.watch("longitude") || 0
 
     const handleMapChange = useCallback((newLat: number, newLng: number) => {
         form.setValue("latitude", newLat, { shouldValidate: true, shouldDirty: true })
@@ -43,6 +72,7 @@ export function PropertiesLocation() {
         const address = form.getValues("address")
         const city = form.getValues("city")
         const state = form.getValues("state")
+        const countryId = form.getValues("countryId")
 
         if (!address && !city) {
             toast.error("Dirección insuficiente", {
@@ -53,20 +83,64 @@ export function PropertiesLocation() {
 
         setIsSearching(true)
         try {
-            const query = encodeURIComponent(`${address}, ${city}, ${state}, Colombia`)
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`)
+            // Get country name from list
+            const selectedCountry = countries.find(c => String(c.id) === String(countryId))
+            const countryName = selectedCountry?.name || ""
+            
+            const queryParts = [address, city, state, countryName].filter(Boolean)
+            const query = encodeURIComponent(queryParts.join(", "))
+            
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&addressdetails=1`)
             const data = await response.json()
 
             if (data && data.length > 0) {
                 const result = data[0]
                 const newLat = parseFloat(result.lat)
                 const newLng = parseFloat(result.lon)
+                const addressDetails = result.address
 
+                // Update Coordinates
                 form.setValue("latitude", newLat)
                 form.setValue("longitude", newLng)
 
+                // Update City
+                const cityName = addressDetails.city || 
+                                 addressDetails.town || 
+                                 addressDetails.village || 
+                                 addressDetails.municipality || 
+                                 addressDetails.suburb || 
+                                 ""
+                if (cityName) form.setValue("city", cityName, { shouldDirty: true, shouldValidate: true })
+
+                // Update State
+                const stateName = addressDetails.state || 
+                                  addressDetails.region || 
+                                  addressDetails.province || 
+                                  ""
+                if (stateName) form.setValue("state", stateName, { shouldDirty: true, shouldValidate: true })
+
+                // Update Country + auto-fill Timezone
+                const countryCode = addressDetails.country_code?.toUpperCase()
+                if (countryCode) {
+                    const countryMatch = countries.find((c: any) => 
+                        c.name?.toUpperCase() === addressDetails.country?.toUpperCase() ||
+                        c.extra?.iso2 === countryCode ||
+                        c.extra?.iso3 === countryCode
+                    )
+                    if (countryMatch) {
+                        form.setValue("countryId", parseInt(countryMatch.id), { shouldDirty: true, shouldValidate: true })
+                        
+                        // Auto-fill timezone from country's first timezone if not already set
+                        const currentTimezone = form.getValues("timezone")
+                        const countryTimezones: string[] = countryMatch.extra?.timezones || []
+                        if (!currentTimezone && countryTimezones.length > 0) {
+                            form.setValue("timezone", countryTimezones[0], { shouldDirty: true, shouldValidate: true })
+                        }
+                    }
+                }
+
                 toast.success("Ubicación encontrada", {
-                    description: "El marcador se ha movido a la dirección encontrada.",
+                    description: `Ubicada en ${cityName || 'la dirección seleccionada'}.`,
                 })
             } else {
                 toast.error("No se encontró la ubicación", {
@@ -188,15 +262,26 @@ export function PropertiesLocation() {
                          name="countryId"
                          render={({ field }) => (
                              <FormItem>
-                                 <FormLabel className="text-slate-700 font-semibold">País (ID) <span className="text-destructive">*</span></FormLabel>
+                                 <FormLabel className="text-slate-700 font-semibold">País <span className="text-destructive">*</span></FormLabel>
                                  <FormControl>
-                                     <Input
-                                         type="number"
-                                         className="h-11 border-slate-200"
-                                         placeholder="48"
-                                         {...field}
-                                         onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                                     />
+                                     <Select
+                                         onValueChange={(val) => field.onChange(parseInt(val))}
+                                         value={String(field.value || "")}
+                                     >
+                                         <SelectTrigger className="h-11 border-slate-200 bg-white">
+                                             <SelectValue placeholder="Seleccionar país" />
+                                         </SelectTrigger>
+                                         <SelectContent>
+                                             {countries.map((c) => (
+                                                 <SelectItem key={c.id} value={String(c.id)}>
+                                                     <div className="flex items-center gap-2">
+                                                         <span>{c.extra?.emoji || "🏳️"}</span>
+                                                         <span>{c.name}</span>
+                                                     </div>
+                                                 </SelectItem>
+                                             ))}
+                                         </SelectContent>
+                                     </Select>
                                  </FormControl>
                                  <FormMessage />
                              </FormItem>
@@ -210,8 +295,29 @@ export function PropertiesLocation() {
                                 <FormLabel className="text-slate-700 font-semibold">Zona Horaria</FormLabel>
                                 <FormControl>
                                     <div className="relative">
-                                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <Input className="pl-9 h-11 border-slate-200" {...field} />
+                                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" />
+                                        <Select
+                                            onValueChange={field.onChange}
+                                            value={field.value || ""}
+                                        >
+                                            <SelectTrigger className="pl-9 h-11 border-slate-200 bg-white">
+                                                <SelectValue placeholder="Seleccionar zona horaria" />
+                                            </SelectTrigger>
+                                            <SelectContent className="max-h-[300px]">
+                                                {timezoneGroups.map((tg, gIdx) => (
+                                                    <SelectGroup key={`tg-${tg.group}-${gIdx}`}>
+                                                        <SelectLabel className="px-2 py-1.5 text-xs font-bold text-[var(--color-brand-purple)] uppercase tracking-wider bg-[var(--color-brand-purple)]/5">
+                                                            {tg.group}
+                                                        </SelectLabel>
+                                                        {tg.options.map((tz, tIdx) => (
+                                                            <SelectItem key={`tz-${tz.id}-${tIdx}`} value={tz.id}>
+                                                                {tz.name}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectGroup>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
                                     </div>
                                 </FormControl>
                                 <FormMessage />

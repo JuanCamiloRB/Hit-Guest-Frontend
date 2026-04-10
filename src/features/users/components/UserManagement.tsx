@@ -31,7 +31,7 @@ import {
 import { User, PREDEFINED_ROLES, UserRole } from "@/features/auth/types"
 import { userService } from "../services/user-service"
 import { useAuthStore } from "@/lib/store/auth-store"
-import { catalogsService as catalogService, CatalogOption } from "@/services/catalogs-service"
+import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
     Dialog,
