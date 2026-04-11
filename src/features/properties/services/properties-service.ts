@@ -64,7 +64,7 @@ class PropertiesService {
         }
     }
 
-    // ── UPDATE ──
+    // ── UPDATE (full form) ──
     async update(uuid: string, data: PropertyFormData): Promise<PropertyApiResponse> {
         // Inject uuid so formDataToApiPayload knows this is an UPDATE and omits units
         const payload: PropertyApiPayload = formDataToApiPayload({ ...data, uuid } as any)
@@ -74,6 +74,18 @@ class PropertiesService {
             return await apiClient.put<PropertyApiResponse>(url, payload)
         } catch (error: any) {
             console.error("[PropertiesService] Update error:", error)
+            throw error
+        }
+    }
+
+    // ── PATCH (partial update, e.g. status toggle) ──
+    async patch(uuid: string, fields: Record<string, any>): Promise<PropertyApiResponse> {
+        const url = `${API_BASE}/properties/${uuid}`
+
+        try {
+            return await apiClient.patch<PropertyApiResponse>(url, fields)
+        } catch (error: any) {
+            console.error("[PropertiesService] Patch error:", error)
             throw error
         }
     }
