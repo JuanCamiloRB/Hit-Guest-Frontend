@@ -50,6 +50,9 @@ class PropertiesService {
         try {
             const response = await apiClient.get<any>(url)
             
+            // Debug: log raw response to verify which fields the backend persists
+            console.log("🔍 [PropertiesService] RAW getByUuid response:", JSON.stringify(response, null, 2))
+            
             // Handle different response structures
             if (response?.data) {
                 return response.data

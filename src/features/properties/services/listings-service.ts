@@ -54,7 +54,7 @@ class ListingsService {
 
     // ── LIST BY PROPERTY ──
     async listByProperty(propertyUuid: string): Promise<any[]> {
-        const url = `${API_BASE}/listings?propertyUuid[eq]=${propertyUuid}`
+        const url = `${API_BASE}/listings?propertyUuid=${propertyUuid}`
 
         try {
             const response = await apiClient.get<any>(url)
@@ -83,16 +83,31 @@ class ListingsService {
             // Ensure numeric values and mapping for both camelCase and snake_case
             const payload = {
                 ...data,
+                // Duplicate fields to snake_case to prevent backend nulls
+                property_uuid: data.propertyUuid || (data as any).property_uuid,
                 propertyUuid: data.propertyUuid || (data as any).property_uuid,
                 room_type_id: Number(data.room_type_id || (data as any).roomTypeId) || 1,
+                roomTypeId: Number(data.room_type_id || (data as any).roomTypeId) || 1,
                 internal_name: data.internal_name || (data as any).internalName,
+                internalName: data.internal_name || (data as any).internalName,
+                status_record_id: Number(data.statusRecordId || data.status_record_id) || 6,
                 statusRecordId: Number(data.statusRecordId || data.status_record_id) || 6,
+                contact_email: data.contactEmail || data.contact_email,
                 contactEmail: data.contactEmail || data.contact_email,
+                contact_name: data.contactName || data.contact_name,
                 contactName: data.contactName || data.contact_name,
+                contact_phone: data.contactPhone || data.contact_phone,
                 contactPhone: data.contactPhone || data.contact_phone,
+                thumbnail_url: data.thumbnail_url || data.thumbnailUrl,
+                thumbnailUrl: data.thumbnail_url || data.thumbnailUrl,
                 // Ensure price is present in both top-level fields
-                price: data.price || (data as any).startPrice,
+                price: data.price || (data as any).startPrice || (data.extra as any)?.startPrice,
                 start_price: data.start_price || data.price || (data as any).startPrice || (data.extra as any)?.startPrice,
+                extra: {
+                    ...(data.extra || {}),
+                    startPrice: (data.extra as any)?.startPrice || data.price || data.start_price || 0,
+                    currency: (data.extra as any)?.currency || "COP"
+                }
             }
             
             console.log("🚀 [ListingsService] ENVIANDO a Kunas API:", JSON.stringify(payload, null, 2))
@@ -112,13 +127,26 @@ class ListingsService {
             const payload = {
                 ...data,
                 room_type_id: Number(data.room_type_id || (data as any).roomTypeId) || 1,
+                roomTypeId: Number(data.room_type_id || (data as any).roomTypeId) || 1,
                 internal_name: data.internal_name || (data as any).internalName,
+                internalName: data.internal_name || (data as any).internalName,
+                status_record_id: Number(data.statusRecordId || data.status_record_id) || 6,
                 statusRecordId: Number(data.statusRecordId || data.status_record_id) || 6,
+                contact_email: data.contactEmail || data.contact_email,
                 contactEmail: data.contactEmail || data.contact_email,
+                contact_name: data.contactName || data.contact_name,
                 contactName: data.contactName || data.contact_name,
+                contact_phone: data.contactPhone || data.contact_phone,
                 contactPhone: data.contactPhone || data.contact_phone,
-                price: data.price || (data as any).startPrice,
+                thumbnail_url: data.thumbnail_url || data.thumbnailUrl,
+                thumbnailUrl: data.thumbnail_url || data.thumbnailUrl,
+                price: data.price || (data as any).startPrice || (data.extra as any)?.startPrice,
                 start_price: data.start_price || data.price || (data as any).startPrice || (data.extra as any)?.startPrice,
+                extra: {
+                    ...(data.extra || {}),
+                    startPrice: (data.extra as any)?.startPrice || data.price || data.start_price || 0,
+                    currency: (data.extra as any)?.currency || "COP"
+                }
             }
             return await apiClient.put<any>(url, payload)
         } catch (error: any) {

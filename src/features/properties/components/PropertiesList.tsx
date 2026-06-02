@@ -44,10 +44,22 @@ export function PropertiesList() {
     const fetchData = async () => {
         setIsLoading(true)
         try {
-            const [apiProperties, apiUnits] = await Promise.all([
-                propertiesService.list(),
-                listingsService.list()
-            ])
+            const apiProperties = await propertiesService.list()
+            
+            // Because the global /listings endpoint may return 500 without a filter,
+            // we fetch units per property instead to ensure stability.
+            // Fetch units sequentially to avoid overwhelming the backend and causing 500 errors
+            const unitsArrays = []
+            for (const p of apiProperties) {
+                try {
+                    const propertyUnits = await listingsService.listByProperty(p.uuid)
+                    unitsArrays.push(propertyUnits)
+                } catch (e) {
+                    console.error(`Failed to fetch units for property ${p.uuid}`, e)
+                    unitsArrays.push([])
+                }
+            }
+            const apiUnits = unitsArrays.flat()
             
             const convertedProperties: Property[] = apiProperties.map((apiProp, index) => {
                 const formData = apiResponseToFormData(apiProp)

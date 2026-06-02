@@ -115,7 +115,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
 
     const form = useForm<PropertyFormData>({
         resolver: zodResolver(propertyFormSchema) as any,
-        defaultValues: (initialData ? { ...apiResponseToFormData(initialData), uuid: initialData.uuid } : {
+        defaultValues: (initialData ? { ...initialData, uuid: initialData.uuid } : {
             name: "",
             external_id: "",
             description: "",
@@ -152,7 +152,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     // Preserve uuid so child components can watch('uuid') to know they are in edit mode
     useEffect(() => {
         if (initialData) {
-            const transformedData = { ...apiResponseToFormData(initialData), uuid: initialData.uuid }
+            const transformedData = { ...initialData, uuid: initialData.uuid }
             form.reset(transformedData)
         }
     }, [initialData, form])
@@ -445,7 +445,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                         <FormItem>
                                             <FormLabel>URL de Miniatura (Thumbnail)</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="https://..." {...field} />
+                                                <Input placeholder="https://..." {...field} value={field.value || ""} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

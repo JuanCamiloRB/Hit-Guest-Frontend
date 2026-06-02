@@ -71,6 +71,7 @@ export class CatalogService {
                     iso2: c.iso2 || c.kod || c.code,
                     iso3: c.iso3,
                     emoji: c.emoji || "",
+                    phone_prefix: c.phonecode || c.phone_code || c.calling_code || "",
                     timezones: c.timezones || []
                 }
             }))
@@ -127,6 +128,26 @@ export class CatalogService {
             console.warn("Currencies API failed", error)
             return [{ id: "COP", name: "COP - Peso Colombiano" }]
         }
+    }
+
+    async getReservationSources(): Promise<CatalogOption[]> {
+        const sources = await this.fetchCatalog("reservation_source")
+        if (sources.length === 0) {
+            return [
+                { id: "14", name: "Airbnb" },
+                { id: "15", name: "Booking.com" },
+                { id: "16", name: "Directo" },
+            ]
+        }
+        return sources
+    }
+
+    async getReasonsForTrip(): Promise<CatalogOption[]> {
+        return this.fetchCatalog("reason_for_trip")
+    }
+
+    async getGenders(): Promise<CatalogOption[]> {
+        return this.fetchCatalog("gender")
     }
 
     async getPropertyTypes(): Promise<CatalogOption[]> {

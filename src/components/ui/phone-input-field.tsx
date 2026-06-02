@@ -81,21 +81,24 @@ export function PhoneInputField({
             <div className="w-[90px] flex-shrink-0">
                 <Select
                     onValueChange={handlePrefixChange}
-                    value={matchedCountry?.name || (countries.find(c => c.extra?.phone_prefix === currentPrefix)?.name || "Colombia")}
+                    value={matchedCountry?.name || (countries.length > 0 ? countries[0].name : "")}
                     disabled={disabled}
                 >
-                    <SelectTrigger className="w-full !h-11 px-3 bg-slate-50/50 border-slate-200 focus:ring-[var(--color-brand-purple)]/20 rounded-xl">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm">+{currentPrefix}</span>
-                        </div>
+                    <SelectTrigger className="w-full !h-11 px-2.5 bg-slate-50 border-slate-200 focus:ring-[var(--color-brand-purple)]/30 focus:border-[var(--color-brand-purple)] rounded-xl group-hover:border-[var(--color-brand-blue)]/40 transition-colors">
+                        <SelectValue>
+                            <div className="flex items-center gap-1.5 w-full">
+                                <span className="text-sm shrink-0">{matchedCountry?.extra?.emoji ? `${matchedCountry.extra.emoji} ` : ""}</span>
+                                <span className="text-sm font-semibold text-slate-700">{currentPrefix ? `+${currentPrefix}` : ""}</span>
+                            </div>
+                        </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent position="popper" className="z-[100] max-h-[300px]">
                         {countries.map((c, index) => (
                             <SelectItem key={`${c.id}-${c.name}-${index}`} value={c.name}>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-lg">{c.extra.emoji || "🏳️"}</span>
-                                    <span className="text-xs">+{c.extra.phone_prefix}</span>
-                                    <span className="text-[10px] text-muted-foreground truncate max-w-[80px]">{c.name}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sm">{c.extra.emoji ? `${c.extra.emoji} ` : ""}</span>
+                                    <span className="text-sm font-medium">{c.extra.phone_prefix ? `+${c.extra.phone_prefix}` : ""}</span>
+                                    <span className="text-xs text-muted-foreground ml-1 truncate max-w-[100px]">{c.name}</span>
                                 </div>
                             </SelectItem>
                         ))}

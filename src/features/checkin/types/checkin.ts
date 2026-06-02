@@ -1,0 +1,522 @@
+/**
+ * Check-in Flow Types — v4.0
+ * Aligned with the definitive backend spec.
+ */
+
+// ─── Catalog Types ───────────────────────────────────────────────
+
+export interface CatalogItem {
+  id: number
+  catalogCategoryId: number
+  name: string
+  nameTranslations: { en: string; es: string }
+  slug?: string
+  parameters?: unknown | null
+  order: number
+  status: string
+}
+
+/** identification_type (cat_id=2) */
+export type DocumentType = CatalogItem
+
+/** gender (cat_id=15): 113=Mujer, 114=Hombre, 115=Indeterminado */
+export type Gender = CatalogItem
+
+/** reason_for_trip (cat_id=8) */
+export type ReasonForTrip = CatalogItem
+
+/** reservation_source (cat_id=6) */
+export type ReservationSource = CatalogItem
+
+/** status_reservation (cat_id=7) */
+export type StatusReservation = CatalogItem
+
+// ─── Portal Response (GET /api/v1/checkin/{reservationUuid}) ─────
+// Matches backend buildPortalResponse() EXACTLY.
+
+/** Verification state per guest exposed in GET /checkin/{reservationUuid} portal response (v4.2) */
+export interface GuestVerificationInfo {
+  status:
+    | "not_started"  // guest identified, no verification record yet
+    | "pending"      // Didit session created, waiting for user
+    | "in_progress"  // biometrics in progress
+    | "in_review"    // under manual review
+    | "approved"     // person_verified_at set — ready for form
+    | "rejected"     // rejected by Didit
+    | "fail"         // external_status = 'fail'
+    | "expired"      // document expired
+    | "completed"    // is_checkin_completed = true
+  currentStep: "verification" | "form" | "rejected" | "completed"
+  verifiedAt: string | null         // ISO date when approved/completed, null otherwise
+}
+
+export interface CheckinPortalResponse {
+  reservation: {
+    uuid: string
+    arrivalDate: string              // "Y-m-d"
+    departureDate: string            // "Y-m-d"
+    totalGuestsAllowed: number       // $reservation->total_guests
+    checkinAllowed?: boolean         // v4.2: whether check-in is currently allowed
+  }
+  progress: {
+    registered: number               // guests->count()
+    completed: number                // guests->where(is_checkin_completed, true)->count()
+    isFullyCompleted: boolean        // completedCount >= total_guests
+  }
+  registeredGuests: RegisteredGuest[]
+}
+
+/** Each guest attached to the reservation via pivot */
+export interface RegisteredGuest {
+  uuid: string
+  name: string
+  lastname: string
+  isMain: boolean                    // pivot->is_main_guest
+  isCompleted: boolean               // pivot->is_checkin_completed
+  verification?: GuestVerificationInfo  // v4.2: verification state (Didit/OCR)
+}
+
+// ─── Derived helpers (NOT from backend, computed in frontend) ────
+
+/** Whether the main guest has completed check-in */
+export function isMainGuestCompleted(portal: CheckinPortalResponse): boolean {
+  return portal.registeredGuests.some(g => g.isMain && g.isCompleted)
+}
+
+/** Number of guests still pending */
+export function pendingGuestsCount(portal: CheckinPortalResponse): number {
+  return portal.reservation.totalGuestsAllowed - portal.progress.completed
+}
+
+// Tipos deprecados eliminados
+
+// ─── Identify (POST /api/v1/checkin/{reservationUuid}/identify) ──
+
+/** Payload para POST /api/v1/checkin/{reservationUuid}/identify */
+export interface IdentifyPayload {
+  identificationTypeId: number   // catalogs WHERE catalog_category_id = 2
+  identificationNumber: string   // max:30
+  nationalityId: number          // exists:countries
+  name: string                   // max:120
+  lastname: string               // max:60
+  isMainGuest: boolean
+}
+
+/** Response de POST /api/v1/checkin/{reservationUuid}/identify */
+export interface IdentifyResponse {
+  guest: {
+    uuid: string
+    name: string
+    lastname: string
+  }
+  reservationGuest: {
+    isMainGuest: boolean
+    isCheckinCompleted: boolean
+  }
+  verification: VerificationDirective
+  formSchema: FormSchema
+}
+
+/** El backend decide qué tipo de verificación necesita el guest */
+export type VerificationDirective =
+  | { type: "session"; subtype?: "biometric" | "kyc"; url: string }  // Didit — backend only sends url, frontend defaults subtype to "biometric"
+  | { type: "document_upload" }             // Textract → mostrar upload UI
+  | { type: "verified_ok" }                 // Ya verificado → saltar a form
+
+/**
+ * Respuesta de GET /checkin/{uuid}/verify/result?guest_uuid={guestUuid}
+ * Backend evalúa el resultado de la sesión Didit y decide si necesita KYC o ya está verificado.
+ */
+export interface VerificationResultResponse {
+  status: "verified" | "kyc_required" | "failed"
+  kycUrl?: string                        // Solo si status === "kyc_required"
+  guestData?: {                          // Solo si status === "verified"
+    firstName?: string
+    lastName?: string
+    documentNumber?: string
+    dateOfBirth?: string
+    expirationDate?: string
+  }
+}
+
+/**
+ * Schema de campos server-driven para el formulario (v4.0).
+ * Replaces the old { fields: FormFieldSchema[] } shape.
+ */
+export interface FormSchema {
+  requiredFields: string[]                     // e.g. ["countryOfOriginId", "reasonForTripId"]
+  optionalFields: string[]                     // e.g. ["cityOfOrigin"]
+  prefilledData: Record<string, unknown>       // backend-provided pre-fill values
+}
+
+// Tipos deprecados eliminados
+
+/** Session data persisted in localStorage after /identify */
+export interface IdentifySessionData {
+  guestUuid: string
+  guestName: string
+  guestLastname: string
+  isMainGuest: boolean
+  isCheckinCompleted: boolean
+  verification: VerificationDirective
+  formSchema: FormSchema   // now uses requiredFields/optionalFields/prefilledData
+  timestamp: number
+}
+
+// ─── GET /form/{guestUuid} response (G-NEW-4) — aligned with backend v4.1 ────
+
+/** Raw response shape from backend (snake_case keys in formSchema) */
+export interface GuestFormSchemaRawResponse {
+  formSchema: {
+    required_fields: string[]
+    optional_fields: string[]
+    prefilledData: Record<string, unknown>
+  }
+}
+
+/** Normalized shape used by frontend components (camelCase) */
+export interface GuestFormSchemaResponse {
+  requiredFields: string[]
+  optionalFields: string[]
+  prefilledData: Record<string, unknown>
+}
+
+// ─── Completion Payloads + Response (G-NEW-1, G-NEW-2) ──────────
+
+export interface GuestProfile {
+  name: string
+  lastname: string
+  email?: string
+  phone?: string
+  dateOfBirth: string
+  genderId: number | null
+  nationalityId: number
+  cityOfResidence?: string
+  countryOfResidenceId?: number
+  identificationExpiryDate?: string   // from OCR expirationDate (required for secondary)
+}
+
+export interface GuestExtra {
+  countryOfOriginId?: number
+  countryDestinationId?: number
+  cityOfOrigin?: string
+  reasonForTripId?: number
+  documentImage1?: string | null
+  documentImage2?: string | null
+  arrivalTime?: string
+  departureTime?: string
+  arrivalFlight?: string
+  departureFlight?: string
+}
+
+export interface CompleteMainGuestPayload {
+  guestUuid: string
+  profile: GuestProfile
+  extra: GuestExtra
+  signature: string | null   // base64 data URL — captured in ContractScreen
+}
+
+export interface CompleteSecondaryGuestPayload {
+  profile: GuestProfile
+  extra: GuestExtra
+}
+
+/**
+ * Backend real response for POST /main/complete and /secondary/{uuid}/complete.
+ * Only returns a message — frontend must re-fetch portal to get updated state.
+ */
+export interface CompleteGuestResponse {
+  message: string
+}
+
+// ─── OCR Result (v4.1 shape — aligned with backend) (G-NEW-3) ──────────────────
+
+/** Backend response from POST /secondary/{guestUuid}/documents */
+export interface OCRResult {
+  extractedData: {
+    firstName: string
+    lastName: string
+    documentNumber: string
+    dateOfBirth: string
+    expirationDate?: string
+  }
+  // Backend also returns formSchema with the OCR response (prefilledData merged)
+  formSchema?: {
+    required_fields: string[]
+    optional_fields: string[]
+    prefilledData: Record<string, unknown>
+  }
+}
+
+// ─── Check-in Reservation Context (legacy — migrate to CheckinPortalResponse) ──
+
+export interface CheckinReservation {
+  uuid: string
+  listingId: number
+  listingName: string
+  propertyName: string
+  propertyLocation: string
+  arrivalDate: string        // YYYY-MM-DD
+  departureDate: string      // YYYY-MM-DD
+  totalGuests: number
+  totalPrice: number
+  currency: string
+  emailGuest: string
+  guestName?: string         // Pre-filled if available from extra
+  statusReservationId: number
+  reservationSourceId: number
+  extra: Record<string, unknown>
+}
+
+// ─── Extended Reservation (v4 fields — legacy, keep for backwards compat) ─
+
+export interface ActiveAutomation {
+  id: number
+  name: string
+  providerName: string
+  checkinFields: string[]
+  triggerTypes: string[]
+  guestType: "main" | "secondary" | "all"
+}
+
+export interface ContractTemplate {
+  title: string
+  bodyHtml: string
+  variables: Record<string, string | number>
+}
+
+/**
+ * @deprecated Use CheckinPortalResponse + CompleteGuestResponse instead.
+ * Kept to avoid breaking pages not yet migrated to v4.0.
+ */
+export interface CheckinReservationV4 extends CheckinReservation {
+  propertyCountryId?: number
+  /** @deprecated Backend decides provider in /identify */
+  verificationProvider: 'didit' | 'textract' | 'metamap' | 'none'
+  /** @deprecated Backend decides provider in /identify */
+  secondaryGuestProvider: 'didit' | 'textract' | 'metamap' | 'none'
+  hasContract: boolean
+  contractTemplate?: ContractTemplate
+  listingSmartlocks: Array<{ id: number; name: string; type: string }>
+  mainGuestStatus: 'pending' | 'in_progress' | 'completed'
+  mainGuestCompleted: boolean
+  activeAutomations: ActiveAutomation[]
+}
+
+export interface FaceMatchResult {
+  matched: boolean
+  hasExistingData: boolean
+  docsValid: boolean
+  docsExpiryDate?: string
+  preFilledData?: Partial<GuestFormData>
+}
+
+export interface SecondaryGateStatus {
+  mainGuestCompleted: boolean
+  mainGuestName?: string
+  reservation: CheckinReservationV4
+  guestToken: string
+}
+
+// ─── Guest Form Data (22 campos - Huésped Principal) ─────────────
+
+export interface GuestFormData {
+  // 📄 Documento de identidad
+  documentCountryId: number | ""
+  identificationTypeId: number | ""
+  identificationNumber: string
+
+  // 👤 Datos personales
+  name: string
+  lastname: string
+  dateOfBirth: string        // YYYY-MM-DD
+  genderId: number | ""
+  phone: string
+  email: string
+
+  // 🌍 Origen y destino
+  nationalityId: number | ""
+  cityOfResidence: string
+  countryOfResidenceId: number | ""
+  countryOfOriginId: number | ""
+  cityOfOrigin: string          // city guest is travelling FROM (for SIRE/TRA)
+  countryDestinationId: number | ""
+  cityDestination: string
+  reasonForTripId: number | ""
+
+  // ✈️ Información de viaje (opcionales)
+  arrivalTime: string        // HH:mm
+  departureTime: string      // HH:mm
+  arrivalFlight: string
+  departureFlight: string
+
+  // 📸 Fotos del documento
+  documentImage1: string | null   // base64 or URL
+  documentImage2: string | null   // base64 or URL (condicional)
+}
+
+// ─── Companion Form Data (12 campos - Simplificado) ──────────────
+
+export interface CompanionFormData {
+  // 📄 Documento
+  documentCountryId: number | ""
+  identificationTypeId: number | ""
+  identificationNumber: string
+
+  // 👤 Datos básicos
+  name: string
+  lastname: string
+  dateOfBirth: string
+  genderId: number | ""
+  phone: string
+  email: string
+
+  // 🌍 Viaje
+  reasonForTripId: number | ""
+
+  // 📸 Fotos
+  documentImage1: string | null
+  documentImage2: string | null
+}
+
+// ─── Utility Types ───────────────────────────────────────────────
+
+export type CheckinStep = "welcome" | "identify" | "verify" | "guest" | "contract" | "success"
+
+export interface CheckinRouteParams {
+  type: "uuid" | "external"
+  reservationUuid?: string
+  sourceSlug?: string
+  listingUuid?: string
+  externalId?: string
+}
+
+/** Parse catch-all params into structured route info */
+export function parseCheckinParams(params: string[]): CheckinRouteParams {
+  if (params.length === 1) {
+    return { type: "uuid", reservationUuid: params[0] }
+  }
+  if (params.length === 3) {
+    return {
+      type: "external",
+      sourceSlug: params[0],
+      listingUuid: params[1],
+      externalId: params[2],
+    }
+  }
+  // Fallback — treat as UUID
+  return { type: "uuid", reservationUuid: params[0] }
+}
+
+/** Build the base path from params for navigation between steps */
+export function buildCheckinBasePath(params: string[]): string {
+  return `/checkin/${params.join("/")}`
+}
+
+/** Initial state for GuestFormData */
+export const emptyGuestForm: GuestFormData = {
+  documentCountryId: "",
+  identificationTypeId: "",
+  identificationNumber: "",
+  name: "",
+  lastname: "",
+  dateOfBirth: "",
+  genderId: "",
+  phone: "",
+  email: "",
+  nationalityId: "",
+  cityOfResidence: "",
+  countryOfResidenceId: "",
+  countryOfOriginId: "",
+  cityOfOrigin: "",
+  countryDestinationId: "",
+  cityDestination: "",
+  reasonForTripId: "",
+  arrivalTime: "",
+  departureTime: "",
+  arrivalFlight: "",
+  departureFlight: "",
+  documentImage1: null,
+  documentImage2: null,
+}
+
+/** Initial state for CompanionFormData */
+export const emptyCompanionForm: CompanionFormData = {
+  documentCountryId: "",
+  identificationTypeId: "",
+  identificationNumber: "",
+  name: "",
+  lastname: "",
+  dateOfBirth: "",
+  genderId: "",
+  phone: "",
+  email: "",
+  reasonForTripId: "",
+  documentImage1: null,
+  documentImage2: null,
+}
+
+// ─── Signature (escalable base64 → S3) ──────────────
+export interface SignatureData {
+  type: 'base64' | 's3_key'
+  value: string
+}
+
+// ─── Verification ────────────────────────────────────
+
+/** @deprecated Use IdentifyResponse instead — kept for migration */
+export interface IdentityResolution {
+  guestUuid: string
+  isNew: boolean
+  hasPreviousVerification: boolean
+}
+
+export interface VerificationResult {
+  status: 'pending' | 'approved' | 'failed' | 'expired'
+  preFilledData?: Partial<GuestFormData>
+  documentsExpired?: boolean
+  reason?: string
+}
+
+// ─── Smartlock (API externa) ─────────────────────────
+export interface SmartlockCode {
+  name: string
+  type: 'building_entrance' | 'unit_entrance' | 'amenity'
+  code: string
+  validFrom: string
+  validUntil: string
+}
+
+// ─── Secondary Guest Token ──────────────────────────
+export interface SecondaryGuestContext {
+  token: string
+  reservationUuid: string
+  guestPosition: number   // 2, 3, 4...
+  totalGuests: number
+  mainGuestCompleted: boolean
+  reservationData: CheckinReservationV4
+}
+
+// ─── Completion Response (legacy) ───────────────────
+/**
+ * @deprecated Use CompleteGuestResponse instead.
+ */
+export interface CheckinCompletionResponse {
+  guestId: number
+  guestUuid: string
+  isCheckinCompleted: boolean
+  contractPdfUrl?: string
+  smartlockCodes?: SmartlockCode[]
+}
+
+// ─── Reservation Status (para secundarios) ───────────
+export interface ReservationCheckinStatus {
+  mainGuestCompleted: boolean
+  totalGuests: number
+  completedGuests: Array<{
+    guestUuid: string
+    name: string
+    isMain: boolean
+  }>
+  pendingGuests: number
+}

@@ -1,0 +1,23 @@
+
+> hit-guest@0.1.0 build
+> next build
+
+▲ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local, .env
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 6.9s
+  Running TypeScript ...
+Failed to compile.
+
+./src/features/properties/types/index.ts:319:13
+Type error: Object literal may only specify known properties, but 'pictures_url' does not exist in type '{ picturesUrl?: string[] | undefined; checkIn?: string | null | undefined; checkOut?: string | null | undefined; cancellationPolicy?: string | null | undefined; amenities?: (string | number)[] | undefined; ... 13 more ...; units?: any[] | undefined; }'. Did you mean to write 'picturesUrl'?
+
+[0m [90m 317 |[39m             }[33m,[39m
+ [90m 318 |[39m             picturesUrl[33m:[39m data[33m.[39mpicturesUrl[33m,[39m
+[31m[1m>[22m[39m[90m 319 |[39m             pictures_url[33m:[39m data[33m.[39mpicturesUrl[33m,[39m
+ [90m     |[39m             [31m[1m^[22m[39m
+ [90m 320 |[39m             automationSettings[33m:[39m data[33m.[39mautomationSettings[33m,[39m
+ [90m 321 |[39m             policies[33m:[39m data[33m.[39mpolicies[33m,[39m
+ [90m 322 |[39m             roomTypes[33m:[39m data[33m.[39mroomTypes[33m,[39m[0m
+Next.js build worker exited with code: 1 and signal: null

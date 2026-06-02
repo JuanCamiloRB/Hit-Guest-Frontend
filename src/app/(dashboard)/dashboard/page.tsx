@@ -1,8 +1,6 @@
-import { mockDashboardReservations } from "@/features/reservations/data/mock-dashboard-data"
-import { columns } from "@/features/reservations/components/columns"
-import { DataTable } from "@/components/shared/data-table"
 import { StatsCards } from "@/features/dashboard/components/StatsCards"
 import { DashboardHeader } from "@/features/dashboard/components/DashboardHeader"
+import ReservationsList from "@/features/reservations/components/ReservationsList"
 
 export default function DashboardPage() {
     return (
@@ -18,11 +16,7 @@ export default function DashboardPage() {
                     </h2>
                 </div>
 
-                <DataTable
-                    columns={columns}
-                    data={mockDashboardReservations}
-                    filterColumn="guestName"
-                />
+                <ReservationsList />
             </div>
         </div>
     )

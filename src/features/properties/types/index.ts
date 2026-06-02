@@ -15,9 +15,12 @@ export interface PropertyApiPayload {
     latitude?: string | null
     longitude?: string | null
     externalId?: string | null
+    external_id?: string | null
     timezone?: string | null
     statusRecordId: number
     propertyTypeId: number
+    thumbnailUrl?: string | null
+    thumbnail_url?: string | null
     // top level fields (potential server column support)
     price?: number | string | null
     start_price?: number | string | null
@@ -27,6 +30,7 @@ export interface PropertyApiPayload {
     
     extra?: {
         picturesUrl?: string[]
+        pictures_url?: string[]
         checkIn?: string | null
         checkOut?: string | null
         cancellationPolicy?: string | null
@@ -52,6 +56,10 @@ export interface PropertyApiPayload {
     externalPmsIds?: {
         sourcePmsId: number
         externalId: string
+    }[]
+    external_identifiers?: {
+        source_pms_id: number
+        external_id: string
     }[]
     // NOTE: units are NOT included here — they are managed separately via listingsService
 }
@@ -249,63 +257,86 @@ export type PropertyFormData = z.infer<typeof propertyFormSchema>
 // ── Helper: Convert form data to API payload ──
 
 export function formDataToApiPayload(data: PropertyFormData): PropertyApiPayload {
-    const payload: PropertyApiPayload = {
-        name: data.name,
-        description: data.description || null,
-        email: data.email,
-        phone: data.phone || null,
-        address: data.address,
-        addressDetail: data.addressDetail || null,
-        city: data.city,
-        state: data.state,
-        countryId: data.countryId,
-        latitude: (data.latitude !== undefined && data.latitude !== null) ? String(data.latitude) : "0.00000000",
-        longitude: (data.longitude !== undefined && data.longitude !== null) ? String(data.longitude) : "0.00000000",
-        timezone: data.timezone || "America/Bogota",
-        statusRecordId: data.statusRecordId,
-        propertyTypeId: Number(data.propertyTypeId),
+        let finalPicturesUrl = [...(data.picturesUrl || [])];
         
-        // Redundancy for all potential server column names/expectations
-        amenities: (data.amenities || []).map(a => {
-            const str = String(a)
-            const parsed = parseInt(str)
-            return /^\d+$/.test(str) ? parsed : str
-        }),
-        amenity_ids: (data.amenities || []).map(a => {
-            const str = String(a)
-            const parsed = parseInt(str)
-            return /^\d+$/.test(str) ? parsed : str
-        }),
+        // If there's a thumbnail URL, make sure it's the FIRST element of picturesUrl.
+        // We replace the first element if the array is not empty to avoid stacking old thumbnails.
+        if (data.thumbnailUrl) {
+            if (finalPicturesUrl.length > 0) {
+                 finalPicturesUrl[0] = data.thumbnailUrl;
+            } else {
+                 finalPicturesUrl.push(data.thumbnailUrl);
+            }
+        }
+        
+        // Ensure no duplicates
+        finalPicturesUrl = Array.from(new Set(finalPicturesUrl));
 
-        extra: {
-            internal_name: data.external_id || null, 
-            currency: "COP", // Default to COP if not provided
-            thumbnailUrl: data.thumbnailUrl,
-            thumbnail_url: data.thumbnailUrl,
-            checkIn: data.checkIn,
-            checkOut: data.checkOut,
-            cancellationPolicy: data.cancellationPolicy,
+        const payload: PropertyApiPayload = {
+            name: data.name,
+            description: data.description || null,
+            email: data.email,
+            phone: data.phone || null,
+            address: data.address,
+            addressDetail: data.addressDetail || null,
+            city: data.city,
+            state: data.state,
+            countryId: data.countryId,
+            latitude: (data.latitude !== undefined && data.latitude !== null) ? String(data.latitude) : "0.00000000",
+            longitude: (data.longitude !== undefined && data.longitude !== null) ? String(data.longitude) : "0.00000000",
+            timezone: data.timezone || "America/Bogota",
+            statusRecordId: data.statusRecordId,
+            propertyTypeId: Number(data.propertyTypeId),
+            
+            // External ID (Nombre Interno)
+            externalId: data.external_id || null,
+            external_id: data.external_id || null,
+            
+            // Thumbnail
+            thumbnailUrl: data.thumbnailUrl || null,
+            thumbnail_url: data.thumbnailUrl || null,
+            
             amenities: (data.amenities || []).map(a => {
-                // If it's already a number, keep it
-                if (typeof a === 'number') return a;
-                // If it's a string, try to parse it, but keep as string if it looks like a UUID or fails
-                const str = String(a);
-                const parsed = parseInt(str);
-                // Simple numeric ID check (only digits)
-                if (/^\d+$/.test(str)) return parsed;
-                // Otherwise return the string as-is (handling UUIDs for backend)
-                return str;
+                const str = String(a)
+                const parsed = parseInt(str)
+                return /^\d+$/.test(str) ? parsed : str
             }),
-            wifiDetails: {
-                network: data.wifiNetwork,
-                password: data.wifiPassword,
+            amenity_ids: (data.amenities || []).map(a => {
+                const str = String(a)
+                const parsed = parseInt(str)
+                return /^\d+$/.test(str) ? parsed : str
+            }),
+
+            extra: {
+                internal_name: data.external_id || null, 
+                currency: "COP",
+                thumbnailUrl: data.thumbnailUrl,
+                thumbnail_url: data.thumbnailUrl,
+                checkIn: data.checkIn,
+                checkOut: data.checkOut,
+                cancellationPolicy: data.cancellationPolicy,
+                amenities: (data.amenities || []).map(a => {
+                    const str = String(a);
+                    const parsed = parseInt(str);
+                    if (/^\d+$/.test(str)) return parsed;
+                    return str;
+                }),
+                wifiDetails: {
+                    network: data.wifiNetwork,
+                    password: data.wifiPassword,
+                },
+                // Send the updated picturesUrl which contains the new thumbnail
+                picturesUrl: finalPicturesUrl,
+                pictures_url: finalPicturesUrl,
+                automationSettings: data.automationSettings,
+                policies: data.policies,
+                roomTypes: data.roomTypes,
             },
-            picturesUrl: data.picturesUrl,
-            automationSettings: data.automationSettings,
-            policies: data.policies,
-            roomTypes: data.roomTypes,
-        },
         ...(data.externalPmsIds && data.externalPmsIds.length > 0 ? {
+            external_identifiers: data.externalPmsIds.map((id: any) => ({
+                source_pms_id: id.sourcePmsId,
+                external_id: id.externalId
+            })),
             externalPmsIds: data.externalPmsIds.map((id: any) => ({
                 sourcePmsId: id.sourcePmsId,
                 externalId: id.externalId
@@ -313,6 +344,7 @@ export function formDataToApiPayload(data: PropertyFormData): PropertyApiPayload
         } : {})
     }
     
+    console.log("📤 [formDataToApiPayload] Final Payload to API:", JSON.stringify(payload, null, 2));
     return payload
 }
 
@@ -350,13 +382,20 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
         lng = parseFloat(rawLng) || 0
     }
 
-    // Capture external_id (Internal Name) from extra.internal_name or identifiers
-    let external_id = extra.internal_name || apiData.externalId || apiData.external_id || ""
+    // Capture external_id (Nombre Interno) from multiple possible locations
+    let external_id = apiData.externalId 
+        || apiData.external_id 
+        || (apiData as any).external_id
+        || extra.internal_name 
+        || ""
     
-    // If not in extra, try to find it in identifiers
+    // If not found, try pmsIdentifiers
     if (!external_id && apiData.pmsIdentifiers && apiData.pmsIdentifiers.length > 0) {
         external_id = apiData.pmsIdentifiers[0].externalId
     }
+
+    const extractedThumbnail = extra.thumbnail_url || extra.thumbnailUrl || ((extra as any).picturesUrl && (extra as any).picturesUrl.length > 0 ? (extra as any).picturesUrl[0] : "") || ((extra as any).pictures_url && (extra as any).pictures_url.length > 0 ? (extra as any).pictures_url[0] : "") || "";
+    console.log("🔥 [apiResponseToFormData] Extracted Thumbnail:", extractedThumbnail, "from extra:", extra);
 
     return {
         name: apiData.name || "",
@@ -373,8 +412,8 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
         timezone: apiData.timezone || location.timezone || "America/Bogota",
         external_id: external_id,
         statusRecordId: apiData.statusRecordId || apiData.status_record_id || apiData.statusRecord?.id || 6,
-        propertyTypeId: Number(apiData.propertyTypeId || apiData.property_type_id || extra.propertyTypeId || extra.type || 102), // default to 102 if missing
-        thumbnailUrl: extra.thumbnail_url || extra.thumbnailUrl || "",
+        propertyTypeId: Number(apiData.propertyTypeId || apiData.property_type_id || extra.propertyTypeId || extra.type || 102),
+        thumbnailUrl: extractedThumbnail,
         checkIn: extra.checkIn || "",
         checkOut: extra.checkOut || "",
         cancellationPolicy: extra.cancellationPolicy || "",
@@ -391,14 +430,24 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
         picturesUrl: (extra as any).picturesUrl || (extra as any).pictures_url || [],
         // Deduplicate units from all possible sources (API often returns them in multiple places)
         units: (() => {
+            const propertyUuid = apiData.uuid || ""
             const rawUnits = [
                 ...(apiData.units || []),
                 ...(apiData.listings || []),
                 ...((extra as any).units || [])
             ]
             
+            // Filter: only keep units that belong to THIS property
+            const filteredUnits = propertyUuid 
+                ? rawUnits.filter((u: any) => {
+                    const unitPropUuid = u.propertyUuid || u.property_uuid || u.propertyId || ""
+                    // Keep unit if it belongs to this property, or if it has no propertyUuid (assume it's ours)
+                    return !unitPropUuid || unitPropUuid === propertyUuid
+                })
+                : rawUnits
+            
             const uniqueMap = new Map()
-            rawUnits.forEach((u: any) => {
+            filteredUnits.forEach((u: any) => {
                 const key = u.uuid || `${u.name}-${u.internalName || u.internal_name}`
                 const uExtra = u.extra || {}
                 const hasPrice = Number(uExtra.startPrice || uExtra.start_price || u.startPrice || u.start_price || u.price || 0) > 0

@@ -1,8 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Filter, Plus } from "lucide-react"
+import { Filter } from "lucide-react"
 import { useTranslation } from "@/hooks/useTranslation"
+import { ReservationDialog } from "@/features/reservations/components/ReservationDialog"
 
 export function DashboardHeader() {
     const { t } = useTranslation()
@@ -25,10 +26,7 @@ export function DashboardHeader() {
                     <Filter className="h-4 w-4" />
                     {t('dashboard.filters')}
                 </Button>
-                <Button className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white gap-2">
-                    <Plus className="h-4 w-4" />
-                    {t('dashboard.newReservation')}
-                </Button>
+                <ReservationDialog />
             </div>
         </div>
     )
