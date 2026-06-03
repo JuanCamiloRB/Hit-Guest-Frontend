@@ -64,8 +64,14 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
 
         const fetchSchema = async () => {
             try {
+                // Use formSchema from identify session (localStorage) instead of API call
+                const savedSchema = session?.formSchema
+                const resSchemaPromise = savedSchema
+                    ? Promise.resolve(savedSchema as unknown as GuestFormSchemaResponse)
+                    : checkinService.getGuestFormSchema(reservationUuid, guestUuid)
+
                 const [resSchema, countries, reasons] = await Promise.all([
-                    checkinService.getGuestFormSchema(reservationUuid, guestUuid),
+                    resSchemaPromise,
                     new CatalogService().getCountries(),
                     new CatalogService().getReasonsForTrip(),
                 ])

@@ -144,10 +144,10 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                     </span>
                                 ) : (
                                     <Link
-                                        href={`${basePath}/identify`}
+                                        href={`${basePath}/identify?guest_uuid=${mainGuest.uuid}`}
                                         className="text-xs font-semibold text-brand-purple bg-brand-purple/10 px-3 py-1.5 rounded-lg hover:bg-brand-purple/20 transition-colors"
                                     >
-                                        Iniciar registro
+                                        Continuar registro
                                     </Link>
                                 )}
                             </div>

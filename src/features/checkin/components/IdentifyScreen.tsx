@@ -28,10 +28,14 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
     const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof IdentifyPayload, string>>>({})
 
     const [form, setForm] = useState<{
+        name: string
+        lastname: string
         nationalityId: number | ""
         identificationTypeId: number | ""
         identificationNumber: string
     }>({
+        name: "",
+        lastname: "",
         nationalityId: "",
         identificationTypeId: "",
         identificationNumber: "",
@@ -69,6 +73,8 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
     }, [])
 
     const isValid =
+        form.name.trim().length >= 2 &&
+        form.lastname.trim().length >= 2 &&
         form.nationalityId !== "" &&
         form.identificationTypeId !== "" &&
         form.identificationNumber.trim().length > 2
@@ -79,8 +85,8 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
         setFieldErrors({})
 
         const payload: IdentifyPayload = {
-            name: "",
-            lastname: "",
+            name: form.name.trim(),
+            lastname: form.lastname.trim(),
             nationalityId: Number(form.nationalityId),
             identificationTypeId: Number(form.identificationTypeId),
             identificationNumber: form.identificationNumber.trim(),
@@ -138,8 +144,17 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 router.push(basePath)
             } else if (e.status === 409) {
                 toast.error("Este documento ya está asociado a un huésped en esta reserva")
-            } else if (e.status === 422 || e.message?.includes("maximum")) {
-                router.push(`${basePath}?error=max_guests`)
+            } else if (e.status === 422) {
+                // Check if it's specifically a max_guests error or a validation error
+                if (e.message?.toLowerCase().includes("maximum") || e.message?.toLowerCase().includes("máximo")) {
+                    router.push(`${basePath}?error=max_guests`)
+                } else if (e.errors && typeof e.errors === 'object') {
+                    // Field-level validation errors
+                    setFieldErrors(e.errors)
+                    toast.error("Por favor revisa los campos marcados")
+                } else {
+                    toast.error(e.message || "Error de validación")
+                }
             } else if (e.status === 404) {
                 toast.error("Reserva no encontrada")
                 router.push(basePath)
@@ -178,6 +193,38 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
             </div>
 
             <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
+
+                {/* Name + Lastname */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-semibold text-slate-700">
+                            Nombres<span className="text-red-400 ml-0.5">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={form.name}
+                            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all ${fieldErrors.name ? "border-red-400" : "border-slate-200"}`}
+                            placeholder="Ej. Juan Carlos"
+                            maxLength={120}
+                        />
+                        {fieldErrors.name && <p className="text-xs text-red-500">{fieldErrors.name}</p>}
+                    </div>
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-semibold text-slate-700">
+                            Apellidos<span className="text-red-400 ml-0.5">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            value={form.lastname}
+                            onChange={e => setForm(f => ({ ...f, lastname: e.target.value }))}
+                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all ${fieldErrors.lastname ? "border-red-400" : "border-slate-200"}`}
+                            placeholder="Ej. Rodríguez Barrera"
+                            maxLength={60}
+                        />
+                        {fieldErrors.lastname && <p className="text-xs text-red-500">{fieldErrors.lastname}</p>}
+                    </div>
+                </div>
 
                 {/* Nationality (G1: renamed from countryId) */}
                 <SearchableSelect

@@ -1,7 +1,8 @@
 "use client"
 
-import React from "react"
-import { detailedMockReservations, AutomationStatus as AutomationStatusType } from "../data/detailed-mock-data"
+import React, { useEffect, useState } from "react"
+import { AutomationStatus as AutomationStatusType } from "../data/detailed-mock-data"
+import { reservationsService, ReservationDetailData } from "../services/reservations-service"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
@@ -21,7 +22,8 @@ import {
     FileText,
     Settings,
     Shield,
-    XCircle
+    XCircle,
+    Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -66,8 +68,43 @@ const AutomationTile = ({ icon: Icon, label, status, variant = "none" }: Automat
 import Link from "next/link"
 
 export function OperationsPanel({ reservationId }: { reservationId: string }) {
-    // Determine data based on ID, fallback to default or Maria's data for demo
-    const data = detailedMockReservations[reservationId] || detailedMockReservations["RES-MG-001"];
+    const [data, setData] = useState<ReservationDetailData | null>(null)
+    const [isLoading, setIsLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+
+    useEffect(() => {
+        let mounted = true
+        async function load() {
+            try {
+                const result = await reservationsService.getById(reservationId)
+                if (mounted) setData(result)
+            } catch (e: any) {
+                console.error("[OperationsPanel] Error loading reservation:", e)
+                if (mounted) setError(e.message || "Error al cargar la reserva")
+            } finally {
+                if (mounted) setIsLoading(false)
+            }
+        }
+        load()
+        return () => { mounted = false }
+    }, [reservationId])
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center min-h-[40vh] gap-3 text-slate-400">
+                <Loader2 className="animate-spin" size={24} />
+                <span className="text-sm font-medium">Cargando reserva...</span>
+            </div>
+        )
+    }
+
+    if (error || !data) {
+        return (
+            <div className="flex items-center justify-center min-h-[40vh]">
+                <p className="text-slate-500 text-sm">{error || "Reserva no encontrada"}</p>
+            </div>
+        )
+    }
 
     const automationStatuses: { label: string; icon: any; statusKey: keyof AutomationStatusType }[] = [
         { label: "Link", icon: Send, statusKey: "link" },
@@ -129,7 +166,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                         <Avatar className="h-16 w-16 bg-red-50 border-2 border-red-50 p-1">
                                             <AvatarImage src="/images/guest-placeholder.png" alt={data.guestName} />
                                             <AvatarFallback className="bg-red-100 text-red-500 font-bold">
-                                                {data.guestName.split(" ").map(n => n[0]).join("")}
+                                                {data.guestName.split(" ").map((n: string) => n[0]).join("")}
                                             </AvatarFallback>
                                         </Avatar>
                                     </div>
@@ -230,27 +267,19 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                     <Card className="shadow-sm">
                         <CardHeader className="flex flex-row items-center justify-between pb-4">
                             <CardTitle className="text-xl font-bold text-slate-800">Bitácora de Actividad</CardTitle>
-                            <Button variant="link" className="text-indigo-600 font-semibold p-0">Ver todo</Button>
                         </CardHeader>
-                        <CardContent className="space-y-6">
-                            {data.activityLog.map((event) => (
-                                <div key={event.id} className="flex gap-4">
-                                    <div className={cn(
-                                        "p-2 rounded-full h-fit",
-                                        event.type === "success" ? "bg-emerald-100 text-emerald-600" :
-                                            event.type === "info" ? "bg-indigo-100 text-indigo-600" : "bg-fuchsia-100 text-fuchsia-600"
-                                    )}>
-                                        {event.type === "success" ? <CheckCircle2 size={20} /> :
-                                            event.type === "info" ? <Send size={20} /> : <FileText size={20} />}
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-base font-bold text-slate-800">{event.title}</span>
-                                        <span className="text-xs text-slate-400 font-medium tracking-tight">
-                                            {event.timestamp} • {event.source}
-                                        </span>
-                                    </div>
+                        <CardContent>
+                            <div className="flex gap-4">
+                                <div className="p-2 rounded-full h-fit bg-indigo-100 text-indigo-600">
+                                    <FileText size={20} />
                                 </div>
-                            ))}
+                                <div className="flex flex-col">
+                                    <span className="text-base font-bold text-slate-800">Reserva creada</span>
+                                    <span className="text-xs text-slate-400 font-medium tracking-tight">
+                                        {data.source} • ID: {data.externalId || data.uuid.slice(0, 8)}
+                                    </span>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
@@ -305,12 +334,8 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
 
                             <div className="space-y-3 pt-6 border-t border-white/20">
                                 <div className="flex items-center justify-between text-sm font-medium">
-                                    <span className="text-indigo-100">Alojamiento</span>
-                                    <span>${data.breakdown.alojamiento.toLocaleString("es-CO")} COP</span>
-                                </div>
-                                <div className="flex items-center justify-between text-sm font-medium">
-                                    <span className="text-indigo-100">Limpieza</span>
-                                    <span>${data.breakdown.limpieza.toLocaleString("es-CO")} COP</span>
+                                    <span className="text-indigo-100">Total</span>
+                                    <span>${data.totalPrice.toLocaleString("es-CO")} COP</span>
                                 </div>
                             </div>
 
