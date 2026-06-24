@@ -40,6 +40,15 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
     const mainGuestUuid = mainGuest?.uuid ?? ''
     const mainCompleted = isMainGuestCompleted(portal) || doneGuestUuids.has(mainGuestUuid)
 
+    // Returns the correct "continue" URL for a known guest based on their verification state,
+    // avoiding unnecessary roundtrips through /identify when the step is already known.
+    const getContinueLink = (guest: typeof registeredGuests[0]) => {
+        const step = guest.verification?.currentStep
+        if (step === "verification") return `${basePath}/verify?guest_uuid=${guest.uuid}`
+        if (step === "form")         return `${basePath}/guest?guest_uuid=${guest.uuid}`
+        return `${basePath}/identify?guest_uuid=${guest.uuid}`
+    }
+
     const isGuestDone = (g: { uuid: string; isCompleted: boolean; isMain: boolean }) =>
         g.isCompleted || doneGuestUuids.has(g.uuid)
 
@@ -144,7 +153,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                     </span>
                                 ) : (
                                     <Link
-                                        href={`${basePath}/identify?guest_uuid=${mainGuest.uuid}`}
+                                        href={getContinueLink(mainGuest)}
                                         className="text-xs font-semibold text-brand-purple bg-brand-purple/10 px-3 py-1.5 rounded-lg hover:bg-brand-purple/20 transition-colors"
                                     >
                                         Continuar registro
@@ -188,7 +197,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                     </span>
                                 ) : mainCompleted ? (
                                     <Link
-                                        href={`${basePath}/s/${g.uuid}/identify`}
+                                        href={getContinueLink(g)}
                                         className="text-xs font-semibold text-brand-blue bg-brand-blue/10 px-3 py-1.5 rounded-lg hover:bg-brand-blue/20 transition-colors"
                                     >
                                         Iniciar registro

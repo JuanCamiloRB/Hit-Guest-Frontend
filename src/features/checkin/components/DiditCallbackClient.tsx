@@ -48,7 +48,13 @@ export function DiditCallbackClient({ status }: DiditCallbackClientProps) {
             return
         }
 
-        if (status === "Approved") {
+        // Terminal failures: show error then send back to retry.
+        // Everything else (Approved / In Review / In Progress) forwards to the verify
+        // screen, which polls the portal — the source of truth for the final outcome.
+        const FAILURE_STATUSES = ["declined", "expired", "abandoned", "failed", "rejected"]
+        const isFailure = FAILURE_STATUSES.includes(status.toLowerCase())
+
+        if (!isFailure) {
             // Redirect to VerifyScreen with fromCallback=1
             // VerifyScreen will start portal polling and navigate when verification.currentStep="form"
             router.replace(

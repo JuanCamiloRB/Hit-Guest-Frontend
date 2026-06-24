@@ -54,7 +54,7 @@ class ListingsService {
 
     // ── LIST BY PROPERTY ──
     async listByProperty(propertyUuid: string): Promise<any[]> {
-        const url = `${API_BASE}/listings?propertyUuid=${propertyUuid}`
+        const url = `${API_BASE}/listings?propertyUuid[eq]=${propertyUuid}`
 
         try {
             const response = await apiClient.get<any>(url)
@@ -72,6 +72,18 @@ class ListingsService {
         } catch (error: any) {
             console.error("[ListingsService] List error:", error)
             return []
+        }
+    }
+
+    // ── GET BY ID ──
+    async getById(uuid: string): Promise<any> {
+        const url = `${API_BASE}/listings/${uuid}`
+        try {
+            const response = await apiClient.get<any>(url)
+            return response?.data || response
+        } catch (error: any) {
+            console.error("[ListingsService] GetById error:", error)
+            return null
         }
     }
 

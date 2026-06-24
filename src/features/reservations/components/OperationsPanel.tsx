@@ -1,7 +1,6 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { AutomationStatus as AutomationStatusType } from "../data/detailed-mock-data"
 import { reservationsService, ReservationDetailData } from "../services/reservations-service"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -15,56 +14,19 @@ import {
     CreditCard,
     Calendar,
     Home,
-    Clock,
     MapPin,
-    Smartphone,
-    CheckCircle2,
     FileText,
-    Settings,
-    Shield,
-    XCircle,
     Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
-
-interface AutomationTileProps {
-    icon: React.ElementType
-    label: string
-    status: string
-    variant?: "success" | "pending" | "none"
-}
-
-const AutomationTile = ({ icon: Icon, label, status, variant = "none" }: AutomationTileProps) => {
-    const variants = {
-        success: "bg-emerald-50 text-emerald-600 border-emerald-100",
-        pending: "bg-slate-50 text-slate-400 border-slate-100",
-        none: "bg-slate-50 text-slate-300 border-slate-100"
-    }
-
-    const iconBg = {
-        success: "bg-emerald-500 text-white",
-        pending: "bg-slate-300 text-white",
-        none: "bg-slate-200 text-white"
-    }
-
-    return (
-        <div className={cn(
-            "flex flex-col items-center justify-center p-3 rounded-xl border transition-all h-24 w-full",
-            variants[variant]
-        )}>
-            <div className={cn("p-1.5 rounded-full mb-2", iconBg[variant])}>
-                <Icon size={16} />
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider mb-0.5">{label}</span>
-            <span className="text-[11px] font-semibold">{status}</span>
-        </div>
-    )
-}
-
+import { ReservationDialog } from "./ReservationDialog"
+import { AutomationStatusList } from "./automations"
+import { GuestDocumentsCard } from "./GuestDocumentsCard"
+import { PropertyDocumentsCard } from "./PropertyDocumentsCard"
 import Link from "next/link"
 
 export function OperationsPanel({ reservationId }: { reservationId: string }) {
@@ -106,28 +68,8 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
         )
     }
 
-    const automationStatuses: { label: string; icon: any; statusKey: keyof AutomationStatusType }[] = [
-        { label: "Link", icon: Send, statusKey: "link" },
-        { label: "Check-in", icon: CheckCircle2, statusKey: "checkin" },
-        { label: "Contrato", icon: Smartphone, statusKey: "contract" },
-        { label: "Código", icon: Key, statusKey: "code" },
-        { label: "TRA", icon: Shield, statusKey: "tra" },
-        { label: "SIRE", icon: XCircle, statusKey: "sire" },
-    ]
-
-    const getStatusText = (status: "success" | "pending" | "none", label: string) => {
-        if (status === "success") {
-            if (label === "Link") return "Enviado"
-            if (label === "Check-in") return "Completado"
-            if (label === "Contrato") return "Enviado"
-            return "Completado"
-        }
-        if (status === "pending") return "Programado"
-        return "N/A"
-    }
-
     return (
-        <div className="flex flex-col gap-6 max-w-7xl mx-auto pb-10">
+        <div className="flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto pb-10">
             {/* Breadcrumbs & Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div className="space-y-1">
@@ -136,20 +78,30 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             Operaciones
                         </Link>
                         <ChevronRight size={12} className="text-slate-400" />
-                        <span className="text-indigo-600 font-semibold">Reserva {reservationId}</span>
+                        <span className="text-indigo-600 font-semibold truncate max-w-[160px] sm:max-w-none inline-block align-bottom">Reserva {data.externalId || `${reservationId.slice(0, 8)}...`}</span>
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Panel de Operaciones</h1>
+                    <h1 className="text-xl sm:text-3xl font-bold text-slate-900 tracking-tight">Panel de Operaciones</h1>
                     <p className="text-sm text-slate-500">Gestión detallada de la reserva y automatizaciones</p>
                 </div>
-                <div className="flex items-center gap-3">
-                    <Button variant="outline" className="bg-white border-slate-200 text-slate-700 shadow-sm gap-2">
+                <div className="flex items-center gap-2 sm:gap-3">
+                    <Button variant="outline" className="bg-white border-slate-200 text-slate-700 shadow-sm gap-2 text-xs sm:text-sm">
                         <Printer size={16} />
                         Imprimir
                     </Button>
-                    <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md gap-2">
-                        <Edit size={16} />
-                        Editar Reserva
-                    </Button>
+                    <ReservationDialog 
+                        mode="edit" 
+                        reservationUuid={reservationId}
+                        trigger={
+                            <Button 
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md gap-2 text-xs sm:text-sm"
+                                disabled={data.source === "Airbnb"}
+                                title={data.source === "Airbnb" ? "Las reservas de Airbnb no se pueden editar manualmente" : "Editar los detalles de la reserva"}
+                            >
+                                <Edit size={16} />
+                                Editar Reserva
+                            </Button>
+                        }
+                    />
                 </div>
             </div>
 
@@ -158,21 +110,20 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                 <div className="lg:col-span-8 flex flex-col gap-6">
                     {/* Guest & Reservation Info Card */}
                     <Card className="border-fuchsia-200 border-2 overflow-hidden shadow-sm">
-                        <CardContent className="p-6">
+                        <CardContent className="p-4 sm:p-6">
                             {/* Top row: Guest & Status */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
                                 <div className="flex items-center gap-4">
                                     <div className="relative">
                                         <Avatar className="h-16 w-16 bg-red-50 border-2 border-red-50 p-1">
-                                            <AvatarImage src="/images/guest-placeholder.png" alt={data.guestName} />
                                             <AvatarFallback className="bg-red-100 text-red-500 font-bold">
                                                 {data.guestName.split(" ").map((n: string) => n[0]).join("")}
                                             </AvatarFallback>
                                         </Avatar>
                                     </div>
                                     <div className="flex flex-col">
-                                        <div className="flex items-center gap-2">
-                                            <h2 className="text-2xl font-bold text-slate-900 leading-none">{data.guestName}</h2>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            <h2 className="text-lg sm:text-2xl font-bold text-slate-900 leading-none">{data.guestName}</h2>
                                             {data.source === "Airbnb" && (
                                                 <Badge className="bg-rose-100 text-rose-500 border-none px-1.5 py-0 text-[10px] font-bold uppercase tracking-tight">
                                                     ▲ ICAL IMPORT
@@ -203,14 +154,14 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             </div>
 
                             {/* Details Row */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-slate-100">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8 pt-6 sm:pt-8 border-t border-slate-100">
                                 <div className="flex items-start gap-3">
                                     <div className="p-2.5 bg-slate-50 rounded-xl text-slate-400 shrink-0">
                                         <Home size={20} />
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Propiedad</span>
-                                        <h3 className="text-lg font-bold text-slate-800 leading-snug">{data.propertyName}</h3>
+                                        <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-snug">{data.propertyName}</h3>
                                         <span className="text-sm text-slate-500">{data.unitName}</span>
                                     </div>
                                 </div>
@@ -222,9 +173,9 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Estancia</span>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-lg font-bold text-slate-800 leading-snug">{format(data.checkIn, "d MMM", { locale: es })}</span>
+                                            <span className="text-base sm:text-lg font-bold text-slate-800 leading-snug">{format(data.checkIn, "d MMM", { locale: es })}</span>
                                             <ChevronRight size={14} className="text-slate-300 mt-0.5" />
-                                            <span className="text-lg font-bold text-slate-800 leading-snug">{format(data.checkOut, "d MMM", { locale: es })}</span>
+                                            <span className="text-base sm:text-lg font-bold text-slate-800 leading-snug">{format(data.checkOut, "d MMM", { locale: es })}</span>
                                         </div>
                                         <div className="flex items-center gap-3 text-sm text-slate-400 font-medium">
                                             <span>{format(data.checkIn, "HH:mm")}</span>
@@ -239,29 +190,24 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total</span>
-                                        <h3 className="text-lg font-bold text-slate-800 leading-snug">${data.totalPrice.toLocaleString("es-CO")} COP</h3>
+                                        <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-snug">${data.totalPrice.toLocaleString("es-CO")} COP</h3>
                                         <span className="text-sm text-slate-500 font-medium">Pagado • Stripe</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Automation Section */}
+                            {/* Automation Section — live status + manual redispatch */}
                             <div className="mt-8 pt-8 border-t border-slate-100">
-                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-4">Estado de Automatización</h4>
-                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
-                                    {automationStatuses.map((autom) => (
-                                        <AutomationTile
-                                            key={autom.label}
-                                            icon={autom.icon}
-                                            label={autom.label}
-                                            status={getStatusText(data.automationStatus[autom.statusKey], autom.label)}
-                                            variant={data.automationStatus[autom.statusKey]}
-                                        />
-                                    ))}
-                                </div>
+                                <AutomationStatusList reservationUuid={data.uuid} />
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Guest Documents */}
+                    <GuestDocumentsCard reservationUuid={data.uuid} />
+
+                    {/* Property Documents */}
+                    <PropertyDocumentsCard reservationUuid={data.uuid} />
 
                     {/* Activity Log */}
                     <Card className="shadow-sm">
@@ -326,7 +272,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         <CardContent className="p-6">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-200">Total Reserva</span>
                             <div className="flex items-center justify-between mt-1 mb-6">
-                                <h3 className="text-3xl font-bold tracking-tight">${data.totalPrice.toLocaleString("es-CO")} COP</h3>
+                                <h3 className="text-2xl sm:text-3xl font-bold tracking-tight">${data.totalPrice.toLocaleString("es-CO")} COP</h3>
                                 <div className="p-2 bg-white/20 rounded-lg">
                                     <CreditCard size={20} />
                                 </div>
@@ -351,7 +297,6 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         {/* Map placeholder */}
                         <div
                             className="absolute inset-0 bg-cover bg-center grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500"
-                            style={{ backgroundImage: "url('/images/map-placeholder.png')" }}
                         >
                             {/* SVG mockup of a map grid */}
                             <div className="w-full h-full opacity-20 pointer-events-none">

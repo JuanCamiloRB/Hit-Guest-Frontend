@@ -16,7 +16,7 @@ export function DashboardHeader() {
                     <span className="mx-2">›</span>
                     <span className="text-indigo-600 font-medium">{t('dashboard.title')}</span>
                 </div>
-                <h2 className="text-3xl font-bold tracking-tight text-slate-900">{t('dashboard.title')}</h2>
+                <h2 className="text-xl sm:text-3xl font-bold tracking-tight text-slate-900">{t('dashboard.title')}</h2>
                 <p className="text-muted-foreground mt-1">
                     {t('dashboard.description')}
                 </p>

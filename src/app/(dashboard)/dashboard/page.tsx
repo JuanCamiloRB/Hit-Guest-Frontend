@@ -4,7 +4,7 @@ import ReservationsList from "@/features/reservations/components/ReservationsLis
 
 export default function DashboardPage() {
     return (
-        <div className="flex flex-col gap-8 p-6 lg:p-10">
+        <div className="flex flex-col gap-6 sm:gap-8 p-3 sm:p-6 lg:p-10">
             <DashboardHeader />
 
             <StatsCards />

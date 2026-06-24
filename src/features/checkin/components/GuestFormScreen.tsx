@@ -2,11 +2,11 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, CheckCircle2, FileText, User, Globe, Plane, Loader2 } from "lucide-react"
+import { ArrowLeft, CheckCircle2, FileText, User, Globe, Plane, Loader2, ClipboardList } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
-import { CatalogService } from "@/features/auth/services/catalog-service"
+import { CatalogService, type IdentificationTypeOption } from "@/features/auth/services/catalog-service"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
 import {
     type GuestFormData,
@@ -16,6 +16,7 @@ import { MAIN_GUEST_STEPS } from "@/features/checkin/data/constants"
 import { useLocalStorage } from "@/features/checkin/hooks/useLocalStorage"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { FormInput } from "@/features/checkin/components/FormInput"
+import { DynamicCheckinFields, areDynamicFieldsValid, getProviderUserFields } from "@/features/checkin/components/DynamicCheckinFields"
 import { CollapsibleSection } from "@/features/checkin/components/CollapsibleSection"
 import { StepIndicator } from "@/features/checkin/components/StepIndicator"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
@@ -32,8 +33,10 @@ interface GuestFormScreenProps {
 }
 
 export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenProps) {
+    const searchParams = useSearchParams()
+    const guestUuid = searchParams.get("guest_uuid") || ""
     const { load } = useIdentifySession(reservationUuid)
-    const session = load()
+    const session = load(guestUuid || undefined)
 
     const [form, setForm] = useLocalStorage<GuestFormData>(`checkin-guest-form-${reservationUuid}`, {
         ...emptyGuestForm,
@@ -42,13 +45,14 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
         nationalityId: 48,
         documentCountryId: 48,
         identificationTypeId: 7,
-    })
+    }, { excludeKeys: ["documentImage1", "documentImage2"] })
 
     const [schema, setSchema] = useState<GuestFormSchemaResponse | null>(null)
     const [isLoadingSchema, setIsLoadingSchema] = useState(true)
     const [docVerified, setDocVerified] = useState(false)
     const [countryOptions, setCountryOptions] = useState<Array<{ id: number; label: string }>>([])
     const [tripReasonOptions, setTripReasonOptions] = useState<Array<{ id: number; label: string }>>([])
+    const [identTypes, setIdentTypes] = useState<IdentificationTypeOption[]>([])
 
     const [expanded, setExpanded] = useState({
         document: true,
@@ -56,11 +60,10 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
         origin: true,
         travel: true,
         photos: true,
+        additional: true,
     })
 
     const router = useRouter()
-    const searchParams = useSearchParams()
-    const guestUuid = searchParams.get("guest_uuid") || ""
 
     useEffect(() => {
         if (!guestUuid) {
@@ -74,43 +77,97 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
 
         const fetchSchema = async () => {
             try {
-                // Use formSchema from identify session (localStorage) instead of API call
-                const savedSchema = session?.formSchema
-                const resSchemaPromise = savedSchema
-                    ? Promise.resolve(savedSchema as unknown as GuestFormSchemaResponse)
-                    : checkinService.getGuestFormSchema(reservationUuid, guestUuid)
+                const catalogs = new CatalogService()
 
-                const [resSchema, countries, reasons] = await Promise.all([
-                    resSchemaPromise,
-                    new CatalogService().getCountries(),
-                    new CatalogService().getReasonsForTrip(),
+                // Load catalogs independently — these must never fail because the schema fetch failed
+                const [countries, reasons, idTypes] = await Promise.all([
+                    catalogs.getCountries(),
+                    catalogs.getReasonsForTrip(),
+                    catalogs.getIdentificationTypesV2(),
                 ])
-                setSchema(resSchema)
                 setCountryOptions((countries || []).map((c: any) => ({ id: c.id, label: c.name })))
                 setTripReasonOptions((reasons || []).map((r: any) => ({ id: r.id, label: r.nameTranslations?.es || r.name })))
-                
-                // Merge prefilledData ONLY if the field is currently empty in our form state
-                // This prevents overwriting user edits or OCR data from VerifyScreen
-                if (resSchema.prefilledData) {
-                    setForm(prev => {
-                        const updated = { ...prev } as any
-                        Object.entries(resSchema.prefilledData).forEach(([k, v]) => {
-                            if (!updated[k] && v !== undefined && v !== null) {
-                                updated[k] = v
+                setIdentTypes(idTypes || [])
+
+                // Use formSchema from identify session (localStorage) — the /form endpoint doesn't exist
+                let resSchema: GuestFormSchemaResponse | null = session?.formSchema as unknown as GuestFormSchemaResponse ?? null
+                if (!resSchema) {
+                    try {
+                        resSchema = await checkinService.getGuestFormSchema(reservationUuid, guestUuid)
+                    } catch {
+                        console.warn("[GuestFormScreen] Form schema not available from API, using defaults")
+                    }
+                }
+
+                if (resSchema) {
+                    setSchema(resSchema)
+                    if (resSchema.prefilledData) {
+                        // Also check for OCR data saved by VerifyScreen's handleOcrConfirm
+                        let ocrOverrides: Record<string, any> = {}
+                        try {
+                            const ocrKey = `checkin-ocr-data-${reservationUuid}-${guestUuid}`
+                            const raw = localStorage.getItem(ocrKey)
+                            if (raw) {
+                                const ocr = JSON.parse(raw)
+                                // Map OCR fields → form fields
+                                if (ocr.firstName) ocrOverrides.name = ocr.firstName
+                                if (ocr.lastName) ocrOverrides.lastname = ocr.lastName
+                                if (ocr.documentNumber) ocrOverrides.identificationNumber = ocr.documentNumber
+                                if (ocr.dateOfBirth) ocrOverrides.dateOfBirth = ocr.dateOfBirth
+                                if (ocr.expirationDate) ocrOverrides.identificationExpiryDate = ocr.expirationDate
                             }
+                        } catch {}
+
+                        // Fields that hold numeric IDs (should be stored as numbers)
+                        const NUMERIC_ID_FIELDS = new Set(["identificationTypeId", "nationalityId", "documentCountryId", "genderId", "countryOfOriginId", "countryDestinationId", "reasonForTripId"])
+                        // Fields that must always be strings
+                        const STRING_FIELDS = new Set(["name", "lastname", "identificationNumber", "phone", "email", "dateOfBirth", "identificationExpiryDate"])
+
+                        // Hardcoded defaults that should be overridden by real backend data
+                        const HARDCODED_DEFAULTS: Record<string, unknown> = {
+                            identificationTypeId: 7,
+                            nationalityId: 48,
+                            documentCountryId: 48,
+                            name: session?.guestName ?? "",
+                            lastname: session?.guestLastname ?? "",
+                        }
+
+                        const coerce = (k: string, v: unknown): unknown => {
+                            if (NUMERIC_ID_FIELDS.has(k)) return Number(v)
+                            if (STRING_FIELDS.has(k)) return String(v ?? "")
+                            return v
+                        }
+
+                        setForm(prev => {
+                            const updated = { ...prev } as any
+                            // prefilledData from backend: apply when field is empty OR still at its hardcoded default
+                            Object.entries(resSchema.prefilledData).forEach(([k, v]) => {
+                                if (v !== undefined && v !== null && v !== "") {
+                                    const isEmpty = updated[k] === "" || updated[k] === null || updated[k] === undefined
+                                    const isAtDefault = k in HARDCODED_DEFAULTS && updated[k] == HARDCODED_DEFAULTS[k]
+                                    if (isEmpty || isAtDefault) {
+                                        updated[k] = coerce(k, v)
+                                    }
+                                }
+                            })
+                            // OCR data always wins — it's fresher and user-confirmed
+                            Object.entries(ocrOverrides).forEach(([k, v]) => {
+                                if (v !== undefined && v !== null && v !== "") updated[k] = v
+                            })
+                            return updated as GuestFormData
                         })
-                        return updated as GuestFormData
-                    })
+                    }
                 }
             } catch (e) {
-                toast.error("Error al cargar configuración del formulario")
+                toast.error("Error al cargar catálogos")
             } finally {
                 setIsLoadingSchema(false)
             }
         }
         
         fetchSchema()
-    }, [reservationUuid, guestUuid, basePath, router, setForm])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [reservationUuid, guestUuid, basePath])
 
     const toggleSection = (key: keyof typeof expanded) => {
         setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
@@ -120,7 +177,22 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
         setForm((prev) => ({ ...prev, [field]: value }))
     }
 
-    const isPassport = form.identificationTypeId === 9
+    // Provider-declared dynamic fields (v4.6) — exclude any that overlap the core form.
+    const dynamicFields = getProviderUserFields(schema?.userFields)
+    const dynamicValues = form.dynamicExtra ?? {}
+    const updateDynamicField = (key: string, value: string | number) => {
+        setForm((prev) => ({ ...prev, dynamicExtra: { ...(prev.dynamicExtra ?? {}), [key]: value } }))
+    }
+
+    // Whether the selected document needs a back image — prefer the catalog's
+    // `requiresBackImage`, fall back to a name heuristic until the list loads.
+    const selectedType = identTypes.find(t => t.id === form.identificationTypeId)
+    const selectedDocName = selectedType?.name
+        ?? mockDocumentTypes.find(d => d.id === form.identificationTypeId)?.name
+        ?? ""
+    const isPassport = selectedType
+        ? !selectedType.requiresBackImage
+        : /pasaporte|passport|licencia|licen[cs]e|nit/i.test(selectedDocName)
 
     const isFieldVisible = (key: string) => 
         schema?.requiredFields.includes(key) || schema?.optionalFields.includes(key)
@@ -138,22 +210,26 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
     const baseValid =
         form.documentCountryId !== "" &&
         form.identificationTypeId !== "" &&
-        form.identificationNumber.trim() !== "" &&
-        form.name.trim() !== "" &&
-        form.lastname.trim() !== "" &&
+        String(form.identificationNumber ?? "").trim() !== "" &&
+        String(form.name ?? "").trim() !== "" &&
+        String(form.lastname ?? "").trim() !== "" &&
         form.dateOfBirth !== "" &&
-        form.documentImage1 !== null &&
-        (isPassport || form.documentImage2 !== null)
+        (docVerified || form.documentImage1 !== null) &&
+        (docVerified || isPassport || form.documentImage2 !== null)
 
     const dynamicValid = schema?.requiredFields.every(key => {
         const val = form[key as keyof GuestFormData]
         return val !== null && val !== "" && val !== undefined
     }) ?? false
 
-    const isFormValid = baseValid && dynamicValid
+    const userFieldsValid = areDynamicFieldsValid(dynamicFields, dynamicValues)
+
+    const isFormValid = baseValid && dynamicValid && userFieldsValid
 
     // Catalogs loaded separately via CatalogService (not included in formSchema response)
-    const docTypeOptions = mockDocumentTypes.map((d) => ({ id: d.id, label: d.nameTranslations.es }))
+    const docTypeOptions = identTypes.length > 0
+        ? identTypes.map((d) => ({ id: d.id, label: d.name }))
+        : mockDocumentTypes.map((d) => ({ id: d.id, label: d.nameTranslations.es }))
     const genderOptions = mockGenders.map((g) => ({ id: g.id, label: g.nameTranslations.es }))
 
     const nextPath = `${basePath}/contract?guest_uuid=${guestUuid}`
@@ -319,18 +395,27 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                 </CollapsibleSection>
             )}
 
-            {/* ── Photos Section ── */}
-            <CollapsibleSection icon={<FileText size={18} />} title="Fotos del documento" expanded={expanded.photos} onToggle={() => toggleSection("photos")} badge={form.documentImage1 ? "✓" : undefined}>
-                <div className="space-y-4">
-                    <DocumentUpload label="Foto del documento (frente)" value={form.documentImage1} onChange={(v) => updateField("documentImage1", v)} required id="doc-front" />
-                    {!isPassport && (
-                        <DocumentUpload label="Foto del documento (reverso)" value={form.documentImage2} onChange={(v) => updateField("documentImage2", v)} required id="doc-back" />
-                    )}
-                    {isPassport && (
-                        <p className="text-xs text-slate-400 text-center mt-1">Para pasaporte solo se requiere la página de datos.</p>
-                    )}
-                </div>
-            </CollapsibleSection>
+            {/* ── Provider-declared dynamic fields (v4.6) ── */}
+            {dynamicFields.length > 0 && (
+                <CollapsibleSection icon={<ClipboardList size={18} />} title="Información requerida" expanded={expanded.additional} onToggle={() => toggleSection("additional")}>
+                    <DynamicCheckinFields fields={dynamicFields} values={dynamicValues} onChange={updateDynamicField} />
+                </CollapsibleSection>
+            )}
+
+            {/* ── Photos Section (skip if biometric/Didit already verified documents) ── */}
+            {!docVerified && (
+                <CollapsibleSection icon={<FileText size={18} />} title="Fotos del documento" expanded={expanded.photos} onToggle={() => toggleSection("photos")} badge={form.documentImage1 ? "✓" : undefined}>
+                    <div className="space-y-4">
+                        <DocumentUpload label="Foto del documento (frente)" value={form.documentImage1} onChange={(v) => updateField("documentImage1", v)} required id="doc-front" />
+                        {!isPassport && (
+                            <DocumentUpload label="Foto del documento (reverso)" value={form.documentImage2} onChange={(v) => updateField("documentImage2", v)} required id="doc-back" />
+                        )}
+                        {isPassport && (
+                            <p className="text-xs text-slate-400 text-center mt-1">Para pasaporte solo se requiere la página de datos.</p>
+                        )}
+                    </div>
+                </CollapsibleSection>
+            )}
 
             {/* CTA */}
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">

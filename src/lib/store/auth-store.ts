@@ -19,7 +19,11 @@ export const useAuthStore = create<AuthStore>()(
             isLoading: false,
             error: null,
 
-            setSession: (user: User) => set({ user, isAuthenticated: true, error: null }),
+            setSession: (user: User) => {
+                console.log("🔍 [AuthStore] setSession called with user:", JSON.stringify(user, null, 2))
+                console.log("🔍 [AuthStore] user.token:", user.token)
+                set({ user, isAuthenticated: true, error: null })
+            },
             clearSession: () => set({ user: null, isAuthenticated: false, error: null }),
             setLoading: (isLoading: boolean) => set({ isLoading }),
             setError: (error: string | null) => set({ error }),

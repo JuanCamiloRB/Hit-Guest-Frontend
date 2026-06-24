@@ -50,7 +50,49 @@ export interface GuestVerificationInfo {
   verifiedAt: string | null         // ISO date when approved/completed, null otherwise
 }
 
+/**
+ * Property document exposed in the portal response (v4.3).
+ * The backend resolves the reservation's property → active documents and
+ * provides ready-to-use checkin-scoped URLs (no admin auth required).
+ */
+export interface PortalDocument {
+  uuid: string
+  type: string          // "Agreement" | "Rules" | "Instructions" | "Privacy Policy"
+  renderUrl: string     // "/api/v1/checkin/{reservationUuid}/documents/{docUuid}/render"
+  pdfUrl: string        // "/api/v1/checkin/{reservationUuid}/documents/{docUuid}/pdf"
+}
+
+/**
+ * Which signing provider the property has configured for the contract (v4.4).
+ * The backend sends the provider slug: "hitguest_signature" or "tufirma".
+ * ("hitguest" kept for tolerance.)
+ */
+export type SigningProvider = "hitguest" | "hitguest_signature" | "tufirma"
+
+/**
+ * Contract signing state exposed in the portal response (v4.4).
+ * Drives whether the guest sees the native signature canvas, the TuFirma notice,
+ * or no signing step at all.
+ */
+export interface PortalContractInfo {
+  signingProvider: SigningProvider | null  // null = no Digital Contract automation configured
+  // "pending" = TuFirma sent, waiting for the guest to sign externally (email link)
+  status: "not_started" | "pending" | "signed" | "completed"
+  hasNativeSignature: boolean               // a native signature already saved for the main guest
+  signedAt?: string | null                  // ISO timestamp when the contract was signed
+  signedContractUrl?: string | null         // relative URL to download the SIGNED PDF (when available)
+}
+
 export interface CheckinPortalResponse {
+  /**
+   * v4.5: explicit portal lifecycle state. Present ONLY for cancelled (29) or
+   * deleted (108) reservations — in those cases `reservation` and the rest of
+   * the payload are absent and only `message` is provided. Status 30 (closed)
+   * returns a full portal with `reservation.checkinAllowed = false` instead.
+   */
+  portalStatus?: "cancelled" | "deleted"
+  /** Human-readable explanation shown to the guest when portalStatus is set. */
+  message?: string
   reservation: {
     uuid: string
     arrivalDate: string              // "Y-m-d"
@@ -64,6 +106,10 @@ export interface CheckinPortalResponse {
     isFullyCompleted: boolean        // completedCount >= total_guests
   }
   registeredGuests: RegisteredGuest[]
+  /** v4.3: active property documents with render/pdf URLs. [] if none configured. */
+  documents?: PortalDocument[]
+  /** v4.4: contract signing config + state. Absent on older backends. */
+  contract?: PortalContractInfo
 }
 
 /** Each guest attached to the reservation via pivot */
@@ -128,7 +174,7 @@ export type VerificationDirective =
  * Backend evalúa el resultado de la sesión Didit y decide si necesita KYC o ya está verificado.
  */
 export interface VerificationResultResponse {
-  status: "verified" | "kyc_required" | "failed"
+  status: "verified" | "kyc_required" | "failed" | "pending"  // "pending" = aún en proceso, seguir esperando
   kycUrl?: string                        // Solo si status === "kyc_required"
   guestData?: {                          // Solo si status === "verified"
     firstName?: string
@@ -147,6 +193,25 @@ export interface FormSchema {
   requiredFields: string[]                     // e.g. ["countryOfOriginId", "reasonForTripId"]
   optionalFields: string[]                     // e.g. ["cityOfOrigin"]
   prefilledData: Record<string, unknown>       // backend-provided pre-fill values
+  userFields?: CheckinUserField[]              // provider-declared dynamic fields (v4.6)
+}
+
+/**
+ * Provider-declared check-in field (v4.6).
+ * Each external provider (TRA Colombia, SIRE, …) declares the extra fields it needs
+ * collected at check-in via `providers.parameters.checkin_fields`. The backend returns
+ * the user-facing ones (auto-resolved fields are stripped server-side). The form is
+ * built dynamically from these descriptors and the value is submitted under `extra`
+ * using the declared `key` verbatim.
+ */
+export type CheckinFieldType = "text" | "number" | "select"
+
+export interface CheckinUserField {
+  key: string                  // exact extra key, e.g. "city_of_origin", "purpose_of_travel"
+  type: CheckinFieldType       // text | number | select
+  required: boolean
+  catalogCategoryId?: number   // for type "select" — catalog category to load options from
+  label?: string               // optional backend-provided label
 }
 
 // Tipos deprecados eliminados
@@ -161,6 +226,8 @@ export interface IdentifySessionData {
   verification: VerificationDirective
   formSchema: FormSchema   // now uses requiredFields/optionalFields/prefilledData
   timestamp: number
+  /** ID of the identification type chosen by the guest (cat_id=2), used by VerifyScreen to know if back image is required */
+  identificationTypeId?: number
 }
 
 // ─── GET /form/{guestUuid} response (G-NEW-4) — aligned with backend v4.1 ────
@@ -179,6 +246,7 @@ export interface GuestFormSchemaResponse {
   requiredFields: string[]
   optionalFields: string[]
   prefilledData: Record<string, unknown>
+  userFields?: CheckinUserField[]
 }
 
 // ─── Completion Payloads + Response (G-NEW-1, G-NEW-2) ──────────
@@ -213,7 +281,23 @@ export interface CompleteMainGuestPayload {
   guestUuid: string
   profile: GuestProfile
   extra: GuestExtra
-  signature: string | null   // base64 data URL — captured in ContractScreen
+}
+
+/**
+ * POST /api/v1/checkin/{reservationUuid}/main/sign (v4.4)
+ * Native HIT Guest signature — sent separately, BEFORE /main/complete.
+ */
+export interface SignMainGuestPayload {
+  guestUuid: string
+  documentUuid: string       // the contract document the guest read & is signing
+  signatureImage: string     // base64 PNG/JPEG (with or without data: prefix)
+}
+
+/** Response of POST /main/sign */
+export interface SignMainGuestResponse {
+  message: string
+  attempt: number
+  signedAt: string
 }
 
 export interface CompleteSecondaryGuestPayload {
@@ -227,6 +311,11 @@ export interface CompleteSecondaryGuestPayload {
  */
 export interface CompleteGuestResponse {
   message: string
+  /**
+   * v4.4: tufirma flow returns "pending_signature" (the guest must still sign via
+   * the TuFirma email) instead of "completed". hitguest returns "completed".
+   */
+  status?: "completed" | "pending_signature"
 }
 
 // ─── OCR Result (v4.1 shape — aligned with backend) (G-NEW-3) ──────────────────
@@ -234,11 +323,16 @@ export interface CompleteGuestResponse {
 /** Backend response from POST /secondary/{guestUuid}/documents */
 export interface OCRResult {
   extractedData: {
-    firstName: string
-    lastName: string
-    documentNumber: string
-    dateOfBirth: string
+    // Real backend fields (v4.1)
+    name?: string
+    lastname?: string
+    identificationNumber?: string
+    dateOfBirth?: string
     expirationDate?: string
+    // Legacy field names kept for backwards compat
+    firstName?: string
+    lastName?: string
+    documentNumber?: string
   }
   // Backend also returns formSchema with the OCR response (prefilledData merged)
   formSchema?: {
@@ -353,6 +447,9 @@ export interface GuestFormData {
   // 📸 Fotos del documento
   documentImage1: string | null   // base64 or URL
   documentImage2: string | null   // base64 or URL (condicional)
+
+  // 🧩 Campos dinámicos declarados por el proveedor (v4.6). Se envían tal cual en `extra`.
+  dynamicExtra?: Record<string, string | number>
 }
 
 // ─── Companion Form Data (12 campos - Simplificado) ──────────────
@@ -377,6 +474,9 @@ export interface CompanionFormData {
   // 📸 Fotos
   documentImage1: string | null
   documentImage2: string | null
+
+  // 🧩 Campos dinámicos declarados por el proveedor (v4.6).
+  dynamicExtra?: Record<string, string | number>
 }
 
 // ─── Utility Types ───────────────────────────────────────────────
@@ -438,6 +538,7 @@ export const emptyGuestForm: GuestFormData = {
   departureFlight: "",
   documentImage1: null,
   documentImage2: null,
+  dynamicExtra: {},
 }
 
 /** Initial state for CompanionFormData */
@@ -454,6 +555,7 @@ export const emptyCompanionForm: CompanionFormData = {
   reasonForTripId: "",
   documentImage1: null,
   documentImage2: null,
+  dynamicExtra: {},
 }
 
 // ─── Signature (escalable base64 → S3) ──────────────

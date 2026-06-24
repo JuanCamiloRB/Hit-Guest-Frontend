@@ -39,7 +39,7 @@ export function Header() {
     }, [])
 
     return (
-        <header className="sticky top-0 z-30 flex h-20 w-full items-center justify-between border-b bg-white/80 backdrop-blur-md px-6 md:px-10 shadow-sm transition-all duration-300">
+        <header className="sticky top-0 z-30 flex h-14 sm:h-20 w-full items-center justify-between border-b bg-white/80 backdrop-blur-md px-3 sm:px-6 md:px-10 shadow-sm transition-all duration-300">
             <div className="flex items-center gap-6">
                 <div className="flex items-center gap-4">
                     <MobileSidebar />
@@ -49,7 +49,7 @@ export function Header() {
                 </div>
             </div>
 
-            <div className="flex flex-1 items-center justify-end gap-6 md:gap-8">
+            <div className="flex flex-1 items-center justify-end gap-2 sm:gap-4 md:gap-8">
                 {/* Search Bar - Modernized */}
                 <div className="relative hidden lg:flex items-center max-w-md w-full group">
                     <div className="absolute inset-0 bg-slate-100/50 rounded-2xl transition-all group-focus-within:bg-white group-focus-within:ring-4 group-focus-within:ring-[var(--color-brand-purple)]/10" />
@@ -60,11 +60,11 @@ export function Header() {
                     />
                 </div>
 
-                <div className="flex items-center gap-2 md:gap-4">
+                <div className="flex items-center gap-1.5 sm:gap-2 md:gap-4">
                     {/* Language Switcher */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-10 w-auto px-3 gap-2 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 uppercase text-xs font-bold tracking-wider">
+                            <Button variant="ghost" className="hidden sm:inline-flex h-10 w-auto px-3 gap-2 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 uppercase text-xs font-bold tracking-wider">
                                 <Languages className="h-4 w-4" />
                                 {isMounted ? language : "EN"}
                             </Button>
@@ -137,11 +137,11 @@ export function Header() {
                     </DropdownMenu>
 
                     {/* Notification & Help */}
-                    <div className="flex items-center gap-1 sm:gap-2">
-                        <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-500 bg-slate-100/50 hover:bg-slate-100 rounded-lg">
-                            <Bell className="h-5 w-5" />
+                    <div className="flex items-center gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 text-slate-500 bg-slate-100/50 hover:bg-slate-100 rounded-lg">
+                            <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-500 bg-slate-100/50 hover:bg-slate-100 rounded-lg">
+                        <Button variant="ghost" size="icon" className="hidden sm:inline-flex h-10 w-10 text-slate-500 bg-slate-100/50 hover:bg-slate-100 rounded-lg">
                             <CircleHelp className="h-5 w-5" />
                         </Button>
                     </div>

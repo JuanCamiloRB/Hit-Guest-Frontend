@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, ShieldCheck, Users } from "lucide-react"
 import { toast } from "sonner"
+import { notifyError } from "@/lib/notify-error"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
@@ -104,7 +105,8 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
             }
 
             // Persist session for downstream screens (verify, guest form)
-            save(response)
+            // Pass identificationTypeId so VerifyScreen knows if back image is required
+            save(response, Number(form.identificationTypeId) || undefined)
 
             // Store trigger for mock routing in VerifyScreen (checkVerificationResult)
             try {
@@ -130,6 +132,10 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
             switch (response.verification.type) {
                 case "verified_ok":
                     // G6: Guest already verified — skip directly to form
+                    try {
+                        const vKey = `checkin-verification-done-${reservationUuid}-${response.guest.uuid}`
+                        localStorage.setItem(vKey, 'true')
+                    } catch {}
                     router.push(`${basePath}/guest?guest_uuid=${response.guest.uuid}`)
                     break
                 case "session":
@@ -138,6 +144,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                     break
             }
         } catch (e: any) {
+            console.error("[IdentifyScreen] 422 error details:", { status: e.status, message: e.message, errors: e.errors })
             // G8: Handle specific backend errors
             if (e.status === 403) {
                 toast.error("El huésped principal debe completar su registro primero")
@@ -153,7 +160,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                     setFieldErrors(e.errors)
                     toast.error("Por favor revisa los campos marcados")
                 } else {
-                    toast.error(e.message || "Error de validación")
+                    notifyError(e, "Error de validación")
                 }
             } else if (e.status === 404) {
                 toast.error("Reserva no encontrada")
@@ -163,7 +170,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 setFieldErrors(e.errors)
                 toast.error("Por favor revisa los campos marcados")
             } else {
-                toast.error(e.message || "Error al verificar identidad")
+                notifyError(e, "Error al verificar identidad")
             }
         } finally {
             setIsSubmitting(false)

@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { notifyError } from "@/lib/notify-error"
 import { checkinService } from "@/features/checkin/services/checkin-service"
-import { CatalogService } from "@/features/auth/services/catalog-service"
+import { CatalogService, type IdentificationTypeOption } from "@/features/auth/services/catalog-service"
 import { 
     GuestFormData,
     GuestFormSchemaResponse,
@@ -16,10 +17,11 @@ import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { FormInput } from "@/features/checkin/components/FormInput"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
+import { DynamicCheckinFields, areDynamicFieldsValid, getProviderUserFields } from "@/features/checkin/components/DynamicCheckinFields"
 import { CollapsibleSection } from "@/features/checkin/components/CollapsibleSection"
 import { mockDocumentTypes, mockGenders } from "@/features/checkin/data/mock-guest-data"
 import { DocumentUpload } from "@/features/checkin/components/DocumentUpload"
-import { ArrowLeft, User, FileText, Globe, Plane, Loader2, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, User, FileText, Globe, Plane, Loader2, CheckCircle2, ClipboardList } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
@@ -40,20 +42,23 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
         lastname: session?.guestLastname ?? "",
         documentCountryId: 48,
         identificationTypeId: 7,
-    })
+    }, { excludeKeys: ["documentImage1", "documentImage2"] })
 
     const [schema, setSchema] = useState<GuestFormSchemaResponse | null>(null)
     const [isLoadingSchema, setIsLoadingSchema] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [docVerified, setDocVerified] = useState(false)
     const [countryOptions, setCountryOptions] = useState<Array<{ id: number; label: string }>>([])
     const [tripReasonOptions, setTripReasonOptions] = useState<Array<{ id: number; label: string }>>([])
+    const [identTypes, setIdentTypes] = useState<IdentificationTypeOption[]>([])
 
-    const [expanded, setExpanded] = useState({ 
-        document: true, 
-        personal: true, 
+    const [expanded, setExpanded] = useState({
+        document: true,
+        personal: true,
         origin: true,
         travel: true,
-        photos: true
+        photos: true,
+        additional: true,
     })
 
     useEffect(() => {
@@ -61,6 +66,10 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             router.push(`${basePath}/identify`)
             return
         }
+        try {
+            const key = `checkin-verification-done-${reservationUuid}-${guestUuid}`
+            setDocVerified(localStorage.getItem(key) === 'true')
+        } catch {}
 
         const fetchSchema = async () => {
             try {
@@ -70,22 +79,63 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                     ? Promise.resolve(savedSchema as unknown as GuestFormSchemaResponse)
                     : checkinService.getGuestFormSchema(reservationUuid, guestUuid)
 
-                const [resSchema, countries, reasons] = await Promise.all([
+                const [resSchema, countries, reasons, idTypes] = await Promise.all([
                     resSchemaPromise,
                     new CatalogService().getCountries(),
                     new CatalogService().getReasonsForTrip(),
+                    new CatalogService().getIdentificationTypesV2(),
                 ])
                 setSchema(resSchema)
                 setCountryOptions((countries || []).map((c: any) => ({ id: c.id, label: c.name })))
                 setTripReasonOptions((reasons || []).map((r: any) => ({ id: r.id, label: r.nameTranslations?.es || r.name })))
+                setIdentTypes(idTypes || [])
                 
                 if (resSchema.prefilledData) {
+                    // Also check for OCR data saved by VerifyScreen's handleOcrConfirm
+                    let ocrOverrides: Record<string, any> = {}
+                    try {
+                        const ocrKey = `checkin-ocr-data-${reservationUuid}-${guestUuid}`
+                        const raw = guestUuid ? localStorage.getItem(ocrKey) : null
+                        if (raw) {
+                            const ocr = JSON.parse(raw)
+                            if (ocr.firstName) ocrOverrides.name = ocr.firstName
+                            if (ocr.lastName) ocrOverrides.lastname = ocr.lastName
+                            if (ocr.documentNumber) ocrOverrides.identificationNumber = ocr.documentNumber
+                            if (ocr.dateOfBirth) ocrOverrides.dateOfBirth = ocr.dateOfBirth
+                            if (ocr.expirationDate) ocrOverrides.identificationExpiryDate = ocr.expirationDate
+                        }
+                    } catch {}
+
+                    const NUMERIC_ID_FIELDS = new Set(["identificationTypeId", "nationalityId", "documentCountryId", "genderId", "countryOfOriginId", "countryDestinationId", "reasonForTripId"])
+                    const STRING_FIELDS = new Set(["name", "lastname", "identificationNumber", "phone", "email", "dateOfBirth", "identificationExpiryDate"])
+                    const HARDCODED_DEFAULTS: Record<string, unknown> = {
+                        identificationTypeId: 7,
+                        nationalityId: 48,
+                        documentCountryId: 48,
+                        name: session?.guestName ?? "",
+                        lastname: session?.guestLastname ?? "",
+                    }
+                    const coerce = (k: string, v: unknown): unknown => {
+                        if (NUMERIC_ID_FIELDS.has(k)) return Number(v)
+                        if (STRING_FIELDS.has(k)) return String(v ?? "")
+                        return v
+                    }
+
                     setForm(prev => {
                         const updated = { ...prev } as any
+                        // prefilledData from backend: apply when field is empty OR still at its hardcoded default
                         Object.entries(resSchema.prefilledData).forEach(([k, v]) => {
-                            if (!updated[k] && v !== undefined && v !== null) {
-                                updated[k] = v
+                            if (v !== undefined && v !== null && v !== "") {
+                                const isEmpty = updated[k] === "" || updated[k] === null || updated[k] === undefined
+                                const isAtDefault = k in HARDCODED_DEFAULTS && updated[k] == HARDCODED_DEFAULTS[k]
+                                if (isEmpty || isAtDefault) {
+                                    updated[k] = coerce(k, v)
+                                }
                             }
+                        })
+                        // OCR data always wins — it's fresher and user-confirmed
+                        Object.entries(ocrOverrides).forEach(([k, v]) => {
+                            if (v !== undefined && v !== null && v !== "") updated[k] = v
                         })
                         return updated
                     })
@@ -104,11 +154,27 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
         setForm(prev => ({ ...prev, [field]: value }))
     }
 
+    // Provider-declared dynamic fields (v4.6) — exclude any that overlap the core form.
+    const dynamicFields = getProviderUserFields(schema?.userFields)
+    const dynamicValues = form.dynamicExtra ?? {}
+    const updateDynamicField = (key: string, value: string | number) => {
+        setForm(prev => ({ ...prev, dynamicExtra: { ...(prev.dynamicExtra ?? {}), [key]: value } }))
+    }
+
     const toggleSection = (section: keyof typeof expanded) => {
         setExpanded(prev => ({ ...prev, [section]: !prev[section] }))
     }
 
-    const isPassport = form.identificationTypeId === 9
+    // Whether the selected document needs a back image. Prefer the authoritative
+    // `requiresBackImage` from the catalog; fall back to a name heuristic if the
+    // country-aware list hasn't loaded.
+    const selectedType = identTypes.find(t => t.id === form.identificationTypeId)
+    const selectedDocName = selectedType?.name
+        ?? mockDocumentTypes.find(d => d.id === form.identificationTypeId)?.name
+        ?? ""
+    const isSingleSidedDoc = selectedType
+        ? !selectedType.requiresBackImage
+        : /pasaporte|passport|licencia|licen[cs]e|nit/i.test(selectedDocName)
 
     const isFieldVisible = (key: string) => 
         schema?.requiredFields.includes(key) || schema?.optionalFields.includes(key)
@@ -126,22 +192,26 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
     const baseValid =
         form.documentCountryId !== "" &&
         form.identificationTypeId !== "" &&
-        form.identificationNumber && form.identificationNumber.trim() !== "" &&
-        form.name && form.name.trim() !== "" &&
-        form.lastname && form.lastname.trim() !== "" &&
+        String(form.identificationNumber ?? "").trim() !== "" &&
+        String(form.name ?? "").trim() !== "" &&
+        String(form.lastname ?? "").trim() !== "" &&
         form.dateOfBirth !== "" &&
-        form.documentImage1 !== null &&
-        (isPassport || form.documentImage2 !== null)
+        (docVerified || form.documentImage1 !== null) &&
+        (docVerified || isSingleSidedDoc || form.documentImage2 !== null)
 
     const dynamicValid = schema?.requiredFields.every(key => {
         const val = form[key as keyof GuestFormData]
         return val !== null && val !== "" && val !== undefined
     }) ?? false
 
-    const isFormValid = baseValid && dynamicValid
+    const userFieldsValid = areDynamicFieldsValid(dynamicFields, dynamicValues)
+
+    const isFormValid = baseValid && dynamicValid && userFieldsValid
 
     // Catalogs loaded separately via CatalogService (not included in formSchema response)
-    const docTypeOptions = mockDocumentTypes.map((d) => ({ id: d.id, label: d.nameTranslations.es }))
+    const docTypeOptions = identTypes.length > 0
+        ? identTypes.map((d) => ({ id: d.id, label: d.name }))
+        : mockDocumentTypes.map((d) => ({ id: d.id, label: d.nameTranslations.es }))
     const genderOptions = mockGenders.map((g) => ({ id: g.id, label: g.nameTranslations.es }))
 
     const nextPath = `${basePath}/success`
@@ -174,7 +244,9 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                     arrivalTime: form.arrivalTime,
                     departureTime: form.departureTime,
                     arrivalFlight: form.arrivalFlight,
-                    departureFlight: form.departureFlight
+                    departureFlight: form.departureFlight,
+                    // Provider-declared dynamic fields (v4.6) — sent verbatim under their keys.
+                    ...(form.dynamicExtra ?? {}),
                 }
             }
 
@@ -199,7 +271,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                 toast.error("El huésped principal debe completar su registro primero")
                 router.push(basePath)
             } else {
-                toast.error(error.message || "Error al completar el check-in")
+                notifyError(error, "Error al completar el check-in")
             }
         } finally {
             setIsSubmitting(false)
@@ -358,18 +430,27 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                 </CollapsibleSection>
             )}
 
-            {/* ── Photos Section ── */}
-            <CollapsibleSection icon={<FileText size={18} />} title="Fotos del documento" expanded={expanded.photos} onToggle={() => toggleSection("photos")} badge={form.documentImage1 ? "✓" : undefined}>
-                <div className="space-y-4">
-                    <DocumentUpload label="Foto del documento (frente)" value={form.documentImage1 || null} onChange={(v) => updateField("documentImage1", v)} required id="doc-front" />
-                    {!isPassport && (
-                        <DocumentUpload label="Foto del documento (reverso)" value={form.documentImage2 || null} onChange={(v) => updateField("documentImage2", v)} required id="doc-back" />
-                    )}
-                    {isPassport && (
-                        <p className="text-xs text-slate-400 text-center mt-1">Para pasaporte solo se requiere la página de datos.</p>
-                    )}
-                </div>
-            </CollapsibleSection>
+            {/* ── Provider-declared dynamic fields (v4.6) ── */}
+            {dynamicFields.length > 0 && (
+                <CollapsibleSection icon={<ClipboardList size={18} />} title="Información requerida" expanded={expanded.additional} onToggle={() => toggleSection("additional")}>
+                    <DynamicCheckinFields fields={dynamicFields} values={dynamicValues} onChange={updateDynamicField} />
+                </CollapsibleSection>
+            )}
+
+            {/* ── Photos Section (skip if biometric/Didit already verified documents) ── */}
+            {!docVerified && (
+                <CollapsibleSection icon={<FileText size={18} />} title="Fotos del documento" expanded={expanded.photos} onToggle={() => toggleSection("photos")} badge={form.documentImage1 ? "✓" : undefined}>
+                    <div className="space-y-4">
+                        <DocumentUpload label="Foto del documento (frente)" value={form.documentImage1 || null} onChange={(v) => updateField("documentImage1", v)} required id="doc-front" />
+                        {!isSingleSidedDoc && (
+                            <DocumentUpload label="Foto del documento (reverso)" value={form.documentImage2 || null} onChange={(v) => updateField("documentImage2", v)} required id="doc-back" />
+                        )}
+                        {isSingleSidedDoc && (
+                            <p className="text-xs text-slate-400 text-center mt-1">Este documento solo requiere la imagen frontal.</p>
+                        )}
+                    </div>
+                </CollapsibleSection>
+            )}
 
             {/* ── Sticky Bottom Bar ── */}
             <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-40">

@@ -1,6 +1,58 @@
 import { z } from "zod"
 
+export type {
+    PropertyAutomation,
+    PropertyAutomationPayload,
+    PropertyAutomationCreatePayload,
+    PropertyAutomationUpdatePayload,
+    PropertyAutomationConfigurePayload,
+    AutomationDefinition,
+    ProviderOption,
+    ParameterFieldSchema,
+    AutomationCardState,
+    TTLockParameters,
+    TTLockLock,
+    PdfReportParameters,
+    TraColombiaParameters,
+    SireColombiaParameters,
+    Provider,
+    AutomationUsageRecord,
+    AutomationStatus,
+    GuestType,
+    UsageRecordStatus,
+    LockType,
+} from "./automation"
+
+export { AUTOMATION_ORDERS, AUTOMATION_STATUS, GUEST_TYPE_LABELS, mapGuestTypeToApi } from "./automation"
+
+import type { PropertyAutomation } from "./automation"
+
 // ── API Payload Types (what the backend expects in camelCase) ──
+
+/** Automation item for POST /properties automations array */
+export interface PropertyAutomationSeedItem {
+    name: string
+    providerSlug: string | null
+    guestType: "main_guest" | "secondary_guest" | "all"
+    executionOrder: number
+    statusProviderId: 8 | 10
+    parameters: Record<string, unknown>
+}
+
+/**
+ * Default 8 automations required by POST /properties.
+ * Backend validates: must include identity verification for main_guest + tufirma.
+ */
+export const DEFAULT_AUTOMATIONS: PropertyAutomationSeedItem[] = [
+    { name: "Identity Verification - Main Guest",       providerSlug: "didit",        guestType: "main_guest",      executionOrder: 1, statusProviderId: 10, parameters: { _init: true } },
+    { name: "Identity Verification - Secondary Guests", providerSlug: "didit",        guestType: "secondary_guest", executionOrder: 2, statusProviderId: 10, parameters: { _init: true } },
+    { name: "Digital Contract",                         providerSlug: "tufirma",      guestType: "main_guest",      executionOrder: 3, statusProviderId: 8,  parameters: { _init: true } },
+    { name: "Smart Lock Codes",                         providerSlug: "ttlock",       guestType: "all",             executionOrder: 4, statusProviderId: 10, parameters: { _init: true } },
+    { name: "Guest Report PDF",                         providerSlug: "pdf-report",   guestType: "all",             executionOrder: 5, statusProviderId: 10, parameters: { _init: true } },
+    { name: "TRA Colombia",                             providerSlug: "tra-colombia", guestType: "all",             executionOrder: 6, statusProviderId: 10, parameters: { _init: true } },
+    { name: "SIRE Colombia - Check-in",                 providerSlug: "sire-colombia",guestType: "all",             executionOrder: 7, statusProviderId: 10, parameters: { _init: true } },
+    { name: "SIRE Colombia - Check-out",                providerSlug: "sire-colombia",guestType: "all",             executionOrder: 8, statusProviderId: 10, parameters: { _init: true } },
+]
 
 export interface PropertyApiPayload {
     name: string
@@ -14,54 +66,32 @@ export interface PropertyApiPayload {
     countryId: number
     latitude?: string | null
     longitude?: string | null
-    externalId?: string | null
-    external_id?: string | null
     timezone?: string | null
     statusRecordId: number
     propertyTypeId: number
-    thumbnailUrl?: string | null
-    thumbnail_url?: string | null
-    // top level fields (potential server column support)
-    price?: number | string | null
-    start_price?: number | string | null
-    startPrice?: number | string | null
-    amenity_ids?: (string | number)[]
-    amenities?: (string | number)[]
-    
+    /** Only sent on POST /properties (ignored on PATCH/PUT) */
+    automations?: PropertyAutomationSeedItem[]
     extra?: {
         picturesUrl?: string[]
-        pictures_url?: string[]
         checkIn?: string | null
         checkOut?: string | null
         cancellationPolicy?: string | null
-        amenities?: (number | string)[]
+        amenities?: number[]          // IDs as integers in the request payload
         wifiDetails?: {
             network?: string | null
             password?: string | null
         } | null
-        type?: string
-        startPrice?: number
-        start_price?: number        // Production API snake_case
-        internal_name?: string | null // Production API actual field for "Nombre Interno"
+        internal_name?: string | null
         currency?: string
-        propertyTypeId?: number | string | null // Support for catalogs
         thumbnailUrl?: string
-        thumbnail_url?: string      // Production API snake_case
-        automationSettings?: any
         policies?: any[]
         roomTypes?: any[]
-        price?: number | string | null
-        units?: any[]
     } | null
     externalPmsIds?: {
         sourcePmsId: number
         externalId: string
     }[]
-    external_identifiers?: {
-        source_pms_id: number
-        external_id: string
-    }[]
-    // NOTE: units are NOT included here — they are managed separately via listingsService
+    // NOTE: units are NOT included here — managed separately via listingsService
 }
 
 export interface PropertyExtra {
@@ -107,96 +137,108 @@ export interface AutomationSettings {
 // ── API Response Types (Kunas API returns flat snake_case structures) ──
 
 export interface PropertyApiResponse {
-    id: number
+    // ── Identifiers ──────────────────────────────────────────────────────────
     uuid: string
-    user_id?: number
+    clientUuid?: string
     userUuid?: string
+    user_id?: number
+    /** @deprecated integer id — backend is UUID-only. Kept for backward compat. */
+    id?: number
+
+    // ── Top-level fields ─────────────────────────────────────────────────────
     name: string
     description?: string | null
-    email?: string                   
-    phone?: string | null           
-    address?: string                 
-    address_detail?: string | null  
-    city?: string                    
-    state?: string                   
-    country_id?: number              
-    countryId?: number
-    geo_location?: string | null    
-    latitude?: string | null        
-    longitude?: string | null       
-    timezone?: string | null
-    status_record_id?: number        
+    propertyType?: { id: number; name: string }         // New nested shape
+    propertyTypeId?: number                             // Fallback flat field
+    property_type_id?: number                          // Fallback snake_case
+    statusRecord?: { id: number; name: string }
     statusRecordId?: number
-    propertyTypeId?: number
-    property_type_id?: number
-    statusRecord?: {                
-        id: number
-        name: string
+    status_record_id?: number
+    automations?: PropertyAutomation[]                  // Sideloaded
+    createdAt?: string
+    updatedAt?: string
+    deletedAt?: string | null
+
+    // ── Nested contact / location (canonical API shape) ───────────────────────
+    contact?: {
+        email?: string
+        phone?: string | null
     }
-    // Handle possible nested structures
     location?: {
         address?: string
         addressDetail?: string
         city?: string
         state?: string
-        countryId?: number
         latitude?: string | null
         longitude?: string | null
         timezone?: string | null
+        country?: { id: number; name: string }
+        countryId?: number
     }
-    contact?: {
-        email?: string
-        phone?: string | null
-    }
+
+    // ── Flat location fallbacks (legacy / alternate endpoints) ────────────────
+    email?: string
+    phone?: string | null
+    address?: string
+    address_detail?: string | null
+    city?: string
+    state?: string
+    countryId?: number
+    country_id?: number
+    geo_location?: string | null
+    latitude?: string | null
+    longitude?: string | null
+    timezone?: string | null
+
+    // ── Extra (property-level config) ─────────────────────────────────────────
     extra?: {
         picturesUrl?: string[]
+        pictures_url?: string[]
         checkIn?: string | null
         checkOut?: string | null
         cancellationPolicy?: string | null
-        amenities?: number[]
-        wifiDetails?: {
-            network?: string | null
-            password?: string | null
-        } | null
-        type?: string                 // Backward compatibility
-        propertyTypeId?: number | string | null
-        internal_name?: string | null // Capture "Nombre Interno" from production API
-        startPrice?: number
-        start_price?: number        // snake_case alternative from some endpoints
+        /** Response shape: objects {id, name}. Send IDs (number[]) on create/update. */
+        amenities?: Array<{ id: number; name: string }> | number[]
+        wifiDetails?: { network?: string | null; password?: string | null } | null
+        internal_name?: string | null
         currency?: string
         thumbnailUrl?: string
-        thumbnail_url?: string      // snake_case alternative from some endpoints
+        thumbnail_url?: string
+        propertyTypeId?: number | string | null
         automationSettings?: any
         policies?: any[]
-        price?: number | string | null
         roomTypes?: any[]
+        startPrice?: number
+        start_price?: number
+        price?: number | string | null
     }
-    // integration / external IDs
-    externalId?: string             // Optional at top level
-    external_id?: string            // Optional at top level (snake_case)
+
+    // ── PMS identifiers ────────────────────────────────────────────────────────
     pmsIdentifiers?: {
         id?: number
         sourcePmsId: number
+        sourcePms?: string | null     // Provider name from catalog
         externalId: string
     }[]
-    
-    // top level fields (potential server column support)
-    price?: number | string | null
-    start_price?: number | string | null
-    startPrice?: number | string | null
+
+    // ── Legacy flat fields (some endpoints still return these) ─────────────────
+    externalId?: string
+    external_id?: string
     amenity_ids?: (string | number)[]
     amenities?: (string | number)[]
-    
-    createdAt?: string
-    updatedAt?: string
-    deletedAt?: string | null
-    units?: any[]                   // Nested units (listings)
-    listings?: any[]                // Nested listings (alias)
+    price?: number | string | null
+    startPrice?: number | string | null
+    start_price?: number | string | null
+
+    // ── Listings (sideloaded) ──────────────────────────────────────────────────
+    units?: any[]
+    listings?: any[]
 }
 
 // ── Zod Schema for form validation ──
 
 export const propertyFormSchema = z.object({
+    uuid: z.string().uuid().optional(),  // Set by form on edit mode; used by sub-components to fetch per-property data
     name: z.string().min(2, "El nombre debe tener al menos 2 caracteres").max(120, "Máximo 120 caracteres"),
     description: z.string().optional(),
     email: z.string().email("Email inválido").max(60, "Máximo 60 caracteres"),
@@ -272,6 +314,10 @@ export function formDataToApiPayload(data: PropertyFormData): PropertyApiPayload
         // Ensure no duplicates
         finalPicturesUrl = Array.from(new Set(finalPicturesUrl));
 
+        const amenityIds: number[] = (data.amenities || [])
+            .map(a => parseInt(String(a)))
+            .filter(n => !isNaN(n))
+
         const payload: PropertyApiPayload = {
             name: data.name,
             description: data.description || null,
@@ -287,62 +333,30 @@ export function formDataToApiPayload(data: PropertyFormData): PropertyApiPayload
             timezone: data.timezone || "America/Bogota",
             statusRecordId: data.statusRecordId,
             propertyTypeId: Number(data.propertyTypeId),
-            
-            // External ID (Nombre Interno)
-            externalId: data.external_id || null,
-            external_id: data.external_id || null,
-            
-            // Thumbnail
-            thumbnailUrl: data.thumbnailUrl || null,
-            thumbnail_url: data.thumbnailUrl || null,
-            
-            amenities: (data.amenities || []).map(a => {
-                const str = String(a)
-                const parsed = parseInt(str)
-                return /^\d+$/.test(str) ? parsed : str
-            }),
-            amenity_ids: (data.amenities || []).map(a => {
-                const str = String(a)
-                const parsed = parseInt(str)
-                return /^\d+$/.test(str) ? parsed : str
-            }),
 
             extra: {
-                internal_name: data.external_id || null, 
+                internal_name: data.external_id || null,
                 currency: "COP",
                 thumbnailUrl: data.thumbnailUrl,
-                thumbnail_url: data.thumbnailUrl,
                 checkIn: data.checkIn,
                 checkOut: data.checkOut,
                 cancellationPolicy: data.cancellationPolicy,
-                amenities: (data.amenities || []).map(a => {
-                    const str = String(a);
-                    const parsed = parseInt(str);
-                    if (/^\d+$/.test(str)) return parsed;
-                    return str;
-                }),
+                amenities: amenityIds,
                 wifiDetails: {
                     network: data.wifiNetwork,
                     password: data.wifiPassword,
                 },
-                // Send the updated picturesUrl which contains the new thumbnail
                 picturesUrl: finalPicturesUrl,
-                pictures_url: finalPicturesUrl,
-                automationSettings: data.automationSettings,
                 policies: data.policies,
                 roomTypes: data.roomTypes,
             },
-        ...(data.externalPmsIds && data.externalPmsIds.length > 0 ? {
-            external_identifiers: data.externalPmsIds.map((id: any) => ({
-                source_pms_id: id.sourcePmsId,
-                external_id: id.externalId
-            })),
-            externalPmsIds: data.externalPmsIds.map((id: any) => ({
-                sourcePmsId: id.sourcePmsId,
-                externalId: id.externalId
-            }))
-        } : {})
-    }
+            ...(data.externalPmsIds && data.externalPmsIds.length > 0 ? {
+                externalPmsIds: data.externalPmsIds.map((id: any) => ({
+                    sourcePmsId: id.sourcePmsId,
+                    externalId: id.externalId,
+                }))
+            } : {})
+        }
     
     console.log("📤 [formDataToApiPayload] Final Payload to API:", JSON.stringify(payload, null, 2));
     return payload
@@ -406,13 +420,13 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
         addressDetail: getVal(apiData.address_detail, location.addressDetail, ""),
         city: getVal(apiData.city, location.city, ""),
         state: getVal(apiData.state, location.state, ""),
-        countryId: apiData.countryId || apiData.country_id || location.countryId || (location as any).country?.id || 48,
+        countryId: apiData.countryId || apiData.country_id || location.countryId || location.country?.id || 48,
         latitude: lat,
         longitude: lng,
         timezone: apiData.timezone || location.timezone || "America/Bogota",
         external_id: external_id,
         statusRecordId: apiData.statusRecordId || apiData.status_record_id || apiData.statusRecord?.id || 6,
-        propertyTypeId: Number(apiData.propertyTypeId || apiData.property_type_id || extra.propertyTypeId || extra.type || 102),
+        propertyTypeId: Number(apiData.propertyType?.id || apiData.propertyTypeId || apiData.property_type_id || (extra as any).propertyTypeId || (extra as any).type || 102),
         thumbnailUrl: extractedThumbnail,
         checkIn: extra.checkIn || "",
         checkOut: extra.checkOut || "",

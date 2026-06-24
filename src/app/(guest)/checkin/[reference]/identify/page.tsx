@@ -13,9 +13,23 @@ export default async function CheckinIdentifyPage({
     const resolvedSearch = await searchParams;
     const basePath = `/checkin/${resolvedParams.reference}`
 
-    // If guest_uuid is provided, the guest is already identified — skip to next step
+    // If guest_uuid is provided, the guest already went through identify.
+    // Check their current verification step to route them to the right screen.
     if (resolvedSearch.guest_uuid) {
-        redirect(`${basePath}/guest?guest_uuid=${resolvedSearch.guest_uuid}`)
+        try {
+            const portal = await checkinService.getPortal(resolvedParams.reference)
+            const guest = portal.registeredGuests.find(g => g.uuid === resolvedSearch.guest_uuid)
+            const currentStep = guest?.verification?.currentStep
+
+            if (currentStep === "verification") {
+                // Guest needs to complete (or retry) identity verification
+                redirect(`${basePath}/verify?guest_uuid=${resolvedSearch.guest_uuid}`)
+            }
+            // "form", "completed", or no step — go to the data form
+            redirect(`${basePath}/guest?guest_uuid=${resolvedSearch.guest_uuid}`)
+        } catch {
+            // If portal fetch fails, fall through to IdentifyScreen
+        }
     }
 
     try {

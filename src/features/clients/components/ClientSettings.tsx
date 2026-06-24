@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import { notifyError } from "@/lib/notify-error"
 import {
     Select,
     SelectContent,
@@ -85,7 +86,7 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                     email: data.email || "",
                 })
             } catch (error) {
-                toast.error("Error al cargar los datos del hotel")
+                notifyError(error, "Error al cargar los datos del hotel")
             } finally {
                 setIsLoading(false)
             }
@@ -101,7 +102,7 @@ export function ClientSettings({ clientId }: ClientSettingsProps) {
                 description: "Los datos del hotel han sido guardados correctamente.",
             })
         } catch (error) {
-            toast.error("Error al guardar los cambios")
+            notifyError(error, "Error al guardar los cambios")
         } finally {
             setIsSaving(false)
         }

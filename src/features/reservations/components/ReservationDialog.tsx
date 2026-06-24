@@ -18,6 +18,7 @@ import {
     Clock,
     Send,
     Plane,
+    Edit,
 } from "lucide-react"
 import { format, differenceInDays, addDays } from "date-fns"
 import { es } from "date-fns/locale"
@@ -58,13 +59,15 @@ import {
 } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { toast } from "sonner"
+import { notifyError } from "@/lib/notify-error"
 import { propertiesService } from "@/features/properties/services/properties-service"
 import { listingsService } from "@/features/properties/services/listings-service"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import { apiClient } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
+import { reservationsService } from "@/features/reservations/services/reservations-service"
 
 // ── Zod Schema ──────────────────────────────────────────────
 const reservationSchema = z.object({
@@ -121,8 +124,22 @@ interface CatalogOption {
 }
 
 // ── Component ────────────────────────────────────────────────
-export function ReservationDialog() {
+interface ReservationDialogProps {
+    mode?: "create" | "edit"
+    reservationUuid?: string
+    trigger?: React.ReactNode
+}
+
+export function ReservationDialog({ mode = "create", reservationUuid, trigger }: ReservationDialogProps) {
     const [open, setOpen] = useState(false)
+    const [isSmallScreen, setIsSmallScreen] = useState(false)
+    useEffect(() => {
+        const mq = window.matchMedia("(max-width: 640px)")
+        setIsSmallScreen(mq.matches)
+        const handler = (e: MediaQueryListEvent) => setIsSmallScreen(e.matches)
+        mq.addEventListener("change", handler)
+        return () => mq.removeEventListener("change", handler)
+    }, [])
 
     // Data from API
     const [properties, setProperties] = useState<PropertyOption[]>([])
@@ -200,8 +217,8 @@ export function ReservationDialog() {
             setListings(
                 list.map((l: any) => ({
                     id: l.id,
-                    uuid: l.uuid,
-                    name: l.name || l.internal_name || `Alojamiento ${l.id || l.uuid.slice(0, 8)}`,
+                    uuid: l.uuid || String(l.id),
+                    name: l.name || l.internal_name || `Alojamiento ${l.id || (l.uuid || "").slice(0, 8)}`,
                     propertyUuid: l.property_uuid || propertyUuid,
                 }))
             )
@@ -273,10 +290,79 @@ export function ReservationDialog() {
         }
     }, [open, loadProperties, loadReservationSources, loadCountries, loadCurrencies])
 
+    // ── Load Reservation for Edit ──
+    useEffect(() => {
+        if (open && mode === "edit" && reservationUuid) {
+            const loadReservation = async () => {
+                setIsLoading(true)
+                try {
+                    const raw = await reservationsService.getRawById(reservationUuid)
+                    
+                    // Pre-fill form
+                    const fromDate = new Date(raw.arrivalDate || raw.arrival_date)
+                    const toDate = new Date(raw.departureDate || raw.departure_date)
+
+                    let propertyUuid = raw.listing?.property?.uuid || raw.listing?.propertyUuid || raw.listing?.property_uuid || ""
+                    const listingId = raw.listing?.uuid || raw.listingId?.toString() || ""
+
+                    // If we have listingId but no propertyUuid, we must search properties to find which one owns this listing
+                    if (!propertyUuid && listingId) {
+                        try {
+                            const allProps = await propertiesService.list()
+                            for (const prop of allProps) {
+                                const propListings = await listingsService.listByProperty(prop.uuid)
+                                if (propListings.some((l: any) => l.uuid === listingId || l.id === listingId)) {
+                                    propertyUuid = prop.uuid
+                                    break
+                                }
+                            }
+                        } catch (err) {
+                            console.error("[ReservationDialog] Failed to fetch properties to get propertyUuid", err)
+                        }
+                    }
+
+                    form.reset({
+                        guestName: raw.extra?.guestName || raw.extra?.guest_name || raw.mainGuest?.name || raw.emailGuest?.split("@")[0] || "",
+                        guestCountry: raw.extra?.guestCountry || raw.extra?.guest_country || "",
+                        emailGuest: raw.emailGuest || raw.email_guest || "",
+                        guestPhone: raw.extra?.guestPhone || raw.extra?.guest_phone || "",
+                        propertyUuid: propertyUuid,
+                        listingId: listingId,
+                        reservationSourceId: raw.source?.id?.toString() || raw.reservationSourceId?.toString() || raw.reservation_source_id?.toString() || "",
+                        dates: {
+                            from: fromDate,
+                            to: toDate,
+                        },
+                        totalGuests: raw.totalGuests || raw.total_guests || 1,
+                        totalPrice: Number(raw.totalPrice || raw.total_price || 0),
+                        currency: raw.currency || "COP",
+                        sendLinkNow: false,
+                    })
+
+                    if (propertyUuid) {
+                        loadListings(propertyUuid)
+                    }
+                } catch (error) {
+                    console.error("[ReservationDialog] Error loading reservation for edit:", error)
+                    notifyError(error, "Error al cargar los datos de la reserva")
+                } finally {
+                    setIsLoading(false)
+                }
+            }
+            loadReservation()
+        } else if (open && mode === "create") {
+            form.reset({
+                guestName: "", guestCountry: "", emailGuest: "", guestPhone: "",
+                propertyUuid: "", listingId: "", reservationSourceId: "",
+                dates: { from: undefined, to: undefined } as any,
+                totalGuests: 1, totalPrice: 0, currency: "COP", sendLinkNow: true,
+            })
+        }
+    }, [open, mode, reservationUuid, loadListings, form])
+
     // ── Load listings when property changes ──
     useEffect(() => {
         if (selectedPropertyUuid) {
-            form.setValue("listingId", "")
             loadListings(selectedPropertyUuid)
         }
     }, [selectedPropertyUuid, loadListings, form])
@@ -291,7 +377,10 @@ export function ReservationDialog() {
             : addDays(values.dates.from, 1);
 
         const payload = {
-            listingUuid: values.listingId, // values.listingId holds the UUID from the select
+            listingUuid: values.listingId,
+            listing_uuid: values.listingId,
+            listingId: values.listingId,
+            listing_id: values.listingId,
             reservationSourceId: Number(values.reservationSourceId),
             externalId: `MANUAL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
             arrivalDate: format(values.dates.from, "yyyy-MM-dd"),
@@ -309,22 +398,27 @@ export function ReservationDialog() {
         }
 
         try {
-            await apiClient.post(`${API_BASE}/reservations`, payload)
-
-            toast.success("Reserva creada exitosamente", {
-                description: values.sendLinkNow
-                    ? `Se enviará el link de check-in a ${values.emailGuest}`
-                    : `Reserva para ${values.guestName} creada. Link no enviado.`,
-            })
+            if (mode === "edit" && reservationUuid) {
+                // Ensure we don't send extra id fields if not needed, but keep payload simple
+                await reservationsService.update(reservationUuid, payload)
+                toast.success("Reserva actualizada exitosamente", {
+                    description: "Los cambios han sido guardados.",
+                })
+            } else {
+                await apiClient.post(`${API_BASE}/reservations`, payload)
+                toast.success("Reserva creada exitosamente", {
+                    description: values.sendLinkNow
+                        ? `Se enviará el link de check-in a ${values.emailGuest}`
+                        : `Reserva para ${values.guestName} creada. Link no enviado.`,
+                })
+            }
 
             setOpen(false)
             form.reset()
             window.dispatchEvent(new Event("reservationCreated"))
         } catch (error: any) {
             console.error("[ReservationDialog] Submit error:", error)
-            toast.error("Error al crear la reserva", {
-                description: error?.data?.message || "Intenta nuevamente",
-            })
+            notifyError(error, "Error al crear la reserva")
         } finally {
             setIsLoading(false)
         }
@@ -333,18 +427,22 @@ export function ReservationDialog() {
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-brand-purple hover:bg-brand-purple/90 text-white shadow-md gap-2 font-semibold">
-                    <Plus size={18} />
-                    Nueva Reserva
-                </Button>
+                {trigger ? trigger : (
+                    <Button className="bg-brand-purple hover:bg-brand-purple/90 text-white shadow-md gap-2 font-semibold">
+                        <Plus size={18} />
+                        Nueva Reserva
+                    </Button>
+                )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
                 <DialogHeader className="pb-2">
                     <DialogTitle className="text-2xl font-bold text-slate-900">
-                        Crear Reserva Manual
+                        {mode === "edit" ? "Editar Reserva Manual" : "Crear Reserva Manual"}
                     </DialogTitle>
                     <DialogDescription className="text-slate-500">
-                        Registra una nueva reserva. El huésped recibirá el link para completar su check-in online.
+                        {mode === "edit" 
+                            ? "Edita los detalles de la reserva seleccionada." 
+                            : "Registra una nueva reserva. El huésped recibirá el link para completar su check-in online."}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -424,7 +522,14 @@ export function ReservationDialog() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="font-semibold text-slate-700">Propiedad *</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value} disabled={loadingProperties}>
+                                        <Select 
+                                            onValueChange={(val) => {
+                                                field.onChange(val);
+                                                form.setValue("listingId", "");
+                                            }} 
+                                            value={field.value} 
+                                            disabled={loadingProperties}
+                                        >
                                             <FormControl>
                                                 <SelectTrigger className="bg-slate-50 border-slate-200 focus:ring-brand-blue/30 focus:border-brand-blue rounded-xl h-11 transition-colors">
                                                     <SelectValue placeholder={loadingProperties ? "Cargando..." : "Selecciona..."} />
@@ -566,7 +671,7 @@ export function ReservationDialog() {
                                                 mode="range"
                                                 selected={field.value as any}
                                                 onSelect={field.onChange}
-                                                numberOfMonths={2}
+                                                numberOfMonths={isSmallScreen ? 1 : 2}
                                                 disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                                             />
                                         </PopoverContent>
@@ -739,12 +844,12 @@ export function ReservationDialog() {
                                 {isLoading ? (
                                     <>
                                         <Loader2 className="h-4 w-4 animate-spin" />
-                                        Creando...
+                                        {mode === "edit" ? "Guardando..." : "Creando..."}
                                     </>
                                 ) : (
                                     <>
-                                        <Plus size={16} />
-                                        Crear Reserva
+                                        {mode === "edit" ? <Edit size={16} /> : <Plus size={16} />}
+                                        {mode === "edit" ? "Guardar Cambios" : "Crear Reserva"}
                                     </>
                                 )}
                             </Button>

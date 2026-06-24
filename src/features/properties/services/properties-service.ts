@@ -1,9 +1,10 @@
 // Properties Service - Connects to real Kunas API
-import { 
-    PropertyApiPayload, 
-    PropertyApiResponse, 
-    PropertyFormData, 
-    formDataToApiPayload, 
+import {
+    PropertyApiPayload,
+    PropertyApiResponse,
+    PropertyFormData,
+    formDataToApiPayload,
+    DEFAULT_AUTOMATIONS,
 } from "../types"
 import { apiClient } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
@@ -12,11 +13,16 @@ class PropertiesService {
     
     // ── CREATE ──
     async create(data: PropertyFormData): Promise<PropertyApiResponse> {
-        const payload: PropertyApiPayload = formDataToApiPayload(data)
+        const basePayload: PropertyApiPayload = formDataToApiPayload(data)
+        const payload: PropertyApiPayload = {
+            ...basePayload,
+            automations: DEFAULT_AUTOMATIONS,
+        }
         const url = `${API_BASE}/properties`
 
         try {
-            return await apiClient.post<PropertyApiResponse>(url, payload)
+            const response = await apiClient.post<any>(url, payload)
+            return response?.data ?? response
         } catch (error: any) {
             console.error("[PropertiesService] Create error:", error)
             throw error
@@ -69,12 +75,12 @@ class PropertiesService {
 
     // ── UPDATE (full form) ──
     async update(uuid: string, data: PropertyFormData): Promise<PropertyApiResponse> {
-        // Inject uuid so formDataToApiPayload knows this is an UPDATE and omits units
-        const payload: PropertyApiPayload = formDataToApiPayload({ ...data, uuid } as any)
+        const { automations: _omit, ...payload } = formDataToApiPayload({ ...data, uuid } as any)
         const url = `${API_BASE}/properties/${uuid}`
 
         try {
-            return await apiClient.put<PropertyApiResponse>(url, payload)
+            const response = await apiClient.put<any>(url, payload)
+            return response?.data ?? response
         } catch (error: any) {
             console.error("[PropertiesService] Update error:", error)
             throw error
@@ -110,8 +116,8 @@ class PropertiesService {
         const url = `${API_BASE}/properties/${uuid}/restore`
 
         try {
-            const response = await apiClient.post<{ success: boolean; data: PropertyApiResponse }>(url, {})
-            return response.data
+            const response = await apiClient.post<any>(url, {})
+            return response?.data ?? response
         } catch (error: any) {
             console.error("[PropertiesService] Restore error:", error)
             throw error

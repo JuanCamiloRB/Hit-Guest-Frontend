@@ -15,13 +15,15 @@ URL_BASE_HIT = 'https://www.kunas.co/api/v1'
 3. [Endpoints de Catálogos](#endpoints-de-catálogos)
 4. [Endpoints de Países](#endpoints-de-países)
 5. [Endpoints de Propiedades](#endpoints-de-propiedades)
-6. [Endpoints de Listings (Alojamientos)](#endpoints-de-listings-alojamientos)
-7. [Endpoints de Reservaciones](#endpoints-de-reservaciones)
-8. [Endpoints de Check-in v4.1 (Guest Flow)](#endpoints-de-check-in-v41-guest-flow)
-9. [Categorías de Catálogos](#categorías-de-catálogos)
-10. [Estructura de Base de Datos](#estructura-de-base-datos)
-11. [Ejemplos de Payloads](#ejemplos-de-payloads)
-12. [Validaciones y Reglas](#validaciones-y-reglas)
+6. [Endpoints de Automatizaciones de Propiedades](#endpoints-de-automatizaciones-de-propiedades)
+7. [Endpoints de Listing Automation Overrides](#endpoints-de-listing-automation-overrides)
+8. [Endpoints de Listings (Alojamientos)](#endpoints-de-listings-alojamientos)
+9. [Endpoints de Reservaciones](#endpoints-de-reservaciones)
+10. [Endpoints de Check-in v4.1 (Guest Flow)](#endpoints-de-check-in-v41-guest-flow)
+11. [Categorías de Catálogos](#categorías-de-catálogos)
+12. [Estructura de Base de Datos](#estructura-de-base-datos)
+13. [Ejemplos de Payloads](#ejemplos-de-payloads)
+14. [Validaciones y Reglas](#validaciones-y-reglas)
 
 ---
 
@@ -819,6 +821,572 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 ```
 
 **Nota:** Este endpoint restaura una propiedad previamente eliminada (limpia el campo `deleted_at`)
+
+---
+
+## Endpoints de Automatizaciones de Propiedades
+
+> **Contexto:** Cada propiedad puede tener hasta 8 automatizaciones configuradas, identificadas por `automationOrder` (1–8). El backend usa estas configuraciones para determinar el flujo de verificación de identidad en el check-in (`/identify`), generar códigos de cerradura, registrar en TRA/SIRE, etc.
+
+### Órdenes de Automatización
+
+| Order | Nombre | Proveedor(es) | Impacto en Check-in |
+|-------|--------|---------------|---------------------|
+| 1 | Verificación de Identidad (Principal) | `didit`, `textract` | **SÍ** — determina `verification.type` en `/identify` |
+| 2 | Verificación de Identidad (Secundarios) | `didit`, `textract` | **SÍ** — igual para guests secundarios |
+| 3 | Contrato Digital | `tufirma` | SÍ — activa paso `/contract` |
+| 4 | Códigos de Cerradura | `ttlock` | SÍ — genera códigos al completar |
+| 5 | Reporte PDF de Huéspedes | `pdf_report` | No |
+| 6 | TRA Colombia | `tra_colombia` | No |
+| 7 | SIRE Colombia (Check-in) | `sire_colombia` | No |
+| 8 | SIRE Colombia (Check-out) | `sire_colombia` | No |
+
+---
+
+### 1. Listar Automatizaciones
+
+**Endpoint:** `GET /properties/{property_uuid}/automations`
+
+**Headers:** Requiere token de autenticación
+
+**Respuesta Exitosa:**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "automationOrder": 1,
+      "name": "Verificación de Identidad (Principal)",
+      "providerName": "didit",
+      "isActive": true,
+      "guestType": "main",
+      "parameters": {},
+      "triggerTypes": ["on_checkin_completed"],
+      "triggerConfig": {},
+      "guestFilter": "all",
+      "createdAt": "2026-06-01T00:00:00Z",
+      "updatedAt": "2026-06-01T00:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### 2. Crear Automatización
+
+**Endpoint:** `POST /properties/{property_uuid}/automations`
+
+**Headers:** Requiere token de autenticación
+
+**Payload:**
+```json
+{
+  "automationOrder": 1,
+  "providerName": "didit",
+  "isActive": true,
+  "parameters": {},
+  "triggerTypes": ["on_checkin_completed"],
+  "triggerConfig": {},
+  "guestFilter": "all"
+}
+```
+
+**Validaciones:**
+- `automationOrder`: Requerido, integer, 1–8
+- `providerName`: String o null. Requerido para órdenes con proveedores
+- `isActive`: Requerido, boolean
+- `parameters`: Objeto JSON validado según el proveedor (ver sección de parámetros por proveedor)
+- `guestFilter`: Opcional, `all` | `foreign_only` | `national_only`
+
+**Respuesta Exitosa (201):**
+```json
+{
+  "data": {
+    "id": 1,
+    "automationOrder": 1,
+    "providerName": "didit",
+    "isActive": true,
+    "guestType": "main",
+    "parameters": {},
+    "createdAt": "2026-06-01T00:00:00Z"
+  }
+}
+```
+
+---
+
+### 3. Actualizar Automatización
+
+**Endpoint:** `PUT /properties/{property_uuid}/automations/{automation_id}`
+
+**Headers:** Requiere token de autenticación
+
+**Payload:** Mismo esquema que Crear.
+
+**Respuesta Exitosa:** Mismo esquema de respuesta que Crear.
+
+---
+
+### 4. Activar / Desactivar Automatización
+
+**Endpoint:** `PATCH /properties/{property_uuid}/automations/{automation_id}`
+
+**Headers:** Requiere token de autenticación
+
+**Payload:**
+```json
+{
+  "isActive": false
+}
+```
+
+**Respuesta Exitosa:** Objeto automation actualizado.
+
+---
+
+### 5. Eliminar Automatización
+
+**Endpoint:** `DELETE /properties/{property_uuid}/automations/{automation_id}`
+
+**Headers:** Requiere token de autenticación
+
+**Respuesta Exitosa:**
+```json
+{
+  "success": true,
+  "message": "Automatización eliminada exitosamente"
+}
+```
+
+---
+
+### Parámetros por Proveedor
+
+#### `didit` (Órdenes 1, 2)
+```json
+{}
+```
+> Las credenciales Didit son a nivel de plataforma (env vars del backend). No se requiere configuración por propiedad.
+
+#### `textract` (Órdenes 1, 2)
+```json
+{}
+```
+> Las credenciales AWS Textract son a nivel de plataforma. No se requiere configuración por propiedad.
+
+#### `tufirma` (Orden 3)
+```json
+{}
+```
+> ⚠️ Pendiente definir parámetros con el equipo de TuFirma.
+
+#### `ttlock` (Orden 4)
+```json
+{
+  "username": "cuenta@email.com",
+  "password": "contraseña_ttlock",
+  "client_id": "ttlock_client_id",
+  "client_secret": "ttlock_client_secret",
+  "locks": [
+    {
+      "lock_id": 123456,
+      "name": "Puerta principal",
+      "type": "building_entrance"
+    },
+    {
+      "lock_id": 789012,
+      "name": "Puerta unidad",
+      "type": "unit_entrance"
+    }
+  ]
+}
+```
+
+#### `pdf_report` (Orden 5)
+```json
+{
+  "recipients": ["admin@propiedad.com", "dueno@gmail.com"]
+}
+```
+
+#### `tra_colombia` (Orden 6)
+```json
+{
+  "token": "token_api_policia_nacional",
+  "rnt": "123456"
+}
+```
+
+#### `sire_colombia` (Órdenes 7, 8)
+```json
+{
+  "document_type": "CC",
+  "document_number": "1234567890",
+  "password": "contraseña_sire",
+  "company_code": "900123456"
+}
+```
+
+---
+
+### Impacto en el Flujo de Check-in
+
+**Endpoint afectado:** `POST /checkin/{reservationUuid}/identify`
+
+El backend consulta las automatizaciones de la propiedad para determinar `verification.type`:
+
+```
+Propiedad tiene Order 1 activo (main) o Order 2 activo (secondary)?
+  │
+  ├── SÍ, providerName = "didit"
+  │     ├── Guest ya verificado (person_verified_at != null) → { type: "verified_ok" }
+  │     └── Guest NO verificado → crea sesión Didit → { type: "session", url: "..." }
+  │
+  ├── SÍ, providerName = "textract"
+  │     ├── Guest ya verificado → { type: "verified_ok" }
+  │     └── Guest NO verificado → { type: "document_upload" }
+  │
+  └── NO tiene automatización de verificación
+        └── { type: "verified_ok" }  ← No se requiere verificación
+```
+
+**⚠️ Bug Conocido (Pendiente Fix Backend):**
+Actualmente `POST /main/complete` requiere `person_verified_at` en todos los casos, incluso cuando la propiedad no tiene automatización de verificación y `/identify` retornó `verified_ok`. El fix correcto es que `/main/complete` solo exija `person_verified_at` si la propiedad tiene activa una automatización de verificación (Orders 1 o 2).
+
+---
+
+## Endpoints de Listing Automation Overrides
+
+> **Contexto:** Un listing puede sobreescribir parámetros, token o estado de una automatización definida a nivel de propiedad. Esto permite personalizar el comportamiento de cada automatización por unidad sin modificar la configuración base de la propiedad.
+>
+> **Concepto clave — Merge de parámetros:** Los `parameters` del override se **fusionan** (shallow merge) sobre los `parameters` de la automatización base de la propiedad. Si la propiedad tiene `{ "rnt": "123", "token": "abc" }` y el override define `{ "token": "xyz" }`, el resultado efectivo es `{ "rnt": "123", "token": "xyz" }`.
+>
+> **Auto-generación de token:** Para proveedores con configuración `internalUse` (e.g., `tufirma`), si el campo `token` no se envía en el payload de creación, el backend genera automáticamente un token Sanctum interno y lo asocia al override.
+
+### Resumen de Endpoints
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| `GET` | `/listings/{listingUuid}/automation-overrides` | Listar overrides del listing |
+| `GET` | `/listings/{listingUuid}/automation-overrides/{overrideUuid}` | Ver un override específico |
+| `POST` | `/listings/{listingUuid}/automation-overrides` | Crear override |
+| `PUT` | `/listings/{listingUuid}/automation-overrides/{overrideUuid}` | Actualizar override |
+| `DELETE` | `/listings/{listingUuid}/automation-overrides/{overrideUuid}` | Eliminar override (soft delete) |
+| `POST` | `/listings/{listingUuid}/automation-overrides/{overrideUuid}/restore` | Restaurar override eliminado |
+
+---
+
+### 1. Listar Overrides
+
+**Endpoint:** `GET /listings/{listingUuid}/automation-overrides`
+
+**Headers:** Requiere token de autenticación
+
+**Respuesta Exitosa:**
+```json
+{
+  "data": [
+    {
+      "uuid": "019f1234-abcd-7890-ef01-234567890abc",
+      "listingUuid": "019d3bbb-b91d-706c-b87d-512c42e2c814",
+      "propertyAutomationUuid": "019e5678-1234-7890-abcd-ef0123456789",
+      "propertyAutomationName": "TRA Colombia",
+      "providerSlug": "tra-colombia",
+      "statusProviderId": 6,
+      "token": "auto_generated_or_provided_token",
+      "parameters": {
+        "token": "override_token_policia",
+        "rnt": "654321"
+      },
+      "createdAt": "2026-07-01T10:00:00Z",
+      "updatedAt": "2026-07-01T10:00:00Z",
+      "deletedAt": null
+    }
+  ]
+}
+```
+
+**Notas:**
+- Retorna todos los overrides activos (no eliminados) del listing.
+- `propertyAutomationName` y `providerSlug` se incluyen para contexto visual en el frontend.
+- `statusProviderId`: `6` = activo, `7` = inactivo.
+
+---
+
+### 2. Ver Override
+
+**Endpoint:** `GET /listings/{listingUuid}/automation-overrides/{overrideUuid}`
+
+**Headers:** Requiere token de autenticación
+
+**Respuesta Exitosa:**
+```json
+{
+  "data": {
+    "uuid": "019f1234-abcd-7890-ef01-234567890abc",
+    "listingUuid": "019d3bbb-b91d-706c-b87d-512c42e2c814",
+    "propertyAutomationUuid": "019e5678-1234-7890-abcd-ef0123456789",
+    "propertyAutomationName": "TRA Colombia",
+    "providerSlug": "tra-colombia",
+    "statusProviderId": 6,
+    "token": "auto_generated_or_provided_token",
+    "parameters": {
+      "token": "override_token_policia",
+      "rnt": "654321"
+    },
+    "createdAt": "2026-07-01T10:00:00Z",
+    "updatedAt": "2026-07-01T10:00:00Z",
+    "deletedAt": null
+  }
+}
+```
+
+---
+
+### 3. Crear Override
+
+**Endpoint:** `POST /listings/{listingUuid}/automation-overrides`
+
+**Headers:** Requiere token de autenticación
+
+**Payload:**
+```json
+{
+  "propertyAutomationUuid": "019e5678-1234-7890-abcd-ef0123456789",
+  "statusProviderId": 6,
+  "token": "optional_custom_token",
+  "parameters": {
+    "token": "override_token_policia",
+    "rnt": "654321"
+  }
+}
+```
+
+**Validaciones:**
+
+| Campo | Requerido | Tipo | Reglas |
+|-------|-----------|------|--------|
+| `propertyAutomationUuid` | ✅ | string (UUID) | Debe existir en `property_automations.uuid` y pertenecer a la propiedad del listing |
+| `statusProviderId` | ✅ | integer | `6` (activo) o `7` (inactivo) |
+| `token` | ❌ | string | Token personalizado. Si no se envía y el proveedor tiene `internalUse`, el backend genera un token Sanctum automáticamente |
+| `parameters` | ❌ | object | JSON con parámetros a sobreescribir. Se fusionan sobre los parámetros base de la automatización |
+
+**Respuesta Exitosa (201):**
+```json
+{
+  "data": {
+    "uuid": "019f1234-abcd-7890-ef01-234567890abc",
+    "listingUuid": "019d3bbb-b91d-706c-b87d-512c42e2c814",
+    "propertyAutomationUuid": "019e5678-1234-7890-abcd-ef0123456789",
+    "propertyAutomationName": "TRA Colombia",
+    "providerSlug": "tra-colombia",
+    "statusProviderId": 6,
+    "token": "auto_generated_or_provided_token",
+    "parameters": {
+      "token": "override_token_policia",
+      "rnt": "654321"
+    },
+    "createdAt": "2026-07-01T10:00:00Z"
+  }
+}
+```
+
+**Lógica de auto-generación de token:**
+```
+¿El proveedor tiene config "internalUse"?
+  │
+  ├── SÍ + campo "token" vacío/ausente
+  │     └── Backend genera Sanctum token automáticamente
+  │
+  ├── SÍ + campo "token" con valor
+  │     └── Usa el token proporcionado
+  │
+  └── NO (proveedor externo: ttlock, sire-colombia, tra-colombia)
+        └── El token es requerido o los parámetros incluyen credenciales
+```
+
+---
+
+### 4. Actualizar Override
+
+**Endpoint:** `PUT /listings/{listingUuid}/automation-overrides/{overrideUuid}`
+
+**Headers:** Requiere token de autenticación
+
+**Payload:**
+```json
+{
+  "statusProviderId": 7,
+  "token": "new_token_value",
+  "parameters": {
+    "token": "nuevo_token_policia",
+    "rnt": "999999"
+  }
+}
+```
+
+**Validaciones:** Mismas que crear. `propertyAutomationUuid` NO se puede cambiar en update.
+
+**Respuesta Exitosa:**
+```json
+{
+  "data": {
+    "uuid": "019f1234-abcd-7890-ef01-234567890abc",
+    "listingUuid": "019d3bbb-b91d-706c-b87d-512c42e2c814",
+    "propertyAutomationUuid": "019e5678-1234-7890-abcd-ef0123456789",
+    "statusProviderId": 7,
+    "token": "new_token_value",
+    "parameters": {
+      "token": "nuevo_token_policia",
+      "rnt": "999999"
+    },
+    "updatedAt": "2026-07-02T14:30:00Z"
+  }
+}
+```
+
+---
+
+### 5. Eliminar Override
+
+**Endpoint:** `DELETE /listings/{listingUuid}/automation-overrides/{overrideUuid}`
+
+**Headers:** Requiere token de autenticación
+
+**Respuesta Exitosa:**
+```json
+{
+  "success": true,
+  "message": "Override eliminado exitosamente"
+}
+```
+
+**Nota:** Soft delete. Cuando se elimina un override, la automatización vuelve a usar los parámetros base de la propiedad para este listing.
+
+---
+
+### 6. Restaurar Override
+
+**Endpoint:** `POST /listings/{listingUuid}/automation-overrides/{overrideUuid}/restore`
+
+**Headers:** Requiere token de autenticación
+
+**Respuesta Exitosa:**
+```json
+{
+  "success": true,
+  "message": "Override restaurado exitosamente",
+  "data": {
+    "uuid": "019f1234-abcd-7890-ef01-234567890abc",
+    "listingUuid": "019d3bbb-b91d-706c-b87d-512c42e2c814",
+    "propertyAutomationUuid": "019e5678-1234-7890-abcd-ef0123456789",
+    "statusProviderId": 6,
+    "deletedAt": null,
+    "updatedAt": "2026-07-03T09:00:00Z"
+  }
+}
+```
+
+---
+
+### Parámetros Sobreescribibles por Proveedor
+
+> Los overrides pueden sobreescribir cualquier campo del `parameters` de la automatización base. Aquí se listan los campos típicos que un listing podría querer personalizar:
+
+#### `tra-colombia` (Orden 6)
+```json
+{
+  "token": "token_api_policia_diferente_por_listing",
+  "rnt": "RNT_especifico_del_listing"
+}
+```
+> **Caso de uso:** El listing tiene un RNT distinto al de la propiedad (ej: multi-RNT en un mismo hotel).
+
+#### `sire-colombia` (Órdenes 7, 8)
+```json
+{
+  "document_type": "CC",
+  "document_number": "9999999999",
+  "password": "password_sire_listing",
+  "company_code": "diferente_por_listing"
+}
+```
+> **Caso de uso:** El listing reporta bajo una razón social/company_code diferente.
+
+#### `ttlock` (Orden 4)
+```json
+{
+  "locks": [
+    {
+      "lock_id": 111222,
+      "name": "Puerta Apto 102",
+      "type": "unit_entrance"
+    }
+  ]
+}
+```
+> **Caso de uso:** Cada listing tiene sus propias cerraduras. El override solo redefine `locks`, heredando `username`/`password` de la propiedad.
+
+#### `pdf-report` (Orden 5)
+```json
+{
+  "recipients": ["encargado-listing@email.com"]
+}
+```
+> **Caso de uso:** El PDF de huéspedes del listing va a un email diferente al de la propiedad.
+
+#### `tufirma` (Orden 3)
+```json
+{}
+```
+> **Nota:** Proveedor con `internalUse`. Si se crea un override sin token, el backend genera uno automáticamente.
+
+#### `didit` / `textract` (Órdenes 1, 2)
+```json
+{}
+```
+> Normalmente no requieren override de parámetros (credenciales a nivel plataforma). El override típico sería solo cambiar `statusProviderId` para desactivar la verificación en un listing específico.
+
+---
+
+### Impacto en el Flujo de Check-in
+
+Cuando un huésped hace check-in en una reserva de un listing que tiene overrides:
+
+```
+Backend resuelve parámetros efectivos:
+  1. Lee automatización base de la propiedad
+  2. Busca override del listing para esa automatización
+  3. Si existe override:
+     ├── statusProviderId del override tiene prioridad
+     ├── parameters = { ...base.parameters, ...override.parameters }
+     └── token del override tiene prioridad (si existe)
+  4. Si NO existe override:
+     └── Usa la configuración base de la propiedad tal cual
+```
+
+---
+
+### Tabla de Base de Datos: listing_automation_overrides
+
+| Campo | Tipo | Nullable | Descripción |
+|-------|------|----------|-------------|
+| `id` | bigint | NO | PK auto-increment |
+| `uuid` | char(36) | NO | UUID único (usado en URLs) |
+| `listing_id` | bigint | NO | FK → listings.id |
+| `property_automation_id` | bigint | NO | FK → property_automations.id |
+| `status_provider_id` | int | NO | 6=activo, 7=inactivo |
+| `token` | varchar(255) | SÍ | Token Sanctum (auto-generado o proporcionado) |
+| `parameters` | json | SÍ | Parámetros que sobreescriben la base |
+| `created_at` | timestamp | SÍ | — |
+| `updated_at` | timestamp | SÍ | — |
+| `deleted_at` | timestamp | SÍ | Soft delete |
+
+**Índices:**
+- `uuid` (único)
+- `listing_id` + `property_automation_id` (único, previene duplicados)
+
 ---
 
 ## Endpoints de Listings (Alojamientos)
@@ -2492,6 +3060,14 @@ FORMULARIO
 ---
 
 ## Changelog
+
+### Versión 1.3 (Julio 2026)
+- Sección completa de **Listing Automation Overrides** (CRUD + Restore)
+- Payloads de creación/actualización con validaciones
+- Documentación de merge de parámetros y auto-generación de token
+- Tabla de base de datos `listing_automation_overrides`
+- Parámetros sobreescribibles por proveedor
+- Impacto en el flujo de check-in
 
 ### Versión 1.2 (Junio 2026)
 - Sección completa de **Endpoints de Check-in v4.1** con 6 endpoints integrados

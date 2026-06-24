@@ -36,8 +36,10 @@ class AuthServiceImpl implements AuthService {
                 email: normalizedEmail, 
                 otp 
             })
+            console.log("🔍 [AuthService] verifyOtp RAW response:", JSON.stringify(data, null, 2))
             const userResponse = data.user || data.data?.user || data
             const token = data.token || data.data?.token || data.access_token
+            console.log("🔍 [AuthService] extracted token:", token)
 
             // Special mapping for the latest API response structure
             const firstName = userResponse?.name || "Usuario"

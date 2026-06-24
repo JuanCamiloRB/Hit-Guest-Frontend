@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2, Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, AlertCircle } from "lucide-react"
+import { Loader2, Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, AlertCircle, FileText } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
+import { notifyError } from "@/lib/notify-error"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -50,6 +51,7 @@ import { PropertiesUnits } from "./PropertiesUnits"
 import { PropertiesPhotos } from "./PropertiesPhotos"
 import { PropertiesAmenities } from "./PropertiesAmenities"
 import { PropertiesAutomation } from "./PropertiesAutomation"
+import { PropertiesDocuments } from "./documents"
 import { propertyFormSchema, PropertyFormData, apiResponseToFormData } from "../types"
 import { propertiesService } from "../services/properties-service"
 import { listingsService } from "../services/listings-service"
@@ -80,6 +82,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     const [isDeleting, setIsDeleting] = useState(false)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isValidationErrorOpen, setIsValidationErrorOpen] = useState(false)
+    const [validationErrors, setValidationErrors] = useState<{ label: string; tab: string; message: string }[]>([])
     const [activeTab, setActiveTab] = useState("details")
     const [statusRecords, setStatusRecords] = useState<CatalogOption[]>([])
     
@@ -157,6 +160,41 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         }
     }, [initialData, form])
 
+    // Field → friendly label + tab where the user can fix it
+    const FIELD_META: Record<string, { label: string; tab: string }> = {
+        name:           { label: "Nombre de la propiedad", tab: "Detalles" },
+        email:          { label: "Email de contacto",      tab: "Detalles" },
+        phone:          { label: "Teléfono",               tab: "Detalles" },
+        propertyTypeId: { label: "Tipo de propiedad",      tab: "Detalles" },
+        statusRecordId: { label: "Estado",                 tab: "Detalles" },
+        external_id:    { label: "Nombre interno (ID)",    tab: "Detalles" },
+        description:    { label: "Descripción",            tab: "Detalles" },
+        thumbnailUrl:   { label: "URL de miniatura",       tab: "Detalles" },
+        address:        { label: "Dirección",              tab: "Ubicación" },
+        addressDetail:  { label: "Detalle de dirección",   tab: "Ubicación" },
+        city:           { label: "Ciudad",                 tab: "Ubicación" },
+        state:          { label: "Estado / Departamento",  tab: "Ubicación" },
+        countryId:      { label: "País",                   tab: "Ubicación" },
+        latitude:       { label: "Latitud",                tab: "Ubicación" },
+        longitude:      { label: "Longitud",               tab: "Ubicación" },
+        timezone:       { label: "Zona horaria",           tab: "Ubicación" },
+        units:          { label: "Unidades",               tab: "Unidades" },
+        picturesUrl:    { label: "Fotos",                  tab: "Fotos" },
+    }
+
+    function onInvalid(errors: Record<string, any>) {
+        const items = Object.entries(errors).map(([field, err]) => {
+            const meta = FIELD_META[field] ?? { label: field, tab: "Detalles" }
+            return {
+                label: meta.label,
+                tab: meta.tab,
+                message: (err as any)?.message || "Campo obligatorio o inválido",
+            }
+        })
+        setValidationErrors(items)
+        setIsValidationErrorOpen(true)
+    }
+
     async function onSubmit(values: PropertyFormData) {
         setIsLoading(true)
         try {
@@ -213,14 +251,13 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     if (created > 0) toast.info(`${created} unidad(es) añadida(s).`)
                 }
  
-                // Redirect to edit page
-                router.push(`/dashboard/properties/${propertyUuid}?tab=units`)
+                // Redirect to edit page on the automations tab so the user can
+                // immediately configure the automations created with the property.
+                router.push(`/dashboard/properties/${propertyUuid}?tab=automations`)
             }
         } catch (error) {
             console.error("[PropertyForm] Save error:", error)
-            toast.error("Error al guardar", {
-                description: "Hubo un problema al intentar guardar los cambios.",
-            })
+            notifyError(error, "Hubo un problema al intentar guardar los cambios.")
             setIsLoading(false)
         }
     }
@@ -235,9 +272,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             })
             router.push("/dashboard/properties")
         } catch (error) {
-            toast.error("Error al eliminar", {
-                description: "Hubo un problema al intentar eliminar la propiedad.",
-            })
+            notifyError(error, "Hubo un problema al intentar eliminar la propiedad.")
         } finally {
             setIsDeleting(false)
             setIsDeleteDialogOpen(false)
@@ -246,11 +281,13 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)} className="space-y-6">
                     <TabsList className={cn(
                         "grid w-full h-auto bg-slate-100/50 p-1 border border-slate-200/60 rounded-xl shadow-sm",
-                        "grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+                        initialData
+                            ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-6"
+                            : "grid-cols-2 md:grid-cols-2 lg:grid-cols-4"
                     )}>
                         <TabsTrigger
                             value="details"
@@ -292,16 +329,30 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                             )} />
                             <span className="font-bold">Fotos</span>
                         </TabsTrigger>
-                        <TabsTrigger
-                            value="automation"
-                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
-                        >
-                            <Sparkles className={cn(
-                                "mr-2 h-4 w-4 transition-colors",
-                                activeTab === "automation" ? "text-white" : "text-[var(--color-brand-purple)]"
-                            )} />
-                            <span className="font-bold">Automatización</span>
-                        </TabsTrigger>
+                        {initialData && (
+                            <TabsTrigger
+                                value="automations"
+                                className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                            >
+                                <Sparkles className={cn(
+                                    "mr-2 h-4 w-4 transition-colors",
+                                    activeTab === "automations" ? "text-white" : "text-[var(--color-brand-purple)]"
+                                )} />
+                                <span className="font-bold">Automatización</span>
+                            </TabsTrigger>
+                        )}
+                        {initialData && (
+                            <TabsTrigger
+                                value="documents"
+                                className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                            >
+                                <FileText className={cn(
+                                    "mr-2 h-4 w-4 transition-colors",
+                                    activeTab === "documents" ? "text-white" : "text-[var(--color-brand-purple)]"
+                                )} />
+                                <span className="font-bold">Documentos</span>
+                            </TabsTrigger>
+                        )}
                     </TabsList>
 
                     <TabsContent value="details" className="space-y-4">
@@ -482,9 +533,17 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         <PropertiesPhotos />
                     </TabsContent>
 
-                    <TabsContent value="automation" className="space-y-4">
-                        <PropertiesAutomation />
-                    </TabsContent>
+                    {initialData && (
+                        <TabsContent value="automations" className="space-y-4">
+                            <PropertiesAutomation />
+                        </TabsContent>
+                    )}
+
+                    {initialData && (
+                        <TabsContent value="documents" className="space-y-4">
+                            <PropertiesDocuments />
+                        </TabsContent>
+                    )}
                 </Tabs>
 
                 <div className="flex justify-between items-center">
@@ -529,30 +588,46 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             </form>
 
             <Dialog open={isValidationErrorOpen} onOpenChange={setIsValidationErrorOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-[440px]">
                     <DialogHeader>
                         <div className="flex items-center gap-3 text-destructive mb-2">
                             <AlertCircle className="h-6 w-6" />
                             <DialogTitle className="text-xl">Información Faltante</DialogTitle>
                         </div>
                         <DialogDescription className="text-slate-600">
-                            No se pudo crear la propiedad porque faltan algunos campos obligatorios. 
-                            Por favor, revisa todas las pestañas (Detalles, Ubicación, Alojamientos, etc.) y completa la información marcada en rojo.
+                            Completa los siguientes campos para poder guardar la propiedad:
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 my-4">
-                        <h4 className="font-bold text-sm mb-2 text-slate-800">Campos comunes obligatorios:</h4>
-                        <ul className="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
-                            <li>Nombre de la propiedad</li>
-                            <li>Correo electrónico</li>
-                            <li>Dirección, Ciudad y Estado</li>
-                            <li>Tipo de propiedad</li>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 my-2 max-h-64 overflow-y-auto">
+                        <ul className="space-y-2.5">
+                            {validationErrors.map((err, i) => (
+                                <li key={i} className="flex items-start gap-2.5">
+                                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-slate-800 leading-tight">
+                                            {err.label}
+                                            <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-slate-400 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5">
+                                                {err.tab}
+                                            </span>
+                                        </p>
+                                        <p className="text-xs text-slate-500">{err.message}</p>
+                                    </div>
+                                </li>
+                            ))}
                         </ul>
                     </div>
                     <DialogFooter>
                         <Button 
                             className="w-full bg-indigo-600 hover:bg-indigo-700"
-                            onClick={() => setIsValidationErrorOpen(false)}
+                            onClick={() => {
+                                setIsValidationErrorOpen(false)
+                                // Jump to the tab of the first missing field
+                                const firstTab = validationErrors[0]?.tab
+                                if (firstTab === "Ubicación") setActiveTab("location")
+                                else if (firstTab === "Unidades") setActiveTab("units")
+                                else if (firstTab === "Fotos") setActiveTab("photos")
+                                else setActiveTab("details")
+                            }}
                         >
                             Entendido, voy a revisar
                         </Button>

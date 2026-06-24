@@ -1,12 +1,40 @@
 import { WelcomeScreen } from "@/features/checkin/components/WelcomeScreen"
+import { DiditCallbackClient } from "@/features/checkin/components/DiditCallbackClient"
+import { PortalStatusScreen } from "@/features/checkin/components/PortalStatusScreen"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 
-export default async function CheckinByUuidPage({ params }: { params: Promise<{reference: string}> }) {
+export default async function CheckinByUuidPage({
+    params,
+    searchParams,
+}: {
+    params: Promise<{ reference: string }>
+    searchParams: Promise<{ verificationSessionId?: string; status?: string }>
+}) {
     const resolvedParams = await params;
+    const resolvedSearch = await searchParams;
+
+    // Defensive: Didit (or the backend) sometimes redirects to
+    // /checkin/{reservationUuid}?verificationSessionId=...&status=... instead of
+    // the dedicated /checkin/didit/callback route. Handle that pattern here so the
+    // guest isn't dropped on the welcome screen mid-verification.
+    if (resolvedSearch.verificationSessionId) {
+        return (
+            <DiditCallbackClient
+                verificationSessionId={resolvedSearch.verificationSessionId}
+                status={resolvedSearch.status ?? ""}
+            />
+        )
+    }
 
     try {
         const portal = await checkinService.getPortal(resolvedParams.reference)
         const basePath = `/checkin/${resolvedParams.reference}`
+
+        // v4.5: cancelled (29) / deleted (108) reservations return only a status
+        // + message, with no reservation data — show a dedicated screen.
+        if (portal.portalStatus) {
+            return <PortalStatusScreen status={portal.portalStatus} message={portal.message} />
+        }
 
         return <WelcomeScreen portal={portal} basePath={basePath} />
     } catch (error) {

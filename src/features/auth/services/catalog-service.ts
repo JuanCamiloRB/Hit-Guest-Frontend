@@ -1,10 +1,8 @@
-import { apiClient } from "@/lib/api-client"
-
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL_GUEST?.replace("/auth", "") || "https://www.kunas.co/api/v1").trim()
-const APP_API_TOKEN = (process.env.NEXT_PUBLIC_APP_API_TOKEN || "").trim()
+const APP_TOKEN = process.env.NEXT_PUBLIC_APP_API_TOKEN || ""
 
-const DEFAULT_HEADERS = {
-    "Authorization": `Bearer ${APP_API_TOKEN}`
+if (!APP_TOKEN) {
+    console.warn("[CatalogService] NEXT_PUBLIC_APP_API_TOKEN is empty — API calls will fail with 401. Check Vercel env vars and redeploy.")
 }
 
 export interface CatalogOption {
@@ -14,25 +12,74 @@ export interface CatalogOption {
     extra?: any
 }
 
-export class CatalogService {
-    private async fetchCatalog(categoryName: string): Promise<CatalogOption[]> {
-        const url = `${API_BASE_URL}/catalogs?status[eq]=ACT&catalogCategoryName[eq]=${categoryName}`
-        try {
-            const response = await fetch(url, { headers: DEFAULT_HEADERS })
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+/** Country-aware identification type (from GET /catalogs/identification-types). */
+export interface IdentificationTypeOption {
+    id: number
+    name: string
+    requiresBackImage: boolean
+    applicableCountries: string[]
+}
 
-            const result = await response.json()
+const cache = new Map<string, { data: any; ts: number }>()
+const CACHE_TTL = 5 * 60 * 1000
+const inflight = new Map<string, Promise<any>>()
+
+export class CatalogService {
+    private async getWithAppToken<T>(url: string): Promise<T> {
+        // X-Locale / Accept-Language tell the backend which language to return
+        // catalog labels in. Without them it falls back to its default (English),
+        // so identification types, etc. would come back as "Citizenship Card".
+        const headers: Record<string, string> = {
+            "Accept": "application/json",
+            "Accept-Language": "es",
+            "X-Locale": "es",
+        }
+        if (APP_TOKEN) headers["Authorization"] = `Bearer ${APP_TOKEN}`
+        const res = await fetch(url, { headers, cache: "no-store" })
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}))
+            throw new Error((err as any).message || `HTTP ${res.status}`)
+        }
+        return res.json() as Promise<T>
+    }
+
+    /**
+     * Wraps a fetch with in-memory cache (5min TTL) and request deduplication.
+     * Multiple concurrent calls for the same key share a single network request.
+     */
+    private async cached<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+        const hit = cache.get(key)
+        if (hit && Date.now() - hit.ts < CACHE_TTL) return hit.data as T
+
+        const pending = inflight.get(key)
+        if (pending) return pending as Promise<T>
+
+        const promise = fetcher().then(data => {
+            cache.set(key, { data, ts: Date.now() })
+            inflight.delete(key)
+            return data
+        }).catch(err => {
+            inflight.delete(key)
+            throw err
+        })
+        inflight.set(key, promise)
+        return promise
+    }
+
+    private async fetchCatalog(categoryName: string): Promise<CatalogOption[]> {
+        return this.cached(`catalog:${categoryName}`, async () => {
+            const url = `${API_BASE_URL}/catalogs?status[eq]=ACT&catalogCategoryName[eq]=${categoryName}`
+            const result = await this.getWithAppToken<any>(url)
             console.log(`[CatalogService] Successfully fetched ${categoryName}`)
             const rawOptions = result.data || result
-
             return rawOptions.map((item: any) => ({
                 id: String(item.uuid || item.id || item.value),
                 name: item.name || item.description || item.label || "Sin nombre"
             }))
-        } catch (error) {
+        }).catch(error => {
             console.warn(`Catalog API (${categoryName}) failed`, error)
             return []
-        }
+        })
     }
 
     async getPersonTypes(): Promise<CatalogOption[]> {
@@ -50,18 +97,84 @@ export class CatalogService {
         return this.fetchCatalog("identification_type")
     }
 
+    /**
+     * GET /catalogs/identification-types[?country=CO]
+     * Country-aware identification types. Each item carries parameters.requiresBackImage
+     * (whether the back of the document is needed) and parameters.applicableCountries.
+     * Pass a country ISO code to filter to that country's valid types; omit for all.
+     */
+    async getIdentificationTypesV2(country?: string): Promise<IdentificationTypeOption[]> {
+        const c = (country || "").trim().toUpperCase()
+        const qs = c ? `?country=${encodeURIComponent(c)}` : ""
+        return this.cached(`identTypesV2:${c || "all"}`, async () => {
+            const url = `${API_BASE_URL}/catalogs/identification-types${qs}`
+            const result = await this.getWithAppToken<any>(url)
+            const raw = result.data || result
+            return (Array.isArray(raw) ? raw : []).map((item: any): IdentificationTypeOption => {
+                const params = item.parameters || {}
+                return {
+                    id: Number(item.id),
+                    name: item.name || item.nameTranslations?.es || item.label || "Sin nombre",
+                    requiresBackImage: params.requiresBackImage ?? params.requires_back_image ?? true,
+                    applicableCountries: params.applicableCountries ?? params.applicable_countries ?? [],
+                }
+            })
+        }).catch(error => {
+            console.warn("Catalog API (identification-types) failed", error)
+            return []
+        })
+    }
+
     async getStatusRecords(): Promise<CatalogOption[]> {
         return this.fetchCatalog("status_record")
     }
 
+    /**
+     * Fetches active catalog options by numeric category id.
+     * Used by the dynamic check-in form: provider-declared `select` fields carry a
+     * `catalog_category_id` (e.g. 8 = reason_for_trip) instead of a category name.
+     * Options are returned `{ id, name }` with the Spanish label.
+     */
+    async getCatalogByCategoryId(categoryId: number): Promise<CatalogOption[]> {
+        return this.cached(`catalogById:${categoryId}`, async () => {
+            const url = `${API_BASE_URL}/catalogs?status[eq]=ACT&catalogCategoryId[eq]=${categoryId}`
+            const result = await this.getWithAppToken<any>(url)
+            const rawOptions = result.data || result
+            return (Array.isArray(rawOptions) ? rawOptions : []).map((item: any) => ({
+                id: String(item.id ?? item.uuid ?? item.value),
+                name: item.name_translations?.es || item.nameTranslations?.es || item.name || item.description || "Sin nombre",
+            }))
+        }).catch(error => {
+            console.warn(`Catalog API (categoryId=${categoryId}) failed`, error)
+            return []
+        })
+    }
+
     async getCountries(): Promise<any[]> {
-        const url = `${API_BASE_URL}/countries`
-        console.log("[CatalogService] Fetching countries from:", url)
-        try {
-            const response = await fetch(url, { headers: DEFAULT_HEADERS })
-            console.log("[CatalogService] Countries response status:", response.status)
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-            const result = await response.json()
+        return this.cached("countries", async () => {
+            const isServer = typeof window === "undefined"
+            const url = isServer ? `${API_BASE_URL}/countries` : `/api/checkin/countries`
+
+            let result: any
+            if (isServer) {
+                result = await this.getWithAppToken<any>(url)
+            } else {
+                // Client-side: forward the admin session token to the proxy so the
+                // backend accepts the request. Falls back when called from guest flow.
+                let sessionToken: string | null = null
+                try {
+                    const { useAuthStore } = await import("@/lib/store/auth-store")
+                    sessionToken = useAuthStore.getState().user?.token ?? null
+                } catch {
+                    // guest context — no auth store
+                }
+                const headers: Record<string, string> = { "Accept": "application/json" }
+                if (sessionToken) headers["Authorization"] = `Bearer ${sessionToken}`
+                result = await fetch(url, { headers, cache: "no-store" }).then(r => {
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+                    return r.json()
+                })
+            }
             const list: any[] = Array.isArray(result) ? result : (result.data || [])
             console.log("[CatalogService] Countries loaded:", list.length)
             return list.map((c: any) => ({
@@ -75,9 +188,8 @@ export class CatalogService {
                     timezones: c.timezones || []
                 }
             }))
-        } catch (error) {
+        }).catch(error => {
             console.error("[CatalogService] Countries API failed:", error)
-            // Hardcoded common fallbacks
             return [
                 { id: "1", name: "Australia",  extra: { iso2: "AU", emoji: "🇦🇺", timezones: ["Australia/Sydney"] } },
                 { id: "2", name: "Colombia",   extra: { iso2: "CO", emoji: "🇨🇴", timezones: ["America/Bogota"] } },
@@ -86,7 +198,7 @@ export class CatalogService {
                 { id: "5", name: "Argentina",  extra: { iso2: "AR", emoji: "🇦🇷", timezones: ["America/Argentina/Buenos_Aires"] } },
                 { id: "6", name: "Estados Unidos", extra: { iso2: "US", emoji: "🇺🇸", timezones: ["America/New_York"] } },
             ]
-        }
+        })
     }
 
     async getRoomTypes(): Promise<CatalogOption[]> {
@@ -98,17 +210,11 @@ export class CatalogService {
     }
 
     async getCurrencies(): Promise<CatalogOption[]> {
-        const url = `${API_BASE_URL}/catalogs/category/currencies`
-        try {
-            const response = await fetch(url, { headers: DEFAULT_HEADERS })
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-            
-            const result = await response.json()
+        return this.cached("currencies", async () => {
+            const url = `${API_BASE_URL}/catalogs/category/currencies`
+            const result = await this.getWithAppToken<any>(url)
             const rawOptions = result.data || result
-            
-            console.log('[CatalogService] Raw currencies from API:', rawOptions.length, rawOptions)
-            
-            // Use Map to remove duplicates by code
+
             const uniqueCurrencies = new Map<string, CatalogOption>()
             rawOptions.forEach((item: any) => {
                 const code = item.code || item.id
@@ -119,15 +225,11 @@ export class CatalogService {
                     })
                 }
             })
-            
-            const finalList = Array.from(uniqueCurrencies.values())
-            console.log('[CatalogService] Unique currencies after dedup:', finalList.length, finalList)
-            
-            return finalList
-        } catch (error) {
+            return Array.from(uniqueCurrencies.values())
+        }).catch(error => {
             console.warn("Currencies API failed", error)
             return [{ id: "COP", name: "COP - Peso Colombiano" }]
-        }
+        })
     }
 
     async getReservationSources(): Promise<CatalogOption[]> {
@@ -155,38 +257,28 @@ export class CatalogService {
     }
 
     async getTimezonesGrouped(): Promise<{group: string, options: CatalogOption[]}[]> {
-        const url = `${API_BASE_URL}/catalogs/category/timezones`
-        console.log("[CatalogService] Fetching timezones from:", url)
-        try {
-            const response = await fetch(url, { headers: DEFAULT_HEADERS })
-            console.log("[CatalogService] Timezones response status:", response.status)
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
-            
-            const result = await response.json()
+        return this.cached("timezones", async () => {
+            const url = `${API_BASE_URL}/catalogs/category/timezones`
+            const result = await this.getWithAppToken<any>(url)
             const rawOptions = result.data || result
-            console.log("[CatalogService] Timezones raw options structure type:", Array.isArray(rawOptions) ? "Array" : typeof rawOptions)
-            
-            // Specific handling for HitGuest grouped timezone structure:
-            // Expects: [{ region: "Africa", timezones: [{ id, name, offset }, ...] }, ...]
+
             if (Array.isArray(rawOptions) && rawOptions.length > 0 && (rawOptions[0].region || rawOptions[0].timezones)) {
-                console.log("[CatalogService] Using documented regional grouping structure")
                 return rawOptions.map((row: any) => ({
                     group: row.region || row.name || "General",
                     options: (row.timezones || []).map((tz: any) => ({
                         id: String(tz.id || tz.value || tz.name),
                         name: String(tz.name || tz.label || "Sin nombre")
                     }))
-                })).filter(g => g.options.length > 0);
+                })).filter((g: any) => g.options.length > 0);
             }
 
-            // Fallback for flat array or other formats
             const groupedMap = new Map<string, CatalogOption[]>();
             const optionsArray = Array.isArray(rawOptions) ? rawOptions : [];
 
             optionsArray.forEach((item: any, index: number) => {
                 const id = String(typeof item === 'string' ? item : (item.id || item.value || item.uuid || item.name || `tz-${index}`));
                 const name = String(typeof item === 'string' ? item : (item.name || item.label || item.description || item.value || "Sin nombre"));
-                
+
                 let groupName = "GENERAL";
                 if (id.includes('/')) {
                     groupName = id.split('/')[0].toUpperCase();
@@ -208,9 +300,8 @@ export class CatalogService {
                     group,
                     options: options.sort((a, b) => a.name.localeCompare(b.name))
                 }));
-        } catch (error) {
+        }).catch(error => {
             console.warn("Timezones API failed, using hardcoded fallback", error)
-            // Comprehensive hardcoded fallback
             return [
                 { group: "América", options: [
                     { id: "America/Bogota", name: "America/Bogota (Colombia)" },
@@ -235,7 +326,7 @@ export class CatalogService {
                     { id: "Australia/Perth", name: "Australia/Perth" },
                 ]},
             ]
-        }
+        })
     }
 }
 

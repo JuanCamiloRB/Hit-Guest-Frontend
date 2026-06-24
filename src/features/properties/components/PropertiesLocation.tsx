@@ -42,6 +42,12 @@ export function PropertiesLocation() {
     const [countries, setCountries] = useState<any[]>([])
     const [timezoneGroups, setTimezoneGroups] = useState<{group: string, options: CatalogOption[]}[]>([])
     const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
+    const [tzSearch, setTzSearch] = useState("")
+
+    const filteredTimezoneGroups = timezoneGroups.map(tg => ({
+        ...tg,
+        options: tg.options.filter(tz => tz.name.toLowerCase().includes(tzSearch.toLowerCase()))
+    })).filter(tg => tg.options.length > 0)
 
     useEffect(() => {
         async function loadCatalogs() {
@@ -268,7 +274,7 @@ export function PropertiesLocation() {
                                          onValueChange={(val) => field.onChange(parseInt(val))}
                                          value={String(field.value || "")}
                                      >
-                                         <SelectTrigger className="h-11 border-slate-200 bg-white">
+                                         <SelectTrigger className="w-full h-11 border-slate-200 bg-white">
                                              <SelectValue placeholder="Seleccionar país" />
                                          </SelectTrigger>
                                          <SelectContent>
@@ -300,22 +306,40 @@ export function PropertiesLocation() {
                                             onValueChange={field.onChange}
                                             value={field.value || ""}
                                         >
-                                            <SelectTrigger className="pl-9 h-11 border-slate-200 bg-white">
+                                            <SelectTrigger className="w-full pl-9 h-11 border-slate-200 bg-white">
                                                 <SelectValue placeholder="Seleccionar zona horaria" />
                                             </SelectTrigger>
                                             <SelectContent className="max-h-[300px]">
-                                                {timezoneGroups.map((tg, gIdx) => (
-                                                    <SelectGroup key={`tg-${tg.group}-${gIdx}`}>
-                                                        <SelectLabel className="px-2 py-1.5 text-xs font-bold text-[var(--color-brand-purple)] uppercase tracking-wider bg-[var(--color-brand-purple)]/5">
-                                                            {tg.group}
-                                                        </SelectLabel>
-                                                        {tg.options.map((tz, tIdx) => (
-                                                            <SelectItem key={`tz-${tz.id}-${tIdx}`} value={tz.id}>
-                                                                {tz.name}
-                                                            </SelectItem>
-                                                        ))}
-                                                    </SelectGroup>
-                                                ))}
+                                                <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100 mb-1">
+                                                    <div className="relative">
+                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                                        <Input
+                                                            placeholder="Buscar zona horaria..."
+                                                            value={tzSearch}
+                                                            onChange={(e) => setTzSearch(e.target.value)}
+                                                            onKeyDown={(e) => e.stopPropagation()}
+                                                            className="h-8 pl-8 text-sm focus-visible:ring-1 focus-visible:ring-[var(--color-brand-purple)]"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                {filteredTimezoneGroups.length === 0 ? (
+                                                    <div className="p-4 text-center text-sm text-slate-500">
+                                                        No se encontraron resultados
+                                                    </div>
+                                                ) : (
+                                                    filteredTimezoneGroups.map((tg, gIdx) => (
+                                                        <SelectGroup key={`tg-${tg.group}-${gIdx}`}>
+                                                            <SelectLabel className="px-2 py-1.5 text-xs font-bold text-[var(--color-brand-purple)] uppercase tracking-wider bg-[var(--color-brand-purple)]/5">
+                                                                {tg.group}
+                                                            </SelectLabel>
+                                                            {tg.options.map((tz, tIdx) => (
+                                                                <SelectItem key={`tz-${tz.id}-${tIdx}`} value={tz.id}>
+                                                                    {tz.name}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectGroup>
+                                                    ))
+                                                )}
                                             </SelectContent>
                                         </Select>
                                     </div>

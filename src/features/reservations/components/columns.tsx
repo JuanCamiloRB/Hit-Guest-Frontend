@@ -1,7 +1,7 @@
 "use client"
 
 import { ColumnDef } from "@tanstack/react-table"
-import { MoreVertical, Calendar, Home, Briefcase, Globe, Package2 } from "lucide-react"
+import { MoreVertical, Calendar, Home, Briefcase, Globe, Package2, Trash2 } from "lucide-react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -9,6 +9,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -18,7 +19,13 @@ import { es } from "date-fns/locale"
 import { StatusBadge } from "./StatusBadge"
 import { AutomationTrafficLight } from "./AutomationTrafficLight"
 
-export const columns: ColumnDef<Reservation>[] = [
+export interface ColumnsOptions {
+    onDelete?: (reservation: Reservation) => void
+}
+
+export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
+  const { onDelete } = options || {}
+  return [
     {
         accessorKey: "guestName",
         header: "HUÉSPED / ALOJAMIENTO",
@@ -127,7 +134,7 @@ export const columns: ColumnDef<Reservation>[] = [
         id: "actions",
         header: () => <div className="text-center">ACCIONES</div>,
         cell: ({ row }) => {
-            const payment = row.original
+            const reservation = row.original
 
             return (
                 <div className="flex justify-center min-w-[100px]">
@@ -140,21 +147,36 @@ export const columns: ColumnDef<Reservation>[] = [
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                                onClick={() => navigator.clipboard.writeText(payment.id)}
+                                onClick={() => navigator.clipboard.writeText(reservation.id)}
                             >
                                 Copiar ID
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/reservations/${payment.id}`}>
+                                <Link href={`/dashboard/reservations/${reservation.id}`}>
                                     Ver detalles
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem>Mensaje</DropdownMenuItem>
+                            {onDelete && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                        onClick={() => onDelete(reservation)}
+                                    >
+                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        Eliminar
+                                    </DropdownMenuItem>
+                                </>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
                 </div>
             )
         },
     },
-]
+  ]
+}
+
+export const columns = getColumns()
 

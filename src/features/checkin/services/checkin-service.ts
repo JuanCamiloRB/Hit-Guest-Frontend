@@ -1,4 +1,3 @@
-import { apiClient } from "@/lib/api-client"
 import { API_BASE, CONFIG } from "@/lib/config"
 import {
   CheckinReservationV4,
@@ -8,7 +7,6 @@ import {
   IdentityResolution,
   VerificationResult,
   CheckinCompletionResponse,
-  ContractTemplate,
   ReservationCheckinStatus,
   SecondaryGuestContext,
   FaceMatchResult,
@@ -18,8 +16,12 @@ import {
   CompleteMainGuestPayload,
   CompleteSecondaryGuestPayload,
   CompleteGuestResponse,
+  SignMainGuestPayload,
+  SignMainGuestResponse,
   GuestFormSchemaResponse,
   GuestFormSchemaRawResponse,
+  CheckinUserField,
+  CheckinFieldType,
   VerificationResultResponse,
   FormSchema,
 } from "../types/checkin"
@@ -29,7 +31,6 @@ import {
   mockPortalResponse,
   mockVerificationApproved,
   mockSmartlockCodes,
-  mockContractTemplate,
   mockCheckinReservation,
   mockCompleteResponse,
   mockFormSchemaResponse,
@@ -53,12 +54,86 @@ function snakeToCamel(s: string): string {
  * Frontend uses: { requiredFields: ["countryOfOriginId"], optionalFields: [...], prefilledData: {...} }
  * IMPORTANT: field names inside the arrays are also converted (snake_case values → camelCase values).
  */
+/**
+ * Maps the backend document type name to its Spanish label for guest display.
+ * Falls back to the raw type if unknown.
+ */
+function localizeDocumentType(type: string): string {
+    const map: Record<string, string> = {
+        Agreement: "Contrato",
+        Rules: "Reglamento",
+        Instructions: "Instrucciones",
+        "Privacy Policy": "Política de privacidad",
+    }
+    return map[type] ?? type ?? "Documento"
+}
+
+/**
+ * Normalizes the /verify/result response to the legacy { status } shape the
+ * screens already branch on, tolerating both:
+ *   - new portal-style: { verification: { status, currentStep, ... } }
+ *   - legacy flat:       { status: "verified"|"kyc_required"|"failed", ... }
+ */
+function normalizeVerificationResult(raw: any): VerificationResultResponse {
+    // Legacy flat shape — pass through untouched.
+    if (raw?.status === "verified" || raw?.status === "kyc_required" || raw?.status === "failed") {
+        return raw as VerificationResultResponse
+    }
+    // New portal-style shape.
+    const v = raw?.verification ?? raw ?? {}
+    if (v.currentStep === "form" || v.status === "approved" || v.status === "completed") {
+        return { status: "verified" }
+    }
+    if (v.currentStep === "rejected" || v.status === "rejected" || v.status === "fail" || v.status === "expired") {
+        return { status: "failed" }
+    }
+    // Still pending but the backend exposes a session URL → the guest has a Didit
+    // step left to finish (e.g. the document-upload session opened after a biometric
+    // match when no documents were on file). Surface it so the front can relaunch
+    // that session instead of waiting on a webhook that never arrives.
+    if (v.verificationUrl) {
+        return { status: "kyc_required", kycUrl: v.verificationUrl }
+    }
+    return { status: "pending" }
+}
+
+/**
+ * Parses provider-declared dynamic fields (v4.6) from `user_fields`.
+ * Auto-resolved fields (type "auto") are stripped server-side, but we defensively
+ * skip them here too. Legacy plain-string entries are coerced to a text field.
+ * The `key` is preserved verbatim (snake_case) because it's the exact `extra` key.
+ */
+function normalizeUserFields(raw: any): CheckinUserField[] {
+    const arr = raw?.user_fields ?? raw?.userFields
+    if (!Array.isArray(arr)) return []
+    const out: CheckinUserField[] = []
+    for (const f of arr) {
+        if (typeof f === "string") {
+            out.push({ key: f, type: "text", required: false })
+            continue
+        }
+        if (!f || typeof f !== "object" || !f.key) continue
+        const type = f.type === "auto" ? null : f.type
+        if (type === null) continue // auto fields are backend-only
+        const fieldType: CheckinFieldType = type === "number" || type === "select" ? type : "text"
+        out.push({
+            key: String(f.key),
+            type: fieldType,
+            required: !!(f.required ?? f.is_required),
+            catalogCategoryId: f.catalog_category_id ?? f.catalogCategoryId ?? undefined,
+            label: f.label ?? f.name ?? undefined,
+        })
+    }
+    return out
+}
+
 function normalizeFormSchema(raw: any): FormSchema {
     const toArray = (v: any) => (Array.isArray(v) ? v : [])
     return {
         requiredFields: toArray(raw?.required_fields ?? raw?.requiredFields).map(snakeToCamel),
         optionalFields: toArray(raw?.optional_fields ?? raw?.optionalFields).map(snakeToCamel),
         prefilledData: raw?.prefilledData ?? raw?.prefilled_data ?? {},
+        userFields: normalizeUserFields(raw),
     }
 }
 
@@ -81,6 +156,8 @@ export class CheckinService {
         const headers: Record<string, string> = {
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "Accept-Language": "es",
+            "X-Locale": "es",
         }
         if (CONFIG.APP_API_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
         const response = await fetch(url, { headers, cache: "no-store" })
@@ -105,7 +182,21 @@ export class CheckinService {
             await new Promise(res => setTimeout(res, 800));
             return mockIdentifyResponse(payload);
         }
-        const raw: any = await apiClient.post(`${API_BASE}/checkin/${reservationUuid}/identify`, payload);
+        
+        // Duplicate fields to snake_case to prevent backend mapping issues.
+        // NOTE: we intentionally DO NOT send return_url. The Didit redirect/callback
+        // is configured at the workflow level in Didit (pointing to the frontend's
+        // /checkin/didit/callback on Vercel). Sending a per-session return_url here was
+        // overriding that workflow callback, so the front no longer sends one.
+        const apiPayload = {
+            ...payload,
+            nationality_id: payload.nationalityId,
+            identification_type_id: payload.identificationTypeId,
+            identification_number: payload.identificationNumber,
+            is_main_guest: payload.isMainGuest,
+        };
+
+        const raw: any = await this.postWithAppToken(`${API_BASE}/checkin/${reservationUuid}/identify`, apiPayload);
         return {
             guest: raw.guest,
             reservationGuest: raw.reservationGuest,
@@ -130,16 +221,28 @@ export class CheckinService {
             await new Promise(res => setTimeout(res, 400));
             return mockFormSchemaResponse();
         }
-        const raw: GuestFormSchemaRawResponse = await apiClient.get(
-            `${API_BASE}/checkin/${reservationUuid}/form/${guestUuid}`
-        );
+        const raw: any = await this.getWithAppToken(`${API_BASE}/checkin/${reservationUuid}/form/${guestUuid}`);
         const schema = raw.formSchema || raw;
         return normalizeFormSchema(schema) as GuestFormSchemaResponse;
     }
 
     /**
+     * POST /api/v1/checkin/{reservationUuid}/main/sign (v4.4)
+     * Saves the native HIT Guest signature for the main guest BEFORE /main/complete.
+     * Only used when the property's contract provider is "hitguest".
+     * Re-calling overwrites the current signature (adds an attempt to the history).
+     */
+    async signMainGuest(
+        reservationUuid: string,
+        payload: SignMainGuestPayload
+    ): Promise<SignMainGuestResponse> {
+        return this.postWithAppToken(`${API_BASE}/checkin/${reservationUuid}/main/sign`, payload)
+    }
+
+    /**
      * POST /api/v1/checkin/{reservationUuid}/main/complete (G-NEW-1)
-     * Submits the complete main guest data: profile + extra + signature.
+     * Submits the main guest data: profile + extra. The signature is sent
+     * separately via signMainGuest() (v4.4) — it is NOT part of this payload.
      * NOTE: This is called from ContractScreen, NOT GuestFormScreen.
      * GuestFormScreen only saves profile/extra to localStorage and navigates to /contract.
      */
@@ -151,7 +254,7 @@ export class CheckinService {
             await new Promise(res => setTimeout(res, 1000));
             return mockCompleteResponse(true);
         }
-        return apiClient.post(`${API_BASE}/checkin/${reservationUuid}/main/complete`, payload);
+        return this.postWithAppToken(`${API_BASE}/checkin/${reservationUuid}/main/complete`, payload);
     }
 
     /**
@@ -167,7 +270,7 @@ export class CheckinService {
             await new Promise(res => setTimeout(res, 1000));
             return mockCompleteResponse(false);
         }
-        return apiClient.post(
+        return this.postWithAppToken(
             `${API_BASE}/checkin/${reservationUuid}/secondary/${guestUuid}/complete`,
             payload
         );
@@ -187,7 +290,13 @@ export class CheckinService {
             await new Promise(res => setTimeout(res, 1500));
             return mockOCRResult();
         }
-        const uploadHeaders: Record<string, string> = { "Accept": "application/json" }
+        // X-Locale makes the backend return OCR error messages in Spanish. We do NOT
+        // set Content-Type here — the browser must set the multipart boundary itself.
+        const uploadHeaders: Record<string, string> = {
+            "Accept": "application/json",
+            "Accept-Language": "es",
+            "X-Locale": "es",
+        }
         if (CONFIG.APP_API_TOKEN) uploadHeaders["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
         const uploadRes = await fetch(
             `${API_BASE}/checkin/${reservationUuid}/secondary/${guestUuid}/documents`,
@@ -195,7 +304,9 @@ export class CheckinService {
         )
         if (!uploadRes.ok) {
             const err = await uploadRes.json().catch(() => ({}))
-            throw new Error(err.message || "Document upload failed")
+            // Preserve the backend's localized message + structured OCR failure detail
+            // so the UI can show exactly why verification failed.
+            throw this.buildHttpError(uploadRes.status, err)
         }
         const uploadJson = await uploadRes.json()
         return uploadJson?.data ?? uploadJson
@@ -251,18 +362,103 @@ export class CheckinService {
         }
         const params = new URLSearchParams({ guest_uuid: guestUuid })
         if (verificationSessionId) params.set('session_id', verificationSessionId)
-        return apiClient.get(
+        const raw: any = await this.getWithAppToken(
             `${API_BASE}/checkin/${reservationUuid}/verify/result?${params.toString()}`
         )
+        return normalizeVerificationResult(raw)
     }
 
-    // ── Contrato ──
-    async getContractTemplate(reservationUuid: string): Promise<ContractTemplate> {
-        if (USE_MOCK) {
-            await new Promise(res => setTimeout(res, 500));
-            return mockContractTemplate();
+    /**
+     * Returns the property documents for a reservation, each rendered to HTML.
+     *
+     * The portal response (GET /checkin/{uuid}) already includes the active
+     * documents array with checkin-scoped render/pdf URLs, so there's no need
+     * to resolve property → documents ourselves. We just render each one.
+     *
+     * @param portal Optional pre-fetched portal to avoid a duplicate request.
+     */
+    async getReservationDocuments(
+        reservationUuid: string,
+        portal?: CheckinPortalResponse
+    ): Promise<Array<{
+        uuid: string
+        typeName: string
+        renderedHtml: string
+    }>> {
+        const resolved = portal ?? await this.getPortal(reservationUuid)
+        const docList = resolved.documents ?? []
+        if (docList.length === 0) return []
+
+        const rendered = await Promise.allSettled(
+            docList.map(async (doc) => {
+                const html = await this.renderDocument(reservationUuid, doc.uuid)
+                return { uuid: doc.uuid, typeName: localizeDocumentType(doc.type), renderedHtml: html }
+            })
+        )
+
+        return rendered
+            .filter((r): r is PromiseFulfilledResult<{ uuid: string; typeName: string; renderedHtml: string }> =>
+                r.status === "fulfilled"
+            )
+            .map(r => r.value)
+    }
+
+    // ── Property Documents (guest view) ──
+    // Checkin-scoped endpoints — work with the app token, no PM session needed.
+
+    /**
+     * GET /checkin/{reservationUuid}/documents/{documentUuid}/render
+     * Returns the document HTML with shortcodes replaced with reservation data.
+     */
+    async renderDocument(reservationUuid: string, documentUuid: string): Promise<string> {
+        const headers: Record<string, string> = { "Accept": "application/json" }
+        if (CONFIG.APP_API_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
+        const res = await fetch(
+            `${API_BASE}/checkin/${reservationUuid}/documents/${documentUuid}/render`,
+            { headers, cache: "no-store" }
+        )
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}))
+            throw new Error((err as any).message || "Documento no disponible")
         }
-        return apiClient.get(`${API_BASE}/checkin/${reservationUuid}/contract-template`);
+        const json = await res.json()
+        return json?.data?.rendered ?? json?.rendered ?? ""
+    }
+
+    /**
+     * Absolute URL of the SIGNED contract PDF (with signature + legal evidence page).
+     * GET /checkin/{reservationUuid}/contract/signed — public, byte stream.
+     */
+    getSignedContractUrl(reservationUuid: string): string {
+        return `${API_BASE}/checkin/${reservationUuid}/contract/signed`
+    }
+
+    /**
+     * Opens the SIGNED contract PDF in a new tab. It's a byte stream on a public
+     * endpoint, so we navigate to it directly (no fetch/blob).
+     */
+    openSignedContract(reservationUuid: string): void {
+        if (typeof window !== "undefined") {
+            window.open(this.getSignedContractUrl(reservationUuid), "_blank")
+        }
+    }
+
+    /**
+     * GET /checkin/{reservationUuid}/documents/{documentUuid}/pdf
+     * Fetches the rendered PDF as a Blob and opens it in a new tab.
+     */
+    async openDocumentPdf(reservationUuid: string, documentUuid: string): Promise<void> {
+        const headers: Record<string, string> = { "Accept": "application/pdf" }
+        if (CONFIG.APP_API_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
+        const res = await fetch(
+            `${API_BASE}/checkin/${reservationUuid}/documents/${documentUuid}/pdf`,
+            { headers, cache: "no-store" }
+        )
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const blob = await res.blob()
+        const objectUrl = URL.createObjectURL(blob)
+        window.open(objectUrl, "_blank")
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
     }
 
     // ═══════════════════════════════════════════════════════
@@ -312,14 +508,23 @@ export class CheckinService {
             await new Promise(res => setTimeout(res, 300));
             return { mainGuestCompleted: true, mainGuestName: "Ricardo Lombana", reservation: mockCheckinReservation, guestToken };
         }
-        const res = await fetch(`${API_BASE}/checkin/${uuid}/s/${guestToken}/status`, { headers: { "Authorization": `Bearer ${CONFIG.APP_API_TOKEN}` } });
-        return res.json();
+        const portal = await this.getPortal(uuid)
+        const mainGuest = portal.registeredGuests.find(g => g.isMain)
+        const mainCompleted = mainGuest?.isCompleted ?? false
+        const mainName = mainGuest ? `${mainGuest.name} ${mainGuest.lastname}`.trim() : undefined
+
+        return {
+            mainGuestCompleted: mainCompleted,
+            mainGuestName: mainName,
+            reservation: {} as any,
+            guestToken,
+        }
     }
 
     /** @deprecated Use completeSecondaryGuest() instead. */
     async saveSecondaryGuest(uuid: string, guestToken: string, payload: any): Promise<void> {
         if (USE_MOCK) return new Promise(res => setTimeout(res, 800));
-        return apiClient.post(`${API_BASE}/checkin/${uuid}/s/${guestToken}/guest`, payload);
+        return this.postWithAppToken(`${API_BASE}/checkin/${uuid}/s/${guestToken}/guest`, payload);
     }
 
     async getActiveAutomations(uuid: string): Promise<ActiveAutomation[]> {
@@ -327,6 +532,75 @@ export class CheckinService {
         const res = await fetch(`${API_BASE}/checkin/${uuid}/automations`, { headers: { "Authorization": `Bearer ${CONFIG.APP_API_TOKEN}` } });
         const json = await res.json();
         return json.data || json;
+    }
+
+    /**
+     * Helper for GET requests with app token only.
+     * Guest-facing checkin endpoints must use the app token, NOT the session token,
+     * because an admin user being logged in would otherwise send their session token → 403.
+     */
+    private async getWithAppToken<T>(url: string): Promise<T> {
+        const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Accept-Language": "es",
+            "X-Locale": "es",
+        }
+        if (CONFIG.APP_API_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
+        const response = await fetch(url, { headers, cache: "no-store" })
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}))
+            throw this.buildHttpError(response.status, err)
+        }
+        const json = await response.json()
+        return (json.data ?? json) as T
+    }
+
+    /**
+     * Builds an Error enriched with `status` and `errors` so screens can
+     * branch on HTTP status (403/409/422...) and show field-level errors.
+     */
+    private buildHttpError(status: number, body: any): Error {
+        const error = new Error(body?.message || "Error en la solicitud") as Error & {
+            status: number
+            errors?: Record<string, string[]>
+            errorType?: string
+            failedFields?: Array<{ field: string; reason: string; confidence?: number }>
+        }
+        error.status = status
+        if (body?.errors && typeof body.errors === "object") error.errors = body.errors
+        // OCR / document-verification failures carry a structured shape:
+        // { errorType, failedFields:[{field, reason, confidence}], message }
+        if (body?.errorType) error.errorType = body.errorType
+        if (Array.isArray(body?.failedFields)) error.failedFields = body.failedFields
+        return error
+    }
+
+    /**
+     * Helper for POST requests with app token only.
+     * Guest-facing checkin endpoints must use the app token, NOT the session token,
+     * because an admin user being logged in would otherwise send their session token → 403.
+     */
+    private async postWithAppToken<T>(url: string, body: unknown): Promise<T> {
+        const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "Accept-Language": "es",
+            "X-Locale": "es",
+        }
+        if (CONFIG.APP_API_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
+        const response = await fetch(url, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(body),
+            cache: "no-store",
+        })
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}))
+            throw this.buildHttpError(response.status, err)
+        }
+        const json = await response.json()
+        return (json.data ?? json) as T
     }
 
     /**

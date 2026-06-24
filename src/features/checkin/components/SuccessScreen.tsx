@@ -1,12 +1,21 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import Link from "next/link"
-import { CheckCircle2, Home, Users, Calendar, MapPin, Download, Clock } from "lucide-react"
+import { CheckCircle2, Home, Users, Calendar, MapPin, Download, Clock, FileText, Loader2, Mail } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import { toast } from "sonner"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { SmartlockCodes } from "@/features/checkin/components/SmartlockCodes"
 import { mockSmartlockCodes } from "@/features/checkin/data/mock-guest-data"
+import { checkinService } from "@/features/checkin/services/checkin-service"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
+
+interface ReservationDocument {
+    uuid: string
+    typeName: string
+    renderedHtml: string
+}
 
 interface SuccessScreenProps {
     portal: CheckinPortalResponse
@@ -18,8 +27,81 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
     const searchParams = useSearchParams()
     const isMainDone = searchParams.get("main_done") === "true"
     const pendingGuests = Number(searchParams.get("pending") ?? "0")
+    const contractPending = searchParams.get("contract_pending") === "1"
     const hasPendingSecondaries = isMainDone && pendingGuests > 0
     const welcomeHref = `/checkin/${reservationUuid}`
+
+    const [documents, setDocuments] = useState<ReservationDocument[]>([])
+    const [docsLoading, setDocsLoading] = useState(true)
+    const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null)
+
+    const hasContract = !!portal.contract?.signingProvider
+    const [contractStatus, setContractStatus] = useState<string | null>(portal.contract?.status ?? null)
+    const [signedAt, setSignedAt] = useState<string | null>(portal.contract?.signedAt ?? null)
+    const [signedUrlReady, setSignedUrlReady] = useState<boolean>(!!portal.contract?.signedContractUrl)
+    const [hasNativeSignature, setHasNativeSignature] = useState<boolean>(!!portal.contract?.hasNativeSignature)
+    // The signed PDF (with the legal evidence page) lives at /contract/signed and is
+    // generated on-demand. The signature is embedded as soon as the guest signs
+    // (status "signed" / hasNativeSignature), so we don't wait for the async
+    // "completed" step (cron) to offer the download. tufirma's "pending" still
+    // waits on the external signature.
+    const contractReady = contractStatus === "completed" || contractStatus === "signed" || hasNativeSignature || signedUrlReady
+
+    useEffect(() => {
+        let mounted = true
+        checkinService.getReservationDocuments(reservationUuid, portal)
+            .then(docs => { if (mounted) setDocuments(docs) })
+            .catch(() => {})
+            .finally(() => { if (mounted) setDocsLoading(false) })
+        return () => { mounted = false }
+    }, [reservationUuid, portal])
+
+    // Poll the portal while the contract is in a transitional state (tufirma "pending"
+    // waiting on the external signature, or hitguest "signed" before "completed"),
+    // until it reaches "completed" — then the signed PDF becomes downloadable.
+    useEffect(() => {
+        if (!hasContract) return
+        if (signedUrlReady) return // already downloadable — nothing to wait for
+        if (contractStatus !== "pending" && contractStatus !== "signed") return
+        let active = true
+        let elapsed = 0
+        const INTERVAL = 8000
+        const TIMEOUT = 10 * 60 * 1000
+        let timer: ReturnType<typeof setTimeout>
+        const tick = async () => {
+            try {
+                const p = await checkinService.getPortal(reservationUuid)
+                const c = p.contract
+                if (active && c) {
+                    setContractStatus(c.status)
+                    if (c.signedAt) setSignedAt(c.signedAt)
+                    if (c.hasNativeSignature) setHasNativeSignature(true)
+                    if (c.signedContractUrl) setSignedUrlReady(true)
+                    if (c.status === "completed") {
+                        checkinService.getReservationDocuments(reservationUuid, p)
+                            .then(d => { if (active) setDocuments(d) }).catch(() => {})
+                        return
+                    }
+                }
+            } catch {}
+            elapsed += INTERVAL
+            if (active && elapsed < TIMEOUT) timer = setTimeout(tick, INTERVAL)
+        }
+        timer = setTimeout(tick, INTERVAL)
+        return () => { active = false; clearTimeout(timer) }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [reservationUuid, hasContract])
+
+    const handleDownloadPdf = async (docUuid: string) => {
+        setDownloadingDoc(docUuid)
+        try {
+            await checkinService.openDocumentPdf(reservationUuid, docUuid)
+        } catch {
+            toast.error("No se pudo descargar el PDF")
+        } finally {
+            setDownloadingDoc(null)
+        }
+    }
 
     const formatDate = (dateStr: string) => {
         const d = new Date(dateStr + "T12:00:00")
@@ -47,6 +129,56 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                         : "Tus datos y documentos han sido validados exitosamente. Ya estás un paso más cerca de tu estadía."}
                 </p>
             </div>
+
+            {contractPending && !contractReady && contractStatus !== "pending" && (
+                <div className="bg-brand-purple/5 border border-brand-purple/15 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
+                    <Mail size={18} className="text-brand-purple flex-shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-bold text-slate-800">Falta firmar el contrato</p>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            Recibirás un correo de TuFirma para firmar tu contrato de forma digital. Tu registro
+                            ya quedó guardado.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* Contract ready → download the SIGNED PDF (with legal evidence page). */}
+            {contractReady && (
+                <div className="bg-green-50 border border-green-100 rounded-2xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
+                    <div className="flex items-start gap-3">
+                        <CheckCircle2 size={18} className="text-green-500 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p className="text-sm font-bold text-green-800">Contrato firmado</p>
+                            <p className="text-xs text-green-700 mt-0.5">
+                                Tu contrato firmado está listo{signedAt ? ` (${formatDate(signedAt.slice(0, 10))})` : ""}.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => checkinService.openSignedContract(reservationUuid)}
+                        className="w-full flex items-center justify-center gap-2 h-11 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98]"
+                    >
+                        <Download size={16} />
+                        Descargar contrato firmado
+                    </button>
+                </div>
+            )}
+
+            {/* Contract still processing (tufirma "pending" / hitguest "signed") → spinner. */}
+            {hasContract && !contractReady && (contractStatus === "pending" || contractStatus === "signed") && (
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
+                    <Loader2 size={18} className="text-amber-500 flex-shrink-0 mt-0.5 animate-spin" />
+                    <div>
+                        <p className="text-sm font-bold text-amber-800">Procesando tu contrato…</p>
+                        <p className="text-xs text-amber-700 mt-0.5">
+                            {contractStatus === "pending"
+                                ? "Esperando la firma en TuFirma. Te avisaremos cuando esté lista para descargar."
+                                : "Estamos finalizando tu contrato firmado; podrás descargarlo en un momento."}
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {isMainDone && pendingGuests > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
@@ -85,18 +217,47 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 </div>
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 text-left w-full max-w-sm">
-                <div className="bg-brand-purple/10 p-3 rounded-xl">
-                    <Download className="text-brand-purple" size={24} />
+            {docsLoading ? (
+                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-3 w-full max-w-sm">
+                    <Loader2 size={18} className="animate-spin text-slate-400" />
+                    <span className="text-xs text-slate-400">Cargando documentos...</span>
                 </div>
-                <div className="flex-1">
-                    <h3 className="font-bold text-slate-800 text-sm">Contrato Firmado</h3>
-                    <p className="text-xs text-slate-500">Puedes descargar tu copia aquí.</p>
+            ) : documents.length > 0 ? (
+                <div className="w-full max-w-sm space-y-2">
+                    {documents.map((doc) => (
+                        <div key={doc.uuid} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 text-left">
+                            <div className="bg-brand-purple/10 p-3 rounded-xl flex-shrink-0">
+                                <FileText className="text-brand-purple" size={20} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="font-bold text-slate-800 text-sm truncate">{doc.typeName}</h3>
+                                <p className="text-xs text-slate-500">Descarga tu copia aquí.</p>
+                            </div>
+                            <button
+                                onClick={() => handleDownloadPdf(doc.uuid)}
+                                disabled={downloadingDoc === doc.uuid}
+                                className="text-sm font-bold text-brand-purple hover:underline disabled:opacity-50 flex-shrink-0"
+                            >
+                                {downloadingDoc === doc.uuid ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                    "Descargar"
+                                )}
+                            </button>
+                        </div>
+                    ))}
                 </div>
-                <button className="text-sm font-bold text-brand-purple hover:underline">
-                    Descargar
-                </button>
-            </div>
+            ) : (
+                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 text-left w-full max-w-sm">
+                    <div className="bg-brand-purple/10 p-3 rounded-xl">
+                        <Download className="text-brand-purple" size={24} />
+                    </div>
+                    <div className="flex-1">
+                        <h3 className="font-bold text-slate-800 text-sm">Check-in Completado</h3>
+                        <p className="text-xs text-slate-500">No hay documentos disponibles para descargar.</p>
+                    </div>
+                </div>
+            )}
 
             {!isMainDone && <SmartlockCodes codes={mockSmartlockCodes()} />}
 

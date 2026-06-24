@@ -62,6 +62,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { toast } from "sonner"
+import { notifyError } from "@/lib/notify-error"
 
 interface UserPermissions {
     reservations: string[]
@@ -188,7 +189,7 @@ export function UserManagement() {
             setIsDialogOpen(false)
             fetchUsers()
         } catch (error) {
-            toast.error("Error al procesar la solicitud")
+            notifyError(error, "Error al procesar la solicitud")
         } finally {
             setIsSubmitting(false)
         }
@@ -201,7 +202,7 @@ export function UserManagement() {
             toast.success("Usuario eliminado")
             fetchUsers()
         } catch (error) {
-            toast.error("Error al eliminar usuario")
+            notifyError(error, "Error al eliminar usuario")
         }
     }
 

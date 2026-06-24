@@ -22,7 +22,7 @@ export function AutomationTrafficLight({ status }: AutomationTrafficLightProps) 
     ]
 
     return (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {indicators.map((indicator) => {
                 const state = status[indicator.key]
                 const Icon = indicator.icon
@@ -31,7 +31,8 @@ export function AutomationTrafficLight({ status }: AutomationTrafficLightProps) 
                     <div key={indicator.key} className="relative group flex items-center">
                         <div
                             className={cn(
-                                "inline-flex items-center justify-center min-w-[120px] rounded-full px-4 py-2 text-xs font-bold border border-transparent gap-3 shadow-sm cursor-help transition-all hover:scale-105",
+                                "inline-flex items-center justify-center rounded-full border border-transparent shadow-sm cursor-help transition-all hover:scale-105",
+                                "h-8 w-8 sm:h-auto sm:w-auto sm:min-w-[100px] sm:px-3 sm:py-1.5 text-xs font-bold sm:gap-2",
                                 state === "success"
                                     ? "bg-[#d4f7e6] text-[#0bb37a]"
                                     : state === "pending"
@@ -45,7 +46,7 @@ export function AutomationTrafficLight({ status }: AutomationTrafficLightProps) 
                                     : state === "pending" ? "text-[#ffb000]"
                                         : "text-[#94a3b8]"
                             )} />
-                            <span className="leading-none tracking-wider uppercase">{indicator.label}</span>
+                            <span className="hidden sm:inline leading-none tracking-wider uppercase">{indicator.label}</span>
                         </div>
                         {/* Custom Tooltip */}
                         <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] font-medium px-2 py-1 rounded shadow-lg whitespace-nowrap pointer-events-none z-50">

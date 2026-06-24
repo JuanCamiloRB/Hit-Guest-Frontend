@@ -33,16 +33,22 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Plus, Trash2, Edit2, Building, BedDouble, Bath, Clock, Settings2, Shield } from "lucide-react"
+import { Plus, Trash2, Edit2, Building, BedDouble, Bath, Clock, Settings2, Shield, Zap, Loader2, Info } from "lucide-react"
 import { useFormContext, useFieldArray } from "react-hook-form"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { notifyError } from "@/lib/notify-error"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { listingsService } from "../services/listings-service"
+import { automationService } from "../services/automation-service"
+import { getOverrideFieldSchema } from "../data/automation-definitions"
+import { LISTING_OVERRIDE_STATUS, type PropertyAutomation, type ListingAutomationOverride } from "../types/automation"
+import { AutomationOverrideModal } from "./automations/AutomationOverrideModal"
+import { Badge } from "@/components/ui/badge"
 
 const defaultUnit = {
     name: "",
@@ -75,6 +81,14 @@ const defaultUnit = {
     price: "",
 }
 
+/** A draft override is worth persisting only if it changes something vs. inheriting. */
+function isMeaningfulOverride(o: ListingAutomationOverride): boolean {
+    if (!o.isActive) return true
+    if (o.token) return true
+    const params = o.parameters ?? {}
+    return Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
+}
+
 export function PropertiesUnits() {
     const { control, watch } = useFormContext()
     const propWifiNetwork = watch("wifiNetwork")
@@ -93,6 +107,15 @@ export function PropertiesUnits() {
     const [roomTypes, setRoomTypes] = useState<CatalogOption[]>([])
     const [currencies, setCurrencies] = useState<CatalogOption[]>([])
 
+    // ── Automations overrides state ──────────────────────────────────────────
+    // Active property-level automations of the parent property
+    const [propertyAutomations, setPropertyAutomations] = useState<PropertyAutomation[]>([])
+    // Current listing's overrides map: automationUuid → override (uuid="" = unsaved draft)
+    const [listingOverrides, setListingOverrides] = useState<Record<string, ListingAutomationOverride>>({})
+    const [overridesLoading, setOverridesLoading] = useState(false)
+    // Automation whose override modal is currently open
+    const [editingOverrideAutomation, setEditingOverrideAutomation] = useState<PropertyAutomation | null>(null)
+
     useEffect(() => {
         catalogService.getRoomTypes().then((rooms) => {
             if (rooms.length > 0) setRoomTypes(rooms)
@@ -105,6 +128,17 @@ export function PropertiesUnits() {
     const handleOpenAddDialog = () => {
         setUnitForm({ ...defaultUnit })
         setEditingIndex(null)
+        setListingOverrides({})
+        setPropertyAutomations([])
+        // New listing under an existing property: load automations so the user can
+        // configure override drafts that get created right after the listing is saved.
+        if (propertyUuid) {
+            setOverridesLoading(true)
+            automationService.listGlobal({ propertyUuid })
+                .then(automations => setPropertyAutomations(automations.filter(a => a.isActive)))
+                .catch(() => setPropertyAutomations([]))
+                .finally(() => setOverridesLoading(false))
+        }
         setIsDialogOpen(true)
     }
 
@@ -139,6 +173,30 @@ export function PropertiesUnits() {
         }
         setUnitForm(normalized)
         setEditingIndex(index)
+        setListingOverrides({})
+
+        // Load property automations and listing overrides for existing listings
+        if (propertyUuid && raw.uuid) {
+            setOverridesLoading(true)
+            Promise.all([
+                automationService.listGlobal({ propertyUuid }),
+                automationService.listListingOverrides(raw.uuid),
+            ]).then(([automations, overrides]) => {
+                setPropertyAutomations(automations.filter(a => a.isActive))
+
+                // Build overrides map keyed by property automation uuid
+                const map: Record<string, ListingAutomationOverride> = {}
+                for (const o of overrides) {
+                    map[o.propertyAutomationUuid] = o
+                }
+                setListingOverrides(map)
+            }).catch(() => {
+                setPropertyAutomations([])
+            }).finally(() => setOverridesLoading(false))
+        } else {
+            setPropertyAutomations([])
+        }
+
         setIsDialogOpen(true)
     }
 
@@ -220,9 +278,10 @@ export function PropertiesUnits() {
                     // CREATE new listing
                     const created = await listingsService.create(payload as any)
                     const apiData = created?.data || {}
+                    const newListingUuid = apiData.uuid || created?.uuid
                     const savedUnit = {
                         ...unitForm,
-                        uuid: apiData.uuid || created?.uuid,
+                        uuid: newListingUuid,
                         // Restore price checking root and extra
                         price: apiData.price || apiData.startPrice || apiData.start_price || apiData.extra?.price || apiData.extra?.startPrice || unitForm.price,
                         extra: {
@@ -234,13 +293,38 @@ export function PropertiesUnits() {
                         },
                     }
                     append(savedUnit)
-                    toast.success("Unidad creada correctamente")
+
+                    // ── Requirement A: create override drafts sequentially after the listing ──
+                    const drafts = Object.values(listingOverrides).filter(o => !o.uuid && isMeaningfulOverride(o))
+                    if (newListingUuid && drafts.length > 0) {
+                        const failed: string[] = []
+                        for (const d of drafts) {
+                            try {
+                                await automationService.createListingOverride({
+                                    listingUuid: newListingUuid,
+                                    propertyAutomationUuid: d.propertyAutomationUuid,
+                                    statusRecordId: d.statusRecordId,
+                                    parameters: d.parameters,
+                                    ...(d.token ? { token: d.token } : {}),
+                                })
+                            } catch {
+                                failed.push(d.propertyAutomation?.name ?? d.propertyAutomationUuid)
+                            }
+                        }
+                        if (failed.length > 0) {
+                            toast.warning("Unidad creada, pero algunos overrides fallaron", {
+                                description: `No se configuraron: ${failed.join(", ")}. Edita la unidad para reintentar.`,
+                            })
+                        } else {
+                            toast.success("Unidad y overrides creados correctamente")
+                        }
+                    } else {
+                        toast.success("Unidad creada correctamente")
+                    }
                 }
             } catch (err) {
                 console.error("[PropertiesUnits] Error saving listing:", err)
-                toast.error("Error al guardar la unidad", {
-                    description: "Intenta de nuevo o guarda la propiedad completa.",
-                })
+                notifyError(err, "Error al guardar la unidad. Intenta de nuevo o guarda la propiedad completa.")
                 return
             }
         } else {
@@ -263,7 +347,7 @@ export function PropertiesUnits() {
                 toast.success("Unidad eliminada")
             } catch (err) {
                 console.error("[PropertiesUnits] Error deleting listing:", err)
-                toast.error("Error al eliminar la unidad")
+                notifyError(err, "Error al eliminar la unidad")
                 return
             }
         }
@@ -315,11 +399,19 @@ export function PropertiesUnits() {
                                     </div>
 
                                     <Tabs defaultValue="general" className="w-full">
-                                        <TabsList className="grid grid-cols-4 mb-4">
+                                        {/* AUTOM tab only exists once the property is saved — mirrors the
+                                            property-level Automatización tab behavior */}
+                                        <TabsList className={cn("grid mb-4", propertyUuid ? "grid-cols-5" : "grid-cols-4")}>
                                             <TabsTrigger value="general" className="text-[10px] uppercase font-bold">General</TabsTrigger>
                                             <TabsTrigger value="amenities" className="text-[10px] uppercase font-bold">Dotación</TabsTrigger>
                                             <TabsTrigger value="rooms" className="text-[10px] uppercase font-bold">Muebles</TabsTrigger>
                                             <TabsTrigger value="policies" className="text-[10px] uppercase font-bold">Políticas</TabsTrigger>
+                                            {propertyUuid && (
+                                                <TabsTrigger value="automations" className="text-[10px] uppercase font-bold flex items-center gap-1">
+                                                    <Zap className="h-3 w-3" />
+                                                    Autom.
+                                                </TabsTrigger>
+                                            )}
                                         </TabsList>
 
                                         <TabsContent value="general" className="space-y-4">
@@ -674,6 +766,105 @@ export function PropertiesUnits() {
                                                 )}
                                             </div>
                                         </TabsContent>
+
+                                        {/* ── Automations Overrides Tab (only when the property is saved) ── */}
+                                        {propertyUuid && (
+                                        <TabsContent value="automations" className="space-y-4">
+                                            <div className="flex items-start gap-3 bg-violet-50 border border-violet-100 rounded-xl p-4">
+                                                <Info className="h-4 w-4 text-violet-500 shrink-0 mt-0.5" />
+                                                <div>
+                                                    <p className="text-sm font-semibold text-violet-700">Sobreescribir automatizaciones</p>
+                                                    <p className="text-xs text-violet-600 leading-relaxed">
+                                                        Puedes desactivar o cambiar parámetros específicos para esta unidad. El resto hereda la configuración de la propiedad.
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {overridesLoading ? (
+                                                <div className="flex items-center justify-center py-8 gap-2 text-slate-400">
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    <span className="text-sm">Cargando automatizaciones...</span>
+                                                </div>
+                                            ) : propertyAutomations.length === 0 ? (
+                                                <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                                    <Zap className="h-4 w-4 text-slate-400 shrink-0" />
+                                                    <p className="text-sm text-slate-500">
+                                                        No hay automatizaciones activas en esta propiedad.
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    {!(unitForm as any).uuid && (
+                                                        <p className="text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                                            Configura los overrides ahora; se crearán automáticamente al guardar la unidad.
+                                                        </p>
+                                                    )}
+                                                    {propertyAutomations.map((automation) => {
+                                                        const slug = automation.provider?.parameters?.slug ?? automation.providerName ?? ""
+                                                        const schema = getOverrideFieldSchema(slug)
+                                                        const override = listingOverrides[automation.uuid]
+                                                        const hasOverride = !!override
+                                                        const isInactive = hasOverride && !override.isActive
+                                                        const params = override?.parameters ?? {}
+                                                        const hasParams = hasOverride && override.isActive &&
+                                                            Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
+                                                        const hasToken = hasOverride && override.token != null
+
+                                                        return (
+                                                            <div key={automation.uuid} className={cn(
+                                                                "border rounded-xl p-4 flex items-center justify-between gap-3 transition-all duration-200",
+                                                                isInactive
+                                                                    ? "border-red-200 bg-red-50/40"
+                                                                    : hasParams
+                                                                        ? "border-violet-200 bg-violet-50/30"
+                                                                        : "border-slate-200 bg-slate-50/30"
+                                                            )}>
+                                                                <div className="min-w-0 space-y-0.5">
+                                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                                        <Settings2 className="h-4 w-4 text-slate-400 shrink-0" />
+                                                                        <span className="text-sm font-bold text-slate-800 truncate">{automation.name}</span>
+                                                                        {slug && <span className="text-[10px] text-slate-400">{slug}</span>}
+                                                                        {isInactive && (
+                                                                            <Badge variant="outline" className="text-[9px] h-4 bg-red-50 text-red-600 border-red-200 uppercase font-bold">
+                                                                                Desactivada aquí
+                                                                            </Badge>
+                                                                        )}
+                                                                        {hasParams && (
+                                                                            <Badge variant="outline" className="text-[9px] h-4 bg-violet-50 text-violet-600 border-violet-200 uppercase font-bold">
+                                                                                Personalizada
+                                                                            </Badge>
+                                                                        )}
+                                                                        {hasToken && (
+                                                                            <Badge variant="outline" className="text-[9px] h-4 bg-slate-100 text-slate-600 border-slate-200 uppercase font-bold">
+                                                                                Token
+                                                                            </Badge>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-[11px] text-slate-500">
+                                                                        {hasParams
+                                                                            ? schema.filter(f => params[f.key] != null && params[f.key] !== "").map(f => f.key).join(", ") || "Parámetros sobreescritos"
+                                                                            : isInactive
+                                                                                ? "La automatización se omite para esta unidad."
+                                                                                : "Hereda la configuración de la propiedad."}
+                                                                    </p>
+                                                                </div>
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    className="shrink-0"
+                                                                    onClick={() => setEditingOverrideAutomation(automation)}
+                                                                >
+                                                                    {hasOverride ? "Editar" : "Configurar"}
+                                                                </Button>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+                                        </TabsContent>
+                                        )}
+
                                     </Tabs>
                                 </div>
                             </ScrollArea>
@@ -690,6 +881,24 @@ export function PropertiesUnits() {
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+
+                    {/* Override create/edit modal (live for saved listings, draft otherwise) */}
+                    {editingOverrideAutomation && (
+                        <AutomationOverrideModal
+                            open={!!editingOverrideAutomation}
+                            onClose={() => setEditingOverrideAutomation(null)}
+                            listingUuid={(unitForm as any).uuid ?? ""}
+                            listingName={unitForm.name}
+                            propertyAutomations={propertyAutomations}
+                            override={listingOverrides[editingOverrideAutomation.uuid] ?? null}
+                            lockedPropertyAutomationUuid={editingOverrideAutomation.uuid}
+                            draftMode={!(unitForm as any).uuid}
+                            onSaved={(saved) => {
+                                setListingOverrides(prev => ({ ...prev, [editingOverrideAutomation.uuid]: saved }))
+                                setEditingOverrideAutomation(null)
+                            }}
+                        />
+                    )}
                 </div>
             </CardHeader>
             <CardContent>

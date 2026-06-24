@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { Property, Unit } from "@/types"
 import { PropertyCard } from "./PropertyCard"
 import { Button } from "@/components/ui/button"
@@ -29,9 +29,29 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { propertiesService } from "../services/properties-service"
-import { listingsService } from "../services/listings-service"
 import { apiResponseToFormData } from "../types"
+import { useAuthStore } from "@/lib/store/auth-store"
+
+// ── BFF helper ─────────────────────────────────────────────────────────
+// Calls our own Next.js API routes (same-origin, no CORS preflight).
+async function bffFetch<T = any>(path: string): Promise<T> {
+    const state = useAuthStore.getState()
+    const token = state.user?.token || ""
+
+    const res = await fetch(path, {
+        headers: {
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+    })
+
+    if (!res.ok) {
+        throw new Error(`BFF error ${res.status}`)
+    }
+
+    return res.json()
+}
+
+// ── Component ──────────────────────────────────────────────────────────
 
 export function PropertiesList() {
     const [searchQuery, setSearchQuery] = useState("")
@@ -40,27 +60,29 @@ export function PropertiesList() {
     const [properties, setProperties] = useState<Property[]>([])
     const [units, setUnits] = useState<Unit[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const [isLoadingListings, setIsLoadingListings] = useState(false)
+    const [activeTab, setActiveTab] = useState("properties")
 
-    const fetchData = async () => {
+    // ── Cache refs: avoid re-fetching when switching tabs ──
+    const propertiesCacheRef = useRef<Property[] | null>(null)
+    const listingsCacheRef = useRef<Unit[] | null>(null)
+    const rawPropertiesRef = useRef<any[]>([])
+
+    // ── Fetch properties only (lightweight, for the Properties tab) ──
+    const fetchProperties = useCallback(async () => {
+        // Return cached data if available
+        if (propertiesCacheRef.current) {
+            setProperties(propertiesCacheRef.current)
+            setIsLoading(false)
+            return
+        }
+
         setIsLoading(true)
         try {
-            const apiProperties = await propertiesService.list()
-            
-            // Because the global /listings endpoint may return 500 without a filter,
-            // we fetch units per property instead to ensure stability.
-            // Fetch units sequentially to avoid overwhelming the backend and causing 500 errors
-            const unitsArrays = []
-            for (const p of apiProperties) {
-                try {
-                    const propertyUnits = await listingsService.listByProperty(p.uuid)
-                    unitsArrays.push(propertyUnits)
-                } catch (e) {
-                    console.error(`Failed to fetch units for property ${p.uuid}`, e)
-                    unitsArrays.push([])
-                }
-            }
-            const apiUnits = unitsArrays.flat()
-            
+            const response = await bffFetch<{ data: any[] }>("/api/bff/properties")
+            const apiProperties = response.data || []
+            rawPropertiesRef.current = apiProperties
+
             const convertedProperties: Property[] = apiProperties.map((apiProp, index) => {
                 const formData = apiResponseToFormData(apiProp)
                 return {
@@ -80,8 +102,8 @@ export function PropertiesList() {
                     city: formData.city,
                     state: formData.state,
                     country_id: formData.countryId,
-                    geo_location: formData.latitude && formData.longitude 
-                        ? `${formData.latitude},${formData.longitude}` 
+                    geo_location: formData.latitude && formData.longitude
+                        ? `${formData.latitude},${formData.longitude}`
                         : null,
                     timezone: formData.timezone,
                     status_record_id: formData.statusRecordId,
@@ -97,20 +119,45 @@ export function PropertiesList() {
                     }
                 } as unknown as Property
             })
-            
+
+            propertiesCacheRef.current = convertedProperties
             setProperties(convertedProperties)
-            
+        } catch (error) {
+            console.error("[PropertiesList] Error fetching properties:", error)
+            setProperties([])
+        } finally {
+            setIsLoading(false)
+        }
+    }, [])
+
+    // ── Fetch listings (lazy — only when Alojamientos tab is active) ──
+    const fetchListings = useCallback(async () => {
+        // Return cached data if available
+        if (listingsCacheRef.current) {
+            setUnits(listingsCacheRef.current)
+            return
+        }
+
+        setIsLoadingListings(true)
+        try {
+            // Use the aggregated BFF endpoint — 1 request, server does the N calls
+            const response = await bffFetch<{ properties: any[]; listings: any[] }>(
+                "/api/bff/properties-with-listings",
+            )
+
+            const apiUnits = response.listings || []
+
             const convertedUnits: Unit[] = apiUnits.map((u: any, index) => {
                 const uPrice = Number(u.price || u.start_price || u.startPrice || u.total_price || u.extra?.startPrice || 0)
                 const isActive = (u.statusRecordId === 1 || u.statusRecordId === 6 || u.status_record_id === 1 || u.status_record_id === 6 || u.statusRecord?.id === 1 || u.statusRecord?.id === 6)
-                
+
                 return {
                     id: u.uuid || String(index + 1),
                     uuid: u.uuid,
-                    propertyId: u.propertyUuid || u.property_uuid || u.property_id || "", 
+                    propertyId: u._propertyUuid || u.propertyUuid || u.property_uuid || u.property_id || "",
                     name: u.name,
                     number: u.internalName || u.internal_name || "",
-                    type: "ENTIRE_PLACE", 
+                    type: "ENTIRE_PLACE",
                     capacity: u.extra?.maxOccupancy || u.extra?.max_occupancy || u.maxOccupancy || 2,
                     amenities: [],
                     pricePerNight: uPrice,
@@ -118,19 +165,66 @@ export function PropertiesList() {
                     inheritWifi: false
                 } as Unit
             })
-            setUnits(convertedUnits) 
+
+            listingsCacheRef.current = convertedUnits
+            setUnits(convertedUnits)
+
+            // Also update properties cache if we got them from the aggregated endpoint
+            if (response.properties && !propertiesCacheRef.current) {
+                const apiProperties = response.properties
+                rawPropertiesRef.current = apiProperties
+                const convertedProperties: Property[] = apiProperties.map((apiProp, index) => {
+                    const formData = apiResponseToFormData(apiProp)
+                    return {
+                        id: apiProp.uuid || String(index + 1),
+                        uuid: apiProp.uuid,
+                        user_id: 1,
+                        name: formData.name,
+                        description: formData.description || "",
+                        email: formData.email,
+                        phone: formData.phone,
+                        address: { line1: formData.address, city: formData.city, country: "Colombia" },
+                        address_detail: formData.addressDetail,
+                        city: formData.city,
+                        state: formData.state,
+                        country_id: formData.countryId,
+                        geo_location: formData.latitude && formData.longitude ? `${formData.latitude},${formData.longitude}` : null,
+                        timezone: formData.timezone,
+                        status_record_id: formData.statusRecordId,
+                        status: formData.statusRecordId === 1 || formData.statusRecordId === 6 ? "ACTIVE" : "INACTIVE",
+                        type: String(apiProp.propertyTypeId || apiProp.property_type_id || formData.propertyTypeId || apiProp.extra?.propertyTypeId || apiProp.extra?.type || "102"),
+                        created_at: apiProp.createdAt,
+                        updated_at: apiProp.updatedAt,
+                        extra: {
+                            ...apiProp.extra,
+                            propertyTypeId: formData.propertyTypeId,
+                            type: apiProp.extra?.type || (formData.propertyTypeId === 101 ? "HOTEL" : "BUILDING"),
+                            thumbnailUrl: formData.thumbnailUrl,
+                        }
+                    } as unknown as Property
+                })
+                propertiesCacheRef.current = convertedProperties
+                setProperties(convertedProperties)
+            }
         } catch (error) {
-            console.error("[PropertiesList] Error fetching data:", error)
-            setProperties([])
+            console.error("[PropertiesList] Error fetching listings:", error)
             setUnits([])
         } finally {
-            setIsLoading(false)
+            setIsLoadingListings(false)
         }
-    }
-
-    useEffect(() => {
-        fetchData()
     }, [])
+
+    // ── Initial load: only properties ──
+    useEffect(() => {
+        fetchProperties()
+    }, [fetchProperties])
+
+    // ── Lazy load listings when switching to Alojamientos tab ──
+    useEffect(() => {
+        if (activeTab === "units" && !listingsCacheRef.current) {
+            fetchListings()
+        }
+    }, [activeTab, fetchListings])
 
     const filteredProperties = useMemo(() => {
         return properties.filter((property: Property) => {
@@ -172,17 +266,17 @@ export function PropertiesList() {
                 </Button>
             </div>
 
-            <Tabs defaultValue="properties" className="space-y-6">
+            <Tabs defaultValue="properties" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-2 rounded-2xl border-[1.5px] border-[var(--color-brand-purple)]/20 shadow-xl shadow-brand-purple/5">
                     <TabsList className="grid grid-cols-2 w-full md:w-[400px] bg-slate-100/50 p-1.5 h-12">
-                        <TabsTrigger 
-                            value="properties" 
+                        <TabsTrigger
+                            value="properties"
                             className="gap-2 rounded-lg data-[state=active]:bg-[var(--color-brand-navy)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
                         >
                             <Home className="h-4 w-4" /> Propiedades
                         </TabsTrigger>
-                        <TabsTrigger 
-                            value="units" 
+                        <TabsTrigger
+                            value="units"
                             className="gap-2 rounded-lg data-[state=active]:bg-[var(--color-brand-navy)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
                         >
                             <List className="h-4 w-4" /> Alojamientos
@@ -200,9 +294,9 @@ export function PropertiesList() {
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[140px] h-10 border-slate-200">
-                                <div className="flex items-center gap-2 pointer-events-none">
-                                    <Filter className="h-3 w-3 text-slate-400" />
+                            <SelectTrigger className="w-[180px] shrink-0 h-10 border-slate-200">
+                                <div className="flex items-center gap-2 pointer-events-none min-w-0">
+                                    <Filter className="h-3 w-3 shrink-0 text-slate-400" />
                                     <SelectValue placeholder="Estado" />
                                 </div>
                             </SelectTrigger>
@@ -239,76 +333,83 @@ export function PropertiesList() {
                 </TabsContent>
 
                 <TabsContent value="units" className="space-y-6 outline-none">
-                    <div className="bg-white rounded-2xl border-[1.5px] border-[var(--color-brand-purple)]/10 shadow-2xl shadow-brand-purple/5 overflow-hidden">
-                        <div className="p-5 border-b bg-gradient-to-r from-[var(--color-brand-purple)]/[0.03] to-[var(--color-brand-blue)]/[0.03] flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="bg-[var(--color-brand-purple)] p-2 rounded-lg text-white">
-                                    <LayoutGrid size={20} />
-                                </div>
-                                <h3 className="font-extrabold text-[var(--color-brand-navy)] text-lg">Listado de Alojamientos</h3>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Filtrar por Propiedad:</span>
-                                <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-                                    <SelectTrigger className="w-[200px] h-8 text-xs">
-                                        <SelectValue placeholder="Propiedad" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">Todas las Propiedades</SelectItem>
-                                        {properties.map((p: Property) => (
-                                            <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                    {isLoadingListings ? (
+                        <div className="flex flex-col items-center justify-center py-24 bg-gradient-to-b from-white to-slate-50 rounded-3xl border-[2px] border-dashed border-[var(--color-brand-purple)]/20">
+                            <Loader2 className="h-12 w-12 text-[var(--color-brand-purple)] animate-spin mb-4" />
+                            <p className="text-[var(--color-brand-navy)]/60 font-bold tracking-wide">Cargando alojamientos...</p>
                         </div>
-                        <Table>
-                            <TableHeader className="bg-slate-50/50">
-                                <TableRow className="hover:bg-transparent border-b-[var(--color-brand-purple)]/10">
-                                    <TableHead className="w-[100px] font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Número</TableHead>
-                                    <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Nombre Alojamiento</TableHead>
-                                    <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Propiedad</TableHead>
-                                    <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Estado</TableHead>
-                                    <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Capacidad</TableHead>
-                                    <TableHead className="text-right font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Precio</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredUnits.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-20 text-slate-500">
-                                            No se encontraron alojamientos con estos filtros.
-                                        </TableCell>
+                    ) : (
+                        <div className="bg-white rounded-2xl border-[1.5px] border-[var(--color-brand-purple)]/10 shadow-2xl shadow-brand-purple/5 overflow-hidden">
+                            <div className="p-5 border-b bg-gradient-to-r from-[var(--color-brand-purple)]/[0.03] to-[var(--color-brand-blue)]/[0.03] flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-[var(--color-brand-purple)] p-2 rounded-lg text-white">
+                                        <LayoutGrid size={20} />
+                                    </div>
+                                    <h3 className="font-extrabold text-[var(--color-brand-navy)] text-lg">Listado de Alojamientos</h3>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Filtrar por Propiedad:</span>
+                                    <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+                                        <SelectTrigger className="w-[200px] h-8 text-xs">
+                                            <SelectValue placeholder="Propiedad" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="ALL">Todas las Propiedades</SelectItem>
+                                            {properties.map((p: Property) => (
+                                                <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <Table>
+                                <TableHeader className="bg-slate-50/50">
+                                    <TableRow className="hover:bg-transparent border-b-[var(--color-brand-purple)]/10">
+                                        <TableHead className="w-[100px] font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Número</TableHead>
+                                        <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Nombre Alojamiento</TableHead>
+                                        <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Propiedad</TableHead>
+                                        <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Estado</TableHead>
+                                        <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Capacidad</TableHead>
+                                        <TableHead className="text-right font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Precio</TableHead>
                                     </TableRow>
-                                ) : (
-                                    filteredUnits.map((unit: Unit) => {
-                                        const property = properties.find((p: Property) => p.id === unit.propertyId)
-                                        return (
-                                            <TableRow key={unit.id} className="hover:bg-[var(--color-brand-purple)]/[0.02] transition-colors border-b-[var(--color-brand-purple)]/5">
-                                                <TableCell className="font-bold text-[var(--color-brand-purple)]">{unit.number}</TableCell>
-                                                <TableCell className="font-bold text-[var(--color-brand-navy)]">{unit.name}</TableCell>
-                                                <TableCell className="text-[var(--color-brand-navy)]/60 text-sm font-medium">{property?.name}</TableCell>
-                                                <TableCell>
-                                                    <div className={cn(
-                                                        "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                                                        unit.status === "ACTIVE"
-                                                            ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                                            : "bg-slate-100 text-slate-500 border border-slate-200"
-                                                    )}>
-                                                        {unit.status === "ACTIVE" ? "Activo" : "Inactivo"}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-sm font-medium text-[var(--color-brand-navy)]/70">{unit.capacity} Huéspedes</TableCell>
-                                                <TableCell className="text-right font-extrabold text-[var(--color-brand-navy)]">
-                                                    ${unit.pricePerNight?.toLocaleString()}
-                                                </TableCell>
-                                            </TableRow>
-                                        )
-                                    })
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredUnits.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="text-center py-20 text-slate-500">
+                                                No se encontraron alojamientos con estos filtros.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        filteredUnits.map((unit: Unit) => {
+                                            const property = properties.find((p: Property) => p.id === unit.propertyId)
+                                            return (
+                                                <TableRow key={unit.id} className="hover:bg-[var(--color-brand-purple)]/[0.02] transition-colors border-b-[var(--color-brand-purple)]/5">
+                                                    <TableCell className="font-bold text-[var(--color-brand-purple)]">{unit.number}</TableCell>
+                                                    <TableCell className="font-bold text-[var(--color-brand-navy)]">{unit.name}</TableCell>
+                                                    <TableCell className="text-[var(--color-brand-navy)]/60 text-sm font-medium">{property?.name}</TableCell>
+                                                    <TableCell>
+                                                        <div className={cn(
+                                                            "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                                            unit.status === "ACTIVE"
+                                                                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
+                                                                : "bg-slate-100 text-slate-500 border border-slate-200"
+                                                        )}>
+                                                            {unit.status === "ACTIVE" ? "Activo" : "Inactivo"}
+                                                        </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-sm font-medium text-[var(--color-brand-navy)]/70">{unit.capacity} Huéspedes</TableCell>
+                                                    <TableCell className="text-right font-extrabold text-[var(--color-brand-navy)]">
+                                                        ${unit.pricePerNight?.toLocaleString()}
+                                                    </TableCell>
+                                                </TableRow>
+                                            )
+                                        })
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
                 </TabsContent>
             </Tabs>
         </div>

@@ -26,6 +26,7 @@ import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { propertiesService } from "../services/properties-service"
 import { toast } from "sonner"
+import { notifyError } from "@/lib/notify-error"
 
 interface PropertyCardProps {
     property: Property
@@ -92,7 +93,7 @@ export function PropertyCard({ property, onStatusChange }: PropertyCardProps) {
         } catch (err) {
             // Revert on error
             setIsActive(prevIsActive)
-            toast.error("No se pudo cambiar el estado")
+            notifyError(err, "No se pudo cambiar el estado")
         } finally {
             setIsToggling(false)
         }
