@@ -89,43 +89,11 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
                 value: "tufirma",
                 label: "TuFirma",
                 description: "Firma electrónica con validez legal en Colombia.",
-                parametersSchema: [
-                    {
-                        key: "arrival_instructions",
-                        label: "Instrucciones de llegada",
-                        type: "textarea",
-                        required: false,
-                        placeholder: "Ej: El edificio está en la Calle 10 #5-23. Anuncia tu llegada en portería...",
-                    },
-                    {
-                        key: "access_codes",
-                        label: "Códigos de acceso",
-                        type: "textarea",
-                        required: false,
-                        placeholder: "Ej: Puerta principal: 4582# — Ascensor: piso 7",
-                    },
-                    {
-                        key: "wifi_name",
-                        label: "Nombre de la red WiFi",
-                        type: "text",
-                        required: false,
-                        placeholder: "Ej: Apto701_5G",
-                    },
-                    {
-                        key: "wifi_password",
-                        label: "Clave del WiFi",
-                        type: "text",
-                        required: false,
-                        placeholder: "Ej: bienvenido2026",
-                    },
-                    {
-                        key: "house_rules",
-                        label: "Reglas de la casa",
-                        type: "textarea",
-                        required: false,
-                        placeholder: "Ej: No fumar. No fiestas. Check-out antes de las 11 am...",
-                    },
-                ],
+                // Per the providers spec, Digital Contract (order 3) takes NO parameters —
+                // TuFirma uses HIT's internal config. The previous welcome-content fields
+                // (arrival instructions, access codes, wifi, house rules) were orphaned
+                // (never read anywhere) and belong at the property/listing level, not here.
+                parametersSchema: [],
             },
             {
                 value: "hitguest_signature",
