@@ -5,6 +5,7 @@
  */
 
 export type ShortcodeKey =
+    | "reservation_code"
     | "guest_first_name"
     | "guest_last_name"
     | "guest_identification_type"
@@ -22,6 +23,7 @@ export type ShortcodeKey =
 
 /** Human-friendly Spanish labels for each shortcode (UI only). */
 export const SHORTCODE_LABELS: Record<string, string> = {
+    reservation_code: "Código de reserva",
     guest_first_name: "Nombre del huésped",
     guest_last_name: "Apellido del huésped",
     guest_identification_type: "Tipo de documento",
