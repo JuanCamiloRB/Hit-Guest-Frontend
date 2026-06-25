@@ -49,6 +49,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [docVerified, setDocVerified] = useState(false)
     const [countryOptions, setCountryOptions] = useState<Array<{ id: number; label: string }>>([])
+    const [countriesRaw, setCountriesRaw] = useState<any[]>([])
     const [tripReasonOptions, setTripReasonOptions] = useState<Array<{ id: number; label: string }>>([])
     const [identTypes, setIdentTypes] = useState<IdentificationTypeOption[]>([])
 
@@ -74,14 +75,14 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
         const fetchSchema = async () => {
             try {
                 const savedSchema = session?.formSchema as unknown as GuestFormSchemaResponse | undefined
-                const [countries, reasons, idTypes] = await Promise.all([
+                // Identification types are loaded separately, per the document country (ISO2).
+                const [countries, reasons] = await Promise.all([
                     new CatalogService().getCountries(),
                     new CatalogService().getReasonsForTrip(),
-                    new CatalogService().getIdentificationTypesV2(),
                 ])
+                setCountriesRaw(countries || [])
                 setCountryOptions((countries || []).map((c: any) => ({ id: c.id, label: c.name })))
                 setTripReasonOptions((reasons || []).map((r: any) => ({ id: r.id, label: r.nameTranslations?.es || r.name })))
-                setIdentTypes(idTypes || [])
 
                 // The provider-declared dynamic fields (v4.6) come from the /form endpoint,
                 // which the identify session does NOT carry — fetch it and merge userFields.
@@ -161,6 +162,20 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
         
         fetchSchema()
     }, [reservationUuid, guestUuid, basePath, router, setForm])
+
+    // Identification types are country-specific: load them per the selected document
+    // country (ISO2), e.g. /catalogs/identification-types?country=CO. Reloads on change.
+    const documentCountryIso2 = countriesRaw.find(
+        (c) => Number(c.id) === Number(form.documentCountryId)
+    )?.extra?.iso2 as string | undefined
+    useEffect(() => {
+        if (!documentCountryIso2) return
+        let active = true
+        new CatalogService().getIdentificationTypesV2(documentCountryIso2)
+            .then((types) => { if (active) setIdentTypes(types || []) })
+            .catch(() => {})
+        return () => { active = false }
+    }, [documentCountryIso2])
 
     const updateField = (field: keyof GuestFormData, value: any) => {
         setForm(prev => ({ ...prev, [field]: value }))

@@ -51,6 +51,8 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
     const [isLoadingSchema, setIsLoadingSchema] = useState(true)
     const [docVerified, setDocVerified] = useState(false)
     const [countryOptions, setCountryOptions] = useState<Array<{ id: number; label: string }>>([])
+    // Raw countries kept so we can resolve a country id → ISO2 for the identification-types query.
+    const [countriesRaw, setCountriesRaw] = useState<any[]>([])
     const [tripReasonOptions, setTripReasonOptions] = useState<Array<{ id: number; label: string }>>([])
     const [identTypes, setIdentTypes] = useState<IdentificationTypeOption[]>([])
 
@@ -79,15 +81,15 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             try {
                 const catalogs = new CatalogService()
 
-                // Load catalogs independently — these must never fail because the schema fetch failed
-                const [countries, reasons, idTypes] = await Promise.all([
+                // Load catalogs independently — these must never fail because the schema fetch failed.
+                // Identification types are loaded separately, per the document country (ISO2).
+                const [countries, reasons] = await Promise.all([
                     catalogs.getCountries(),
                     catalogs.getReasonsForTrip(),
-                    catalogs.getIdentificationTypesV2(),
                 ])
+                setCountriesRaw(countries || [])
                 setCountryOptions((countries || []).map((c: any) => ({ id: c.id, label: c.name })))
                 setTripReasonOptions((reasons || []).map((r: any) => ({ id: r.id, label: r.nameTranslations?.es || r.name })))
-                setIdentTypes(idTypes || [])
 
                 // Base schema from the identify session (has prefilledData + legacy
                 // required/optional fields). The provider-declared dynamic fields (v4.6)
@@ -180,6 +182,21 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
         fetchSchema()
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [reservationUuid, guestUuid, basePath])
+
+    // Identification types are country-specific: load them per the selected document
+    // country (ISO2), e.g. /catalogs/identification-types?country=CO. Reloads when the
+    // guest changes "País del documento".
+    const documentCountryIso2 = countriesRaw.find(
+        (c) => Number(c.id) === Number(form.documentCountryId)
+    )?.extra?.iso2 as string | undefined
+    useEffect(() => {
+        if (!documentCountryIso2) return
+        let active = true
+        new CatalogService().getIdentificationTypesV2(documentCountryIso2)
+            .then((types) => { if (active) setIdentTypes(types || []) })
+            .catch(() => {})
+        return () => { active = false }
+    }, [documentCountryIso2])
 
     const toggleSection = (key: keyof typeof expanded) => {
         setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
