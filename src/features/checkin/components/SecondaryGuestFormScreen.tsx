@@ -84,16 +84,20 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                 setCountryOptions((countries || []).map((c: any) => ({ id: c.id, label: c.name })))
                 setTripReasonOptions((reasons || []).map((r: any) => ({ id: r.id, label: r.nameTranslations?.es || r.name })))
 
-                // The provider-declared dynamic fields (v4.6) come from the /form endpoint,
-                // which the identify session does NOT carry — fetch it and merge userFields.
+                // /form is the authoritative post-verification source: rich prefilledData
+                // (name, lastname, dateOfBirth, document, …) + provider userFields. Merge it
+                // over the identify-session schema (/form wins), fall back to session on error.
                 let resSchema: GuestFormSchemaResponse | null = savedSchema ?? null
-                // Only hit /form when the session schema didn't already carry userFields.
-                if (guestUuid && !resSchema?.userFields?.length) {
+                if (guestUuid) {
                     try {
                         const formSchema = await checkinService.getGuestFormSchema(reservationUuid, guestUuid)
                         if (formSchema) {
                             resSchema = resSchema
-                                ? { ...resSchema, userFields: formSchema.userFields ?? resSchema.userFields }
+                                ? {
+                                    ...resSchema,
+                                    userFields: formSchema.userFields ?? resSchema.userFields,
+                                    prefilledData: { ...(resSchema.prefilledData ?? {}), ...(formSchema.prefilledData ?? {}) },
+                                }
                                 : formSchema
                         }
                     } catch {

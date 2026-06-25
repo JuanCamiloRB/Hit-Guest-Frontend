@@ -97,20 +97,23 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                 // so always fetch /form and merge its userFields in. Falls back to the
                 // session schema if /form is unavailable.
                 let resSchema: GuestFormSchemaResponse | null = session?.formSchema as unknown as GuestFormSchemaResponse ?? null
-                // Only hit /form when the session schema didn't already carry userFields
-                // (so we don't pay a round-trip — or a 404 if /form isn't live yet — when
-                // /identify already provided them).
-                if (!resSchema?.userFields?.length) {
-                    try {
-                        const formSchema = await checkinService.getGuestFormSchema(reservationUuid, guestUuid)
-                        if (formSchema) {
-                            resSchema = resSchema
-                                ? { ...resSchema, userFields: formSchema.userFields ?? resSchema.userFields }
-                                : formSchema
-                        }
-                    } catch {
-                        console.warn("[GuestFormScreen] /form endpoint unavailable; using identify session schema")
+                // /form is the authoritative post-verification source: it carries the rich
+                // prefilledData (name, lastname, dateOfBirth, document, …) and the provider
+                // userFields. Merge it over the identify-session schema (/form wins), falling
+                // back to the session if /form is unavailable.
+                try {
+                    const formSchema = await checkinService.getGuestFormSchema(reservationUuid, guestUuid)
+                    if (formSchema) {
+                        resSchema = resSchema
+                            ? {
+                                ...resSchema,
+                                userFields: formSchema.userFields ?? resSchema.userFields,
+                                prefilledData: { ...(resSchema.prefilledData ?? {}), ...(formSchema.prefilledData ?? {}) },
+                            }
+                            : formSchema
                     }
+                } catch {
+                    console.warn("[GuestFormScreen] /form endpoint unavailable; using identify session schema")
                 }
 
                 if (resSchema) {
