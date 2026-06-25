@@ -8,7 +8,7 @@ export default async function CheckinByUuidPage({
     searchParams,
 }: {
     params: Promise<{ reference: string }>
-    searchParams: Promise<{ verificationSessionId?: string; status?: string }>
+    searchParams: Promise<{ verificationSessionId?: string; status?: string; guest?: string; guestUuid?: string }>
 }) {
     const resolvedParams = await params;
     const resolvedSearch = await searchParams;
@@ -16,12 +16,15 @@ export default async function CheckinByUuidPage({
     // Defensive: Didit (or the backend) sometimes redirects to
     // /checkin/{reservationUuid}?verificationSessionId=...&status=... instead of
     // the dedicated /checkin/didit/callback route. Handle that pattern here so the
-    // guest isn't dropped on the welcome screen mid-verification.
+    // guest isn't dropped on the welcome screen mid-verification. The reservation is
+    // in the path, so the flow resumes even if localStorage context was lost (mobile).
     if (resolvedSearch.verificationSessionId) {
         return (
             <DiditCallbackClient
                 verificationSessionId={resolvedSearch.verificationSessionId}
                 status={resolvedSearch.status ?? ""}
+                reservationUuid={resolvedParams.reference}
+                guestUuid={resolvedSearch.guest ?? resolvedSearch.guestUuid}
             />
         )
     }

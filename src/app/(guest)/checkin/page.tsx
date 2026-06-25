@@ -16,7 +16,14 @@ import { DiditCallbackClient } from "@/features/checkin/components/DiditCallback
 export default async function CheckinCallbackFallbackPage({
     searchParams,
 }: {
-    searchParams: Promise<{ verificationSessionId?: string; status?: string }>
+    searchParams: Promise<{
+        verificationSessionId?: string
+        status?: string
+        reservation?: string
+        reservationUuid?: string
+        guest?: string
+        guestUuid?: string
+    }>
 }) {
     const resolved = await searchParams
 
@@ -25,6 +32,8 @@ export default async function CheckinCallbackFallbackPage({
             <DiditCallbackClient
                 verificationSessionId={resolved.verificationSessionId}
                 status={resolved.status ?? ""}
+                reservationUuid={resolved.reservation ?? resolved.reservationUuid}
+                guestUuid={resolved.guest ?? resolved.guestUuid}
             />
         )
     }
