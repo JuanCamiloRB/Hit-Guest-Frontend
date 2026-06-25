@@ -7,9 +7,10 @@ import { ArrowLeft, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, Mai
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { checkinService } from "@/features/checkin/services/checkin-service"
+import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { SignaturePad } from "@/features/checkin/components/SignaturePad"
-import type { GuestFormData, CompleteMainGuestPayload, SigningProvider } from "@/features/checkin/types/checkin"
+import type { GuestFormData, CompleteMainGuestPayload, CompleteSecondaryGuestPayload, SigningProvider } from "@/features/checkin/types/checkin"
 
 interface RenderedDocument {
     uuid: string
@@ -21,8 +22,13 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
     const router = useRouter()
     const searchParams = useSearchParams()
     const guestUuid = searchParams.get("guest_uuid") || ""
+    const { load: loadSession } = useIdentifySession(reservationUuid)
 
     const [isLoading, setIsLoading] = useState(true)
+    // The contract signature is MAIN-GUEST ONLY (/main/sign is reservation-level).
+    // Secondary guests must never sign — they'd overwrite the main guest's signature.
+    // Default true preserves behavior until we confirm from the portal.
+    const [isMainGuest, setIsMainGuest] = useState(true)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [submitStatus, setSubmitStatus] = useState("")
     const [documents, setDocuments] = useState<RenderedDocument[]>([])
@@ -36,7 +42,8 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
 
     // Native HIT Guest signature → show the canvas. tufirma/null → no canvas.
     // Backend sends the slug "hitguest_signature"; tolerate "hitguest" too.
-    const needsSignature = !!signingProvider && signingProvider.includes("hitguest")
+    // Only the main guest signs — secondary guests never see the canvas.
+    const needsSignature = isMainGuest && !!signingProvider && signingProvider.includes("hitguest")
 
     useEffect(() => {
         if (!guestUuid) {
@@ -55,6 +62,13 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 // yet (older version), default to native signature to preserve the
                 // current behavior.
                 const contractInfo = portal.contract
+
+                // Determine whether THIS guest is the main guest (authoritative: portal
+                // pivot). Secondary guests must not sign the contract. Fall back to the
+                // identify session, then to true (preserve behavior) if unknown.
+                const me = portal.registeredGuests?.find(g => g.uuid === guestUuid)
+                const sessionMain = loadSession(guestUuid)?.isMainGuest
+                setIsMainGuest(me?.isMain ?? sessionMain ?? true)
 
                 // Already completed → nothing to sign; send the guest to the success view,
                 // where the signed contract is available to download.
@@ -87,10 +101,9 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
         loadDocuments()
     }, [reservationUuid, guestUuid, basePath, router])
 
-    const buildPayload = (form: GuestFormData): CompleteMainGuestPayload => {
+    const buildProfileExtra = (form: GuestFormData): CompleteSecondaryGuestPayload => {
         const formAny = form as any
         return {
-            guestUuid,
             profile: {
                 name: form.name,
                 lastname: form.lastname,
@@ -115,6 +128,11 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             },
         }
     }
+
+    const buildPayload = (form: GuestFormData): CompleteMainGuestPayload => ({
+        guestUuid,
+        ...buildProfileExtra(form),
+    })
 
     /**
      * Wait for backend to confirm identity verification (Didit webhook processing).
@@ -177,11 +195,14 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 throw new Error("No se encontraron los datos del formulario.")
             }
             const form: GuestFormData = JSON.parse(rawForm)
-            const payload = buildPayload(form)
 
-            // v4.4: native signature is saved on its own endpoint BEFORE completing.
-            // tufirma/null → no signature step here.
+            // Main guest: native signature (if any) then /main/complete.
+            // Secondary guest: never signs — complete via /secondary/{uuid}/complete so
+            // we don't overwrite the main guest's signature.
             const submitAll = async () => {
+                if (!isMainGuest) {
+                    return checkinService.completeSecondaryGuest(reservationUuid, guestUuid, buildProfileExtra(form))
+                }
                 if (needsSignature && signature && contractDocUuid) {
                     await checkinService.signMainGuest(reservationUuid, {
                         guestUuid,
@@ -189,7 +210,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                         signatureImage: signature,
                     })
                 }
-                return checkinService.completeMainGuest(reservationUuid, payload)
+                return checkinService.completeMainGuest(reservationUuid, buildPayload(form))
             }
 
             let lastError: any = null
@@ -242,12 +263,14 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
 
             localStorage.removeItem(formKey)
             localStorage.removeItem(`checkin-identify-${reservationUuid}`)
-            localStorage.setItem(`checkin-main-done-${reservationUuid}`, 'true')
+            // Only the main guest's completion flips the reservation-level "main done" flag.
+            if (isMainGuest) localStorage.setItem(`checkin-main-done-${reservationUuid}`, 'true')
 
             // tufirma: the contract is signed externally (email). The main guest's
             // part is registered, but the contract stays "pending_signature" until the
-            // guest signs in TuFirma. Surface this on the success screen.
-            const pendingSignature = completeResult?.status === "pending_signature"
+            // guest signs in TuFirma. Surface this on the success screen. (Secondary
+            // guests never have a pending signature.)
+            const pendingSignature = isMainGuest && (completeResult as any)?.status === "pending_signature"
             const sigFlag = pendingSignature ? "&contract_pending=1" : ""
 
             const portal = await checkinService.getPortal(reservationUuid)
@@ -259,8 +282,12 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 const pending = portal.reservation.totalGuestsAllowed - portal.progress.completed
                 toast.success(pendingSignature
                     ? "Tu registro quedó listo. Revisa tu correo de TuFirma para firmar el contrato."
-                    : "Tu registro está completo. Los acompañantes ya pueden iniciar su registro.")
-                router.push(`${basePath}/success?guest_uuid=${guestUuid}&main_done=true&pending=${pending}${sigFlag}`)
+                    : isMainGuest
+                        ? "Tu registro está completo. Los acompañantes ya pueden iniciar su registro."
+                        : "Tu registro está completo.")
+                // main_done drives the "main guest finished" messaging — only for the main guest.
+                const mainDoneFlag = isMainGuest ? "&main_done=true" : ""
+                router.push(`${basePath}/success?guest_uuid=${guestUuid}${mainDoneFlag}&pending=${pending}${sigFlag}`)
             }
         } catch (e: any) {
             if (e.status === 409) {
@@ -301,10 +328,12 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
 
             <div className="space-y-2">
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
-                    Documentos y Firma
+                    {needsSignature ? "Documentos y Firma" : "Documentos del Contrato"}
                 </h1>
                 <p className="text-slate-500 text-sm">
-                    Revisa los documentos de tu estadía y firma para finalizar.
+                    {needsSignature
+                        ? "Revisa los documentos de tu estadía y firma para finalizar."
+                        : "Revisa los documentos de tu estadía y acepta para finalizar."}
                 </p>
             </div>
 
