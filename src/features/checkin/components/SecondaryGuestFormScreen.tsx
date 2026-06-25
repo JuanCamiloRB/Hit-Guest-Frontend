@@ -73,24 +73,36 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
 
         const fetchSchema = async () => {
             try {
-                // Use formSchema from identify session (localStorage) instead of API call
-                const savedSchema = session?.formSchema
-                const resSchemaPromise = savedSchema
-                    ? Promise.resolve(savedSchema as unknown as GuestFormSchemaResponse)
-                    : checkinService.getGuestFormSchema(reservationUuid, guestUuid)
-
-                const [resSchema, countries, reasons, idTypes] = await Promise.all([
-                    resSchemaPromise,
+                const savedSchema = session?.formSchema as unknown as GuestFormSchemaResponse | undefined
+                const [countries, reasons, idTypes] = await Promise.all([
                     new CatalogService().getCountries(),
                     new CatalogService().getReasonsForTrip(),
                     new CatalogService().getIdentificationTypesV2(),
                 ])
-                setSchema(resSchema)
                 setCountryOptions((countries || []).map((c: any) => ({ id: c.id, label: c.name })))
                 setTripReasonOptions((reasons || []).map((r: any) => ({ id: r.id, label: r.nameTranslations?.es || r.name })))
                 setIdentTypes(idTypes || [])
-                
-                if (resSchema.prefilledData) {
+
+                // The provider-declared dynamic fields (v4.6) come from the /form endpoint,
+                // which the identify session does NOT carry — fetch it and merge userFields.
+                let resSchema: GuestFormSchemaResponse | null = savedSchema ?? null
+                // Only hit /form when the session schema didn't already carry userFields.
+                if (guestUuid && !resSchema?.userFields?.length) {
+                    try {
+                        const formSchema = await checkinService.getGuestFormSchema(reservationUuid, guestUuid)
+                        if (formSchema) {
+                            resSchema = resSchema
+                                ? { ...resSchema, userFields: formSchema.userFields ?? resSchema.userFields }
+                                : formSchema
+                        }
+                    } catch {
+                        console.warn("[SecondaryGuestFormScreen] /form endpoint unavailable; using identify session schema")
+                    }
+                }
+                setSchema(resSchema)
+
+                const prefilledData = resSchema?.prefilledData
+                if (prefilledData) {
                     // Also check for OCR data saved by VerifyScreen's handleOcrConfirm
                     let ocrOverrides: Record<string, any> = {}
                     try {
@@ -124,7 +136,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                     setForm(prev => {
                         const updated = { ...prev } as any
                         // prefilledData from backend: apply when field is empty OR still at its hardcoded default
-                        Object.entries(resSchema.prefilledData).forEach(([k, v]) => {
+                        Object.entries(prefilledData).forEach(([k, v]) => {
                             if (v !== undefined && v !== null && v !== "") {
                                 const isEmpty = updated[k] === "" || updated[k] === null || updated[k] === undefined
                                 const isAtDefault = k in HARDCODED_DEFAULTS && updated[k] == HARDCODED_DEFAULTS[k]
@@ -199,10 +211,12 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
         (docVerified || form.documentImage1 !== null) &&
         (docVerified || isSingleSidedDoc || form.documentImage2 !== null)
 
+    // A missing schema must not permanently disable the button — the backend
+    // validates required fields on submit (and surfaces them via notifyError).
     const dynamicValid = schema?.requiredFields.every(key => {
         const val = form[key as keyof GuestFormData]
         return val !== null && val !== "" && val !== undefined
-    }) ?? false
+    }) ?? true
 
     const userFieldsValid = areDynamicFieldsValid(dynamicFields, dynamicValues)
 

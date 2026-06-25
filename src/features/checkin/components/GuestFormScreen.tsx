@@ -89,13 +89,25 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                 setTripReasonOptions((reasons || []).map((r: any) => ({ id: r.id, label: r.nameTranslations?.es || r.name })))
                 setIdentTypes(idTypes || [])
 
-                // Use formSchema from identify session (localStorage) — the /form endpoint doesn't exist
+                // Base schema from the identify session (has prefilledData + legacy
+                // required/optional fields). The provider-declared dynamic fields (v4.6)
+                // come from the /form endpoint, which the identify session does NOT carry —
+                // so always fetch /form and merge its userFields in. Falls back to the
+                // session schema if /form is unavailable.
                 let resSchema: GuestFormSchemaResponse | null = session?.formSchema as unknown as GuestFormSchemaResponse ?? null
-                if (!resSchema) {
+                // Only hit /form when the session schema didn't already carry userFields
+                // (so we don't pay a round-trip — or a 404 if /form isn't live yet — when
+                // /identify already provided them).
+                if (!resSchema?.userFields?.length) {
                     try {
-                        resSchema = await checkinService.getGuestFormSchema(reservationUuid, guestUuid)
+                        const formSchema = await checkinService.getGuestFormSchema(reservationUuid, guestUuid)
+                        if (formSchema) {
+                            resSchema = resSchema
+                                ? { ...resSchema, userFields: formSchema.userFields ?? resSchema.userFields }
+                                : formSchema
+                        }
                     } catch {
-                        console.warn("[GuestFormScreen] Form schema not available from API, using defaults")
+                        console.warn("[GuestFormScreen] /form endpoint unavailable; using identify session schema")
                     }
                 }
 
@@ -217,10 +229,12 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
         (docVerified || form.documentImage1 !== null) &&
         (docVerified || isPassport || form.documentImage2 !== null)
 
+    // If the schema didn't load we don't block the button — the backend validates
+    // required fields on submit (and surfaces them via notifyError).
     const dynamicValid = schema?.requiredFields.every(key => {
         const val = form[key as keyof GuestFormData]
         return val !== null && val !== "" && val !== undefined
-    }) ?? false
+    }) ?? true
 
     const userFieldsValid = areDynamicFieldsValid(dynamicFields, dynamicValues)
 
