@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
+  <title>Complete your check-in</title>
+  <!--[if mso]>
+  <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
+  <![endif]-->
+  <style>
+    /* Reset */
+    body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+    table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    img { -ms-interpolation-mode: bicubic; border: 0; height: auto; line-height: 100%; outline: none; text-decoration: none; }
+    body { margin: 0 !important; padding: 0 !important; width: 100% !important; background-color: #F9FBFA; }
+    a { color: #9D4CF2; }
+    .btn:hover { background-color: #8a3ce0 !important; }
+    @media screen and (max-width: 600px) {
+      .container { width: 100% !important; }
+      .px { padding-left: 24px !important; padding-right: 24px !important; }
+      .btn-a { display: block !important; }
+    }
+  </style>
+</head>
+<body style="margin:0; padding:0; background-color:#F9FBFA;">
+  <!-- Preheader (hidden) -->
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0; mso-hide:all;">
+    Complete the registration for your stay at {{property_name}} — it only takes a few minutes.
+  </div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F9FBFA;">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+
+        <table role="presentation" class="container" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:600px; background-color:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 1px 4px rgba(34,39,85,0.08);">
+
+          <!-- Header -->
+          <tr>
+            <td align="center" style="background-color:#222755; padding:28px 32px;">
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-family:'Segoe UI',Arial,Helvetica,sans-serif; font-size:24px; font-weight:800; letter-spacing:1px; color:#ffffff;">
+                    HI<span style="color:#9D4CF2;">T</span>&nbsp;GUEST
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Body -->
+          <tr>
+            <td class="px" style="padding:40px 48px 8px 48px; font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+              <p style="margin:0 0 20px 0; font-size:20px; font-weight:700; color:#222755;">
+                Hi {{guest_first_name}} 👋
+              </p>
+              <p style="margin:0 0 18px 0; font-size:16px; line-height:26px; color:#3a3f63;">
+                We are getting your arrival at <strong>{{property_name}}</strong> ready.
+              </p>
+              <p style="margin:0 0 18px 0; font-size:16px; line-height:26px; color:#3a3f63;">
+                To enable access to the accommodation, we need you to complete the
+                information for all guests using our registration link 👇
+              </p>
+            </td>
+          </tr>
+
+          <!-- CTA button -->
+          <tr>
+            <td class="px" align="center" style="padding:8px 48px 8px 48px;">
+              <!--[if mso]>
+              <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="{{checkin_link}}" style="height:52px;v-text-anchor:middle;width:300px;" arcsize="25%" stroke="f" fillcolor="#9D4CF2">
+                <w:anchorlock/>
+                <center style="color:#ffffff;font-family:Arial,sans-serif;font-size:16px;font-weight:bold;">Complete my registration</center>
+              </v:roundrect>
+              <![endif]-->
+              <!--[if !mso]><!-- -->
+              <a class="btn btn-a" href="{{checkin_link}}" target="_blank"
+                 style="background-color:#9D4CF2; color:#ffffff; display:inline-block; font-family:'Segoe UI',Arial,Helvetica,sans-serif; font-size:16px; font-weight:700; line-height:52px; text-align:center; text-decoration:none; width:300px; border-radius:14px; box-shadow:0 4px 12px rgba(157,76,242,0.30);">
+                Completar mi registro
+              </a>
+              <!--<![endif]-->
+            </td>
+          </tr>
+
+          <!-- Plain link fallback -->
+          <tr>
+            <td class="px" align="center" style="padding:14px 48px 8px 48px; font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+              <p style="margin:0; font-size:12px; line-height:18px; color:#8a8fab;">
+                Button not working? Copy and paste this link:<br>
+                <a href="{{checkin_link}}" target="_blank" style="color:#5467FA; word-break:break-all;">{{checkin_link}}</a>
+              </p>
+            </td>
+          </tr>
+
+          <!-- Reassurance -->
+          <tr>
+            <td class="px" style="padding:20px 48px 8px 48px; font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F4F1FE; border-radius:12px;">
+                <tr>
+                  <td style="padding:14px 18px; font-size:14px; line-height:22px; color:#3a3f63;">
+                    🔒 This link is completely secure. Your data is protected with
+                    end-to-end encryption and is only used for your check-in.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- After registration -->
+          <tr>
+            <td class="px" style="padding:18px 48px 36px 48px; font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+              <p style="margin:0; font-size:16px; line-height:26px; color:#3a3f63;">
+                After completing your registration, you will receive the access instructions for the accommodation. ✨
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td align="center" style="background-color:#F9FBFA; padding:24px 32px; border-top:1px solid #ECEEF5; font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+              <p style="margin:0 0 4px 0; font-size:13px; font-weight:700; color:#222755;">HIT Guest</p>
+              <p style="margin:0; font-size:12px; line-height:18px; color:#9aa0b8;">
+                Online check-in for your stay. This email was sent because you have an active reservation.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
