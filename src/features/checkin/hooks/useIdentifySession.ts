@@ -39,6 +39,20 @@ export function useIdentifySession(reservationUuid: string) {
         }
     }, [reservationUuid])
 
+    /**
+     * Persists a pre-built session — used to RESUME an existing (incomplete) guest
+     * when /identify is rejected with "document already registered" but we recovered
+     * the guest + verification state from the portal.
+     */
+    const saveRaw = useCallback((data: IdentifySessionData) => {
+        try {
+            localStorage.setItem(getStorageKey(reservationUuid, data.guestUuid), JSON.stringify(data))
+            localStorage.setItem(getStorageKey(reservationUuid), JSON.stringify(data))
+        } catch (e) {
+            console.error("Failed to save resume session:", e)
+        }
+    }, [reservationUuid])
+
     const load = useCallback((guestUuid?: string): IdentifySessionData | null => {
         try {
             const key = getStorageKey(reservationUuid, guestUuid)
@@ -76,5 +90,5 @@ export function useIdentifySession(reservationUuid: string) {
         return load()?.formSchema ?? null
     }, [load])
 
-    return { save, load, clear, getGuestUuid, getVerification, getFormSchema }
+    return { save, saveRaw, load, clear, getGuestUuid, getVerification, getFormSchema }
 }

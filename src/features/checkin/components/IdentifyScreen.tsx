@@ -11,7 +11,7 @@ import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
 import { CatalogService } from "@/features/auth/services/catalog-service"
-import type { IdentifyPayload } from "@/features/checkin/types/checkin"
+import type { IdentifyPayload, IdentifySessionData, VerificationDirective } from "@/features/checkin/types/checkin"
 
 interface IdentifyScreenProps {
     reservationUuid: string
@@ -22,7 +22,7 @@ interface IdentifyScreenProps {
 
 export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, isSecondary = false }: IdentifyScreenProps) {
     const router = useRouter()
-    const { save } = useIdentifySession(reservationUuid)
+    const { save, saveRaw } = useIdentifySession(reservationUuid)
 
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
@@ -79,6 +79,61 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
         form.nationalityId !== "" &&
         form.identificationTypeId !== "" &&
         form.identificationNumber.trim().length > 2
+
+    // Detects the backend's "document already registered in this reservation" error.
+    const isDuplicateDocError = (e: any): boolean => {
+        if (e?.status === 409) return true
+        const blob = `${e?.message ?? ""} ${JSON.stringify(e?.errors ?? {})}`.toLowerCase()
+        return blob.includes("registrad") || blob.includes("already registered") || blob.includes("already associated")
+    }
+
+    /**
+     * Resume an existing (incomplete) guest when /identify is rejected because their
+     * document is already registered — e.g. they did biometrics, the Didit callback
+     * failed, and they came back. Looks the guest up in the portal and routes them to
+     * success (if done) or rebuilds a session and continues to verify.
+     */
+    const resumeExistingGuest = async (payload: IdentifyPayload): Promise<boolean> => {
+        try {
+            const portal = await checkinService.getPortal(reservationUuid)
+            const norm = (s?: string) => (s ?? "").trim().toLowerCase()
+            const match = portal.registeredGuests?.find(g =>
+                payload.isMainGuest
+                    ? g.isMain
+                    : norm(g.name) === norm(payload.name) && norm(g.lastname) === norm(payload.lastname)
+            )
+            if (!match) return false
+
+            if (match.isCompleted) {
+                toast.success("Ya completaste tu check-in anteriormente")
+                router.push(`${basePath}/success?guest_uuid=${match.uuid}`)
+                return true
+            }
+
+            // Rebuild a session from the portal verification state so VerifyScreen can resume.
+            const verif: any = (match as any).verification ?? {}
+            const directive: VerificationDirective = verif.verificationUrl
+                ? { type: "session", subtype: "biometric", url: verif.verificationUrl }
+                : { type: "document_upload" }
+            const data: IdentifySessionData = {
+                guestUuid: match.uuid,
+                guestName: match.name,
+                guestLastname: match.lastname,
+                isMainGuest: match.isMain,
+                isCheckinCompleted: false,
+                verification: directive,
+                formSchema: { requiredFields: [], optionalFields: [], prefilledData: {} },
+                timestamp: Date.now(),
+                identificationTypeId: Number(payload.identificationTypeId) || undefined,
+            }
+            saveRaw(data)
+            toast.info("Ya iniciaste tu registro. Continuamos con tu verificación.")
+            router.push(`${basePath}/verify?guest_uuid=${match.uuid}`)
+            return true
+        } catch {
+            return false
+        }
+    }
 
     const handleVerify = async () => {
         if (!isValid) return
@@ -145,11 +200,19 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
             }
         } catch (e: any) {
             console.error("[IdentifyScreen] 422 error details:", { status: e.status, message: e.message, errors: e.errors })
+            // Document already registered → this is almost always the same guest coming
+            // back after an interrupted attempt (e.g. failed Didit callback). Resume them
+            // instead of dead-ending. Falls through to the error display if not resolvable.
+            if (isDuplicateDocError(e)) {
+                const resumed = await resumeExistingGuest(payload)
+                if (resumed) return
+            }
             // G8: Handle specific backend errors
             if (e.status === 403) {
                 toast.error("El huésped principal debe completar su registro primero")
                 router.push(basePath)
             } else if (e.status === 409) {
+                setFieldErrors({ identificationNumber: "Este número de documento ya está registrado en esta reserva." })
                 toast.error("Este documento ya está asociado a un huésped en esta reserva")
             } else if (e.status === 422) {
                 // Check if it's specifically a max_guests error or a validation error
