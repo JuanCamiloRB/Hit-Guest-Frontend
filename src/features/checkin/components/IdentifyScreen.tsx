@@ -50,19 +50,14 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
         let mounted = true
         async function load() {
             try {
-                const [countries, docTypes] = await Promise.all([
-                    catalogs.getCountries(),
-                    catalogs.getIdentificationTypes(),
-                ])
+                // Doc types are loaded separately, country-aware (per the selected
+                // nationality's ISO2), so e.g. NIT doesn't show for a person.
+                const countries = await catalogs.getCountries()
                 if (!mounted) return
                 const mappedCountries = (countries || [])
                     .map((c: any) => ({ id: Number(c.id), label: String(c.name), sublabel: c.extra?.iso2 }))
                     .filter(o => Number.isFinite(o.id))
-                const mappedDocTypes = (docTypes || [])
-                    .map((d: any) => ({ id: Number(d.id), label: String(d.name) }))
-                    .filter(o => Number.isFinite(o.id))
                 setCountryOptions(mappedCountries)
-                setDocTypeOptions(mappedDocTypes)
             } catch (e) {
                 toast.error("No fue posible cargar catálogos. Intenta de nuevo.")
             } finally {
@@ -72,6 +67,20 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
         load()
         return () => { mounted = false }
     }, [])
+
+    // Load identification types country-aware: filter by the selected nationality's
+    // ISO2 (/catalogs/identification-types?country=CO). Reloads when nationality changes.
+    const nationalityIso2 = countryOptions.find(c => c.id === Number(form.nationalityId))?.sublabel
+    useEffect(() => {
+        let active = true
+        new CatalogService().getIdentificationTypesV2(nationalityIso2)
+            .then(types => {
+                if (!active) return
+                setDocTypeOptions((types || []).map(d => ({ id: d.id, label: d.name })))
+            })
+            .catch(() => {})
+        return () => { active = false }
+    }, [nationalityIso2])
 
     const isValid =
         form.name.trim().length >= 2 &&
