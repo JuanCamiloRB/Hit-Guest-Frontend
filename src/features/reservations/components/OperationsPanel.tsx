@@ -18,6 +18,7 @@ import {
     FileText,
     Loader2,
 } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -50,6 +51,19 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
         load()
         return () => { mounted = false }
     }, [reservationId])
+
+    // Guest check-in link (frontend URL). No backend resend endpoint exists yet, so the
+    // PM copies it to share via WhatsApp/email.
+    const handleCopyCheckinLink = async () => {
+        const origin = typeof window !== "undefined" ? window.location.origin : ""
+        const link = `${origin}/checkin/${reservationId}`
+        try {
+            await navigator.clipboard.writeText(link)
+            toast.success("Link de check-in copiado", { description: "Pégalo en WhatsApp o correo para enviarlo al huésped." })
+        } catch {
+            toast.error("No se pudo copiar el link", { description: link })
+        }
+    }
 
     if (isLoading) {
         return (
@@ -238,10 +252,10 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             <CardTitle className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-200">Acciones Rápidas</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            <Button variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-none justify-between h-12 px-5 group">
+                            <Button onClick={handleCopyCheckinLink} variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-none justify-between h-12 px-5 group">
                                 <div className="flex items-center gap-3">
                                     <Send size={18} className="text-indigo-300 group-hover:text-white transition-colors" />
-                                    <span className="font-semibold">Reenviar Link</span>
+                                    <span className="font-semibold">Copiar Link de Check-in</span>
                                 </div>
                                 <ChevronRight size={16} className="text-white/40" />
                             </Button>
