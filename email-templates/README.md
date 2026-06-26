@@ -37,8 +37,9 @@ occurrences.
 | Background | `#F9FBFA` |
 
 ## Notes
-- HTML-only (no external CSS/JS) — matches "HTML templates" but self-contained.
-- Logo is rendered as text `HIT GUEST` with the purple `T` accent (no image
-  dependency). If you prefer the SVG/PNG logo, host it and swap the header block
-  for an `<img>` (keep `width`, `alt`, and a navy background fallback).
-- Preheader text is set for the inbox preview line.
+- Design matches the HiTGuest OTP email (gradient header #9D4CF2→#5467FA, Poppins,
+  navy footer with gradient bottom bar) for a consistent brand across emails.
+- **Logo** uses the hosted asset `https://hitguest.com/assets/images/email/hit_logo_5.png`
+  (header + footer). If that URL changes, update both `<img src>` occurrences.
+- Poppins is loaded via `@import` with Helvetica/Arial fallbacks (some clients
+  ignore web fonts and fall back gracefully).
