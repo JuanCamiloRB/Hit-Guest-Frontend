@@ -80,7 +80,10 @@ export function AutomationCard({
     const [optimisticProvider, setOptimisticProvider] = useState<string | null>(null)
 
     const effectiveProviderName = optimisticProvider ?? providerName
-    const selectedProvider = definition.providerOptions.find(p => normalizeSlug(p.value) === normalizeSlug(effectiveProviderName)) ?? null
+    const selectedProvider = definition.providerOptions.find(p => normalizeSlug(p.value) === normalizeSlug(effectiveProviderName))
+        // Single-provider automations (TRA, SIRE, PDF, TTLock) default to their only
+        // option, so the config modal can open even before a provider is reflected.
+        ?? (definition.providerOptions.length === 1 ? definition.providerOptions[0] : null)
 
     // Once the server reflects the chosen provider, drop the optimistic override.
     useEffect(() => {
@@ -95,6 +98,18 @@ export function AutomationCard({
         if (!propertyUuid) {
             toast.error("Guarda la propiedad antes de configurar automatizaciones")
             return
+        }
+        // Turning ON an automation that still needs its credentials (recipients, TRA
+        // token+rnt, SIRE creds…) → open the config modal instead of failing activation
+        // with a 422. Saving the config activates it.
+        if (checked && definition.requiresConfig) {
+            const hasParams = Object.entries(automation?.parameters ?? {})
+                .some(([k, v]) => k !== "_init" && v != null && v !== "")
+            if (!hasParams) {
+                setConfigOpen(true)
+                toast.info("Completa la configuración para activar esta automatización.")
+                return
+            }
         }
         setToggling(true)
         try {
@@ -188,13 +203,25 @@ export function AutomationCard({
     // ── Save config parameters ────────────────────────────────────────────────
 
     const handleSaveConfig = useCallback(async (params: Record<string, unknown>) => {
-        if (!propertyUuid || !automation) return
+        if (!propertyUuid) return
         setConfigSaving(true)
         try {
-            const result = await automationService.configure(automation.uuid, {
-                statusProviderId: AUTOMATION_STATUS.ACTIVE,
-                parameters: params,
-            })
+            // Configure the existing record, or create it if the backend hadn't
+            // auto-created it yet. Saving config also activates the automation.
+            const result = automation
+                ? await automationService.configure(automation.uuid, {
+                    statusProviderId: AUTOMATION_STATUS.ACTIVE,
+                    parameters: params,
+                })
+                : await automationService.create({
+                    propertyUuid,
+                    name: definition.title,
+                    guestType: mapGuestTypeToApi(definition.guestType),
+                    executionOrder: definition.order,
+                    parameters: params,
+                    statusProviderId: AUTOMATION_STATUS.ACTIVE,
+                    providerId: findProviderId(selectedProvider?.value ?? null) ?? selectedProvider?.providerId ?? null,
+                })
             onChanged(result)
             setConfigOpen(false)
             toast.success("Configuración guardada")
@@ -207,7 +234,7 @@ export function AutomationCard({
         } finally {
             setConfigSaving(false)
         }
-    }, [propertyUuid, automation, onChanged])
+    }, [propertyUuid, automation, definition, selectedProvider, onChanged])
 
     // Configured = has at least one meaningful parameter (ignoring the _init marker)
     const hasMeaningfulParams = Object.entries(automation?.parameters ?? {})
