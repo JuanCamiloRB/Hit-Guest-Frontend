@@ -195,11 +195,10 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
                     {
                         key: "recipients",
                         label: "Destinatarios",
-                        type: "array",
+                        type: "string_array",
+                        itemType: "email",
                         required: true,
-                        arrayItemSchema: [
-                            { key: "email", label: "Correo electrónico", type: "email", required: true, placeholder: "destino@email.com" },
-                        ],
+                        placeholder: "destino@email.com",
                     },
                 ],
             },
@@ -436,11 +435,10 @@ const OVERRIDE_FIELD_SCHEMAS: Record<string, ParameterFieldSchema[]> = {
         {
             key: "recipients",
             label: "Destinatarios del reporte",
-            type: "array",
+            type: "string_array",
+            itemType: "email",
             required: false,
-            arrayItemSchema: [
-                { key: "email", label: "Correo electrónico", type: "email", required: true, placeholder: "encargado@finca.co" },
-            ],
+            placeholder: "encargado@finca.co",
         },
     ],
 

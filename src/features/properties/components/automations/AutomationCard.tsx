@@ -206,19 +206,21 @@ export function AutomationCard({
         if (!propertyUuid) return
         setConfigSaving(true)
         try {
+            // Strip the front-only "_init" marker so it isn't persisted/validated.
+            const { _init, ...cleanParams } = params as Record<string, unknown>
             // Configure the existing record, or create it if the backend hadn't
             // auto-created it yet. Saving config also activates the automation.
             const result = automation
                 ? await automationService.configure(automation.uuid, {
                     statusProviderId: AUTOMATION_STATUS.ACTIVE,
-                    parameters: params,
+                    parameters: cleanParams,
                 })
                 : await automationService.create({
                     propertyUuid,
                     name: definition.title,
                     guestType: mapGuestTypeToApi(definition.guestType),
                     executionOrder: definition.order,
-                    parameters: params,
+                    parameters: cleanParams,
                     statusProviderId: AUTOMATION_STATUS.ACTIVE,
                     providerId: findProviderId(selectedProvider?.value ?? null) ?? selectedProvider?.providerId ?? null,
                 })

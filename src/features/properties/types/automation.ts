@@ -183,11 +183,13 @@ export interface SireColombiaParameters {
 export interface ParameterFieldSchema {
   key: string
   label: string
-  type: "text" | "password" | "email" | "select" | "number" | "array" | "textarea"
+  type: "text" | "password" | "email" | "select" | "number" | "array" | "string_array" | "textarea"
   required: boolean
   placeholder?: string
   options?: { value: string; label: string }[]
   arrayItemSchema?: ParameterFieldSchema[]
+  /** For type "string_array": the input type of each scalar item (e.g. "email"). */
+  itemType?: "text" | "email"
 }
 
 /** A provider option shown in the UI for an automation order */

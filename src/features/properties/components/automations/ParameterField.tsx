@@ -76,6 +76,53 @@ export function ParameterField({ schema, value, onChange }: Props) {
         )
     }
 
+    if (schema.type === "string_array") {
+        // Flat list of scalar strings, e.g. recipients: ["a@x.com", "b@y.com"].
+        // Tolerant of the legacy object shape [{email}] so old data still renders.
+        const items: string[] = (Array.isArray(value) ? value : []).map((it: any) =>
+            typeof it === "string" ? it : (it?.email ?? it?.value ?? "")
+        )
+        const addItem = () => onChange([...items, ""])
+        const removeItem = (i: number) => onChange(items.filter((_, idx) => idx !== i))
+        const updateItem = (i: number, v: string) => onChange(items.map((it, idx) => (idx === i ? v : it)))
+
+        return (
+            <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700">
+                    {schema.label}
+                    {schema.required && <span className="text-red-400 ml-0.5">*</span>}
+                </Label>
+                {items.map((item, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                        <Input
+                            type={schema.itemType === "email" ? "email" : "text"}
+                            value={item}
+                            onChange={e => updateItem(i, e.target.value)}
+                            placeholder={schema.placeholder}
+                            className="bg-slate-50 border-slate-200"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => removeItem(i)}
+                            className="text-red-400 hover:text-red-600 transition-colors shrink-0"
+                        >
+                            <Trash2 size={16} />
+                        </button>
+                    </div>
+                ))}
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addItem}
+                    className="w-full gap-1.5 border-dashed"
+                >
+                    <Plus size={14} /> Agregar {schema.label.toLowerCase()}
+                </Button>
+            </div>
+        )
+    }
+
     if (schema.type === "textarea") {
         return (
             <div className="space-y-1.5">
