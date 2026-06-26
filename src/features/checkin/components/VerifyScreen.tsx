@@ -618,7 +618,9 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
             <ProgressBar currentStep={2} totalSteps={isSecondary ? 3 : 5} />
 
             <div className="flex items-center justify-between">
-                <Link href={`${basePath}/identify`} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+                {/* Back goes to the welcome hub, not /identify — re-identifying an existing
+                    guest hits "document already registered" and lands on an empty form. */}
+                <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
                     <ArrowLeft size={20} />
                 </Link>
                 <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">

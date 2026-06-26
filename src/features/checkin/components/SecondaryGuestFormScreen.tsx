@@ -326,7 +326,8 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
 
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <Link href={`${basePath}/verify`} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+                    {/* Back to the welcome hub, not /verify (avoids re-launching verification). */}
+                    <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
                         <ArrowLeft size={20} />
                     </Link>
                     <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">
