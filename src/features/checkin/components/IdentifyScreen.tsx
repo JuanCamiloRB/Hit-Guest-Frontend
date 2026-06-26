@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Loader2, ShieldCheck, Users } from "lucide-react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
@@ -10,6 +10,7 @@ import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
+import { ReadOnlyField } from "@/features/checkin/components/ReadOnlyField"
 import { CatalogService } from "@/features/auth/services/catalog-service"
 import type { IdentifyPayload, IdentifySessionData } from "@/features/checkin/types/checkin"
 
@@ -22,6 +23,13 @@ interface IdentifyScreenProps {
 
 export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, isSecondary = false }: IdentifyScreenProps) {
     const router = useRouter()
+    const searchParams = useSearchParams()
+    // "Continuar registro" resumes an existing guest → /identify?guest_uuid=...
+    // In that mode we prefill their data and LOCK the identity-defining fields
+    // (document type + number) so they can't be changed (which would create a
+    // conflicting guest and is the root of the duplicate-guest issue).
+    const resumeGuestUuid = searchParams.get("guest_uuid") || ""
+    const isResume = !!resumeGuestUuid
     const { save, saveRaw } = useIdentifySession(reservationUuid)
 
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -81,6 +89,38 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
             .catch(() => {})
         return () => { active = false }
     }, [nationalityIso2])
+
+    // Resume mode: prefill the guest's already-registered data from /form. Reuses the
+    // same prefilledData source as the guest form (DRY). Document type/number are then
+    // rendered read-only so the identity can't change.
+    useEffect(() => {
+        if (!isResume) return
+        let active = true
+        checkinService.getGuestFormSchema(reservationUuid, resumeGuestUuid)
+            .then(schema => {
+                const p = schema?.prefilledData as Record<string, any> | undefined
+                if (!active || !p) return
+                setForm(f => ({
+                    ...f,
+                    name: p.name != null ? String(p.name) : f.name,
+                    lastname: p.lastname != null ? String(p.lastname) : f.lastname,
+                    nationalityId: p.nationalityId != null ? Number(p.nationalityId) : f.nationalityId,
+                    identificationTypeId: p.identificationTypeId != null ? Number(p.identificationTypeId) : f.identificationTypeId,
+                    identificationNumber: p.identificationNumber != null ? String(p.identificationNumber) : f.identificationNumber,
+                }))
+            })
+            .catch(() => {})
+        return () => { active = false }
+    }, [isResume, resumeGuestUuid, reservationUuid])
+
+    // Resolved label for the (read-only) document type in resume mode. Captured once
+    // so it survives catalog reloads and remains shown even if the type isn't in the
+    // currently-filtered list.
+    const [lockedDocTypeLabel, setLockedDocTypeLabel] = useState("")
+    const docTypeLabel = docTypeOptions.find(d => d.id === Number(form.identificationTypeId))?.label ?? ""
+    useEffect(() => {
+        if (isResume && docTypeLabel) setLockedDocTypeLabel(docTypeLabel)
+    }, [isResume, docTypeLabel])
 
     const isValid =
         form.name.trim().length >= 2 &&
@@ -331,43 +371,59 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                     required
                 />
 
-                {/* Doc type + number */}
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                    <div className="md:col-span-2">
-                        <SearchableSelect
-                            label="Tipo Doc."
-                            options={docTypeOptions}
-                            value={form.identificationTypeId}
-                            onChange={v => setForm(f => ({ ...f, identificationTypeId: v }))}
-                            placeholder="Selec."
-                            required
-                        />
+                {/* Doc type + number — read-only when resuming an existing guest so the
+                    identity (and thus the guest record) can't change mid-flow. */}
+                {isResume ? (
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <div className="md:col-span-2">
+                            <ReadOnlyField label="Tipo Doc." value={lockedDocTypeLabel || docTypeLabel} />
+                        </div>
+                        <div className="md:col-span-3">
+                            <ReadOnlyField
+                                label="Número de Documento"
+                                value={form.identificationNumber}
+                                hint="No editable: identifica tu registro."
+                            />
+                        </div>
                     </div>
-                    <div className="md:col-span-3 space-y-1.5">
-                        <label className="text-sm font-semibold text-slate-700">
-                            Número de Documento<span className="text-red-400 ml-0.5">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            value={form.identificationNumber}
-                            onChange={e => {
-                                const sanitized = e.target.value.replace(/[^a-zA-Z0-9]/g, "")
-                                setForm(f => ({ ...f, identificationNumber: sanitized }))
-                            }}
-                            onPaste={e => {
-                                e.preventDefault()
-                                const text = (e.clipboardData.getData("text") || "").replace(/[^a-zA-Z0-9]/g, "")
-                                setForm(f => ({ ...f, identificationNumber: text }))
-                            }}
-                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all ${fieldErrors.identificationNumber ? "border-red-400" : "border-slate-200"}`}
-                            placeholder="Ej. 1234567890"
-                            maxLength={30}
-                            inputMode="text"
-                            pattern="[A-Za-z0-9]*"
-                        />
-                        {fieldErrors.identificationNumber && <p className="text-xs text-red-500">{fieldErrors.identificationNumber}</p>}
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                        <div className="md:col-span-2">
+                            <SearchableSelect
+                                label="Tipo Doc."
+                                options={docTypeOptions}
+                                value={form.identificationTypeId}
+                                onChange={v => setForm(f => ({ ...f, identificationTypeId: v }))}
+                                placeholder="Selec."
+                                required
+                            />
+                        </div>
+                        <div className="md:col-span-3 space-y-1.5">
+                            <label className="text-sm font-semibold text-slate-700">
+                                Número de Documento<span className="text-red-400 ml-0.5">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                value={form.identificationNumber}
+                                onChange={e => {
+                                    const sanitized = e.target.value.replace(/[^a-zA-Z0-9]/g, "")
+                                    setForm(f => ({ ...f, identificationNumber: sanitized }))
+                                }}
+                                onPaste={e => {
+                                    e.preventDefault()
+                                    const text = (e.clipboardData.getData("text") || "").replace(/[^a-zA-Z0-9]/g, "")
+                                    setForm(f => ({ ...f, identificationNumber: text }))
+                                }}
+                                className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all ${fieldErrors.identificationNumber ? "border-red-400" : "border-slate-200"}`}
+                                placeholder="Ej. 1234567890"
+                                maxLength={30}
+                                inputMode="text"
+                                pattern="[A-Za-z0-9]*"
+                            />
+                            {fieldErrors.identificationNumber && <p className="text-xs text-red-500">{fieldErrors.identificationNumber}</p>}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* isMainGuest indicator */}
                 {!isSecondary && (
