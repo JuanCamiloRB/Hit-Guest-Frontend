@@ -171,6 +171,11 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                             Object.entries(ocrOverrides).forEach(([k, v]) => {
                                 if (v !== undefined && v !== null && v !== "") updated[k] = v
                             })
+                            // The backend's prefilledData doesn't include documentCountryId.
+                            // Default it to the nationality so "País del documento" isn't empty.
+                            if ((updated.documentCountryId === "" || updated.documentCountryId == null) && updated.nationalityId) {
+                                updated.documentCountryId = Number(updated.nationalityId)
+                            }
                             return updated as GuestFormData
                         })
                     }

@@ -11,7 +11,7 @@ import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
 import { CatalogService } from "@/features/auth/services/catalog-service"
-import type { IdentifyPayload, IdentifySessionData, VerificationDirective } from "@/features/checkin/types/checkin"
+import type { IdentifyPayload, IdentifySessionData } from "@/features/checkin/types/checkin"
 
 interface IdentifyScreenProps {
     reservationUuid: string
@@ -110,26 +110,42 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 return true
             }
 
-            // Rebuild a session from the portal verification state so VerifyScreen can resume.
             const verif: any = (match as any).verification ?? {}
-            const directive: VerificationDirective = verif.verificationUrl
-                ? { type: "session", subtype: "biometric", url: verif.verificationUrl }
-                : { type: "document_upload" }
-            const data: IdentifySessionData = {
-                guestUuid: match.uuid,
-                guestName: match.name,
-                guestLastname: match.lastname,
-                isMainGuest: match.isMain,
-                isCheckinCompleted: false,
-                verification: directive,
-                formSchema: { requiredFields: [], optionalFields: [], prefilledData: {} },
-                timestamp: Date.now(),
-                identificationTypeId: Number(payload.identificationTypeId) || undefined,
+            const status = String(verif.status ?? "").toLowerCase()
+            const step = String(verif.currentStep ?? "").toLowerCase()
+
+            // Already verified by the backend → skip straight to the form.
+            if (status === "approved" || status === "completed" || step === "form") {
+                try { localStorage.setItem(`checkin-verification-done-${reservationUuid}-${match.uuid}`, "true") } catch {}
+                toast.info("Tu identidad ya fue verificada. Continuamos con tus datos.")
+                router.push(`${basePath}/guest?guest_uuid=${match.uuid}`)
+                return true
             }
-            saveRaw(data)
-            toast.info("Ya iniciaste tu registro. Continuamos con tu verificación.")
-            router.push(`${basePath}/verify?guest_uuid=${match.uuid}`)
-            return true
+
+            // A pending Didit session is still available → resume that EXACT session.
+            // We must NOT invent a "document_upload" directive when there's no URL —
+            // that would switch the provider from Didit to Textract. If we can't safely
+            // re-derive the original provider, bail and let the backend handle it
+            // (identify should be idempotent and return a fresh verification directive).
+            if (verif.verificationUrl) {
+                const data: IdentifySessionData = {
+                    guestUuid: match.uuid,
+                    guestName: match.name,
+                    guestLastname: match.lastname,
+                    isMainGuest: match.isMain,
+                    isCheckinCompleted: false,
+                    verification: { type: "session", subtype: "biometric", url: verif.verificationUrl },
+                    formSchema: { requiredFields: [], optionalFields: [], prefilledData: {} },
+                    timestamp: Date.now(),
+                    identificationTypeId: Number(payload.identificationTypeId) || undefined,
+                }
+                saveRaw(data)
+                toast.info("Ya iniciaste tu registro. Continuamos con tu verificación.")
+                router.push(`${basePath}/verify?guest_uuid=${match.uuid}`)
+                return true
+            }
+
+            return false
         } catch {
             return false
         }
