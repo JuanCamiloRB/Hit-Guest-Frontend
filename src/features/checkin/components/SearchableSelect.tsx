@@ -86,12 +86,12 @@ export function SearchableSelect({
             }
           `}
         >
-          <span className={selectedOption ? "text-slate-900" : "text-slate-400"}>
+          <span className={`min-w-0 truncate ${selectedOption ? "text-slate-900" : "text-slate-400"}`}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <ChevronDown
             size={16}
-            className={`text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            className={`shrink-0 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
           />
         </button>
 

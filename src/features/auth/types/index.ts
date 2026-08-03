@@ -84,10 +84,28 @@ export interface User {
     avatar?: string
     role: UserRole
     isPrincipal: boolean
+    /**
+     * Account owner flag from GET /user (`isAccountOwner`). The owner is the single
+     * property_manager who controls sensitive account actions (transfer, delete
+     * account/users, grant property_manager). Drives owner-gated UI.
+     */
+    isAccountOwner?: boolean
+    /** Client (CLIENTE) uuid — same as clientId; kept explicit for clarity in owner flows. */
+    clientUuid?: string
     permissions?: {
         reservations?: string[]
         properties?: string[]
     }
+}
+
+/** Team roles as the backend assigns them (Spatie). Role is NOT yet returned per
+ *  user in UserResource — used for create/edit selectors only. */
+export type TeamRole = "property_manager" | "property_staff" | "read_only"
+
+export const TEAM_ROLE_LABELS: Record<TeamRole, string> = {
+    property_manager: "Administrador",
+    property_staff: "Staff de Apoyo",
+    read_only: "Solo lectura",
 }
 
 export interface AuthState {
@@ -97,11 +115,47 @@ export interface AuthState {
     error: string | null
 }
 
+/** Payload for updating the signed-in PM's own profile. Email is immutable. */
+/**
+ * The CLIENTE record behind "Mi cuenta". Registration creates a CLIENTE (the
+ * billable account) plus a PM USUARIO attached to it; this view edits the client.
+ * Ids are kept as strings ("" when unset) to match catalog-keyed Selects.
+ */
+export interface ClientProfile {
+    personTypeId: string
+    name: string
+    lastname: string
+    identificationTypeId: string
+    identificationNumber: string
+    email: string
+    phone: string
+    address: string
+    addressDetail: string
+    city: string
+    state: string
+    countryId: string
+}
+
+/** Editable client fields for PATCH /account (email is immutable, never sent). */
+export type UpdateProfilePayload = Omit<ClientProfile, "email">
+
+/**
+ * The client account as read from GET /account: the editable profile fields plus
+ * the client's uuid (needed for /clients/{uuid}/logo) and its optional logo URL.
+ * `logoUrl` is null when the client has no logo (the backend omits the key).
+ */
+export interface ClientAccount {
+    profile: Partial<ClientProfile>
+    uuid: string | null
+    logoUrl: string | null
+}
+
 export interface AuthService {
     requestOtp(email: string): Promise<void>
     verifyOtp(email: string, otp: string): Promise<User>
     resendOtp(email: string): Promise<void>
     register(data: RegisterFormData): Promise<void> // Request registration (sends OTP)
+    updateProfile(clientUuid: string, payload: UpdateProfilePayload): Promise<void>
     loginWithGoogle(): Promise<User>
     logout(): Promise<void>
 }

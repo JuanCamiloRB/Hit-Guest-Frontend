@@ -36,8 +36,9 @@ export default function RegisterPage() {
                         </p>
                     </div>
                     <RegisterForm />
-                    <p className="px-8 text-center text-[10px] text-muted-foreground mt-8 uppercase tracking-widest">
-                        Powered by <span className="font-bold text-brand-blue">HIT Guest</span> © 2024
+                    <p className="px-8 text-center text-xs text-ink-3 mt-8 uppercase tracking-widest">
+                        Powered by <span className="font-bold text-brand-blue">HIT Guest</span> ©{" "}
+                        {new Date().getFullYear()}
                     </p>
                 </div>
             </div>

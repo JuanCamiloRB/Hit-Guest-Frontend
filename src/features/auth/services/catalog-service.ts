@@ -1,4 +1,4 @@
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL_GUEST?.replace("/auth", "") || "https://www.kunas.co/api/v1").trim()
+const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL_GUEST?.replace("/auth", "") || "https://guest.hit.tools/api/v1").trim()
 const APP_TOKEN = process.env.NEXT_PUBLIC_APP_API_TOKEN || ""
 
 if (!APP_TOKEN) {

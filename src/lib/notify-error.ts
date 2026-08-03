@@ -56,8 +56,14 @@ export function normalizeApiError(error: unknown, fallback = DEFAULT_FALLBACK): 
 
     const e = error as any
     const status = typeof e?.status === "number" ? e.status : undefined
-    const message: string =
+    let message: string =
         typeof e?.message === "string" && e.message.trim() ? e.message : fallback
+
+    // 403 = recurso de otra cuenta (policy). Laravel's default text is English
+    // ("This action is unauthorized.") — replace it; keep any localized message.
+    if (status === 403 && /unauthorized|forbidden|this action/i.test(message)) {
+        message = "No tienes permiso para acceder a este recurso."
+    }
 
     const details: string[] = []
 

@@ -6,7 +6,10 @@ export interface AutomationStatus {
     contract: "success" | "pending" | "none"
     code: "success" | "pending" | "none"
     tra: "success" | "pending" | "none"
-    sire: "success" | "pending" | "none"
+    // SIRE has two independent automations: check-in (order 7) and check-out
+    // (order 8). They can run under different rules, so each gets its own light.
+    sireIn: "success" | "pending" | "none"
+    sireOut: "success" | "pending" | "none"
 }
 
 
@@ -87,7 +90,12 @@ export interface Reservation {
     checkIn: Date
     checkOut: Date
     nights: number
-    status: "CONFIRMED" | "PENDING" | "CANCELLED" | "CHECKED_IN" | "CHECKED_OUT" | "LINK_SENT" | "PENDING_CONTRACT" | "NO_STARTED"
+    /**
+     * HitGuest-internal reservation status (catalog_category_id 7), NOT a PMS status.
+     * Only CONFIRMED (27) and IN_PROGRESS (28) enable the reservation's automations.
+     * The remaining members are legacy operational values kept for older consumers.
+     */
+    status: "CONFIRMED" | "IN_PROGRESS" | "CANCELLED" | "CLOSED" | "DELETED" | "UNKNOWN" | "PENDING" | "CHECKED_IN" | "CHECKED_OUT" | "LINK_SENT" | "PENDING_CONTRACT" | "NO_STARTED"
     source: "Airbnb" | "Booking" | "Direct"
     totalPrice: number
     automationStatus?: AutomationStatus

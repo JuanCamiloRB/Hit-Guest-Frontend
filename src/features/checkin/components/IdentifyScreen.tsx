@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Loader2, ShieldCheck, Users } from "lucide-react"
+import { ArrowLeft, Loader2, ShieldCheck, Users, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { checkinService } from "@/features/checkin/services/checkin-service"
@@ -13,6 +13,9 @@ import { SearchableSelect } from "@/features/checkin/components/SearchableSelect
 import { ReadOnlyField } from "@/features/checkin/components/ReadOnlyField"
 import { CatalogService } from "@/features/auth/services/catalog-service"
 import type { IdentifyPayload, IdentifySessionData } from "@/features/checkin/types/checkin"
+
+/** Guest-facing terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
+const GUEST_TERMS_URL = "https://hitguest.com/terminos-servicio1/"
 
 interface IdentifyScreenProps {
     reservationUuid: string
@@ -35,6 +38,10 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
     const [fieldErrors, setFieldErrors] = useState<Partial<Record<keyof IdentifyPayload, string>>>({})
+    // No backend field for this — the guest record's own createdAt (set when
+    // /identify succeeds, which this gate blocks until checked) is the
+    // acceptance timestamp, per Ricardo/Didier thread 20260801.
+    const [acceptedTerms, setAcceptedTerms] = useState(false)
 
     const [form, setForm] = useState<{
         name: string
@@ -127,7 +134,8 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
         form.lastname.trim().length >= 2 &&
         form.nationalityId !== "" &&
         form.identificationTypeId !== "" &&
-        form.identificationNumber.trim().length > 2
+        form.identificationNumber.trim().length > 2 &&
+        acceptedTerms
 
     // Detects the backend's "document already registered in this reservation" error.
     const isDuplicateDocError = (e: any): boolean => {
@@ -165,7 +173,6 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
 
             // Already verified by the backend → skip straight to the form.
             if (status === "approved" || status === "completed" || step === "form") {
-                try { localStorage.setItem(`checkin-verification-done-${reservationUuid}-${match.uuid}`, "true") } catch {}
                 toast.info("Tu identidad ya fue verificada. Continuamos con tus datos.")
                 router.push(`${basePath}/guest?guest_uuid=${match.uuid}`)
                 return true
@@ -234,33 +241,20 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 localStorage.setItem(triggerKey, payload.identificationNumber)
             } catch {}
 
-            // If this guest already completed document upload verification earlier,
-            // skip Verify and go straight to the Guest Form (idempotent re-entry UX)
-            if (response.verification.type === "document_upload") {
-                try {
-                    const verificationDoneKey = `checkin-verification-done-${reservationUuid}-${response.guest.uuid}`
-                    const alreadyVerified = localStorage.getItem(verificationDoneKey) === 'true'
-                    if (alreadyVerified) {
-                        toast.success("Documento verificado anteriormente")
-                        router.push(`${basePath}/guest?guest_uuid=${response.guest.uuid}`)
-                        return
-                    }
-                } catch {}
-            }
-
             // G2 + G3: Route based on backend-decided verification.type
             switch (response.verification.type) {
                 case "verified_ok":
                     // G6: Guest already verified — skip directly to form
-                    try {
-                        const vKey = `checkin-verification-done-${reservationUuid}-${response.guest.uuid}`
-                        localStorage.setItem(vKey, 'true')
-                    } catch {}
                     router.push(`${basePath}/guest?guest_uuid=${response.guest.uuid}`)
                     break
                 case "session":
                 case "document_upload":
                     router.push(`${basePath}/verify?guest_uuid=${response.guest.uuid}`)
+                    break
+                case "contact_challenge":
+                    // Recurring guest reusing a previous verification — must prove
+                    // possession of their historical email first (OTP plan 20260731).
+                    router.push(`${basePath}/contact-challenge?guest_uuid=${response.guest.uuid}`)
                     break
             }
         } catch (e: any) {
@@ -374,7 +368,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 {/* Doc type + number — read-only when resuming an existing guest so the
                     identity (and thus the guest record) can't change mid-flow. */}
                 {isResume ? (
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
                         <div className="md:col-span-2">
                             <ReadOnlyField label="Tipo Doc." value={lockedDocTypeLabel || docTypeLabel} />
                         </div>
@@ -387,7 +381,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                         </div>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
                         <div className="md:col-span-2">
                             <SearchableSelect
                                 label="Tipo Doc."
@@ -440,6 +434,30 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                     Tus datos están protegidos con cifrado de extremo a extremo y solo se usarán para el check-in.
                 </p>
             </div>
+
+            <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:border-brand-purple/30 transition-colors">
+                <div className="relative flex items-center justify-center mt-0.5">
+                    <input
+                        type="checkbox"
+                        checked={acceptedTerms}
+                        onChange={(e) => setAcceptedTerms(e.target.checked)}
+                        className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-2 focus:ring-brand-purple/20 checked:bg-brand-purple checked:border-brand-purple transition-all"
+                    />
+                    <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
+                </div>
+                <span className="text-sm text-slate-600 font-medium select-none">
+                    Acepto los Términos y Condiciones de HIT —{" "}
+                    <a
+                        href={GUEST_TERMS_URL}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-brand-purple underline hover:no-underline"
+                    >
+                        Ver términos y condiciones
+                    </a>
+                </span>
+            </label>
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">

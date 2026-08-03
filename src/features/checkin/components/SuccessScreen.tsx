@@ -6,8 +6,6 @@ import { CheckCircle2, Home, Users, Calendar, MapPin, Download, Clock, FileText,
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
-import { SmartlockCodes } from "@/features/checkin/components/SmartlockCodes"
-import { mockSmartlockCodes } from "@/features/checkin/data/mock-guest-data"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 
@@ -259,7 +257,6 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 </div>
             )}
 
-            {!isMainDone && <SmartlockCodes codes={mockSmartlockCodes()} />}
 
             <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 text-left w-full max-w-sm mt-2">
                 <div className="bg-brand-purple/10 p-3 rounded-xl flex-shrink-0">

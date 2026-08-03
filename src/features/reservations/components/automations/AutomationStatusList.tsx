@@ -13,7 +13,7 @@ interface AutomationStatusListProps {
 }
 
 export function AutomationStatusList({ reservationUuid }: AutomationStatusListProps) {
-    const { items, isLoading, error, redispatchingUuids, dispatchingUuids, now, refresh, redispatch, dispatch, resendPdf } =
+    const { items, isLoading, error, redispatchingUuids, dispatchingUuids, now, cooldownUntil, refresh, redispatch, dispatch, resendPdf } =
         useAutomationStatus(reservationUuid)
 
     const [historyFor, setHistoryFor] = useState<{ uuid: string; name: string } | null>(null)
@@ -41,7 +41,7 @@ export function AutomationStatusList({ reservationUuid }: AutomationStatusListPr
                     type="button"
                     onClick={refresh}
                     disabled={isLoading}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-indigo-600 transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-primary transition-colors disabled:opacity-50"
                 >
                     <RefreshCw size={13} className={cn(isLoading && "animate-spin")} />
                     Refrescar
@@ -83,6 +83,7 @@ export function AutomationStatusList({ reservationUuid }: AutomationStatusListPr
                             now={now}
                             isRedispatching={redispatchingUuids.has(item.automationUuid)}
                             isDispatching={dispatchingUuids.has(item.automationUuid)}
+                            cooldownUntil={cooldownUntil[item.automationUuid]}
                             onRedispatch={redispatch}
                             onDispatch={dispatch}
                             onResendPdf={resendPdf}

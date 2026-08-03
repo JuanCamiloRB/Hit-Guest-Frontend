@@ -16,7 +16,7 @@ import type {
     AutomationUsageRecord,
     UsageRecordStatus,
 } from "@/features/properties/types/automation"
-import { formatRunDate } from "./automation-status-meta"
+import { formatRunDate, errorMessage, TRIGGERED_BY_LABELS } from "./automation-status-meta"
 
 interface AutomationHistoryModalProps {
     reservationUuid: string
@@ -44,10 +44,13 @@ export function AutomationHistoryModal({ reservationUuid, automation, onClose }:
         setIsLoading(true)
         setError(null)
         automationService
-            .listUsageRecords(reservationUuid)
+            .listUsageRecords(reservationUuid, automation.uuid)
             .then(all => {
                 if (!mounted) return
-                setRecords(all.filter(r => r.automationUuid === automation.uuid))
+                // Backend filters by automationUuid; keep a client guard, and cap at
+                // the 10 most recent (records arrive newest-first) per the API spec.
+                const forAutomation = all.filter(r => r.automationUuid === automation.uuid)
+                setRecords(forAutomation.slice(0, 10))
             })
             .catch((e: any) => {
                 if (mounted) setError(e?.message || "No se pudo cargar el historial")
@@ -85,6 +88,7 @@ export function AutomationHistoryModal({ reservationUuid, automation, onClose }:
                                     <th className="py-2 pr-2">#</th>
                                     <th className="py-2 pr-2">Fecha</th>
                                     <th className="py-2 pr-2">Estado</th>
+                                    <th className="py-2 pr-2">Origen</th>
                                     <th className="py-2">Detalle</th>
                                 </tr>
                             </thead>
@@ -93,8 +97,11 @@ export function AutomationHistoryModal({ reservationUuid, automation, onClose }:
                                     const meta = RECORD_STATUS_META[rec.status]
                                     const Icon = meta.icon
                                     const detail = rec.status === "failed"
-                                        ? (rec.lastError || "Error")
+                                        ? (errorMessage(rec.lastError) || "Error")
                                         : describePayload(rec.responsePayload)
+                                    const origin = rec.triggeredBy
+                                        ? (TRIGGERED_BY_LABELS[rec.triggeredBy] ?? rec.triggeredBy)
+                                        : "—"
                                     return (
                                         <tr key={rec.id} className="border-b border-slate-50 last:border-0 align-top">
                                             <td className="py-2.5 pr-2 font-mono text-xs text-slate-400">{rec.id}</td>
@@ -104,6 +111,7 @@ export function AutomationHistoryModal({ reservationUuid, automation, onClose }:
                                                     <Icon size={14} /> {meta.label}
                                                 </span>
                                             </td>
+                                            <td className="py-2.5 pr-2 text-slate-500 whitespace-nowrap text-xs">{origin}</td>
                                             <td className="py-2.5 text-slate-500 break-words">
                                         {detail}
                                         {rec.responsePayload?.pdf_path != null && (

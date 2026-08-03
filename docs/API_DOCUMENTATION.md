@@ -1,5 +1,21 @@
 # Documentación API HitGuest
 
+> **Importante:** este archivo contiene especificación histórica y ejemplos de
+> backend. Para el inventario actualizado de todo lo que el frontend realmente
+> consume y expone, incluyendo payloads exactos, autenticación, BFF, check-in,
+> billing y rutas legacy, consultar
+> [`FRONTEND_API_ENDPOINTS.md`](./FRONTEND_API_ENDPOINTS.md).
+>
+> Para el archivo maestro con contratos recibidos de Ricardo/backend,
+> trazabilidad, versiones supersedidas y payloads históricos, consultar
+> [`RICARDO_API_CONTRACTS.md`](./RICARDO_API_CONTRACTS.md).
+>
+> Los cinco planes fuente recibidos el 23-jul-2026, con sus hashes y contratos
+> normalizados, están en
+> [`RICARDO_SOURCE_PLANS_2026-07-23.md`](./RICARDO_SOURCE_PLANS_2026-07-23.md).
+> Los cuatro archivos adicionales del 24-jul-2026 están en
+> [`RICARDO_SOURCE_PLANS_2026-07-24.md`](./RICARDO_SOURCE_PLANS_2026-07-24.md).
+
 ## Configuración Base
 
 ```
@@ -63,6 +79,7 @@ Idiomas soportados: `es`, `en`
 **Endpoint:** `POST /account/register`
 
 **Payload:**
+
 ```json
 {
   "personTypeId": 2,
@@ -81,6 +98,7 @@ Idiomas soportados: `es`, `en`
 ```
 
 **Validaciones:**
+
 - `personTypeId`: Requerido, debe existir en catálogos (catalog_category_id = 1)
 - `name`: Requerido, máximo 120 caracteres
 - `lastname`: Opcional, máximo 120 caracteres
@@ -95,6 +113,7 @@ Idiomas soportados: `es`, `en`
 - `statusRecordId`: **NO enviar** (lo llena automáticamente el backend)
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -116,6 +135,7 @@ Idiomas soportados: `es`, `en`
 **Endpoint:** `POST /auth/login`
 
 **Payload:**
+
 ```json
 {
   "email": "juan@example.com",
@@ -124,6 +144,7 @@ Idiomas soportados: `es`, `en`
 ```
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -147,6 +168,7 @@ Idiomas soportados: `es`, `en`
 **Headers:** Requiere token de autenticación
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -161,6 +183,7 @@ Idiomas soportados: `es`, `en`
 **Endpoint:** `POST /auth/resend-otp`
 
 **Payload:**
+
 ```json
 {
   "email": "juan@example.com"
@@ -174,6 +197,7 @@ Idiomas soportados: `es`, `en`
 **Endpoint:** `POST /auth/verify-otp`
 
 **Payload:**
+
 ```json
 {
   "email": "juan@example.com",
@@ -198,6 +222,7 @@ GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=person_type
 ```
 
 **Operadores disponibles:**
+
 - `[eq]` - Igual a
 - `[neq]` - Diferente de
 - `[has]` - Contiene
@@ -242,6 +267,7 @@ GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=cancellation_policy
 ```
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -275,6 +301,7 @@ GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=cancellation_policy
 **Endpoint:** `GET /catalogs/category/timezones`
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -302,55 +329,56 @@ Devuelve la lista de monedas disponibles filtradas por las Américas + EUR. No r
 **Parámetros:** Ninguno requerido.
 
 **Respuesta Exitosa (`200 OK`):**
+
 ```json
 {
-    "data": [
-        { "code": "ANG", "name": "Netherlands Antillean guilder" },
-        { "code": "ARS", "name": "Argentine peso" },
-        { "code": "AWG", "name": "Aruban florin" },
-        { "code": "BBD", "name": "Barbadian dollar" },
-        { "code": "BMD", "name": "Bermudian dollar" },
-        { "code": "BOB", "name": "Bolivian boliviano" },
-        { "code": "BRL", "name": "Brazilian real" },
-        { "code": "BSD", "name": "Bahamian dollar" },
-        { "code": "BZD", "name": "Belize dollar" },
-        { "code": "CAD", "name": "Canadian dollar" },
-        { "code": "CLP", "name": "Chilean peso" },
-        { "code": "COP", "name": "Colombian peso" },
-        { "code": "CRC", "name": "Costa Rican colón" },
-        { "code": "CUP", "name": "Cuban peso" },
-        { "code": "DKK", "name": "Danish krone" },
-        { "code": "DOP", "name": "Dominican peso" },
-        { "code": "EUR", "name": "Euro" },
-        { "code": "FKP", "name": "Falkland Islands pound" },
-        { "code": "GBP", "name": "British pound" },
-        { "code": "GTQ", "name": "Guatemalan quetzal" },
-        { "code": "GYD", "name": "Guyanese dollar" },
-        { "code": "HNL", "name": "Honduran lempira" },
-        { "code": "HTG", "name": "Haitian gourde" },
-        { "code": "JMD", "name": "Jamaican dollar" },
-        { "code": "KYD", "name": "Cayman Islands dollar" },
-        { "code": "MXN", "name": "Mexican peso" },
-        { "code": "NIO", "name": "Nicaraguan córdoba" },
-        { "code": "PAB", "name": "Panamanian balboa" },
-        { "code": "PEN", "name": "Peruvian sol" },
-        { "code": "PYG", "name": "Paraguayan guarani" },
-        { "code": "SRD", "name": "Surinamese dollar" },
-        { "code": "TTD", "name": "Trinidad and Tobago dollar" },
-        { "code": "USD", "name": "United States dollar" },
-        { "code": "UYU", "name": "Uruguayan peso" },
-        { "code": "VES", "name": "Bolívar" },
-        { "code": "XCD", "name": "East Caribbean dollar" }
-    ]
+  "data": [
+    { "code": "ANG", "name": "Netherlands Antillean guilder" },
+    { "code": "ARS", "name": "Argentine peso" },
+    { "code": "AWG", "name": "Aruban florin" },
+    { "code": "BBD", "name": "Barbadian dollar" },
+    { "code": "BMD", "name": "Bermudian dollar" },
+    { "code": "BOB", "name": "Bolivian boliviano" },
+    { "code": "BRL", "name": "Brazilian real" },
+    { "code": "BSD", "name": "Bahamian dollar" },
+    { "code": "BZD", "name": "Belize dollar" },
+    { "code": "CAD", "name": "Canadian dollar" },
+    { "code": "CLP", "name": "Chilean peso" },
+    { "code": "COP", "name": "Colombian peso" },
+    { "code": "CRC", "name": "Costa Rican colón" },
+    { "code": "CUP", "name": "Cuban peso" },
+    { "code": "DKK", "name": "Danish krone" },
+    { "code": "DOP", "name": "Dominican peso" },
+    { "code": "EUR", "name": "Euro" },
+    { "code": "FKP", "name": "Falkland Islands pound" },
+    { "code": "GBP", "name": "British pound" },
+    { "code": "GTQ", "name": "Guatemalan quetzal" },
+    { "code": "GYD", "name": "Guyanese dollar" },
+    { "code": "HNL", "name": "Honduran lempira" },
+    { "code": "HTG", "name": "Haitian gourde" },
+    { "code": "JMD", "name": "Jamaican dollar" },
+    { "code": "KYD", "name": "Cayman Islands dollar" },
+    { "code": "MXN", "name": "Mexican peso" },
+    { "code": "NIO", "name": "Nicaraguan córdoba" },
+    { "code": "PAB", "name": "Panamanian balboa" },
+    { "code": "PEN", "name": "Peruvian sol" },
+    { "code": "PYG", "name": "Paraguayan guarani" },
+    { "code": "SRD", "name": "Surinamese dollar" },
+    { "code": "TTD", "name": "Trinidad and Tobago dollar" },
+    { "code": "USD", "name": "United States dollar" },
+    { "code": "UYU", "name": "Uruguayan peso" },
+    { "code": "VES", "name": "Bolívar" },
+    { "code": "XCD", "name": "East Caribbean dollar" }
+  ]
 }
 ```
 
 **Campos de la respuesta:**
 
-| Campo  | Tipo   | Descripción |
-|--------|--------|-------------|
+| Campo  | Tipo   | Descripción                                                                                    |
+| ------ | ------ | ---------------------------------------------------------------------------------------------- |
 | `code` | string | Código ISO 4217 de la moneda. Se usa como identificador (`value`) en el selector del frontend. |
-| `name` | string | Nombre descriptivo de la moneda en inglés. |
+| `name` | string | Nombre descriptivo de la moneda en inglés.                                                     |
 
 > **Nota:** El formato de respuesta difiere de otros catálogos — usa `{ data: [{ code, name }] }` en lugar de `{ data: [{ id, name }] }`. El parser en `getCurrencies()` mapea `code → id` para normalizar la estructura `CatalogOption`.
 
@@ -364,7 +392,6 @@ Devuelve la lista de monedas disponibles filtradas por las Américas + EUR. No r
 - **Valor por defecto:** `"COP"` (hrederado del valor por defecto de la propiedad)
 
 ---
-
 
 ## Endpoints de Países
 
@@ -408,6 +435,7 @@ GET /countries?currency[eq]=COP
 ```
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -445,6 +473,7 @@ GET /countries?currency[eq]=COP
 **Endpoint:** `POST /properties`
 
 **Payload:**
+
 ```json
 {
   "propertyTypeId": 102,
@@ -473,7 +502,8 @@ GET /countries?currency[eq]=COP
       "network": "VillaSol_Guest_updated",
       "password": "vacacionesperfectas2026-updated"
     },
-    "currency": "COP"
+    "currency": "COP",
+    "communicationsLocale": "es"
   },
   "externalPmsIds": [
     {
@@ -488,6 +518,7 @@ GET /countries?currency[eq]=COP
 **Nota:** El campo `userUuid` NO es obligatorio. El backend lo extrae automáticamente del token de autenticación de la request.
 
 **Validaciones:**
+
 - `userUuid`: **NO requerido** (el backend lo extrae del token de autenticación)
 - `name`: Requerido, máximo 120 caracteres
 - `description`: Opcional, texto
@@ -510,11 +541,13 @@ GET /countries?currency[eq]=COP
 - `extra.amenities`: Opcional, array de IDs que deben existir en catálogos (catalog_category_id = 10)
 - `extra.wifiDetails.network`: Opcional, máximo 100 caracteres
 - `extra.wifiDetails.password`: Opcional, máximo 100 caracteres
+- `extra.communicationsLocale`: Opcional, idioma de las comunicaciones al huésped (correo con link de check-in, etc.). Valores: `"es"` | `"en"` | `"pt"`. Default `"es"` si se omite.
 - `externalPmsIds`: Opcional, array
 - `externalPmsIds[].sourcePmsId`: Requerido si se envía array, debe existir en catálogos (catalog_category_id = 12), no duplicar en el mismo request
 - `externalPmsIds[].externalId`: Requerido si se envía array, máximo 60 caracteres
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -546,14 +579,14 @@ GET /countries?currency[eq]=COP
 
 Puedes filtrar las propiedades usando los siguientes parámetros:
 
-| Parámetro | Operadores | Descripción | Ejemplo |
-|-----------|-----------|-------------|---------|
-| `userUuid` | `[eq]` | Filtrar por UUID del usuario | `userUuid[eq]=018cac04-4119-710b-a52f-8610b4b68aa3` |
-| `name` | `[eq]`, `[has]` | Filtrar por nombre de la propiedad | `name[has]=villa` |
-| `city` | `[eq]`, `[has]` | Filtrar por ciudad | `city[eq]=Cali` |
-| `state` | `[eq]`, `[has]` | Filtrar por estado/departamento | `state[has]=valle` |
-| `countryId` | `[eq]`, `[neq]` | Filtrar por ID del país | `countryId[eq]=48` |
-| `statusRecordId` | `[eq]`, `[neq]` | Filtrar por estado de registro | `statusRecordId[eq]=6` |
+| Parámetro        | Operadores      | Descripción                        | Ejemplo                                             |
+| ---------------- | --------------- | ---------------------------------- | --------------------------------------------------- |
+| `userUuid`       | `[eq]`          | Filtrar por UUID del usuario       | `userUuid[eq]=018cac04-4119-710b-a52f-8610b4b68aa3` |
+| `name`           | `[eq]`, `[has]` | Filtrar por nombre de la propiedad | `name[has]=villa`                                   |
+| `city`           | `[eq]`, `[has]` | Filtrar por ciudad                 | `city[eq]=Cali`                                     |
+| `state`          | `[eq]`, `[has]` | Filtrar por estado/departamento    | `state[has]=valle`                                  |
+| `countryId`      | `[eq]`, `[neq]` | Filtrar por ID del país            | `countryId[eq]=48`                                  |
+| `statusRecordId` | `[eq]`, `[neq]` | Filtrar por estado de registro     | `statusRecordId[eq]=6`                              |
 
 **Ejemplos de uso:**
 
@@ -581,6 +614,7 @@ GET /properties?city[eq]=Cali&statusRecordId[eq]=6
 ```
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -625,16 +659,19 @@ GET /properties?city[eq]=Cali&statusRecordId[eq]=6
 **Endpoint:** `GET /properties/{property_uuid}`
 
 **Parámetros de URL:**
+
 - `property_uuid`: UUID de la propiedad
 
 **Headers:** Requiere token de autenticación
 
 **Ejemplo:**
+
 ```
 GET /properties/018cac05-1234-5678-abcd-1234567890ab
 ```
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -677,10 +714,12 @@ GET /properties/018cac05-1234-5678-abcd-1234567890ab
 **Endpoint:** `PUT /properties/{property_uuid}` o `PATCH /properties/{property_uuid}`
 
 **Métodos Soportados:**
+
 - **PUT**: Actualización completa (reemplaza todos los campos)
 - **PATCH**: Actualización parcial (solo actualiza los campos enviados)
 
 **Parámetros de URL:**
+
 - `property_uuid`: UUID de la propiedad a actualizar
 
 **Headers:** Requiere token de autenticación
@@ -733,6 +772,7 @@ Solo envía los campos que deseas actualizar.
 **Validaciones:** Mismas que crear propiedad (solo para campos enviados en PATCH)
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -760,16 +800,19 @@ Solo envía los campos que deseas actualizar.
 **Endpoint:** `DELETE /properties/{property_uuid}`
 
 **Parámetros de URL:**
+
 - `property_uuid`: UUID de la propiedad
 
 **Headers:** Requiere token de autenticación
 
 **Ejemplo:**
+
 ```
 DELETE /properties/018cac05-1234-5678-abcd-1234567890ab
 ```
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -789,16 +832,19 @@ Actualmente el endpoint DELETE está retornando error 500 (Internal Server Error
 **Endpoint:** `POST /properties/{property_uuid}/restore`
 
 **Parámetros de URL:**
+
 - `property_uuid`: UUID de la propiedad eliminada (soft delete)
 
 **Headers:** Requiere token de autenticación
 
 **Ejemplo:**
+
 ```
 POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 ```
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -830,16 +876,16 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 
 ### Órdenes de Automatización
 
-| Order | Nombre | Proveedor(es) | Impacto en Check-in |
-|-------|--------|---------------|---------------------|
-| 1 | Verificación de Identidad (Principal) | `didit`, `textract` | **SÍ** — determina `verification.type` en `/identify` |
-| 2 | Verificación de Identidad (Secundarios) | `didit`, `textract` | **SÍ** — igual para guests secundarios |
-| 3 | Contrato Digital | `tufirma` | SÍ — activa paso `/contract` |
-| 4 | Códigos de Cerradura | `ttlock` | SÍ — genera códigos al completar |
-| 5 | Reporte PDF de Huéspedes | `pdf_report` | No |
-| 6 | TRA Colombia | `tra_colombia` | No |
-| 7 | SIRE Colombia (Check-in) | `sire_colombia` | No |
-| 8 | SIRE Colombia (Check-out) | `sire_colombia` | No |
+| Order | Nombre                                  | Proveedor(es)       | Impacto en Check-in                                   |
+| ----- | --------------------------------------- | ------------------- | ----------------------------------------------------- |
+| 1     | Verificación de Identidad (Principal)   | `didit`, `textract` | **SÍ** — determina `verification.type` en `/identify` |
+| 2     | Verificación de Identidad (Secundarios) | `didit`, `textract` | **SÍ** — igual para guests secundarios                |
+| 3     | Contrato Digital                        | `tufirma`           | SÍ — activa paso `/contract`                          |
+| 4     | Códigos de Cerradura                    | `ttlock`            | SÍ — genera códigos al completar                      |
+| 5     | Reporte PDF de Huéspedes                | `pdf_report`        | No                                                    |
+| 6     | TRA Colombia                            | `tra_colombia`      | No                                                    |
+| 7     | SIRE Colombia (Check-in)                | `sire_colombia`     | No                                                    |
+| 8     | SIRE Colombia (Check-out)               | `sire_colombia`     | No                                                    |
 
 ---
 
@@ -850,6 +896,7 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 **Headers:** Requiere token de autenticación
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "data": [
@@ -880,6 +927,7 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 **Headers:** Requiere token de autenticación
 
 **Payload:**
+
 ```json
 {
   "automationOrder": 1,
@@ -893,6 +941,7 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 ```
 
 **Validaciones:**
+
 - `automationOrder`: Requerido, integer, 1–8
 - `providerName`: String o null. Requerido para órdenes con proveedores
 - `isActive`: Requerido, boolean
@@ -900,6 +949,7 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 - `guestFilter`: Opcional, `all` | `foreign_only` | `national_only`
 
 **Respuesta Exitosa (201):**
+
 ```json
 {
   "data": {
@@ -935,6 +985,7 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 **Headers:** Requiere token de autenticación
 
 **Payload:**
+
 ```json
 {
   "isActive": false
@@ -952,6 +1003,7 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 **Headers:** Requiere token de autenticación
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -964,24 +1016,31 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 ### Parámetros por Proveedor
 
 #### `didit` (Órdenes 1, 2)
+
 ```json
 {}
 ```
+
 > Las credenciales Didit son a nivel de plataforma (env vars del backend). No se requiere configuración por propiedad.
 
 #### `textract` (Órdenes 1, 2)
+
 ```json
 {}
 ```
+
 > Las credenciales AWS Textract son a nivel de plataforma. No se requiere configuración por propiedad.
 
 #### `tufirma` (Orden 3)
+
 ```json
 {}
 ```
+
 > ⚠️ Pendiente definir parámetros con el equipo de TuFirma.
 
 #### `ttlock` (Orden 4)
+
 ```json
 {
   "username": "cuenta@email.com",
@@ -1004,6 +1063,7 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 ```
 
 #### `pdf_report` (Orden 5)
+
 ```json
 {
   "recipients": ["admin@propiedad.com", "dueno@gmail.com"]
@@ -1011,6 +1071,7 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 ```
 
 #### `tra_colombia` (Orden 6)
+
 ```json
 {
   "token": "token_api_policia_nacional",
@@ -1019,6 +1080,7 @@ POST /properties/018cac05-1234-5678-abcd-1234567890ab/restore
 ```
 
 #### `sire_colombia` (Órdenes 7, 8)
+
 ```json
 {
   "document_type": "CC",
@@ -1066,14 +1128,14 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 
 ### Resumen de Endpoints
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| `GET` | `/listings/{listingUuid}/automation-overrides` | Listar overrides del listing |
-| `GET` | `/listings/{listingUuid}/automation-overrides/{overrideUuid}` | Ver un override específico |
-| `POST` | `/listings/{listingUuid}/automation-overrides` | Crear override |
-| `PUT` | `/listings/{listingUuid}/automation-overrides/{overrideUuid}` | Actualizar override |
-| `DELETE` | `/listings/{listingUuid}/automation-overrides/{overrideUuid}` | Eliminar override (soft delete) |
-| `POST` | `/listings/{listingUuid}/automation-overrides/{overrideUuid}/restore` | Restaurar override eliminado |
+| Método   | Endpoint                                                              | Descripción                     |
+| -------- | --------------------------------------------------------------------- | ------------------------------- |
+| `GET`    | `/listings/{listingUuid}/automation-overrides`                        | Listar overrides del listing    |
+| `GET`    | `/listings/{listingUuid}/automation-overrides/{overrideUuid}`         | Ver un override específico      |
+| `POST`   | `/listings/{listingUuid}/automation-overrides`                        | Crear override                  |
+| `PUT`    | `/listings/{listingUuid}/automation-overrides/{overrideUuid}`         | Actualizar override             |
+| `DELETE` | `/listings/{listingUuid}/automation-overrides/{overrideUuid}`         | Eliminar override (soft delete) |
+| `POST`   | `/listings/{listingUuid}/automation-overrides/{overrideUuid}/restore` | Restaurar override eliminado    |
 
 ---
 
@@ -1084,6 +1146,7 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 **Headers:** Requiere token de autenticación
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "data": [
@@ -1108,6 +1171,7 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 ```
 
 **Notas:**
+
 - Retorna todos los overrides activos (no eliminados) del listing.
 - `propertyAutomationName` y `providerSlug` se incluyen para contexto visual en el frontend.
 - `statusProviderId`: `6` = activo, `7` = inactivo.
@@ -1121,6 +1185,7 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 **Headers:** Requiere token de autenticación
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "data": {
@@ -1151,6 +1216,7 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 **Headers:** Requiere token de autenticación
 
 **Payload:**
+
 ```json
 {
   "propertyAutomationUuid": "019e5678-1234-7890-abcd-ef0123456789",
@@ -1165,14 +1231,15 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 
 **Validaciones:**
 
-| Campo | Requerido | Tipo | Reglas |
-|-------|-----------|------|--------|
-| `propertyAutomationUuid` | ✅ | string (UUID) | Debe existir en `property_automations.uuid` y pertenecer a la propiedad del listing |
-| `statusProviderId` | ✅ | integer | `6` (activo) o `7` (inactivo) |
-| `token` | ❌ | string | Token personalizado. Si no se envía y el proveedor tiene `internalUse`, el backend genera un token Sanctum automáticamente |
-| `parameters` | ❌ | object | JSON con parámetros a sobreescribir. Se fusionan sobre los parámetros base de la automatización |
+| Campo                    | Requerido | Tipo          | Reglas                                                                                                                     |
+| ------------------------ | --------- | ------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `propertyAutomationUuid` | ✅        | string (UUID) | Debe existir en `property_automations.uuid` y pertenecer a la propiedad del listing                                        |
+| `statusProviderId`       | ✅        | integer       | `6` (activo) o `7` (inactivo)                                                                                              |
+| `token`                  | ❌        | string        | Token personalizado. Si no se envía y el proveedor tiene `internalUse`, el backend genera un token Sanctum automáticamente |
+| `parameters`             | ❌        | object        | JSON con parámetros a sobreescribir. Se fusionan sobre los parámetros base de la automatización                            |
 
 **Respuesta Exitosa (201):**
+
 ```json
 {
   "data": {
@@ -1193,6 +1260,7 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 ```
 
 **Lógica de auto-generación de token:**
+
 ```
 ¿El proveedor tiene config "internalUse"?
   │
@@ -1215,6 +1283,7 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 **Headers:** Requiere token de autenticación
 
 **Payload:**
+
 ```json
 {
   "statusProviderId": 7,
@@ -1229,6 +1298,7 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 **Validaciones:** Mismas que crear. `propertyAutomationUuid` NO se puede cambiar en update.
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "data": {
@@ -1255,6 +1325,7 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 **Headers:** Requiere token de autenticación
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -1273,6 +1344,7 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 **Headers:** Requiere token de autenticación
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -1295,15 +1367,18 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
 > Los overrides pueden sobreescribir cualquier campo del `parameters` de la automatización base. Aquí se listan los campos típicos que un listing podría querer personalizar:
 
 #### `tra-colombia` (Orden 6)
+
 ```json
 {
   "token": "token_api_policia_diferente_por_listing",
   "rnt": "RNT_especifico_del_listing"
 }
 ```
+
 > **Caso de uso:** El listing tiene un RNT distinto al de la propiedad (ej: multi-RNT en un mismo hotel).
 
 #### `sire-colombia` (Órdenes 7, 8)
+
 ```json
 {
   "document_type": "CC",
@@ -1312,9 +1387,11 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
   "company_code": "diferente_por_listing"
 }
 ```
+
 > **Caso de uso:** El listing reporta bajo una razón social/company_code diferente.
 
 #### `ttlock` (Orden 4)
+
 ```json
 {
   "locks": [
@@ -1326,26 +1403,33 @@ Actualmente `POST /main/complete` requiere `person_verified_at` en todos los cas
   ]
 }
 ```
+
 > **Caso de uso:** Cada listing tiene sus propias cerraduras. El override solo redefine `locks`, heredando `username`/`password` de la propiedad.
 
 #### `pdf-report` (Orden 5)
+
 ```json
 {
   "recipients": ["encargado-listing@email.com"]
 }
 ```
+
 > **Caso de uso:** El PDF de huéspedes del listing va a un email diferente al de la propiedad.
 
 #### `tufirma` (Orden 3)
+
 ```json
 {}
 ```
+
 > **Nota:** Proveedor con `internalUse`. Si se crea un override sin token, el backend genera uno automáticamente.
 
 #### `didit` / `textract` (Órdenes 1, 2)
+
 ```json
 {}
 ```
+
 > Normalmente no requieren override de parámetros (credenciales a nivel plataforma). El override típico sería solo cambiar `statusProviderId` para desactivar la verificación en un listing específico.
 
 ---
@@ -1370,20 +1454,21 @@ Backend resuelve parámetros efectivos:
 
 ### Tabla de Base de Datos: listing_automation_overrides
 
-| Campo | Tipo | Nullable | Descripción |
-|-------|------|----------|-------------|
-| `id` | bigint | NO | PK auto-increment |
-| `uuid` | char(36) | NO | UUID único (usado en URLs) |
-| `listing_id` | bigint | NO | FK → listings.id |
-| `property_automation_id` | bigint | NO | FK → property_automations.id |
-| `status_provider_id` | int | NO | 6=activo, 7=inactivo |
-| `token` | varchar(255) | SÍ | Token Sanctum (auto-generado o proporcionado) |
-| `parameters` | json | SÍ | Parámetros que sobreescriben la base |
-| `created_at` | timestamp | SÍ | — |
-| `updated_at` | timestamp | SÍ | — |
-| `deleted_at` | timestamp | SÍ | Soft delete |
+| Campo                    | Tipo         | Nullable | Descripción                                   |
+| ------------------------ | ------------ | -------- | --------------------------------------------- |
+| `id`                     | bigint       | NO       | PK auto-increment                             |
+| `uuid`                   | char(36)     | NO       | UUID único (usado en URLs)                    |
+| `listing_id`             | bigint       | NO       | FK → listings.id                              |
+| `property_automation_id` | bigint       | NO       | FK → property_automations.id                  |
+| `status_provider_id`     | int          | NO       | 6=activo, 7=inactivo                          |
+| `token`                  | varchar(255) | SÍ       | Token Sanctum (auto-generado o proporcionado) |
+| `parameters`             | json         | SÍ       | Parámetros que sobreescriben la base          |
+| `created_at`             | timestamp    | SÍ       | —                                             |
+| `updated_at`             | timestamp    | SÍ       | —                                             |
+| `deleted_at`             | timestamp    | SÍ       | Soft delete                                   |
 
 **Índices:**
+
 - `uuid` (único)
 - `listing_id` + `property_automation_id` (único, previene duplicados)
 
@@ -1399,57 +1484,60 @@ Este endpoint permite crear una unidad o alojamiento (listing) asociado a una pr
 
 **Mecanismo de Herencia de la Propiedad:**
 Para evitar redundancia, el backend implementa una funcionalidad inteligente de herencia para campos comunes de `extra` (`checkIn`, `checkOut`, `cancellationPolicy`, `amenities`, y `wifiDetails`).
+
 - **Si el campo NO se envía en el payload:** El listing heredará automáticamente el valor que tiene configurado su propiedad padre.
 - **Si el campo SÍ se envía en el payload:** El valor provisto sobrescribirá la herencia, dándole a este listing información específica y personalizada que reemplaza la info de la propiedad.
 
 **Payload de Ejemplo:**
+
 ```json
 {
-    "propertyUuid": "019d3b98-ad49-7055-8904-1c8794f4d18f",
-    "roomTypeId": 16,
-    "name": "Apto 102",
-    "internalName": "AP102",
-    "description": "nueva descripcion 2",
-    "thumbnailUrl": "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1476977613990701381/original/f1b3ed75-901d-4b4c-90e2-9be250641371.jpeg?im_w=720",
-    "contactName": "Persona encargada 2",
-    "contactEmail": "algun@email.com",
-    "contactPhone": "+5730030030000",
-    "extra": {
-        "picturesUrl": [
-            "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1476977613990701381/original/f1b3ed75-901d-4b4c-90e2-9be250641371.jpeg?im_w=720",
-            "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1476977613990701381/original/b09c9e50-0ec9-4713-96c3-09f4e1712fcc.jpeg?im_w=720"
-        ],
-        "bedRoom": 2,
-        "bathRoom": 1,
-        "rooms": 2,
-        "maxOccupancy": 4,
-        "minNights": 2,
-        "maxNights": 30,
-        "startPrice": 150000,  // Precio inicial por noche
-        "currency": "COP"      // Moneda (opcional, default: COP)
-        
-        // --- CAMPOS HEREDABLES --- (Opcionales)
-        // Si NO incluyes estos campos, heredarán los valores de la propiedad:
-        // "checkIn": "15:00",
-        // "checkOut": "12:00",
-        // "cancellationPolicy": "Estricta: Reembolso del 50%",
-        // "amenities": [46, 50, 79, 88, 76, 47],
-        // "wifiDetails": {
-        //     "network": "VillaSol_Guest_apto101",
-        //     "password": "vacacionesperfectas2026-apto101"
-        // }
-    },
-    "externalPmsIds": [
-        {
-            "sourcePmsId": 100,
-            "externalId": "1476977613990701381"
-        }
+  "propertyUuid": "019d3b98-ad49-7055-8904-1c8794f4d18f",
+  "roomTypeId": 16,
+  "name": "Apto 102",
+  "internalName": "AP102",
+  "description": "nueva descripcion 2",
+  "thumbnailUrl": "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1476977613990701381/original/f1b3ed75-901d-4b4c-90e2-9be250641371.jpeg?im_w=720",
+  "contactName": "Persona encargada 2",
+  "contactEmail": "algun@email.com",
+  "contactPhone": "+5730030030000",
+  "extra": {
+    "picturesUrl": [
+      "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1476977613990701381/original/f1b3ed75-901d-4b4c-90e2-9be250641371.jpeg?im_w=720",
+      "https://a0.muscache.com/im/pictures/prohost-api/Hosting-1476977613990701381/original/b09c9e50-0ec9-4713-96c3-09f4e1712fcc.jpeg?im_w=720"
     ],
-    "statusRecordId": 6
+    "bedRoom": 2,
+    "bathRoom": 1,
+    "rooms": 2,
+    "maxOccupancy": 4,
+    "minNights": 2,
+    "maxNights": 30,
+    "startPrice": 150000, // Precio inicial por noche
+    "currency": "COP" // Moneda (opcional, default: COP)
+
+    // --- CAMPOS HEREDABLES --- (Opcionales)
+    // Si NO incluyes estos campos, heredarán los valores de la propiedad:
+    // "checkIn": "15:00",
+    // "checkOut": "12:00",
+    // "cancellationPolicy": "Estricta: Reembolso del 50%",
+    // "amenities": [46, 50, 79, 88, 76, 47],
+    // "wifiDetails": {
+    //     "network": "VillaSol_Guest_apto101",
+    //     "password": "vacacionesperfectas2026-apto101"
+    // }
+  },
+  "externalPmsIds": [
+    {
+      "sourcePmsId": 100,
+      "externalId": "1476977613990701381"
+    }
+  ],
+  "statusRecordId": 6
 }
 ```
 
 **Validaciones y Campos Clave:**
+
 - `propertyUuid`: Requerido. UUID de la propiedad madre.
 - `roomTypeId`: Requerido. Tipo de habitación (catalog_category_id = 5).
 - `name`: Requerido. Nombre principal de la unidad.
@@ -1467,14 +1555,59 @@ Para evitar redundancia, el backend implementa una funcionalidad inteligente de 
 
 ### Resumen de Endpoints
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| `GET` | `/reservations` | Listar reservaciones (con filtros) |
-| `POST` | `/reservations` | Crear nueva reservación |
-| `GET` | `/reservations/{reservation}` | Obtener reservación por UUID |
-| `PUT \| PATCH` | `/reservations/{reservation}` | Actualizar reservación |
-| `DELETE` | `/reservations/{reservation}` | Eliminar reservación (soft delete) |
-| `POST` | `/reservations/{reservation}/restore` | Restaurar reservación eliminada |
+| Método         | Endpoint                                        | Descripción                                                      |
+| -------------- | ----------------------------------------------- | ---------------------------------------------------------------- |
+| `GET`          | `/reservations`                                 | Listar reservaciones (con filtros)                               |
+| `POST`         | `/reservations`                                 | Crear nueva reservación                                          |
+| `GET`          | `/reservations/{reservation}`                   | Obtener reservación por UUID                                     |
+| `PUT \| PATCH` | `/reservations/{reservation}`                   | Actualizar reservación                                           |
+| `DELETE`       | `/reservations/{reservation}`                   | Eliminar reservación (soft delete)                               |
+| `POST`         | `/reservations/{reservation}/restore`           | Restaurar reservación eliminada                                  |
+| `POST`         | `/reservations/{reservation}/send-checkin-link` | Enviar (o reenviar) el correo con el link de check-in al huésped |
+
+---
+
+### Enviar Link de Check-in
+
+**Endpoint:** `POST /reservations/{reservation}/send-checkin-link`
+
+Envía (o reenvía) al huésped el correo con el link de check-in. Usado por el PM desde el Panel de Operaciones (acción rápida "Enviar Link de Check-in").
+
+**Payload (opcional):**
+
+```json
+{
+  "locale": "es",
+  "email": "huesped@correo.com"
+}
+```
+
+**Validaciones:**
+
+- `locale`: Opcional, `"es"` | `"en"` | `"pt"`. Si se omite, el backend usa el idioma configurado en la propiedad (`extra.communicationsLocale`).
+- `email`: Opcional, formato email. Si se omite, el backend usa el correo del huésped principal de la reserva. Cuando se envía, sobrescribe el destinatario solo para ese envío.
+
+**Comportamiento esperado:**
+
+- **Envío automático** (al importar una reserva de la propiedad): el backend envía el link **sin** `locale` ni `email`, usando el default de la propiedad y el correo del huésped principal.
+- **Reenvío manual** (PM desde el Panel de Operaciones): el PM ve un diálogo con el **correo precargado del huésped principal** (editable) y un selector de idioma ("Idioma de la propiedad" o `es`/`en`/`pt`). Ambos campos sobrescriben el default solo para ese envío.
+
+**Respuesta Exitosa (200):**
+
+```json
+{
+  "message": "Link de check-in enviado"
+}
+```
+
+**Errores:**
+
+- `422`: La reserva no está en un estado válido para enviar el link, o no tiene email del huésped.
+
+**Notas Frontend:**
+
+- Implementado en `reservationsService.sendCheckinLink(uuid, { locale?, email? })`.
+- El botón "Enviar Link de Check-in" abre un diálogo con: campo **correo** (precargado con el del huésped principal, editable) y selector de **idioma** (_Idioma de la propiedad_ → sin `locale`, o `Español`/`English`/`Português` → override). Valida el formato del correo antes de habilitar "Enviar". El mensaje de éxito/error se muestra con el sistema `notifyError`/toast (mensaje localizado que devuelve el backend).
 
 ---
 
@@ -1486,15 +1619,15 @@ Para evitar redundancia, el backend implementa una funcionalidad inteligente de 
 
 **Parámetros de Query (Filtros Opcionales):**
 
-| Parámetro | Operadores | Descripción | Ejemplo |
-|-----------|-----------|-------------|---------|
-| `listingUuid` | `[eq]` | Filtrar por UUID del listing | `listingUuid[eq]=019d3bbb-...` |
-| `reservationSourceId` | `[eq]`, `[neq]` | Filtrar por fuente de reserva | `reservationSourceId[eq]=22` |
-| `arrivalDate` | `[eq]`, `[gte]`, `[lte]` | Filtrar por fecha de llegada | `arrivalDate[gte]=2026-05-01` |
-| `departureDate` | `[eq]`, `[gte]`, `[lte]` | Filtrar por fecha de salida | `departureDate[lte]=2026-06-01` |
-| `statusReservationId` | `[eq]`, `[neq]` | Filtrar por estado de la reserva | `statusReservationId[eq]=27` |
-| `emailGuest` | `[eq]`, `[has]` | Filtrar por email del huésped | `emailGuest[has]=gmail` |
-| `externalId` | `[eq]` | Filtrar por ID externo | `externalId[eq]=HM4XCBQYYP` |
+| Parámetro             | Operadores               | Descripción                      | Ejemplo                         |
+| --------------------- | ------------------------ | -------------------------------- | ------------------------------- |
+| `listingUuid`         | `[eq]`                   | Filtrar por UUID del listing     | `listingUuid[eq]=019d3bbb-...`  |
+| `reservationSourceId` | `[eq]`, `[neq]`          | Filtrar por fuente de reserva    | `reservationSourceId[eq]=22`    |
+| `arrivalDate`         | `[eq]`, `[gte]`, `[lte]` | Filtrar por fecha de llegada     | `arrivalDate[gte]=2026-05-01`   |
+| `departureDate`       | `[eq]`, `[gte]`, `[lte]` | Filtrar por fecha de salida      | `departureDate[lte]=2026-06-01` |
+| `statusReservationId` | `[eq]`, `[neq]`          | Filtrar por estado de la reserva | `statusReservationId[eq]=27`    |
+| `emailGuest`          | `[eq]`, `[has]`          | Filtrar por email del huésped    | `emailGuest[has]=gmail`         |
+| `externalId`          | `[eq]`                   | Filtrar por ID externo           | `externalId[eq]=HM4XCBQYYP`     |
 
 **Ejemplos de uso:**
 
@@ -1516,6 +1649,7 @@ GET /reservations?listingUuid[eq]=019d3bbb-...&statusReservationId[eq]=27
 ```
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -1532,7 +1666,7 @@ GET /reservations?listingUuid[eq]=019d3bbb-...&statusReservationId[eq]=27
       "email_guest": "ricardo.lombana@gmail.com",
       "total_guests": 3,
       "currency": "USD",
-      "total_price": 750.50,
+      "total_price": 750.5,
       "extra": {
         "specialRequests": "Cuna para bebé solicitada",
         "estimatedArrivalTime": "14:30",
@@ -1556,6 +1690,7 @@ GET /reservations?listingUuid[eq]=019d3bbb-...&statusReservationId[eq]=27
 **Headers:** Requiere token de autenticación
 
 **Payload:**
+
 ```json
 {
   "listingUuid": "019d3bbb-b91d-706c-b87d-512c42e2c814",
@@ -1567,7 +1702,7 @@ GET /reservations?listingUuid[eq]=019d3bbb-...&statusReservationId[eq]=27
   "emailGuest": "ricardo.lombana@gmail.com",
   "totalGuests": 3,
   "currency": "USD",
-  "totalPrice": 750.50,
+  "totalPrice": 750.5,
   "statusReservationId": 27,
   "extra": {
     "specialRequests": "Cuna para bebé solicitada",
@@ -1579,36 +1714,37 @@ GET /reservations?listingUuid[eq]=019d3bbb-...&statusReservationId[eq]=27
 
 **Validaciones:**
 
-| Campo | Requerido | Tipo | Reglas |
-|-------|-----------|------|--------|
-| `listingUuid` | ✅ | string (UUID) | Debe existir en `listings.uuid` |
-| `reservationSourceId` | ✅ | integer | Debe existir en catálogos (`catalog_category_id = 6`) |
-| `externalId` | ❌ | string | Máximo 60 caracteres. Código de confirmación externo (Airbnb, Booking, etc.) |
-| `arrivalDate` | ✅ | date | Formato `YYYY-MM-DD`. Debe ser fecha futura o actual |
-| `departureDate` | ✅ | date | Formato `YYYY-MM-DD`. Debe ser posterior a `arrivalDate` |
-| `guestUuid` | ❌ | string (UUID) | Debe existir en `guests.uuid`. Vincula un huésped existente. Queda `null` si no se envía (el huésped lo completa durante el check-in) |
-| `emailGuest` | ✅ | string (email) | Máximo 60 caracteres. Email del huésped para enviar link de check-in |
-| `totalGuests` | ✅ | integer | Mínimo 1, default 1. Número total de huéspedes |
-| `currency` | ✅ | string | Exactamente 3 caracteres. Código ISO 4217 (COP, USD, EUR, etc.) |
-| `totalPrice` | ✅ | numeric | Precio total de la reserva. Acepta decimales |
-| `statusReservationId` | ✅ | integer | Debe existir en catálogos (`catalog_category_id = 7`) |
-| `extra` | ❌ | object | JSON libre para datos adicionales |
+| Campo                 | Requerido | Tipo           | Reglas                                                                                                                                |
+| --------------------- | --------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `listingUuid`         | ✅        | string (UUID)  | Debe existir en `listings.uuid`                                                                                                       |
+| `reservationSourceId` | ✅        | integer        | Debe existir en catálogos (`catalog_category_id = 6`)                                                                                 |
+| `externalId`          | ❌        | string         | Máximo 60 caracteres. Código de confirmación externo (Airbnb, Booking, etc.)                                                          |
+| `arrivalDate`         | ✅        | date           | Formato `YYYY-MM-DD`. Debe ser fecha futura o actual                                                                                  |
+| `departureDate`       | ✅        | date           | Formato `YYYY-MM-DD`. Debe ser posterior a `arrivalDate`                                                                              |
+| `guestUuid`           | ❌        | string (UUID)  | Debe existir en `guests.uuid`. Vincula un huésped existente. Queda `null` si no se envía (el huésped lo completa durante el check-in) |
+| `emailGuest`          | ✅        | string (email) | Máximo 60 caracteres. Email del huésped para enviar link de check-in                                                                  |
+| `totalGuests`         | ✅        | integer        | Mínimo 1, default 1. Número total de huéspedes                                                                                        |
+| `currency`            | ✅        | string         | Exactamente 3 caracteres. Código ISO 4217 (COP, USD, EUR, etc.)                                                                       |
+| `totalPrice`          | ✅        | numeric        | Precio total de la reserva. Acepta decimales                                                                                          |
+| `statusReservationId` | ✅        | integer        | Debe existir en catálogos (`catalog_category_id = 7`)                                                                                 |
+| `extra`               | ❌        | object         | JSON libre para datos adicionales                                                                                                     |
 
 **Campos comunes en `extra`:**
 
-| Campo Extra | Tipo | Descripción |
-|-------------|------|-------------|
-| `extra.guest_name` | string | Nombre temporal del huésped (antes del check-in) |
-| `extra.guest_phone` | string | Teléfono/WhatsApp del huésped |
-| `extra.specialRequests` | string | Solicitudes especiales |
-| `extra.estimatedArrivalTime` | string | Hora estimada de llegada (HH:mm) |
-| `extra.flightNumber` | string | Número de vuelo |
-| `extra.arrival_time` | string | Hora de llegada confirmada |
-| `extra.departure_time` | string | Hora de salida |
-| `extra.arrival_flight` | string | Vuelo de llegada |
-| `extra.departure_flight` | string | Vuelo de salida |
+| Campo Extra                  | Tipo   | Descripción                                      |
+| ---------------------------- | ------ | ------------------------------------------------ |
+| `extra.guest_name`           | string | Nombre temporal del huésped (antes del check-in) |
+| `extra.guest_phone`          | string | Teléfono/WhatsApp del huésped                    |
+| `extra.specialRequests`      | string | Solicitudes especiales                           |
+| `extra.estimatedArrivalTime` | string | Hora estimada de llegada (HH:mm)                 |
+| `extra.flightNumber`         | string | Número de vuelo                                  |
+| `extra.arrival_time`         | string | Hora de llegada confirmada                       |
+| `extra.departure_time`       | string | Hora de salida                                   |
+| `extra.arrival_flight`       | string | Vuelo de llegada                                 |
+| `extra.departure_flight`     | string | Vuelo de salida                                  |
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -1626,7 +1762,7 @@ GET /reservations?listingUuid[eq]=019d3bbb-...&statusReservationId[eq]=27
       "email_guest": "ricardo.lombana@gmail.com",
       "total_guests": 3,
       "currency": "USD",
-      "total_price": 750.50,
+      "total_price": 750.5,
       "status_reservation_id": 27,
       "created_at": "2026-05-01T10:00:00Z"
     }
@@ -1643,16 +1779,19 @@ GET /reservations?listingUuid[eq]=019d3bbb-...&statusReservationId[eq]=27
 **Endpoint:** `GET /reservations/{reservation_uuid}`
 
 **Parámetros de URL:**
+
 - `reservation_uuid`: UUID de la reservación
 
 **Headers:** Requiere token de autenticación
 
 **Ejemplo:**
+
 ```
 GET /reservations/019d4f00-1234-7890-abcd-1234567890ab
 ```
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -1668,7 +1807,7 @@ GET /reservations/019d4f00-1234-7890-abcd-1234567890ab
     "email_guest": "ricardo.lombana@gmail.com",
     "total_guests": 3,
     "currency": "USD",
-    "total_price": 750.50,
+    "total_price": 750.5,
     "extra": {
       "specialRequests": "Cuna para bebé solicitada",
       "estimatedArrivalTime": "14:30",
@@ -1689,10 +1828,12 @@ GET /reservations/019d4f00-1234-7890-abcd-1234567890ab
 **Endpoint:** `PUT /reservations/{reservation_uuid}` o `PATCH /reservations/{reservation_uuid}`
 
 **Métodos Soportados:**
+
 - **PUT**: Actualización completa (reemplaza todos los campos)
 - **PATCH**: Actualización parcial (solo actualiza los campos enviados)
 
 **Parámetros de URL:**
+
 - `reservation_uuid`: UUID de la reservación a actualizar
 
 **Headers:** Requiere token de autenticación
@@ -1711,7 +1852,7 @@ Mismo formato que crear reservación. Todos los campos requeridos deben enviarse
   "emailGuest": "ricardo.lombana@gmail.com",
   "totalGuests": 4,
   "currency": "USD",
-  "totalPrice": 900.00,
+  "totalPrice": 900.0,
   "statusReservationId": 27,
   "extra": {
     "specialRequests": "Cuna para bebé + cama extra",
@@ -1728,12 +1869,13 @@ Solo envía los campos que deseas actualizar.
 ```json
 {
   "totalGuests": 4,
-  "totalPrice": 900.00,
+  "totalPrice": 900.0,
   "statusReservationId": 28
 }
 ```
 
 **Caso de uso común — Asignar huésped tras check-in:**
+
 ```json
 {
   "guestUuid": "019d4ca0-bb29-7371-9300-833b0b944f52"
@@ -1743,6 +1885,7 @@ Solo envía los campos que deseas actualizar.
 **Validaciones:** Mismas que crear reservación (solo para campos enviados en PATCH)
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -1753,7 +1896,7 @@ Solo envía los campos que deseas actualizar.
       "uuid": "019d4f00-1234-7890-abcd-1234567890ab",
       "listing_id": 45,
       "total_guests": 4,
-      "total_price": 900.00,
+      "total_price": 900.0,
       "status_reservation_id": 28,
       "updated_at": "2026-05-02T14:30:00Z"
     }
@@ -1768,16 +1911,19 @@ Solo envía los campos que deseas actualizar.
 **Endpoint:** `DELETE /reservations/{reservation_uuid}`
 
 **Parámetros de URL:**
+
 - `reservation_uuid`: UUID de la reservación
 
 **Headers:** Requiere token de autenticación
 
 **Ejemplo:**
+
 ```
 DELETE /reservations/019d4f00-1234-7890-abcd-1234567890ab
 ```
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -1794,16 +1940,19 @@ DELETE /reservations/019d4f00-1234-7890-abcd-1234567890ab
 **Endpoint:** `POST /reservations/{reservation_uuid}/restore`
 
 **Parámetros de URL:**
+
 - `reservation_uuid`: UUID de la reservación eliminada (soft delete)
 
 **Headers:** Requiere token de autenticación
 
 **Ejemplo:**
+
 ```
 POST /reservations/019d4f00-1234-7890-abcd-1234567890ab/restore
 ```
 
 **Respuesta Exitosa:**
+
 ```json
 {
   "success": true,
@@ -1827,43 +1976,43 @@ POST /reservations/019d4f00-1234-7890-abcd-1234567890ab/restore
 
 ### Catálogos Relacionados con Reservaciones
 
-| Catálogo | category_id | Endpoint | Uso |
-|----------|-------------|----------|-----|
-| `reservation_source` | 6 | `GET /catalogs?catalogCategoryName[eq]=reservation_source` | Canal/fuente de la reserva (Airbnb, Booking, Directo, etc.) |
-| `status_reservation` | 7 | `GET /catalogs?catalogCategoryName[eq]=status_reservation` | Estado de la reserva (Pendiente, Confirmada, Cancelada, etc.) |
-| `currencies` | — | `GET /catalogs/category/currencies` | Monedas disponibles (COP, USD, EUR, etc.) |
+| Catálogo             | category_id | Endpoint                                                   | Uso                                                           |
+| -------------------- | ----------- | ---------------------------------------------------------- | ------------------------------------------------------------- |
+| `reservation_source` | 6           | `GET /catalogs?catalogCategoryName[eq]=reservation_source` | Canal/fuente de la reserva (Airbnb, Booking, Directo, etc.)   |
+| `status_reservation` | 7           | `GET /catalogs?catalogCategoryName[eq]=status_reservation` | Estado de la reserva (Pendiente, Confirmada, Cancelada, etc.) |
+| `currencies`         | —           | `GET /catalogs/category/currencies`                        | Monedas disponibles (COP, USD, EUR, etc.)                     |
 
 #### Valores de `reservation_source` (category_id = 6)
 
-| id | name (es) | name (en) | slug | order |
-|----|-----------|-----------|------|-------|
-| 21 | Directo | Direct | `direct` | 1 |
-| 22 | Airbnb | Airbnb | `airbnb` | 2 |
-| 23 | Booking.com | Booking.com | `booking` | 3 |
-| 24 | Vrbo | Vrbo | `vrbo` | 4 |
-| 25 | Despegar | Despegar | `despegar` | 5 |
-| 26 | Expedia | Expedia | `expedia` | 6 |
-| 107 | Desconocido | Unknown | `unknow` | 999 |
+| id  | name (es)   | name (en)   | slug       | order |
+| --- | ----------- | ----------- | ---------- | ----- |
+| 21  | Directo     | Direct      | `direct`   | 1     |
+| 22  | Airbnb      | Airbnb      | `airbnb`   | 2     |
+| 23  | Booking.com | Booking.com | `booking`  | 3     |
+| 24  | Vrbo        | Vrbo        | `vrbo`     | 4     |
+| 25  | Despegar    | Despegar    | `despegar` | 5     |
+| 26  | Expedia     | Expedia     | `expedia`  | 6     |
+| 107 | Desconocido | Unknown     | `unknow`   | 999   |
 
 > **Nota importante:** El campo `slug` es clave para el endpoint de check-in externo. Es el valor que se usa en la URL `/checkin/{sourceSlug}/{listingUuid}/{externalId}`.
 
 #### Valores de `status_reservation` (category_id = 7)
 
-| id | name (es) | name (en) | order |
-|----|-----------|-----------|-------|
-| 27 | Confirmada | Confirmed | 1 |
-| 28 | En Progreso | In Progress | 2 |
-| 29 | Cancelada | Cancelled | 3 |
-| 30 | Finalizada | Closed | 4 |
-| 108 | Eliminada | Deleted | 5 |
-| 109 | Desconocido | Unknown | 6 |
+| id  | name (es)   | name (en)   | order |
+| --- | ----------- | ----------- | ----- |
+| 27  | Confirmada  | Confirmed   | 1     |
+| 28  | En Progreso | In Progress | 2     |
+| 29  | Cancelada   | Cancelled   | 3     |
+| 30  | Finalizada  | Closed      | 4     |
+| 108 | Eliminada   | Deleted     | 5     |
+| 109 | Desconocido | Unknown     | 6     |
 
 #### Valores de `gender` (category_id = 15)
 
-| id | name (es) | name (en) |
-|----|-----------|----------|
-| 113 | Mujer | Female |
-| 114 | Hombre | Male |
+| id  | name (es)     | name (en)      |
+| --- | ------------- | -------------- |
+| 113 | Mujer         | Female         |
+| 114 | Hombre        | Male           |
 | 115 | Indeterminado | Indeterminated |
 
 ---
@@ -1935,32 +2084,34 @@ GESTIÓN:
 
 ## Categorías de Catálogos
 
-| ID | Nombre | Descripción | Uso Principal |
-|----|--------|-------------|---------------|
-| 1 | `person_type` | Tipo de persona | Registro de usuarios (Natural/Jurídica) |
-| 2 | `identification_type` | Tipo de identificación | Registro de usuarios (CC, CE, NIT, etc.) |
-| 3 | `status_record` | Estado de registro | Estado general de registros (Activo, Inactivo, etc.) |
-| 4 | `status_integration` | Estado de integración | Estado de integraciones con sistemas externos |
-| 5 | `room_type` | Tipo de habitación | Clasificación de listings (Habitación, Apartamento, etc.) |
-| 6 | `reservation_source` | Fuente de reserva | Origen de la reserva (Airbnb, Booking, Directo, etc.) |
-| 7 | `status_reservation` | Estado de reserva | Estado de reservas (Confirmada, Cancelada, etc.) |
-| 8 | `reason_for_trip` | Razón de viaje | Motivo del viaje del huésped |
-| 9 | `payment_method` | Método de pago | Formas de pago aceptadas |
-| 10 | `amenities` | Amenidades | Servicios y comodidades (WiFi, Piscina, etc.) |
-| 11 | `listing_document_type` | Tipo de documento de listing | Documentos asociados a listings |
-| 12 | `source_pms` | Sistema PMS fuente | Sistemas de gestión de propiedades |
-| 13 | `person_verification` | Verificación de persona | Tipos de verificación de identidad |
-| 14 | `property_type` | Tipo de propiedad | Clasificación de propiedades (Hotel, Apartamento, etc.) |
-| 15 | `gender` | Género | Género del huésped en el check-in (Mujer=113, Hombre=114, Indeterminado=115) |
+| ID  | Nombre                  | Descripción                  | Uso Principal                                                                |
+| --- | ----------------------- | ---------------------------- | ---------------------------------------------------------------------------- |
+| 1   | `person_type`           | Tipo de persona              | Registro de usuarios (Natural/Jurídica)                                      |
+| 2   | `identification_type`   | Tipo de identificación       | Registro de usuarios (CC, CE, NIT, etc.)                                     |
+| 3   | `status_record`         | Estado de registro           | Estado general de registros (Activo, Inactivo, etc.)                         |
+| 4   | `status_integration`    | Estado de integración        | Estado de integraciones con sistemas externos                                |
+| 5   | `room_type`             | Tipo de habitación           | Clasificación de listings (Habitación, Apartamento, etc.)                    |
+| 6   | `reservation_source`    | Fuente de reserva            | Origen de la reserva (Airbnb, Booking, Directo, etc.)                        |
+| 7   | `status_reservation`    | Estado de reserva            | Estado de reservas (Confirmada, Cancelada, etc.)                             |
+| 8   | `reason_for_trip`       | Razón de viaje               | Motivo del viaje del huésped                                                 |
+| 9   | `payment_method`        | Método de pago               | Formas de pago aceptadas                                                     |
+| 10  | `amenities`             | Amenidades                   | Servicios y comodidades (WiFi, Piscina, etc.)                                |
+| 11  | `listing_document_type` | Tipo de documento de listing | Documentos asociados a listings                                              |
+| 12  | `source_pms`            | Sistema PMS fuente           | Sistemas de gestión de propiedades                                           |
+| 13  | `person_verification`   | Verificación de persona      | Tipos de verificación de identidad                                           |
+| 14  | `property_type`         | Tipo de propiedad            | Clasificación de propiedades (Hotel, Apartamento, etc.)                      |
+| 15  | `gender`                | Género                       | Género del huésped en el check-in (Mujer=113, Hombre=114, Indeterminado=115) |
 
 ---
 
 ## Estructura de Base de Datos
 
 ### Tabla: users
+
 Almacena información de usuarios del sistema.
 
 **Campos principales:**
+
 - `id`: ID único
 - `uuid`: UUID único
 - `email`: Email único
@@ -1971,9 +2122,11 @@ Almacena información de usuarios del sistema.
 ---
 
 ### Tabla: properties
+
 Almacena información de propiedades.
 
 **Campos principales:**
+
 - `id`: ID único
 - `uuid`: UUID único
 - `user_id`: ID del usuario propietario (FK a users)
@@ -1994,6 +2147,7 @@ Almacena información de propiedades.
 - `created_at`, `updated_at`, `deleted_at`: Timestamps
 
 **Índices:**
+
 - `uuid` (único)
 - `user_id`
 - `external_id`
@@ -2003,9 +2157,11 @@ Almacena información de propiedades.
 ---
 
 ### Tabla: listings
+
 Almacena unidades/habitaciones dentro de propiedades.
 
 **Campos principales:**
+
 - `id`: ID único
 - `uuid`: UUID único
 - `user_id`: ID del usuario (FK a users)
@@ -2025,9 +2181,11 @@ Almacena unidades/habitaciones dentro de propiedades.
 ---
 
 ### Tabla: listing_external_ids
+
 Almacena IDs externos de listings (para integraciones).
 
 **Campos principales:**
+
 - `id`: ID único
 - `listing_id`: ID del listing (FK a listings)
 - `source_pms_id`: ID del sistema PMS fuente (FK a catalogs, category_id = 12)
@@ -2036,9 +2194,11 @@ Almacena IDs externos de listings (para integraciones).
 ---
 
 ### Tabla: listing_documents
+
 Almacena documentos asociados a listings.
 
 **Campos principales:**
+
 - `id`: ID único
 - `listing_id`: ID del listing (FK a listings)
 - `listing_document_type_id`: Tipo de documento (FK a catalogs, category_id = 11)
@@ -2049,9 +2209,11 @@ Almacena documentos asociados a listings.
 ---
 
 ### Tabla: reservations
+
 Almacena reservas.
 
 **Campos principales:**
+
 - `id`: ID único
 - `uuid`: UUID único
 - `reservation_source_id`: Fuente de la reserva (FK a catalogs, category_id = 6)
@@ -2071,9 +2233,11 @@ Almacena reservas.
 ---
 
 ### Tabla: reservation_guests
+
 Relación entre reservas y huéspedes.
 
 **Campos principales:**
+
 - `id`: ID único
 - `reservation_uuid`: UUID de la reserva (FK a reservations.uuid)
 - `guest_id`: ID del huésped (FK a guests)
@@ -2084,9 +2248,11 @@ Relación entre reservas y huéspedes.
 ---
 
 ### Tabla: guests
+
 Almacena información de huéspedes.
 
 **Campos principales:**
+
 - `id`: ID único
 - `uuid`: UUID único
 - `name`: Nombre (máx 120 caracteres)
@@ -2104,6 +2270,7 @@ Almacena información de huéspedes.
 - `created_at`, `updated_at`: Timestamps
 
 **Índices:**
+
 - `uuid` (único)
 - `identification_type_id`, `identificacion_number` (compuesto)
 - `nationality_id`
@@ -2113,9 +2280,11 @@ Almacena información de huéspedes.
 ---
 
 ### Tabla: guest_verifications
+
 Almacena verificaciones de huéspedes.
 
 **Campos principales:**
+
 - `id`: ID único
 - `guest_id`: ID del huésped (FK a guests)
 - `person_verification_id`: Tipo de verificación (FK a catalogs, category_id = 13)
@@ -2124,9 +2293,11 @@ Almacena verificaciones de huéspedes.
 ---
 
 ### Tabla: catalogs
+
 Almacena catálogos generales del sistema.
 
 **Campos principales:**
+
 - `id`: ID único
 - `catalog_category_id`: ID de la categoría de catálogo
 - `name`: Nombre del catálogo
@@ -2137,9 +2308,11 @@ Almacena catálogos generales del sistema.
 ---
 
 ### Tabla: countries
+
 Almacena información de países.
 
 **Campos principales:**
+
 - `id`: ID único
 - `name`: Nombre del país
 - `iso2`: Código ISO2 (2 caracteres)
@@ -2600,7 +2773,9 @@ Almacena información de países.
   "message": "Los datos proporcionados no son válidos",
   "errors": {
     "email": ["El email ya está registrado"],
-    "identificationNumber": ["El número de identificación ya existe para este tipo de documento"]
+    "identificationNumber": [
+      "El número de identificación ya existe para este tipo de documento"
+    ]
   }
 }
 ```
@@ -2690,17 +2865,17 @@ Almacena información de países.
 
 ### Resumen de endpoints
 
-| Método | Endpoint | Pantalla | Estado |
-|--------|----------|----------|--------|
-| `GET` | `/checkin/{reservationUuid}` | Portal | ✅ Activo |
-| `GET` | `/checkin/{sourceSlug}/{listingUuid}/{externalId}` | Portal (externo) | ✅ Activo |
-| `POST` | `/checkin/{reservationUuid}/identify` | Identificación | ✅ Activo |
-| `POST` | `/checkin/{reservationUuid}/secondary/{guestUuid}/documents` | Upload OCR | ✅ Activo |
-| `GET` | `/checkin/{reservationUuid}/form/{guestUuid}` | Formulario | ✅ Activo |
-| `POST` | `/checkin/{reservationUuid}/main/complete` | Completar main | ✅ Activo |
-| `POST` | `/checkin/{reservationUuid}/secondary/{guestUuid}/complete` | Completar secundario | ✅ Activo |
-| ~~`POST`~~ | ~~`/checkin/{reservationUuid}/guest`~~ | — | ❌ 410 GONE |
-| ~~`POST`~~ | ~~`/checkin/{reservationUuid}/didit/session`~~ | — | ❌ 410 GONE |
+| Método     | Endpoint                                                     | Pantalla             | Estado      |
+| ---------- | ------------------------------------------------------------ | -------------------- | ----------- |
+| `GET`      | `/checkin/{reservationUuid}`                                 | Portal               | ✅ Activo   |
+| `GET`      | `/checkin/{sourceSlug}/{listingUuid}/{externalId}`           | Portal (externo)     | ✅ Activo   |
+| `POST`     | `/checkin/{reservationUuid}/identify`                        | Identificación       | ✅ Activo   |
+| `POST`     | `/checkin/{reservationUuid}/secondary/{guestUuid}/documents` | Upload OCR           | ✅ Activo   |
+| `GET`      | `/checkin/{reservationUuid}/form/{guestUuid}`                | Formulario           | ✅ Activo   |
+| `POST`     | `/checkin/{reservationUuid}/main/complete`                   | Completar main       | ✅ Activo   |
+| `POST`     | `/checkin/{reservationUuid}/secondary/{guestUuid}/complete`  | Completar secundario | ✅ Activo   |
+| ~~`POST`~~ | ~~`/checkin/{reservationUuid}/guest`~~                       | —                    | ❌ 410 GONE |
+| ~~`POST`~~ | ~~`/checkin/{reservationUuid}/didit/session`~~               | —                    | ❌ 410 GONE |
 
 ---
 
@@ -2710,6 +2885,7 @@ Almacena información de países.
 **También:** `GET /checkin/{sourceSlug}/{listingUuid}/{externalId}`
 
 **Response:**
+
 ```json
 {
   "reservation": {
@@ -2736,6 +2912,7 @@ Almacena información de países.
 ```
 
 **Notas:**
+
 - `reservedGuests` puede ser `[]` si ningún guest se ha identificado aún.
 - Para saber si el main guest completó: buscar en `registeredGuests` el de `isMain: true` con `isCompleted: true`.
 - `progress.isFullyCompleted = true` → toda la reserva está completa.
@@ -2749,6 +2926,7 @@ Almacena información de países.
 **Content-Type:** `application/json`
 
 **Request payload:**
+
 ```json
 {
   "identificationTypeId": 8,
@@ -2760,16 +2938,17 @@ Almacena información de países.
 }
 ```
 
-| Campo | Tipo | Requerido | Notas |
-|-------|------|-----------|-------|
-| `identificationTypeId` | integer | ✅ | `cat_id=2` (CC, CE, DNI, Pasaporte) |
-| `identificationNumber` | string | ✅ | Máx. 30 caracteres |
-| `nationalityId` | integer | ✅ | FK `countries.id` |
-| `name` | string | ❌ | Se obtiene de Didit/OCR si se omite |
-| `lastname` | string | ❌ | Se obtiene de Didit/OCR si se omite |
-| `isMainGuest` | boolean | ✅ | `true` para el titular, `false` para acompañantes |
+| Campo                  | Tipo    | Requerido | Notas                                             |
+| ---------------------- | ------- | --------- | ------------------------------------------------- |
+| `identificationTypeId` | integer | ✅        | `cat_id=2` (CC, CE, DNI, Pasaporte)               |
+| `identificationNumber` | string  | ✅        | Máx. 30 caracteres                                |
+| `nationalityId`        | integer | ✅        | FK `countries.id`                                 |
+| `name`                 | string  | ❌        | Se obtiene de Didit/OCR si se omite               |
+| `lastname`             | string  | ❌        | Se obtiene de Didit/OCR si se omite               |
+| `isMainGuest`          | boolean | ✅        | `true` para el titular, `false` para acompañantes |
 
 **Response exitoso:**
+
 ```json
 {
   "guest": {
@@ -2799,19 +2978,21 @@ Almacena información de países.
 
 **Valores posibles de `verification.type`:**
 
-| `type` | Significado | Acción del frontend |
-|--------|-------------|---------------------|
-| `"session"` | Sesión Didit (biométrica) | Abrir `verification.url` en nueva tab o SDK |
-| `"document_upload"` | Textract OCR | Ir al flujo de upload de documentos |
-| `"verified_ok"` | Guest ya verificado | Ir directo al formulario |
+| `type`              | Significado               | Acción del frontend                         |
+| ------------------- | ------------------------- | ------------------------------------------- |
+| `"session"`         | Sesión Didit (biométrica) | Abrir `verification.url` en nueva tab o SDK |
+| `"document_upload"` | Textract OCR              | Ir al flujo de upload de documentos         |
+| `"verified_ok"`     | Guest ya verificado       | Ir directo al formulario                    |
 
 **Notas importantes:**
+
 - `formSchema.required_fields` y `optional_fields` vienen en **snake_case** (ej: `country_of_origin_id`).
 - `formSchema.prefilledData` viene en **camelCase** (ej: `nationalityId`).
 - El frontend normaliza ambos internamente mediante `normalizeFormSchema()`.
 - Guardar `guest.uuid` y `formSchema` en localStorage — son necesarios para los siguientes pasos.
 
 **Errores:**
+
 - `403` — Guest secundario intentó identificarse antes de que el main complete.
 - `409` — Documento ya asociado a otro guest en esta reserva.
 - `422` — Capacidad máxima alcanzada o campo inválido.
@@ -2826,12 +3007,14 @@ Almacena información de países.
 > ⚠️ **Importante:** Este endpoint NO convierte camelCase automáticamente. Los campos del FormData deben enviarse en **snake_case**.
 
 **Request (multipart/form-data):**
+
 ```
 front_image: [File]   — imagen frontal del documento, máx 10MB
 back_image:  [File]   — imagen posterior, máx 10MB (opcional para pasaporte)
 ```
 
 **Response exitoso:**
+
 ```json
 {
   "extractedData": {
@@ -2854,6 +3037,7 @@ back_image:  [File]   — imagen posterior, máx 10MB (opcional para pasaporte)
 ```
 
 **Response de error (OCR fallido):**
+
 ```json
 {
   "success": false,
@@ -2864,6 +3048,7 @@ back_image:  [File]   — imagen posterior, máx 10MB (opcional para pasaporte)
 ```
 
 **Notas:**
+
 - Las imágenes se guardan en `identity_documents/{guestUuid}/front.jpg` y `back.jpg`.
 - `extractedData` viene en camelCase (el backend aplica `camelizeKeys`).
 - `formSchema` viene con `required_fields` en snake_case — igual que en `/identify`.
@@ -2875,6 +3060,7 @@ back_image:  [File]   — imagen posterior, máx 10MB (opcional para pasaporte)
 **Endpoint:** `GET /checkin/{reservationUuid}/form/{guestUuid}`
 
 **Response:**
+
 ```json
 {
   "formSchema": {
@@ -2896,24 +3082,25 @@ back_image:  [File]   — imagen posterior, máx 10MB (opcional para pasaporte)
 
 **Campos posibles en `required_fields` (snake_case):**
 
-| Campo | Tipo de input | Catálogo/FK |
-|-------|---------------|-------------|
-| `name` / `lastname` | text | — |
-| `email` | email | — |
-| `phone` | tel | — |
-| `date_of_birth` | date | — |
-| `gender_id` | select | `cat_id=15` (ver tabla género) |
-| `nationality_id` | select | FK `countries` |
-| `city_of_residence` | text | — |
-| `country_of_residence_id` | select | FK `countries` |
-| `country_of_origin_id` | select | FK `countries` |
-| `country_destination_id` | select | FK `countries` |
-| `city_of_origin` | text | — |
-| `reason_for_trip_id` | select | `cat_id=8` |
-| `identification_expiry_date` | date | — |
-| `signature` | canvas | Solo main guest |
+| Campo                        | Tipo de input | Catálogo/FK                    |
+| ---------------------------- | ------------- | ------------------------------ |
+| `name` / `lastname`          | text          | —                              |
+| `email`                      | email         | —                              |
+| `phone`                      | tel           | —                              |
+| `date_of_birth`              | date          | —                              |
+| `gender_id`                  | select        | `cat_id=15` (ver tabla género) |
+| `nationality_id`             | select        | FK `countries`                 |
+| `city_of_residence`          | text          | —                              |
+| `country_of_residence_id`    | select        | FK `countries`                 |
+| `country_of_origin_id`       | select        | FK `countries`                 |
+| `country_destination_id`     | select        | FK `countries`                 |
+| `city_of_origin`             | text          | —                              |
+| `reason_for_trip_id`         | select        | `cat_id=8`                     |
+| `identification_expiry_date` | date          | —                              |
+| `signature`                  | canvas        | Solo main guest                |
 
 **Notas:**
+
 - La respuesta está **envuelta** en `{ formSchema: { ... } }` — el frontend hace unwrap automáticamente.
 - Los **catálogos NO vienen** en esta respuesta. Cargarlos por separado con `GET /catalogs?...`.
 - Si llegaste desde upload (8.3), usar el `formSchema` de ese response — evita una llamada extra.
@@ -2926,6 +3113,7 @@ back_image:  [File]   — imagen posterior, máx 10MB (opcional para pasaporte)
 **Content-Type:** `application/json`
 
 **Request payload:**
+
 ```json
 {
   "guestUuid": "018f...",
@@ -2951,11 +3139,13 @@ back_image:  [File]   — imagen posterior, máx 10MB (opcional para pasaporte)
 ```
 
 **Separación `profile` vs `extra`:**
+
 - `profile` → campos del perfil del guest (guardados en tabla `guests`).
 - `extra` → campos adicionales del viaje (guardados en `reservation_guests.extra`).
 - Ambos reciben los campos del `required_fields` del formSchema en **camelCase**.
 
 **Response:**
+
 ```json
 { "message": "Main guest checkin completed." }
 ```
@@ -2976,6 +3166,7 @@ back_image:  [File]   — imagen posterior, máx 10MB (opcional para pasaporte)
 > El `guestUuid` va en la **URL**, NO en el body.
 
 **Request payload:**
+
 ```json
 {
   "profile": {
@@ -3000,11 +3191,13 @@ back_image:  [File]   — imagen posterior, máx 10MB (opcional para pasaporte)
 ```
 
 **Diferencias vs main guest:**
+
 - Sin `guestUuid` en el body (va en la URL).
 - Sin `signature`.
 - `profile` incluye campos de documento: `identificationTypeId`, `identificationNumber`, `identificationExpiryDate`.
 
 **Response:**
+
 ```json
 { "message": "Secondary guest checkin completed." }
 ```
@@ -3019,12 +3212,12 @@ back_image:  [File]   — imagen posterior, máx 10MB (opcional para pasaporte)
 
 Estos catálogos deben cargarse por separado (NO vienen en el `formSchema`):
 
-| Catálogo | Endpoint | Uso en el form |
-|----------|----------|----------------|
-| Tipos de documento | `GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=identification_type` | `identificationTypeId` en identificación |
-| Países | `GET /countries` | Nacionalidad, residencia, origen, destino |
-| Género | `GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=gender` | `genderId` (Mujer=113, Hombre=114, Indeterminado=115) |
-| Motivo de viaje | `GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=reason_for_trip` | `reasonForTripId` (cat_id=8) |
+| Catálogo           | Endpoint                                                                   | Uso en el form                                        |
+| ------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Tipos de documento | `GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=identification_type` | `identificationTypeId` en identificación              |
+| Países             | `GET /countries`                                                           | Nacionalidad, residencia, origen, destino             |
+| Género             | `GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=gender`              | `genderId` (Mujer=113, Hombre=114, Indeterminado=115) |
+| Motivo de viaje    | `GET /catalogs?status[eq]=ACT&catalogCategoryName[eq]=reason_for_trip`     | `reasonForTripId` (cat_id=8)                          |
 
 ---
 
@@ -3062,6 +3255,7 @@ FORMULARIO
 ## Changelog
 
 ### Versión 1.3 (Julio 2026)
+
 - Sección completa de **Listing Automation Overrides** (CRUD + Restore)
 - Payloads de creación/actualización con validaciones
 - Documentación de merge de parámetros y auto-generación de token
@@ -3070,6 +3264,7 @@ FORMULARIO
 - Impacto en el flujo de check-in
 
 ### Versión 1.2 (Junio 2026)
+
 - Sección completa de **Endpoints de Check-in v4.1** con 6 endpoints integrados
 - Payloads y responses exactos sincronizados con backend real
 - Separación `profile` vs `extra` en endpoints de completar
@@ -3080,12 +3275,14 @@ FORMULARIO
 - Endpoint `POST /didit/session` marcado como 410 GONE (deprecated)
 
 ### Versión 1.1 (Abril 2026)
+
 - Documentación de endpoints de Reservaciones (CRUD completo + Restore)
 - Payloads de creación y actualización con validaciones
 - Catálogos relacionados (`reservation_source`, `status_reservation`)
 - Flujo típico de reservación documentado
 
 ### Versión 1.0 (Marzo 2026)
+
 - Documentación inicial de la API
 - Endpoints de autenticación
 - Endpoints de catálogos

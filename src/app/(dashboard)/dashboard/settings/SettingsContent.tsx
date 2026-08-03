@@ -3,9 +3,10 @@
 import { cn } from "@/lib/utils"
 import { ProfileForm } from "@/features/auth/components/ProfileForm"
 import { UserManagement } from "@/features/users/components/UserManagement"
+import { IntegrationsHub } from "@/features/integrations/components/IntegrationsHub"
+import { BillingSettings } from "@/features/billing/components/BillingSettings"
 import { useAuth } from "@/features/auth/hooks/use-auth"
-import { Skeleton } from "@/components/ui/skeleton"
-import { 
+import {
     Card,
     CardContent,
     CardDescription,
@@ -14,25 +15,18 @@ import {
 } from "@/components/ui/card"
 import {
     User,
-    Lock,
-    Bell,
-    CreditCard,
-    Building2,
     Users,
-    MessageCircle,
+    Plug,
+    CreditCard,
 } from "lucide-react"
-import { ClientSettings } from "@/features/clients/components/ClientSettings"
 import { useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 
 const SETTINGS_TABS = [
     { id: "profile", label: "Mi cuenta", icon: User },
-    { id: "security", label: "Seguridad", icon: Lock },
-    { id: "notifications", label: "Notificaciones", icon: Bell },
-    { id: "billing", label: "Facturación", icon: CreditCard },
-    { id: "client", label: "Alojamiento", icon: Building2, adminOnly: true },
-    { id: "team", label: "Equipo", icon: Users, adminOnly: true },
-    { id: "whatsapp", label: "WhatsApp", icon: MessageCircle },
+    { id: "team", label: "Usuarios", icon: Users, adminOnly: true },
+    { id: "integrations", label: "Integraciones", icon: Plug, adminOnly: true },
+    { id: "billing", label: "Facturación", icon: CreditCard, adminOnly: true },
 ]
 
 export function SettingsContent() {
@@ -110,28 +104,16 @@ export function SettingsContent() {
                         </CardTitle>
                         <CardDescription>
                             {activeTab === "profile" && "Actualiza tu información personal y cuenta de acceso."}
-                            {activeTab === "client" && "Gestiona los datos fiscales y de contacto de tu alojamiento."}
                             {activeTab === "team" && "Administra los usuarios secundarios y sus permisos."}
-                            {["security", "notifications", "billing", "whatsapp"].includes(activeTab) && "Configura las opciones avanzadas de esta sección."}
+                            {activeTab === "integrations" && "Conecta tu PMS, Airbnb y otras integraciones."}
+                            {activeTab === "billing" && "Consulta tu saldo, recarga créditos y revisa tus transacciones."}
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-8">
                         {activeTab === "profile" && <ProfileForm user={user} />}
-                        {activeTab === "client" && <ClientSettings clientId={user.clientId} />}
                         {activeTab === "team" && <UserManagement />}
-                        {["security", "notifications", "billing", "whatsapp"].includes(activeTab) && (
-                            <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-                                <div className="h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center">
-                                    <Lock className="h-8 w-8 text-slate-300" />
-                                </div>
-                                <div className="space-y-1">
-                                    <h3 className="font-semibold text-lg">Sección en Desarrollo</h3>
-                                    <p className="text-muted-foreground max-w-xs">
-                                        Estamos trabajando para brindarte el control total sobre esta configuración muy pronto.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
+                        {activeTab === "integrations" && <IntegrationsHub />}
+                        {activeTab === "billing" && <BillingSettings />}
                     </CardContent>
                 </Card>
             </main>

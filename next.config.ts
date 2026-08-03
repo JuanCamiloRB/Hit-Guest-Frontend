@@ -11,6 +11,25 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
+      // Backend-hosted property/listing photos (uploaded via /properties/{uuid}/images).
+      {
+        protocol: 'https',
+        hostname: 'guest.hit.tools',
+      },
+      // Legacy backend host — old image URLs stored before the domain move.
+      {
+        protocol: 'https',
+        hostname: 'www.kunas.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'kunas.co',
+      },
+      // S3 buckets / AWS-hosted assets the backend may return.
+      {
+        protocol: 'https',
+        hostname: '**.amazonaws.com',
+      },
     ],
   },
 };

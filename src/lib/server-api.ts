@@ -12,7 +12,7 @@
 
 const API_BASE = (
     process.env.NEXT_PUBLIC_API_URL_GUEST ||
-    "https://www.kunas.co/api/v1"
+    "https://guest.hit.tools/api/v1"
 ).replace(/\/$/, "")
 
 /**
@@ -34,6 +34,13 @@ export interface ServerFetchOptions {
     headers?: Record<string, string>
     /** If provided, this bearer token overrides the default server token */
     token?: string
+    /**
+     * When true, this call MUST use a per-user token (`opts.token`). If none is
+     * provided it throws instead of silently falling back to the shared app
+     * token. Use for account-scoped data (properties, listings, reservations…)
+     * so one account can never see another's data via the app token.
+     */
+    requireUserToken?: boolean
 }
 
 /**
@@ -48,6 +55,13 @@ export async function serverFetch<T = any>(
     opts?: ServerFetchOptions,
 ): Promise<T> {
     const url = `${API_BASE}${path}`
+
+    // Account-scoped endpoints must use the caller's own token. Never fall back
+    // to the shared app token here — that is exactly how every user ended up
+    // seeing the app-token account's properties.
+    if (opts?.requireUserToken && !opts?.token) {
+        throw new Error("UNAUTHENTICATED: user token required for this request")
+    }
     const token = opts?.token || getServerToken()
 
     const headers: Record<string, string> = {

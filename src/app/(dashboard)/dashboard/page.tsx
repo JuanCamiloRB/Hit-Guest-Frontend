@@ -1,23 +1,15 @@
-import { StatsCards } from "@/features/dashboard/components/StatsCards"
 import { DashboardHeader } from "@/features/dashboard/components/DashboardHeader"
-import ReservationsList from "@/features/reservations/components/ReservationsList"
+import { BillingDashboard } from "@/features/dashboard/components/BillingDashboard"
 
 export default function DashboardPage() {
     return (
         <div className="flex flex-col gap-6 sm:gap-8 p-3 sm:p-6 lg:p-10">
             <DashboardHeader />
 
-            <StatsCards />
-
-            <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-slate-800">
-                        Lista de Reservas
-                    </h2>
-                </div>
-
-                <ReservationsList />
-            </div>
+            {/* The Tablero focuses on billing/consumption (cost per reservation,
+                account balance, recharge) — the operational reservations list
+                lives on the Operaciones page, not here, to avoid duplication. */}
+            <BillingDashboard />
         </div>
     )
 }

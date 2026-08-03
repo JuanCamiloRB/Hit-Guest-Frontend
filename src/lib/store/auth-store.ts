@@ -20,8 +20,6 @@ export const useAuthStore = create<AuthStore>()(
             error: null,
 
             setSession: (user: User) => {
-                console.log("🔍 [AuthStore] setSession called with user:", JSON.stringify(user, null, 2))
-                console.log("🔍 [AuthStore] user.token:", user.token)
                 set({ user, isAuthenticated: true, error: null })
             },
             clearSession: () => set({ user: null, isAuthenticated: false, error: null }),

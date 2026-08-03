@@ -20,6 +20,7 @@
 
 import { apiClient } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
+import { useAuthStore } from "@/lib/store/auth-store"
 import type {
     PropertyAutomation,
     PropertyAutomationCreatePayload,
@@ -34,7 +35,16 @@ import type {
     ListingAutomationOverrideUpdatePayload,
     ListingOverrideStatus,
 } from "../types/automation"
-import { LISTING_OVERRIDE_STATUS } from "../types/automation"
+import { LISTING_OVERRIDE_STATUS, AUTOMATION_ORDERS } from "../types/automation"
+
+/**
+ * Canonicalizes a provider slug so comparisons are stable regardless of the
+ * separator the backend uses — providerSlug may arrive as "pdf_report" or
+ * "pdf-report". Canonical form: lowercase with underscores.
+ */
+export function canonicalSlug(slug: string | null | undefined): string {
+    return (slug ?? "").toLowerCase().replace(/-/g, "_")
+}
 
 // ── Query param helpers ─────────────────────────────────────────────────────
 
@@ -222,6 +232,18 @@ class AutomationService {
     }
 
     /**
+     * Finds the property's "Digital Contract" automation (executionOrder=3) —
+     * the one whose `parameters` carries `contract_mode`/`by_source`. Per the
+     * backend plan this automation always exists and is always active, but a
+     * property created before this feature (or with no automations yet)
+     * legitimately has none — callers treat `null` as "not configured".
+     */
+    async getContractRoutingAutomation(propertyUuid: string): Promise<PropertyAutomation | null> {
+        const automations = await this.list(propertyUuid)
+        return automations.find((a) => a.executionOrder === AUTOMATION_ORDERS.DIGITAL_CONTRACT) ?? null
+    }
+
+    /**
      * Convenience wrapper: activate or deactivate via configure endpoint.
      */
     async toggle(automationUuid: string, isActive: boolean, currentProviderId?: number | null): Promise<PropertyAutomation> {
@@ -263,22 +285,55 @@ class AutomationService {
 
     // ── Providers ────────────────────────────────────────────────────────────
 
+    /** Session-token header for the raw fetch below — same helper as property-document-service.ts. */
+    private authHeader(): Record<string, string> {
+        const token = useAuthStore.getState().user?.token
+        return token ? { Authorization: `Bearer ${token}` } : {}
+    }
+
     /**
      * GET /api/v1/providers
      * Used to populate provider selectors in the UI and resolve slug → id mapping.
+     *
+     * The provider catalog is paginated (15/page by default) but callers treat
+     * it as a closed set to pick from — not a table a PM pages through — so
+     * this auto-follows every page and returns the full flat list. `apiClient`
+     * unwraps the response down to just `data`, discarding `meta`, so (same as
+     * `propertyDocumentService.list()`) this reads `meta.last_page` via a raw
+     * fetch instead. `MAX_PAGES` is only a safety net against an infinite loop
+     * if a future response is missing/malformed `meta` — 20 pages already
+     * covers 300 providers at the default page size.
      */
     async listProviders(params: ProviderListParams = {}): Promise<Provider[]> {
+        const MAX_PAGES = 20
         const qs = new URLSearchParams()
         if (params.statusProviderId)    qs.set("statusProviderId[eq]", String(params.statusProviderId))
         if (params.includeIntegrations) qs.set("includeIntegrations", "true")
-        const url = `${API_BASE}/providers${qs.toString() ? `?${qs}` : ""}`
+
+        const all: Provider[] = []
         try {
-            const response = await apiClient.get<any>(url, { suppressUnauthorizedRedirect: true })
-            const items = response?.data ?? response
-            return Array.isArray(items) ? items : []
+            for (let page = 1; page <= MAX_PAGES; page++) {
+                const pageQs = new URLSearchParams(qs)
+                pageQs.set("page", String(page))
+                const res = await fetch(`${API_BASE}/providers?${pageQs}`, {
+                    headers: { Accept: "application/json", ...this.authHeader() },
+                    cache: "no-store",
+                })
+                if (!res.ok) {
+                    if (res.status === 404 || res.status === 401) break
+                    throw new Error(`HTTP ${res.status}`)
+                }
+                const json = await res.json()
+                const items = Array.isArray(json?.data) ? json.data : []
+                all.push(...items)
+
+                const lastPage = Number(json?.meta?.last_page ?? 1)
+                if (page >= lastPage) break
+            }
+            return all
         } catch (error: any) {
             console.error("[AutomationService] listProviders error:", error)
-            return []
+            return all
         }
     }
 
@@ -291,16 +346,29 @@ class AutomationService {
         const status: AutomationLiveStatus = raw.status ?? "not_started"
         const payload = raw.responsePayload ?? raw.response_payload ?? null
         const pdfPath = payload?.pdf_path ?? raw.contractPdfPath ?? raw.contract_pdf_path ?? null
+        // Backend action flags (dispatch panel contract). Defaults keep the old
+        // behaviour when an older backend doesn't send them yet: canDispatch falls
+        // back to the not_started heuristic, and gates default to "satisfied".
+        const pick = <T,>(camel: T | undefined, snake: T | undefined, fallback: T): T =>
+            (camel ?? snake ?? fallback)
         return {
             automationUuid: raw.automationUuid ?? raw.automation_uuid ?? "",
             automationName: raw.automationName ?? raw.automation_name ?? "",
-            providerSlug: raw.providerSlug ?? raw.provider_slug ?? "",
+            providerSlug: canonicalSlug(raw.providerSlug ?? raw.provider_slug),
             status,
             lastError: raw.lastError ?? raw.last_error ?? null,
             lastRunAt: raw.lastRunAt ?? raw.last_run_at ?? null,
             usageRecordId: raw.usageRecordId ?? raw.usage_record_id ?? null,
-            canRedispatch: raw.canRedispatch ?? raw.can_redispatch ?? status === "failed",
             contractPdfPath: typeof pdfPath === "string" ? pdfPath : null,
+            wasSuccessful: pick(raw.wasSuccessful, raw.was_successful, status === "completed"),
+            lastSuccessAt: raw.lastSuccessAt ?? raw.last_success_at ?? null,
+            requiresCheckin: pick(raw.requiresCheckin, raw.requires_checkin, null),
+            redispatchRequiresCheckin: pick(raw.redispatchRequiresCheckin, raw.redispatch_requires_checkin, null),
+            canManualDispatch: pick(raw.canManualDispatch, raw.can_manual_dispatch, true),
+            reservationCheckinCompleted: pick(raw.reservationCheckinCompleted, raw.reservation_checkin_completed, true),
+            mainGuestCheckinCompleted: pick(raw.mainGuestCheckinCompleted, raw.main_guest_checkin_completed, true),
+            canDispatch: pick(raw.canDispatch, raw.can_dispatch, status === "not_started"),
+            canRedispatch: pick(raw.canRedispatch, raw.can_redispatch, status === "failed"),
         }
     }
 
@@ -311,29 +379,12 @@ class AutomationService {
      */
     async getReservationStatus(reservationUuid: string): Promise<AutomationStatusItem[]> {
         const statusUrl = `${API_BASE}/reservations/${reservationUuid}/automation-status`
-        const recordsUrl = `${API_BASE}/reservations/${reservationUuid}/automation-records`
         try {
-            // Fetch status and records in parallel; records carry responsePayload (e.g. pdf_path)
-            const [statusRes, recordsRes] = await Promise.all([
-                apiClient.get<any>(statusUrl),
-                apiClient.get<any>(recordsUrl).catch(() => null),
-            ])
+            // /automation-status already carries everything the panel renders
+            // (including contractPdfPath), so a single request per poll is enough.
+            const statusRes = await apiClient.get<any>(statusUrl)
             const items: any[] = Array.isArray(statusRes?.data ?? statusRes) ? (statusRes?.data ?? statusRes) : []
-            const records: any[] = Array.isArray(recordsRes?.data ?? recordsRes) ? (recordsRes?.data ?? recordsRes) : []
-
-            // Build a map: automationUuid → latest record (records are newest-first)
-            const latestByUuid = new Map<string, any>()
-            for (const rec of records) {
-                const uuid = rec.automationUuid ?? rec.automation_uuid
-                if (uuid && !latestByUuid.has(uuid)) latestByUuid.set(uuid, rec)
-            }
-
-            return items.map((r: any) => {
-                const latest = latestByUuid.get(r.automationUuid ?? r.automation_uuid)
-                // Merge responsePayload from the usage record into the status item
-                if (latest) r = { ...r, responsePayload: latest.responsePayload ?? latest.response_payload }
-                return this.normalizeStatusItem(r)
-            })
+            return items.map((r: any) => this.normalizeStatusItem(r))
         } catch (error: any) {
             console.error("[AutomationService] getReservationStatus error:", error)
             throw error
@@ -346,8 +397,12 @@ class AutomationService {
      * GET /api/v1/reservations/{reservationUuid}/automation-records
      * Returns automation execution history for a reservation, newest first.
      */
-    async listUsageRecords(reservationUuid: string): Promise<AutomationUsageRecord[]> {
-        const url = `${API_BASE}/reservations/${reservationUuid}/automation-records`
+    async listUsageRecords(
+        reservationUuid: string,
+        automationUuid?: string,
+    ): Promise<AutomationUsageRecord[]> {
+        const base = `${API_BASE}/reservations/${reservationUuid}/automation-records`
+        const url = automationUuid ? `${base}?automationUuid=${automationUuid}` : base
         try {
             const response = await apiClient.get<any>(url)
             const items = response?.data ?? response

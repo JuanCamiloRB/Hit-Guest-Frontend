@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useEffect } from "react"
-import { Settings2, Loader2, AlertCircle, Clock } from "lucide-react"
+import { Settings2, Loader2, AlertCircle, Clock, FileSignature } from "lucide-react"
 import {
     Card,
     CardContent,
@@ -21,7 +21,7 @@ import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { cn } from "@/lib/utils"
 import { automationService } from "../../services/automation-service"
-import { mapGuestTypeToApi, AUTOMATION_STATUS } from "../../types/automation"
+import { mapGuestTypeToApi, AUTOMATION_STATUS, AUTOMATION_ORDERS } from "../../types/automation"
 import type { PropertyAutomation, AutomationDefinition, Provider } from "../../types/automation"
 import { ApiError } from "@/types/api"
 import { ConfigModal } from "./ConfigModal"
@@ -37,6 +37,8 @@ interface Props {
     providers: Provider[]
     listings: ListingMeta[]
     onChanged: (updated: PropertyAutomation | null) => void
+    /** Jumps to the Documentos tab — only used by the Digital Contract card. */
+    onNavigateToDocuments?: () => void
 }
 
 export function AutomationCard({
@@ -46,8 +48,14 @@ export function AutomationCard({
     providers,
     listings,
     onChanged,
+    onNavigateToDocuments,
 }: Props) {
     const isActive = automation?.isActive ?? false
+    // Digital Contract (order 3) doesn't pick one property-wide provider anymore —
+    // who signs is chosen PER CHANNEL in the contract-routing screen (Documentos
+    // tab). Its provider selector here would be misleading, so it's replaced with
+    // a link to that screen instead (backend plan §2.3).
+    const isContractRouting = definition.order === AUTOMATION_ORDERS.DIGITAL_CONTRACT
 
     // Slug matching tolerant to "-" vs "_", casing, and `parameters` arriving as a
     // JSON string instead of an object (varies per provider record).
@@ -85,6 +93,13 @@ export function AutomationCard({
         // option, so the config modal can open even before a provider is reflected.
         ?? (definition.providerOptions.length === 1 ? definition.providerOptions[0] : null)
 
+    // Whether the SELECTED provider actually has config fields to fill. The
+    // definition-level `requiresConfig` is coarse; what really matters is the
+    // chosen provider's schema. Firma Digital (TuFirma / HIT native) has an empty
+    // parametersSchema — HIT manages the creds — so it must activate directly
+    // instead of bouncing to an empty config modal (the "no se puede activar" bug).
+    const selectedProviderNeedsConfig = (selectedProvider?.parametersSchema?.length ?? 0) > 0
+
     // Once the server reflects the chosen provider, drop the optimistic override.
     useEffect(() => {
         if (optimisticProvider && normalizeSlug(providerName) === normalizeSlug(optimisticProvider)) {
@@ -102,7 +117,7 @@ export function AutomationCard({
         // Turning ON an automation that still needs its credentials (recipients, TRA
         // token+rnt, SIRE creds…) → open the config modal instead of failing activation
         // with a 422. Saving the config activates it.
-        if (checked && definition.requiresConfig) {
+        if (checked && selectedProviderNeedsConfig) {
             const hasParams = Object.entries(automation?.parameters ?? {})
                 .some(([k, v]) => k !== "_init" && v != null && v !== "")
             if (!hasParams) {
@@ -148,7 +163,7 @@ export function AutomationCard({
         } finally {
             setToggling(false)
         }
-    }, [propertyUuid, automation, definition, onChanged])
+    }, [propertyUuid, automation, definition, onChanged, selectedProviderNeedsConfig])
 
     // ── Change provider ───────────────────────────────────────────────────────
 
@@ -241,7 +256,8 @@ export function AutomationCard({
     // Configured = has at least one meaningful parameter (ignoring the _init marker)
     const hasMeaningfulParams = Object.entries(automation?.parameters ?? {})
         .some(([k, v]) => k !== "_init" && v != null && v !== "")
-    const needsConfig = definition.requiresConfig && isActive && !hasMeaningfulParams
+    // Only nag for config when the selected provider actually has fields to fill.
+    const needsConfig = selectedProviderNeedsConfig && isActive && !hasMeaningfulParams
 
     const showOverridesPanel = isActive
         && !!automation
@@ -300,7 +316,7 @@ export function AutomationCard({
                             </div>
 
                             {/* Provider selector (multi-option) */}
-                            {isActive && definition.providerOptions.length > 1 && (
+                            {isActive && !isContractRouting && definition.providerOptions.length > 1 && (
                                 <div className="space-y-1.5">
                                     <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                         Proveedor
@@ -310,7 +326,14 @@ export function AutomationCard({
                                         onValueChange={(v) => { setOptimisticProvider(v); handleProviderChange(v) }}
                                     >
                                         <SelectTrigger className="h-9 text-sm bg-slate-50 border-slate-200 max-w-xs">
-                                            <SelectValue placeholder="Selecciona proveedor" />
+                                            {/* Render only the label in the trigger. Otherwise radix clones the
+                                                option's two-line (label + description) markup into the value slot,
+                                                which is flex + line-clamp-1 — clipping the text and breaking the
+                                                alignment (that's why DIDIT looked unreadable). The description
+                                                stays in the dropdown options below. */}
+                                            <SelectValue placeholder="Selecciona proveedor">
+                                                {selectedProvider?.label}
+                                            </SelectValue>
                                         </SelectTrigger>
                                         <SelectContent>
                                             {definition.providerOptions.map(opt => (
@@ -327,12 +350,20 @@ export function AutomationCard({
                             )}
 
                             {/* Provider label (single-option) */}
-                            {isActive && definition.providerOptions.length === 1 && (
+                            {isActive && !isContractRouting && definition.providerOptions.length === 1 && (
                                 <p className="text-xs text-slate-400">
                                     Proveedor:{" "}
                                     <span className="font-semibold text-slate-600">
                                         {definition.providerOptions[0].label}
                                     </span>
+                                </p>
+                            )}
+
+                            {/* Digital Contract: routing lives in Documentos, per channel */}
+                            {isActive && isContractRouting && (
+                                <p className="text-xs text-slate-400">
+                                    Qué se firma y con quién se configura por canal de reserva, en la
+                                    pestaña Documentos.
                                 </p>
                             )}
 
@@ -342,7 +373,19 @@ export function AutomationCard({
                                     <Clock className="h-3.5 w-3.5" />
                                     <span>Tiempo Real</span>
                                 </div>
-                                {isActive && definition.requiresConfig && selectedProvider && (
+                                {isActive && isContractRouting && onNavigateToDocuments && (
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={onNavigateToDocuments}
+                                        className="h-8 text-xs font-bold gap-1.5 px-3 text-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/5"
+                                    >
+                                        <FileSignature className="h-3.5 w-3.5" />
+                                        Configurar contrato y firma
+                                    </Button>
+                                )}
+                                {isActive && !isContractRouting && selectedProviderNeedsConfig && selectedProvider && (
                                     <Button
                                         type="button"
                                         variant="ghost"

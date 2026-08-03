@@ -5,7 +5,6 @@ import { useFormContext } from "react-hook-form"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form"
 import { useState, useCallback, useEffect } from "react"
 import dynamic from "next/dynamic"
-import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import {
     Select,
@@ -17,6 +16,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
+import { AddressAutocomplete, type PlaceDetails } from "./AddressAutocomplete"
 import {
     Card,
     CardContent,
@@ -38,7 +38,6 @@ const MapComponent = dynamic(() => import("./MapComponent"), {
 
 export function PropertiesLocation() {
     const form = useFormContext()
-    const [isSearching, setIsSearching] = useState(false)
     const [countries, setCountries] = useState<any[]>([])
     const [timezoneGroups, setTimezoneGroups] = useState<{group: string, options: CatalogOption[]}[]>([])
     const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
@@ -74,92 +73,36 @@ export function PropertiesLocation() {
         form.setValue("longitude", newLng, { shouldValidate: true, shouldDirty: true })
     }, [form])
 
-    const handleGeocode = async () => {
-        const address = form.getValues("address")
-        const city = form.getValues("city")
-        const state = form.getValues("state")
-        const countryId = form.getValues("countryId")
-
-        if (!address && !city) {
-            toast.error("Dirección insuficiente", {
-                description: "Por favor ingresa al menos una dirección o ciudad para buscar.",
-            })
-            return
+    // Applies a Google Places selection: coordinates + address parts, matching the
+    // country against the catalog by ISO2/ISO3 and auto-filling its timezone.
+    const handlePlaceSelect = (d: PlaceDetails) => {
+        if (d.lat != null && d.lng != null) {
+            form.setValue("latitude", d.lat, { shouldDirty: true, shouldValidate: true })
+            form.setValue("longitude", d.lng, { shouldDirty: true, shouldValidate: true })
         }
+        if (d.formattedAddress) {
+            form.setValue("address", d.formattedAddress, { shouldDirty: true, shouldValidate: true })
+        }
+        if (d.city) form.setValue("city", d.city, { shouldDirty: true, shouldValidate: true })
+        if (d.state) form.setValue("state", d.state, { shouldDirty: true, shouldValidate: true })
 
-        setIsSearching(true)
-        try {
-            // Get country name from list
-            const selectedCountry = countries.find(c => String(c.id) === String(countryId))
-            const countryName = selectedCountry?.name || ""
-            
-            const queryParts = [address, city, state, countryName].filter(Boolean)
-            const query = encodeURIComponent(queryParts.join(", "))
-            
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1&addressdetails=1`)
-            const data = await response.json()
-
-            if (data && data.length > 0) {
-                const result = data[0]
-                const newLat = parseFloat(result.lat)
-                const newLng = parseFloat(result.lon)
-                const addressDetails = result.address
-
-                // Update Coordinates
-                form.setValue("latitude", newLat)
-                form.setValue("longitude", newLng)
-
-                // Update City
-                const cityName = addressDetails.city || 
-                                 addressDetails.town || 
-                                 addressDetails.village || 
-                                 addressDetails.municipality || 
-                                 addressDetails.suburb || 
-                                 ""
-                if (cityName) form.setValue("city", cityName, { shouldDirty: true, shouldValidate: true })
-
-                // Update State
-                const stateName = addressDetails.state || 
-                                  addressDetails.region || 
-                                  addressDetails.province || 
-                                  ""
-                if (stateName) form.setValue("state", stateName, { shouldDirty: true, shouldValidate: true })
-
-                // Update Country + auto-fill Timezone
-                const countryCode = addressDetails.country_code?.toUpperCase()
-                if (countryCode) {
-                    const countryMatch = countries.find((c: any) => 
-                        c.name?.toUpperCase() === addressDetails.country?.toUpperCase() ||
-                        c.extra?.iso2 === countryCode ||
-                        c.extra?.iso3 === countryCode
-                    )
-                    if (countryMatch) {
-                        form.setValue("countryId", parseInt(countryMatch.id), { shouldDirty: true, shouldValidate: true })
-                        
-                        // Auto-fill timezone from country's first timezone if not already set
-                        const currentTimezone = form.getValues("timezone")
-                        const countryTimezones: string[] = countryMatch.extra?.timezones || []
-                        if (!currentTimezone && countryTimezones.length > 0) {
-                            form.setValue("timezone", countryTimezones[0], { shouldDirty: true, shouldValidate: true })
-                        }
-                    }
+        if (d.countryCode) {
+            const countryMatch = countries.find(
+                (c: any) => c.extra?.iso2 === d.countryCode || c.extra?.iso3 === d.countryCode,
+            )
+            if (countryMatch) {
+                form.setValue("countryId", parseInt(countryMatch.id), { shouldDirty: true, shouldValidate: true })
+                const currentTimezone = form.getValues("timezone")
+                const countryTimezones: string[] = countryMatch.extra?.timezones || []
+                if (!currentTimezone && countryTimezones.length > 0) {
+                    form.setValue("timezone", countryTimezones[0], { shouldDirty: true, shouldValidate: true })
                 }
-
-                toast.success("Ubicación encontrada", {
-                    description: `Ubicada en ${cityName || 'la dirección seleccionada'}.`,
-                })
-            } else {
-                toast.error("No se encontró la ubicación", {
-                    description: "Intenta con una dirección más específica o mueve el pin manualmente.",
-                })
             }
-        } catch (error) {
-            toast.error("Error de búsqueda", {
-                description: "No se pudo conectar con el servicio de mapas.",
-            })
-        } finally {
-            setIsSearching(false)
         }
+
+        toast.success("Ubicación seleccionada", {
+            description: d.city || d.formattedAddress || "Dirección aplicada al mapa.",
+        })
     }
 
     return (
@@ -174,38 +117,26 @@ export function PropertiesLocation() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
-                <div className="flex gap-2 items-end">
-                    <FormField
-                        control={form.control}
-                        name="address"
-                        render={({ field }) => (
-                            <FormItem className="flex-1">
-                                <FormLabel className="text-slate-700 font-semibold">Dirección Principal <span className="text-destructive">*</span></FormLabel>
-                                <FormControl>
-                                    <div className="relative">
-                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                                        <Input
-                                            className="pl-9 h-11 border-slate-200 focus:border-indigo-400 focus:ring-indigo-400"
-                                            placeholder="Calle 123 #12-34..."
-                                            {...field}
-                                        />
-                                    </div>
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <Button
-                        type="button"
-                        variant="secondary"
-                        className="h-11 px-6 bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold transition-all shadow-sm"
-                        onClick={handleGeocode}
-                        disabled={isSearching}
-                    >
-                        {isSearching ? <Loader2 className="h-4 w-4 animate-spin text-white" /> : <Search className="h-4 w-4 mr-2 text-white" />}
-                        Buscar
-                    </Button>
-                </div>
+                <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="text-slate-700 font-semibold">
+                                Dirección Principal <span className="text-destructive">*</span>
+                            </FormLabel>
+                            <FormControl>
+                                <AddressAutocomplete
+                                    value={field.value ?? ""}
+                                    onChange={field.onChange}
+                                    onSelect={handlePlaceSelect}
+                                    placeholder="Escribe y elige de las sugerencias (ej. Pullman Hotel Miami)…"
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField

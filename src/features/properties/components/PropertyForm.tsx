@@ -56,6 +56,7 @@ import { propertyFormSchema, PropertyFormData, apiResponseToFormData } from "../
 import { propertiesService } from "../services/properties-service"
 import { listingsService } from "../services/listings-service"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
+import { COMMUNICATION_LOCALES, LOCALE_LABELS, DEFAULT_COMMUNICATION_LOCALE } from "@/lib/locales"
 
 interface PropertyFormProps {
     initialData?: any
@@ -133,6 +134,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             longitude: 0,
             statusRecordId: 6,
             propertyTypeId: 102,
+            communicationsLocale: DEFAULT_COMMUNICATION_LOCALE,
             amenities: [],
             wifiNetwork: "",
             wifiPassword: "",
@@ -300,16 +302,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                             <span className="font-bold">Detalles</span>
                         </TabsTrigger>
                         <TabsTrigger
-                            value="location"
-                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
-                        >
-                            <MapPin className={cn(
-                                "mr-2 h-4 w-4 transition-colors",
-                                activeTab === "location" ? "text-white" : "text-[var(--color-brand-purple)]"
-                            )} />
-                            <span className="font-bold">Ubicación</span>
-                        </TabsTrigger>
-                        <TabsTrigger
                             value="units"
                             className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
@@ -317,17 +309,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                 "mr-2 h-4 w-4 transition-colors",
                                 activeTab === "units" ? "text-white" : "text-[var(--color-brand-purple)]"
                             )} />
-                            <span className="font-bold">Unidades</span>
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="photos"
-                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
-                        >
-                            <Camera className={cn(
-                                "mr-2 h-4 w-4 transition-colors",
-                                activeTab === "photos" ? "text-white" : "text-[var(--color-brand-purple)]"
-                            )} />
-                            <span className="font-bold">Fotos</span>
+                            <span className="font-bold">Alojamientos</span>
                         </TabsTrigger>
                         {initialData && (
                             <TabsTrigger
@@ -353,6 +335,26 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                 <span className="font-bold">Documentos</span>
                             </TabsTrigger>
                         )}
+                        <TabsTrigger
+                            value="location"
+                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                        >
+                            <MapPin className={cn(
+                                "mr-2 h-4 w-4 transition-colors",
+                                activeTab === "location" ? "text-white" : "text-[var(--color-brand-purple)]"
+                            )} />
+                            <span className="font-bold">Ubicación</span>
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="photos"
+                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                        >
+                            <Camera className={cn(
+                                "mr-2 h-4 w-4 transition-colors",
+                                activeTab === "photos" ? "text-white" : "text-[var(--color-brand-purple)]"
+                            )} />
+                            <span className="font-bold">Fotos</span>
+                        </TabsTrigger>
                     </TabsList>
 
                     <TabsContent value="details" className="space-y-4">
@@ -489,19 +491,44 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     />
                                 </div>
 
-                                <FormField
-                                    control={form.control}
-                                    name="thumbnailUrl"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>URL de Miniatura (Thumbnail)</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="https://..." {...field} value={field.value || ""} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="thumbnailUrl"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>URL de Miniatura (Thumbnail)</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="https://..." {...field} value={field.value || ""} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="communicationsLocale"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Idioma de Comunicaciones</FormLabel>
+                                                <Select onValueChange={field.onChange} value={field.value || DEFAULT_COMMUNICATION_LOCALE}>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Seleccionar idioma" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>
+                                                        {COMMUNICATION_LOCALES.map((loc) => (
+                                                            <SelectItem key={loc} value={loc}>{LOCALE_LABELS[loc]}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormDescription>Idioma de los correos al huésped (link de check-in, etc.).</FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
 
                                 <FormField
                                     control={form.control}
@@ -535,7 +562,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
 
                     {initialData && (
                         <TabsContent value="automations" className="space-y-4">
-                            <PropertiesAutomation />
+                            <PropertiesAutomation onNavigateToDocuments={() => setActiveTab("documents")} />
                         </TabsContent>
                     )}
 
@@ -618,7 +645,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     </div>
                     <DialogFooter>
                         <Button 
-                            className="w-full bg-indigo-600 hover:bg-indigo-700"
+                            className="w-full bg-primary hover:bg-primary"
                             onClick={() => {
                                 setIsValidationErrorOpen(false)
                                 // Jump to the tab of the first missing field

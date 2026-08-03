@@ -8,22 +8,6 @@ import type { AutomationStatusItem } from "@/features/properties/types/automatio
 const POLL_INTERVAL_MS = 10_000
 const COOLDOWN_SECONDS = 300
 
-/** Parses a backend UTC timestamp ("YYYY-MM-DD HH:mm:ss") into a Date. */
-function parseUtc(ts: string | null): Date | null {
-    if (!ts) return null
-    const normalized = ts.includes("T") ? ts : ts.replace(" ", "T") + "Z"
-    const d = new Date(normalized)
-    return Number.isNaN(d.getTime()) ? null : d
-}
-
-/** Remaining cooldown seconds for an item, based on its lastRunAt (0 if none). */
-export function getCooldownSecondsRemaining(item: AutomationStatusItem, now: number = Date.now()): number {
-    const lastRun = parseUtc(item.lastRunAt)
-    if (!lastRun) return 0
-    const elapsed = (now - lastRun.getTime()) / 1000
-    return Math.max(0, Math.ceil(COOLDOWN_SECONDS - elapsed))
-}
-
 interface UseAutomationStatusResult {
     items: AutomationStatusItem[]
     isLoading: boolean
@@ -34,6 +18,8 @@ interface UseAutomationStatusResult {
     dispatchingUuids: Set<string>
     /** Ticking clock (ms) so consumers can recompute cooldowns each second. */
     now: number
+    /** automationUuid → epoch ms until which a 429 cooldown applies. */
+    cooldownUntil: Record<string, number>
     refresh: () => Promise<void>
     redispatch: (item: AutomationStatusItem) => Promise<void>
     /** Manually trigger a not-yet-run automation (status "not_started"). */
@@ -49,9 +35,19 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
     const [redispatchingUuids, setRedispatchingUuids] = useState<Set<string>>(new Set())
     const [dispatchingUuids, setDispatchingUuids] = useState<Set<string>>(new Set())
     const [now, setNow] = useState(() => Date.now())
+    const [cooldownUntil, setCooldownUntil] = useState<Record<string, number>>({})
 
     const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const mountedRef = useRef(true)
+
+    /**
+     * Start a 5-minute cooldown for an automation. The backend returns 429 without
+     * a Retry-After header or remaining-seconds body, so we anchor the countdown to
+     * the moment we receive the 429 (per the API spec).
+     */
+    const startCooldown = useCallback((automationUuid: string) => {
+        setCooldownUntil(prev => ({ ...prev, [automationUuid]: Date.now() + COOLDOWN_SECONDS * 1000 }))
+    }, [])
 
     const hasPending = useCallback(
         (list: AutomationStatusItem[]) => list.some(i => i.status === "pending"),
@@ -102,15 +98,13 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
             const status = e?.status
             const message: string = e?.message || ""
             if (status === 429) {
+                startCooldown(item.automationUuid)
                 toast.error("Espera unos minutos antes de reintentar esta automatización.")
-            } else if (status === 422 && message.includes("latest execution record")) {
-                // Race: a newer record exists — re-sync silently and let the user retry.
-                toast.info("Estado actualizado. Vuelve a intentarlo.")
-                const data = await fetchStatus()
-                scheduleNext(data)
             } else if (status === 422) {
-                // Record is no longer "failed" (e.g. resolved by a successful retry).
-                toast.info("Esta automatización ya no requiere reenvío.")
+                // The record is no longer the latest, or no longer "failed" (a retry
+                // resolved it). The backend returns a translated reason — surface it
+                // and re-sync so the buttons reflect the new state.
+                toast.info(message || "El estado cambió. Actualizamos la información.")
                 const data = await fetchStatus()
                 scheduleNext(data)
             } else {
@@ -125,7 +119,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 })
             }
         }
-    }, [reservationUuid, fetchStatus, scheduleNext])
+    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown])
 
     const dispatch = useCallback(async (item: AutomationStatusItem) => {
         if (!item.automationUuid) return
@@ -139,6 +133,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
             const status = e?.status
             const message: string = e?.message || ""
             if (status === 429) {
+                startCooldown(item.automationUuid)
                 toast.error("Espera unos minutos antes de volver a dispararla.")
             } else if (status === 422) {
                 // Inactive / already run / failed (use redispatch) / no job handler.
@@ -159,7 +154,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 })
             }
         }
-    }, [reservationUuid, fetchStatus, scheduleNext])
+    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown])
 
     const resendPdf = useCallback(async (item: AutomationStatusItem) => {
         if (!item.automationUuid) return
@@ -171,6 +166,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
             const status = e?.status
             const message: string = e?.message || ""
             if (status === 429) {
+                startCooldown(item.automationUuid)
                 toast.error("Espera unos minutos antes de reenviar el reporte.")
             } else if (status === 422) {
                 toast.info(message || "No se puede reenviar el reporte en este momento.")
@@ -188,7 +184,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 })
             }
         }
-    }, [reservationUuid])
+    }, [reservationUuid, startCooldown])
 
     // Initial load + polling setup
     useEffect(() => {
@@ -210,13 +206,15 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
         }
     }, [fetchStatus, scheduleNext])
 
-    // 1s ticking clock — only runs while any item is within cooldown.
+    // 1s ticking clock — only runs while an explicit 429 cooldown is active. We no
+    // longer derive a cooldown from lastRunAt: the backend's 5-min limit doesn't
+    // apply to admin tokens, so we wait for a real 429 instead of pre-blocking.
     useEffect(() => {
-        const anyCooldown = items.some(i => i.canRedispatch && getCooldownSecondsRemaining(i, now) > 0)
-        if (!anyCooldown) return
+        const anyExplicitCooldown = Object.values(cooldownUntil).some(until => until > now)
+        if (!anyExplicitCooldown) return
         const t = setInterval(() => setNow(Date.now()), 1000)
         return () => clearInterval(t)
-    }, [items, now])
+    }, [now, cooldownUntil])
 
-    return { items, isLoading, error, redispatchingUuids, dispatchingUuids, now, refresh, redispatch, dispatch, resendPdf }
+    return { items, isLoading, error, redispatchingUuids, dispatchingUuids, now, cooldownUntil, refresh, redispatch, dispatch, resendPdf }
 }

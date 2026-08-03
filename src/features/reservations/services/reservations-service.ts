@@ -1,21 +1,72 @@
 import { apiClient } from "@/lib/api-client"
 import { API_BASE, CONFIG } from "@/lib/config"
+import { normalizeLocale, type CommunicationLocale } from "@/lib/locales"
+import { parseCalendarDate } from "@/lib/calendar-date"
 import { Reservation } from "@/types"
 import { differenceInDays } from "date-fns"
 import { listingsService } from "@/features/properties/services/listings-service"
 import { propertiesService } from "@/features/properties/services/properties-service"
-import { automationService } from "@/features/properties/services/automation-service"
+import { automationService, canonicalSlug } from "@/features/properties/services/automation-service"
 import type { AutomationStatusItem } from "@/features/properties/types/automation"
 import type { AutomationStatus } from "@/types"
 
 type TrafficLightState = "success" | "pending" | "none"
 
-/** Maps a providerSlug from the automation-status API to a traffic light key. */
+/**
+ * HitGuest-internal reservation statuses (catalog_category_id 7), keyed by catalog id.
+ * These are NOT PMS statuses — they drive HitGuest's own processes: only 27 (Confirmada)
+ * and 28 (En Progreso) enable the reservation's automations.
+ * The catalog's `name` is a translations JSON ({"en":…,"es":…}), so we key off the
+ * stable numeric id and only fall back to the name when the id is missing.
+ */
+const RESERVATION_STATUS_BY_ID: Record<number, Reservation["status"]> = {
+    27: "CONFIRMED",
+    28: "IN_PROGRESS",
+    29: "CANCELLED",
+    30: "CLOSED",
+    108: "DELETED",
+    109: "UNKNOWN",
+}
+
+/** Reads the English name out of the catalog's translations JSON (string or object). */
+function statusNameEn(name: unknown): string {
+    if (!name) return ""
+    if (typeof name === "object") return String((name as any).en ?? (name as any).es ?? "")
+    if (typeof name === "string") {
+        try {
+            const parsed = JSON.parse(name)
+            return String(parsed?.en ?? parsed?.es ?? name)
+        } catch {
+            return name
+        }
+    }
+    return ""
+}
+
+/** Maps a raw reservation to its HitGuest status — by catalog id, name as fallback. */
+function mapReservationStatus(r: any): Reservation["status"] {
+    const id = Number(
+        r?.statusReservation?.id ?? r?.statusReservationId ?? r?.status_reservation_id
+    )
+    if (Number.isFinite(id) && RESERVATION_STATUS_BY_ID[id]) return RESERVATION_STATUS_BY_ID[id]
+
+    const name = statusNameEn(r?.statusReservation?.name).toLowerCase()
+    if (name.includes("cancel")) return "CANCELLED"
+    if (name.includes("progress") || name.includes("progreso")) return "IN_PROGRESS"
+    if (name.includes("closed") || name.includes("finalizada")) return "CLOSED"
+    if (name.includes("deleted") || name.includes("eliminada")) return "DELETED"
+    if (name.includes("unknow") || name.includes("desconocido")) return "UNKNOWN"
+    if (name.includes("confirm")) return "CONFIRMED"
+    return "UNKNOWN"
+}
+
+/** Maps a providerSlug from the automation-status API to a traffic light key.
+ *  SIRE is intentionally NOT here — both SIRE automations share the slug
+ *  `sire_colombia`, so they're split into sireIn/sireOut by name (see sireKind). */
 const SLUG_TO_KEY: Record<string, keyof AutomationStatus> = {
     tufirma: "contract",
     ttlock: "code",
     tra_colombia: "tra",
-    sire_colombia: "sire",
 }
 
 function liveStatusToLight(s: string): TrafficLightState {
@@ -27,6 +78,11 @@ function liveStatusToLight(s: string): TrafficLightState {
 /** Matches the Identity Verification automations (orders 1 & 2) by name. */
 const CHECKIN_NAME_RE = /identity|verificaci[oó]n|check-?in/i
 
+/** SIRE check-out (order 8) vs check-in (order 7), told apart by the name. */
+function sireKind(name: string): "sireIn" | "sireOut" {
+    return /out|check-?out|salida/i.test(name) ? "sireOut" : "sireIn"
+}
+
 function buildTrafficLight(items: AutomationStatusItem[], checkinCompleted: boolean): AutomationStatus {
     const base: AutomationStatus = {
         link: "none",
@@ -34,7 +90,8 @@ function buildTrafficLight(items: AutomationStatusItem[], checkinCompleted: bool
         contract: "none",
         code: "none",
         tra: "none",
-        sire: "none",
+        sireIn: "none",
+        sireOut: "none",
     }
 
     // Collect the check-in (Identity Verification) automations so the light can
@@ -42,7 +99,13 @@ function buildTrafficLight(items: AutomationStatusItem[], checkinCompleted: bool
     const checkinStates: TrafficLightState[] = []
 
     for (const item of items) {
-        const key = SLUG_TO_KEY[item.providerSlug]
+        const slug = canonicalSlug(item.providerSlug)
+        if (slug === "sire_colombia") {
+            // Both SIRE automations share this slug; split by name into in/out.
+            base[sireKind(item.automationName || "")] = liveStatusToLight(item.status)
+            continue
+        }
+        const key = SLUG_TO_KEY[slug]
         if (key) {
             base[key] = liveStatusToLight(item.status)
         } else if (CHECKIN_NAME_RE.test(item.automationName || "")) {
@@ -76,7 +139,51 @@ export interface ReservationGuest {
     isCheckinCompleted: boolean
     documentImage1?: string | null
     documentImage2?: string | null
-    verificationStatus?: string
+    verificationStatus: ReservationGuestVerificationStatus
+    /** ISO timestamp supplied by the backend verification record, when available. */
+    verifiedAt?: string | null
+}
+
+export type ReservationGuestVerificationStatus =
+    | "not_started"
+    | "pending"
+    | "in_progress"
+    | "in_review"
+    | "approved"
+    | "rejected"
+    | "fail"
+    | "expired"
+    | "completed"
+    | "verified"
+
+function normalizeGuestVerificationStatus(
+    value: unknown,
+    isCheckinCompleted: boolean,
+    verifiedAt?: unknown,
+): ReservationGuestVerificationStatus {
+    const normalized = typeof value === "string" ? value.trim().toLowerCase() : ""
+    const knownStatuses: ReservationGuestVerificationStatus[] = [
+        "not_started",
+        "pending",
+        "in_progress",
+        "in_review",
+        "approved",
+        "rejected",
+        "fail",
+        "expired",
+        "completed",
+        "verified",
+    ]
+
+    if (knownStatuses.includes(normalized as ReservationGuestVerificationStatus)) {
+        return normalized as ReservationGuestVerificationStatus
+    }
+
+    // A completed check-in necessarily passed the identity gate, but identity
+    // approval by itself must not be promoted to check-in completion.
+    if (isCheckinCompleted) return "completed"
+    if (typeof verifiedAt === "string" && verifiedAt.trim()) return "approved"
+    return "not_started"
 }
 
 export interface ReservationDetailData {
@@ -92,14 +199,45 @@ export interface ReservationDetailData {
     status: Reservation["status"]
     source: "Airbnb" | "Booking" | "Direct"
     totalPrice: number
+    /** Reservation currency (e.g. "COP", "USD"). Never assume COP — the listing sets it. */
+    currency: string
+    /** Total guest count — the only guest variable the product manages (no adult/child split). */
+    totalGuests: number
     externalId: string
+    /** Property's default communication language (from listing.communicationsLocale). */
+    communicationsLocale?: CommunicationLocale
     automationStatus: {
         link: "success" | "pending" | "none"
         checkin: "success" | "pending" | "none"
         contract: "success" | "pending" | "none"
         code: "success" | "pending" | "none"
         tra: "success" | "pending" | "none"
-        sire: "success" | "pending" | "none"
+        sireIn: "success" | "pending" | "none"
+        sireOut: "success" | "pending" | "none"
+    }
+}
+
+/**
+ * Surfaces the day `GET /reservations` starts paginating.
+ *
+ * The endpoint is contracted to return every reservation the token owns (no
+ * `page`/`per_page` filters, no `meta` envelope). We deliberately do NOT crawl
+ * pages here — that would mean inventing query params the API doesn't document.
+ * We only detect the envelope and shout, because the failure mode is invisible:
+ * consumers would just see fewer reservations and read the gap as "no activity".
+ */
+function warnIfPaginated(response: unknown): void {
+    const meta = (response as { meta?: Record<string, unknown> } | null)?.meta
+    if (!meta) return
+
+    const lastPage = Number(meta.last_page ?? meta.lastPage ?? 0)
+    if (lastPage > 1) {
+        console.error(
+            `[reservations] GET /reservations devolvió ${lastPage} páginas y solo se está leyendo la primera ` +
+                `(${meta.per_page ?? meta.perPage ?? "?"} de ${meta.total ?? "?"} reservas). ` +
+                `El contrato no define paginación para este endpoint — confirmar con backend antes de ` +
+                `confiar en el historial de consumo del Tablero.`,
+        )
     }
 }
 
@@ -108,8 +246,8 @@ export class ReservationsService {
         const url = `${API_BASE}/reservations/${uuid}`
         const r: any = await apiClient.get(url)
 
-        const checkIn = new Date(r.arrivalDate || r.arrival_date)
-        const checkOut = new Date(r.departureDate || r.departure_date)
+        const checkIn = parseCalendarDate(r.arrivalDate || r.arrival_date)
+        const checkOut = parseCalendarDate(r.departureDate || r.departure_date)
 
         const guestName = r.extra?.guestName
             || r.extra?.guest_name
@@ -144,11 +282,7 @@ export class ReservationsService {
             }
         }
 
-        let status: Reservation["status"] = "CONFIRMED"
-        const statusSlug = r.statusReservation?.name?.toLowerCase() || ""
-        if (statusSlug.includes("cancelada") || statusSlug.includes("cancel")) status = "CANCELLED"
-        else if (statusSlug.includes("pendiente") || statusSlug.includes("pending")) status = "PENDING"
-        else if (statusSlug.includes("check-in") || statusSlug.includes("checkin")) status = "CHECKED_IN"
+        const status = mapReservationStatus(r)
 
         return {
             uuid: r.uuid || uuid,
@@ -165,14 +299,18 @@ export class ReservationsService {
             status,
             source: sourceName,
             totalPrice: Number(r.totalPrice || r.total_price || 0),
+            currency: r.currency || r.currency_code || "COP",
+            totalGuests: Number(r.totalGuests || r.total_guests || 1),
             externalId: r.externalId || r.external_id || "",
+            communicationsLocale: normalizeLocale(listing?.communicationsLocale || listing?.communications_locale),
             automationStatus: {
                 link: r.listing ? "success" : "pending",
                 checkin: r.isCheckinCompleted ? "success" : "pending",
                 contract: "none",
                 code: "none",
                 tra: "none",
-                sire: "none",
+                sireIn: "none",
+                sireOut: "none",
             }
         }
     }
@@ -192,6 +330,29 @@ export class ReservationsService {
         await apiClient.delete<void>(url)
     }
 
+    /**
+     * Sends (or resends) the guest the check-in link email.
+     * - `locale` (optional): when omitted the backend uses the property's default
+     *   communication language (extra.communicationsLocale).
+     * - `email` (optional): when omitted the backend uses the reservation's main
+     *   guest email; pass it to override the recipient for this send.
+     * Resolves to the backend's `message`; throws on 422 (invalid state / no email).
+     */
+    async sendCheckinLink(
+        uuid: string,
+        opts?: { locale?: CommunicationLocale; email?: string }
+    ): Promise<string> {
+        const url = `${API_BASE}/reservations/${uuid}/send-checkin-link`
+        const body: Record<string, string> = {}
+        if (opts?.locale) body.locale = opts.locale
+        if (opts?.email) body.email = opts.email
+        // suppressUnauthorizedRedirect: a failed resend (e.g. backend policy/guard
+        // returning 401) must NOT clear the PM's session and bounce them to /login.
+        // Surface it as an error toast instead.
+        const r: any = await apiClient.post(url, body, { suppressUnauthorizedRedirect: true })
+        return r?.message || r?.data?.message || "Link de check-in enviado"
+    }
+
     async getGuests(reservationUuid: string): Promise<ReservationGuest[]> {
         // ── First try the checkin portal (authoritative for verification status) ──
         try {
@@ -204,12 +365,10 @@ export class ReservationsService {
             const response = await fetch(url, { headers, cache: "no-store" })
             if (response.ok) {
                 const json: any = await response.json()
-                console.log("[GuestDocuments] Portal raw response:", JSON.stringify(json).slice(0, 800))
                 const portal = json.data || json
                 const guests = Array.isArray(portal.registeredGuests)
                     ? portal.registeredGuests
                     : (portal.registered_guests ?? [])
-                console.log("[GuestDocuments] registeredGuests:", guests)
                 if (guests.length > 0) {
                     // The portal is authoritative for verification status but does NOT
                     // include document images. Fetch them from /guests and merge by uuid.
@@ -218,6 +377,10 @@ export class ReservationsService {
                         const isCompleted = g.isCompleted ?? g.is_completed ?? false
                         const uuid = g.uuid || g.id
                         const images = imageMap.get(uuid)
+                        const verifiedAt =
+                            g.verification?.verifiedAt
+                            ?? g.verification?.verified_at
+                            ?? null
                         return {
                             uuid,
                             name: g.name || "",
@@ -228,34 +391,39 @@ export class ReservationsService {
                             isCheckinCompleted: isCompleted,
                             documentImage1: g.documentImage1 || g.document_image_1 || images?.image1 || null,
                             documentImage2: g.documentImage2 || g.document_image_2 || images?.image2 || null,
-                            verificationStatus: isCompleted ? "verified" : "pending",
+                            verificationStatus: normalizeGuestVerificationStatus(
+                                g.verification?.status
+                                ?? g.verificationStatus
+                                ?? g.verification_status,
+                                isCompleted,
+                                verifiedAt,
+                            ),
+                            verifiedAt,
                         }
                     })
                 }
             } else {
-                const errBody = await response.json().catch(() => ({}))
-                console.warn(`[GuestDocuments] Portal returned ${response.status}:`, JSON.stringify(errBody), "| UUID:", reservationUuid)
+                console.warn(`[GuestDocuments] Portal returned HTTP ${response.status}`)
             }
         } catch (error) {
             console.warn("[ReservationsService] Portal fetch failed, falling back to reservation guests endpoint:", error)
         }
-        console.log("[GuestDocuments] Portal had 0 guests or failed — falling back to /reservations/{uuid}/guests")
-
         // ── Fallback: reservation guests endpoint (may have local document images) ──
         const url = `${API_BASE}/reservations/${reservationUuid}/guests`
         try {
             const raw: any = await apiClient.get(url)
-            console.log("[GuestDocuments] Fallback raw:", JSON.stringify(raw).slice(0, 800))
             const guests = Array.isArray(raw) ? raw : (raw?.data ?? [])
 
             return guests.map((g: any): ReservationGuest => {
-                console.log("[GuestDocuments] Fallback guest raw:", JSON.stringify(g).slice(0, 600))
                 // pivot = guest_reservation relationship data
                 const pivot = g.pivot || {}
                 const pivotExtra = pivot.extra || {}
-                // v4.5: backend now returns full HTTP URLs under
-                // reservationSpecificData.documentImages. Older versions used
-                // relative storage paths under pivot.extra.document_images.
+                // v4.6: guest data nested under guestProfile. Images MUST come from
+                // reservationSpecificData.documentImages (resolved, authenticated URLs
+                // via reservations.identity-documents.show) — NOT guestProfile.extra,
+                // which holds a raw internal storage path that isn't servable.
+                const profile = g.guestProfile || g.guest_profile || {}
+                const profileExtra = profile.extra || {}
                 const reservationSpecific = g.reservationSpecificData || g.reservation_specific_data || {}
                 const docImages =
                     reservationSpecific.documentImages
@@ -275,6 +443,8 @@ export class ReservationsService {
 
                 // Check every possible location the backend may put this flag
                 const isCompleted =
+                    g.isCompleted ??               // v4.6: top-level on the guest entry
+                    g.is_completed ??
                     pivot.is_checkin_completed ??
                     pivot.isCheckinCompleted ??
                     g.isCheckinCompleted ??
@@ -290,22 +460,29 @@ export class ReservationsService {
                     || g.verification_status
                     || pivot.verification_status
                     || pivot.verificationStatus
-                const verificationStatus = rawVerificationStatus || (isCompleted ? "verified" : "pending")
-
-                console.log(`[GuestDocuments] ${g.name} ${g.lastname}: isCompleted=${isCompleted}, pivot=`, JSON.stringify(pivot).slice(0, 300))
+                const verificationStatus = normalizeGuestVerificationStatus(
+                    rawVerificationStatus,
+                    isCompleted,
+                    g.verification?.verifiedAt ?? g.verification?.verified_at,
+                )
 
                 return {
-                    uuid: g.uuid || g.id,
-                    name: g.name || "",
-                    lastname: g.lastname || g.last_name || "",
-                    identificationNumber: g.identificationNumber || g.identification_number
+                    uuid: profile.uuid || g.uuid || g.id,
+                    name: profile.name || g.name || "",
+                    lastname: profile.lastname || g.lastname || g.last_name || "",
+                    identificationNumber: profile.identificationNumber || profileExtra.identificationNumber
+                        || g.identificationNumber || g.identification_number
                         || g.identificationType?.pivot?.value || g.identification_type?.pivot?.value,
                     identificationType: g.identificationType?.name || g.identification_type?.name || g.identificationTypeName,
-                    isMain: pivot.is_main_guest ?? pivot.isMainGuest ?? g.isMain ?? g.is_main ?? false,
+                    isMain: g.isMainGuest ?? g.is_main_guest ?? pivot.is_main_guest ?? pivot.isMainGuest ?? g.isMain ?? g.is_main ?? false,
                     isCheckinCompleted: isCompleted,
                     documentImage1: resolveImageUrl(frontPath),
                     documentImage2: resolveImageUrl(backPath),
                     verificationStatus,
+                    verifiedAt:
+                        g.verification?.verifiedAt
+                        ?? g.verification?.verified_at
+                        ?? null,
                 }
             })
         } catch (error) {
@@ -334,9 +511,14 @@ export class ReservationsService {
                 return /^https?:\/\//i.test(path) ? path : `${storageBase}${path}`
             }
             for (const g of guests) {
-                const uuid = g.uuid || g.id
+                // v4.6: the guest is nested under guestProfile (uuid lives there).
+                const profile = g.guestProfile || g.guest_profile || {}
+                const uuid = profile.uuid || g.uuid || g.id
                 if (!uuid) continue
                 const pivotExtra = g.pivot?.extra || {}
+                // Reservation context: use ONLY reservationSpecificData.documentImages
+                // (resolved, authenticated URLs). guestProfile.extra.documentImages is a
+                // raw internal storage path — not usable and leaks internal paths.
                 const reservationSpecific = g.reservationSpecificData || g.reservation_specific_data || {}
                 const docImages =
                     reservationSpecific.documentImages
@@ -355,20 +537,45 @@ export class ReservationsService {
         return map
     }
 
+    /** In-flight `list()` promise, shared to dedupe concurrent callers. */
+    private listInFlight: Promise<Reservation[]> | null = null
+
+    /**
+     * Lists reservations (with per-reservation automation status merged in).
+     *
+     * Concurrent callers on the same page (e.g. StatsCards + ReservationsList)
+     * share a single in-flight request so the reservations fetch and the N
+     * per-reservation automation-status fetches run once. This is deduping, NOT
+     * caching: the shared promise is cleared as soon as it settles, so every
+     * later call (manual refresh, after create/delete) fetches fresh data.
+     */
     async list(): Promise<Reservation[]> {
+        if (this.listInFlight) return this.listInFlight
+        this.listInFlight = this.fetchList().finally(() => { this.listInFlight = null })
+        return this.listInFlight
+    }
+
+    private async fetchList(): Promise<Reservation[]> {
         const url = `${API_BASE}/reservations`
 
         try {
             const response = await apiClient.get<any>(url)
-            
+
             // Extract array from standard { success: true, data: [...] } structure
-            const dataArray = response?.data && Array.isArray(response.data) 
-                ? response.data 
+            const dataArray = response?.data && Array.isArray(response.data)
+                ? response.data
                 : (Array.isArray(response) ? response : [])
 
+            // Per the contract, GET /reservations returns the full list — it has no
+            // `page`/`per_page` filters and no pagination envelope, unlike /users or
+            // /billing/transactions. If that ever changes we'd silently keep page 1,
+            // and the Tablero's consumption history would under-report old months as
+            // real zeros. Fail loudly instead of quietly lying.
+            warnIfPaginated(response)
+
             const reservations = dataArray.map((r: any): Reservation => {
-                const checkIn = new Date(r.arrivalDate || r.arrival_date)
-                const checkOut = new Date(r.departureDate || r.departure_date)
+                const checkIn = parseCalendarDate(r.arrivalDate || r.arrival_date)
+                const checkOut = parseCalendarDate(r.departureDate || r.departure_date)
                 
                 // ── Guest name: API returns extra.guestName (camelCase) ──
                 const guestName = r.extra?.guestName 

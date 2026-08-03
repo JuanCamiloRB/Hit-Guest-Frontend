@@ -15,7 +15,6 @@ export const en = {
   },
   header: {
     myProfile: "My Profile",
-    accommodation: "Accommodation",
     users: "Users",
     logout: "Sign Out",
   },

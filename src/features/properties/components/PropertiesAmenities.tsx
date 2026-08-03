@@ -74,7 +74,7 @@ export function PropertiesAmenities() {
                                                         key={item.id}
                                                         className={cn(
                                                             "flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 transition-colors hover:bg-slate-50",
-                                                            isChecked && "bg-indigo-50/30 border-indigo-200"
+                                                            isChecked && "bg-primary/5 border-primary/20"
                                                         )}
                                                     >
                                                         <FormControl>

@@ -23,6 +23,7 @@ import {
 import { format, differenceInDays, addDays } from "date-fns"
 import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
+import { parseCalendarDate } from "@/lib/calendar-date"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -211,15 +212,30 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
         setLoadingListings(true)
         try {
             const data = await listingsService.listByProperty(propertyUuid)
-            // Ensure data is an array
             const list = Array.isArray(data) ? data : []
-            
+
+            // Real property reference of a listing, tolerating every shape variant.
+            const propRefOf = (l: any): string | null => {
+                const ref = l?.property_uuid ?? l?.propertyUuid ?? l?.property?.uuid ?? l?.property_id ?? l?.propertyId
+                return ref == null ? null : String(ref)
+            }
+
+            // Defense-in-depth: the backend currently returns ALL of the PM's listings
+            // ignoring the ?property_uuid= filter, so scope to the selected property
+            // here. A listing with NO property ref is kept (can't attribute it), but
+            // one belonging to a DIFFERENT property is dropped — that was the bug where
+            // other properties' accommodations showed up in the picker.
+            const scoped = list.filter((l: any) => {
+                const ref = propRefOf(l)
+                return ref === null || ref === String(propertyUuid)
+            })
+
             setListings(
-                list.map((l: any) => ({
+                scoped.map((l: any) => ({
                     id: l.id,
                     uuid: l.uuid || String(l.id),
                     name: l.name || l.internal_name || `Alojamiento ${l.id || (l.uuid || "").slice(0, 8)}`,
-                    propertyUuid: l.property_uuid || propertyUuid,
+                    propertyUuid: propRefOf(l) ?? propertyUuid,
                 }))
             )
         } catch (error) {
@@ -229,6 +245,29 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             setLoadingListings(false)
         }
     }, [])
+
+    // On listing selection, prefill guests / price / currency with the listing's
+    // configured defaults (only triggered by user choice, never by the edit-mode
+    // form.reset — so an existing reservation's values aren't overwritten on load).
+    const handleListingChange = useCallback(async (uuid: string) => {
+        form.setValue("listingId", uuid, { shouldValidate: true, shouldDirty: true })
+        try {
+            const listing: any = await listingsService.getById(uuid)
+            if (!listing) return
+            const ex = listing.extra ?? {}
+            const guests = Number(ex.maxOccupancy ?? ex.max_occupancy ?? listing.maxOccupancy ?? 0)
+            const price = Number(
+                ex.startPrice ?? ex.start_price ?? ex.price ??
+                listing.startPrice ?? listing.start_price ?? listing.price ?? 0,
+            )
+            const currency = ex.currency ?? listing.currency ?? null
+            if (guests > 0) form.setValue("totalGuests", guests, { shouldValidate: true, shouldDirty: true })
+            if (price > 0) form.setValue("totalPrice", price, { shouldValidate: true, shouldDirty: true })
+            if (currency) form.setValue("currency", String(currency), { shouldValidate: true, shouldDirty: true })
+        } catch {
+            // Non-fatal: keep whatever the user had if the listing can't be fetched.
+        }
+    }, [form])
 
     // ── Load Reservation Sources ──
     const loadReservationSources = useCallback(async () => {
@@ -299,8 +338,8 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                     const raw = await reservationsService.getRawById(reservationUuid)
                     
                     // Pre-fill form
-                    const fromDate = new Date(raw.arrivalDate || raw.arrival_date)
-                    const toDate = new Date(raw.departureDate || raw.departure_date)
+                    const fromDate = parseCalendarDate(raw.arrivalDate || raw.arrival_date)
+                    const toDate = parseCalendarDate(raw.departureDate || raw.departure_date)
 
                     let propertyUuid = raw.listing?.property?.uuid || raw.listing?.propertyUuid || raw.listing?.property_uuid || ""
                     const listingId = raw.listing?.uuid || raw.listingId?.toString() || ""
@@ -515,7 +554,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             <div className="h-px bg-gradient-to-r from-brand-blue/20 to-transparent w-full" />
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                        {/* Property gets its own full-width row (names are long, e.g.
+                            "KeyPöint Retreat | Green Höuse"); Alojamiento + Canal share
+                            a 2-column row so none of the three selects get cramped. */}
+                        <div className="space-y-5">
                             <FormField
                                 control={form.control}
                                 name="propertyUuid"
@@ -551,6 +593,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 )}
                             />
 
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <FormField
                                 control={form.control}
                                 name="listingId"
@@ -558,7 +601,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                     <FormItem>
                                         <FormLabel className="font-semibold text-slate-700">Alojamiento *</FormLabel>
                                         <Select
-                                            onValueChange={field.onChange}
+                                            onValueChange={handleListingChange}
                                             value={field.value}
                                             disabled={!selectedPropertyUuid || loadingListings || (!!selectedPropertyUuid && !loadingListings && listings.length === 0)}
                                         >
@@ -618,6 +661,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                     </FormItem>
                                 )}
                             />
+                            </div>
                         </div>
 
                         {/* ─── Section: Dates ─── */}
@@ -692,12 +736,12 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                             Huéspedes *
                                         </FormLabel>
                                         <FormControl>
-                                            <Input 
-                                                type="number" 
-                                                min={1} 
-                                                placeholder="1" 
+                                            <Input
+                                                type="number"
+                                                min={1}
+                                                placeholder="1"
                                                 className="bg-slate-50 border-slate-200 focus-visible:ring-brand-purple/30 focus-visible:border-brand-purple rounded-xl h-11 transition-colors"
-                                                {...field} 
+                                                {...field}
                                             />
                                         </FormControl>
                                         <FormMessage />

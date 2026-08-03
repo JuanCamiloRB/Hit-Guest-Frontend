@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Mail, User, Building2, Phone, ArrowLeft, CheckCircle2, MapPin } from "lucide-react"
+import { Loader2, Mail, User, Building2, Phone, ArrowLeft, CheckCircle2, MapPin, Gift } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +27,9 @@ import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { Honeypot } from "./Honeypot"
 import Link from "next/link"
 
+/** PM/Client account terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
+const ACCOUNT_TERMS_URL = "https://hitguest.com/terminos-condiciones/"
+
 type UserRegisterFormProps = React.HTMLAttributes<HTMLDivElement>
 
 export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
@@ -44,6 +47,10 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
     } = useRegister()
 
     const [otpValue, setOtpValue] = React.useState("")
+    // No backend field for this — the account's own createdAt (set once
+    // /register succeeds, which this gate blocks until checked) is the
+    // acceptance timestamp, per Ricardo/Didier thread 20260801.
+    const [acceptedTerms, setAcceptedTerms] = React.useState(false)
     const [personTypes, setPersonTypes] = React.useState<CatalogOption[]>([
         { id: "1", name: "Individual" },
         { id: "2", name: "Empresa (Negocio)" }
@@ -94,6 +101,10 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                     <p className="text-sm text-muted-foreground">
                         Tu registro se ha completado con éxito. Redirigiendo al dashboard...
                     </p>
+                    <p className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-brand-purple)]">
+                        <Gift className="h-4 w-4" />
+                        Tu cuenta inicia con USD 10 de saldo de bienvenida.
+                    </p>
                 </div>
                 <div className="w-full flex justify-center">
                     <Loader2 className="h-6 w-6 animate-spin text-[var(--color-brand-blue)]" />
@@ -106,10 +117,14 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
         return (
             <div className="grid gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex flex-col space-y-2 text-center border-b pb-4">
-                    <h2 className="text-2xl font-semibold tracking-tight">Verifica tu cuenta</h2>
+                    <h2 className="text-2xl font-semibold tracking-tight">Revisa tu correo</h2>
                     <p className="text-sm text-muted-foreground">
-                        Hemos enviado un código a: <br />
+                        Enviamos un correo de confirmación a: <br />
                         <span className="font-medium text-foreground">{registeredEmail}</span>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        Haz clic en el botón de confirmación del correo. Después de aceptar recibirás
+                        un código de verificación para ingresarlo aquí.
                     </p>
                     <button
                         onClick={resetRegistration}
@@ -162,6 +177,16 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                     <Honeypot {...honeypotProps} />
                     <div className="grid gap-5 bg-card/80 backdrop-blur-sm border border-[var(--color-brand-blue)]/10 rounded-xl p-6 shadow-lg shadow-[var(--color-brand-blue)]/5 relative">
                         <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-brand-blue)]/40 to-transparent rounded-t-xl" />
+
+                        {/* Welcome credit — the backend credits USD 10 to every new account. */}
+                        <div className="flex items-center gap-3 rounded-lg border border-[var(--color-brand-purple)]/20 bg-[var(--color-brand-purple)]/5 px-4 py-3">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-purple)]/10">
+                                <Gift className="h-4 w-4 text-[var(--color-brand-purple)]" />
+                            </span>
+                            <p className="text-sm text-slate-700">
+                                <span className="font-bold text-[var(--color-brand-purple)]">USD 10 de regalo</span> — tu cuenta inicia con saldo de bienvenida para ejecutar tus primeras automatizaciones.
+                            </p>
+                        </div>
 
                         <FormField
                             control={form.control}
@@ -460,10 +485,34 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             />
                         </div>
 
+                        <label className="flex items-start gap-3 p-3 bg-muted/40 rounded-xl border border-border/60 cursor-pointer hover:border-[var(--color-brand-purple)]/30 transition-colors">
+                            <div className="relative flex items-center justify-center mt-0.5">
+                                <input
+                                    type="checkbox"
+                                    checked={acceptedTerms}
+                                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                                    className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-2 focus:ring-[var(--color-brand-purple)]/20 checked:bg-[var(--color-brand-purple)] checked:border-[var(--color-brand-purple)] transition-all"
+                                />
+                                <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
+                            </div>
+                            <span className="text-sm text-muted-foreground font-medium select-none">
+                                Acepto los Términos y Condiciones de HIT —{" "}
+                                <a
+                                    href={ACCOUNT_TERMS_URL}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-[var(--color-brand-purple)] underline hover:no-underline"
+                                >
+                                    Ver términos y condiciones
+                                </a>
+                            </span>
+                        </label>
+
                         <div className="pt-2">
                             <Button
                                 type="submit"
-                                disabled={isLoading}
+                                disabled={isLoading || !acceptedTerms}
                                 className="w-full bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300 h-11 rounded-lg"
                             >
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}

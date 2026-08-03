@@ -46,7 +46,8 @@ export interface GuestVerificationInfo {
     | "fail"         // external_status = 'fail'
     | "expired"      // document expired
     | "completed"    // is_checkin_completed = true
-  currentStep: "verification" | "form" | "rejected" | "completed"
+    | "contact_challenge_pending"  // OTP plan 20260731: sent, not yet verified by the guest
+  currentStep: "verification" | "form" | "rejected" | "completed" | "contact_challenge"
   verifiedAt: string | null         // ISO date when approved/completed, null otherwise
 }
 
@@ -60,6 +61,12 @@ export interface PortalDocument {
   type: string          // "Agreement" | "Rules" | "Instructions" | "Privacy Policy"
   renderUrl: string     // "/api/v1/checkin/{reservationUuid}/documents/{docUuid}/render"
   pdfUrl: string        // "/api/v1/checkin/{reservationUuid}/documents/{docUuid}/pdf"
+  /** Optional metadata from newer backends. ContractScreen stays fail-closed when ambiguous. */
+  isContract?: boolean
+  reservationSourceId?: number | null
+  reservation_source_id?: number | null
+  signatureProviderSlug?: SigningProvider | null
+  signature_provider_slug?: SigningProvider | null
 }
 
 /**
@@ -76,11 +83,80 @@ export type SigningProvider = "hitguest" | "hitguest_signature" | "tufirma"
  */
 export interface PortalContractInfo {
   signingProvider: SigningProvider | null  // null = no Digital Contract automation configured
+  /** Authoritative contract selected by backend for the reservation channel. */
+  documentUuid?: string | null
+  document_uuid?: string | null
+  reservationSourceId?: number | null
+  reservation_source_id?: number | null
   // "pending" = TuFirma sent, waiting for the guest to sign externally (email link)
   status: "not_started" | "pending" | "signed" | "completed"
   hasNativeSignature: boolean               // a native signature already saved for the main guest
   signedAt?: string | null                  // ISO timestamp when the contract was signed
   signedContractUrl?: string | null         // relative URL to download the SIGNED PDF (when available)
+}
+
+/**
+ * GET /checkin/{reservationUuid}/contract/preview — the authoritative source
+ * for what this reservation's guest signs, resolved server-side from the
+ * property's contract_mode/by_source for the reservation's channel.
+ *
+ * Replaces the old pattern of picking a contract out of `documents[]`: a
+ * property in per_source mode can have several Agreement documents, so
+ * "take the first/only one" (the previous ContractScreen heuristic) is no
+ * longer valid. This endpoint is the only correct source (backend plan §4.1).
+ */
+export interface ContractPreview {
+  contractType: "agreement_only" | "guarantee_only" | "agreement_and_guarantee"
+  /** Who signs — drives the native canvas vs. "sent by email" branch, same as before. */
+  providerSlug: SigningProvider
+  /** Present for agreement_only / agreement_and_guarantee. Shortcodes already resolved. */
+  agreement: { uuid: string; rendered: string } | null
+  /** Present for guarantee_only / agreement_and_guarantee. Shortcodes already resolved. */
+  guarantee: { rendered: string } | null
+}
+
+/**
+ * Card-on-file guarantee (backend plan 20260731 — Stripe SetupIntent, no
+ * charge). Applies only when `ContractPreview.guarantee !== null`.
+ */
+export type GuaranteeStatus = "not_started" | "pending" | "active" | "failed"
+
+/**
+ * POST /checkin/{reservationUuid}/main/guarantee/setup-intent
+ *
+ * `clientSecret` is passed straight into `stripe.confirmCardSetup()` and never
+ * persisted — a fresh intent is created on every call, so there's nothing to
+ * clean up if the guest abandons and retries. `publishableKey` always comes
+ * from this response, never hardcoded, so the backend can switch test/live
+ * accounts without a frontend release.
+ */
+export interface GuaranteeSetupIntent {
+  clientSecret: string
+  publishableKey: string
+  /** Configured guarantee amount, e.g. "200" — informational only, nothing is
+   *  held or charged at this step. */
+  guaranteeAmount: string
+  currency: string
+}
+
+/**
+ * GET /checkin/{reservationUuid}/main/guarantee/status?guest_uuid={uuid}
+ *
+ * Polled after `confirmCardSetup()` resolves — Stripe's client-side result is
+ * NOT the source of truth (the backend only knows once its webhook lands), so
+ * the frontend waits for `status: "active"` here before completing check-in,
+ * the same "don't trust the client result, poll the backend" pattern already
+ * used for Didit verification.
+ */
+export interface GuaranteeStatusInfo {
+  status: GuaranteeStatus
+  cardBrand: string | null
+  cardLast4: string | null
+  failureReason: string | null
+}
+
+export interface GuaranteeStatusResponse {
+  guarantee: GuaranteeStatusInfo
 }
 
 export interface CheckinPortalResponse {
@@ -168,6 +244,51 @@ export type VerificationDirective =
   | { type: "session"; subtype?: "biometric" | "kyc"; url: string }  // Didit — backend only sends url, frontend defaults subtype to "biometric"
   | { type: "document_upload" }             // Textract → mostrar upload UI
   | { type: "verified_ok" }                 // Ya verificado → saltar a form
+  | ContactChallengeDirective               // Huésped recurrente: probar posesión del email (OTP plan 20260731)
+
+/**
+ * Huésped recurrente con verificación previa reutilizable — debe probar que
+ * sigue teniendo acceso al email histórico antes de reusar esa verificación
+ * (corrige la falla de seguridad donde conocer tipo+número de documento
+ * bastaba para hacerse pasar por otro huésped). v1: solo `channel: "email"`
+ * — no mostrar selector de canal, WhatsApp/SMS no están integrados en backend.
+ */
+export interface ContactChallengeDirective {
+  type: "contact_challenge"
+  challengeId: string
+  channel: "email"
+  maskedDestination: string
+  /** Segundos hasta que el código vence — usar SIEMPRE este valor para el countdown, nunca hardcodear. */
+  expiresIn: number
+  /** Segundos de cooldown antes de poder reenviar — usar SIEMPRE este valor. */
+  resendAfter: number
+  attemptsRemaining: number
+}
+
+/**
+ * POST /checkin/{reservationUuid}/contact-challenges/{challengeId}/verify
+ * `expiresAt` es cuándo vence el `verificationToken` (60 min por defecto) —
+ * NO cuándo vence el código de un solo uso.
+ */
+export interface VerifyContactChallengeResponse {
+  verified: true
+  guestUuid: string
+  nextStep: "form"
+  expiresAt: string
+  verificationToken: string
+}
+
+/**
+ * POST /checkin/{reservationUuid}/contact-challenges/{challengeId}/resend
+ * El `challengeId` anterior queda invalidado — este reemplaza al guardado.
+ */
+export interface ResendContactChallengeResponse {
+  challengeId: string
+  channel: "email"
+  maskedDestination: string
+  expiresIn: number
+  resendAfter: number
+}
 
 /**
  * Respuesta de GET /checkin/{uuid}/verify/result?guest_uuid={guestUuid}
@@ -419,6 +540,7 @@ export interface GuestFormData {
   documentCountryId: number | ""
   identificationTypeId: number | ""
   identificationNumber: string
+  identificationExpiryDate?: string
 
   // 👤 Datos personales
   name: string

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const API_BASE = (process.env.NEXT_PUBLIC_API_URL_GUEST || "https://www.kunas.co/api/v1")
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL_GUEST || "https://guest.hit.tools/api/v1")
     .trim()
     .replace(/\/auth\/?$/, "")
 

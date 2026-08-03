@@ -1,12 +1,16 @@
 import { ApiError, ApiErrorResponse } from "@/types/api"
 import { useAuthStore } from "@/lib/store/auth-store"
+import { useLanguageStore } from "@/store/useLanguageStore"
 import { CONFIG } from "@/lib/config"
 
-function handleUnauthorized() {
+/**
+ * Handle a session-expiry 401: clear the session and bounce to /login, but only
+ * if the user actually had a session (a 401 on a public/app-token call must not
+ * log out). Exported so non-apiClient callers (e.g. multipart uploads that use a
+ * raw fetch) can reuse the exact same behavior.
+ */
+export function handleSessionExpired() {
     const state = useAuthStore.getState()
-    // Only treat this as a session expiry (and redirect) if the user actually
-    // had a session token. A 401 on a public/app-token call must NOT log out
-    // or redirect — that caused the unexpected-logout issue previously.
     const hadSession = !!state.user?.token
     state.clearSession()
 
@@ -22,6 +26,18 @@ interface RequestOptions extends RequestInit {
     skipAuth?: boolean
     /** When true, a 401 response will NOT clear the session / redirect to login. */
     suppressUnauthorizedRedirect?: boolean
+    /**
+     * When true, authenticate with the shared APP token instead of the user's
+     * session token. Use ONLY for pre-login / app-level endpoints that no single
+     * account owns (login, verify-otp, resend-otp, register, public catalogs).
+     *
+     * For everything else (properties, reservations, listings, documents…) leave
+     * this false: those requests must be scoped to the logged-in account via the
+     * SESSION token only. Falling back to the shared app token there would make
+     * every user see the app-token account's data — the cross-account data leak
+     * this flag exists to prevent.
+     */
+    appAuth?: boolean
 }
 
 export async function request<T>(
@@ -37,24 +53,35 @@ export async function request<T>(
         ? (Object.fromEntries(new Headers(options.headers as any).entries())) 
         : {}
 
+    // Reflect the PM's selected UI language so the backend returns error
+    // messages in the same locale (es | en | pt). Falls back to "es".
+    const locale = useLanguageStore.getState().language || "es"
+
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "Accept-Language": "es",
-        "X-Locale": "es",
-        "X-App-Locale": "es",
+        "Accept-Language": locale,
+        "X-Locale": locale,
+        "X-App-Locale": locale,
         ...customHeaders,
     }
 
-    // Only attach auth token if not a public endpoint
+    // Attach the auth token unless this is a fully public (skipAuth) endpoint.
+    //
+    // Token selection is EXPLICIT — no silent "session || app" fallback:
+    //   • appAuth  → shared app token (pre-login / app-level endpoints only)
+    //   • default  → the user's SESSION token, and ONLY that. If it's missing we
+    //     send no Authorization header so the backend answers 401 (→ login),
+    //     rather than leaking another account's data via the shared app token.
     if (!options?.skipAuth) {
-        const finalToken = sessionToken || appToken
-        console.log("🔍 [apiClient] url:", url)
-        console.log("🔍 [apiClient] sessionToken:", sessionToken ? "exists" : "null")
-        console.log("🔍 [apiClient] appToken:", appToken ? "exists" : "null")
-        console.log("🔍 [apiClient] finalToken:", finalToken ? finalToken.substring(0, 20) + "..." : "null")
+        const finalToken = options?.appAuth ? appToken : sessionToken
         if (finalToken) {
             headers["Authorization"] = `Bearer ${finalToken}`
+        } else if (!options?.appAuth) {
+            console.warn(
+                "[apiClient] No session token for a user-scoped request — sending unauthenticated:",
+                url,
+            )
         }
     }
 
@@ -72,7 +99,7 @@ export async function request<T>(
 
     if (!response.ok) {
         if (response.status === 401 && !options?.suppressUnauthorizedRedirect) {
-            handleUnauthorized()
+            handleSessionExpired()
         }
         throw new ApiError(response.status, data as ApiErrorResponse)
     }

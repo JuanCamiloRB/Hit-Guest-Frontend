@@ -54,7 +54,11 @@ class ListingsService {
 
     // ── LIST BY PROPERTY ──
     async listByProperty(propertyUuid: string): Promise<any[]> {
-        const url = `${API_BASE}/listings?propertyUuid[eq]=${propertyUuid}`
+        // Nested endpoint scoped server-side to the property (Ricardo, jul 2026) — the
+        // flat `/listings?property_uuid=` was ignored and returned ALL of the account's
+        // listings, leaking other properties' accommodations into the picker. The flat
+        // variant with the search module is `/listings?propertyUuid[eq]=`.
+        const url = `${API_BASE}/properties/${propertyUuid}/listings`
 
         try {
             const response = await apiClient.get<any>(url)

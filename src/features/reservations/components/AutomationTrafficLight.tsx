@@ -18,7 +18,8 @@ export function AutomationTrafficLight({ status }: AutomationTrafficLightProps) 
         { key: "contract" as keyof AutomationStatus, label: "CONTRATO", icon: Smartphone, title: "Contrato de Arrendamiento" },
         { key: "code" as keyof AutomationStatus, label: "CÓDIGO", icon: Key, title: "Código de Acceso" },
         { key: "tra" as keyof AutomationStatus, label: "TRA", icon: Shield, title: "TRA" },
-        { key: "sire" as keyof AutomationStatus, label: "SIRE", icon: XCircle, title: "SIRE" },
+        { key: "sireIn" as keyof AutomationStatus, label: "SIRE-IN", icon: XCircle, title: "SIRE Check-in" },
+        { key: "sireOut" as keyof AutomationStatus, label: "SIRE-OUT", icon: XCircle, title: "SIRE Check-out" },
     ]
 
     return (

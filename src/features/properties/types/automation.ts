@@ -7,6 +7,7 @@
  */
 
 import type { LucideIcon } from "lucide-react"
+import type { ContractType } from "./contract-routing"
 
 // ─── Primitive Types ──────────────────────────────────────────────────
 
@@ -58,10 +59,31 @@ export interface Provider {
       tokenAbilities: string[]
     }
     billing: { billable: boolean; unit_cost: number }
+    /**
+     * Present only on signature-capable providers (tufirma, hitguest_signature).
+     * `contract_types` is the SOURCE OF TRUTH for which contract_type a
+     * provider can sign — never hardcode this per MD §3.2, a third provider
+     * could appear without a frontend release if this is read dynamically.
+     */
+    signature?: {
+      /** true = signs inside the portal (native canvas); false = external/async (email). */
+      synchronous: boolean
+      contract_types: ContractType[]
+    }
   }
   order: number
   statusProviderId: number
   integrations?: unknown[] | null
+}
+
+/** Providers whose `parameters.signature` is present — the only ones relevant to contract routing. */
+export function isSignatureProvider(provider: Provider): boolean {
+  return provider.parameters?.signature != null
+}
+
+/** Whether `provider` can sign `contractType`, per its own advertised capabilities. */
+export function providerSupportsContractType(provider: Provider, contractType: ContractType): boolean {
+  return provider.parameters?.signature?.contract_types.includes(contractType) ?? false
 }
 
 /**
@@ -69,30 +91,68 @@ export interface Provider {
  * GET /api/v1/reservations/{uuid}/automation-status.
  * One entry per active property automation, ordered by execution_order.
  */
+/** Checkin gate required before an automation may be dispatched. */
+export type CheckinGate = "reservation" | "main_guest"
+
 export interface AutomationStatusItem {
   automationUuid: string
   automationName: string
   providerSlug: string
   status: AutomationLiveStatus
   lastError: string | null
-  lastRunAt: string | null              // "YYYY-MM-DD HH:mm:ss" in UTC
+  lastRunAt: string | null              // "YYYY-MM-DD HH:mm:ss" in America/Bogota
   usageRecordId: number | null          // used for redispatch; null if never run
-  canRedispatch: boolean                // true only when status === "failed"
-  /** Storage path of a signed contract PDF, present for tufirma automations. */
-  contractPdfPath: string | null
+  contractPdfPath: string | null        // signed contract PDF path (tufirma)
+  // ── Backend-provided action flags (dispatch panel contract) ──
+  /** true if it ever completed successfully (independent of current status). */
+  wasSuccessful: boolean
+  lastSuccessAt: string | null          // "YYYY-MM-DD HH:mm:ss" in America/Bogota
+  /** Gate required for dispatch; null = no gate. */
+  requiresCheckin: CheckinGate | null
+  /** Extra gate that applies only to redispatch. */
+  redispatchRequiresCheckin: "main_guest" | null
+  /** Whether the provider allows manual dispatch/redispatch at all. */
+  canManualDispatch: boolean
+  reservationCheckinCompleted: boolean
+  mainGuestCheckinCompleted: boolean
+  /** Authoritative flag for the "Dispatch" button. */
+  canDispatch: boolean
+  /** Authoritative flag for the "Redispatch" button. */
+  canRedispatch: boolean
 }
+
+/** Structured error detail for a failed dispatch (automation-records). */
+export interface AutomationErrorDetail {
+  message: string
+  httpStatus: number | null             // external HTTP status; null for non-HTTP errors
+  httpBody: string | null               // raw external body; null for non-HTTP errors
+}
+
+/** What originated a dispatch attempt (automation-records `triggeredBy`). */
+export type AutomationTriggeredBy =
+  | "on_checkin_completed"
+  | "on_main_guest_checkin_completed"
+  | "on_guest_checkin_completed"
+  | "after_automation"
+  | "manual_dispatch"
+  | "manual_redispatch"
+  | "manual_resend"
 
 /** Automation execution history entry from GET /api/v1/reservations/{uuid}/automation-records */
 export interface AutomationUsageRecord {
   id: number
   status: UsageRecordStatus
+  /** Origin of the attempt (automatic trigger or manual action). */
+  triggeredBy: AutomationTriggeredBy | string | null
   automationUuid: string | null         // null if automation was permanently deleted
   automationName: string | null
   providerSlug: string | null
   guestUuid: string | null
   billable: boolean
   unitCost: string | null               // decimal string, 4 places
-  lastError: string | null              // present when status === "failed"
+  /** null if not failed; a `{message,...}` object when status === "failed"
+   *  (older backends may still send a plain string). */
+  lastError: string | AutomationErrorDetail | null
   responsePayload: Record<string, unknown> | null
   createdAt: string                     // "YYYY-MM-DD HH:mm:ss"
   updatedAt: string

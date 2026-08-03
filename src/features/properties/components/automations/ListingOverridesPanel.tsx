@@ -70,7 +70,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                     <Building2 size={13} className="text-slate-400 group-hover:text-slate-600" />
                     <span>Overrides por unidad</span>
                     {overrideCount > 0 && (
-                        <Badge variant="outline" className="h-4 text-[9px] bg-violet-50 text-violet-600 border-violet-200 font-bold uppercase">
+                        <Badge variant="outline" className="h-4 text-[9px] bg-primary/10 text-primary border-primary/20 font-bold uppercase">
                             {overrideCount} configurada{overrideCount > 1 ? "s" : ""}
                         </Badge>
                     )}
@@ -111,13 +111,13 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                             isDisabledHere
                                                 ? "border-red-200 bg-red-50/60 hover:border-red-300"
                                                 : hasParams
-                                                    ? "border-violet-200 bg-violet-50/40 hover:border-violet-300"
+                                                    ? "border-primary/20 bg-primary/5 hover:border-primary/20"
                                                     : "border-slate-100 bg-white hover:border-slate-200"
                                         )}
                                     >
                                         <div className={cn(
                                             "h-2 w-2 rounded-full shrink-0",
-                                            isDisabledHere ? "bg-red-400" : hasParams ? "bg-violet-500" : "bg-slate-300"
+                                            isDisabledHere ? "bg-red-400" : hasParams ? "bg-primary/100" : "bg-slate-300"
                                         )} />
 
                                         <div className="flex-1 min-w-0">
@@ -157,7 +157,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                                 ? `${val.length} elemento${val.length > 1 ? "s" : ""}`
                                                                 : String(val)
                                                         return (
-                                                            <span key={field.key} className="text-[10px] text-violet-600 font-mono">
+                                                            <span key={field.key} className="text-[10px] text-primary font-mono">
                                                                 {field.key}: {display}
                                                             </span>
                                                         )

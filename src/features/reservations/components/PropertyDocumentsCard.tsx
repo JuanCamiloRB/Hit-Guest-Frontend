@@ -97,7 +97,7 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
             <Card className="shadow-sm">
                 <CardHeader className="pb-3">
                     <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <FileText size={18} className="text-indigo-500" />
+                        <FileText size={18} className="text-primary" />
                         Documentos de la Propiedad
                     </CardTitle>
                 </CardHeader>
@@ -117,7 +117,7 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
         <Card className="shadow-sm">
             <CardHeader className="pb-3">
                 <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <FileText size={18} className="text-indigo-500" />
+                    <FileText size={18} className="text-primary" />
                     Documentos de la Propiedad
                     <Badge variant="secondary" className="ml-auto text-xs">
                         {documents.length} {documents.length === 1 ? "documento" : "documentos"}
@@ -129,8 +129,8 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
                     <div key={doc.uuid} className="border border-slate-100 rounded-xl overflow-hidden">
                         <div className="flex items-center justify-between p-3">
                             <div className="flex items-center gap-3">
-                                <div className="p-2 bg-indigo-50 rounded-lg">
-                                    <FileText size={16} className="text-indigo-500" />
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <FileText size={16} className="text-primary" />
                                 </div>
                                 <div>
                                     <span className="text-sm font-semibold text-slate-800">
@@ -141,7 +141,7 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
                             <div className="flex items-center gap-1">
                                 <button
                                     onClick={() => handlePreview(doc)}
-                                    className="p-2 rounded-lg hover:bg-indigo-50 text-indigo-500 transition-colors"
+                                    className="p-2 rounded-lg hover:bg-primary/10 text-primary transition-colors"
                                     title="Vista previa"
                                 >
                                     {previewDoc === doc.uuid

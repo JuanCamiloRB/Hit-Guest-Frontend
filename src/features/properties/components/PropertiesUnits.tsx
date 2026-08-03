@@ -361,10 +361,10 @@ export function PropertiesUnits() {
                     <div className="space-y-1">
                         <CardTitle className="flex items-center gap-2 text-xl font-bold">
                             <Building className="h-5 w-5 text-[var(--color-brand-purple)]" />
-                            Unidades (Alojamientos)
+                            Alojamientos
                         </CardTitle>
                         <CardDescription>
-                            Gestiona las unidades disponibles para reservar en esta propiedad.
+                            Gestiona los alojamientos disponibles para reservar en esta propiedad.
                         </CardDescription>
                     </div>
                     <Button
@@ -403,8 +403,8 @@ export function PropertiesUnits() {
                                             property-level Automatización tab behavior */}
                                         <TabsList className={cn("grid mb-4", propertyUuid ? "grid-cols-5" : "grid-cols-4")}>
                                             <TabsTrigger value="general" className="text-[10px] uppercase font-bold">General</TabsTrigger>
-                                            <TabsTrigger value="amenities" className="text-[10px] uppercase font-bold">Dotación</TabsTrigger>
-                                            <TabsTrigger value="rooms" className="text-[10px] uppercase font-bold">Muebles</TabsTrigger>
+                                            <TabsTrigger value="amenities" className="text-[10px] uppercase font-bold">Operación</TabsTrigger>
+                                            <TabsTrigger value="rooms" className="text-[10px] uppercase font-bold">Distribución</TabsTrigger>
                                             <TabsTrigger value="policies" className="text-[10px] uppercase font-bold">Políticas</TabsTrigger>
                                             {propertyUuid && (
                                                 <TabsTrigger value="automations" className="text-[10px] uppercase font-bold flex items-center gap-1">
@@ -671,7 +671,7 @@ export function PropertiesUnits() {
                                             <div className="grid grid-cols-2 gap-6">
                                                 <div className="space-y-4 p-4 border rounded-xl bg-slate-50/30">
                                                     <div className="flex items-center gap-2">
-                                                        <BedDouble className="h-4 w-4 text-indigo-500" />
+                                                        <BedDouble className="h-4 w-4 text-primary" />
                                                         <h4 className="text-xs font-bold uppercase text-slate-600">Dormitorios</h4>
                                                     </div>
                                                     <div className="grid grid-cols-1 gap-3">
@@ -691,7 +691,7 @@ export function PropertiesUnits() {
 
                                                 <div className="space-y-4 p-4 border rounded-xl bg-slate-50/30">
                                                     <div className="flex items-center gap-2">
-                                                        <Bath className="h-4 w-4 text-indigo-500" />
+                                                        <Bath className="h-4 w-4 text-primary" />
                                                         <h4 className="text-xs font-bold uppercase text-slate-600">Baños</h4>
                                                     </div>
                                                     <div className="grid grid-cols-1 gap-3">
@@ -770,11 +770,11 @@ export function PropertiesUnits() {
                                         {/* ── Automations Overrides Tab (only when the property is saved) ── */}
                                         {propertyUuid && (
                                         <TabsContent value="automations" className="space-y-4">
-                                            <div className="flex items-start gap-3 bg-violet-50 border border-violet-100 rounded-xl p-4">
-                                                <Info className="h-4 w-4 text-violet-500 shrink-0 mt-0.5" />
+                                            <div className="flex items-start gap-3 bg-primary/10 border border-primary/20 rounded-xl p-4">
+                                                <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                                                 <div>
-                                                    <p className="text-sm font-semibold text-violet-700">Sobreescribir automatizaciones</p>
-                                                    <p className="text-xs text-violet-600 leading-relaxed">
+                                                    <p className="text-sm font-semibold text-primary">Sobreescribir automatizaciones</p>
+                                                    <p className="text-xs text-primary leading-relaxed">
                                                         Puedes desactivar o cambiar parámetros específicos para esta unidad. El resto hereda la configuración de la propiedad.
                                                     </p>
                                                 </div>
@@ -816,7 +816,7 @@ export function PropertiesUnits() {
                                                                 isInactive
                                                                     ? "border-red-200 bg-red-50/40"
                                                                     : hasParams
-                                                                        ? "border-violet-200 bg-violet-50/30"
+                                                                        ? "border-primary/20 bg-primary/5"
                                                                         : "border-slate-200 bg-slate-50/30"
                                                             )}>
                                                                 <div className="min-w-0 space-y-0.5">
@@ -830,7 +830,7 @@ export function PropertiesUnits() {
                                                                             </Badge>
                                                                         )}
                                                                         {hasParams && (
-                                                                            <Badge variant="outline" className="text-[9px] h-4 bg-violet-50 text-violet-600 border-violet-200 uppercase font-bold">
+                                                                            <Badge variant="outline" className="text-[9px] h-4 bg-primary/10 text-primary border-primary/20 uppercase font-bold">
                                                                                 Personalizada
                                                                             </Badge>
                                                                         )}
@@ -942,7 +942,7 @@ export function PropertiesUnits() {
                                         ${Number(field.price || field.extra?.startPrice || field.extra?.price || 0).toLocaleString()}
                                     </TableCell>
                                     <TableCell className="text-right space-x-1 flex justify-end">
-                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-indigo-600" onClick={() => handleOpenEditDialog(index)}>
+                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleOpenEditDialog(index)}>
                                             <Edit2 className="h-4 w-4" />
                                         </Button>
                                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveUnit(index)}>

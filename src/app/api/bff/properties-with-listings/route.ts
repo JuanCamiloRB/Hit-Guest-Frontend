@@ -14,11 +14,16 @@ import { serverFetch } from "@/lib/server-api"
  */
 export async function GET(req: NextRequest) {
     try {
+        // Require the user's session token — this data is account-scoped and must
+        // never fall back to the shared app token (cross-account data leak).
         const authHeader = req.headers.get("authorization")
         const token = authHeader?.replace("Bearer ", "") || undefined
+        if (!token) {
+            return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+        }
 
         // 1. Fetch all properties
-        const rawProperties = await serverFetch<any>("/properties", { token })
+        const rawProperties = await serverFetch<any>("/properties", { token, requireUserToken: true })
         const properties: any[] = Array.isArray(rawProperties)
             ? rawProperties
             : Array.isArray(rawProperties?.data)
@@ -28,7 +33,10 @@ export async function GET(req: NextRequest) {
         // 2. Fetch listings for each property IN PARALLEL (server-side, no CORS)
         const listingsResults = await Promise.allSettled(
             properties.map((p) =>
-                serverFetch<any>(`/listings?property_uuid=${p.uuid}`, { token })
+                // Nested endpoint scoped to the property. The flat `/listings?property_uuid=`
+                // used an INVALID (snake_case) filter that the backend silently discards,
+                // returning ALL of the account's listings for every property.
+                serverFetch<any>(`/properties/${p.uuid}/listings`, { token, requireUserToken: true })
                     .then((res) => {
                         const list = Array.isArray(res)
                             ? res

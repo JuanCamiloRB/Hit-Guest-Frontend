@@ -44,8 +44,8 @@ export function useRegister() {
             await authService.register(values)
             setRegisteredEmail(values.email)
             setIsAwaitingOtp(true)
-            toast.success("¡Información enviada!", {
-                description: "Hemos enviado un código de activación a tu correo.",
+            toast.success("¡Registro recibido!", {
+                description: "Revisa tu correo y acepta la confirmación para recibir tu código de verificación.",
             })
         } catch (err: any) {
             setError(err.message || "Error al procesar el registro")

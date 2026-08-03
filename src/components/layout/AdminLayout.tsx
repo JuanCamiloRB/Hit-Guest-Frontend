@@ -1,5 +1,6 @@
 import { Sidebar } from "./Sidebar"
 import { Header } from "./Header"
+import { BalanceBanner } from "@/features/billing/components/BalanceBanner"
 
 interface AdminLayoutProps {
     children: React.ReactNode
@@ -15,6 +16,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
 
             <div className="flex flex-1 flex-col min-w-0">
                 <Header />
+                <BalanceBanner />
                 <main className="flex-1 p-2 sm:p-4 md:p-6 bg-muted/10">
                     {children}
                 </main>

@@ -1,11 +1,20 @@
 "use client"
 
-import { Loader2, RotateCcw, History, Play, FileText, Send } from "lucide-react"
+import { Loader2, RotateCcw, History, Play, FileText, Send, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import type { AutomationStatusItem as AutomationStatusItemType } from "@/features/properties/types/automation"
-import { getCooldownSecondsRemaining } from "@/features/reservations/hooks/useAutomationStatus"
-import { STATUS_META, PROVIDER_LABELS, formatRunDate, formatCooldown } from "./automation-status-meta"
+import {
+    getStatusMeta,
+    PROVIDER_LABELS,
+    AUTOMATION_TITLE_OVERRIDES,
+    formatRunDate,
+    formatCooldown,
+    getCheckinBlockedMessage,
+    getRedispatchBlockedMessage,
+    errorMessage,
+    MANUALLY_DISPATCHABLE_SLUGS,
+} from "./automation-status-meta"
 import { API_BASE } from "@/lib/config"
 
 interface AutomationStatusItemProps {
@@ -14,6 +23,8 @@ interface AutomationStatusItemProps {
     now: number
     isRedispatching: boolean
     isDispatching: boolean
+    /** Epoch ms until which this item is on a 429 cooldown (set by the hook). */
+    cooldownUntil?: number
     onRedispatch: (item: AutomationStatusItemType) => void
     onDispatch: (item: AutomationStatusItemType) => void
     onResendPdf: (item: AutomationStatusItemType) => void
@@ -26,19 +37,39 @@ export function AutomationStatusItem({
     now,
     isRedispatching,
     isDispatching,
+    cooldownUntil,
     onRedispatch,
     onDispatch,
     onResendPdf,
     onViewHistory,
 }: AutomationStatusItemProps) {
-    const meta = STATUS_META[item.status]
+    const meta = getStatusMeta(item)
+    const title = AUTOMATION_TITLE_OVERRIDES[item.providerSlug] || item.automationName
     const providerLabel = PROVIDER_LABELS[item.providerSlug] || item.providerSlug
-    const cooldownLeft = item.canRedispatch ? getCooldownSecondsRemaining(item, now) : 0
+    // Cooldown comes only from an explicit 429 (no proactive lastRunAt block, so
+    // admin tokens — exempt from the 5-min limit — are never falsely blocked).
+    const cooldownLeft = cooldownUntil ? Math.max(0, Math.ceil((cooldownUntil - now) / 1000)) : 0
     const inCooldown = cooldownLeft > 0
     const retryDisabled = isRedispatching || inCooldown
-    const isPdfReport = item.providerSlug === "pdf-report"
-    // Resend uses the dedicated POST .../resend-pdf endpoint (allowed for completed).
-    const canResendPdf = isPdfReport && item.status === "completed" && item.usageRecordId != null
+    // Manual dispatch/redispatch only applies to a fixed set (TRA / SIRE / Guest
+    // Report PDF) per product. We gate on that whitelist first — so identity
+    // verification, signature, TTLock, etc. never show a manual button even if the
+    // backend sends canDispatch/canRedispatch — and still honor an explicit
+    // can_manual_dispatch=false from the backend on top of it.
+    const canManual =
+        MANUALLY_DISPATCHABLE_SLUGS.has(item.providerSlug) && item.canManualDispatch !== false
+    // Why an action is blocked by an unmet checkin gate (null when not blocked).
+    // Only relevant for manually-dispatchable automations — otherwise there's no
+    // button to explain, so we don't show a "blocked" note either.
+    const blockedMessage = MANUALLY_DISPATCHABLE_SLUGS.has(item.providerSlug)
+        ? (getCheckinBlockedMessage(item) ?? getRedispatchBlockedMessage(item))
+        : null
+    // item.providerSlug is canonicalized (underscore) upstream in normalizeStatusItem.
+    const isPdfReport = item.providerSlug === "pdf_report"
+    // Resend uses the dedicated POST .../resend-pdf endpoint. Available whenever the
+    // PDF ran successfully at least once — even if a later retry failed (wasSuccessful).
+    const canResendPdf =
+        isPdfReport && (item.status === "completed" || item.wasSuccessful) && item.usageRecordId != null
     const isDigitalContract = item.providerSlug === "hitguest_signature" || item.providerSlug === "tufirma"
     const hasSignedContract = isDigitalContract && item.status === "completed"
     const signedContractUrl = `${API_BASE}/checkin/${reservationUuid}/contract/signed`
@@ -49,7 +80,7 @@ export function AutomationStatusItem({
                 <div className="flex items-start gap-3 min-w-0">
                     <span className={cn("mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full", meta.dot)} />
                     <div className="min-w-0">
-                        <h4 className="font-semibold text-slate-800 leading-tight truncate">{item.automationName}</h4>
+                        <h4 className="font-semibold text-slate-800 leading-tight truncate">{title}</h4>
                         <p className="text-xs text-slate-400 mt-0.5 truncate">{providerLabel}</p>
                     </div>
                 </div>
@@ -63,7 +94,14 @@ export function AutomationStatusItem({
 
             {item.status === "failed" && item.lastError && (
                 <p className="rounded-lg bg-red-50/60 border border-red-100 px-3 py-2 text-xs text-red-600 break-words">
-                    {item.lastError}
+                    {errorMessage(item.lastError)}
+                </p>
+            )}
+
+            {blockedMessage && (
+                <p className="inline-flex items-start gap-1.5 rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-xs text-slate-500 break-words">
+                    <Lock size={13} className="mt-0.5 shrink-0 text-slate-400" />
+                    {blockedMessage}
                 </p>
             )}
 
@@ -83,14 +121,14 @@ export function AutomationStatusItem({
                 <button
                     type="button"
                     onClick={() => onViewHistory(item)}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-indigo-600 transition-colors"
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-primary transition-colors"
                 >
                     <History size={14} />
                     Ver historial
                 </button>
 
                 <div className="flex items-center gap-2">
-                    {item.canRedispatch ? (
+                    {canManual && item.canRedispatch ? (
                         <Button
                             size="sm"
                             variant="outline"
@@ -106,16 +144,18 @@ export function AutomationStatusItem({
                                 <><RotateCcw size={14} /> Reintentar</>
                             )}
                         </Button>
-                    ) : item.status === "not_started" ? (
+                    ) : canManual && item.canDispatch ? (
                         <Button
                             size="sm"
                             variant="outline"
-                            disabled={isDispatching}
+                            disabled={isDispatching || inCooldown}
                             onClick={() => onDispatch(item)}
-                            className="h-8 gap-1.5 border-indigo-200 text-indigo-600 hover:bg-indigo-50 hover:text-indigo-700 disabled:opacity-60"
+                            className="h-8 gap-1.5 border-primary/20 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-60"
                         >
                             {isDispatching ? (
                                 <><Loader2 size={14} className="animate-spin" /> Disparando...</>
+                            ) : inCooldown ? (
+                                <>Espera {formatCooldown(cooldownLeft)}</>
                             ) : (
                                 <><Play size={14} /> Disparar</>
                             )}
@@ -126,12 +166,14 @@ export function AutomationStatusItem({
                         <Button
                             size="sm"
                             variant="outline"
-                            disabled={isDispatching}
+                            disabled={isDispatching || inCooldown}
                             onClick={() => onResendPdf(item)}
-                            className="h-8 gap-1.5 border-violet-200 text-violet-600 hover:bg-violet-50 hover:text-violet-700 disabled:opacity-60"
+                            className="h-8 gap-1.5 border-primary/20 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-60"
                         >
                             {isDispatching ? (
                                 <><Loader2 size={14} className="animate-spin" /> Enviando...</>
+                            ) : inCooldown ? (
+                                <>Espera {formatCooldown(cooldownLeft)}</>
                             ) : (
                                 <><Send size={14} /> Reenviar PDF</>
                             )}

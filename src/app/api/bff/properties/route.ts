@@ -9,11 +9,16 @@ import { serverFetch } from "@/lib/server-api"
  */
 export async function GET(req: NextRequest) {
     try {
-        // Forward the user's session token if present
+        // Require the user's session token — this list is account-scoped.
+        // Without it we must NOT fall back to the shared app token (that leaked
+        // one account's properties to every user).
         const authHeader = req.headers.get("authorization")
         const token = authHeader?.replace("Bearer ", "") || undefined
+        if (!token) {
+            return NextResponse.json({ error: "No autenticado" }, { status: 401 })
+        }
 
-        const properties = await serverFetch<any[]>("/properties", { token })
+        const properties = await serverFetch<any[]>("/properties", { token, requireUserToken: true })
 
         // Normalize: API may return paginated { data, meta } or plain array
         const list = Array.isArray(properties)

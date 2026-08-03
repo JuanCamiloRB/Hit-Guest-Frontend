@@ -36,6 +36,7 @@ import { DocumentPreviewModal } from "./DocumentPreviewModal"
 interface DocumentFormModalProps {
     onClose: () => void
     propertyUuid: string
+    /** Excludes the Agreement type (92) — that one is owned by ContractRoutingSection. */
     types: DocumentType[]
     /** Existing document for edit mode; null for create. */
     document: PropertyDocument | null
@@ -43,6 +44,15 @@ interface DocumentFormModalProps {
 }
 
 /**
+ * Generic editor for the document types that don't vary by channel:
+ * Instructions, Rules, Privacy Policy. Agreement (contract) documents used to
+ * be created here too, with their own channel + signature fields — that model
+ * is retired (backend plan §0): a contract's channel and signature are now
+ * two DIFFERENT resources (property_documents vs. the Digital Contract
+ * automation's by_source) kept in lockstep by ContractRoutingSection, which
+ * this generic form has no notion of. The caller never passes the Agreement
+ * type in `types`, so this form can no longer create or edit one.
+ *
  * Mounted only while open (parent guards with a `key`), so initial state is
  * derived directly from props — no open-sync effect needed.
  */

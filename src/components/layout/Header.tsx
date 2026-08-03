@@ -4,17 +4,12 @@ import * as React from "react"
 import Link from "next/link"
 import { MobileSidebar } from "./Sidebar"
 import {
-    Search,
-    Bell,
-    CircleHelp,
     CircleUserRound,
-    Building2,
     Users,
     LogOut,
     Languages,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import { useTranslation } from "@/hooks/useTranslation"
@@ -27,6 +22,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Logo } from "@/components/ui/Logo"
+import { BalanceWidget } from "@/features/billing/components/BalanceWidget"
 
 export function Header() {
     const { user, logout } = useAuth()
@@ -50,17 +46,10 @@ export function Header() {
             </div>
 
             <div className="flex flex-1 items-center justify-end gap-2 sm:gap-4 md:gap-8">
-                {/* Search Bar - Modernized */}
-                <div className="relative hidden lg:flex items-center max-w-md w-full group">
-                    <div className="absolute inset-0 bg-slate-100/50 rounded-2xl transition-all group-focus-within:bg-white group-focus-within:ring-4 group-focus-within:ring-[var(--color-brand-purple)]/10" />
-                    <Search className="absolute left-4 h-4 w-4 text-slate-400 group-focus-within:text-[var(--color-brand-purple)] transition-colors z-10" />
-                    <Input
-                        placeholder={t('common.search')}
-                        className="relative z-10 pl-11 h-12 bg-transparent border-none focus-visible:ring-0 transition-all placeholder:text-slate-400 text-sm font-medium"
-                    />
-                </div>
-
                 <div className="flex items-center gap-1.5 sm:gap-2 md:gap-4">
+                    {/* Prepaid balance chip → billing */}
+                    <BalanceWidget />
+
                     {/* Language Switcher */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -114,12 +103,6 @@ export function Header() {
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                                <Link href="/dashboard/settings?tab=client" className="cursor-pointer">
-                                    <Building2 className="mr-2 h-4 w-4" />
-                                    <span>{t('header.accommodation')}</span>
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
                                 <Link href="/dashboard/settings?tab=team" className="cursor-pointer">
                                     <Users className="mr-2 h-4 w-4" />
                                     <span>{t('header.users')}</span>
@@ -135,16 +118,6 @@ export function Header() {
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
-
-                    {/* Notification & Help */}
-                    <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 text-slate-500 bg-slate-100/50 hover:bg-slate-100 rounded-lg">
-                            <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="hidden sm:inline-flex h-10 w-10 text-slate-500 bg-slate-100/50 hover:bg-slate-100 rounded-lg">
-                            <CircleHelp className="h-5 w-5" />
-                        </Button>
-                    </div>
                 </div>
             </div>
         </header>

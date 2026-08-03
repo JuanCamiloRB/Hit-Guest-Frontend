@@ -44,6 +44,7 @@ import { cn } from "@/lib/utils"
 import { ApiError } from "@/types/api"
 import { propertyDocumentService } from "../../services/property-document-service"
 import {
+    AGREEMENT_DOCUMENT_TYPE_ID,
     DOCUMENT_STATUS,
     documentTypeLabel,
     type DocumentType,
@@ -51,6 +52,7 @@ import {
 } from "../../types/document"
 import { DocumentFormModal } from "./DocumentFormModal"
 import { DocumentPreviewModal } from "./DocumentPreviewModal"
+import { ContractRoutingSection } from "../contracts/ContractRoutingSection"
 
 export function PropertiesDocuments() {
     const { watch } = useFormContext()
@@ -71,6 +73,14 @@ export function PropertiesDocuments() {
     useEffect(() => {
         propertyDocumentService.getTypes().then(setTypes).catch(() => setTypes([]))
     }, [])
+
+    // Agreement (type 92) is now owned end-to-end by ContractRoutingSection —
+    // its create/update/delete lifecycle must stay in lockstep with the Digital
+    // Contract automation's by_source (backend plan §1.4), which this generic
+    // form has no notion of. Excluded from the filter, the list and "Nuevo
+    // documento" so there is exactly one place that manages it, not two racing.
+    const manageableTypes = types.filter((t) => t.id !== AGREEMENT_DOCUMENT_TYPE_ID)
+    const visibleDocuments = documents.filter((d) => d.documentType?.id !== AGREEMENT_DOCUMENT_TYPE_ID)
 
     const loadDocuments = useCallback(async () => {
         if (!propertyUuid) return
@@ -189,8 +199,10 @@ export function PropertiesDocuments() {
                 </div>
             ) : (
                 <>
+                    <ContractRoutingSection propertyUuid={propertyUuid} />
+
                     {/* Filter */}
-                    {types.length > 0 && (
+                    {manageableTypes.length > 0 && (
                         <div className="flex items-center gap-2">
                             <Filter size={15} className="text-slate-400" />
                             <Select value={typeFilter} onValueChange={setTypeFilter}>
@@ -199,7 +211,7 @@ export function PropertiesDocuments() {
                                 </SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="ALL">Todos los tipos</SelectItem>
-                                    {types.map((t) => (
+                                    {manageableTypes.map((t) => (
                                         <SelectItem key={t.id} value={String(t.id)}>
                                             {documentTypeLabel(t)}
                                         </SelectItem>
@@ -214,7 +226,7 @@ export function PropertiesDocuments() {
                             <Loader2 size={22} className="animate-spin" />
                             <span className="text-sm">Cargando documentos...</span>
                         </div>
-                    ) : documents.length === 0 ? (
+                    ) : visibleDocuments.length === 0 ? (
                         <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 py-14 text-center">
                             <div className="rounded-full bg-slate-50 p-3 text-slate-300">
                                 <FileText size={24} />
@@ -233,7 +245,7 @@ export function PropertiesDocuments() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-3">
-                            {documents.map((doc) => {
+                            {visibleDocuments.map((doc) => {
                                 const isDeleted = !!doc.deletedAt
                                 const isActive = doc.statusRecord?.id === DOCUMENT_STATUS.ACTIVE
                                 return (
@@ -339,7 +351,7 @@ export function PropertiesDocuments() {
                     key={editing?.uuid ?? "new"}
                     onClose={() => setFormOpen(false)}
                     propertyUuid={propertyUuid}
-                    types={types}
+                    types={manageableTypes}
                     document={editing}
                     onSaved={handleSaved}
                 />

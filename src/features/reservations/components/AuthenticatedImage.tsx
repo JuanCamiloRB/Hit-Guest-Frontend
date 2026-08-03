@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Loader2, ImageOff } from "lucide-react"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { CONFIG } from "@/lib/config"
@@ -19,39 +19,66 @@ interface AuthenticatedImageProps {
  * and render an object URL instead. Public/legacy URLs work the same way.
  */
 export function AuthenticatedImage({ src, alt, className }: AuthenticatedImageProps) {
-    const [objectUrl, setObjectUrl] = useState<string | null>(null)
-    const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading")
+    const imageRequest = useMemo(() => {
+        try {
+            const apiOrigin = new URL(CONFIG.API_URL_GUEST).origin
+            return {
+                apiOrigin,
+                resolvedUrl: new URL(src, apiOrigin),
+            }
+        } catch {
+            return null
+        }
+    }, [src])
+
+    const [result, setResult] = useState<{
+        src: string
+        objectUrl: string | null
+        status: "loaded" | "error"
+    } | null>(null)
 
     useEffect(() => {
         let revoked: string | null = null
         let mounted = true
-        setStatus("loading")
 
-        const token = useAuthStore.getState().user?.token || CONFIG.APP_API_TOKEN
+        const token = useAuthStore.getState().user?.token
         const headers: Record<string, string> = { Accept: "image/*" }
-        if (token) headers["Authorization"] = `Bearer ${token}`
+        if (!imageRequest) return
 
-        fetch(src, { headers, cache: "no-store" })
+        // Identity documents are account-scoped. Never fall back to the shared app
+        // token, and never leak a PM bearer token to an external image host.
+        if (token && imageRequest.resolvedUrl.origin === imageRequest.apiOrigin) {
+            headers["Authorization"] = `Bearer ${token}`
+        }
+
+        fetch(imageRequest.resolvedUrl.toString(), { headers, cache: "no-store" })
             .then(async (res) => {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`)
                 const blob = await res.blob()
                 if (!mounted) return
                 const url = URL.createObjectURL(blob)
                 revoked = url
-                setObjectUrl(url)
-                setStatus("loaded")
+                setResult({ src, objectUrl: url, status: "loaded" })
             })
             .catch(() => {
-                if (mounted) setStatus("error")
+                if (mounted) setResult({ src, objectUrl: null, status: "error" })
             })
 
         return () => {
             mounted = false
             if (revoked) URL.revokeObjectURL(revoked)
         }
-    }, [src])
+    }, [imageRequest, src])
 
-    if (status === "loading") {
+    if (!imageRequest) {
+        return (
+            <div className={`flex items-center justify-center bg-slate-50 ${className ?? ""}`}>
+                <ImageOff size={18} className="text-slate-300" />
+            </div>
+        )
+    }
+
+    if (!result || result.src !== src) {
         return (
             <div className={`flex items-center justify-center bg-slate-50 ${className ?? ""}`}>
                 <Loader2 size={18} className="animate-spin text-slate-300" />
@@ -59,7 +86,7 @@ export function AuthenticatedImage({ src, alt, className }: AuthenticatedImagePr
         )
     }
 
-    if (status === "error" || !objectUrl) {
+    if (result.status === "error" || !result.objectUrl) {
         return (
             <div className={`flex items-center justify-center bg-slate-50 ${className ?? ""}`}>
                 <ImageOff size={18} className="text-slate-300" />
@@ -68,5 +95,5 @@ export function AuthenticatedImage({ src, alt, className }: AuthenticatedImagePr
     }
 
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={objectUrl} alt={alt} className={className} />
+    return <img src={result.objectUrl} alt={alt} className={className} />
 }

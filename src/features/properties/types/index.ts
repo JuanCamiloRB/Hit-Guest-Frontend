@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { normalizeLocale, DEFAULT_COMMUNICATION_LOCALE, type CommunicationLocale } from "@/lib/locales"
 
 export type {
     PropertyAutomation,
@@ -43,15 +44,19 @@ export interface PropertyAutomationSeedItem {
  * Default 8 automations required by POST /properties.
  * Backend validates: must include identity verification for main_guest + tufirma.
  */
+// ALL seeded INACTIVE (statusProviderId 10): on create the PM hasn't opened the
+// Automations tab yet (it only exists after the property is saved), so nothing
+// should be pre-activated — an active automation with no chosen provider/config
+// could fire a job. Provider slugs are snake_case, the backend's canonical form.
 export const DEFAULT_AUTOMATIONS: PropertyAutomationSeedItem[] = [
     { name: "Identity Verification - Main Guest",       providerSlug: "didit",        guestType: "main_guest",      executionOrder: 1, statusProviderId: 10, parameters: { _init: true } },
     { name: "Identity Verification - Secondary Guests", providerSlug: "didit",        guestType: "secondary_guest", executionOrder: 2, statusProviderId: 10, parameters: { _init: true } },
-    { name: "Digital Contract",                         providerSlug: "tufirma",      guestType: "main_guest",      executionOrder: 3, statusProviderId: 8,  parameters: { _init: true } },
+    { name: "Digital Contract",                         providerSlug: "tufirma",      guestType: "main_guest",      executionOrder: 3, statusProviderId: 10, parameters: { _init: true } },
     { name: "Smart Lock Codes",                         providerSlug: "ttlock",       guestType: "all",             executionOrder: 4, statusProviderId: 10, parameters: { _init: true } },
-    { name: "Guest Report PDF",                         providerSlug: "pdf-report",   guestType: "all",             executionOrder: 5, statusProviderId: 10, parameters: { _init: true } },
-    { name: "TRA Colombia",                             providerSlug: "tra-colombia", guestType: "all",             executionOrder: 6, statusProviderId: 10, parameters: { _init: true } },
-    { name: "SIRE Colombia - Check-in",                 providerSlug: "sire-colombia",guestType: "all",             executionOrder: 7, statusProviderId: 10, parameters: { _init: true } },
-    { name: "SIRE Colombia - Check-out",                providerSlug: "sire-colombia",guestType: "all",             executionOrder: 8, statusProviderId: 10, parameters: { _init: true } },
+    { name: "Guest Report PDF",                         providerSlug: "pdf_report",   guestType: "all",             executionOrder: 5, statusProviderId: 10, parameters: { _init: true } },
+    { name: "TRA Colombia",                             providerSlug: "tra_colombia", guestType: "all",             executionOrder: 6, statusProviderId: 10, parameters: { _init: true } },
+    { name: "SIRE Colombia - Check-in",                 providerSlug: "sire_colombia",guestType: "all",             executionOrder: 7, statusProviderId: 10, parameters: { _init: true } },
+    { name: "SIRE Colombia - Check-out",                providerSlug: "sire_colombia",guestType: "all",             executionOrder: 8, statusProviderId: 10, parameters: { _init: true } },
 ]
 
 export interface PropertyApiPayload {
@@ -83,6 +88,8 @@ export interface PropertyApiPayload {
         } | null
         internal_name?: string | null
         currency?: string
+        /** Language for guest communications: "es" | "en" | "pt". */
+        communicationsLocale?: string
         thumbnailUrl?: string
         policies?: any[]
         roomTypes?: any[]
@@ -255,6 +262,8 @@ export const propertyFormSchema = z.object({
     statusRecordId: z.number().int().positive(),
     propertyTypeId: z.coerce.number().min(1, "El tipo de propiedad es obligatorio"),
     thumbnailUrl: z.string().optional(),
+    /** Language used for guest communications (check-in link email, etc.). Stored in extra. */
+    communicationsLocale: z.enum(["es", "en", "pt"]).optional(),
 
     // Extra fields
     checkIn: z.string().max(10).optional(),
@@ -337,6 +346,7 @@ export function formDataToApiPayload(data: PropertyFormData): PropertyApiPayload
             extra: {
                 internal_name: data.external_id || null,
                 currency: "COP",
+                communicationsLocale: data.communicationsLocale || DEFAULT_COMMUNICATION_LOCALE,
                 thumbnailUrl: data.thumbnailUrl,
                 checkIn: data.checkIn,
                 checkOut: data.checkOut,
@@ -428,6 +438,7 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
         statusRecordId: apiData.statusRecordId || apiData.status_record_id || apiData.statusRecord?.id || 6,
         propertyTypeId: Number(apiData.propertyType?.id || apiData.propertyTypeId || apiData.property_type_id || (extra as any).propertyTypeId || (extra as any).type || 102),
         thumbnailUrl: extractedThumbnail,
+        communicationsLocale: (normalizeLocale((extra as any).communicationsLocale || (extra as any).communications_locale) || DEFAULT_COMMUNICATION_LOCALE) as CommunicationLocale,
         checkIn: extra.checkIn || "",
         checkOut: extra.checkOut || "",
         cancellationPolicy: extra.cancellationPolicy || "",

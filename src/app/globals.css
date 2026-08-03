@@ -18,6 +18,26 @@
   --color-brand-blue: #5467FA;
   --color-brand-white: #F9FBFA;
 
+  /* Tinta y estado. Registrarlos aquí es lo que hace que `text-ink-3` o
+     `bg-success-sunk` existan como utilidades: los antiguos --success,
+     --warning y --neutral nunca se registraron, así que `text-success`
+     no compilaba y por eso todos los estados se pintaban a mano. */
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-rule: var(--rule);
+  --color-sunk: var(--sunk);
+
+  --color-success: var(--success);
+  --color-success-sunk: var(--success-sunk);
+  --color-warning: var(--warning);
+  --color-warning-sunk: var(--warning-sunk);
+  --color-info: var(--info);
+  --color-info-sunk: var(--info-sunk);
+  --color-neutral: var(--neutral);
+  --color-neutral-sunk: var(--neutral-sunk);
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -61,12 +81,37 @@
   --secondary: #5467FA; /* Brand Blue */
   --secondary-foreground: #ffffff;
 
-  --accent: #222755; /* Brand Navy (Moved to Accent) */
-  --accent-foreground: #ffffff;
+  /* shadcn reserva `accent` para el TINTE DE HOVER/HIGHLIGHT de sus primitivos
+     (ghost, outline, items de dropdown y select). Antes valía el navy de marca,
+     así que los 71 botones ghost/outline saltaban a navy sólido al pasar el
+     mouse. El navy ya tiene su propio token (--color-brand-navy); aquí va el
+     neutro claro que shadcn espera, teñido hacia el navy para que pertenezca
+     a la marca. */
+  --accent: #EEF0F6;
+  --accent-foreground: #222755;
 
-  --success: #71f5a4;
-  --warning: #FFB800;
-  --neutral: #9CA3AF;
+  /* ── Tinta ──────────────────────────────────────────────────────────
+     Cuatro pasos derivados del navy de marca, un trabajo cada uno, en vez
+     de ocho pasos de slate elegidos a ojo por cada componente. */
+  --ink: #1B2047;   /* el dato: nombres, montos, títulos */
+  --ink-2: #4A5178; /* apoyo legible: fechas, descripciones */
+  --ink-3: #757CA0; /* metadatos y encabezados de columna */
+  --ink-4: #A2A8C4; /* ausencia: el guion de "no aplica" */
+  --rule: #E4E7F0;  /* separadores */
+  --sunk: #F1F3F7;  /* superficie hundida */
+
+  /* ── Estado ─────────────────────────────────────────────────────────
+     Cada uno con su fondo de pastilla. Reservados para estado: nunca son
+     "el color 4" de una serie. El verde anterior (#71f5a4) era neón y no
+     alcanzaba contraste sobre blanco. */
+  --success: #0E9F6E;
+  --success-sunk: #DFF5EB;
+  --warning: #C2721A;
+  --warning-sunk: #FBEEDC;
+  --info: #3B6FF5;
+  --info-sunk: #E4EBFE;
+  --neutral: #757CA0;
+  --neutral-sunk: #EEF0F6;
 
   --card: #ffffff;
   --card-foreground: #1a1a1a;
@@ -81,8 +126,9 @@
   --input: #e4e4e7;
   --ring: #9D4CF2;
 
-  /* Sidebar Specific mapping for the Purple identity */
-  --sidebar: #9D4CF2;
+  /* El sidebar se pinta en navy. El token decía morado mientras el componente
+     hardcodeaba navy — ahora dice la verdad y el componente lo consume. */
+  --sidebar: #222755;
   --sidebar-foreground: #ffffff;
   --sidebar-primary: #ffffff;
   --sidebar-primary-foreground: #9D4CF2;
@@ -106,8 +152,9 @@
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.274 0.006 286.033);
   --muted-foreground: oklch(0.705 0.015 286.067);
-  --accent: #9D4CF2;
-  --accent-foreground: #ffffff;
+  /* Mismo contrato que en claro: `accent` es el tinte de hover, no la marca. */
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
@@ -133,6 +180,34 @@
 
   html {
     @apply font-sans;
+  }
+
+  /* El <body> aplica font-secondary (Poppins) para el cuerpo, lo que hasta ahora
+     dejaba a Gabarito descargándose sin renderizarse nunca. Gabarito carga solo
+     700/800: es una tipografía de display, así que va en los titulares — el
+     emparejamiento display/cuerpo que el proyecto ya tenía configurado y no usaba. */
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-sans;
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  /* Respeta la preferencia del sistema. Para alguien con trastorno vestibular
+     los spinners y los hover:scale no son un detalle estético. No se anula la
+     animación del todo (0.01ms) para que los callbacks de transición sigan
+     disparando y nada quede a medio estado. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 
   /* Hide number input spinners globally */

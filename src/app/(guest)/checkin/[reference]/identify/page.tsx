@@ -25,6 +25,12 @@ export default async function CheckinIdentifyPage({
                 // Guest needs to complete (or retry) identity verification
                 redirect(`${basePath}/verify?guest_uuid=${resolvedSearch.guest_uuid}`)
             }
+            if (currentStep === "contact_challenge") {
+                // Recurring guest: /identify already sent the OTP, still unverified
+                // (OTP plan 20260731). Must NOT fall through to /guest — /form is
+                // gated behind X-Checkin-Verification-Token, which they don't have yet.
+                redirect(`${basePath}/contact-challenge?guest_uuid=${resolvedSearch.guest_uuid}`)
+            }
             // "form", "completed", or no step — go to the data form
             redirect(`${basePath}/guest?guest_uuid=${resolvedSearch.guest_uuid}`)
         } catch {

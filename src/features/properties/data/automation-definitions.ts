@@ -76,7 +76,7 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
     {
         order: 3,
         id: "digital-contract",
-        title: "Contrato Digital",
+        title: "Firma Digital",
         description: "Firma de contrato digital con validez legal antes de completar el check-in. Obligatorio para generar el PDF del contrato.",
         icon: FileText,
         color: "text-blue-500",
@@ -228,7 +228,7 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
                         label: "Token API TRA",
                         type: "password",
                         required: true,
-                        placeholder: "Token provisto por la Policía Nacional",
+                        placeholder: "Token provisto por el Ministerio de Comercio, Industria y Turismo (MINCIT)",
                     },
                     {
                         key: "rnt",
@@ -393,95 +393,45 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
     },
 ]
 
-/**
- * Provider-specific override parameter fields, keyed by provider slug.
- *
- * Overrides are a *delta*: only the keys configured here are sent for a listing;
- * the rest inherit from the property automation. The backend exposes the slug at
- * `propertyAutomation.provider.parameters.slug` (which may use `-` or `_`), so
- * lookups go through `getOverrideFieldSchema()` which normalizes the slug.
- *
- * Providers with no PM-configurable params (didit, textract, tufirma) are absent
- * here — the modal renders only the generic key-value editor + status toggle.
- */
-const OVERRIDE_FIELD_SCHEMAS: Record<string, ParameterFieldSchema[]> = {
-    // TTLock — each listing has its own physical locks.
-    ttlock: [
-        {
-            key: "locks",
-            label: "Cerraduras de esta unidad",
-            type: "array",
-            required: false,
-            arrayItemSchema: [
-                { key: "lock_id", label: "ID Cerradura", type: "number", required: true, placeholder: "998877" },
-                { key: "name", label: "Nombre", type: "text", required: true, placeholder: "Puerta principal" },
-                {
-                    key: "type",
-                    label: "Tipo",
-                    type: "select",
-                    required: true,
-                    options: [
-                        { value: "building_entrance", label: "Entrada edificio" },
-                        { value: "unit_entrance", label: "Entrada unidad" },
-                        { value: "amenity", label: "Amenidad" },
-                    ],
-                },
-            ],
-        },
-    ],
-
-    // PDF Report — per-listing recipient list for the guest report.
-    "pdf-report": [
-        {
-            key: "recipients",
-            label: "Destinatarios del reporte",
-            type: "string_array",
-            itemType: "email",
-            required: false,
-            placeholder: "encargado@finca.co",
-        },
-    ],
-
-    // TRA Colombia — each listing may have its own RNT (token rarely overridden).
-    "tra-colombia": [
-        { key: "rnt", label: "RNT (Registro Nacional de Turismo)", type: "text", required: false, placeholder: "987654321" },
-        { key: "token", label: "Token API TRA (avanzado)", type: "password", required: false, placeholder: "Dejar vacío para heredar de la propiedad" },
-    ],
-
-    // SIRE Colombia — company_code is the common override; the rest rarely change.
-    "sire-colombia": [
-        {
-            key: "document_type",
-            label: "Tipo de Documento",
-            type: "select",
-            required: false,
-            options: [
-                { value: "CC", label: "Cédula de Ciudadanía" },
-                { value: "CE", label: "Cédula de Extranjería" },
-                { value: "PEP", label: "Permiso Especial de Permanencia" },
-                { value: "PA", label: "Pasaporte" },
-                { value: "NIT", label: "NIT" },
-            ],
-        },
-        { key: "document_number", label: "Número de Documento", type: "text", required: false, placeholder: "Heredar de la propiedad" },
-        { key: "password", label: "Contraseña SIRE", type: "password", required: false, placeholder: "Heredar de la propiedad" },
-        { key: "company_code", label: "NIT / Código Empresa", type: "text", required: false, placeholder: "901987654" },
-    ],
-}
-
 /** Normalizes a provider slug/path so `sire_colombia` and `sire-colombia` both match. */
 function normalizeSlug(slug: string | null | undefined): string {
     return (slug ?? "").toLowerCase().replace(/[^a-z0-9]/g, "")
 }
 
-const NORMALIZED_OVERRIDE_SCHEMAS: Record<string, ParameterFieldSchema[]> = Object.fromEntries(
-    Object.entries(OVERRIDE_FIELD_SCHEMAS).map(([slug, schema]) => [normalizeSlug(slug), schema]),
-)
+/**
+ * Map of normalized provider slug → the property-level config parameter schema.
+ *
+ * A listing override reuses the SAME fields the PM configures at the property
+ * level (TRA → token+rnt, SIRE → document/password/company_code, TTLock → locks,
+ * PDF → recipients). This is the single source of truth, so the PM never types
+ * raw variable names and the override can never drift from the property config.
+ *
+ * Providers with no configurable params (didit, textract, tufirma) are absent →
+ * they cannot be overridden.
+ */
+const PROVIDER_PARAM_SCHEMAS: Record<string, ParameterFieldSchema[]> = (() => {
+    const map: Record<string, ParameterFieldSchema[]> = {}
+    for (const def of AUTOMATION_DEFINITIONS) {
+        for (const opt of def.providerOptions ?? []) {
+            if (opt.parametersSchema && opt.parametersSchema.length > 0) {
+                map[normalizeSlug(opt.value)] = opt.parametersSchema
+            }
+        }
+    }
+    return map
+})()
 
 /**
- * Returns the provider-specific override fields for a given provider slug, or an
- * empty array if the provider has no PM-configurable parameters.
+ * Returns the override fields for a provider — identical to its property-level
+ * config schema, but with every field made optional (leaving one empty inherits
+ * that value from the property automation). Empty array = not overridable.
  */
 export function getOverrideFieldSchema(slug: string | null | undefined): ParameterFieldSchema[] {
-    return NORMALIZED_OVERRIDE_SCHEMAS[normalizeSlug(slug)] ?? []
+    const base = PROVIDER_PARAM_SCHEMAS[normalizeSlug(slug)] ?? []
+    return base.map((f) => ({ ...f, required: false }))
+}
+
+/** Whether a provider supports listing-level overrides (i.e. has configurable params). */
+export function isOverridableSlug(slug: string | null | undefined): boolean {
+    return (PROVIDER_PARAM_SCHEMAS[normalizeSlug(slug)] ?? []).length > 0
 }

@@ -7,7 +7,7 @@ import { apiClient } from "@/lib/api-client"
 import { keysToCamelCase } from "@/lib/utils/case-converter"
 import type { Country, CountryApiResponse, CountryFilter } from "@/types/country"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL_GUEST || 'https://www.kunas.co/api/v1'
+const API_BASE = process.env.NEXT_PUBLIC_API_URL_GUEST || 'https://guest.hit.tools/api/v1'
 
 export class CountriesService {
   /**
@@ -46,7 +46,8 @@ export class CountriesService {
       const queryString = params.toString()
       const url = `${API_BASE}/countries${queryString ? `?${queryString}` : ''}`
       
-      const response = await apiClient.get<{ success: boolean; data: CountryApiResponse[] }>(url)
+      // Public catalog, used pre-login (register form): authenticate with the app token.
+      const response = await apiClient.get<{ success: boolean; data: CountryApiResponse[] }>(url, { appAuth: true })
       
       if (response.success && response.data) {
         return response.data.map(country => keysToCamelCase(country) as Country)

@@ -6,8 +6,25 @@ import {
     formDataToApiPayload,
     DEFAULT_AUTOMATIONS,
 } from "../types"
-import { apiClient } from "@/lib/api-client"
+import { apiClient, handleSessionExpired } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
+import { useAuthStore } from "@/lib/store/auth-store"
+import { ApiError } from "@/types/api"
+
+/** Image upload limits (mirrored by the backend, which is the final authority). */
+export const PROPERTY_IMAGE_LIMITS = {
+    maxPerUpload: 10,
+    maxBytes: 5 * 1024 * 1024, // 5 MB
+} as const
+
+/**
+ * Reads the gallery URLs from a PropertyResource, tolerating both the camelCase
+ * (`picturesUrl`, per the API contract) and legacy snake_case (`pictures_url`)
+ * shapes the backend may return. Always returns an array.
+ */
+export function extractPicturesUrl(property: PropertyApiResponse): string[] {
+    return property.extra?.picturesUrl ?? property.extra?.pictures_url ?? []
+}
 
 class PropertiesService {
     
@@ -120,6 +137,60 @@ class PropertiesService {
             return response?.data ?? response
         } catch (error: any) {
             console.error("[PropertiesService] Restore error:", error)
+            throw error
+        }
+    }
+
+    // ── IMAGES (gallery) ──
+    /**
+     * Upload one or more images to a property's gallery (multipart).
+     * Returns the updated PropertyApiResponse (read the new `extra.picturesUrl`).
+     *
+     * apiClient forces JSON, so we issue a raw fetch here: FormData must set its
+     * own multipart boundary (no Content-Type header), and we attach the PM's
+     * session token like every other account-scoped call.
+     */
+    async uploadImages(uuid: string, files: File[]): Promise<PropertyApiResponse> {
+        const url = `${API_BASE}/properties/${uuid}/images`
+        const formData = new FormData()
+        files.forEach((file) => formData.append("images[]", file))
+
+        const token = useAuthStore.getState().user?.token
+        const res = await fetch(url, {
+            method: "POST",
+            headers: {
+                Accept: "application/json",
+                "Accept-Language": "es",
+                "X-Locale": "es",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: formData,
+        })
+
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok) {
+            console.error("[PropertiesService] uploadImages error:", res.status, json)
+            // Mirror apiClient: a session-expiry 401 clears the session and
+            // redirects to /login (this raw fetch bypasses apiClient's handling).
+            if (res.status === 401) handleSessionExpired()
+            throw new ApiError(res.status, json)
+        }
+        return json?.data ?? json
+    }
+
+    /**
+     * Remove a single image from a property's gallery. Send the URL exactly as it
+     * appears in `extra.picturesUrl`. Returns the updated PropertyApiResponse.
+     */
+    async deleteImage(uuid: string, imageUrl: string): Promise<PropertyApiResponse> {
+        const url = `${API_BASE}/properties/${uuid}/images`
+        try {
+            const response = await apiClient.delete<any>(url, {
+                body: JSON.stringify({ url: imageUrl }),
+            })
+            return response?.data ?? response
+        } catch (error: any) {
+            console.error("[PropertiesService] deleteImage error:", error)
             throw error
         }
     }

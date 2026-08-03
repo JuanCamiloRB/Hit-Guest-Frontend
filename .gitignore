@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# file-sync duplicates (iCloud/Dropbox), e.g. "catalog 2.ts"
+* 2.ts
+* 2.tsx
+* 2.js
+* 2.jsx

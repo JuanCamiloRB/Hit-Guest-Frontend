@@ -14,7 +14,7 @@ interface DynamicCheckinFieldsProps {
     onChange: (key: string, value: string | number) => void
 }
 
-/** Spanish labels for well-known provider keys; otherwise the key is humanized. */
+/** Spanish labels keyed by NORMALIZED key (snake_case, no trailing id). */
 const KNOWN_LABELS: Record<string, string> = {
     city_of_origin: "Ciudad de origen",
     city_of_residence: "Ciudad de residencia",
@@ -24,15 +24,38 @@ const KNOWN_LABELS: Record<string, string> = {
     accommodation_type: "Tipo de acomodación",
     accommodation_number: "Número de habitación",
     country_of_origin: "País de origen",
+    country_origin: "País de origen",
+    country_of_destination: "País de destino",
     country_destination: "País de destino",
+    country_of_residence: "País de residencia",
+    country_residence: "País de residencia",
+}
+
+/** Normalizes a field key to snake_case and drops a trailing `id` (so a country
+ *  reference like `countryDestinationId` matches `country_destination`). */
+function normalizeKey(key: string): string {
+    return key
+        .replace(/([a-z0-9])([A-Z])/g, "$1_$2") // split camelCase
+        .replace(/[\s-]+/g, "_")
+        .replace(/_?id$/i, "") // drop trailing id — labels must never say "Id"
+        .toLowerCase()
+}
+
+/** Whether a field references a country (its options come from GET /countries,
+ *  not from a catalog category). Nationality is a core field, excluded upstream. */
+export function isCountryField(key: string): boolean {
+    return /country|pais|país/i.test(key)
 }
 
 function humanize(key: string): string {
-    return key.replace(/[_-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+    return normalizeKey(key)
+        .replace(/_+/g, " ")
+        .trim()
+        .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
 function fieldLabel(f: CheckinUserField): string {
-    return f.label || KNOWN_LABELS[f.key] || humanize(f.key)
+    return f.label || KNOWN_LABELS[normalizeKey(f.key)] || humanize(f.key)
 }
 
 type SelectOptions = Array<{ id: number; label: string }>
@@ -48,6 +71,23 @@ type SelectOptions = Array<{ id: number; label: string }>
 export function DynamicCheckinFields({ fields, values, onChange }: DynamicCheckinFieldsProps) {
     const [optionsByCat, setOptionsByCat] = useState<Record<number, SelectOptions>>({})
     const [loadingCats, setLoadingCats] = useState(false)
+    const [countryOptions, setCountryOptions] = useState<SelectOptions>([])
+
+    // Country fields (origin/destination/residence) take their options from the
+    // dedicated /countries endpoint, not from a catalog category. The select just
+    // fills once they arrive (same as the core form's country selects) — no extra
+    // loading flag, so setState stays out of the effect body.
+    const hasCountryField = fields.some((f) => f.type === "select" && isCountryField(f.key))
+    useEffect(() => {
+        if (!hasCountryField) return
+        let active = true
+        catalogService.getCountries()
+            .then((list: Array<{ id: number | string; name: string }>) => {
+                if (active) setCountryOptions((list || []).map((c) => ({ id: Number(c.id), label: c.name })))
+            })
+            .catch(() => {})
+        return () => { active = false }
+    }, [hasCountryField])
 
     // Load catalog options for every distinct category referenced by select fields.
     const catIds = fields
@@ -91,8 +131,14 @@ export function DynamicCheckinFields({ fields, values, onChange }: DynamicChecki
                 const label = fieldLabel(f)
 
                 if (f.type === "select") {
-                    const options = (f.catalogCategoryId != null && optionsByCat[f.catalogCategoryId]) || []
-                    if (loadingCats && options.length === 0) {
+                    const isCountry = isCountryField(f.key)
+                    const options = isCountry
+                        ? countryOptions
+                        : (f.catalogCategoryId != null && optionsByCat[f.catalogCategoryId]) || []
+                    // Country selects fill in when /countries arrives — no spinner
+                    // (matches the core form); only catalog selects show loading.
+                    const isLoadingOptions = isCountry ? false : loadingCats
+                    if (isLoadingOptions && options.length === 0) {
                         return (
                             <div key={f.key} className="space-y-1.5">
                                 <label className="text-sm font-semibold text-slate-700">

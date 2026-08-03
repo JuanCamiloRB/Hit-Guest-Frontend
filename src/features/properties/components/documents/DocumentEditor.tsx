@@ -140,11 +140,11 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
 
             {/* Shortcode panel */}
             {shortcodes.length > 0 && (
-                <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-3">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-violet-600 mb-2">
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-primary mb-2">
                         Variables disponibles
                     </p>
-                    <p className="text-[11px] text-violet-500 mb-2.5">
+                    <p className="text-[11px] text-primary mb-2.5">
                         Haz clic para insertar la variable en la posición del cursor. Se reemplazará con datos reales de la reserva.
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -154,9 +154,9 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
                                 type="button"
                                 onClick={() => insertShortcode(key)}
                                 title={`Inserta {{${key}}}`}
-                                className="inline-flex items-center gap-1 rounded-lg border border-violet-200 bg-white px-2.5 py-1 text-[11px] font-medium text-violet-700 transition-colors hover:bg-violet-100 hover:border-violet-300"
+                                className="inline-flex items-center gap-1 rounded-lg border border-primary/20 bg-white px-2.5 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10 hover:border-primary/20"
                             >
-                                <span className="font-mono text-violet-400 leading-none">+</span>
+                                <span className="font-mono text-primary/50 leading-none">+</span>
                                 {SHORTCODE_LABELS[key] ?? key}
                             </button>
                         ))}

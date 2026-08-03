@@ -9,21 +9,41 @@ import {
     Edit,
     ChevronRight,
     Send,
-    Key,
+    Copy,
     MessageSquare,
     CreditCard,
     Calendar,
     Home,
-    MapPin,
     FileText,
     Loader2,
+    Users,
 } from "lucide-react"
 import { toast } from "sonner"
+import { notifyError } from "@/lib/notify-error"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { COMMUNICATION_LOCALES, LOCALE_LABELS, type CommunicationLocale } from "@/lib/locales"
 import { ReservationDialog } from "./ReservationDialog"
 import { AutomationStatusList } from "./automations"
 import { GuestDocumentsCard } from "./GuestDocumentsCard"
@@ -34,6 +54,11 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
     const [data, setData] = useState<ReservationDetailData | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
+    const [isSendingLink, setIsSendingLink] = useState(false)
+    const [sendDialogOpen, setSendDialogOpen] = useState(false)
+    const [recipientEmail, setRecipientEmail] = useState("")
+    // "default" => omit locale (use property's configured language).
+    const [localeChoice, setLocaleChoice] = useState<"default" | CommunicationLocale>("default")
 
     useEffect(() => {
         let mounted = true
@@ -52,8 +77,38 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
         return () => { mounted = false }
     }, [reservationId])
 
-    // Guest check-in link (frontend URL). No backend resend endpoint exists yet, so the
-    // PM copies it to share via WhatsApp/email.
+    // Prefill recipient with the main guest's email and reset the language to the
+    // property default each time the dialog opens.
+    const openSendDialog = (open: boolean) => {
+        if (open) {
+            setRecipientEmail(data?.email ?? "")
+            setLocaleChoice("default")
+        }
+        setSendDialogOpen(open)
+    }
+
+    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail.trim())
+
+    // Sends the check-in link email. `email` overrides the recipient; `locale`
+    // omitted ("default") means the backend uses the property's configured language.
+    const handleSendCheckinLink = async () => {
+        if (isSendingLink || !isValidEmail) return
+        setIsSendingLink(true)
+        try {
+            const message = await reservationsService.sendCheckinLink(reservationId, {
+                email: recipientEmail.trim(),
+                locale: localeChoice === "default" ? undefined : localeChoice,
+            })
+            toast.success(message)
+            setSendDialogOpen(false)
+        } catch (e) {
+            notifyError(e, "No se pudo enviar el link de check-in.")
+        } finally {
+            setIsSendingLink(false)
+        }
+    }
+
+    // Fallback: copy the guest check-in link (frontend URL) to share manually.
     const handleCopyCheckinLink = async () => {
         const origin = typeof window !== "undefined" ? window.location.origin : ""
         const link = `${origin}/checkin/${reservationId}`
@@ -63,6 +118,19 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
         } catch {
             toast.error("No se pudo copiar el link", { description: link })
         }
+    }
+
+    // Opens the PM's email client to message the guest. No in-app messaging
+    // endpoint exists yet, so mailto is the pragmatic real action (vs a dead button).
+    const handleMessageGuest = () => {
+        const email = data?.email?.trim()
+        if (!email) {
+            toast.error("El huésped no tiene correo registrado.")
+            return
+        }
+        const subject = encodeURIComponent(`Tu reserva ${data?.externalId ?? ""}`.trim())
+        const body = encodeURIComponent(`Hola ${data?.guestName ?? ""},\n\n`)
+        window.open(`mailto:${email}?subject=${subject}&body=${body}`, "_blank", "noopener,noreferrer")
     }
 
     if (isLoading) {
@@ -88,17 +156,17 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                 <div className="space-y-1">
                     <div className="flex items-center text-xs font-medium text-slate-500 gap-1.5">
-                        <Link href="/dashboard/reservations" className="hover:text-indigo-600 transition-colors">
+                        <Link href="/dashboard/reservations" className="hover:text-primary transition-colors">
                             Operaciones
                         </Link>
                         <ChevronRight size={12} className="text-slate-400" />
-                        <span className="text-indigo-600 font-semibold truncate max-w-[160px] sm:max-w-none inline-block align-bottom">Reserva {data.externalId || `${reservationId.slice(0, 8)}...`}</span>
+                        <span className="text-primary font-semibold truncate max-w-[160px] sm:max-w-none inline-block align-bottom">Reserva {data.externalId || `${reservationId.slice(0, 8)}...`}</span>
                     </div>
                     <h1 className="text-xl sm:text-3xl font-bold text-slate-900 tracking-tight">Panel de Operaciones</h1>
                     <p className="text-sm text-slate-500">Gestión detallada de la reserva y automatizaciones</p>
                 </div>
                 <div className="flex items-center gap-2 sm:gap-3">
-                    <Button variant="outline" className="bg-white border-slate-200 text-slate-700 shadow-sm gap-2 text-xs sm:text-sm">
+                    <Button onClick={() => window.print()} variant="outline" className="bg-white border-slate-200 text-slate-700 shadow-sm gap-2 text-xs sm:text-sm">
                         <Printer size={16} />
                         Imprimir
                     </Button>
@@ -107,7 +175,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         reservationUuid={reservationId}
                         trigger={
                             <Button 
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md gap-2 text-xs sm:text-sm"
+                                className="bg-primary hover:bg-primary text-white shadow-md gap-2 text-xs sm:text-sm"
                                 disabled={data.source === "Airbnb"}
                                 title={data.source === "Airbnb" ? "Las reservas de Airbnb no se pueden editar manualmente" : "Editar los detalles de la reserva"}
                             >
@@ -168,7 +236,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             </div>
 
                             {/* Details Row */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-8 pt-6 sm:pt-8 border-t border-slate-100">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8 pt-6 sm:pt-8 border-t border-slate-100">
                                 <div className="flex items-start gap-3">
                                     <div className="p-2.5 bg-slate-50 rounded-xl text-slate-400 shrink-0">
                                         <Home size={20} />
@@ -181,7 +249,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                 </div>
 
                                 <div className="flex items-start gap-3">
-                                    <div className="p-2.5 bg-slate-50 rounded-xl text-indigo-500 shrink-0">
+                                    <div className="p-2.5 bg-slate-50 rounded-xl text-primary shrink-0">
                                         <Calendar size={20} />
                                     </div>
                                     <div className="flex flex-col">
@@ -199,12 +267,25 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                 </div>
 
                                 <div className="flex items-start gap-3">
-                                    <div className="p-2.5 bg-slate-50 rounded-xl text-indigo-500 shrink-0">
+                                    <div className="p-2.5 bg-slate-50 rounded-xl text-primary shrink-0">
+                                        <Users size={20} />
+                                    </div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Huéspedes</span>
+                                        <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-snug">{data.totalGuests}</h3>
+                                        <span className="text-sm text-slate-500 font-medium">
+                                            {data.totalGuests === 1 ? "huésped en total" : "huéspedes en total"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-3">
+                                    <div className="p-2.5 bg-slate-50 rounded-xl text-primary shrink-0">
                                         <CreditCard size={20} />
                                     </div>
                                     <div className="flex flex-col">
                                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total</span>
-                                        <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-snug">${data.totalPrice.toLocaleString("es-CO")} COP</h3>
+                                        <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-snug">${data.totalPrice.toLocaleString("es-CO")} {data.currency}</h3>
                                         <span className="text-sm text-slate-500 font-medium">Pagado • Stripe</span>
                                     </div>
                                 </div>
@@ -230,7 +311,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         </CardHeader>
                         <CardContent>
                             <div className="flex gap-4">
-                                <div className="p-2 rounded-full h-fit bg-indigo-100 text-indigo-600">
+                                <div className="p-2 rounded-full h-fit bg-primary/10 text-primary">
                                     <FileText size={20} />
                                 </div>
                                 <div className="flex flex-col">
@@ -247,28 +328,84 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                 {/* Sidebar Areas */}
                 <div className="lg:col-span-4 flex flex-col gap-6">
                     {/* Quick Actions */}
-                    <Card className="bg-indigo-900 text-white border-none shadow-lg">
+                    <Card className="bg-primary text-white border-none shadow-lg">
                         <CardHeader className="pb-4">
-                            <CardTitle className="text-xs font-bold uppercase tracking-[0.2em] text-indigo-200">Acciones Rápidas</CardTitle>
+                            <CardTitle className="text-xs font-bold uppercase tracking-[0.2em] text-primary/50">Acciones Rápidas</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-3">
+                            <Dialog open={sendDialogOpen} onOpenChange={openSendDialog}>
+                                <DialogTrigger asChild>
+                                    <Button variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-none justify-between h-12 px-5 group">
+                                        <div className="flex items-center gap-3">
+                                            <Send size={18} className="text-primary/50 group-hover:text-white transition-colors" />
+                                            <span className="font-semibold">Enviar Link de Check-in</span>
+                                        </div>
+                                        <ChevronRight size={16} className="text-white/40" />
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[440px]">
+                                    <DialogHeader>
+                                        <DialogTitle>Enviar link de check-in</DialogTitle>
+                                        <DialogDescription>
+                                            Se enviará al correo indicado. Por defecto, el del huésped principal.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-2">
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="checkin-link-email">Correo del huésped</Label>
+                                            <Input
+                                                id="checkin-link-email"
+                                                type="email"
+                                                value={recipientEmail}
+                                                onChange={(e) => setRecipientEmail(e.target.value)}
+                                                placeholder="huesped@correo.com"
+                                            />
+                                            {recipientEmail.trim() !== "" && !isValidEmail && (
+                                                <p className="text-xs text-destructive">Ingresa un correo válido.</p>
+                                            )}
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            <Label htmlFor="checkin-link-locale">Idioma del correo</Label>
+                                            <Select value={localeChoice} onValueChange={(v) => setLocaleChoice(v as "default" | CommunicationLocale)}>
+                                                <SelectTrigger id="checkin-link-locale">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="default">
+                                                        Idioma de la propiedad{data.communicationsLocale ? ` · ${LOCALE_LABELS[data.communicationsLocale]}` : ""}
+                                                    </SelectItem>
+                                                    {COMMUNICATION_LOCALES.map((loc) => (
+                                                        <SelectItem key={loc} value={loc}>{LOCALE_LABELS[loc]}</SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setSendDialogOpen(false)} disabled={isSendingLink}>
+                                            Cancelar
+                                        </Button>
+                                        <Button
+                                            onClick={handleSendCheckinLink}
+                                            disabled={isSendingLink || !isValidEmail}
+                                            className="bg-primary hover:bg-primary text-white"
+                                        >
+                                            {isSendingLink && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            {isSendingLink ? "Enviando..." : "Enviar"}
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                             <Button onClick={handleCopyCheckinLink} variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-none justify-between h-12 px-5 group">
                                 <div className="flex items-center gap-3">
-                                    <Send size={18} className="text-indigo-300 group-hover:text-white transition-colors" />
+                                    <Copy size={18} className="text-primary/50 group-hover:text-white transition-colors" />
                                     <span className="font-semibold">Copiar Link de Check-in</span>
                                 </div>
                                 <ChevronRight size={16} className="text-white/40" />
                             </Button>
-                            <Button variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-none justify-between h-12 px-5 group">
+                            <Button onClick={handleMessageGuest} disabled={!data.email} variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-none justify-between h-12 px-5 group disabled:opacity-50">
                                 <div className="flex items-center gap-3">
-                                    <Key size={18} className="text-indigo-300 group-hover:text-white transition-colors" />
-                                    <span className="font-semibold">Generar Código Manual</span>
-                                </div>
-                                <ChevronRight size={16} className="text-white/40" />
-                            </Button>
-                            <Button variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-none justify-between h-12 px-5 group">
-                                <div className="flex items-center gap-3">
-                                    <MessageSquare size={18} className="text-indigo-300 group-hover:text-white transition-colors" />
+                                    <MessageSquare size={18} className="text-primary/50 group-hover:text-white transition-colors" />
                                     <span className="font-semibold">Mensaje al Huésped</span>
                                 </div>
                                 <ChevronRight size={16} className="text-white/40" />
@@ -277,16 +414,16 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                     </Card>
 
                     {/* Price Breakdown */}
-                    <Card className="bg-indigo-600 text-white border-none shadow-lg overflow-hidden relative">
+                    <Card className="bg-primary text-white border-none shadow-lg overflow-hidden relative">
                         {/* Background subtle gradient/shape */}
                         <div className="absolute top-0 right-0 p-6 opacity-20 transform translate-x-4 -translate-y-4">
                             <CreditCard size={120} />
                         </div>
 
                         <CardContent className="p-6">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-indigo-200">Total Reserva</span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-primary/50">Total Reserva</span>
                             <div className="flex items-center justify-between mt-1 mb-6">
-                                <h3 className="text-2xl sm:text-3xl font-bold tracking-tight">${data.totalPrice.toLocaleString("es-CO")} COP</h3>
+                                <h3 className="text-2xl sm:text-3xl font-bold tracking-tight">${data.totalPrice.toLocaleString("es-CO")} {data.currency}</h3>
                                 <div className="p-2 bg-white/20 rounded-lg">
                                     <CreditCard size={20} />
                                 </div>
@@ -294,8 +431,8 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
 
                             <div className="space-y-3 pt-6 border-t border-white/20">
                                 <div className="flex items-center justify-between text-sm font-medium">
-                                    <span className="text-indigo-100">Total</span>
-                                    <span>${data.totalPrice.toLocaleString("es-CO")} COP</span>
+                                    <span className="text-primary/30">Total</span>
+                                    <span>${data.totalPrice.toLocaleString("es-CO")} {data.currency}</span>
                                 </div>
                             </div>
 
@@ -304,33 +441,6 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                 <Badge className="bg-white/20 hover:bg-white/20 text-white border-none px-3 py-1 text-xs">{data.source === "Airbnb" ? "Stripe" : "Manual"}</Badge>
                             </div>
                         </CardContent>
-                    </Card>
-
-                    {/* Map View */}
-                    <Card className="p-0 overflow-hidden shadow-sm border-none bg-slate-100 h-64 relative group">
-                        {/* Map placeholder */}
-                        <div
-                            className="absolute inset-0 bg-cover bg-center grayscale opacity-80 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500"
-                        >
-                            {/* SVG mockup of a map grid */}
-                            <div className="w-full h-full opacity-20 pointer-events-none">
-                                <svg width="100%" height="100%">
-                                    <defs>
-                                        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1" />
-                                        </pattern>
-                                    </defs>
-                                    <rect width="100%" height="100%" fill="url(#grid)" />
-                                </svg>
-                            </div>
-                        </div>
-
-                        <div className="absolute inset-0 flex items-end justify-start p-4 bg-gradient-to-t from-black/40 to-transparent">
-                            <Button className="bg-white text-slate-900 hover:bg-white/90 shadow-lg rounded-full px-6 gap-2">
-                                <MapPin size={16} className="text-indigo-600" />
-                                <span className="font-bold text-sm">Ver en Mapa</span>
-                            </Button>
-                        </div>
                     </Card>
                 </div>
             </div>

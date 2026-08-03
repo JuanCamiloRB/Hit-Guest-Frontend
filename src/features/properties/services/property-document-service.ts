@@ -15,7 +15,7 @@
  */
 
 import { apiClient } from "@/lib/api-client"
-import { API_BASE, CONFIG } from "@/lib/config"
+import { API_BASE } from "@/lib/config"
 import { useAuthStore } from "@/lib/store/auth-store"
 import type {
     DocumentType,
@@ -35,9 +35,13 @@ export interface DocumentListParams {
 }
 
 class PropertyDocumentService {
-    /** Authorization header preferring the session token, falling back to app token. */
+    /**
+     * Authorization header using the SESSION token only. These documents are
+     * account-scoped, so we must not fall back to the shared app token (that
+     * would expose one account's documents to another).
+     */
     private authHeader(): Record<string, string> {
-        const token = useAuthStore.getState().user?.token || CONFIG.APP_API_TOKEN
+        const token = useAuthStore.getState().user?.token
         return token ? { Authorization: `Bearer ${token}` } : {}
     }
 

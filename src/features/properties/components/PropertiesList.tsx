@@ -4,9 +4,11 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { Property, Unit } from "@/types"
 import { PropertyCard } from "./PropertyCard"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, Home, LayoutGrid, List, Loader2 } from "lucide-react"
+import { Plus, Search, Filter, Home, List, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
+import { SectionCard } from "@/components/ui/section-card"
+import { LoadingState } from "@/components/ui/loading-state"
 import {
     Select,
     SelectContent,
@@ -38,9 +40,16 @@ async function bffFetch<T = any>(path: string): Promise<T> {
     const state = useAuthStore.getState()
     const token = state.user?.token || ""
 
+    // Account-scoped data: never call without the user's session token. Prevents
+    // the auth-store hydration race from firing an unauthenticated request (which
+    // an old BFF build would have served with the shared app token — cross-account leak).
+    if (!token) {
+        throw new Error("BFF error 401: sin sesión")
+    }
+
     const res = await fetch(path, {
         headers: {
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            Authorization: `Bearer ${token}`,
         },
     })
 
@@ -88,7 +97,6 @@ export function PropertiesList() {
                 return {
                     id: apiProp.uuid || String(index + 1),
                     uuid: apiProp.uuid,
-                    user_id: 1,
                     name: formData.name,
                     description: formData.description || "",
                     email: formData.email,
@@ -109,6 +117,7 @@ export function PropertiesList() {
                     status_record_id: formData.statusRecordId,
                     status: formData.statusRecordId === 1 || formData.statusRecordId === 6 ? "ACTIVE" : "INACTIVE",
                     type: String(apiProp.propertyTypeId || apiProp.property_type_id || formData.propertyTypeId || apiProp.extra?.propertyTypeId || apiProp.extra?.type || "102"),
+                    thumbnailUrl: formData.thumbnailUrl,
                     created_at: apiProp.createdAt,
                     updated_at: apiProp.updatedAt,
                     extra: {
@@ -178,7 +187,6 @@ export function PropertiesList() {
                     return {
                         id: apiProp.uuid || String(index + 1),
                         uuid: apiProp.uuid,
-                        user_id: 1,
                         name: formData.name,
                         description: formData.description || "",
                         email: formData.email,
@@ -193,6 +201,7 @@ export function PropertiesList() {
                         status_record_id: formData.statusRecordId,
                         status: formData.statusRecordId === 1 || formData.statusRecordId === 6 ? "ACTIVE" : "INACTIVE",
                         type: String(apiProp.propertyTypeId || apiProp.property_type_id || formData.propertyTypeId || apiProp.extra?.propertyTypeId || apiProp.extra?.type || "102"),
+                        thumbnailUrl: formData.thumbnailUrl,
                         created_at: apiProp.createdAt,
                         updated_at: apiProp.updatedAt,
                         extra: {
@@ -334,34 +343,27 @@ export function PropertiesList() {
 
                 <TabsContent value="units" className="space-y-6 outline-none">
                     {isLoadingListings ? (
-                        <div className="flex flex-col items-center justify-center py-24 bg-gradient-to-b from-white to-slate-50 rounded-3xl border-[2px] border-dashed border-[var(--color-brand-purple)]/20">
-                            <Loader2 className="h-12 w-12 text-[var(--color-brand-purple)] animate-spin mb-4" />
-                            <p className="text-[var(--color-brand-navy)]/60 font-bold tracking-wide">Cargando alojamientos...</p>
-                        </div>
+                        <SectionCard flush title="Listado de Alojamientos">
+                            <LoadingState rows={5} label="Cargando alojamientos" />
+                        </SectionCard>
                     ) : (
-                        <div className="bg-white rounded-2xl border-[1.5px] border-[var(--color-brand-purple)]/10 shadow-2xl shadow-brand-purple/5 overflow-hidden">
-                            <div className="p-5 border-b bg-gradient-to-r from-[var(--color-brand-purple)]/[0.03] to-[var(--color-brand-blue)]/[0.03] flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-[var(--color-brand-purple)] p-2 rounded-lg text-white">
-                                        <LayoutGrid size={20} />
-                                    </div>
-                                    <h3 className="font-extrabold text-[var(--color-brand-navy)] text-lg">Listado de Alojamientos</h3>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Filtrar por Propiedad:</span>
-                                    <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-                                        <SelectTrigger className="w-[200px] h-8 text-xs">
-                                            <SelectValue placeholder="Propiedad" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="ALL">Todas las Propiedades</SelectItem>
-                                            {properties.map((p: Property) => (
-                                                <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
+                        <SectionCard
+                            flush
+                            title="Listado de Alojamientos"
+                            actions={
+                                <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+                                    <SelectTrigger className="w-[200px] h-9 text-xs" aria-label="Filtrar por propiedad">
+                                        <SelectValue placeholder="Propiedad" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="ALL">Todas las Propiedades</SelectItem>
+                                        {properties.map((p: Property) => (
+                                            <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            }
+                        >
                             <Table>
                                 <TableHeader className="bg-slate-50/50">
                                     <TableRow className="hover:bg-transparent border-b-[var(--color-brand-purple)]/10">
@@ -408,7 +410,7 @@ export function PropertiesList() {
                                     )}
                                 </TableBody>
                             </Table>
-                        </div>
+                        </SectionCard>
                     )}
                 </TabsContent>
             </Tabs>

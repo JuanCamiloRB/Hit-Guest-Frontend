@@ -91,9 +91,25 @@ export interface PropertyDocument {
     documentType: DocumentType
     content: string | null
     statusRecord: StatusRecord
+    /**
+     * Channel (reservation source) this document applies to — only meaningful
+     * for the Agreement type (92): one row per channel in per_source mode, or
+     * a single null-channel row in all_sources mode (backend plan §1.1). Null
+     * for every other document type.
+     */
+    reservationSourceId?: number | null
+    reservation_source_id?: number | null
+    /** Sideloaded when `reservationSourceId` is set — for display only, never sent back. */
+    source?: { id: number; name: string } | null
     createdAt: string
     updatedAt: string
     deletedAt: string | null
+}
+
+/** Reads the channel id tolerating camelCase/snake_case. */
+export function documentChannelId(doc: PropertyDocument): number | null {
+    const v = doc.reservationSourceId ?? doc.reservation_source_id
+    return v == null ? null : Number(v)
 }
 
 // ── Request payloads ─────────────────────────────────────────────────────
@@ -102,12 +118,14 @@ export interface CreatePropertyDocumentPayload {
     propertyDocumentTypeId: number
     statusRecordId: number
     content?: string | null
+    reservationSourceId?: number | null
 }
 
 export interface UpdatePropertyDocumentPayload {
     propertyDocumentTypeId?: number
     statusRecordId?: number
     content?: string | null
+    reservationSourceId?: number | null
 }
 
 // ── Pagination ───────────────────────────────────────────────────────────
@@ -139,6 +157,13 @@ export const DOCUMENT_STATUS = {
     ACTIVE: 6,
     INACTIVE: 7,
 } as const
+
+/**
+ * The Agreement document type id (backend plan §1.1) — the one whose
+ * `reservationSourceId` encodes the contract-per-channel mode, and the exact
+ * id `ContractRoutingSection` filters `GET .../documents` by.
+ */
+export const AGREEMENT_DOCUMENT_TYPE_ID = 92
 
 /** Returns the localized name for a document type, preferring Spanish. */
 export function documentTypeLabel(type: DocumentType, locale: string = "es"): string {

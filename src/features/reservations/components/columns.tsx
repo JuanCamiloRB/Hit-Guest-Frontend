@@ -1,7 +1,7 @@
 "use client"
 
-import { ColumnDef } from "@tanstack/react-table"
-import { MoreVertical, Calendar, Home, Briefcase, Globe, Package2, Trash2 } from "lucide-react"
+import { ColumnDef, Row } from "@tanstack/react-table"
+import { MoreVertical, Globe, Package2, Trash2 } from "lucide-react"
 import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
@@ -12,16 +12,25 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { StatusPill } from "@/components/ui/status-pill"
 import { Reservation } from "@/types"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { StatusBadge } from "./StatusBadge"
-import { AutomationTrafficLight } from "./AutomationTrafficLight"
+import { ReservationStatusIcon } from "./ReservationStatusIcon"
+import { getAutomationCellMeta, REPORT_LIGHTS } from "./automation-cell-meta"
 
 export interface ColumnsOptions {
     onDelete?: (reservation: Reservation) => void
 }
+
+/** Column headers for the per-automation status columns. */
+const AUTOMATION_HEADERS = {
+    link: "LINK",
+    checkin: "CHECK-IN",
+    contract: "CONTRATO",
+    code: "ACCESO",
+} as const
 
 export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
   const { onDelete } = options || {}
@@ -41,28 +50,28 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
 
             return (
                 <div className="flex items-center gap-3 py-1">
-                    <Avatar className="h-10 w-10 bg-purple-100 text-purple-600 shrink-0">
-                        <AvatarFallback className="bg-purple-100 text-purple-600 font-semibold">
+                    <Avatar className="h-9 w-9 shrink-0">
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
                             {initials}
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col min-w-0">
                         <Link
                             href={`/dashboard/reservations/${reservation.id}`}
-                            className="font-bold text-sm text-slate-900 hover:text-indigo-600 transition-colors truncate"
+                            className="font-bold text-sm text-ink hover:text-primary transition-colors truncate"
                         >
                             {guestName}
                         </Link>
-                        <div className="flex flex-col -mt-0.5">
-                            <span className="text-xs text-slate-500 truncate font-medium">
+                        {/* Alojamiento primero y propiedad debajo: el PM identifica la
+                            unidad concreta, no el edificio. */}
+                        <span className="text-xs text-ink-2 truncate">
+                            {reservation.unitName}
+                        </span>
+                        {reservation.unitName !== reservation.propertyName && (
+                            <span className="text-xs text-ink-3 truncate">
                                 {reservation.propertyName}
                             </span>
-                            {reservation.unitName !== reservation.propertyName && (
-                                <span className="text-[10px] text-muted-foreground truncate italic opacity-80">
-                                    {reservation.unitName}
-                                </span>
-                            )}
-                        </div>
+                        )}
                     </div>
                 </div>
             )
@@ -77,12 +86,12 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             const nights = row.original.nights
 
             return (
-                <div className="flex flex-col gap-1">
-                    <span className="text-sm font-medium text-slate-900 text-nowrap">
+                <div className="flex flex-col">
+                    <span className="text-sm font-medium text-ink text-nowrap tabular-nums">
                         {format(checkIn, "d MMM", { locale: es })} – {format(checkOut, "d MMM", { locale: es })}
                     </span>
-                    <span className="text-xs text-muted-foreground bg-slate-100 px-1.5 py-0.5 rounded w-fit">
-                        {nights} noches
+                    <span className="text-xs text-ink-3">
+                        {nights} {nights === 1 ? "noche" : "noches"}
                     </span>
                 </div>
             )
@@ -108,7 +117,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
                     </svg>
                 )
             } else if (source === "Direct") {
-                icon = <Package2 className="h-4 w-4 text-indigo-600" />
+                icon = <Package2 className="h-4 w-4 text-primary" />
             }
 
             return (
@@ -120,12 +129,40 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         }
     },
     {
-        accessorKey: "automationStatus",
-        header: "ESTADO Y OPERACIONES",
+        accessorKey: "status",
+        header: () => <div className="text-center">ESTADO</div>,
+        cell: ({ row }) => (
+            <div className="flex justify-center">
+                <ReservationStatusIcon status={row.original.status} />
+            </div>
+        ),
+    },
+    // Una columna por automatización, en vez de una celda de ~700px con siete
+    // pastillas en mayúsculas compitiendo con el mismo peso. Cada encabezado
+    // nombra la automatización y cada pastilla dice qué le pasó.
+    ...(["link", "checkin", "contract", "code"] as const).map((key) => ({
+        id: key,
+        header: AUTOMATION_HEADERS[key],
+        cell: ({ row }: { row: Row<Reservation> }) => {
+            const { tone, label } = getAutomationCellMeta(key, row.original.automationStatus)
+            return <StatusPill tone={tone}>{label}</StatusPill>
+        },
+    })),
+    {
+        id: "reports",
+        header: "REPORTES",
         cell: ({ row }) => {
+            const status = row.original.automationStatus
             return (
-                <div className="flex justify-start">
-                    <AutomationTrafficLight status={row.getValue("automationStatus")} />
+                <div className="flex flex-wrap items-center gap-1">
+                    {REPORT_LIGHTS.map(({ key, short }) => {
+                        const { tone } = getAutomationCellMeta(key, status)
+                        return (
+                            <StatusPill key={key} tone={tone} emptyLabel={short}>
+                                {short}
+                            </StatusPill>
+                        )
+                    })}
                 </div>
             )
         },
@@ -140,9 +177,13 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
                 <div className="flex justify-center min-w-[100px]">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-10 w-10 p-0 text-slate-400 hover:text-indigo-600 transition-colors bg-slate-50/50 hover:bg-indigo-50">
-                                <span className="sr-only">Open menu</span>
-                                <MoreVertical className="h-6 w-6" />
+                            <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Acciones de la reserva de ${reservation.guestName}`}
+                                className="text-ink-4 hover:text-primary"
+                            >
+                                <MoreVertical className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -156,7 +197,17 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
                                     Ver detalles
                                 </Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem>Mensaje</DropdownMenuItem>
+                            <DropdownMenuItem
+                                disabled={!reservation.email}
+                                onClick={() => {
+                                    if (!reservation.email) return
+                                    const subject = encodeURIComponent(`Tu reserva ${reservation.id}`)
+                                    const body = encodeURIComponent(`Hola ${reservation.guestName ?? ""},\n\n`)
+                                    window.open(`mailto:${reservation.email}?subject=${subject}&body=${body}`, "_blank", "noopener,noreferrer")
+                                }}
+                            >
+                                Mensaje
+                            </DropdownMenuItem>
                             {onDelete && (
                                 <>
                                     <DropdownMenuSeparator />

@@ -1,7 +1,5 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { Filter } from "lucide-react"
 import { useTranslation } from "@/hooks/useTranslation"
 import { ReservationDialog } from "@/features/reservations/components/ReservationDialog"
 
@@ -14,7 +12,7 @@ export function DashboardHeader() {
                 <div className="flex items-center text-sm text-muted-foreground mb-1">
                     <span>{t('dashboard.home')}</span>
                     <span className="mx-2">›</span>
-                    <span className="text-indigo-600 font-medium">{t('dashboard.title')}</span>
+                    <span className="text-primary font-medium">{t('dashboard.title')}</span>
                 </div>
                 <h2 className="text-xl sm:text-3xl font-bold tracking-tight text-slate-900">{t('dashboard.title')}</h2>
                 <p className="text-muted-foreground mt-1">
@@ -22,10 +20,6 @@ export function DashboardHeader() {
                 </p>
             </div>
             <div className="flex items-center space-x-3">
-                <Button variant="outline" className="gap-2">
-                    <Filter className="h-4 w-4" />
-                    {t('dashboard.filters')}
-                </Button>
                 <ReservationDialog />
             </div>
         </div>

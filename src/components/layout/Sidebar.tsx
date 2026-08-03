@@ -4,7 +4,6 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import {
     LayoutGrid,
@@ -13,8 +12,6 @@ import {
     Users,
     Menu,
     Home,
-    Zap,
-    Puzzle,
     MoreVertical,
     LogOut,
 } from "lucide-react"
@@ -29,7 +26,7 @@ import {
 import { useState } from "react"
 import * as React from "react"
 import { useAuth } from "@/features/auth/hooks/use-auth"
-import { Avatar as UiAvatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar as UiAvatar, AvatarFallback } from "@/components/ui/avatar"
 import { Logo } from "@/components/ui/Logo"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> { }
@@ -73,31 +70,8 @@ export function Sidebar({ className }: SidebarProps) {
         },
     ]
 
-    const renderMenuItems = (items: typeof mainMenu) => (
-        <div className="space-y-1">
-            {items.map((item) => (
-                <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                        "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                        item.active
-                            ? "bg-brand-blue text-white"
-                            : "text-white/70 hover:text-white hover:bg-white/5"
-                    )}
-                >
-                    <item.icon className={cn(
-                        "mr-3 h-5 w-5",
-                        item.active ? "text-white" : "text-white/60 group-hover:text-white"
-                    )} />
-                    {item.label}
-                </Link>
-            ))}
-        </div>
-    )
-
     return (
-        <div className={cn("flex flex-col h-screen bg-[var(--color-brand-navy)] text-white border-r border-white/5", className)}>
+        <div className={cn("flex flex-col h-screen bg-sidebar text-sidebar-foreground border-r border-white/5", className)}>
             <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8 no-scrollbar">
                 {/* Logo Section - Restored to Sidebar */}
                 <div className="px-3 mb-2">
@@ -173,8 +147,16 @@ export function Sidebar({ className }: SidebarProps) {
                                 <p className="text-sm font-semibold text-white truncate">
                                     {isMounted ? user?.firstName : "HIT Guest"}
                                 </p>
-                                <p className="text-[10px] font-medium text-white/50 uppercase tracking-tight">
-                                    {isMounted ? "Super Admin" : "Cargando..."}
+                                {/* Antes decía "Super Admin" para todo el mundo. El rol real
+                                    no viaja en UserResource (auth-service cae a "PRINCIPAL"
+                                    por defecto), así que mostramos lo único verificable:
+                                    el flag isAccountOwner de GET /user, y si no, el correo. */}
+                                <p className="text-xs font-medium text-white/50 truncate">
+                                    {!isMounted
+                                        ? "Cargando…"
+                                        : user?.isAccountOwner
+                                          ? "Dueño de la cuenta"
+                                          : (user?.email ?? "")}
                                 </p>
                             </div>
                             <MoreVertical className="h-4 w-4 text-white/40" />

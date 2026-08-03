@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect } from "react"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
-import { Clock, CreditCard, IdCard, Key, ShieldCheck, Calendar, Users, CheckCircle2, Circle, Lock, UserCircle } from "lucide-react"
+import { Clock, CreditCard, IdCard, Key, ShieldCheck, Calendar, Users, CheckCircle2, Circle, Lock, UserCircle, ArrowRight, Share2 } from "lucide-react"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 import { isMainGuestCompleted } from "@/features/checkin/types/checkin"
 
@@ -15,30 +15,15 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
     const { reservation: res, progress, registeredGuests } = portal
-    const reservationUuid = basePath.replace(/^\/checkin\//, '').split('/')[0]
     const searchParams = useSearchParams()
-    const [doneGuestUuids, setDoneGuestUuids] = useState<Set<string>>(new Set())
-
     useEffect(() => {
         if (searchParams.get('error') === 'max_guests') {
             toast.error('La reserva ya tiene todos sus huéspedes registrados')
         }
     }, [searchParams])
 
-    useEffect(() => {
-        const done = new Set<string>()
-        registeredGuests.forEach(g => {
-            const key = g.isMain
-                ? `checkin-main-done-${reservationUuid}`
-                : `checkin-secondary-done-${reservationUuid}-${g.uuid}`
-            if (localStorage.getItem(key) === 'true') done.add(g.uuid)
-        })
-        setDoneGuestUuids(done)
-    }, [reservationUuid]) // eslint-disable-line react-hooks/exhaustive-deps
-
     const mainGuest = registeredGuests.find(g => g.isMain)
-    const mainGuestUuid = mainGuest?.uuid ?? ''
-    const mainCompleted = isMainGuestCompleted(portal) || doneGuestUuids.has(mainGuestUuid)
+    const mainCompleted = isMainGuestCompleted(portal)
 
     // Returns the correct "continue" URL for a known guest based on their verification state,
     // avoiding unnecessary roundtrips through /identify when the step is already known.
@@ -49,8 +34,9 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
         return `${basePath}/identify?guest_uuid=${guest.uuid}`
     }
 
-    const isGuestDone = (g: { uuid: string; isCompleted: boolean; isMain: boolean }) =>
-        g.isCompleted || doneGuestUuids.has(g.uuid)
+    // Completion is server-owned. localStorage is navigation cache only and must
+    // never turn a pending guest into a completed one.
+    const isGuestDone = (g: { isCompleted: boolean }) => g.isCompleted
 
     const localCompleted = Math.max(
         progress.completed,
@@ -73,6 +59,63 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
     // anonymousSlots: remaining slots that don't have a name yet
     const anonymousSlotsCount = Math.max(0, res.totalGuestsAllowed - registeredGuests.length)
     const knownNonMainGuests = registeredGuests.filter(g => !g.isMain)
+
+    // Single most important next action, surfaced as a big fixed CTA so guests on
+    // autopilot can't miss it (the inline row links are easy to overlook). The main
+    // guest is the priority; once done, it points at the next pending secondary.
+    let primaryCtaHref: string | null = null
+    let primaryCtaLabel = ""
+    if (!isFullyCompleted) {
+        if (!mainCompleted) {
+            primaryCtaHref = mainGuest ? getContinueLink(mainGuest) : `${basePath}/identify`
+            primaryCtaLabel = mainGuest ? "Continuar mi registro" : "Comenzar mi registro"
+        } else {
+            const nextKnown = knownNonMainGuests.find(g => !isGuestDone(g))
+            if (nextKnown) {
+                primaryCtaHref = getContinueLink(nextKnown)
+                primaryCtaLabel = "Registrar siguiente huésped"
+            } else if (anonymousSlotsCount > 0) {
+                primaryCtaHref = `${basePath}/s/new-${registeredGuests.length + 1}/identify`
+                primaryCtaLabel = "Registrar siguiente huésped"
+            }
+        }
+    }
+
+    // Companions the main guest can invite by re-sending the reservation link.
+    const hasPendingCompanions =
+        mainCompleted
+        && (anonymousSlotsCount > 0 || knownNonMainGuests.some(g => !isGuestDone(g)))
+
+    const getShareUrl = () =>
+        typeof window === "undefined"
+            ? ""
+            : new URL(basePath, window.location.origin).toString()
+
+    // Re-send the check-in link to companions. Native share (or WhatsApp) lets the
+    // guest pick a contact directly — the ask. Clipboard is the fallback.
+    const handleShareLink = async () => {
+        const url = getShareUrl()
+        const message = `Hola, completa tu registro de check-in para nuestra reserva aquí: ${url}`
+        try {
+            if (navigator.share) {
+                await navigator.share({ title: "Registro de check-in", text: message, url })
+                return
+            }
+        } catch (error) {
+            // Cancelling the native sheet is intentional; do not unexpectedly open WhatsApp.
+            if (error instanceof DOMException && error.name === "AbortError") return
+        }
+        window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer")
+    }
+
+    const handleCopyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(getShareUrl())
+            toast.success("Link copiado", { description: "Compártelo con tus acompañantes." })
+        } catch {
+            toast.error("No se pudo copiar el link")
+        }
+    }
 
     return (
         <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
@@ -154,9 +197,9 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                 ) : (
                                     <Link
                                         href={getContinueLink(mainGuest)}
-                                        className="text-xs font-semibold text-brand-purple bg-brand-purple/10 px-3 py-1.5 rounded-lg hover:bg-brand-purple/20 transition-colors"
+                                        className="inline-flex items-center gap-1 text-xs font-bold text-white bg-brand-purple px-3.5 py-2 rounded-lg hover:bg-brand-purple/90 transition-colors active:scale-[0.98]"
                                     >
-                                        Continuar registro
+                                        Continuar registro <ArrowRight size={13} />
                                     </Link>
                                 )}
                             </div>
@@ -171,9 +214,9 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                             </div>
                             <Link
                                 href={`${basePath}/identify`}
-                                className="text-xs font-semibold text-brand-purple bg-brand-purple/10 px-3 py-1.5 rounded-lg hover:bg-brand-purple/20 transition-colors"
+                                className="inline-flex items-center gap-1 text-xs font-bold text-white bg-brand-purple px-3.5 py-2 rounded-lg hover:bg-brand-purple/90 transition-colors active:scale-[0.98]"
                             >
-                                Iniciar registro
+                                Iniciar registro <ArrowRight size={13} />
                             </Link>
                         </div>
                     )}
@@ -198,9 +241,9 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                 ) : mainCompleted ? (
                                     <Link
                                         href={getContinueLink(g)}
-                                        className="text-xs font-semibold text-brand-blue bg-brand-blue/10 px-3 py-1.5 rounded-lg hover:bg-brand-blue/20 transition-colors"
+                                        className="inline-flex items-center gap-1 text-xs font-bold text-white bg-brand-blue px-3.5 py-2 rounded-lg hover:bg-brand-blue/90 transition-colors active:scale-[0.98]"
                                     >
-                                        Iniciar registro
+                                        Iniciar registro <ArrowRight size={13} />
                                     </Link>
                                 ) : (
                                     <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100">
@@ -241,6 +284,32 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                             </div>
                         )
                     })}
+
+                    {/* Re-send the link so companions can register themselves. */}
+                    {hasPendingCompanions && (
+                        <div className="mt-3 rounded-xl border border-brand-purple/15 bg-brand-purple/5 p-3">
+                            <p className="text-xs font-medium text-slate-600 mb-2">
+                                ¿Viajas acompañado? Envíales el link para que hagan su registro.
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={handleShareLink}
+                                    className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-brand-purple text-white text-sm font-bold hover:bg-brand-purple/90 transition-colors active:scale-[0.98]"
+                                >
+                                    <Share2 size={15} />
+                                    Compartir link
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleCopyLink}
+                                    className="inline-flex items-center justify-center h-10 px-3 rounded-lg border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
+                                >
+                                    Copiar
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -289,8 +358,8 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                 </div>
             </div>
 
-            {/* Global CTA */}
-            {isFullyCompleted && (
+            {/* Global CTA — big, unmissable primary action fixed at the bottom. */}
+            {isFullyCompleted ? (
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
                     <div className="w-full max-w-lg">
                         <Link
@@ -301,7 +370,19 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                         </Link>
                     </div>
                 </div>
-            )}
+            ) : primaryCtaHref ? (
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
+                    <div className="w-full max-w-lg">
+                        <Link
+                            href={primaryCtaHref}
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/25 transition-all active:scale-[0.98]"
+                        >
+                            {primaryCtaLabel}
+                            <ArrowRight size={20} />
+                        </Link>
+                    </div>
+                </div>
+            ) : null}
         </div>
     )
 }

@@ -5,7 +5,6 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Camera, Upload, Loader2, CheckCircle2, XCircle, RotateCcw, FileText } from "lucide-react"
 import { toast } from "sonner"
-import { notifyError } from "@/lib/notify-error"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
@@ -21,6 +20,27 @@ interface VerifyScreenProps {
     fromCallback?: boolean
 }
 
+/** How the guest can recover from a document/selfie verification error. */
+type RetryScope = "selfie" | "documents" | "all" | "none"
+
+/**
+ * OCR / face-comparison errorType → recovery UX. `retry` decides which files we
+ * keep: face failures only reset the selfie (documents are re-sent from cache);
+ * document-quality failures reset the document photos; hard stops offer no retry.
+ * `message` is a fallback — the backend's localized message is preferred when present.
+ */
+const DOC_ERROR_UI: Record<string, { retry: RetryScope; message: string }> = {
+    FACE_MISMATCH:              { retry: "selfie",    message: "Tu selfie no coincide con el documento. Tómate otra foto." },
+    NO_FACE_DETECTED:           { retry: "selfie",    message: "No detectamos un rostro. Asegúrate de tener buena iluminación y que tu cara esté centrada." },
+    SERVICE_UNAVAILABLE:        { retry: "all",       message: "Servicio no disponible. Intenta de nuevo en un momento." },
+    CRITICAL_FIELD_ERROR:       { retry: "documents", message: "No pudimos leer el documento. Toma una foto más clara." },
+    LOW_QUALITY_IMAGE:          { retry: "documents", message: "La imagen del documento es de baja calidad. Toma una foto más clara." },
+    DOCUMENT_NUMBER_UNREADABLE: { retry: "documents", message: "No pudimos leer el número del documento. Toma una foto más clara." },
+    DUPLICATE_DOCUMENT:         { retry: "none",      message: "Este documento ya está registrado para otro huésped. Contacta al anfitrión." },
+    EXPIRED_DOCUMENT:           { retry: "none",      message: "El documento está vencido. No es posible continuar el registro." },
+    DOCUMENT_NUMBER_MISMATCH:   { retry: "none",      message: "El número del documento no coincide con el registrado. Contacta al anfitrión." },
+}
+
 export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary = false, fromCallback = false }: VerifyScreenProps) {
     const router = useRouter()
     const { load, clear } = useIdentifySession(reservationUuid)
@@ -34,6 +54,13 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
     const [progress, setProgress] = useState(0)
     const [frontFile, setFrontFile] = useState<File | null>(null)
     const [backFile, setBackFile] = useState<File | null>(null)
+    // Selfie for face comparison (v4.7). Cached alongside the documents so a
+    // FACE_MISMATCH retry only re-shoots the selfie, never the document.
+    const [selfieFile, setSelfieFile] = useState<File | null>(null)
+    // Sub-step within the document_upload flow: capture documents first, selfie last.
+    const [captureStep, setCaptureStep] = useState<"documents" | "selfie">("documents")
+    // errorType from the last failed upload — drives the retry affordance.
+    const [docErrorType, setDocErrorType] = useState<string | null>(null)
     const [ocrResult, setOcrResult] = useState<OCRResult | null>(null)
     // Stores the active Didit session step for copy/UX purposes
     const [diditStep, setDiditStep] = useState<"biometric" | "kyc">("biometric")
@@ -126,16 +153,6 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
         if (!guestUuid) {
             router.replace(`${basePath}/identify`)
         }
-        // If this guest already completed document upload previously, skip this step
-        try {
-            if (verification && verification.type === 'document_upload') {
-                const verificationDoneKey = `checkin-verification-done-${reservationUuid}-${guestUuid}`
-                const already = localStorage.getItem(verificationDoneKey) === 'true'
-                if (already) {
-                    router.replace(`${basePath}/guest?guest_uuid=${guestUuid}`)
-                }
-            }
-        } catch {}
         // Load identification trigger for mock routing
         try {
             const triggerKey = `checkin-ident-trigger-${reservationUuid}-${guestUuid}`
@@ -255,10 +272,6 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
 
     const handleVerificationSuccess = () => {
         if (pollingRef.current) clearTimeout(pollingRef.current)
-        try {
-            const verificationDoneKey = `checkin-verification-done-${reservationUuid}-${guestUuid}`
-            localStorage.setItem(verificationDoneKey, 'true')
-        } catch {}
         toast.success("Identidad verificada exitosamente")
         setTimeout(() => router.push(`${basePath}/guest?guest_uuid=${guestUuid}`), 600)
     }
@@ -324,7 +337,8 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
     const MAX_FILE_SIZE_MB = 10
     const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
-    const handleDocumentUpload = async () => {
+    /** Documents captured — validate their size, then advance to the selfie step. */
+    const goToSelfie = () => {
         if (!frontFile) {
             toast.error("La foto frontal del documento es obligatoria")
             return
@@ -338,14 +352,78 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
             return
         }
         setFailureMessage(null)
+        setDocErrorType(null)
+        setCaptureStep("selfie")
+    }
+
+    /**
+     * Routes a failed upload to the right recovery, keyed by errorType. The backend
+     * deletes ALL uploaded files on any failure, so a retry always re-sends the
+     * cached documents — for face failures the guest only retakes the selfie.
+     */
+    const handleUploadError = (e: any) => {
+        const errorType: string | undefined = e?.errorType
+        const ui = errorType ? DOC_ERROR_UI[errorType] : undefined
+        // Prefer the backend's localized message; fall back to our action copy.
+        const message = e?.message || ui?.message || "No pudimos verificar tu identidad. Intenta de nuevo con fotos más claras."
+        setDocErrorType(errorType ?? null)
+        setFailureMessage(message)
+
+        const scope: RetryScope = ui?.retry ?? "all"
+        if (scope === "none") {
+            // Hard stop — no retry; the failed screen shows a contact-support message.
+            setVerificationState("failed")
+            return
+        }
+        // Retryable: stay in the capture view (idle) so cached files survive.
+        if (scope === "selfie") {
+            setSelfieFile(null)
+            setCaptureStep("selfie")
+        } else if (scope === "documents") {
+            setFrontFile(null)
+            setBackFile(null)
+            setSelfieFile(null)
+            setCaptureStep("documents")
+        } else {
+            // "all" (e.g. SERVICE_UNAVAILABLE) — keep every file, let them resubmit.
+            setCaptureStep("selfie")
+        }
+        setVerificationState("idle")
+        toast.error(message)
+    }
+
+    const handleDocumentUpload = async () => {
+        if (!frontFile) {
+            toast.error("La foto frontal del documento es obligatoria")
+            return
+        }
+        if (!selfieFile) {
+            toast.error("La selfie es obligatoria")
+            return
+        }
+        if (frontFile.size > MAX_FILE_SIZE_BYTES) {
+            toast.error(`La foto frontal no puede superar ${MAX_FILE_SIZE_MB}MB`)
+            return
+        }
+        if (backFile && backFile.size > MAX_FILE_SIZE_BYTES) {
+            toast.error(`La foto del reverso no puede superar ${MAX_FILE_SIZE_MB}MB`)
+            return
+        }
+        if (selfieFile.size > MAX_FILE_SIZE_BYTES) {
+            toast.error(`La selfie no puede superar ${MAX_FILE_SIZE_MB}MB`)
+            return
+        }
+        setFailureMessage(null)
+        setDocErrorType(null)
         setVerificationState("verifying")
         try {
             const formData = new FormData()
             formData.append("front_image", frontFile) // snake_case — multipart has no auto-conversion
             if (backFile) formData.append("back_image", backFile) // snake_case — multipart has no auto-conversion
+            formData.append("selfie_image", selfieFile) // NEW (v4.7): face comparison vs. document photo
 
             const ocr = await checkinService.uploadDocumentImages(reservationUuid, guestUuid, formData)
-            
+
             setOcrResult(ocr)
             // Backend may split data across extractedData and formSchema.prefilledData
             const d = ocr.extractedData
@@ -360,19 +438,7 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
             setVerificationState("ocr_confirm")
             toast.success("Documento analizado correctamente")
         } catch (e: any) {
-            const msg = (e.message || "").toLowerCase()
-            const isServiceDown = msg.includes("temporarily unavailable") || msg.includes("service_unavailable") || msg.includes("verification service")
-            if (isServiceDown) {
-                const downMsg = "El servicio de verificación de documentos no está disponible por el momento. Intenta de nuevo en unos minutos."
-                toast.error(downMsg)
-                setFailureMessage(downMsg)
-            } else {
-                // Show the backend's localized reason (e.g. OCR "fotos más claras") instead
-                // of a generic message. Falls back to a default when there's no message.
-                setFailureMessage(e.message || null)
-                notifyError(e, "Error al subir las imágenes")
-            }
-            setVerificationState("failed")
+            handleUploadError(e)
         }
     }
 
@@ -393,9 +459,7 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
         }
         localStorage.setItem(formKey, JSON.stringify(merged))
         try {
-            const verificationDoneKey = `checkin-verification-done-${reservationUuid}-${guestUuid}`
             const ocrDataKey = `checkin-ocr-data-${reservationUuid}-${guestUuid}`
-            localStorage.setItem(verificationDoneKey, 'true')
             localStorage.setItem(ocrDataKey, JSON.stringify(editOcr))
         } catch {}
 
@@ -407,11 +471,11 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
         setProgress(0)
         setFrontFile(null)
         setBackFile(null)
+        setSelfieFile(null)
         setOcrResult(null)
-        try {
-            const verificationDoneKey = `checkin-verification-done-${reservationUuid}-${guestUuid}`
-            localStorage.removeItem(verificationDoneKey)
-        } catch {}
+        setDocErrorType(null)
+        setFailureMessage(null)
+        setCaptureStep("documents")
     }
 
     /**
@@ -425,7 +489,6 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
         try {
             clear(guestUuid || undefined)
             localStorage.removeItem('checkin-pending-didit')
-            localStorage.removeItem(`checkin-verification-done-${reservationUuid}-${guestUuid}`)
         } catch {}
         toast.info("Reiniciando tu verificación...")
         router.replace(`${basePath}/identify`)
@@ -578,6 +641,9 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
 
     // ── Failed state ──
     if (verificationState === "failed") {
+        // Non-retryable OCR/face errors (expired, duplicate, number mismatch): no
+        // retry button — the guest can't self-recover, so point them to the host.
+        const isHardStop = docErrorType != null && DOC_ERROR_UI[docErrorType]?.retry === "none"
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
                 <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center border border-red-100">
@@ -589,13 +655,23 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                         {failureMessage || "No pudimos verificar tu identidad. Por favor intenta de nuevo con fotos más claras."}
                     </p>
                 </div>
-                <button
-                    onClick={verification?.type === "session" ? handleResetVerification : handleRetry}
-                    className="flex items-center gap-2 h-12 px-6 bg-brand-purple text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
-                >
-                    <RotateCcw size={18} />
-                    Intentar de nuevo
-                </button>
+                {isHardStop ? (
+                    <Link
+                        href={basePath}
+                        className="flex items-center gap-2 h-12 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-all active:scale-[0.98]"
+                    >
+                        <ArrowLeft size={18} />
+                        Volver al inicio
+                    </Link>
+                ) : (
+                    <button
+                        onClick={verification?.type === "session" ? handleResetVerification : handleRetry}
+                        className="flex items-center gap-2 h-12 px-6 bg-brand-purple text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
+                    >
+                        <RotateCcw size={18} />
+                        Intentar de nuevo
+                    </button>
+                )}
             </div>
         )
     }
@@ -635,7 +711,7 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                 <p className="text-slate-500 text-sm">
                     {verification.type === "session"
                         ? "Completa la verificación de identidad directamente aquí con Didit. Solo toma un minuto."
-                        : "Sube una foto de tu documento para extraer tus datos automáticamente."}
+                        : "Sube una foto de tu documento y una selfie para verificar tu identidad."}
                 </p>
             </div>
 
@@ -665,73 +741,135 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                 )
             })()}
 
-            {/* document_upload: file inputs (G3) */}
+            {/* document_upload: two steps — documents first, selfie last (G3 + v4.7 face) */}
             {verification.type === "document_upload" && (
-                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
-                    {/* Front photo */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-700">
-                            Foto Frontal<span className="text-red-400 ml-0.5">*</span>
-                        </label>
-                        {frontFile ? (
-                            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-                                <div className="flex items-center gap-2">
-                                    <CheckCircle2 size={18} className="text-green-500" />
-                                    <span className="text-sm text-slate-700 truncate max-w-[180px]">{frontFile.name}</span>
-                                </div>
-                                <button onClick={() => setFrontFile(null)} className="text-xs text-red-400 font-medium">Quitar</button>
-                            </div>
-                        ) : (
-                            <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-brand-purple/50 hover:bg-brand-purple/5 transition-all text-slate-500 cursor-pointer group">
-                                <div className="bg-slate-100 p-3 rounded-full group-hover:bg-brand-purple/10 group-hover:text-brand-purple transition-colors">
-                                    <Camera size={24} />
-                                </div>
-                                <span className="text-sm font-medium">Tomar foto o seleccionar</span>
-                                <input
-                                    type="file"
-                                    accept="image/*"
-                                    capture="environment"
-                                    className="sr-only"
-                                    onChange={e => setFrontFile(e.target.files?.[0] ?? null)}
-                                />
-                            </label>
-                        )}
-                    </div>
+                <div className="space-y-4">
+                    {/* A retryable error keeps us in the capture view; show why inline. */}
+                    {failureMessage && (
+                        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            <XCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
+                            <span>{failureMessage}</span>
+                        </div>
+                    )}
 
-                    {/* Back photo — hidden for single-sided documents (passport, etc.) */}
-                    {requiresBackImage ? (
-                        <div className="space-y-2">
-                            <label className="text-sm font-semibold text-slate-700">
-                                Foto Reverso <span className="text-slate-400 text-xs">(Opcional)</span>
-                            </label>
-                            {backFile ? (
+                    {captureStep === "documents" ? (
+                        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
+                            {/* Front photo */}
+                            <div className="space-y-2">
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Foto Frontal<span className="text-red-400 ml-0.5">*</span>
+                                </label>
+                                {frontFile ? (
+                                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                                        <div className="flex items-center gap-2">
+                                            <CheckCircle2 size={18} className="text-green-500" />
+                                            <span className="text-sm text-slate-700 truncate max-w-[180px]">{frontFile.name}</span>
+                                        </div>
+                                        <button onClick={() => setFrontFile(null)} className="text-xs text-red-400 font-medium">Quitar</button>
+                                    </div>
+                                ) : (
+                                    <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-brand-purple/50 hover:bg-brand-purple/5 transition-all text-slate-500 cursor-pointer group">
+                                        <div className="bg-slate-100 p-3 rounded-full group-hover:bg-brand-purple/10 group-hover:text-brand-purple transition-colors">
+                                            <Camera size={24} />
+                                        </div>
+                                        <span className="text-sm font-medium">Tomar foto o seleccionar</span>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            className="sr-only"
+                                            onChange={e => setFrontFile(e.target.files?.[0] ?? null)}
+                                        />
+                                    </label>
+                                )}
+                            </div>
+
+                            {/* Back photo — hidden for single-sided documents (passport, etc.) */}
+                            {requiresBackImage ? (
+                                <div className="space-y-2">
+                                    <label className="text-sm font-semibold text-slate-700">
+                                        Foto Reverso <span className="text-slate-400 text-xs">(Opcional)</span>
+                                    </label>
+                                    {backFile ? (
+                                        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                                            <div className="flex items-center gap-2">
+                                                <CheckCircle2 size={18} className="text-green-500" />
+                                                <span className="text-sm text-slate-700 truncate max-w-[180px]">{backFile.name}</span>
+                                            </div>
+                                            <button onClick={() => setBackFile(null)} className="text-xs text-red-400 font-medium">Quitar</button>
+                                        </div>
+                                    ) : (
+                                        <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-brand-purple/50 hover:bg-brand-purple/5 transition-all text-slate-500 cursor-pointer group">
+                                            <div className="bg-slate-100 p-3 rounded-full group-hover:bg-brand-purple/10 group-hover:text-brand-purple transition-colors">
+                                                <Upload size={24} />
+                                            </div>
+                                            <span className="text-sm font-medium">Subir reverso</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                capture="environment"
+                                                className="sr-only"
+                                                onChange={e => setBackFile(e.target.files?.[0] ?? null)}
+                                            />
+                                        </label>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-slate-400 text-center bg-slate-50 rounded-xl py-3 px-4">
+                                    Este documento solo requiere la imagen frontal.
+                                </p>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-semibold text-slate-700">
+                                    Selfie<span className="text-red-400 ml-0.5">*</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    onClick={() => { setFailureMessage(null); setDocErrorType(null); setCaptureStep("documents") }}
+                                    className="text-xs font-medium text-slate-400 hover:text-brand-purple transition-colors"
+                                >
+                                    ← Documentos
+                                </button>
+                            </div>
+                            <p className="text-xs text-slate-500 -mt-1">
+                                Tómate una selfie para confirmar que eres la persona del documento.
+                            </p>
+
+                            {selfieFile ? (
                                 <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
                                     <div className="flex items-center gap-2">
                                         <CheckCircle2 size={18} className="text-green-500" />
-                                        <span className="text-sm text-slate-700 truncate max-w-[180px]">{backFile.name}</span>
+                                        <span className="text-sm text-slate-700 truncate max-w-[180px]">{selfieFile.name}</span>
                                     </div>
-                                    <button onClick={() => setBackFile(null)} className="text-xs text-red-400 font-medium">Quitar</button>
+                                    <button onClick={() => setSelfieFile(null)} className="text-xs text-red-400 font-medium">Quitar</button>
                                 </div>
                             ) : (
                                 <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-brand-purple/50 hover:bg-brand-purple/5 transition-all text-slate-500 cursor-pointer group">
                                     <div className="bg-slate-100 p-3 rounded-full group-hover:bg-brand-purple/10 group-hover:text-brand-purple transition-colors">
-                                        <Upload size={24} />
+                                        <Camera size={24} />
                                     </div>
-                                    <span className="text-sm font-medium">Subir reverso</span>
+                                    <span className="text-sm font-medium">Tomar selfie</span>
+                                    {/* capture="user" opens the front camera on mobile; desktop falls back to a file picker */}
                                     <input
                                         type="file"
                                         accept="image/*"
-                                        capture="environment"
+                                        capture="user"
                                         className="sr-only"
-                                        onChange={e => setBackFile(e.target.files?.[0] ?? null)}
+                                        onChange={e => setSelfieFile(e.target.files?.[0] ?? null)}
                                     />
                                 </label>
                             )}
+
+                            <ul className="text-xs text-slate-500 space-y-1.5 bg-slate-50 rounded-xl p-3">
+                                <li>· Mira directamente a la cámara</li>
+                                <li>· Asegúrate de tener buena iluminación, sin sombras</li>
+                                <li>· Sin lentes de sol ni gorras</li>
+                                <li>· Tu rostro debe estar centrado y visible completo</li>
+                            </ul>
                         </div>
-                    ) : (
-                        <p className="text-xs text-slate-400 text-center bg-slate-50 rounded-xl py-3 px-4">
-                            Este documento solo requiere la imagen frontal.
-                        </p>
                     )}
                 </div>
             )}
@@ -745,10 +883,18 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                         >
                             {diditCopy[verification.subtype ?? 'biometric'].button}
                         </button>
+                    ) : captureStep === "documents" ? (
+                        <button
+                            onClick={goToSelfie}
+                            disabled={!frontFile}
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            Continuar
+                        </button>
                     ) : (
                         <button
                             onClick={handleDocumentUpload}
-                            disabled={!frontFile}
+                            disabled={!selfieFile}
                             className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             Analizar Documento

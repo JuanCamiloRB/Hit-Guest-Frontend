@@ -1,8 +1,8 @@
 "use client"
 
-import Image from "next/image"
 import { MoreHorizontal, MapPin, Building, Hotel, Home as HomeIcon, Palmtree, Loader2 } from "lucide-react"
 import { useState } from "react"
+import { usePropertyTypeLabel } from "../hooks/usePropertyTypeLabel"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -33,19 +33,30 @@ interface PropertyCardProps {
     onStatusChange?: (uuid: string, newStatus: "ACTIVE" | "INACTIVE") => void
 }
 
-const TypeIcon = ({ type }: { type?: string | number }) => {
+/**
+ * Best-effort icon. Prefers the resolved catalog label (keyword match) so custom
+ * catalog types still get a sensible icon, then falls back to the id/string switch.
+ */
+const TypeIcon = ({ type, label }: { type?: string | number; label?: string | null }) => {
+    const l = (label || '').toLowerCase()
+    if (l) {
+        if (l.includes('hotel')) return <Hotel className="h-3 w-3" />
+        if (l.includes('resort')) return <Palmtree className="h-3 w-3" />
+        if (l.includes('casa') || l.includes('villa') || l.includes('house')) return <HomeIcon className="h-3 w-3" />
+        if (l.includes('apart') || l.includes('edificio') || l.includes('building')) return <Building className="h-3 w-3" />
+    }
     const t = String(type || '').toUpperCase()
     switch (t) {
         case 'HOTEL':
-        case '101': 
+        case '101':
             return <Hotel className="h-3 w-3" />
         case 'BUILDING':
         case '102':
-        case 'APARTMENT': 
+        case 'APARTMENT':
         case 'APARTAHOTEL':
             return <Building className="h-3 w-3" />
         case 'HOUSE':
-        case '100': 
+        case '100':
             return <HomeIcon className="h-3 w-3" />
         case 'RESORT': return <Palmtree className="h-3 w-3" />
         default: return <Building className="h-3 w-3" />
@@ -71,8 +82,26 @@ const TypeLabel = ({ type }: { type?: string | number }) => {
 
 export function PropertyCard({ property, onStatusChange }: PropertyCardProps) {
     const propertyId = property.uuid || property.id
+    // Prefer the configured catalog label; fall back to the id/string switch while
+    // the catalog loads or for values it doesn't know.
+    const catalogLabel = usePropertyTypeLabel(property.type)
+    const typeLabel = catalogLabel ?? TypeLabel({ type: property.type })
     const [isActive, setIsActive] = useState(property.status === "ACTIVE")
     const [isToggling, setIsToggling] = useState(false)
+    const [imgError, setImgError] = useState(false)
+
+    // Cover photo: prefer the top-level thumbnail, then the gallery's first image
+    // (camelCase or snake_case). Uploaded photos live on the backend/S3 host, so we
+    // render with a plain <img> to avoid next/image's remotePatterns allow-list and
+    // fall back to the placeholder if the URL is missing or fails to load.
+    const extra = (property as { extra?: Record<string, unknown> }).extra ?? {}
+    const gallery = (extra.picturesUrl ?? extra.pictures_url) as string[] | undefined
+    const coverUrl =
+        property.thumbnailUrl ||
+        (extra.thumbnailUrl as string | undefined) ||
+        (Array.isArray(gallery) ? gallery[0] : undefined) ||
+        ""
+    const coverSrc = coverUrl && !imgError ? coverUrl : "/placeholder.svg"
 
     const handleStatusToggle = async (checked: boolean) => {
         if (!property.uuid) return
@@ -101,19 +130,20 @@ export function PropertyCard({ property, onStatusChange }: PropertyCardProps) {
 
     return (
         <Card className="overflow-hidden group hover:shadow-2xl hover:shadow-brand-purple/10 transition-all duration-500 border-[var(--color-brand-purple)]/10 hover:border-[var(--color-brand-purple)]/30 rounded-2xl bg-white/50 backdrop-blur-sm">
-            <div className="relative aspect-video">
-                <Image
-                    src={property.thumbnailUrl || "/placeholder.svg"}
+            <div className="relative aspect-video bg-slate-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                    src={coverSrc}
                     alt={property.name}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    onError={() => setImgError(true)}
+                    className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                 <div className="absolute top-2 left-2 flex gap-1">
                     <Badge className="bg-white/90 text-slate-900 border-none shadow-sm backdrop-blur-sm flex gap-1.5 items-center px-2 py-0.5">
-                        <TypeIcon type={property.type} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">{TypeLabel({ type: property.type })}</span>
+                        <TypeIcon type={property.type} label={typeLabel} />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">{typeLabel}</span>
                     </Badge>
                 </div>
 

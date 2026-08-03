@@ -15,7 +15,6 @@ export const es = {
   },
   header: {
     myProfile: "Mi Perfil",
-    accommodation: "Alojamiento",
     users: "Usuarios",
     logout: "Cerrar Sesión",
   },

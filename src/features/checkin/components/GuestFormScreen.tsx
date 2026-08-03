@@ -6,8 +6,10 @@ import { ArrowLeft, CheckCircle2, FileText, User, Globe, Plane, Loader2, Clipboa
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
-import { CatalogService, type IdentificationTypeOption } from "@/features/auth/services/catalog-service"
+import { CatalogService, type IdentificationTypeOption, type CatalogOption } from "@/features/auth/services/catalog-service"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
+import { DocumentTypeNumberFields } from "@/features/checkin/components/DocumentTypeNumberFields"
+import { BirthdateGenderFields } from "@/features/checkin/components/BirthdateGenderFields"
 import {
     type GuestFormData,
     type GuestFormSchemaResponse
@@ -15,6 +17,7 @@ import {
 import { MAIN_GUEST_STEPS } from "@/features/checkin/data/constants"
 import { useLocalStorage } from "@/features/checkin/hooks/useLocalStorage"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
+import { clearVerificationToken } from "@/features/checkin/lib/verification-token"
 import { FormInput } from "@/features/checkin/components/FormInput"
 import { DynamicCheckinFields, areDynamicFieldsValid, getProviderUserFields } from "@/features/checkin/components/DynamicCheckinFields"
 import { CollapsibleSection } from "@/features/checkin/components/CollapsibleSection"
@@ -55,6 +58,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
     const [countriesRaw, setCountriesRaw] = useState<any[]>([])
     const [tripReasonOptions, setTripReasonOptions] = useState<Array<{ id: number; label: string }>>([])
     const [identTypes, setIdentTypes] = useState<IdentificationTypeOption[]>([])
+    const [genders, setGenders] = useState<CatalogOption[]>([])
 
     const [expanded, setExpanded] = useState({
         document: true,
@@ -72,24 +76,39 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             router.push(`${basePath}/identify`)
             return
         }
-        try {
-            const key = `checkin-verification-done-${reservationUuid}-${guestUuid}`
-            setDocVerified(localStorage.getItem(key) === 'true')
-        } catch {}
-
         const fetchSchema = async () => {
             try {
                 const catalogs = new CatalogService()
 
                 // Load catalogs independently — these must never fail because the schema fetch failed.
                 // Identification types are loaded separately, per the document country (ISO2).
-                const [countries, reasons] = await Promise.all([
+                const [countries, reasons, genderList] = await Promise.all([
                     catalogs.getCountries(),
                     catalogs.getReasonsForTrip(),
+                    catalogs.getGenders(),
                 ])
                 setCountriesRaw(countries || [])
                 setCountryOptions((countries || []).map((c: any) => ({ id: c.id, label: c.name })))
                 setTripReasonOptions((reasons || []).map((r: any) => ({ id: r.id, label: r.nameTranslations?.es || r.name })))
+                setGenders(genderList || [])
+
+                // Verification must come from backend state, never from a writable
+                // localStorage flag. This controls whether document photos can be skipped.
+                try {
+                    const portal = await checkinService.getPortal(reservationUuid)
+                    const currentGuest = portal.registeredGuests.find((guest) => guest.uuid === guestUuid)
+                    const verificationStatus = currentGuest?.verification?.status
+                    const currentStep = currentGuest?.verification?.currentStep
+                    setDocVerified(
+                        currentGuest?.isCompleted === true
+                        || verificationStatus === "approved"
+                        || verificationStatus === "completed"
+                        || currentStep === "form"
+                        || currentStep === "completed",
+                    )
+                } catch {
+                    setDocVerified(false)
+                }
 
                 // Base schema from the identify session (has prefilledData + legacy
                 // required/optional fields). The provider-declared dynamic fields (v4.6)
@@ -107,12 +126,29 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                         resSchema = resSchema
                             ? {
                                 ...resSchema,
+                                // /form is authoritative post-verification. UNION the field
+                                // lists so provider-driven fields (TRA/SIRE) render even when
+                                // the identify-session schema didn't include them. Previously
+                                // only userFields/prefilledData were merged, so /form's
+                                // required/optional fields were silently dropped and the
+                                // TRA/SIRE inputs never appeared.
+                                requiredFields: [...new Set([...(resSchema.requiredFields ?? []), ...(formSchema.requiredFields ?? [])])],
+                                optionalFields: [...new Set([...(resSchema.optionalFields ?? []), ...(formSchema.optionalFields ?? [])])],
                                 userFields: formSchema.userFields ?? resSchema.userFields,
                                 prefilledData: { ...(resSchema.prefilledData ?? {}), ...(formSchema.prefilledData ?? {}) },
                             }
                             : formSchema
                     }
-                } catch {
+                } catch (e: any) {
+                    if (e?.status === 401) {
+                        // Verification token missing/expired (OTP plan 20260731 §"Endpoints
+                        // que ahora exigen el token"): re-run /identify to get a fresh
+                        // challenge, reusing the existing "resume" flow in IdentifyScreen.
+                        clearVerificationToken(reservationUuid, guestUuid)
+                        toast.info("Tu sesión de verificación expiró. Verifica el código nuevamente.")
+                        router.push(`${basePath}/identify?guest_uuid=${guestUuid}`)
+                        return
+                    }
                     console.warn("[GuestFormScreen] /form endpoint unavailable; using identify session schema")
                 }
 
@@ -157,8 +193,17 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
 
                         setForm(prev => {
                             const updated = { ...prev } as any
+                            const schemaIncludes = (key: string) =>
+                                resSchema.requiredFields.includes(key)
+                                || resSchema.optionalFields.includes(key)
                             // prefilledData from backend: apply when field is empty OR still at its hardcoded default
                             Object.entries(resSchema.prefilledData).forEach(([k, v]) => {
+                                // Contact data is sensitive. Do not hydrate it into the
+                                // browser unless backend explicitly asks for that field.
+                                // (Moot for email/phone in practice — backend never sends
+                                // them in prefilledData, OTP plan 20260731 §1.5 — kept as
+                                // defense in depth.)
+                                if ((k === "email" || k === "phone") && !schemaIncludes(k)) return
                                 if (v !== undefined && v !== null && v !== "") {
                                     const isEmpty = updated[k] === "" || updated[k] === null || updated[k] === undefined
                                     const isAtDefault = k in HARDCODED_DEFAULTS && updated[k] == HARDCODED_DEFAULTS[k]
@@ -176,6 +221,10 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                             if ((updated.documentCountryId === "" || updated.documentCountryId == null) && updated.nationalityId) {
                                 updated.documentCountryId = Number(updated.nationalityId)
                             }
+                            // email is NOT cleared when absent from schema — it's always
+                            // required now (OTP plan 20260731), unlike phone, so wiping it
+                            // here would erase what the guest already typed on a remount.
+                            if (!schemaIncludes("phone")) updated.phone = ""
                             return updated as GuestFormData
                         })
                     }
@@ -243,7 +292,12 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
         isFieldVisible('countryDestinationId') || 
         isFieldVisible('nationalityId')
 
-    // phone and email are NOT hardcoded — they're only required when schema says so
+    // phone is NOT hardcoded — only required when schema says so. email IS
+    // hardcoded required for every guest (OTP plan 20260731): profile.email is
+    // now mandatory on /main/complete and /secondary/{uuid}/complete regardless
+    // of what the schema declares, so it can't be left to a schema flag that
+    // might not include it for every provider — that would silently block
+    // /complete with a 422 the guest has no way to fix.
     const baseValid =
         form.documentCountryId !== "" &&
         form.identificationTypeId !== "" &&
@@ -251,15 +305,25 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
         String(form.name ?? "").trim() !== "" &&
         String(form.lastname ?? "").trim() !== "" &&
         form.dateOfBirth !== "" &&
+        String(form.email ?? "").trim() !== "" &&
         (docVerified || form.documentImage1 !== null) &&
         (docVerified || isPassport || form.documentImage2 !== null)
 
-    // If the schema didn't load we don't block the button — the backend validates
-    // required fields on submit (and surfaces them via notifyError).
-    const dynamicValid = schema?.requiredFields.every(key => {
-        const val = form[key as keyof GuestFormData]
+    // Gate the button ONLY on required fields the form can actually satisfy:
+    //   • core fields  → live on `form` (camelCase, e.g. countryOfOriginId)
+    //   • dynamic ones → live on `form.dynamicExtra` (original key, e.g. company_code)
+    // A required key that belongs to NEITHER (e.g. a provider key the backend sent
+    // in `required_fields` but that has no rendered input — TRA/SIRE) must NOT block
+    // the button forever; the backend validates those on submit. This is what left
+    // the "Continuar" button permanently disabled.
+    const dynamicExtraValues = (form.dynamicExtra ?? {}) as Record<string, unknown>
+    const dynamicValid = (schema?.requiredFields ?? []).every(key => {
+        const inCore = key in form
+        const inDynamic = key in dynamicExtraValues
+        if (!inCore && !inDynamic) return true // not fillable here → leave it to the backend
+        const val = inCore ? form[key as keyof GuestFormData] : dynamicExtraValues[key]
         return val !== null && val !== "" && val !== undefined
-    }) ?? true
+    })
 
     const userFieldsValid = areDynamicFieldsValid(dynamicFields, dynamicValues)
 
@@ -269,7 +333,9 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
     const docTypeOptions = identTypes.length > 0
         ? identTypes.map((d) => ({ id: d.id, label: d.name }))
         : mockDocumentTypes.map((d) => ({ id: d.id, label: d.nameTranslations.es }))
-    const genderOptions = mockGenders.map((g) => ({ id: g.id, label: g.nameTranslations.es }))
+    const genderOptions = genders.length > 0
+        ? genders.map((g) => ({ id: Number(g.id), label: g.name }))
+        : mockGenders.map((g) => ({ id: g.id, label: g.nameTranslations.es }))
 
     const nextPath = `${basePath}/contract?guest_uuid=${guestUuid}`
 
@@ -326,15 +392,13 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                         </div>
                     )}
                     <SearchableSelect label="País del documento" options={countryOptions} value={form.documentCountryId} onChange={(v) => updateField("documentCountryId", v)} placeholder="Seleccionar país..." required />
-                    <div className="grid grid-cols-3 gap-3">
-                        <div className="col-span-1 space-y-1.5">
-                            <SearchableSelect label="Tipo Doc." options={docTypeOptions} value={form.identificationTypeId} onChange={(v) => updateField("identificationTypeId", v)} placeholder="Selec." required />
-                        </div>
-                        <div className="col-span-2 space-y-1.5">
-                            <label className="text-sm font-semibold text-slate-700">Número de Documento<span className="text-red-400 ml-0.5">*</span></label>
-                            <input type="text" value={form.identificationNumber ?? ""} onChange={(e) => updateField("identificationNumber", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" placeholder="Ej. 1234567890" />
-                        </div>
-                    </div>
+                    <DocumentTypeNumberFields
+                        docTypeOptions={docTypeOptions}
+                        documentType={form.identificationTypeId}
+                        onDocumentTypeChange={(v) => updateField("identificationTypeId", v)}
+                        documentNumber={form.identificationNumber ?? ""}
+                        onDocumentNumberChange={(v) => updateField("identificationNumber", v)}
+                    />
                 </div>
             </CollapsibleSection>
 
@@ -345,17 +409,34 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                         <FormInput label="Nombre" value={form.name} onChange={(v) => updateField("name", v)} placeholder="Ej. Ricardo" required />
                         <FormInput label="Apellidos" value={form.lastname} onChange={(v) => updateField("lastname", v)} placeholder="Ej. Lombana" required />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-slate-700">Fecha de nacimiento<span className="text-red-400 ml-0.5">*</span></label>
-                            <input type="date" value={form.dateOfBirth ?? ""} onChange={(e) => updateField("dateOfBirth", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" />
-                        </div>
-                        <div className="space-y-1.5">
-                            <SearchableSelect label="Género" options={genderOptions} value={form.genderId} onChange={(v) => updateField("genderId", v)} placeholder="Seleccionar" />
-                        </div>
-                    </div>
-                    <FormInput label="Teléfono / WhatsApp" value={form.phone} onChange={(v) => updateField("phone", v)} placeholder="+57 300 123 4567" type="tel" required />
-                    <FormInput label="Email" value={form.email} onChange={(v) => updateField("email", v)} placeholder="correo@ejemplo.com" type="email" required />
+                    <BirthdateGenderFields
+                        genderOptions={genderOptions}
+                        dateOfBirth={form.dateOfBirth ?? ""}
+                        onDateOfBirthChange={(v) => updateField("dateOfBirth", v)}
+                        gender={form.genderId}
+                        onGenderChange={(v) => updateField("genderId", v)}
+                    />
+                    {isFieldVisible("phone") && (
+                        <FormInput
+                            label="Teléfono / WhatsApp"
+                            value={form.phone}
+                            onChange={(v) => updateField("phone", v)}
+                            placeholder="+57 300 123 4567"
+                            type="tel"
+                            required={isFieldRequired("phone")}
+                        />
+                    )}
+                    {/* Always visible + required (OTP plan 20260731): profile.email is
+                        now mandatory on /main/complete for every guest, regardless of
+                        whether the backend schema flags it — see baseValid above. */}
+                    <FormInput
+                        label="Email"
+                        value={form.email}
+                        onChange={(v) => updateField("email", v)}
+                        placeholder="correo@ejemplo.com"
+                        type="email"
+                        required
+                    />
                 </div>
             </CollapsibleSection>
 

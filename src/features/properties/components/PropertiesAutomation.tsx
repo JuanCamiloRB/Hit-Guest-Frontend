@@ -17,7 +17,12 @@ import { AUTOMATION_DEFINITIONS } from "../data/automation-definitions"
 import type { PropertyAutomation, Provider } from "../types/automation"
 import { AutomationCard, type ListingMeta } from "./automations"
 
-export function PropertiesAutomation() {
+interface Props {
+    /** Jumps the parent Tabs to "documents" — where contract text + signature routing now lives. */
+    onNavigateToDocuments?: () => void
+}
+
+export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
     const { watch } = useFormContext()
     const propertyUuid: string = watch("uuid") ?? ""
 
@@ -113,6 +118,7 @@ export function PropertiesAutomation() {
                             providers={providers}
                             listings={listings}
                             onChanged={updated => handleChanged(updated, def.order)}
+                            onNavigateToDocuments={onNavigateToDocuments}
                         />
                     ))}
                 </div>
@@ -130,8 +136,15 @@ export function PropertiesAutomation() {
                             Contacta con nuestro equipo para crear flujos de trabajo a la medida de tu negocio.
                         </p>
                     </div>
-                    <Button variant="outline" size="sm" className="mt-2 font-bold flex items-center gap-2">
-                        Solicitar Automatización personalizada
+                    <Button
+                        asChild
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 font-bold flex items-center gap-2"
+                    >
+                        <a href={`mailto:soporte@hitguest.com?subject=${encodeURIComponent("Solicitud de automatización personalizada")}&body=${encodeURIComponent("Hola equipo HiTGuest,\n\nMe gustaría solicitar una automatización personalizada para mi propiedad.\n\nDescripción de lo que necesito:\n")}`}>
+                            Solicitar Automatización personalizada
+                        </a>
                     </Button>
                 </CardContent>
             </Card>
