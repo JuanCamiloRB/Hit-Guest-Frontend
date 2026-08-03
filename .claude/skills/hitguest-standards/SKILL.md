@@ -1,6 +1,6 @@
 ---
 name: hitguest-standards
-description: Reglas transversales de HitGuest Frontend — no inventar contratos, no mockear, no sobreingeniería, mantener patrones de diseño y arquitectura, verificación real (nunca simulada), y disciplina para mantener los skills del repo actualizados y vigentes. Activar en CUALQUIER tarea de código (feature, fix, review, auditoría), no solo al agregar features nuevas.
+description: Reglas transversales de HitGuest Frontend — no inventar contratos, no mockear, no sobreingeniería, mantener patrones de diseño y arquitectura, SOLID aterrizado en ejemplos reales del repo, nunca exponer API keys en el frontend, verificación real (nunca simulada), y disciplina para mantener los skills del repo actualizados y vigentes. Activar en CUALQUIER tarea de código (feature, fix, review, auditoría), no solo al agregar features nuevas.
 ---
 
 # HitGuest — Reglas de Ingeniería (transversal)
@@ -148,6 +148,68 @@ tienen que seguirlo, igual que la memoria persistente.
   o un ejemplo que ya no aplica (renombrado, eliminado, reemplazado), corregirlo
   en el momento — no dejarlo para después.
 
+## Regla 8 — SOLID, aterrizado en este repo (no en abstracto)
+
+Cada letra tiene que poder señalar un archivo real de HitGuest, no un ejemplo
+de manual. Estos son los que hoy sostienen la regla — si al leerlos ya no
+aplican, corregir esta sección (Regla 7):
+
+- **SRP** — un servicio por dominio, no un `ApiService` gigante:
+  `checkinService`, `reservationSourceService`, `systemDocumentService`,
+  `automationService` cada uno habla de una sola cosa. La lógica de sincronía
+  de documentos vive aparte en `contract-routing-sync.ts` — sin React, sin
+  fetch — y `verification-token.ts` solo sabe leer/escribir/borrar el token de
+  `sessionStorage`, nada más.
+- **OCP** — `DOC_ERROR_UI` en `VerifyScreen.tsx` es un `Record<string, {retry,
+  message}>` keyed por `errorType`. Un tipo de error OCR nuevo se agrega como
+  una entrada al record, no como un `if`/`switch` más — la rama de manejo
+  (`handleUploadError`) no se toca.
+- **ISP** — interfaces angostas en vez de una sola "Guarantee" gigante:
+  `GuaranteeStatusInfo` (status/cardBrand/cardLast4/failureReason) y
+  `GuaranteeSetupIntent` (clientSecret/publishableKey/guaranteeAmount/currency)
+  son dos tipos separados porque son dos momentos distintos del flujo — cada
+  consumidor depende solo del que necesita.
+- **DIP** — los componentes dependen de los métodos públicos del servicio, no
+  de `fetch`/`apiClient` directamente (`IdentifyScreen` llama
+  `checkinService.identify(...)`, nunca hace su propio `fetch`). Excepción
+  nombrada explícitamente: `automation-service.ts` usa `fetch` crudo en
+  `listProviders()` porque `apiClient` descarta el `meta` de paginación que ese
+  endpoint necesita — está documentado en el JSDoc del método, no escondido.
+- **LSP** — el caso más débil en este repo: no hay herencia OOP ni adapters
+  intercambiables. La aproximación más cercana son los discriminated unions
+  (`VerificationDirective`: `session | document_upload | verified_ok |
+  contact_challenge`) — cualquier `switch` que consuma el tipo tiene que poder
+  manejar las cuatro variantes sin asumir cuál llegó. No forzar un ejemplo de
+  LSP clásico donde no lo hay.
+
+## Regla 9 — Nunca exponer secretos en el frontend
+
+- **Ejemplo real y correcto ya en el repo**: `GOOGLE_MAPS_API_KEY` (sin prefijo
+  `NEXT_PUBLIC_`) se lee únicamente dentro de
+  `src/app/api/geocode/{autocomplete,details}/route.ts` — rutas BFF que corren
+  server-side. El componente cliente (`AddressAutocomplete.tsx`) llama a esa
+  ruta propia, nunca a Google directo, así que la key nunca llega al bundle
+  del navegador. Cualquier integración nueva con una API key de terceros sigue
+  este mismo patrón: BFF route + env var sin `NEXT_PUBLIC_`.
+- **Contraste que hay que entender, no copiar a ciegas**: `NEXT_PUBLIC_APP_API_TOKEN`
+  (en `src/lib/config.ts`) SÍ está expuesto a propósito — es el "app token"
+  compartido y de bajo privilegio del portal de huésped (checkin), no un
+  secreto de cuenta. Antes de marcar un `NEXT_PUBLIC_*` como problema, verificar
+  si es de este tipo (documentado como público a propósito) o si es un secreto
+  real mal puesto ahí.
+- **Stripe**: el `publishableKey` siempre viene en la respuesta del backend
+  (`GuaranteeSetupIntent.publishableKey`), nunca hardcodeado ni en env — así
+  el backend puede cambiar de cuenta test/live sin release de frontend. La
+  secret key de Stripe no aparece en ningún archivo de este repo (verificado
+  por grep) — y no debería aparecer nunca, ese cobro lo hace el backend.
+- **Token de sesión del PM**: `auth-store.ts` persiste explícitamente solo
+  `user`/`isAuthenticated` (`partialize`) — el token de sesión en sí queda
+  afuera de ese storage a propósito, no se guarda en `localStorage` vía este
+  store.
+- Antes de commitear, si se tocó algo con `process.env`, confirmar que una key
+  realmente privilegiada (no el app token de bajo privilegio) nunca lleva
+  prefijo `NEXT_PUBLIC_`.
+
 ## Qué NO hacer
 
 - No inventar ids, endpoints, shapes de respuesta, ni asumir qué URL/documento
@@ -158,6 +220,11 @@ tienen que seguirlo, igual que la memoria persistente.
 - No declarar algo estable tras una sola corrida cuando hay algo no
   determinístico de por medio.
 - No dejar un skill desactualizado sabiendo que ya no refleja el código real.
+- No poner una API key privilegiada detrás de `NEXT_PUBLIC_*`, ni asumir que
+  un `NEXT_PUBLIC_*` existente es automáticamente un problema sin revisar si
+  es de bajo privilegio a propósito (ver Regla 9).
+- No forzar un ejemplo de un principio SOLID donde el repo genuinamente no
+  tiene uno — decir explícitamente que no aplica es mejor que inventarlo.
 
 ## Skills relacionados
 
