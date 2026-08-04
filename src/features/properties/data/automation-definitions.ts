@@ -32,13 +32,13 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         providerOptions: [
             {
                 value: "didit",
-                label: "Didit — Biométrico + ID",
+                label: "Verificación avanzada",
                 description: "Reconocimiento facial y verificación de documento en tiempo real. El huésped completa la verificación directamente en el check-in.",
                 parametersSchema: [],
             },
             {
                 value: "textract",
-                label: "HIT AI — OCR de Documento",
+                label: "Verificación esencial",
                 description: "El huésped sube fotos de su documento. La IA extrae y valida los datos automáticamente.",
                 parametersSchema: [],
             },
@@ -60,13 +60,13 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         providerOptions: [
             {
                 value: "didit",
-                label: "Didit — Biométrico + ID",
+                label: "Verificación avanzada",
                 description: "Reconocimiento facial y verificación de documento en tiempo real.",
                 parametersSchema: [],
             },
             {
                 value: "textract",
-                label: "HIT AI — OCR de Documento",
+                label: "Verificación esencial",
                 description: "El huésped sube fotos de su documento. La IA extrae y valida los datos automáticamente.",
                 parametersSchema: [],
             },
