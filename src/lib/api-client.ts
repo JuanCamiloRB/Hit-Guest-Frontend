@@ -1,7 +1,6 @@
 import { ApiError, ApiErrorResponse } from "@/types/api"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { useLanguageStore } from "@/store/useLanguageStore"
-import { CONFIG } from "@/lib/config"
 
 /**
  * Handle a session-expiry 401: clear the session and bounce to /login, but only
@@ -27,9 +26,8 @@ interface RequestOptions extends RequestInit {
     /** When true, a 401 response will NOT clear the session / redirect to login. */
     suppressUnauthorizedRedirect?: boolean
     /**
-     * When true, authenticate with the shared APP token instead of the user's
-     * session token. Use ONLY for pre-login / app-level endpoints that no single
-     * account owns (login, verify-otp, resend-otp, register, public catalogs).
+     * When true, leave Authorization empty so the same-origin BFF authenticates
+     * the allowlisted pre-login/app-level endpoint with its server-only token.
      *
      * For everything else (properties, reservations, listings, documents…) leave
      * this false: those requests must be scoped to the logged-in account via the
@@ -46,7 +44,6 @@ export async function request<T>(
 ): Promise<T> {
     const state = useAuthStore.getState()
     const sessionToken = state.user?.token
-    const appToken = CONFIG.APP_API_TOKEN
     
     // Handle headers safely
     const customHeaders = options?.headers 
@@ -69,12 +66,13 @@ export async function request<T>(
     // Attach the auth token unless this is a fully public (skipAuth) endpoint.
     //
     // Token selection is EXPLICIT — no silent "session || app" fallback:
-    //   • appAuth  → shared app token (pre-login / app-level endpoints only)
+    //   • appAuth  → no browser credential; the same-origin BFF supplies the
+    //                server-only app token for allowlisted public endpoints
     //   • default  → the user's SESSION token, and ONLY that. If it's missing we
     //     send no Authorization header so the backend answers 401 (→ login),
     //     rather than leaking another account's data via the shared app token.
     if (!options?.skipAuth) {
-        const finalToken = options?.appAuth ? appToken : sessionToken
+        const finalToken = options?.appAuth ? null : sessionToken
         if (finalToken) {
             headers["Authorization"] = `Bearer ${finalToken}`
         } else if (!options?.appAuth) {

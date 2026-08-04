@@ -1,9 +1,6 @@
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL_GUEST?.replace("/auth", "") || "https://guest.hit.tools/api/v1").trim()
-const APP_TOKEN = process.env.NEXT_PUBLIC_APP_API_TOKEN || ""
-
-if (!APP_TOKEN) {
-    console.warn("[CatalogService] NEXT_PUBLIC_APP_API_TOKEN is empty — API calls will fail with 401. Check Vercel env vars and redeploy.")
-}
+const API_BASE_URL = typeof window === "undefined"
+    ? (process.env.NEXT_PUBLIC_API_URL_GUEST?.replace("/auth", "") || "https://guest.hit.tools/api/v1").trim()
+    : "/api/guest"
 
 export interface CatalogOption {
     id: string
@@ -34,7 +31,6 @@ export class CatalogService {
             "Accept-Language": "es",
             "X-Locale": "es",
         }
-        if (APP_TOKEN) headers["Authorization"] = `Bearer ${APP_TOKEN}`
         const res = await fetch(url, { headers, cache: "no-store" })
         if (!res.ok) {
             const err = await res.json().catch(() => ({}))

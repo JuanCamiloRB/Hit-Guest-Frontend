@@ -6,8 +6,7 @@
 import { apiClient } from "@/lib/api-client"
 import { keysToCamelCase } from "@/lib/utils/case-converter"
 import type { Country, CountryApiResponse, CountryFilter } from "@/types/country"
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL_GUEST || 'https://guest.hit.tools/api/v1'
+import { API_BASE } from "@/lib/config"
 
 export class CountriesService {
   /**

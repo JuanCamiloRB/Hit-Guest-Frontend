@@ -9,9 +9,6 @@ export const CONFIG = {
   API_URL_GUEST: process.env.NEXT_PUBLIC_API_URL_GUEST || "https://guest.hit.tools/api/v1",
   API_URL_HIT: process.env.NEXT_PUBLIC_API_URL_HIT || "https://guest.hit.tools/api/v1",
   
-  // App Tokens
-  APP_API_TOKEN: process.env.NEXT_PUBLIC_APP_API_TOKEN || "",
-  
   // Feature Flags
   ENABLE_MOCKS: process.env.NEXT_PUBLIC_ENABLE_MOCKS === "true",
   
@@ -20,4 +17,9 @@ export const CONFIG = {
 };
 
 // Common derived paths
-export const API_BASE = CONFIG.API_URL_GUEST.replace(/\/$/, "");
+// Browser requests go through the same-origin BFF so the shared application
+// token never enters the client bundle. Server-only code may still call the
+// backend directly through CONFIG.API_URL_GUEST.
+export const API_BASE = typeof window === "undefined"
+  ? CONFIG.API_URL_GUEST.replace(/\/$/, "")
+  : "/api/guest";

@@ -1,6 +1,6 @@
 import { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
-import { checkinService } from "@/features/checkin/services/checkin-service"
+import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
 import { VerifyScreen } from "@/features/checkin/components/VerifyScreen"
 
 export const metadata: Metadata = {
@@ -22,7 +22,7 @@ export default async function SecondaryVerifyPage({
             redirect(`/checkin/${resolvedParams.reference}/s/${resolvedParams.guestToken}/identify`)
         }
 
-        const status = await checkinService.getSecondaryGateStatus(resolvedParams.reference, resolvedParams.guestToken)
+        const status = await checkinServerService.getSecondaryGateStatus(resolvedParams.reference, resolvedParams.guestToken)
         if (!status.mainGuestCompleted) return notFound()
 
         const basePath = `/checkin/${resolvedParams.reference}/s/${resolvedParams.guestToken}`

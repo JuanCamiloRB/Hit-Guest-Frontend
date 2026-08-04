@@ -1,3 +1,5 @@
+import "server-only"
+
 /**
  * Server-side API helper for Next.js API Routes (BFF layer).
  *

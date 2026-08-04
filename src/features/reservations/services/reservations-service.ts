@@ -405,7 +405,6 @@ export class ReservationsService {
                 "Accept": "application/json",
                 "Content-Type": "application/json",
             }
-            if (CONFIG.APP_API_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
             const response = await fetch(url, { headers, cache: "no-store" })
             if (response.ok) {
                 const json: any = await response.json()

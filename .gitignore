@@ -23,6 +23,15 @@
 # misc
 .DS_Store
 *.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+credentials*.json
+service-account*.json
+google-services.json
+GoogleService-Info.plist
 
 # debug
 npm-debug.log*
@@ -32,6 +41,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel

@@ -1,6 +1,6 @@
 import { WelcomeScreen } from "@/features/checkin/components/WelcomeScreen"
 import { PortalStatusScreen } from "@/features/checkin/components/PortalStatusScreen"
-import { checkinService } from "@/features/checkin/services/checkin-service"
+import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
 
 export default async function CheckinByExternalPage({
     params,
@@ -10,7 +10,7 @@ export default async function CheckinByExternalPage({
     const resolvedParams = await params;
 
     try {
-        const portal = await checkinService.getPortal(resolvedParams.reference)
+        const portal = await checkinServerService.getPortal(resolvedParams.reference)
         const basePath = `/checkin/${resolvedParams.reference}/${resolvedParams.listingUuid}/${resolvedParams.externalId}`
 
         // v4.5: cancelled (29) / deleted (108) reservations return only a status + message.

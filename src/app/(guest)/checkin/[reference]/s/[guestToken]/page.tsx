@@ -1,6 +1,6 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { checkinService } from "@/features/checkin/services/checkin-service"
+import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
 import { SecondaryGateScreen } from "@/features/checkin/components/SecondaryGateScreen"
 
 export const metadata: Metadata = {
@@ -15,7 +15,7 @@ export default async function SecondaryGatePage({
     const resolvedParams = await params;
 
     try {
-        const status = await checkinService.getSecondaryGateStatus(resolvedParams.reference, resolvedParams.guestToken)
+        const status = await checkinServerService.getSecondaryGateStatus(resolvedParams.reference, resolvedParams.guestToken)
         const basePath = `/checkin/${resolvedParams.reference}/s/${resolvedParams.guestToken}`
         
         return <SecondaryGateScreen status={status} basePath={basePath} />

@@ -1,5 +1,5 @@
 import { IdentifyScreen } from "@/features/checkin/components/IdentifyScreen"
-import { checkinService } from "@/features/checkin/services/checkin-service"
+import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
 import { redirect } from "next/navigation"
 
 export default async function CheckinIdentifyPage({ 
@@ -17,7 +17,7 @@ export default async function CheckinIdentifyPage({
     // Check their current verification step to route them to the right screen.
     if (resolvedSearch.guest_uuid) {
         try {
-            const portal = await checkinService.getPortal(resolvedParams.reference)
+            const portal = await checkinServerService.getPortal(resolvedParams.reference)
             const guest = portal.registeredGuests.find(g => g.uuid === resolvedSearch.guest_uuid)
             const currentStep = guest?.verification?.currentStep
 
@@ -39,7 +39,7 @@ export default async function CheckinIdentifyPage({
     }
 
     try {
-        await checkinService.getPortal(resolvedParams.reference)
+        await checkinServerService.getPortal(resolvedParams.reference)
         return <IdentifyScreen reservationUuid={resolvedParams.reference} basePath={basePath} />
     } catch (error) {
         return <div className="text-center p-8">Reserva no encontrada</div>

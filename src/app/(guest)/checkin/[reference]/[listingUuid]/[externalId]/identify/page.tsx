@@ -1,5 +1,5 @@
 import { IdentifyScreen } from "@/features/checkin/components/IdentifyScreen"
-import { checkinService } from "@/features/checkin/services/checkin-service"
+import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
 
 export default async function CheckinIdentifyByExternalPage({
     params,
@@ -9,7 +9,7 @@ export default async function CheckinIdentifyByExternalPage({
     const resolvedParams = await params;
 
     try {
-        await checkinService.getPortal(resolvedParams.reference)
+        await checkinServerService.getPortal(resolvedParams.reference)
         const basePath = `/checkin/${resolvedParams.reference}/${resolvedParams.listingUuid}/${resolvedParams.externalId}`
 
         return <IdentifyScreen reservationUuid={resolvedParams.reference} basePath={basePath} />

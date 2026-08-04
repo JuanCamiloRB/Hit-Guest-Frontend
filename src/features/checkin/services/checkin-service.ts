@@ -1,4 +1,4 @@
-import { API_BASE, CONFIG } from "@/lib/config"
+import { API_BASE } from "@/lib/config"
 import {
   CheckinReservationV4,
   CheckinPortalResponse,
@@ -164,7 +164,6 @@ export class CheckinService {
             "Accept-Language": "es",
             "X-Locale": "es",
         }
-        if (CONFIG.APP_API_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
         const response = await fetch(url, { headers, cache: "no-store" })
         if (!response.ok) {
             const err = await response.json().catch(() => ({}))
@@ -422,7 +421,6 @@ export class CheckinService {
             "Accept-Language": "es",
             "X-Locale": "es",
         }
-        if (CONFIG.APP_API_TOKEN) uploadHeaders["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
         const uploadRes = await fetch(
             `${API_BASE}/checkin/${reservationUuid}/secondary/${guestUuid}/documents`,
             { method: "POST", headers: uploadHeaders, body: payload }
@@ -537,7 +535,6 @@ export class CheckinService {
      */
     async renderDocument(reservationUuid: string, documentUuid: string): Promise<string> {
         const headers: Record<string, string> = { "Accept": "application/json" }
-        if (CONFIG.APP_API_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
         const res = await fetch(
             `${API_BASE}/checkin/${reservationUuid}/documents/${documentUuid}/render`,
             { headers, cache: "no-store" }
@@ -574,7 +571,6 @@ export class CheckinService {
      */
     async openDocumentPdf(reservationUuid: string, documentUuid: string): Promise<void> {
         const headers: Record<string, string> = { "Accept": "application/pdf" }
-        if (CONFIG.APP_API_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
         const res = await fetch(
             `${API_BASE}/checkin/${reservationUuid}/documents/${documentUuid}/pdf`,
             { headers, cache: "no-store" }
@@ -624,7 +620,7 @@ export class CheckinService {
             return { matched: true, hasExistingData: true, docsValid: true, preFilledData: { name: 'Ricardo', lastname: 'Lombana' } };
         }
         const url = `${API_BASE}/checkin/${uuid}/guest/${guestUuid}/facematch`;
-        const res = await fetch(url, { headers: { "Authorization": `Bearer ${CONFIG.APP_API_TOKEN}` } });
+        const res = await fetch(url, { headers: { "Accept": "application/json" } });
         return res.json();
     }
 
@@ -654,7 +650,7 @@ export class CheckinService {
 
     async getActiveAutomations(uuid: string): Promise<ActiveAutomation[]> {
         if (USE_MOCK) return mockCheckinReservation.activeAutomations;
-        const res = await fetch(`${API_BASE}/checkin/${uuid}/automations`, { headers: { "Authorization": `Bearer ${CONFIG.APP_API_TOKEN}` } });
+        const res = await fetch(`${API_BASE}/checkin/${uuid}/automations`, { headers: { "Accept": "application/json" } });
         const json = await res.json();
         return json.data || json;
     }
@@ -684,7 +680,6 @@ export class CheckinService {
             "X-Locale": "es",
             ...extraHeaders,
         }
-        if (CONFIG.APP_API_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
         const response = await fetch(url, { headers, cache: "no-store" })
         if (!response.ok) {
             const err = await response.json().catch(() => ({}))
@@ -735,7 +730,6 @@ export class CheckinService {
             "X-Locale": "es",
             ...extraHeaders,
         }
-        if (CONFIG.APP_API_TOKEN) headers["Authorization"] = `Bearer ${CONFIG.APP_API_TOKEN}`
         const response = await fetch(url, {
             method: "POST",
             headers,
@@ -756,7 +750,6 @@ export class CheckinService {
     private async fetchWithToken(url: string): Promise<CheckinReservationV4> {
         const response = await fetch(url, {
             headers: {
-                "Authorization": `Bearer ${CONFIG.APP_API_TOKEN}`,
                 "Content-Type": "application/json",
                 "Accept": "application/json"
             },
