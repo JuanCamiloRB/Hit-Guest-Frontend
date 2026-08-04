@@ -226,6 +226,50 @@ export interface ReservationDetailData {
  * We only detect the envelope and shout, because the failure mode is invisible:
  * consumers would just see fewer reservations and read the gap as "no activity".
  */
+interface ListingLookupEntry {
+    propertyId: string
+    propertyName: string
+    unitName: string
+}
+
+/**
+ * Resolves listingUuid → {propertyId, propertyName, unitName} for the whole
+ * account, once per `fetchList()` call.
+ *
+ * `GET /reservations` does NOT reliably nest a usable property inside its
+ * `listing` field (confirmed by getById()'s own workaround, and by
+ * listingsService.listByProperty()'s comment about the flat
+ * `/listings?property_uuid=` query having leaked listings across properties
+ * in the past — Ricardo, jul 2026). The only route documented as
+ * account-scoped and correct is the nested `/properties/{uuid}/listings`, so
+ * that's what this builds the map from, instead of trusting anything on the
+ * raw reservation shape.
+ */
+async function buildListingLookup(): Promise<Map<string, ListingLookupEntry>> {
+    const map = new Map<string, ListingLookupEntry>()
+    try {
+        const properties = await propertiesService.list()
+        await Promise.all(
+            properties.map(async (property) => {
+                const listings = await listingsService.listByProperty(property.uuid)
+                for (const listing of listings) {
+                    if (!listing?.uuid) continue
+                    map.set(listing.uuid, {
+                        propertyId: property.uuid,
+                        propertyName: property.name,
+                        unitName: listing.internalName || listing.internal_name
+                            ? `${listing.name ?? "Alojamiento"} (${listing.internalName ?? listing.internal_name})`
+                            : listing.name || "Alojamiento",
+                    })
+                }
+            }),
+        )
+    } catch (error) {
+        console.error("[ReservationsService] No se pudo construir el mapa de propiedades/alojamientos:", error)
+    }
+    return map
+}
+
 function warnIfPaginated(response: unknown): void {
     const meta = (response as { meta?: Record<string, unknown> } | null)?.meta
     if (!meta) return
@@ -559,7 +603,11 @@ export class ReservationsService {
         const url = `${API_BASE}/reservations`
 
         try {
-            const response = await apiClient.get<any>(url)
+            // Independent requests — run together instead of one blocking the other.
+            const [response, listingLookup] = await Promise.all([
+                apiClient.get<any>(url),
+                buildListingLookup(),
+            ])
 
             // Extract array from standard { success: true, data: [...] } structure
             const dataArray = response?.data && Array.isArray(response.data)
@@ -572,6 +620,10 @@ export class ReservationsService {
             // and the Tablero's consumption history would under-report old months as
             // real zeros. Fail loudly instead of quietly lying.
             warnIfPaginated(response)
+
+            // Only fires once per fetchList() call (not once per unmatched reservation)
+            // — this is a config/contract signal, not per-row spam.
+            let unmatchedListings = 0
 
             const reservations = dataArray.map((r: any): Reservation => {
                 const checkIn = parseCalendarDate(r.arrivalDate || r.arrival_date)
@@ -590,14 +642,31 @@ export class ReservationsService {
                 if (srcSlug.toLowerCase().includes("airbnb")) sourceName = "Airbnb"
                 else if (srcSlug.toLowerCase().includes("booking")) sourceName = "Booking"
 
-                // ── Listing / Property: API returns listing as nested object ──
+                // ── Listing / Property ──
+                // GET /reservations does not reliably nest a usable property inside
+                // `listing` (see buildListingLookup()'s JSDoc) — so resolve via the
+                // account-wide listing→property map built from the documented-correct
+                // nested route, not from assuming one shape of the raw reservation.
+                // Try every documented candidate for the listing's own UUID, since the
+                // exact field name here isn't confirmed by any single doc in this repo.
                 const listing = r.listing || {}
-                const property = listing?.property || {}
+                const listingUuid: string | undefined =
+                    listing?.uuid || r.listingUuid || r.listing_uuid || undefined
+                const resolved = listingUuid ? listingLookup.get(listingUuid) : undefined
 
-                const propertyName = property?.name || listing?.name || "Propiedad Desconocida"
-                const propertyId = property?.uuid || listing?.propertyUuid || listing?.property_uuid || ""
-                const unitName = listing?.name || "Alojamiento"
-                const unitId = listing?.uuid || r.listingId?.toString() || r.listing_id?.toString() || ""
+                if (!resolved) unmatchedListings++
+
+                const propertyName = resolved?.propertyName
+                    || listing?.property?.name
+                    || listing?.name
+                    || "Propiedad Desconocida"
+                const propertyId = resolved?.propertyId
+                    || listing?.property?.uuid
+                    || listing?.propertyUuid
+                    || listing?.property_uuid
+                    || ""
+                const unitName = resolved?.unitName || listing?.name || "Alojamiento"
+                const unitId = listingUuid || r.listingId?.toString() || r.listing_id?.toString() || ""
 
                 // ── Status mapping from API statusReservation ──
                 let status: Reservation["status"] = "CONFIRMED"
@@ -623,6 +692,16 @@ export class ReservationsService {
                     totalPrice: Number(r.totalPrice || r.total_price || 0),
                 }
             })
+
+            if (unmatchedListings > 0 && listingLookup.size > 0) {
+                console.error(
+                    `[reservations] ${unmatchedListings}/${reservations.length} reservas no pudieron unirse al mapa ` +
+                        `de propiedades/alojamientos — ninguna de las claves candidatas (listing.uuid, listingUuid, ` +
+                        `listing_uuid) coincidió con un listing conocido. El filtro de "Propiedades"/"Alojamientos" ` +
+                        `en el calendario de Operaciones mostrará "Propiedad Desconocida"/"Alojamiento" para esas ` +
+                        `reservas — confirmar con backend el campo real que identifica el listing en GET /reservations.`,
+                )
+            }
 
             // Fetch automation status for each reservation in parallel
             const statusResults = await Promise.allSettled(

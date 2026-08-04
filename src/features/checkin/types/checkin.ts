@@ -186,6 +186,11 @@ export interface CheckinPortalResponse {
   documents?: PortalDocument[]
   /** v4.4: contract signing config + state. Absent on older backends. */
   contract?: PortalContractInfo
+  /**
+   * Access codes are only exposed after every guest completes check-in. Older
+   * backends omit this field; the portal remains functional with documents only.
+   */
+  smartlockCodes?: SmartlockCode[]
 }
 
 /** Each guest attached to the reservation via pivot */

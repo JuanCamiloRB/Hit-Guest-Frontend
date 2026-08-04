@@ -59,6 +59,8 @@ export interface Provider {
       tokenAbilities: string[]
     }
     billing: { billable: boolean; unit_cost: number }
+    /** ISO2 country codes where this provider applies, or ["ALL"]. */
+    applicable_countries?: string[]
     /**
      * Present only on signature-capable providers (tufirma, hitguest_signature).
      * `contract_types` is the SOURCE OF TRUTH for which contract_type a
@@ -188,7 +190,8 @@ export interface PropertyAutomationUpdatePayload {
  * Primary endpoint for activation/deactivation and provider-specific config.
  *   Activate:   { statusProviderId: 8, providerId: <id>, parameters: { ... } }
  *   Deactivate: { statusProviderId: 10 }
- * Note: Digital Contract (executionOrder=3) cannot be deactivated — API returns 422.
+ * Digital Contract is identified by provider.parameters.signature and cannot
+ * be deactivated. Its executionOrder is country-dependent.
  */
 export interface PropertyAutomationConfigurePayload {
   statusProviderId: AutomationStatus    // required
@@ -211,25 +214,25 @@ export interface TTLockLock {
   type: LockType
 }
 
-/** TTLock provider parameters (executionOrder 4, slug: "ttlock") */
+/** TTLock provider parameters (slug: "ttlock") */
 export interface TTLockParameters {
   username: string
   password: string
   locks: TTLockLock[]
 }
 
-/** PDF Report provider parameters (executionOrder 5, slug: "pdf-report") */
+/** PDF Report provider parameters (slug: "pdf-report") */
 export interface PdfReportParameters {
   recipients: string[]                  // min 1 valid email
 }
 
-/** TRA Colombia provider parameters (executionOrder 6, slug: "tra-colombia") */
+/** TRA Colombia provider parameters (slug: "tra-colombia") */
 export interface TraColombiaParameters {
   token: string
   rnt: string
 }
 
-/** SIRE Colombia provider parameters (executionOrders 7-8, slug: "sire-colombia") */
+/** SIRE Colombia provider parameters (slug: "sire-colombia") */
 export interface SireColombiaParameters {
   document_type: string
   document_number: string
@@ -397,12 +400,6 @@ export const AUTOMATION_STATUS = {
 export const AUTOMATION_ORDERS = {
   IDENTITY_VERIFICATION_MAIN: 1,
   IDENTITY_VERIFICATION_SECONDARY: 2,
-  DIGITAL_CONTRACT: 3,
-  SMART_LOCK_CODES: 4,
-  GUEST_REPORT_PDF: 5,
-  TRA_COLOMBIA: 6,
-  SIRE_COLOMBIA_CHECKIN: 7,
-  SIRE_COLOMBIA_CHECKOUT: 8,
 } as const
 
 export const GUEST_TYPE_LABELS: Record<GuestType, string> = {

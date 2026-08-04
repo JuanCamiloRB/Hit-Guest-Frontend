@@ -45,6 +45,29 @@ export const FAILED_AFTER_SUCCESS_META: StatusMeta = {
     dot: "bg-orange-500",
 }
 
+/**
+ * For a secondary-guest automation (e.g. "Identity Verification - Secondary
+ * Guest") on a reservation with only 1 total guest: there is no secondary
+ * guest to run it for, so "No iniciado" reads as "this will run eventually",
+ * which is wrong — it never will. Distinct from `not_started` so it's visibly
+ * not just another pending state.
+ */
+export const NOT_APPLICABLE_META: StatusMeta = {
+    label: "No aplica",
+    badge: "bg-slate-50 text-slate-400 border-slate-100",
+    dot: "bg-slate-200",
+}
+
+/**
+ * `AutomationStatusItem` has no structured `guestType` field (unlike the
+ * property-automation config types) — the live-status endpoint only returns a
+ * free-text `automationName`, so this is the only signal available to tell a
+ * secondary-guest automation apart from the main-guest one.
+ */
+export function isSecondaryGuestAutomation(automationName: string): boolean {
+    return /second|secundari/i.test(automationName)
+}
+
 /** Status meta for an item, using the orange variant for a post-success failure. */
 export function getStatusMeta(
     item: Pick<AutomationStatusItem, "status" | "wasSuccessful">,

@@ -12,8 +12,9 @@ import {
     Send,
     Globe,
     ClipboardList,
+    Sparkles,
 } from "lucide-react"
-import type { AutomationDefinition, ParameterFieldSchema } from "../types/automation"
+import { isSignatureProvider, type AutomationDefinition, type ParameterFieldSchema, type PropertyAutomation } from "../types/automation"
 
 export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
     // ── Order 1: Identity Verification (Main Guest) ──────────────────
@@ -392,6 +393,68 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         ],
     },
 ]
+
+const DEFINITION_BY_ID = new Map(AUTOMATION_DEFINITIONS.map((definition) => [definition.id, definition]))
+
+function normalizedSlug(value: string | null | undefined): string {
+    return (value ?? "").toLowerCase().replace(/[^a-z0-9]/g, "")
+}
+
+/**
+ * Maps an API automation to UI metadata without using executionOrder for any
+ * non-identity automation. Unknown future providers still render as a generic
+ * card, so adding a backend provider never makes the row disappear.
+ */
+export function definitionForAutomation(automation: PropertyAutomation): AutomationDefinition {
+    if (automation.executionOrder <= 2) {
+        const identityId = automation.guestType === "secondary_guest"
+            ? "identity-verification-secondary"
+            : "identity-verification-main"
+        return { ...DEFINITION_BY_ID.get(identityId)!, order: automation.executionOrder }
+    }
+
+    if (automation.provider && isSignatureProvider(automation.provider)) {
+        return { ...DEFINITION_BY_ID.get("digital-contract")!, order: automation.executionOrder }
+    }
+
+    const slug = normalizedSlug(
+        automation.provider?.parameters?.slug
+        ?? automation.providerName
+        ?? automation.name,
+    )
+    let id: string | null = null
+    if (slug.includes("ttlock")) id = "smart-lock-codes"
+    else if (slug.includes("pdfreport")) id = "guest-report-pdf"
+    else if (slug.includes("tracolombia")) id = "tra-colombia"
+    else if (slug.includes("sirecolombia")) {
+        id = /out|salida/i.test(automation.name) ? "sire-colombia-checkout" : "sire-colombia-checkin"
+    }
+
+    if (id) return { ...DEFINITION_BY_ID.get(id)!, order: automation.executionOrder }
+
+    const providerSlug = automation.provider?.parameters?.slug ?? automation.providerName ?? ""
+    return {
+        order: automation.executionOrder,
+        id: `automation-${automation.uuid}`,
+        title: automation.name || automation.provider?.name || "Automatización",
+        description: automation.provider?.description || "Automatización configurada para esta propiedad.",
+        icon: Sparkles,
+        color: "text-slate-500",
+        bgColor: "bg-slate-50",
+        providerOptions: providerSlug ? [{
+            value: providerSlug,
+            label: automation.provider?.name || providerSlug,
+            description: automation.provider?.description || "Proveedor configurado por el backend.",
+            parametersSchema: [],
+            providerId: automation.providerId ?? undefined,
+        }] : [],
+        guestType: automation.guestType === "main_guest"
+            ? "main"
+            : automation.guestType === "secondary_guest" ? "secondary" : "all",
+        requiresConfig: false,
+        isMandatory: false,
+    }
+}
 
 /** Normalizes a provider slug/path so `sire_colombia` and `sire-colombia` both match. */
 function normalizeSlug(slug: string | null | undefined): string {

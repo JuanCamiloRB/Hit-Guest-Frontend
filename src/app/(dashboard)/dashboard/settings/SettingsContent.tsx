@@ -105,7 +105,7 @@ export function SettingsContent() {
                         <CardDescription>
                             {activeTab === "profile" && "Actualiza tu información personal y cuenta de acceso."}
                             {activeTab === "team" && "Administra los usuarios secundarios y sus permisos."}
-                            {activeTab === "integrations" && "Conecta tu PMS, Airbnb y otras integraciones."}
+                            {activeTab === "integrations" && "Conecta tus PMS y canales de venta desde un solo lugar."}
                             {activeTab === "billing" && "Consulta tu saldo, recarga créditos y revisa tus transacciones."}
                         </CardDescription>
                     </CardHeader>

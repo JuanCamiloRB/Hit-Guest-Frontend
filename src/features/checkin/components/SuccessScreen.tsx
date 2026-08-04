@@ -7,7 +7,8 @@ import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { checkinService } from "@/features/checkin/services/checkin-service"
-import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
+import { isMainGuestCompleted, pendingGuestsCount, type CheckinPortalResponse } from "@/features/checkin/types/checkin"
+import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
 
 interface ReservationDocument {
     uuid: string
@@ -23,10 +24,11 @@ interface SuccessScreenProps {
 export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
     const res = portal.reservation;
     const searchParams = useSearchParams()
-    const isMainDone = searchParams.get("main_done") === "true"
-    const pendingGuests = Number(searchParams.get("pending") ?? "0")
+    const mainCompleted = isMainGuestCompleted(portal)
+    const pendingGuests = Math.max(0, pendingGuestsCount(portal))
+    const isMainDone = searchParams.get("main_done") === "true" || (mainCompleted && !portal.progress.isFullyCompleted)
     const contractPending = searchParams.get("contract_pending") === "1"
-    const hasPendingSecondaries = isMainDone && pendingGuests > 0
+    const hasPendingSecondaries = mainCompleted && pendingGuests > 0
     const welcomeHref = `/checkin/${reservationUuid}`
 
     const [documents, setDocuments] = useState<ReservationDocument[]>([])
@@ -214,6 +216,10 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                     </div>
                 </div>
             </div>
+
+            {mainCompleted && (
+                <AccessInstructionsPanel portal={portal} unlocked={portal.progress.isFullyCompleted} />
+            )}
 
             {docsLoading ? (
                 <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-3 w-full max-w-sm">

@@ -30,35 +30,6 @@ import type { PropertyAutomation } from "./automation"
 
 // ── API Payload Types (what the backend expects in camelCase) ──
 
-/** Automation item for POST /properties automations array */
-export interface PropertyAutomationSeedItem {
-    name: string
-    providerSlug: string | null
-    guestType: "main_guest" | "secondary_guest" | "all"
-    executionOrder: number
-    statusProviderId: 8 | 10
-    parameters: Record<string, unknown>
-}
-
-/**
- * Default 8 automations required by POST /properties.
- * Backend validates: must include identity verification for main_guest + tufirma.
- */
-// ALL seeded INACTIVE (statusProviderId 10): on create the PM hasn't opened the
-// Automations tab yet (it only exists after the property is saved), so nothing
-// should be pre-activated — an active automation with no chosen provider/config
-// could fire a job. Provider slugs are snake_case, the backend's canonical form.
-export const DEFAULT_AUTOMATIONS: PropertyAutomationSeedItem[] = [
-    { name: "Identity Verification - Main Guest",       providerSlug: "didit",        guestType: "main_guest",      executionOrder: 1, statusProviderId: 10, parameters: { _init: true } },
-    { name: "Identity Verification - Secondary Guests", providerSlug: "didit",        guestType: "secondary_guest", executionOrder: 2, statusProviderId: 10, parameters: { _init: true } },
-    { name: "Digital Contract",                         providerSlug: "tufirma",      guestType: "main_guest",      executionOrder: 3, statusProviderId: 10, parameters: { _init: true } },
-    { name: "Smart Lock Codes",                         providerSlug: "ttlock",       guestType: "all",             executionOrder: 4, statusProviderId: 10, parameters: { _init: true } },
-    { name: "Guest Report PDF",                         providerSlug: "pdf_report",   guestType: "all",             executionOrder: 5, statusProviderId: 10, parameters: { _init: true } },
-    { name: "TRA Colombia",                             providerSlug: "tra_colombia", guestType: "all",             executionOrder: 6, statusProviderId: 10, parameters: { _init: true } },
-    { name: "SIRE Colombia - Check-in",                 providerSlug: "sire_colombia",guestType: "all",             executionOrder: 7, statusProviderId: 10, parameters: { _init: true } },
-    { name: "SIRE Colombia - Check-out",                providerSlug: "sire_colombia",guestType: "all",             executionOrder: 8, statusProviderId: 10, parameters: { _init: true } },
-]
-
 export interface PropertyApiPayload {
     name: string
     description?: string | null
@@ -74,8 +45,6 @@ export interface PropertyApiPayload {
     timezone?: string | null
     statusRecordId: number
     propertyTypeId: number
-    /** Only sent on POST /properties (ignored on PATCH/PUT) */
-    automations?: PropertyAutomationSeedItem[]
     extra?: {
         picturesUrl?: string[]
         checkIn?: string | null

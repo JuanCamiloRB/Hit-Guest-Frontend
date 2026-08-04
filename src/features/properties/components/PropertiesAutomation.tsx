@@ -11,11 +11,25 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { automationService } from "../services/automation-service"
+import { automationService, canonicalSlug } from "../services/automation-service"
 import { listingsService } from "../services/listings-service"
-import { AUTOMATION_DEFINITIONS } from "../data/automation-definitions"
+import { definitionForAutomation } from "../data/automation-definitions"
+import { catalogService } from "@/features/auth/services/catalog-service"
 import type { PropertyAutomation, Provider } from "../types/automation"
 import { AutomationCard, type ListingMeta } from "./automations"
+
+interface CountryCatalogItem {
+    id: string | number
+    iso2?: string
+    extra?: { iso2?: string }
+}
+
+interface PropertyListingRow {
+    uuid: string
+    name?: string | null
+    internalName?: string | null
+    internal_name?: string | null
+}
 
 interface Props {
     /** Jumps the parent Tabs to "documents" — where contract text + signature routing now lives. */
@@ -25,50 +39,95 @@ interface Props {
 export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
     const { watch } = useFormContext()
     const propertyUuid: string = watch("uuid") ?? ""
+    const countryId: number | undefined = watch("countryId")
 
     const [automations, setAutomations] = useState<PropertyAutomation[]>([])
     const [providers, setProviders] = useState<Provider[]>([])
+    const [countryProviderSlugs, setCountryProviderSlugs] = useState<string[]>([])
     const [listings, setListings] = useState<ListingMeta[]>([])
-    const [loading, setLoading] = useState(false)
+    const [completedRequestKey, setCompletedRequestKey] = useState("")
+    const [loadFailure, setLoadFailure] = useState<{ key: string; message: string } | null>(null)
+    const requestKey = `${propertyUuid}:${countryId ?? ""}`
+    const loading = !!propertyUuid && completedRequestKey !== requestKey
+    const loadError = loadFailure?.key === requestKey ? loadFailure.message : null
 
-    // Load providers once (not bound to a specific property)
-    useEffect(() => {
-        automationService.listProviders({ statusProviderId: 8 })
-            .then(setProviders)
-            .catch(() => setProviders([]))
-    }, [])
-
-    // Load automations + listings in parallel when the property is known
+    // The backend creates a country-specific automation map. Load exactly that
+    // map (with providers sideloaded) and filter the provider catalog by the
+    // property's ISO2 — never render the old universal 1..8 template.
     useEffect(() => {
         if (!propertyUuid) return
-        setLoading(true)
+        let active = true
 
-        Promise.allSettled([
-            automationService.listGlobal({ propertyUuid }),
-            listingsService.listByProperty(propertyUuid),
-        ]).then(([automationsResult, listingsResult]) => {
-            setAutomations(
-                automationsResult.status === "fulfilled" ? automationsResult.value : []
-            )
+        const load = async () => {
+            const countries = await catalogService.getCountries() as CountryCatalogItem[]
+            const country = countries.find(item => Number(item.id) === Number(countryId))
+            const countryIso2 = country?.extra?.iso2 ?? country?.iso2
+            if (!countryIso2) {
+                throw new Error("No se pudo resolver el país de la propiedad.")
+            }
+
+            const [automationRows, providerRows, listingRows] = await Promise.all([
+                automationService.list(propertyUuid, { includeProvider: true }),
+                automationService.listProviders({ statusProviderId: 8, country: countryIso2 }),
+                listingsService.listByProperty(propertyUuid),
+            ])
+
+            if (!active) return
+            setLoadFailure(null)
+            setAutomations([...automationRows].sort((a, b) => a.executionOrder - b.executionOrder))
+            // Preserve a currently configured provider even if it was deactivated
+            // after configuration; otherwise its selector would appear blank.
+            const providerMap = new Map(providerRows.map((provider) => [provider.id, provider]))
+            for (const automation of automationRows) {
+                if (automation.provider) providerMap.set(automation.provider.id, automation.provider)
+            }
+            setProviders(Array.from(providerMap.values()))
+            setCountryProviderSlugs(providerRows.map(provider => canonicalSlug(
+                provider.parameters?.slug ?? provider.parameters?.internalUse?.path,
+            )))
             setListings(
-                listingsResult.status === "fulfilled"
-                    ? listingsResult.value.map((l: any) => ({
-                        uuid: l.uuid,
-                        name: l.name ?? "Unidad sin nombre",
-                        internalName: l.internalName ?? l.internal_name ?? null,
-                    }))
-                    : []
+                (listingRows as PropertyListingRow[]).map(l => ({
+                    uuid: l.uuid,
+                    name: l.name ?? "Unidad sin nombre",
+                    internalName: l.internalName ?? l.internal_name ?? null,
+                }))
             )
-        }).finally(() => setLoading(false))
-    }, [propertyUuid])
+        }
 
-    const handleChanged = useCallback((updated: PropertyAutomation | null, order: number) => {
+        load()
+            .catch((error) => {
+                console.error("[PropertiesAutomation] load error:", error)
+                if (active) {
+                    setAutomations([])
+                    setProviders([])
+                    setCountryProviderSlugs([])
+                    setListings([])
+                    setLoadFailure({
+                        key: requestKey,
+                        message: error instanceof Error ? error.message : "No se pudieron cargar las automatizaciones.",
+                    })
+                }
+            })
+            .finally(() => { if (active) setCompletedRequestKey(requestKey) })
+
+        return () => { active = false }
+    }, [propertyUuid, countryId, requestKey])
+
+    const handleChanged = useCallback((updated: PropertyAutomation | null, automationUuid: string) => {
         setAutomations(prev => {
-            if (!updated) return prev.filter(a => a.executionOrder !== order)
-            const exists = prev.some(a => a.executionOrder === order)
+            if (!updated) return prev.filter(a => a.uuid !== automationUuid)
+            const previous = prev.find(a => a.uuid === automationUuid)
+            const merged = previous ? {
+                ...updated,
+                // Some configure responses omit sideloaded provider data. Keep it
+                // until the next full refresh so semantic routing remains stable.
+                provider: updated.provider ?? previous.provider,
+                providerName: updated.providerName ?? previous.providerName,
+            } : updated
+            const exists = previous != null
             return exists
-                ? prev.map(a => a.executionOrder === order ? updated : a)
-                : [...prev, updated]
+                ? prev.map(a => a.uuid === automationUuid ? merged : a)
+                : [...prev, merged].sort((a, b) => a.executionOrder - b.executionOrder)
         })
     }, [])
 
@@ -102,6 +161,13 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             )}
 
             {/* Automation cards grid */}
+            {loadError && (
+                <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
+                    <AlertCircle size={18} className="text-red-500 shrink-0" />
+                    <p className="text-sm text-red-700">{loadError}</p>
+                </div>
+            )}
+
             {loading ? (
                 <div className="flex items-center justify-center py-12 gap-3 text-slate-400">
                     <Loader2 size={22} className="animate-spin" />
@@ -109,18 +175,37 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4">
-                    {AUTOMATION_DEFINITIONS.map(def => (
-                        <AutomationCard
-                            key={def.order}
-                            definition={def}
-                            automation={automations.find(a => a.executionOrder === def.order) ?? null}
-                            propertyUuid={propertyUuid}
-                            providers={providers}
-                            listings={listings}
-                            onChanged={updated => handleChanged(updated, def.order)}
-                            onNavigateToDocuments={onNavigateToDocuments}
-                        />
-                    ))}
+                    {automations.map(automation => {
+                        const def = definitionForAutomation(automation)
+                        const availableSlugs = new Set(countryProviderSlugs)
+                        const currentSlug = canonicalSlug(
+                            automation.provider?.parameters?.slug ?? automation.providerName,
+                        )
+                        const countryDefinition = {
+                            ...def,
+                            providerOptions: def.providerOptions.filter(option => {
+                                const optionSlug = canonicalSlug(option.value)
+                                return availableSlugs.has(optionSlug) || optionSlug === currentSlug
+                            }),
+                        }
+                        return (
+                            <AutomationCard
+                                key={automation.uuid}
+                                definition={countryDefinition}
+                                automation={automation}
+                                propertyUuid={propertyUuid}
+                                providers={providers}
+                                listings={listings}
+                                onChanged={updated => handleChanged(updated, automation.uuid)}
+                                onNavigateToDocuments={onNavigateToDocuments}
+                            />
+                        )
+                    })}
+                    {!loadError && propertyUuid && automations.length === 0 && (
+                        <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+                            El backend no devolvió automatizaciones para esta propiedad.
+                        </div>
+                    )}
                 </div>
             )}
 

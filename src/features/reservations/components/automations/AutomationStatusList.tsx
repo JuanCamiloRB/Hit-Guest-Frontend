@@ -7,12 +7,18 @@ import { useAutomationStatus } from "@/features/reservations/hooks/useAutomation
 import type { AutomationStatusItem as AutomationStatusItemType } from "@/features/properties/types/automation"
 import { AutomationStatusItem } from "./AutomationStatusItem"
 import { AutomationHistoryModal } from "./AutomationHistoryModal"
+import { isSecondaryGuestAutomation } from "./automation-status-meta"
 
 interface AutomationStatusListProps {
     reservationUuid: string
+    /** Reservation's total guest count — a secondary-guest automation that's
+     *  still "not_started" is relabeled "No aplica" instead of "No iniciado"
+     *  when there's only 1 guest, since there's no secondary guest for it to
+     *  ever run for. */
+    totalGuests: number
 }
 
-export function AutomationStatusList({ reservationUuid }: AutomationStatusListProps) {
+export function AutomationStatusList({ reservationUuid, totalGuests }: AutomationStatusListProps) {
     const { items, isLoading, error, redispatchingUuids, dispatchingUuids, now, cooldownUntil, refresh, redispatch, dispatch, resendPdf } =
         useAutomationStatus(reservationUuid)
 
@@ -84,6 +90,11 @@ export function AutomationStatusList({ reservationUuid }: AutomationStatusListPr
                             isRedispatching={redispatchingUuids.has(item.automationUuid)}
                             isDispatching={dispatchingUuids.has(item.automationUuid)}
                             cooldownUntil={cooldownUntil[item.automationUuid]}
+                            notApplicable={
+                                totalGuests <= 1
+                                && item.status === "not_started"
+                                && isSecondaryGuestAutomation(item.automationName)
+                            }
                             onRedispatch={redispatch}
                             onDispatch={dispatch}
                             onResendPdf={resendPdf}

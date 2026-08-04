@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback, useEffect } from "react"
+import { useState, useCallback } from "react"
 import { Settings2, Loader2, AlertCircle, Clock, FileSignature } from "lucide-react"
 import {
     Card,
@@ -21,7 +21,7 @@ import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { cn } from "@/lib/utils"
 import { automationService } from "../../services/automation-service"
-import { mapGuestTypeToApi, AUTOMATION_STATUS, AUTOMATION_ORDERS } from "../../types/automation"
+import { isSignatureProvider, AUTOMATION_STATUS } from "../../types/automation"
 import type { PropertyAutomation, AutomationDefinition, Provider } from "../../types/automation"
 import { ApiError } from "@/types/api"
 import { ConfigModal } from "./ConfigModal"
@@ -30,9 +30,33 @@ import type { ListingMeta } from "./AutomationOverrideModal"
 
 const BACKEND_PENDING_MSG = "El backend aún no tiene este endpoint implementado. Contacta al equipo de desarrollo."
 
+const normalizeSlug = (slug: string | null | undefined) =>
+    (slug ?? "").toLowerCase().replace(/-/g, "_")
+
+function getProviderSlug(provider: Provider | undefined | null): string | null {
+    const raw: unknown = provider?.parameters
+    let params: Record<string, unknown> | null = null
+    if (typeof raw === "string") {
+        try {
+            const parsed: unknown = JSON.parse(raw)
+            params = parsed && typeof parsed === "object" ? parsed as Record<string, unknown> : null
+        } catch {
+            params = null
+        }
+    } else if (raw && typeof raw === "object") {
+        params = raw as unknown as Record<string, unknown>
+    }
+    if (typeof params?.slug === "string") return params.slug
+    const internalUse = params?.internalUse
+    return internalUse && typeof internalUse === "object"
+        && typeof (internalUse as Record<string, unknown>).path === "string"
+        ? (internalUse as Record<string, unknown>).path as string
+        : null
+}
+
 interface Props {
     definition: AutomationDefinition
-    automation: PropertyAutomation | null
+    automation: PropertyAutomation
     propertyUuid: string
     providers: Provider[]
     listings: ListingMeta[]
@@ -50,35 +74,23 @@ export function AutomationCard({
     onChanged,
     onNavigateToDocuments,
 }: Props) {
-    const isActive = automation?.isActive ?? false
-    // Digital Contract (order 3) doesn't pick one property-wide provider anymore —
+    const isActive = automation.isActive
+    // Digital Contract doesn't pick one property-wide provider anymore —
     // who signs is chosen PER CHANNEL in the contract-routing screen (Documentos
     // tab). Its provider selector here would be misleading, so it's replaced with
     // a link to that screen instead (backend plan §2.3).
-    const isContractRouting = definition.order === AUTOMATION_ORDERS.DIGITAL_CONTRACT
-
-    // Slug matching tolerant to "-" vs "_", casing, and `parameters` arriving as a
-    // JSON string instead of an object (varies per provider record).
-    const normalizeSlug = (s: string | null | undefined) =>
-        (s ?? "").toLowerCase().replace(/-/g, "_")
-
-    const getProviderSlug = (p: Provider | undefined | null): string | null => {
-        let params: any = p?.parameters
-        if (typeof params === "string") {
-            try { params = JSON.parse(params) } catch { params = null }
-        }
-        return params?.slug ?? params?.internalUse?.path ?? null
-    }
+    const isContractRouting = definition.id === "digital-contract"
+        || (!!automation.provider && isSignatureProvider(automation.provider))
 
     const providerName = automation?.providerName
         ?? getProviderSlug(providers.find(p => p.id === automation?.providerId))
         ?? null
 
-    const findProviderId = (slug: string | null): number | undefined => {
+    const findProviderId = useCallback((slug: string | null): number | undefined => {
         if (!slug) return undefined
         const target = normalizeSlug(slug)
         return providers.find(p => normalizeSlug(getProviderSlug(p)) === target)?.id
-    }
+    }, [providers])
 
     const [toggling, setToggling] = useState(false)
     const [configOpen, setConfigOpen] = useState(false)
@@ -99,13 +111,6 @@ export function AutomationCard({
     // parametersSchema — HIT manages the creds — so it must activate directly
     // instead of bouncing to an empty config modal (the "no se puede activar" bug).
     const selectedProviderNeedsConfig = (selectedProvider?.parametersSchema?.length ?? 0) > 0
-
-    // Once the server reflects the chosen provider, drop the optimistic override.
-    useEffect(() => {
-        if (optimisticProvider && normalizeSlug(providerName) === normalizeSlug(optimisticProvider)) {
-            setOptimisticProvider(null)
-        }
-    }, [providerName, optimisticProvider])
 
     // ── Toggle active / inactive ──────────────────────────────────────────────
 
@@ -128,26 +133,11 @@ export function AutomationCard({
         }
         setToggling(true)
         try {
-            let current = automation
-
-            // If no cached record, refresh — the backend may have auto-created it
-            if (!current) {
-                const fresh = await automationService.listGlobal({ propertyUuid })
-                current = fresh.find(a => a.executionOrder === definition.order) ?? null
-                if (current) onChanged(current)
-            }
-
-            const result = current
-                ? await automationService.toggle(current.uuid, checked, current.providerId)
-                : await automationService.create({
-                    propertyUuid,
-                    name: definition.title,
-                    guestType: mapGuestTypeToApi(definition.guestType),
-                    executionOrder: definition.order,
-                    parameters: { _init: true },
-                    statusProviderId: checked ? AUTOMATION_STATUS.ACTIVE : AUTOMATION_STATUS.INACTIVE,
-                    providerId: findProviderId(definition.providerOptions[0]?.value ?? null) ?? null,
-                })
+            const result = await automationService.toggle(
+                automation.uuid,
+                checked,
+                automation.providerId,
+            )
 
             onChanged(result)
             toast.success(checked ? `${definition.title} activado` : `${definition.title} desactivado`)
@@ -182,28 +172,10 @@ export function AutomationCard({
             return
         }
         try {
-            let current = automation
-
-            if (!current) {
-                const fresh = await automationService.listGlobal({ propertyUuid })
-                current = fresh.find(a => a.executionOrder === definition.order) ?? null
-                if (current) onChanged(current)
-            }
-
-            const result = current
-                ? await automationService.configure(current.uuid, {
-                    statusProviderId: current.statusProviderId,
-                    providerId,
-                })
-                : await automationService.create({
-                    propertyUuid,
-                    name: definition.title,
-                    guestType: mapGuestTypeToApi(definition.guestType),
-                    executionOrder: definition.order,
-                    parameters: {},
-                    statusProviderId: AUTOMATION_STATUS.INACTIVE,
-                    providerId: providerId ?? null,
-                })
+            const result = await automationService.configure(automation.uuid, {
+                statusProviderId: automation.statusProviderId,
+                providerId,
+            })
 
             onChanged(result)
         } catch (err) {
@@ -213,7 +185,7 @@ export function AutomationCard({
                 notifyError(err, "Error al cambiar el proveedor")
             }
         }
-    }, [propertyUuid, automation, definition, onChanged])
+    }, [propertyUuid, automation, definition, findProviderId, onChanged])
 
     // ── Save config parameters ────────────────────────────────────────────────
 
@@ -222,23 +194,15 @@ export function AutomationCard({
         setConfigSaving(true)
         try {
             // Strip the front-only "_init" marker so it isn't persisted/validated.
-            const { _init, ...cleanParams } = params as Record<string, unknown>
-            // Configure the existing record, or create it if the backend hadn't
-            // auto-created it yet. Saving config also activates the automation.
-            const result = automation
-                ? await automationService.configure(automation.uuid, {
-                    statusProviderId: AUTOMATION_STATUS.ACTIVE,
-                    parameters: cleanParams,
-                })
-                : await automationService.create({
-                    propertyUuid,
-                    name: definition.title,
-                    guestType: mapGuestTypeToApi(definition.guestType),
-                    executionOrder: definition.order,
-                    parameters: cleanParams,
-                    statusProviderId: AUTOMATION_STATUS.ACTIVE,
-                    providerId: findProviderId(selectedProvider?.value ?? null) ?? selectedProvider?.providerId ?? null,
-                })
+            const cleanParams = Object.fromEntries(
+                Object.entries(params).filter(([key]) => key !== "_init"),
+            )
+            // Backend owns creation of the country-specific row. Saving config
+            // only updates that existing automation and activates it.
+            const result = await automationService.configure(automation.uuid, {
+                statusProviderId: AUTOMATION_STATUS.ACTIVE,
+                parameters: cleanParams,
+            })
             onChanged(result)
             setConfigOpen(false)
             toast.success("Configuración guardada")
@@ -251,7 +215,7 @@ export function AutomationCard({
         } finally {
             setConfigSaving(false)
         }
-    }, [propertyUuid, automation, definition, selectedProvider, onChanged])
+    }, [propertyUuid, automation, onChanged])
 
     // Configured = has at least one meaningful parameter (ignoring the _init marker)
     const hasMeaningfulParams = Object.entries(automation?.parameters ?? {})

@@ -4,7 +4,6 @@ import {
     PropertyApiResponse,
     PropertyFormData,
     formDataToApiPayload,
-    DEFAULT_AUTOMATIONS,
 } from "../types"
 import { apiClient, handleSessionExpired } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
@@ -31,10 +30,10 @@ class PropertiesService {
     // ── CREATE ──
     async create(data: PropertyFormData): Promise<PropertyApiResponse> {
         const basePayload: PropertyApiPayload = formDataToApiPayload(data)
-        const payload: PropertyApiPayload = {
-            ...basePayload,
-            automations: DEFAULT_AUTOMATIONS,
-        }
+        // The backend's country/provider map creates the applicable automation
+        // rows. Sending the historical universal 1..8 seed would reintroduce
+        // Colombia-only providers (TRA/SIRE) for properties in other countries.
+        const payload: PropertyApiPayload = basePayload
         const url = `${API_BASE}/properties`
 
         try {
@@ -92,7 +91,7 @@ class PropertiesService {
 
     // ── UPDATE (full form) ──
     async update(uuid: string, data: PropertyFormData): Promise<PropertyApiResponse> {
-        const { automations: _omit, ...payload } = formDataToApiPayload({ ...data, uuid } as any)
+        const payload = formDataToApiPayload({ ...data, uuid } as any)
         const url = `${API_BASE}/properties/${uuid}`
 
         try {

@@ -293,7 +293,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
 
                             {/* Automation Section — live status + manual redispatch */}
                             <div className="mt-8 pt-8 border-t border-slate-100">
-                                <AutomationStatusList reservationUuid={data.uuid} />
+                                <AutomationStatusList reservationUuid={data.uuid} totalGuests={data.totalGuests} />
                             </div>
                         </CardContent>
                     </Card>

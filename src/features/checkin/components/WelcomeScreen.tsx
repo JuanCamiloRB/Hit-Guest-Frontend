@@ -7,6 +7,7 @@ import Link from "next/link"
 import { Clock, CreditCard, IdCard, Key, ShieldCheck, Calendar, Users, CheckCircle2, Circle, Lock, UserCircle, ArrowRight, Share2 } from "lucide-react"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 import { isMainGuestCompleted } from "@/features/checkin/types/checkin"
+import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
 
 interface WelcomeScreenProps {
     portal: CheckinPortalResponse
@@ -93,9 +94,10 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
     // Re-send the check-in link to companions. Native share (or WhatsApp) lets the
     // guest pick a contact directly — the ask. Clipboard is the fallback.
-    const handleShareLink = async () => {
+    const handleShareLink = async (guestName?: string) => {
         const url = getShareUrl()
-        const message = `Hola, completa tu registro de check-in para nuestra reserva aquí: ${url}`
+        const greeting = guestName ? `Hola ${guestName},` : "Hola,"
+        const message = `${greeting} completa tu registro de check-in para nuestra reserva aquí: ${url}`
         try {
             if (navigator.share) {
                 await navigator.share({ title: "Registro de check-in", text: message, url })
@@ -108,10 +110,12 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
         window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer")
     }
 
-    const handleCopyLink = async () => {
+    const handleCopyLink = async (guestName?: string) => {
         try {
             await navigator.clipboard.writeText(getShareUrl())
-            toast.success("Link copiado", { description: "Compártelo con tus acompañantes." })
+            toast.success("Link copiado", {
+                description: guestName ? `Listo para enviárselo a ${guestName}.` : "Compártelo con tus acompañantes.",
+            })
         } catch {
             toast.error("No se pudo copiar el link")
         }
@@ -223,7 +227,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
                     {/* Secondary guests that already completed /identify (have real names) */}
                     {knownNonMainGuests.map(g => (
-                        <div key={g.uuid} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100/50">
+                        <div key={g.uuid} className="flex items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100/50">
                             <div className="flex items-center gap-2">
                                 {isGuestDone(g)
                                     ? <CheckCircle2 size={16} className="text-green-500 flex-shrink-0" />
@@ -233,18 +237,29 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                     {`${g.name} ${g.lastname}`.trim()}
                                 </span>
                             </div>
-                            <div className="flex-shrink-0">
+                            <div className="flex flex-shrink-0 items-center gap-1.5">
                                 {isGuestDone(g) ? (
                                     <span className="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-md">
                                         Completado
                                     </span>
                                 ) : mainCompleted ? (
-                                    <Link
-                                        href={getContinueLink(g)}
-                                        className="inline-flex items-center gap-1 text-xs font-bold text-white bg-brand-blue px-3.5 py-2 rounded-lg hover:bg-brand-blue/90 transition-colors active:scale-[0.98]"
-                                    >
-                                        Iniciar registro <ArrowRight size={13} />
-                                    </Link>
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleShareLink(g.name)}
+                                            aria-label={`Enviar link a ${g.name}`}
+                                            title={`Enviar link a ${g.name}`}
+                                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-brand-purple/15 bg-white text-brand-purple transition-colors hover:bg-brand-purple/5"
+                                        >
+                                            <Share2 size={14} />
+                                        </button>
+                                        <Link
+                                            href={getContinueLink(g)}
+                                            className="inline-flex items-center gap-1 text-xs font-bold text-white bg-brand-blue px-3 py-2 rounded-lg hover:bg-brand-blue/90 transition-colors active:scale-[0.98]"
+                                        >
+                                            Registrar <ArrowRight size={13} />
+                                        </Link>
+                                    </>
                                 ) : (
                                     <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600 bg-amber-50 px-2.5 py-1.5 rounded-lg border border-amber-100">
                                         <Lock size={12} />
@@ -266,14 +281,25 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                         Huésped {slotNumber}
                                     </span>
                                 </div>
-                                <div className="flex-shrink-0">
+                                <div className="flex flex-shrink-0 items-center gap-1.5">
                                     {mainCompleted ? (
-                                        <Link
-                                            href={`${basePath}/s/new-${slotNumber}/identify`}
-                                            className="text-xs font-semibold text-brand-blue bg-brand-blue/10 px-3 py-1.5 rounded-lg hover:bg-brand-blue/20 transition-colors"
-                                        >
-                                            Iniciar registro
-                                        </Link>
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleShareLink(`Huésped ${slotNumber}`)}
+                                                aria-label={`Enviar link al huésped ${slotNumber}`}
+                                                title={`Enviar link al huésped ${slotNumber}`}
+                                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-brand-purple/15 bg-white text-brand-purple transition-colors hover:bg-brand-purple/5"
+                                            >
+                                                <Share2 size={13} />
+                                            </button>
+                                            <Link
+                                                href={`${basePath}/s/new-${slotNumber}/identify`}
+                                                className="text-xs font-semibold text-brand-blue bg-brand-blue/10 px-3 py-1.5 rounded-lg hover:bg-brand-blue/20 transition-colors"
+                                            >
+                                                Registrar
+                                            </Link>
+                                        </>
                                     ) : (
                                         <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1.5 rounded-lg">
                                             <Lock size={12} />
@@ -294,7 +320,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                             <div className="flex gap-2">
                                 <button
                                     type="button"
-                                    onClick={handleShareLink}
+                                    onClick={() => handleShareLink()}
                                     className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-brand-purple text-white text-sm font-bold hover:bg-brand-purple/90 transition-colors active:scale-[0.98]"
                                 >
                                     <Share2 size={15} />
@@ -302,7 +328,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={handleCopyLink}
+                                    onClick={() => handleCopyLink()}
                                     className="inline-flex items-center justify-center h-10 px-3 rounded-lg border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
                                 >
                                     Copiar
@@ -312,6 +338,10 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     )}
                 </div>
             </div>
+
+            {mainCompleted && (
+                <AccessInstructionsPanel portal={portal} unlocked={isFullyCompleted} />
+            )}
 
             {/* Info Box */}
             {!isFullyCompleted && (

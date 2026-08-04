@@ -1,10 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useFormContext } from "react-hook-form"
 import { AlertCircle, FileSignature, Loader2, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
+import { catalogService } from "@/features/auth/services/catalog-service"
 import { Button } from "@/components/ui/button"
 import {
     Select,
@@ -23,7 +25,6 @@ import {
     type PropertyDocument,
 } from "../../types/document"
 import {
-    AUTOMATION_ORDERS,
     AUTOMATION_STATUS,
     isSignatureProvider,
     type Provider,
@@ -56,8 +57,13 @@ interface Props {
  * property_documents at call time.
  */
 export function ContractRoutingSection({ propertyUuid }: Props) {
-    const [loading, setLoading] = useState(true)
-    const [loadError, setLoadError] = useState<string | null>(null)
+    const { watch } = useFormContext()
+    const countryId: number | undefined = watch("countryId")
+    const requestKey = `${propertyUuid}:${countryId ?? ""}`
+    const [completedRequestKey, setCompletedRequestKey] = useState("")
+    const [loadFailure, setLoadFailure] = useState<{ key: string; message: string } | null>(null)
+    const loading = completedRequestKey !== requestKey
+    const loadError = loadFailure?.key === requestKey ? loadFailure.message : null
 
     const [sources, setSources] = useState<ReservationSource[]>([])
     const [providers, setProviders] = useState<Provider[]>([])
@@ -74,21 +80,30 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
 
     useEffect(() => {
         let active = true
-        setLoading(true)
-        setLoadError(null)
 
-        Promise.all([
-            reservationSourceService.list(),
-            automationService.listProviders({ statusProviderId: AUTOMATION_STATUS.ACTIVE }),
-            automationService.getContractRoutingAutomation(propertyUuid),
-            propertyDocumentService.list(propertyUuid, {
-                propertyDocumentTypeId: AGREEMENT_DOCUMENT_TYPE_ID,
-                perPage: 100,
-            }),
-            propertyDocumentService.getTypes(),
-        ])
+        catalogService.getCountries()
+            .then((countries) => {
+                const country = countries.find((item) => Number(item.id) === Number(countryId))
+                const countryIso2 = country?.extra?.iso2 ?? country?.iso2
+                if (!countryIso2) throw new Error("No se pudo resolver el país de la propiedad.")
+
+                return Promise.all([
+                    reservationSourceService.list(),
+                    automationService.listProviders({
+                        statusProviderId: AUTOMATION_STATUS.ACTIVE,
+                        country: countryIso2,
+                    }),
+                    automationService.getContractRoutingAutomation(propertyUuid),
+                    propertyDocumentService.list(propertyUuid, {
+                        propertyDocumentTypeId: AGREEMENT_DOCUMENT_TYPE_ID,
+                        perPage: 100,
+                    }),
+                    propertyDocumentService.getTypes(),
+                ] as const)
+            })
             .then(([sourcesRes, providersRes, automationRes, docsRes, typesRes]) => {
                 if (!active) return
+                setLoadFailure(null)
                 // A null `meta` means the documents fetch itself failed (the service
                 // swallows the error and returns an empty list) — treating that as
                 // "zero documents" would make the save flow create DUPLICATE rows for
@@ -98,7 +113,13 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 }
 
                 setSources(sourcesRes)
-                setProviders(providersRes.filter(isSignatureProvider))
+                const signatureProviders = new Map(
+                    providersRes.filter(isSignatureProvider).map(provider => [provider.id, provider]),
+                )
+                if (automationRes?.provider && isSignatureProvider(automationRes.provider)) {
+                    signatureProviders.set(automationRes.provider.id, automationRes.provider)
+                }
+                setProviders(Array.from(signatureProviders.values()))
                 setAutomation(automationRes)
                 setAgreementDocs(docsRes.items)
                 setShortcodes(
@@ -120,14 +141,19 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             })
             .catch((err) => {
                 console.error("[ContractRoutingSection] load error:", err)
-                if (active) setLoadError("No se pudo cargar la configuración de contrato y firma.")
+                if (active) {
+                    setLoadFailure({
+                        key: requestKey,
+                        message: "No se pudo cargar la configuración de contrato y firma.",
+                    })
+                }
             })
             .finally(() => {
-                if (active) setLoading(false)
+                if (active) setCompletedRequestKey(requestKey)
             })
 
         return () => { active = false }
-    }, [propertyUuid])
+    }, [propertyUuid, countryId, requestKey])
 
     // ── Mode switch ──────────────────────────────────────────────────────────
 
@@ -139,7 +165,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
         if (next === "all_sources") {
             setBySource({ [ALL_SOURCES_KEY]: bySource[ALL_SOURCES_KEY] ?? DEFAULT_ROUTING })
         } else {
-            const { [ALL_SOURCES_KEY]: _all, ...rest } = bySource
+            const rest = { ...bySource }
+            delete rest[ALL_SOURCES_KEY]
             setBySource(rest)
         }
         setSaveError(null)
@@ -157,11 +184,13 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     }
     const removeChannel = (key: string) => {
         setBySource((prev) => {
-            const { [key]: _removed, ...rest } = prev
+            const rest = { ...prev }
+            delete rest[key]
             return rest
         })
         setTexts((prev) => {
-            const { [key]: _removed, ...rest } = prev
+            const rest = { ...prev }
+            delete rest[key]
             return rest
         })
     }
@@ -172,6 +201,10 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     const gaps = findLockstepGaps(desired, texts)
 
     const handleSave = async () => {
+        if (!automation) {
+            setSaveError("La propiedad no tiene una automatización de firma creada por el backend. Contacta a soporte.")
+            return
+        }
         if (Object.keys(bySource).length === 0) {
             setSaveError("Configura al menos un canal antes de guardar.")
             return
@@ -216,19 +249,10 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             //    ContractRoutingParameters is a plain object whose values are all
             //    assignable to `unknown`, just not structurally an index signature.
             const routingParameters = desired as unknown as Record<string, unknown>
-            const result = automation
-                ? await automationService.configure(automation.uuid, {
-                    statusProviderId: AUTOMATION_STATUS.ACTIVE,
-                    parameters: routingParameters,
-                })
-                : await automationService.create({
-                    propertyUuid,
-                    name: "Firma Digital",
-                    guestType: "main_guest",
-                    executionOrder: AUTOMATION_ORDERS.DIGITAL_CONTRACT,
-                    parameters: routingParameters,
-                    statusProviderId: AUTOMATION_STATUS.ACTIVE,
-                })
+            const result = await automationService.configure(automation.uuid, {
+                statusProviderId: AUTOMATION_STATUS.ACTIVE,
+                parameters: routingParameters,
+            })
             setAutomation(result)
 
             // Refresh from the server so the next edit starts from real uuids

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import type { AutomationStatusItem as AutomationStatusItemType } from "@/features/properties/types/automation"
 import {
     getStatusMeta,
+    NOT_APPLICABLE_META,
     PROVIDER_LABELS,
     AUTOMATION_TITLE_OVERRIDES,
     formatRunDate,
@@ -25,6 +26,9 @@ interface AutomationStatusItemProps {
     isDispatching: boolean
     /** Epoch ms until which this item is on a 429 cooldown (set by the hook). */
     cooldownUntil?: number
+    /** True when this is a secondary-guest automation and the reservation only
+     *  has 1 total guest — there's no secondary guest for it to ever run for. */
+    notApplicable?: boolean
     onRedispatch: (item: AutomationStatusItemType) => void
     onDispatch: (item: AutomationStatusItemType) => void
     onResendPdf: (item: AutomationStatusItemType) => void
@@ -38,12 +42,13 @@ export function AutomationStatusItem({
     isRedispatching,
     isDispatching,
     cooldownUntil,
+    notApplicable = false,
     onRedispatch,
     onDispatch,
     onResendPdf,
     onViewHistory,
 }: AutomationStatusItemProps) {
-    const meta = getStatusMeta(item)
+    const meta = notApplicable ? NOT_APPLICABLE_META : getStatusMeta(item)
     const title = AUTOMATION_TITLE_OVERRIDES[item.providerSlug] || item.automationName
     const providerLabel = PROVIDER_LABELS[item.providerSlug] || item.providerSlug
     // Cooldown comes only from an explicit 429 (no proactive lastRunAt block, so
@@ -57,7 +62,7 @@ export function AutomationStatusItem({
     // backend sends canDispatch/canRedispatch — and still honor an explicit
     // can_manual_dispatch=false from the backend on top of it.
     const canManual =
-        MANUALLY_DISPATCHABLE_SLUGS.has(item.providerSlug) && item.canManualDispatch !== false
+        !notApplicable && MANUALLY_DISPATCHABLE_SLUGS.has(item.providerSlug) && item.canManualDispatch !== false
     // Why an action is blocked by an unmet checkin gate (null when not blocked).
     // Only relevant for manually-dispatchable automations — otherwise there's no
     // button to explain, so we don't show a "blocked" note either.

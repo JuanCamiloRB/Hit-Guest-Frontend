@@ -35,7 +35,7 @@ import type {
     ListingAutomationOverrideUpdatePayload,
     ListingOverrideStatus,
 } from "../types/automation"
-import { LISTING_OVERRIDE_STATUS, AUTOMATION_ORDERS } from "../types/automation"
+import { LISTING_OVERRIDE_STATUS, isSignatureProvider } from "../types/automation"
 
 /**
  * Canonicalizes a provider slug so comparisons are stable regardless of the
@@ -61,6 +61,14 @@ export interface AutomationListParams {
 export interface ProviderListParams {
     statusProviderId?: 8 | 10
     includeIntegrations?: boolean
+    /**
+     * ISO2 country code (e.g. "CO") — only returns providers applicable to that
+     * country (`parameters.applicable_countries` contains it or `"ALL"`).
+     * New 2026-08-03; omit to get every provider unfiltered (unchanged default).
+     * Property configuration screens resolve countryId through the countries
+     * catalog and always pass this filter.
+     */
+    country?: string
 }
 
 // ── Service ──────────────────────────────────────────────────────────────────
@@ -215,7 +223,9 @@ class AutomationService {
      * Primary endpoint for activation/deactivation and provider configuration.
      *   Activate:   { statusProviderId: 8, providerId, parameters }
      *   Deactivate: { statusProviderId: 10 }
-     * Digital Contract (executionOrder=3) cannot be deactivated (returns 422).
+     * The Digital Contract automation (identified by `provider.parameters.signature`,
+     * not by executionOrder — see getContractRoutingAutomation()) cannot be
+     * deactivated (returns 422).
      */
     async configure(
         automationUuid: string,
@@ -232,15 +242,22 @@ class AutomationService {
     }
 
     /**
-     * Finds the property's "Digital Contract" automation (executionOrder=3) —
-     * the one whose `parameters` carries `contract_mode`/`by_source`. Per the
-     * backend plan this automation always exists and is always active, but a
-     * property created before this feature (or with no automations yet)
-     * legitimately has none — callers treat `null` as "not configured".
+     * Finds the property's "Digital Contract" automation — the one whose
+     * `parameters` carries `contract_mode`/`by_source`. Per the backend plan
+     * this automation always exists and is always active, but a property
+     * created before this feature (or with no automations yet) legitimately
+     * has none — callers treat `null` as "not configured".
+     *
+     * Identified by `provider.parameters.signature` being present, NOT by
+     * `executionOrder === 3` (⚠️ 20260803_frontend-property-automations-api.md:
+     * a country/provider-map refactor means which automations get auto-created,
+     * and in what order, now depends on the property's country — executionOrder
+     * for anything from position 3 onward is no longer a reliable identifier).
+     * Requires `includeProvider: true` so `provider` is actually populated.
      */
     async getContractRoutingAutomation(propertyUuid: string): Promise<PropertyAutomation | null> {
-        const automations = await this.list(propertyUuid)
-        return automations.find((a) => a.executionOrder === AUTOMATION_ORDERS.DIGITAL_CONTRACT) ?? null
+        const automations = await this.list(propertyUuid, { includeProvider: true })
+        return automations.find((a) => a.provider != null && isSignatureProvider(a.provider)) ?? null
     }
 
     /**
@@ -309,6 +326,7 @@ class AutomationService {
         const qs = new URLSearchParams()
         if (params.statusProviderId)    qs.set("statusProviderId[eq]", String(params.statusProviderId))
         if (params.includeIntegrations) qs.set("includeIntegrations", "true")
+        if (params.country)             qs.set("country", params.country)
 
         const all: Provider[] = []
         try {

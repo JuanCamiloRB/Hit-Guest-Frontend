@@ -171,7 +171,21 @@ export class CheckinService {
             throw new Error(err.message || "Error loading reservation")
         }
         const json = await response.json()
-        return json.data || json
+        const portal = json.data || json
+        const rawCodes = portal.smartlockCodes ?? portal.smartlock_codes
+
+        return {
+            ...portal,
+            smartlockCodes: Array.isArray(rawCodes)
+                ? rawCodes.map((code: Record<string, unknown>) => ({
+                    name: String(code.name ?? "Acceso"),
+                    type: String(code.type ?? "amenity"),
+                    code: String(code.code ?? ""),
+                    validFrom: String(code.validFrom ?? code.valid_from ?? ""),
+                    validUntil: String(code.validUntil ?? code.valid_until ?? ""),
+                }))
+                : undefined,
+        } as CheckinPortalResponse
     }
 
     /**
