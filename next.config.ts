@@ -30,6 +30,12 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '**.amazonaws.com',
       },
+      // Marketing-hosted brand assets (logo), same PNG already used in the
+      // check-in invitation emails (email-templates/*.html).
+      {
+        protocol: 'https',
+        hostname: 'hitguest.com',
+      },
     ],
   },
 };

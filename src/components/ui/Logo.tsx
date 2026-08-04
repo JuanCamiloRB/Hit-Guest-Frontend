@@ -1,44 +1,42 @@
-import * as React from "react"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 
-interface LogoProps extends React.SVGProps<SVGSVGElement> {
+interface LogoProps {
+    className?: string
     variant?: "full" | "icon"
     showText?: boolean
     isWhite?: boolean
 }
 
-export function Logo({ className, variant = "full", showText = true, isWhite = false, ...props }: LogoProps) {
-    const mainColor = isWhite ? "#ffffff" : "#222755" // White for sidebar, Navy for header
-    const dotColor = "#9D4CF2" // Always the brand purple dot as requested
+// Real brand icon exports (public/logos, copied from what Daniel sent as
+// "Recurso 1.png"/"Recurso 8.png") — replaces the earlier hand-drawn SVG
+// reconstruction. No "Guest" wordmark file exists yet, so every call site
+// uses variant="icon" only (per the 20260804 decision — never show the text).
+const ICON_SRC = {
+    light: "/logos/hit-icon-navy.png", // navy + purple dot — light backgrounds
+    dark: "/logos/hit-icon-white.png", // solid white — dark/navy backgrounds
+}
+// Intrinsic size of the source PNGs. next/image needs width/height to fix the
+// aspect ratio; actual display size is controlled via `className` (h-*, w-auto).
+const ICON_WIDTH = 468
+const ICON_HEIGHT = 292
 
-    // Replicating exactly the HIT logo proportions from image
-    const LogoIcon = () => (
-        <svg
-            viewBox="0 0 100 66"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className={cn(variant === "icon" ? "h-10 w-auto" : "h-11 w-auto", className)}
-            {...props}
-        >
-            {/* H Part */}
-            <rect x="0" y="0" width="14" height="66" fill={mainColor} />
-            <rect x="14" y="24" width="22" height="15" fill={mainColor} />
-            <rect x="36" y="24" width="14" height="42" fill={mainColor} />
-            
-            {/* dot of i */}
-            <rect x="36" y="0" width="14" height="18" fill={dotColor} />
-            
-            {/* T/r Part */}
-            <rect x="56" y="0" width="14" height="66" fill={mainColor} />
-            <rect x="70" y="0" width="30" height="18" fill={mainColor} />
-        </svg>
+export function Logo({ className, variant = "icon", showText = true, isWhite = false }: LogoProps) {
+    const icon = (
+        <Image
+            src={isWhite ? ICON_SRC.dark : ICON_SRC.light}
+            alt="HIT Guest"
+            width={ICON_WIDTH}
+            height={ICON_HEIGHT}
+            className={cn("h-10 w-auto object-contain", variant === "icon" && className)}
+        />
     )
 
-    if (variant === "icon") return <LogoIcon />
+    if (variant === "icon") return icon
 
     return (
         <div className={cn("flex items-center gap-1", className)}>
-            <LogoIcon />
+            {icon}
             {showText && (
                 <span className={cn(
                     "font-sans font-black text-[22px] leading-none tracking-tighter uppercase translate-y-[1px]",

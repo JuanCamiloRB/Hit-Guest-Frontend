@@ -25,9 +25,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useState } from "react"
 import * as React from "react"
+import Image from "next/image"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { Avatar as UiAvatar, AvatarFallback } from "@/components/ui/avatar"
-import { Logo } from "@/components/ui/Logo"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> { }
 
@@ -74,15 +74,23 @@ export function Sidebar({ className }: SidebarProps) {
         <div className={cn("flex flex-col h-screen bg-sidebar text-sidebar-foreground border-r border-white/5", className)}>
             <div className="flex-1 overflow-y-auto py-6 px-4 space-y-8 no-scrollbar">
                 {/* Logo Section - Restored to Sidebar */}
-                <div className="px-3 mb-2">
-                    <Link href="/dashboard" className="flex items-center gap-2">
-                        <Logo isWhite className="h-9 w-auto" />
+                <div className="px-3 mb-2 flex justify-center">
+                    <Link href="/dashboard">
+                        <Image
+                            src="/logos/hit-icon-white.png"
+                            alt="HIT Guest"
+                            width={468}
+                            height={292}
+                            className="h-9 w-auto object-contain"
+                        />
                     </Link>
                 </div>
 
                 <section className="space-y-4">
-                    <h3 className="px-3 text-[10px] font-bold uppercase tracking-widest text-white/40">
-                        Menú Principal
+                    <h3 className="px-3">
+                        <span className="inline-block rounded-md bg-[var(--color-brand-purple)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                            Menú Principal
+                        </span>
                     </h3>
                     <div className="space-y-1">
                         {mainMenu.map((item) => (
@@ -107,8 +115,10 @@ export function Sidebar({ className }: SidebarProps) {
                 </section>
 
                 <section className="space-y-4">
-                    <h3 className="px-3 text-[10px] font-bold uppercase tracking-widest text-white/40">
-                        Sistema
+                    <h3 className="px-3">
+                        <span className="inline-block rounded-md bg-[var(--color-brand-purple)] px-2 py-0.5 text-[10px] font-bold uppercase tracking-widest text-white">
+                            Sistema
+                        </span>
                     </h3>
                     <div className="space-y-1">
                         {systemMenu.map((item) => (

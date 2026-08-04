@@ -64,7 +64,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                         {language === "en" ? "ES" : "EN"}
                     </Button>
                 </div>
-                <Logo className="h-12 w-auto" />
+                <Logo variant="icon" className="h-12 w-auto" />
                 <p className="text-sm text-muted-foreground font-secondary mt-1">
                     {t('common.welcome')} - Gestión inteligente para hospitalidad
                 </p>
