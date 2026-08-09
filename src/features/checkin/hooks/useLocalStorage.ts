@@ -1,12 +1,22 @@
-import { useState, useCallback, useRef } from "react"
+import { useState, useCallback, useMemo } from "react"
 
 interface UseLocalStorageOptions {
   excludeKeys?: string[]
 }
 
 export function useLocalStorage<T>(key: string, initialValue: T, options?: UseLocalStorageOptions) {
-  const excludeKeysRef = useRef(options?.excludeKeys)
-  excludeKeysRef.current = options?.excludeKeys
+  // Las claves excluidas llegan como literal en línea (`{ excludeKeys: [...] }`),
+  // así que el array es nuevo en cada render y no sirve como dependencia. Antes
+  // se resolvía escribiendo una ref DURANTE el render, que es precisamente lo
+  // que React desaconseja: en modo concurrente un render puede descartarse
+  // después de haber mutado la ref, dejándola describiendo un árbol que nunca
+  // se montó. Memorizar por CONTENIDO da la misma estabilidad sin escribir nada
+  // fuera de tiempo.
+  const excludeKeysSignature = (options?.excludeKeys ?? []).join("\u0000")
+  const excludeKeys = useMemo(
+    () => (excludeKeysSignature ? excludeKeysSignature.split("\u0000") : []),
+    [excludeKeysSignature],
+  )
 
   // State to store our value
   // Pass initial state function to useState so logic is only executed once
@@ -46,10 +56,9 @@ export function useLocalStorage<T>(key: string, initialValue: T, options?: UseLo
       try {
         if (typeof window !== "undefined") {
           let toPersist = valueToStore
-          const exclude = excludeKeysRef.current
-          if (exclude?.length && typeof toPersist === "object" && toPersist !== null) {
+          if (excludeKeys.length && typeof toPersist === "object" && toPersist !== null) {
             toPersist = { ...toPersist } as T
-            for (const k of exclude) {
+            for (const k of excludeKeys) {
               delete (toPersist as Record<string, unknown>)[k]
             }
           }
@@ -60,7 +69,7 @@ export function useLocalStorage<T>(key: string, initialValue: T, options?: UseLo
       }
       return valueToStore
     })
-  }, [key])
+  }, [key, excludeKeys])
 
   return [storedValue, setValue] as const
 }

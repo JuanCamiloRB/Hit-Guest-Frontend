@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { setVerificationToken } from "@/features/checkin/lib/verification-token"
+import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import type { IdentifySessionData, ContactChallengeDirective } from "@/features/checkin/types/checkin"
 
@@ -16,6 +17,26 @@ interface ContactChallengeScreenProps {
     guestUuid: string
     basePath: string
     isSecondary?: boolean
+}
+
+/**
+ * Cuánto esperar tras un 429 cuando el backend no dice cuánto.
+ *
+ * El contrato (§8/§9) tiene DOS 429 distintos en estos endpoints: el lógico del
+ * propio challenge, que trae `code: "TOO_MANY_ATTEMPTS"` y `retryAfter`, y el
+ * del throttle de Laravel, que no trae ninguno de los dos. El servicio ya
+ * rescata el header `Retry-After` cuando existe, así que este valor solo se usa
+ * si tampoco vino ahí — y entonces el throttle (1 min en /resend, 10/min en
+ * /verify) es la hipótesis correcta. Antes se asumía 900 s: quince minutos de
+ * castigo por un bloqueo de uno.
+ */
+const FALLBACK_RETRY_AFTER_SECONDS = 60
+
+/** Segundos de espera declarados por el backend, o el fallback de arriba. */
+function retryAfterSeconds(error: { retryAfter?: number }): number {
+    return typeof error?.retryAfter === "number" && error.retryAfter > 0
+        ? error.retryAfter
+        : FALLBACK_RETRY_AFTER_SECONDS
 }
 
 /**
@@ -40,10 +61,16 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
     const [resending, setResending] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null)
-    // "idle": normal input. "must_resend": code is dead (expired/used/replaced by
-    // another resend, 410) — input disabled until a fresh code is requested.
-    // "blocked": attempts exhausted (429) — neither verify nor resend works.
-    const [phase, setPhase] = useState<"idle" | "must_resend" | "blocked">("idle")
+    // "idle": entrada normal. "must_resend": el código murió (vencido/usado/
+    // reemplazado por otro reenvío, 410) — entrada deshabilitada hasta pedir uno
+    // nuevo.
+    //
+    // El bloqueo por intentos agotados (429) NO vive acá: es `blockedUntil`, una
+    // marca de tiempo, y se DERIVA comparándola con el reloj. Antes era un tercer
+    // valor de este enum y nada lo devolvía a "idle" cuando la espera terminaba:
+    // el contador llegaba a cero y la entrada seguía muerta hasta recargar.
+    // Derivándolo, ese bug no se puede volver a escribir.
+    const [phase, setPhase] = useState<"idle" | "must_resend">("idle")
     const [notFound, setNotFound] = useState(false)
 
     // Countdown targets as absolute timestamps (survive re-renders without drifting).
@@ -59,8 +86,13 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
 
     // Load session from localStorage after mount (avoid SSR hydration mismatch,
     // same pattern as VerifyScreen).
+    // localStorage no existe en el servidor: leerlo durante el render daría un
+    // árbol distinto al que el servidor mandó y React descartaría la hidratación.
+    // Por eso se lee al montar y se refleja en estado — es el caso que la regla
+    // no puede distinguir de una cascada de renders accidental.
     useEffect(() => {
         const loaded = load(guestUuid || undefined)
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSession(loaded)
         setSessionLoaded(true)
         const verif = loaded?.verification
@@ -83,6 +115,9 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
     const resendCountdown = Math.max(0, Math.ceil((resendAvailableAt - now) / 1000))
     const blockedCountdown = Math.max(0, Math.ceil((blockedUntil - now) / 1000))
 
+    /** Bloqueado por intentos agotados: cierto solo mientras la espera corre. */
+    const isBlocked = blockedCountdown > 0
+
     /** Persists the current challengeId/masked destination/countdowns so a reload keeps them. */
     const persistChallenge = (patch: Partial<ContactChallengeDirective>) => {
         if (!session || session.verification.type !== "contact_challenge") return
@@ -100,26 +135,28 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
         setError(null)
         try {
             const res = await checkinService.verifyContactChallenge(reservationUuid, challenge.challengeId, code)
-            setVerificationToken(reservationUuid, guestUuid, res.verificationToken)
+            // `expiresAt` se guarda junto al token (no se descarta): es lo único
+            // que le permite al resto del flujo saber que la credencial murió
+            // ANTES de gastar el trabajo del huésped contra un 401.
+            setVerificationToken(reservationUuid, guestUuid, res.verificationToken, res.expiresAt)
             toast.success("Código verificado")
             router.push(`${basePath}/guest?guest_uuid=${guestUuid}`)
-        } catch (e: any) {
-            if (e?.status === 422 && e?.code === "INVALID_CODE") {
+        } catch (raw: unknown) {
+            const e = asCheckinError(raw)
+            if (e.status === 422 && e.code === "INVALID_CODE") {
                 setAttemptsRemaining(typeof e.attemptsRemaining === "number" ? e.attemptsRemaining : null)
                 setError(e.message || "El código ingresado no es válido.")
                 setCode("")
-            } else if (e?.status === 410) {
+            } else if (e.status === 410) {
                 setPhase("must_resend")
                 setError("El código de verificación venció. Pide uno nuevo.")
-            } else if (e?.status === 429) {
-                const retryAfter = typeof e.retryAfter === "number" ? e.retryAfter : 900
-                setBlockedUntil(Date.now() + retryAfter * 1000)
-                setPhase("blocked")
+            } else if (e.status === 429) {
+                setBlockedUntil(Date.now() + retryAfterSeconds(e) * 1000)
                 setError(e.message || "Superaste el número permitido de intentos.")
-            } else if (e?.status === 404) {
+            } else if (e.status === 404) {
                 setNotFound(true)
             } else {
-                setError(e?.message || "No pudimos verificar el código. Intenta de nuevo.")
+                setError(e.message || "No pudimos verificar el código. Intenta de nuevo.")
             }
         } finally {
             setSubmitting(false)
@@ -137,22 +174,26 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 maskedDestination: res.maskedDestination,
                 expiresIn: res.expiresIn,
                 resendAfter: res.resendAfter,
-                attemptsRemaining: 5,
+                // El reenvío no informa cuántos intentos quedan. Antes se
+                // guardaba un 5 fijo, que se mostraba como si fuera dato real del
+                // backend; queda en desconocido hasta que un intento fallido
+                // devuelva la cifra verdadera.
+                attemptsRemaining: null,
             })
             setResendAvailableAt(Date.now() + res.resendAfter * 1000)
-            setAttemptsRemaining(5)
+            setAttemptsRemaining(null)
             setPhase("idle")
             setCode("")
             toast.success("Te enviamos un nuevo código")
-        } catch (e: any) {
-            if (e?.status === 429) {
-                const retryAfter = typeof e.retryAfter === "number" ? e.retryAfter : 60
-                setResendAvailableAt(Date.now() + retryAfter * 1000)
+        } catch (raw: unknown) {
+            const e = asCheckinError(raw)
+            if (e.status === 429) {
+                setResendAvailableAt(Date.now() + retryAfterSeconds(e) * 1000)
                 setError(e.message || "Espera antes de pedir otro código.")
-            } else if (e?.status === 410) {
+            } else if (e.status === 410) {
                 setNotFound(true)
             } else {
-                setError(e?.message || "No pudimos reenviar el código. Intenta de nuevo.")
+                setError(e.message || "No pudimos reenviar el código. Intenta de nuevo.")
             }
         } finally {
             setResending(false)
@@ -204,8 +245,8 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
         )
     }
 
-    const canResend = phase !== "blocked" && resendCountdown === 0 && !resending
-    const inputDisabled = phase === "must_resend" || phase === "blocked" || submitting
+    const canResend = !isBlocked && resendCountdown === 0 && !resending
+    const inputDisabled = phase === "must_resend" || isBlocked || submitting
 
     return (
         <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
@@ -253,10 +294,10 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                         maxLength={6}
                     />
                     {error && <p className="text-xs text-red-500">{error}</p>}
-                    {phase === "idle" && attemptsRemaining !== null && attemptsRemaining < 5 && (
+                    {phase === "idle" && !isBlocked && attemptsRemaining !== null && attemptsRemaining < 5 && (
                         <p className="text-xs text-slate-400">Intentos restantes: {attemptsRemaining}</p>
                     )}
-                    {phase === "blocked" && blockedCountdown > 0 && (
+                    {isBlocked && (
                         <p className="text-xs text-amber-600 font-medium">
                             Podrás intentar de nuevo en {Math.ceil(blockedCountdown / 60)} min.
                         </p>

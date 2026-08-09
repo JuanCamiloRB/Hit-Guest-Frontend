@@ -19,6 +19,7 @@ import Link from "next/link"
 import { Logo } from "@/components/ui/Logo"
 import { useTranslation } from "@/hooks/useTranslation"
 import { useLanguageStore } from "@/store/useLanguageStore"
+import { AVAILABLE_LANGUAGES } from "@/lib/i18n/dictionaries"
 
 type UserAuthFormProps = React.HTMLAttributes<HTMLDivElement>
 
@@ -47,23 +48,30 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
     const { t } = useTranslation()
     const { language, setLanguage } = useLanguageStore()
 
+    // Un botón que alterna entre dos idiomas no tiene sentido mientras solo haya
+    // uno disponible: `setLanguage` rechazaría el inglés y el botón se vería
+    // muerto. Se oculta hasta que exista la librería, y vuelve solo.
+    const alternateLanguage = AVAILABLE_LANGUAGES.find((code) => code !== language)
+
     const toggleLanguage = () => {
-        setLanguage(language === "en" ? "es" : "en")
+        if (alternateLanguage) setLanguage(alternateLanguage)
     }
 
     return (
         <div className={cn("grid gap-8 bg-white p-8 rounded-2xl shadow-xl border border-border/50", className)} {...props}>
             <div className="flex flex-col items-center gap-2 text-center mb-2">
-                <div className="absolute top-4 right-4 z-50">
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={toggleLanguage}
-                        className="text-xs font-semibold text-muted-foreground hover:text-foreground"
-                    >
-                        {language === "en" ? "ES" : "EN"}
-                    </Button>
-                </div>
+                {alternateLanguage && (
+                    <div className="absolute top-4 right-4 z-50">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={toggleLanguage}
+                            className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                        >
+                            {alternateLanguage.toUpperCase()}
+                        </Button>
+                    </div>
+                )}
                 <Logo variant="icon" className="h-12 w-auto" />
                 <p className="text-sm text-muted-foreground font-secondary mt-1">
                     {t('common.welcome')} - Gestión inteligente para hospitalidad

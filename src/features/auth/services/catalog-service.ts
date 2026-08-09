@@ -9,6 +9,30 @@ export interface CatalogOption {
     extra?: any
 }
 
+/**
+ * Metadatos de país que `getCountries()` normaliza a partir de la respuesta
+ * cruda (que trae los nombres en varias formas: `iso2`/`kod`/`code`,
+ * `phonecode`/`phone_code`/`calling_code`). Todos opcionales a propósito: el
+ * fallback local que se usa cuando la API falla solo trae algunos.
+ */
+export interface CountryExtra {
+    iso2?: string
+    iso3?: string
+    emoji?: string
+    phone_prefix?: string
+    timezones?: string[]
+}
+
+/**
+ * País ya normalizado. Se declara aparte de `CatalogOption` porque el `extra` de
+ * un país SÍ tiene forma conocida — el check-in lee `extra.iso2` para pedir los
+ * tipos de documento del país correcto, y con `extra?: any` cada pantalla que lo
+ * consumía tenía que volver a escribir `(c: any)`.
+ */
+export interface CountryOption extends CatalogOption {
+    extra: CountryExtra
+}
+
 /** Country-aware identification type (from GET /catalogs/identification-types). */
 export interface IdentificationTypeOption {
     id: number
@@ -146,8 +170,8 @@ export class CatalogService {
         })
     }
 
-    async getCountries(): Promise<any[]> {
-        return this.cached("countries", async () => {
+    async getCountries(): Promise<CountryOption[]> {
+        return this.cached<CountryOption[]>("countries", async () => {
             const isServer = typeof window === "undefined"
             const url = isServer ? `${API_BASE_URL}/countries` : `/api/checkin/countries`
 
@@ -171,17 +195,27 @@ export class CatalogService {
                     return r.json()
                 })
             }
-            const list: any[] = Array.isArray(result) ? result : (result.data || [])
+            const list: Record<string, unknown>[] = Array.isArray(result) ? result : (result.data || [])
             console.log("[CatalogService] Countries loaded:", list.length)
-            return list.map((c: any) => ({
-                id: String(c.id || c.uuid),
-                name: c.name || c.es_name || "Sin nombre",
+            // El backend no es consistente en los nombres de estos campos según la
+            // fuente, de ahí las cadenas de fallback. `str()` evita que un número
+            // (algunas fuentes mandan `phonecode` numérico) se cuele como string.
+            const str = (...candidates: unknown[]): string | undefined => {
+                for (const c of candidates) {
+                    if (typeof c === "string" && c) return c
+                    if (typeof c === "number") return String(c)
+                }
+                return undefined
+            }
+            return list.map((c): CountryOption => ({
+                id: str(c.id, c.uuid) ?? "",
+                name: str(c.name, c.es_name) ?? "Sin nombre",
                 extra: {
-                    iso2: c.iso2 || c.kod || c.code,
-                    iso3: c.iso3,
-                    emoji: c.emoji || "",
-                    phone_prefix: c.phonecode || c.phone_code || c.calling_code || "",
-                    timezones: c.timezones || []
+                    iso2: str(c.iso2, c.kod, c.code),
+                    iso3: str(c.iso3),
+                    emoji: str(c.emoji) ?? "",
+                    phone_prefix: str(c.phonecode, c.phone_code, c.calling_code) ?? "",
+                    timezones: Array.isArray(c.timezones) ? (c.timezones as string[]) : [],
                 }
             }))
         }).catch(error => {
@@ -238,6 +272,25 @@ export class CatalogService {
             ]
         }
         return sources
+    }
+
+    /**
+     * PMS / channel sources (`source_pms`, catalog_category_id = 12) — the
+     * "origen" half of a property's or listing's external identifier
+     * (`externalPmsIds[].sourcePmsId`).
+     *
+     * Goes through `getCatalogByCategoryId` instead of `fetchCatalog("source_pms")`
+     * on purpose: that helper maps `item.uuid || item.id`, and this contract needs
+     * the NUMERIC catalog id. Verified live response (ago 2026): 100 Airbnb,
+     * 101 Booking.com, 134 KunasPMS — none of them carries a `uuid`.
+     *
+     * No hardcoded fallback, deliberately. `getReservationSources()` above shows
+     * why: its 14/15/16 fallback never matched the real catalog and silently
+     * routed data to the wrong channel. An empty list here means "no se pudo
+     * cargar", and the UI says exactly that.
+     */
+    async getPmsSources(): Promise<CatalogOption[]> {
+        return this.getCatalogByCategoryId(12)
     }
 
     async getReasonsForTrip(): Promise<CatalogOption[]> {

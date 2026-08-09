@@ -77,7 +77,7 @@ export function isNativeSignatureAllowed(type: ContractType): boolean {
 }
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
-    agreement_only: "Solo contrato de alojamiento",
-    guarantee_only: "Solo garantía de daños",
-    agreement_and_guarantee: "Contrato + garantía de daños",
+    agreement_only: "Contrato de alquiler",
+    guarantee_only: "Contrato de garantía",
+    agreement_and_guarantee: "Contrato de garantía y alquiler",
 }

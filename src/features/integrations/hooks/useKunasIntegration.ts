@@ -73,8 +73,8 @@ export function useKunasIntegration(): UseKunasIntegration {
         async (active: boolean) => {
             if (!integration) return
             const result = active
-                ? await integrationsService.activate(integration.id)
-                : await integrationsService.deactivate(integration.id)
+                ? await integrationsService.activate(integration.token)
+                : await integrationsService.deactivate(integration.token)
             setIntegration(result)
         },
         [integration],
@@ -82,7 +82,7 @@ export function useKunasIntegration(): UseKunasIntegration {
 
     const disconnect = useCallback(async () => {
         if (!integration) return
-        await integrationsService.disconnect(integration.id)
+        await integrationsService.disconnect(integration.token)
         setIntegration(null)
         setJustConnected(false)
     }, [integration])

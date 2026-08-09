@@ -16,14 +16,14 @@ export default async function CheckinVerifyPage({
     }
 
     const basePath = `/checkin/${resolvedParams.reference}`
-    const fromCallback = resolvedSearchParams.from_didit_callback === '1'
 
     return (
         <VerifyScreen
             reservationUuid={resolvedParams.reference}
             guestUuid={resolvedSearchParams.guest_uuid}
             basePath={basePath}
-            fromCallback={fromCallback}
+            fromCallback={resolvedSearchParams.from_didit_callback === '1'}
+            diditError={resolvedSearchParams.didit_error}
         />
     )
 }

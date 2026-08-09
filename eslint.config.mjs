@@ -12,6 +12,12 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // File-sync conflict copies. TypeScript excludes the same patterns in
+    // tsconfig.json so a regenerated "routes.d 3.ts" cannot break builds.
+    "**/* [0-9]*.ts",
+    "**/* [0-9]*.tsx",
+    "**/* [0-9]*.js",
+    "**/* [0-9]*.jsx",
   ]),
 ]);
 

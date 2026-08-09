@@ -1,18 +1,9 @@
 import { API_BASE } from "@/lib/config"
 import {
-  CheckinReservationV4,
   CheckinPortalResponse,
   IdentifyPayload,
   IdentifyResponse,
-  IdentityResolution,
-  VerificationResult,
-  CheckinCompletionResponse,
-  ReservationCheckinStatus,
-  SecondaryGuestContext,
-  FaceMatchResult,
   OCRResult,
-  SecondaryGateStatus,
-  ActiveAutomation,
   CompleteMainGuestPayload,
   CompleteSecondaryGuestPayload,
   CompleteGuestResponse,
@@ -24,24 +15,22 @@ import {
   VerifyContactChallengeResponse,
   ResendContactChallengeResponse,
   GuestFormSchemaResponse,
-  GuestFormSchemaRawResponse,
   CheckinUserField,
   CheckinFieldType,
   VerificationResultResponse,
   FormSchema,
 } from "../types/checkin"
 import {
-  mockResolveIdentity,
   mockIdentifyResponse,
   mockPortalResponse,
-  mockVerificationApproved,
-  mockCheckinReservation,
   mockCompleteResponse,
   mockFormSchemaResponse,
   mockOCRResult,
   mockVerificationResult,
 } from "../data/mock-guest-data"
 import { getVerificationToken } from "../lib/verification-token"
+import { normalizeVerificationResult } from "../lib/verification-result"
+import type { CheckinApiError, CheckinFailedField } from "../lib/checkin-error"
 
 const USE_MOCK = false;
 
@@ -73,34 +62,9 @@ function localizeDocumentType(type: string): string {
     return map[type] ?? type ?? "Documento"
 }
 
-/**
- * Normalizes the /verify/result response to the legacy { status } shape the
- * screens already branch on, tolerating both:
- *   - new portal-style: { verification: { status, currentStep, ... } }
- *   - legacy flat:       { status: "verified"|"kyc_required"|"failed", ... }
- */
-function normalizeVerificationResult(raw: any): VerificationResultResponse {
-    // Legacy flat shape — pass through untouched.
-    if (raw?.status === "verified" || raw?.status === "kyc_required" || raw?.status === "failed") {
-        return raw as VerificationResultResponse
-    }
-    // New portal-style shape.
-    const v = raw?.verification ?? raw ?? {}
-    if (v.currentStep === "form" || v.status === "approved" || v.status === "completed") {
-        return { status: "verified" }
-    }
-    if (v.currentStep === "rejected" || v.status === "rejected" || v.status === "fail" || v.status === "expired") {
-        return { status: "failed" }
-    }
-    // Still pending but the backend exposes a session URL → the guest has a Didit
-    // step left to finish (e.g. the document-upload session opened after a biometric
-    // match when no documents were on file). Surface it so the front can relaunch
-    // that session instead of waiting on a webhook that never arrives.
-    if (v.verificationUrl) {
-        return { status: "kyc_required", kycUrl: v.verificationUrl }
-    }
-    return { status: "pending" }
-}
+// La traducción de la máquina de estados `verification` (§A) vive en
+// `lib/verification-result.ts`: es una regla de negocio pura y acá adentro no se
+// podía probar sin simular la red.
 
 /**
  * Parses provider-declared dynamic fields (v4.6) from `user_fields`.
@@ -108,36 +72,54 @@ function normalizeVerificationResult(raw: any): VerificationResultResponse {
  * skip them here too. Legacy plain-string entries are coerced to a text field.
  * The `key` is preserved verbatim (snake_case) because it's the exact `extra` key.
  */
-function normalizeUserFields(raw: any): CheckinUserField[] {
-    const arr = raw?.user_fields ?? raw?.userFields
+/**
+ * Payload sin validar del backend. Se escribe así, y no `any`, porque estas
+ * funciones existen justamente para lidiar con un shape del que no se puede
+ * asumir nada: `unknown` obliga a comprobar cada campo antes de leerlo, que es
+ * lo que ya hacen; `any` dejaba que un typo compilara sin queja.
+ */
+type RawPayload = Record<string, unknown> | null | undefined
+
+/** Lee una propiedad de un payload sin validar, sin asumir que es un objeto. */
+function pick(raw: RawPayload, key: string): unknown {
+    return raw && typeof raw === "object" ? raw[key] : undefined
+}
+
+function normalizeUserFields(raw: RawPayload): CheckinUserField[] {
+    const arr = pick(raw, "user_fields") ?? pick(raw, "userFields")
     if (!Array.isArray(arr)) return []
     const out: CheckinUserField[] = []
-    for (const f of arr) {
-        if (typeof f === "string") {
-            out.push({ key: f, type: "text", required: false })
+    for (const entry of arr) {
+        if (typeof entry === "string") {
+            out.push({ key: entry, type: "text", required: false })
             continue
         }
-        if (!f || typeof f !== "object" || !f.key) continue
-        const type = f.type === "auto" ? null : f.type
-        if (type === null) continue // auto fields are backend-only
-        const fieldType: CheckinFieldType = type === "number" || type === "select" ? type : "text"
+        if (!entry || typeof entry !== "object") continue
+        const f = entry as Record<string, unknown>
+        if (!f.key) continue
+        if (f.type === "auto") continue // auto fields are backend-only
+        const fieldType: CheckinFieldType = f.type === "number" || f.type === "select" ? f.type : "text"
+        const categoryId = f.catalog_category_id ?? f.catalogCategoryId
+        const label = f.label ?? f.name
         out.push({
             key: String(f.key),
             type: fieldType,
             required: !!(f.required ?? f.is_required),
-            catalogCategoryId: f.catalog_category_id ?? f.catalogCategoryId ?? undefined,
-            label: f.label ?? f.name ?? undefined,
+            catalogCategoryId: typeof categoryId === "number" ? categoryId : undefined,
+            label: typeof label === "string" ? label : undefined,
         })
     }
     return out
 }
 
-function normalizeFormSchema(raw: any): FormSchema {
-    const toArray = (v: any) => (Array.isArray(v) ? v : [])
+function normalizeFormSchema(raw: RawPayload): FormSchema {
+    const toStringArray = (v: unknown): string[] =>
+        Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []
+    const prefilled = pick(raw, "prefilledData") ?? pick(raw, "prefilled_data")
     return {
-        requiredFields: toArray(raw?.required_fields ?? raw?.requiredFields).map(snakeToCamel),
-        optionalFields: toArray(raw?.optional_fields ?? raw?.optionalFields).map(snakeToCamel),
-        prefilledData: raw?.prefilledData ?? raw?.prefilled_data ?? {},
+        requiredFields: toStringArray(pick(raw, "required_fields") ?? pick(raw, "requiredFields")).map(snakeToCamel),
+        optionalFields: toStringArray(pick(raw, "optional_fields") ?? pick(raw, "optionalFields")).map(snakeToCamel),
+        prefilledData: (prefilled && typeof prefilled === "object" ? prefilled : {}) as Record<string, unknown>,
         userFields: normalizeUserFields(raw),
     }
 }
@@ -167,7 +149,10 @@ export class CheckinService {
         const response = await fetch(url, { headers, cache: "no-store" })
         if (!response.ok) {
             const err = await response.json().catch(() => ({}))
-            throw new Error(err.message || "Error loading reservation")
+            // Mismo error enriquecido que el resto del servicio: varios llamadores
+            // deciden con `e.status` (404 → dejar de sondear /verify/result, 401 →
+            // rebotar al OTP) y con un `Error` pelado esa rama nunca se cumplía.
+            throw this.buildHttpError(response.status, err, response.headers)
         }
         const json = await response.json()
         const portal = json.data || json
@@ -214,13 +199,18 @@ export class CheckinService {
             is_main_guest: payload.isMainGuest,
         };
 
-        const raw: any = await this.postWithAppToken(`${API_BASE}/checkin/${reservationUuid}/identify`, apiPayload);
+        // Solo `formSchema` se normaliza; el resto del cuerpo ya viene con la
+        // forma del contrato (§7), así que se tipa la respuesta cruda como el
+        // contrato menos ese campo, en vez de anular el chequeo con `any`.
+        const raw = await this.postWithAppToken<
+            Omit<IdentifyResponse, "formSchema"> & { formSchema?: RawPayload }
+        >(`${API_BASE}/checkin/${reservationUuid}/identify`, apiPayload);
         return {
             guest: raw.guest,
             reservationGuest: raw.reservationGuest,
             verification: raw.verification,
             formSchema: normalizeFormSchema(raw.formSchema),
-        } as IdentifyResponse;
+        };
     }
 
     /**
@@ -239,11 +229,11 @@ export class CheckinService {
             await new Promise(res => setTimeout(res, 400));
             return mockFormSchemaResponse();
         }
-        const raw: any = await this.getWithAppToken(
+        const raw = await this.getWithAppToken<Record<string, unknown>>(
             `${API_BASE}/checkin/${reservationUuid}/form/${guestUuid}`,
             this.withVerificationToken(reservationUuid, guestUuid),
         );
-        const schema = raw.formSchema || raw;
+        const schema = (pick(raw, "formSchema") ?? raw) as RawPayload;
         const normalized = normalizeFormSchema(schema) as GuestFormSchemaResponse;
         // `user_fields` may live at the top level (sibling of `formSchema`) instead
         // of nested inside it. If the nested lookup found none, try the top level so
@@ -429,37 +419,10 @@ export class CheckinService {
             const err = await uploadRes.json().catch(() => ({}))
             // Preserve the backend's localized message + structured OCR failure detail
             // so the UI can show exactly why verification failed.
-            throw this.buildHttpError(uploadRes.status, err)
+            throw this.buildHttpError(uploadRes.status, err, uploadRes.headers)
         }
         const uploadJson = await uploadRes.json()
         return uploadJson?.data ?? uploadJson
-    }
-
-    /**
-     * Polls guest verification status via the portal endpoint (G-NEW-5).
-     * There is no dedicated status endpoint — uses getPortal() instead.
-     *
-     * Mock: returns "pending" for the first 2 calls, then "approved".
-     * Uses sessionStorage counter so each test run starts fresh.
-     * To test rejection, use a guestUuid ending in "-rejected".
-     */
-    async pollGuestVerification(
-        reservationUuid: string,
-        guestUuid: string
-    ): Promise<{ status: string }> {
-        if (USE_MOCK) {
-            await new Promise(res => setTimeout(res, 1500));
-            if (guestUuid.endsWith('-rejected')) {
-                return { status: 'failed' };
-            }
-            const countKey = `mock-poll-count-${reservationUuid}-${guestUuid}`;
-            const count = Number(sessionStorage.getItem(countKey) ?? '0') + 1;
-            sessionStorage.setItem(countKey, String(count));
-            return { status: count >= 3 ? 'approved' : 'pending' };
-        }
-        const portal = await this.getPortal(reservationUuid);
-        const guest = portal.registeredGuests.find(g => g.uuid === guestUuid);
-        return { status: guest?.isCompleted ? 'approved' : 'pending' };
     }
 
     /**
@@ -473,6 +436,44 @@ export class CheckinService {
      * identificationNumberTrigger is ONLY used for mock routing (111 → verified, 112 → kyc_required).
      * verificationSessionId is the ID Didit sends in the callback URL (?verificationSessionId=xxx).
      */
+    /**
+     * GET /api/v1/checkin/didit/session/{sessionId}/context
+     *
+     * Recupera a qué reserva y huésped pertenece una sesión de Didit. Es la única
+     * salida cuando el huésped vuelve del callback sin contexto: en navegadores
+     * embebidos (WhatsApp/Instagram → Safari) y en modo privado el localStorage no
+     * se comparte, y si el backend no anexó la reserva a la URL no queda nada
+     * local que leer. El `verificationSessionId` del callback sí sobrevive siempre.
+     *
+     * Devuelve las claves en snake_case — es el único endpoint del portal así, y
+     * por eso se normalizan acá y no en el componente.
+     *
+     * Los dos 404 posibles (`SESSION_NOT_FOUND` y `SESSION_RESERVATION_NOT_FOUND`)
+     * significan lo mismo para el huésped: no hay a dónde llevarlo. Se devuelve
+     * `null` en vez de propagar, porque el llamador ya tiene una pantalla para eso.
+     */
+    async resolveDiditSessionContext(
+        verificationSessionId: string,
+    ): Promise<{ reservationUuid: string; guestUuid: string } | null> {
+        try {
+            const raw = await this.getWithAppToken<Partial<{
+                reservation_uuid: string
+                guest_uuid: string
+                // Tolerado por si el backend alguna vez alinea este endpoint con
+                // el camelCase del resto del portal.
+                reservationUuid: string
+                guestUuid: string
+            }>>(`${API_BASE}/checkin/didit/session/${verificationSessionId}/context`)
+            const reservationUuid = raw?.reservation_uuid ?? raw?.reservationUuid
+            const guestUuid = raw?.guest_uuid ?? raw?.guestUuid
+            if (!reservationUuid || !guestUuid) return null
+            return { reservationUuid, guestUuid }
+        } catch (e) {
+            console.error("[checkinService] no se pudo resolver el contexto de la sesión Didit", e)
+            return null
+        }
+    }
+
     async checkVerificationResult(
         reservationUuid: string,
         guestUuid: string,
@@ -485,7 +486,7 @@ export class CheckinService {
         }
         const params = new URLSearchParams({ guest_uuid: guestUuid })
         if (verificationSessionId) params.set('session_id', verificationSessionId)
-        const raw: any = await this.getWithAppToken(
+        const raw = await this.getWithAppToken<unknown>(
             `${API_BASE}/checkin/${reservationUuid}/verify/result?${params.toString()}`
         )
         return normalizeVerificationResult(raw)
@@ -541,10 +542,12 @@ export class CheckinService {
         )
         if (!res.ok) {
             const err = await res.json().catch(() => ({}))
-            throw new Error((err as any).message || "Documento no disponible")
+            throw this.buildHttpError(res.status, err, res.headers)
         }
-        const json = await res.json()
-        return json?.data?.rendered ?? json?.rendered ?? ""
+        const json = await res.json() as RawPayload
+        const data = pick(json, "data") as RawPayload
+        const rendered = pick(data, "rendered") ?? pick(json, "rendered")
+        return typeof rendered === "string" ? rendered : ""
     }
 
     /**
@@ -556,13 +559,27 @@ export class CheckinService {
     }
 
     /**
-     * Opens the SIGNED contract PDF in a new tab. It's a byte stream on a public
-     * endpoint, so we navigate to it directly (no fetch/blob).
+     * Abre el PDF del contrato FIRMADO en una pestaña nueva.
+     *
+     * Se descarga con fetch en vez de navegar a la URL porque este endpoint no
+     * siempre devuelve un PDF: §4 del contrato lista un 422 ("la configuración
+     * del contrato cambió desde que se firmó" — el drift que el backend dejó
+     * como gap vigente) y un 404, ambos en JSON. Navegando, el huésped terminaba
+     * mirando `{"message":"..."}` crudo en una pestaña en blanco; así el llamador
+     * recibe un error con `status` y puede decirle qué pasó.
      */
-    openSignedContract(reservationUuid: string): void {
-        if (typeof window !== "undefined") {
-            window.open(this.getSignedContractUrl(reservationUuid), "_blank")
+    async openSignedContract(reservationUuid: string): Promise<void> {
+        const res = await fetch(this.getSignedContractUrl(reservationUuid), {
+            headers: { Accept: "application/pdf" },
+            cache: "no-store",
+        })
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}))
+            throw this.buildHttpError(res.status, err, res.headers)
         }
+        const objectUrl = URL.createObjectURL(await res.blob())
+        window.open(objectUrl, "_blank")
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
     }
 
     /**
@@ -582,78 +599,18 @@ export class CheckinService {
         setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
     }
 
-    // ═══════════════════════════════════════════════════════
-    // LEGACY — Kept for backwards compatibility during migration
-    // ═══════════════════════════════════════════════════════
-
-    /**
-     * @deprecated Use getPortal() instead.
-     * Gets reservation details by internal UUID.
-     */
-    async getReservation(uuid: string): Promise<CheckinReservationV4> {
-        if (USE_MOCK) {
-            await new Promise(res => setTimeout(res, 500));
-            return mockCheckinReservation;
-        }
-        const url = `${API_BASE}/checkin/${uuid}`
-        return this.fetchWithToken(url)
-    }
-
-    /**
-     * Gets reservation details by external PMS data.
-     * Safe to call from Server Components.
-     */
-    async getReservationByExternal(sourceSlug: string, listingUuid: string, externalId: string): Promise<CheckinReservationV4> {
-        if (USE_MOCK) {
-            await new Promise(res => setTimeout(res, 500));
-            return mockCheckinReservation;
-        }
-        const url = `${API_BASE}/checkin/${sourceSlug}/${listingUuid}/${externalId}`
-        return this.fetchWithToken(url)
-    }
-
-    // Métodos obsoletos eliminados
-
-    async getFaceMatchResult(uuid: string, guestUuid: string): Promise<FaceMatchResult> {
-        if (USE_MOCK) {
-            await new Promise(res => setTimeout(res, 500));
-            return { matched: true, hasExistingData: true, docsValid: true, preFilledData: { name: 'Ricardo', lastname: 'Lombana' } };
-        }
-        const url = `${API_BASE}/checkin/${uuid}/guest/${guestUuid}/facematch`;
-        const res = await fetch(url, { headers: { "Accept": "application/json" } });
-        return res.json();
-    }
-
-    async getSecondaryGateStatus(uuid: string, guestToken: string): Promise<SecondaryGateStatus> {
-        if (USE_MOCK) {
-            await new Promise(res => setTimeout(res, 300));
-            return { mainGuestCompleted: true, mainGuestName: "Ricardo Lombana", reservation: mockCheckinReservation, guestToken };
-        }
-        const portal = await this.getPortal(uuid)
-        const mainGuest = portal.registeredGuests.find(g => g.isMain)
-        const mainCompleted = mainGuest?.isCompleted ?? false
-        const mainName = mainGuest ? `${mainGuest.name} ${mainGuest.lastname}`.trim() : undefined
-
-        return {
-            mainGuestCompleted: mainCompleted,
-            mainGuestName: mainName,
-            reservation: {} as any,
-            guestToken,
-        }
-    }
-
-    /** @deprecated Use completeSecondaryGuest() instead. */
-    async saveSecondaryGuest(uuid: string, guestToken: string, payload: any): Promise<void> {
-        if (USE_MOCK) return new Promise(res => setTimeout(res, 800));
-        return this.postWithAppToken(`${API_BASE}/checkin/${uuid}/s/${guestToken}/guest`, payload);
-    }
-
-    async getActiveAutomations(uuid: string): Promise<ActiveAutomation[]> {
-        if (USE_MOCK) return mockCheckinReservation.activeAutomations;
-        const res = await fetch(`${API_BASE}/checkin/${uuid}/automations`, { headers: { "Accept": "application/json" } });
-        const json = await res.json();
-        return json.data || json;
-    }
+    // ── Métodos eliminados ──────────────────────────────────────────────────
+    // `getFaceMatchResult`, `getActiveAutomations` y `saveSecondaryGuest`
+    // apuntaban a rutas que NO existen en el backend (`/guest/{uuid}/facematch`,
+    // `/automations`, `/s/{token}/guest`): el grupo `checkin` publica 21
+    // endpoints y ninguno es ese. No tenían un solo llamador, pero seguían
+    // ofreciéndose como si fueran API vigente. `getReservation`,
+    // `getReservationByExternal`, `getSecondaryGateStatus` y
+    // `pollGuestVerification` sí existían pero también estaban sin uso, y los dos
+    // últimos leían mal el portal (`registeredGuests` sin comprobar
+    // `portalStatus`, y `isCompleted` —check-in terminado— como si fuera el
+    // estado de verificación). Se borran en vez de arreglarse: lo vigente es
+    // `getPortal()` + `checkinServerService.getSecondaryGateStatus()`.
 
     /**
      * Builds the `X-Checkin-Verification-Token` header when a recurring guest
@@ -683,7 +640,7 @@ export class CheckinService {
         const response = await fetch(url, { headers, cache: "no-store" })
         if (!response.ok) {
             const err = await response.json().catch(() => ({}))
-            throw this.buildHttpError(response.status, err)
+            throw this.buildHttpError(response.status, err, response.headers)
         }
         const json = await response.json()
         return (json.data ?? json) as T
@@ -692,28 +649,39 @@ export class CheckinService {
     /**
      * Builds an Error enriched with `status` and `errors` so screens can
      * branch on HTTP status (403/409/422...) and show field-level errors.
+     *
+     * `headers` es opcional y solo se usa para rescatar `Retry-After`: el 429 del
+     * throttle de Laravel (§8/§9 del contrato) NO trae `retryAfter` en el body,
+     * a diferencia del 429 lógico del propio challenge. Sin este dato la pantalla
+     * del OTP tenía que inventar una espera, y la que inventaba era de 15 minutos
+     * para un bloqueo que en realidad dura uno.
      */
-    private buildHttpError(status: number, body: any): Error {
-        const error = new Error(body?.message || "Error en la solicitud") as Error & {
-            status: number
-            errors?: Record<string, string[]>
-            errorType?: string
-            failedFields?: Array<{ field: string; reason: string; confidence?: number }>
-            code?: string
-            attemptsRemaining?: number
-            retryAfter?: number
-        }
+    private buildHttpError(status: number, body: unknown, headers?: Headers): CheckinApiError {
+        const payload = (body ?? {}) as Record<string, unknown>
+        const message = typeof payload.message === "string" && payload.message
+            ? payload.message
+            : "Error en la solicitud"
+        const error = new Error(message) as CheckinApiError
         error.status = status
-        if (body?.errors && typeof body.errors === "object") error.errors = body.errors
+        if (payload.errors && typeof payload.errors === "object") {
+            error.errors = payload.errors as Record<string, string[]>
+        }
         // OCR / document-verification failures carry a structured shape:
         // { errorType, failedFields:[{field, reason, confidence}], message }
-        if (body?.errorType) error.errorType = body.errorType
-        if (Array.isArray(body?.failedFields)) error.failedFields = body.failedFields
+        if (typeof payload.errorType === "string") error.errorType = payload.errorType
+        if (Array.isArray(payload.failedFields)) {
+            error.failedFields = payload.failedFields as CheckinFailedField[]
+        }
         // Contact-challenge OTP errors (backend plan 20260731): { code, message,
         // attemptsRemaining? } (422) or { code, message, retryAfter? } (429).
-        if (body?.code) error.code = body.code
-        if (typeof body?.attemptsRemaining === "number") error.attemptsRemaining = body.attemptsRemaining
-        if (typeof body?.retryAfter === "number") error.retryAfter = body.retryAfter
+        if (typeof payload.code === "string") error.code = payload.code
+        if (typeof payload.attemptsRemaining === "number") error.attemptsRemaining = payload.attemptsRemaining
+        if (typeof payload.retryAfter === "number") {
+            error.retryAfter = payload.retryAfter
+        } else {
+            const header = Number(headers?.get("Retry-After"))
+            if (Number.isFinite(header) && header > 0) error.retryAfter = header
+        }
         return error
     }
 
@@ -738,36 +706,12 @@ export class CheckinService {
         })
         if (!response.ok) {
             const err = await response.json().catch(() => ({}))
-            throw this.buildHttpError(response.status, err)
+            throw this.buildHttpError(response.status, err, response.headers)
         }
         const json = await response.json()
         return (json.data ?? json) as T
     }
 
-    /**
-     * Helper to make isomorphic fetches (works in Server Components without Zustand).
-     */
-    private async fetchWithToken(url: string): Promise<CheckinReservationV4> {
-        const response = await fetch(url, {
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            cache: "no-store", // Check-in data should always be fresh
-        })
-
-        if (!response.ok) {
-            let errorMsg = "Error loading reservation"
-            try {
-                const errorData = await response.json()
-                errorMsg = errorData.message || errorMsg
-            } catch (e) {}
-            throw new Error(errorMsg)
-        }
-
-        const json = await response.json()
-        return json.data || json
-    }
 }
 
 export const checkinService = new CheckinService()

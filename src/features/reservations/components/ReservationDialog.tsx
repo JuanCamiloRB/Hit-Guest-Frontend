@@ -69,11 +69,17 @@ import { catalogService } from "@/features/auth/services/catalog-service"
 import { apiClient } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
 import { reservationsService } from "@/features/reservations/services/reservations-service"
+import { readGuestNameParts } from "@/features/reservations/lib/guest-name"
 
 // ── Zod Schema ──────────────────────────────────────────────
 const reservationSchema = z.object({
     // Guest Info
-    guestName: z.string().min(2, "El nombre del huésped es requerido").max(120),
+    // Nombre y apellido separados, igual que en el resto del modelo (GuestProfile,
+    // RegisteredGuest, ReservationGuest). `extra` era la única excepción y era
+    // decisión del frontend: guardarlo junto obligaba a partirlo después, y
+    // partir "María González Pérez" es indecidible en español.
+    guestName: z.string().min(2, "El nombre del huésped es requerido").max(60),
+    guestLastname: z.string().min(2, "Los apellidos son requeridos").max(60),
     guestCountry: z.string().min(1, "Selecciona el país o nacionalidad"),
     emailGuest: z.string().email("Email inválido").max(60),
     guestPhone: z.string().optional(),
@@ -161,6 +167,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
         resolver: zodResolver(reservationSchema) as any,
         defaultValues: {
             guestName: "",
+            guestLastname: "",
             guestCountry: "",
             emailGuest: "",
             guestPhone: "",
@@ -361,7 +368,12 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                     }
 
                     form.reset({
-                        guestName: raw.extra?.guestName || raw.extra?.guest_name || raw.mainGuest?.name || raw.emailGuest?.split("@")[0] || "",
+                        // Una reserva antigua trae el nombre entero en `guest_name`
+                        // y ningún apellido. Se carga tal cual para que el PM lo
+                        // separe él: partirlo aquí por espacios daría un apellido
+                        // que parece correcto y acabaría en los reportes SIRE/TRA.
+                        guestName: readGuestNameParts(raw.extra).name || raw.mainGuest?.name || raw.emailGuest?.split("@")[0] || "",
+                        guestLastname: readGuestNameParts(raw.extra).lastname || raw.mainGuest?.lastname || "",
                         guestCountry: raw.extra?.guestCountry || raw.extra?.guest_country || "",
                         emailGuest: raw.emailGuest || raw.email_guest || "",
                         guestPhone: raw.extra?.guestPhone || raw.extra?.guest_phone || "",
@@ -391,7 +403,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             loadReservation()
         } else if (open && mode === "create") {
             form.reset({
-                guestName: "", guestCountry: "", emailGuest: "", guestPhone: "",
+                guestName: "", guestLastname: "", guestCountry: "", emailGuest: "", guestPhone: "",
                 propertyUuid: "", listingId: "", reservationSourceId: "",
                 dates: { from: undefined, to: undefined } as any,
                 totalGuests: 1, totalPrice: 0, currency: "COP", sendLinkNow: true,
@@ -430,7 +442,14 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             totalPrice: values.totalPrice,
             extra: {
                 guest_name: values.guestName,
+                guest_lastname: values.guestLastname,
                 guest_country: values.guestCountry,
+                // El selector de país itera el catálogo (que trae `c.id`) pero
+                // guardaba solo `c.name`, tirando el id. Ese id es el mismo
+                // `nationalityId` que pide el check-in, así que perderlo obligaba
+                // a resolver el país por texto más adelante. Se manda junto al
+                // nombre — aditivo, sin romper lo que ya lee `guest_country`.
+                guest_country_id: countries.find((c) => c.name === values.guestCountry)?.id ?? null,
                 guest_phone: values.guestPhone || null,
             },
             statusReservationId: 27, // 27 = Confirmada
@@ -448,7 +467,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                 toast.success("Reserva creada exitosamente", {
                     description: values.sendLinkNow
                         ? `Se enviará el link de check-in a ${values.emailGuest}`
-                        : `Reserva para ${values.guestName} creada. Link no enviado.`,
+                        : `Reserva para ${values.guestName} ${values.guestLastname} creada. Link no enviado.`,
                 })
             }
 
@@ -503,12 +522,35 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="guestName"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700">Nombre completo del huésped *</FormLabel>
+                                        <FormLabel className="font-semibold text-slate-700">Nombres del huésped *</FormLabel>
                                         <FormControl>
-                                            <Input 
-                                                placeholder="Ej: María González Pérez" 
+                                            <Input
+                                                placeholder="Ej: María"
+                                                autoComplete="given-name"
                                                 className="bg-slate-50 border-slate-200 focus-visible:ring-brand-purple/30 focus-visible:border-brand-purple rounded-xl h-11 transition-colors"
-                                                {...field} 
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            {/* Separado del nombre a propósito: así viaja partido a
+                                `extra` y el check-in del titular puede precargarlo.
+                                Con un solo campo habría que adivinar dónde acaba el
+                                nombre, y esto alimenta reportes SIRE/TRA. */}
+                            <FormField
+                                control={form.control}
+                                name="guestLastname"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="font-semibold text-slate-700">Apellidos del huésped *</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="Ej: González Pérez"
+                                                autoComplete="family-name"
+                                                className="bg-slate-50 border-slate-200 focus-visible:ring-brand-purple/30 focus-visible:border-brand-purple rounded-xl h-11 transition-colors"
+                                                {...field}
                                             />
                                         </FormControl>
                                         <FormMessage />

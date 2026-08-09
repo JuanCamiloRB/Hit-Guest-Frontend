@@ -1,6 +1,6 @@
 "use client"
 
-import { ColumnDef, Row } from "@tanstack/react-table"
+import { ColumnDef, Row, SortingFn } from "@tanstack/react-table"
 import { MoreVertical, Globe, Package2, Trash2 } from "lucide-react"
 import Link from "next/link"
 
@@ -18,7 +18,8 @@ import { Reservation } from "@/types"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { ReservationStatusIcon } from "./ReservationStatusIcon"
-import { getAutomationCellMeta, REPORT_LIGHTS } from "./automation-cell-meta"
+import { getAutomationCellMeta, getCheckinCellMeta, REPORT_LIGHTS } from "./automation-cell-meta"
+import { compareText, compareDates, compareStatus, compareLight } from "./reservation-sorting"
 
 export interface ColumnsOptions {
     onDelete?: (reservation: Reservation) => void
@@ -32,12 +33,27 @@ const AUTOMATION_HEADERS = {
     code: "ACCESO",
 } as const
 
+// Los comparadores viven en reservation-sorting.ts (puros y testeados); aquí
+// solo se adaptan a la firma que espera TanStack.
+const sortByGuest: SortingFn<Reservation> = (a, b) =>
+    compareText(a.original.guestName, b.original.guestName)
+
+const sortByCheckIn: SortingFn<Reservation> = (a, b) =>
+    compareDates(a.original.checkIn, b.original.checkIn)
+
+const sortBySource: SortingFn<Reservation> = (a, b) =>
+    compareText(a.original.source, b.original.source)
+
+const sortByStatus: SortingFn<Reservation> = (a, b) =>
+    compareStatus(a.original.status, b.original.status)
+
 export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
   const { onDelete } = options || {}
   return [
     {
         accessorKey: "guestName",
         header: "HUÉSPED / ALOJAMIENTO",
+        sortingFn: sortByGuest,
         cell: ({ row }) => {
             const reservation = row.original
             const guestName = reservation.guestName
@@ -80,6 +96,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
     {
         accessorKey: "checkIn",
         header: "FECHAS",
+        sortingFn: sortByCheckIn,
         cell: ({ row }) => {
             const checkIn = new Date(row.original.checkIn)
             const checkOut = new Date(row.original.checkOut)
@@ -100,6 +117,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
     {
         accessorKey: "source",
         header: "ORIGEN",
+        sortingFn: sortBySource,
         cell: ({ row }) => {
             const source = row.original.source
             let icon = <Globe className="h-4 w-4 text-slate-500" />
@@ -130,9 +148,12 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
     },
     {
         accessorKey: "status",
-        header: () => <div className="text-center">ESTADO</div>,
+        // Texto plano, no un <div> centrado: ahora el encabezado va dentro del
+        // botón de orden, y un bloque centrado ahí dentro no centra nada.
+        header: "ESTADO",
+        sortingFn: sortByStatus,
         cell: ({ row }) => (
-            <div className="flex justify-center">
+            <div className="flex">
                 <ReservationStatusIcon status={row.original.status} />
             </div>
         ),
@@ -143,14 +164,33 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
     ...(["link", "checkin", "contract", "code"] as const).map((key) => ({
         id: key,
         header: AUTOMATION_HEADERS[key],
+        // Sin `accessorFn` esto sería una display column, y TanStack le da
+        // `getCanSort() === false` porque no hay valor que ordenar: el
+        // encabezado se quedaría sin control de orden.
+        accessorFn: (row: Reservation) => row.automationStatus?.[key] ?? "none",
+        // Ordena por severidad, no por el texto de la pastilla: pulsar CONTRATO
+        // responde "¿cuáles me faltan por firmar?" y sube esos al principio.
+        sortingFn: ((a: Row<Reservation>, b: Row<Reservation>) =>
+            compareLight(key, a.original.automationStatus, b.original.automationStatus)) as SortingFn<Reservation>,
         cell: ({ row }: { row: Row<Reservation> }) => {
-            const { tone, label } = getAutomationCellMeta(key, row.original.automationStatus)
+            const res = row.original
+            // CHECK-IN dice cuántos huéspedes van ("1 de 3 verificados"); el
+            // resto de columnas solo tienen un estado que mostrar.
+            const { tone, label } = key === "checkin"
+                ? getCheckinCellMeta(res.automationStatus, {
+                    completed: res.completedGuests ?? null,
+                    total: res.totalGuests ?? 0,
+                })
+                : getAutomationCellMeta(key, res.automationStatus)
             return <StatusPill tone={tone}>{label}</StatusPill>
         },
     })),
     {
         id: "reports",
         header: "REPORTES",
+        // Tres luces distintas en una celda: no hay un único criterio por el
+        // que ordenarla, así que no se ofrece el control.
+        enableSorting: false,
         cell: ({ row }) => {
             const status = row.original.automationStatus
             return (
@@ -170,6 +210,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
     {
         id: "actions",
         header: () => <div className="text-center">ACCIONES</div>,
+        enableSorting: false,
         cell: ({ row }) => {
             const reservation = row.original
 

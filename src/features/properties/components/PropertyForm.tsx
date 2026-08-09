@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2, Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, AlertCircle, FileText } from "lucide-react"
+import { Loader2, Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, AlertCircle, FileText, Link2 } from "lucide-react"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -52,7 +52,9 @@ import { PropertiesPhotos } from "./PropertiesPhotos"
 import { PropertiesAmenities } from "./PropertiesAmenities"
 import { PropertiesAutomation } from "./PropertiesAutomation"
 import { PropertiesDocuments } from "./documents"
+import { ExternalPmsIdsField } from "./ExternalPmsIdsField"
 import { propertyFormSchema, PropertyFormData, apiResponseToFormData } from "../types"
+import { toExternalPmsIdsPayload } from "../lib/external-pms-ids"
 import { propertiesService } from "../services/properties-service"
 import { listingsService } from "../services/listings-service"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
@@ -141,6 +143,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             picturesUrl: [],
             thumbnailUrl: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&auto=format&fit=crop&q=60",
             units: [],
+            externalPmsIds: [],
             policies: [],
             roomTypes: [],
             automationSettings: {
@@ -162,6 +165,18 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         }
     }, [initialData, form])
 
+    // zod reports an incomplete row on `externalPmsIds.<i>.<field>`, never on
+    // `externalPmsIds` itself — so a <FormMessage/> on the array field renders
+    // nothing and the row stays silently red-less. Fan the messages back out to
+    // the row that owns them.
+    const externalPmsIdErrors = form.formState.errors.externalPmsIds
+    const externalPmsIdRowErrors = Array.isArray(externalPmsIdErrors)
+        ? externalPmsIdErrors.map((rowError) => ({
+            sourcePmsId: rowError?.sourcePmsId?.message,
+            externalId: rowError?.externalId?.message,
+        }))
+        : undefined
+
     // Field → friendly label + tab where the user can fix it
     const FIELD_META: Record<string, { label: string; tab: string }> = {
         name:           { label: "Nombre de la propiedad", tab: "Detalles" },
@@ -170,6 +185,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         propertyTypeId: { label: "Tipo de propiedad",      tab: "Detalles" },
         statusRecordId: { label: "Estado",                 tab: "Detalles" },
         external_id:    { label: "Nombre interno (ID)",    tab: "Detalles" },
+        externalPmsIds: { label: "Identificación externa", tab: "Detalles" },
         description:    { label: "Descripción",            tab: "Detalles" },
         thumbnailUrl:   { label: "URL de miniatura",       tab: "Detalles" },
         address:        { label: "Dirección",              tab: "Ubicación" },
@@ -184,13 +200,34 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         picturesUrl:    { label: "Fotos",                  tab: "Fotos" },
     }
 
+    /**
+     * An array field's error has no `message` of its own — the real one sits on
+     * the offending row (`externalPmsIds.0.externalId`). Without this, the dialog
+     * showed the generic "Campo obligatorio o inválido" for those fields.
+     */
+    function firstMessage(err: unknown): string | undefined {
+        if (!err || typeof err !== "object") return undefined
+
+        const direct = (err as { message?: string }).message
+        if (direct) return direct
+
+        if (Array.isArray(err)) {
+            for (const row of err as Record<string, { message?: string } | undefined>[]) {
+                for (const nested of Object.values(row ?? {})) {
+                    if (nested?.message) return nested.message
+                }
+            }
+        }
+        return undefined
+    }
+
     function onInvalid(errors: Record<string, any>) {
         const items = Object.entries(errors).map(([field, err]) => {
             const meta = FIELD_META[field] ?? { label: field, tab: "Detalles" }
             return {
                 label: meta.label,
                 tab: meta.tab,
-                message: (err as any)?.message || "Campo obligatorio o inválido",
+                message: firstMessage(err) || "Campo obligatorio o inválido",
             }
         })
         setValidationErrors(items)
@@ -244,6 +281,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                 contactPhone:  u.contactPhone,
                                 statusRecordId: u.isActive !== false ? 6 : 7,
                                 extra:         cleanExtra,
+                                externalPmsIds: toExternalPmsIdsPayload(u.externalPmsIds),
                             })
                             created++
                         } catch (uErr) {
@@ -545,6 +583,37 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                 />
                             </CardContent>
                         </Card>
+
+                        <Card>
+                            <CardHeader className="border-b bg-slate-50/50">
+                                <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                                    <Link2 className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                                    Identificación Externa
+                                </CardTitle>
+                                <CardDescription>
+                                    Si esta propiedad ya existe en tu PMS o en un canal, registra
+                                    aquí su origen y el ID que tiene allí. Es lo que permite asociar
+                                    sus reservas externas cuando la propiedad se creó manualmente.
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="pt-6">
+                                <FormField
+                                    control={form.control}
+                                    name="externalPmsIds"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <ExternalPmsIdsField
+                                                subject="propiedad"
+                                                value={field.value ?? []}
+                                                onChange={field.onChange}
+                                                rowErrors={externalPmsIdRowErrors}
+                                            />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
+
                         <PropertiesAmenities />
                     </TabsContent>
 

@@ -4,11 +4,12 @@ import { Loader2, RotateCcw, History, Play, FileText, Send, Lock } from "lucide-
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import type { AutomationStatusItem as AutomationStatusItemType } from "@/features/properties/types/automation"
+import { StatusPill } from "@/components/ui/status-pill"
 import {
     getStatusMeta,
     NOT_APPLICABLE_META,
     PROVIDER_LABELS,
-    AUTOMATION_TITLE_OVERRIDES,
+    automationTitle,
     formatRunDate,
     formatCooldown,
     getCheckinBlockedMessage,
@@ -49,8 +50,9 @@ export function AutomationStatusItem({
     onViewHistory,
 }: AutomationStatusItemProps) {
     const meta = notApplicable ? NOT_APPLICABLE_META : getStatusMeta(item)
-    const title = AUTOMATION_TITLE_OVERRIDES[item.providerSlug] || item.automationName
+    const title = automationTitle(item.providerSlug, item.automationName)
     const providerLabel = PROVIDER_LABELS[item.providerSlug] || item.providerSlug
+    const lastRun = formatRunDate(item.lastRunAt)
     // Cooldown comes only from an explicit 429 (no proactive lastRunAt block, so
     // admin tokens — exempt from the 5-min limit — are never falsely blocked).
     const cooldownLeft = cooldownUntil ? Math.max(0, Math.ceil((cooldownUntil - now) / 1000)) : 0
@@ -80,32 +82,39 @@ export function AutomationStatusItem({
     const signedContractUrl = `${API_BASE}/checkin/${reservationUuid}/contract/signed`
 
     return (
-        <div className="flex flex-col gap-3 rounded-xl border border-slate-100 bg-white p-4 transition-shadow hover:shadow-sm">
+        <div className="flex flex-col gap-3 rounded-xl border border-rule bg-card p-4 transition-colors hover:border-ink-4/60">
             <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3 min-w-0">
-                    <span className={cn("mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full", meta.dot)} />
-                    <div className="min-w-0">
-                        <h4 className="font-semibold text-slate-800 leading-tight truncate">{title}</h4>
-                        <p className="text-xs text-slate-400 mt-0.5 truncate">{providerLabel}</p>
-                    </div>
+                <div className="min-w-0">
+                    {/* Sin `truncate`: el título es lo que identifica la fila, y
+                        cortarlo dejaba dos automatizaciones distintas leyéndose
+                        igual ("Verificación de identidad · Secundar…"). */}
+                    <h4 className="text-sm font-semibold leading-snug text-ink">{title}</h4>
+                    <p className="mt-0.5 text-xs text-ink-3">{providerLabel}</p>
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                    <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide", meta.badge)}>
-                        {meta.label}
-                    </span>
-                    <span className="text-[11px] text-slate-400 font-medium">{formatRunDate(item.lastRunAt)}</span>
-                </div>
+                <StatusPill
+                    tone={meta.tone}
+                    emptyLabel={meta.label}
+                    className={cn("shrink-0", meta.pulse && "[&>span]:animate-pulse")}
+                >
+                    {meta.label}
+                </StatusPill>
             </div>
 
+            {item.lastRunAt && (
+                <p className="text-xs text-ink-3">
+                    Última ejecución <span className="font-medium text-ink-2">{lastRun}</span>
+                </p>
+            )}
+
             {item.status === "failed" && item.lastError && (
-                <p className="rounded-lg bg-red-50/60 border border-red-100 px-3 py-2 text-xs text-red-600 break-words">
+                <p className="rounded-lg bg-danger-sunk px-3 py-2 text-xs break-words text-danger">
                     {errorMessage(item.lastError)}
                 </p>
             )}
 
             {blockedMessage && (
-                <p className="inline-flex items-start gap-1.5 rounded-lg bg-slate-50 border border-slate-100 px-3 py-2 text-xs text-slate-500 break-words">
-                    <Lock size={13} className="mt-0.5 shrink-0 text-slate-400" />
+                <p className="inline-flex items-start gap-1.5 rounded-lg bg-sunk px-3 py-2 text-xs break-words text-ink-2">
+                    <Lock size={13} className="mt-0.5 shrink-0 text-ink-3" />
                     {blockedMessage}
                 </p>
             )}
@@ -115,18 +124,17 @@ export function AutomationStatusItem({
                     href={signedContractUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 w-fit rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
+                    className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-success-sunk px-3 py-1.5 text-xs font-semibold text-success transition-opacity hover:opacity-80"
                 >
                     <FileText size={13} /> Ver contrato firmado
                 </a>
             )}
 
-
-            <div className="flex items-center justify-between gap-2">
+            <div className="mt-auto flex items-center justify-between gap-2 pt-1">
                 <button
                     type="button"
                     onClick={() => onViewHistory(item)}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-primary transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded text-xs font-medium text-ink-3 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                     <History size={14} />
                     Ver historial
@@ -139,7 +147,7 @@ export function AutomationStatusItem({
                             variant="outline"
                             disabled={retryDisabled}
                             onClick={() => onRedispatch(item)}
-                            className="h-8 gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-60"
+                            className="h-8 gap-1.5 border-danger/30 text-danger hover:bg-danger-sunk hover:text-danger disabled:opacity-60"
                         >
                             {isRedispatching ? (
                                 <><Loader2 size={14} className="animate-spin" /> Reenviando...</>

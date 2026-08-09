@@ -1,14 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, Mail, PenLine } from "lucide-react"
+import { ArrowLeft, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, Mail, PenLine, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { normalizeApiError, notifyError } from "@/lib/notify-error"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
-import { clearVerificationToken } from "@/features/checkin/lib/verification-token"
+import { getVerificationTokenState } from "@/features/checkin/lib/verification-token"
+import { isDocumentExpired } from "@/features/checkin/lib/document-expiry"
+import { classifyCompleteFailure } from "@/features/checkin/lib/complete-failure"
+import { useVerificationRecovery } from "@/features/checkin/hooks/useVerificationRecovery"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { SignaturePad } from "@/features/checkin/components/SignaturePad"
 import { GuaranteeCardForm } from "@/features/checkin/components/GuaranteeCardForm"
@@ -34,6 +37,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
     const searchParams = useSearchParams()
     const guestUuid = searchParams.get("guest_uuid") || ""
     const { load: loadSession } = useIdentifySession(reservationUuid)
+    const expireVerificationSession = useVerificationRecovery(reservationUuid, basePath)
 
     const [isLoading, setIsLoading] = useState(true)
     // The contract signature is MAIN-GUEST ONLY (/main/sign is reservation-level).
@@ -51,6 +55,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
     const [contractDocUuid, setContractDocUuid] = useState<string | null>(null)
     const [hasNativeSignature, setHasNativeSignature] = useState(false)
     const [configurationError, setConfigurationError] = useState<string | null>(null)
+    const [isRetryable, setIsRetryable] = useState(false)
     const [contractAlreadyCompleted, setContractAlreadyCompleted] = useState(false)
     // Card-on-file guarantee (backend plan 20260731) — independent of contract
     // signing: a reservation can need BOTH a signature/acceptance AND a card.
@@ -68,108 +73,131 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
         && !!signingProvider
         && signingProvider.includes("hitguest")
 
+    const loadDocuments = useCallback(async () => {
+        try {
+            // Fetch the portal once: it carries the contract config (v4.4) AND the
+            // documents (with render/pdf URLs). Pass it to getReservationDocuments
+            // to avoid a second portal request.
+            const portal = await checkinService.getPortal(reservationUuid)
+
+            // Esta pantalla es la más cara de rehacer: el huésped lee el contrato,
+            // registra la tarjeta y FIRMA antes de que se envíe nada. Con el token
+            // del OTP ya vencido, /sign y /main/complete responden 401 recién al
+            // final y la firma se pierde. Guardar el `expiresAt` permite saberlo
+            // acá y rebotarlo antes de que gaste ese trabajo.
+            //
+            // Solo "expired": "absent" es legítimo — el huésped que hizo biometría
+            // nunca tuvo token y no hay que expulsarlo.
+            if (getVerificationTokenState(reservationUuid, guestUuid) === "expired") {
+                expireVerificationSession(guestUuid)
+                return
+            }
+
+            const contractInfo = portal.contract
+
+            // Determine whether THIS guest is the main guest (authoritative: portal
+            // pivot). Secondary guests must not sign the contract. The identify
+            // session is a navigation fallback; if neither identifies the role,
+            // block the legal action instead of guessing.
+            const me = portal.registeredGuests?.find(g => g.uuid === guestUuid)
+            const sessionMain = loadSession(guestUuid)?.isMainGuest
+            const resolvedIsMain = me?.isMain ?? sessionMain
+            if (typeof resolvedIsMain !== "boolean") {
+                setConfigurationError(
+                    "No pudimos confirmar el rol de este huésped en la reserva.",
+                )
+                setIsMainGuest(null)
+                return
+            }
+            setIsMainGuest(resolvedIsMain)
+
+            // Guest completion and contract completion are independent states.
+            // Only the guest flag authorizes the success redirect.
+            if (me?.isCompleted) {
+                router.replace(`${basePath}/success?guest_uuid=${guestUuid}`)
+                return
+            }
+
+            // Recovery path: /main/sign may have succeeded while /main/complete
+            // failed. Do not ask for another signature and do not redirect to a
+            // false success; keep the saved form available for a completion retry.
+            if (contractInfo?.status === "completed") {
+                setContractAlreadyCompleted(true)
+                setConfigurationError(null)
+                return
+            }
+            setContractAlreadyCompleted(false)
+
+            // Authoritative source for what applies to THIS reservation's channel
+            // (backend plan §4.1/§4.2) — documents[] can hold several Agreement
+            // rows now (one per channel in per_source mode), so it no longer
+            // identifies the contract on its own.
+            const contractPreview = await checkinService.getContractPreview(reservationUuid)
+
+            setConfigurationError(null)
+            setIsRetryable(false)
+            setSigningProvider(contractPreview.providerSlug)
+            setHasNativeSignature(contractInfo?.hasNativeSignature ?? false)
+            setContractDocUuid(contractPreview.agreement?.uuid ?? null)
+            setGuaranteeRequired(contractPreview.guarantee !== null)
+
+            // Both texts already come fully rendered for this reservation/guest —
+            // no separate render call needed (that was only ever for the single
+            // legacy document). agreement_and_guarantee shows both in this view.
+            const docs: RenderedDocument[] = []
+            if (contractPreview.agreement) {
+                docs.push({
+                    uuid: contractPreview.agreement.uuid,
+                    typeName: "Contrato de Alojamiento",
+                    renderedHtml: contractPreview.agreement.rendered,
+                })
+            }
+            if (contractPreview.guarantee) {
+                docs.push({
+                    uuid: "guarantee",
+                    typeName: "Garantía de Daños y Consumos",
+                    renderedHtml: contractPreview.guarantee.rendered,
+                })
+            }
+            setDocuments(docs)
+            // Auto-expand the first section only — agreement_and_guarantee stacks
+            // two legal texts, and opening both by default is a wall of text.
+            setExpandedDoc(docs[0]?.uuid ?? null)
+        } catch (err) {
+            console.warn("[ContractScreen] Could not load contract/documents:", err)
+            const status = normalizeApiError(err).status
+            // 422 = property routing not configured for this channel (permanent).
+            // Anything else (5xx, network, unknown) = transient, offer retry.
+            const permanent = status === 422
+            setConfigurationError(
+                permanent
+                    ? "El anfitrión no ha configurado el contrato para esta reserva. Contacta al alojamiento."
+                    : "No pudimos cargar el contrato. Puedes intentarlo de nuevo o contactar al anfitrión.",
+            )
+            setIsRetryable(!permanent)
+            setSigningProvider(null)
+            setContractDocUuid(null)
+            setGuaranteeRequired(false)
+            setDocuments([])
+        } finally {
+            setIsLoading(false)
+        }
+    }, [reservationUuid, guestUuid, basePath, router, loadSession, expireVerificationSession])
+
     useEffect(() => {
         if (!guestUuid) {
             router.push(`${basePath}/identify`)
             return
         }
 
-        async function loadDocuments() {
-            try {
-                // Fetch the portal once: it carries the contract config (v4.4) AND the
-                // documents (with render/pdf URLs). Pass it to getReservationDocuments
-                // to avoid a second portal request.
-                const portal = await checkinService.getPortal(reservationUuid)
-
-                const contractInfo = portal.contract
-
-                // Determine whether THIS guest is the main guest (authoritative: portal
-                // pivot). Secondary guests must not sign the contract. The identify
-                // session is a navigation fallback; if neither identifies the role,
-                // block the legal action instead of guessing.
-                const me = portal.registeredGuests?.find(g => g.uuid === guestUuid)
-                const sessionMain = loadSession(guestUuid)?.isMainGuest
-                const resolvedIsMain = me?.isMain ?? sessionMain
-                if (typeof resolvedIsMain !== "boolean") {
-                    setConfigurationError(
-                        "No pudimos confirmar el rol de este huésped en la reserva.",
-                    )
-                    setIsMainGuest(null)
-                    return
-                }
-                setIsMainGuest(resolvedIsMain)
-
-                // Guest completion and contract completion are independent states.
-                // Only the guest flag authorizes the success redirect.
-                if (me?.isCompleted) {
-                    router.replace(`${basePath}/success?guest_uuid=${guestUuid}`)
-                    return
-                }
-
-                // Recovery path: /main/sign may have succeeded while /main/complete
-                // failed. Do not ask for another signature and do not redirect to a
-                // false success; keep the saved form available for a completion retry.
-                if (contractInfo?.status === "completed") {
-                    setContractAlreadyCompleted(true)
-                    setConfigurationError(null)
-                    return
-                }
-                setContractAlreadyCompleted(false)
-
-                // Authoritative source for what applies to THIS reservation's channel
-                // (backend plan §4.1/§4.2) — documents[] can hold several Agreement
-                // rows now (one per channel in per_source mode), so it no longer
-                // identifies the contract on its own.
-                const contractPreview = await checkinService.getContractPreview(reservationUuid)
-
-                setConfigurationError(null)
-                setSigningProvider(contractPreview.providerSlug)
-                setHasNativeSignature(contractInfo?.hasNativeSignature ?? false)
-                setContractDocUuid(contractPreview.agreement?.uuid ?? null)
-                setGuaranteeRequired(contractPreview.guarantee !== null)
-
-                // Both texts already come fully rendered for this reservation/guest —
-                // no separate render call needed (that was only ever for the single
-                // legacy document). agreement_and_guarantee shows both in this view.
-                const docs: RenderedDocument[] = []
-                if (contractPreview.agreement) {
-                    docs.push({
-                        uuid: contractPreview.agreement.uuid,
-                        typeName: "Contrato de Alojamiento",
-                        renderedHtml: contractPreview.agreement.rendered,
-                    })
-                }
-                if (contractPreview.guarantee) {
-                    docs.push({
-                        uuid: "guarantee",
-                        typeName: "Garantía de Daños y Consumos",
-                        renderedHtml: contractPreview.guarantee.rendered,
-                    })
-                }
-                setDocuments(docs)
-                // Auto-expand the first section only — agreement_and_guarantee stacks
-                // two legal texts, and opening both by default is a wall of text.
-                setExpandedDoc(docs[0]?.uuid ?? null)
-            } catch (err) {
-                console.warn("[ContractScreen] Could not load contract/documents:", err)
-                // Covers the routing-not-configured 422 (backend plan §4.2) the same
-                // way as any other load failure: it's a property configuration issue
-                // the guest can't fix, so "contact the host" is the right message
-                // either way.
-                setConfigurationError(
-                    "No pudimos cargar el contrato asignado a esta reserva. Contacta al anfitrión.",
-                )
-                setSigningProvider(null)
-                setContractDocUuid(null)
-                setGuaranteeRequired(false)
-                setDocuments([])
-            } finally {
-                setIsLoading(false)
-            }
-        }
-
+        // `loadDocuments` es async y todo su setState ocurre DESPUÉS del await del
+        // portal; la regla no modela ese límite y lo lee como si fuera síncrono.
+        // El único camino nuevo que alcanza un setState desde acá es el rebote por
+        // token vencido, que además navega enseguida — no hay render en cascada
+        // que evitar.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadDocuments()
-    }, [reservationUuid, guestUuid, basePath, router, loadSession])
+    }, [guestUuid, basePath, router, loadDocuments])
 
     const buildProfileExtra = (form: GuestFormData): CompleteSecondaryGuestPayload => {
         return {
@@ -204,10 +232,43 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
     })
 
     /**
+     * ¿El portal ya reporta a este huésped como verificado, AHORA MISMO?
+     *
+     * Es la misma condición con la que `waitForVerification()` da por buena la
+     * espera, consultada una sola vez y sin sondeo. Sirve para decidir si esperar
+     * tiene sentido: si el portal ya confirma, el sondeo confirmaría de inmediato
+     * y el reintento fallaría igual.
+     *
+     * Ante un fallo de red devuelve `false` — o sea, se comporta como antes y
+     * espera. Un problema de red no debe convertirse en un mensaje de error
+     * definitivo para el huésped.
+     */
+    const isVerifiedAccordingToPortal = async (): Promise<boolean> => {
+        try {
+            const portal = await checkinService.getPortal(reservationUuid)
+            if (portal.portalStatus) return false
+            const guest = portal.registeredGuests.find(g => g.uuid === guestUuid)
+            const step = guest?.verification?.currentStep
+            return step === "form" || step === "completed"
+        } catch {
+            return false
+        }
+    }
+
+    /**
      * Wait for backend to confirm identity verification (Didit webhook processing).
      * Polls portal with backoff. Returns true if verified, false if timed out.
+     *
+     * Los tres desenlaces que NO son "verificado / se agotó el tiempo" mandan al
+     * huésped a una pantalla distinta, y son distintos entre sí: `kyc_redirect`
+     * tiene una sesión de documento por completar, `restart` no la tiene (hay que
+     * reiniciar en /identify para que el backend la vuelva a crear), y
+     * `contact_challenge` necesita el código del correo. Colapsarlos habría
+     * mandado a dos de los tres a una pantalla que no los puede resolver.
      */
-    const waitForVerification = async (): Promise<boolean | "kyc_redirect"> => {
+    const waitForVerification = async (): Promise<
+        boolean | "kyc_redirect" | "restart" | "contact_challenge"
+    > => {
         const MAX_WAIT = 60_000
         let elapsed = 0
         let interval = 3000
@@ -233,6 +294,8 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                         // Form data stays in localStorage, so nothing is lost.
                         return "kyc_redirect"
                     }
+                    if (result.status === "restart_required") return "restart"
+                    if (result.status === "contact_challenge") return "contact_challenge"
                 } catch (error: unknown) {
                     if (normalizeApiError(error).status === 404) activeCheckAvailable = false
                 }
@@ -257,11 +320,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
      * IdentifyScreen's existing "resume" flow — re-submitting /identify there
      * yields a fresh contact_challenge without losing the guest's typed data.
      */
-    const redirectToVerification = () => {
-        clearVerificationToken(reservationUuid, guestUuid)
-        toast.info("Tu sesión de verificación expiró. Verifica el código nuevamente.")
-        router.push(`${basePath}/identify?guest_uuid=${guestUuid}`)
-    }
+    const redirectToVerification = () => expireVerificationSession(guestUuid)
 
     const handleComplete = async () => {
         if (
@@ -291,6 +350,18 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             }
             const form: GuestFormData = JSON.parse(rawForm)
 
+            // `profile.email` es REQUIRED en ambos /complete (§16/§18). El
+            // formulario lo exige, pero este borrador vive en localStorage y
+            // puede haberse guardado antes de que ese campo fuera obligatorio.
+            // Sin este corte, el huésped firmaba primero y recién ahí recibía un
+            // 422 de validación — con la firma ya gastada y sin poder editar el
+            // correo desde esta pantalla.
+            if (!String(form.email ?? "").trim()) {
+                toast.error("Falta tu correo electrónico. Vuelve al formulario para completarlo.")
+                router.push(`${basePath}/guest?guest_uuid=${guestUuid}`)
+                return
+            }
+
             // Main guest: native signature (if any) then /main/complete.
             // Secondary guest: never signs — complete via /secondary/{uuid}/complete so
             // we don't overwrite the main guest's signature.
@@ -319,20 +390,46 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 } catch (error: unknown) {
                     lastError = error
                     const normalized = normalizeApiError(error)
-                    const msg = normalized.message.toLowerCase()
-                    // A 403/422 about the signature is a contract problem, not a
-                    // verification one — surface it directly, don't wait/retry.
-                    if (msg.includes("firma") || msg.includes("signature")) {
+                    const failure = classifyCompleteFailure(normalized.status, normalized.message)
+
+                    // Ninguno de estos dos se arregla esperando: el de firma es un
+                    // problema del contrato, y el del titular depende de OTRA
+                    // persona. Se muestran directo.
+                    if (failure === "signature" || failure === "main_guest_pending") {
                         throw error
                     }
-                    // Otherwise a 403 (or identity_not_verified) on sign/complete means
-                    // the backend hasn't confirmed identity verification yet (the Didit
-                    // webhook may still be landing). Wait for the portal to flip to
-                    // verified, then retry.
-                    const isNotVerified = normalized.status === 403 ||
-                        msg.includes("identity_not_verified") ||
-                        msg.includes("not_verified") ||
-                        msg.includes("not been verified")
+
+                    const isNotVerified = failure === "identity_unconfirmed"
+                    // Esperar solo tiene sentido si el portal TODAVÍA no confirma al
+                    // huésped; si ya lo confirma, el sondeo no puede aportar nada.
+                    //
+                    // El portal decide con un criterio MÁS DÉBIL que el que acaba de
+                    // rechazar este envío (§A.4): reporta `form` con solo
+                    // `person_verified_at`, mientras que el backend exige además que
+                    // el estado sea `approved` y que el documento no esté vencido.
+                    // Cuando el portal ya dice `form`, `waitForVerification()`
+                    // confirma al primer sondeo, se reintenta y falla idéntico —
+                    // pero el huésped ya se comió la espera y dos mensajes que le
+                    // decían que todo iba bien.
+                    //
+                    // Esto vale para CUALQUIER causa del 403, no solo el documento
+                    // vencido: también cubre al huésped rechazado después de haber
+                    // sido verificado (el portal lo sigue reportando aprobado porque
+                    // mira `person_verified_at` antes que el estado de rechazo), y a
+                    // cualquier condición que el backend agregue más adelante.
+                    if (isNotVerified && await isVerifiedAccordingToPortal()) {
+                        toast.error(
+                            isDocumentExpired(form.identificationExpiryDate)
+                                // Cuando sabemos la causa, se dice: es accionable.
+                                ? "Tu documento de identidad está vencido. Contacta al anfitrión para completar tu check-in."
+                                // Si no, se muestra el mensaje del backend tal cual, que
+                                // dice más que un "intenta más tarde" inventado.
+                                : normalized.message,
+                        )
+                        setIsSubmitting(false)
+                        setSubmitStatus("")
+                        return
+                    }
                     if (isNotVerified && attempt === 0) {
                         toast.info("Tu verificación aún se está procesando. Esperando confirmación...")
                         const verified = await waitForVerification()
@@ -341,6 +438,24 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                             setIsSubmitting(false)
                             setSubmitStatus("")
                             router.push(`${basePath}/verify?guest_uuid=${guestUuid}&from_didit_callback=1`)
+                            return
+                        }
+                        // No hay sesión de documento que abrir: la creación falló.
+                        // Reiniciar en /identify hace que el backend la reintente,
+                        // sin repetir el reconocimiento facial. Los datos del
+                        // formulario y la firma siguen en localStorage.
+                        if (verified === "restart") {
+                            toast.info("No pudimos abrir la validación de tu documento. Reiniciamos ese paso — no tendrás que repetir el reconocimiento facial.")
+                            setIsSubmitting(false)
+                            setSubmitStatus("")
+                            router.push(`${basePath}/identify?guest_uuid=${guestUuid}`)
+                            return
+                        }
+                        if (verified === "contact_challenge") {
+                            toast.info("Necesitamos confirmar el código que enviamos a tu correo.")
+                            setIsSubmitting(false)
+                            setSubmitStatus("")
+                            router.push(`${basePath}/contact-challenge?guest_uuid=${guestUuid}`)
                             return
                         }
                         if (!verified) {
@@ -470,10 +585,28 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             ) : configurationError ? (
                 <div
                     role="alert"
-                    className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700"
+                    className={`rounded-2xl border p-5 text-sm ${
+                        isRetryable
+                            ? "border-amber-200 bg-amber-50 text-amber-700"
+                            : "border-red-200 bg-red-50 text-red-700"
+                    }`}
                 >
                     <p className="font-bold">No es posible continuar con la firma</p>
                     <p className="mt-1">{configurationError}</p>
+                    {isRetryable && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setConfigurationError(null)
+                                setIsRetryable(false)
+                                setIsLoading(true)
+                                loadDocuments()
+                            }}
+                            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-200 transition-colors"
+                        >
+                            <RefreshCw size={14} /> Reintentar
+                        </button>
+                    )}
                 </div>
             ) : hasDocuments ? (
                 <div className="space-y-3">
@@ -589,7 +722,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                             </>
                         ) : (
                             configurationError
-                                ? "Contrato no disponible"
+                                ? (isRetryable ? "Reintentar carga" : "Contrato no disponible")
                                 : contractAlreadyCompleted
                                     ? "Finalizar check-in"
                                 : needsSignature

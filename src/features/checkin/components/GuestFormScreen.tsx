@@ -2,26 +2,34 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, CheckCircle2, FileText, User, Globe, Plane, Loader2, ClipboardList } from "lucide-react"
+import { ArrowLeft, CheckCircle2, FileText, User, Globe, Plane, Loader2, ClipboardList, AlertTriangle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
-import { CatalogService, type IdentificationTypeOption, type CatalogOption } from "@/features/auth/services/catalog-service"
+import { CatalogService, type IdentificationTypeOption, type CatalogOption, type CountryOption } from "@/features/auth/services/catalog-service"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
 import { DocumentTypeNumberFields } from "@/features/checkin/components/DocumentTypeNumberFields"
 import { BirthdateGenderFields } from "@/features/checkin/components/BirthdateGenderFields"
 import {
     type GuestFormData,
-    type GuestFormSchemaResponse
+    type GuestFormSchemaResponse,
+    type MainGuestPrefill,
 } from "@/features/checkin/types/checkin"
-import { MAIN_GUEST_STEPS } from "@/features/checkin/data/constants"
+import {
+    normalizeMainGuestPrefill,
+    mainGuestPrefillPatch,
+    applyPrefillPatch,
+} from "@/features/checkin/lib/main-guest-prefill"
 import { useLocalStorage } from "@/features/checkin/hooks/useLocalStorage"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
-import { clearVerificationToken } from "@/features/checkin/lib/verification-token"
+import { getVerificationToken } from "@/features/checkin/lib/verification-token"
+import { asCheckinError } from "@/features/checkin/lib/checkin-error"
+import { useVerificationRecovery } from "@/features/checkin/hooks/useVerificationRecovery"
+import { isDocumentAlreadyVerified } from "@/features/checkin/lib/doc-verification"
+import { isDocumentExpired } from "@/features/checkin/lib/document-expiry"
 import { FormInput } from "@/features/checkin/components/FormInput"
 import { DynamicCheckinFields, areDynamicFieldsValid, getProviderUserFields } from "@/features/checkin/components/DynamicCheckinFields"
 import { CollapsibleSection } from "@/features/checkin/components/CollapsibleSection"
-import { StepIndicator } from "@/features/checkin/components/StepIndicator"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { DocumentUpload } from "@/features/checkin/components/DocumentUpload"
 import {
@@ -55,7 +63,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
     const [docVerified, setDocVerified] = useState(false)
     const [countryOptions, setCountryOptions] = useState<Array<{ id: number; label: string }>>([])
     // Raw countries kept so we can resolve a country id → ISO2 for the identification-types query.
-    const [countriesRaw, setCountriesRaw] = useState<any[]>([])
+    const [countriesRaw, setCountriesRaw] = useState<CountryOption[]>([])
     const [tripReasonOptions, setTripReasonOptions] = useState<Array<{ id: number; label: string }>>([])
     const [identTypes, setIdentTypes] = useState<IdentificationTypeOption[]>([])
     const [genders, setGenders] = useState<CatalogOption[]>([])
@@ -70,6 +78,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
     })
 
     const router = useRouter()
+    const expireVerificationSession = useVerificationRecovery(reservationUuid, basePath)
 
     useEffect(() => {
         if (!guestUuid) {
@@ -88,26 +97,42 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                     catalogs.getGenders(),
                 ])
                 setCountriesRaw(countries || [])
-                setCountryOptions((countries || []).map((c: any) => ({ id: c.id, label: c.name })))
-                setTripReasonOptions((reasons || []).map((r: any) => ({ id: r.id, label: r.nameTranslations?.es || r.name })))
+                setCountryOptions((countries || []).map((c) => ({ id: Number(c.id), label: c.name })))
+                setTripReasonOptions((reasons || []).map((r) => ({ id: Number(r.id), label: r.name })))
                 setGenders(genderList || [])
 
-                // Verification must come from backend state, never from a writable
-                // localStorage flag. This controls whether document photos can be skipped.
+                // Quién puede saltarse las fotos del documento. La decisión sale
+                // siempre de algo que emitió el backend — estado del portal o el
+                // token del OTP — nunca de una bandera que escriba el front.
+                let mainGuestPrefill: MainGuestPrefill | null = null
+                // El OTP ya aprobado vale por sí solo (ver `doc-verification.ts`):
+                // se lee antes del portal para que siga contando aunque el portal
+                // no responda.
+                const hasOtpToken = getVerificationToken(reservationUuid, guestUuid) !== null
                 try {
                     const portal = await checkinService.getPortal(reservationUuid)
                     const currentGuest = portal.registeredGuests.find((guest) => guest.uuid === guestUuid)
-                    const verificationStatus = currentGuest?.verification?.status
-                    const currentStep = currentGuest?.verification?.currentStep
-                    setDocVerified(
-                        currentGuest?.isCompleted === true
-                        || verificationStatus === "approved"
-                        || verificationStatus === "completed"
-                        || currentStep === "form"
-                        || currentStep === "completed",
+                    setDocVerified(isDocumentAlreadyVerified(currentGuest, hasOtpToken))
+                    // Datos que el PM registró al crear la reserva. SOLO para el
+                    // titular: son suyos, y dárselos a un acompañante le mostraría
+                    // el correo y el teléfono de otra persona. Se aprovecha esta
+                    // misma llamada al portal — no añade ninguna petición.
+                    const isMainGuest = currentGuest?.isMain ?? session?.isMainGuest ?? false
+                    if (isMainGuest) {
+                        mainGuestPrefill = normalizeMainGuestPrefill(portal.reservation?.mainGuestPrefill)
+                    }
+                } catch (e) {
+                    // Sin portal no hay estado que mirar, pero el token del OTP sigue
+                    // valiendo: un recurrente que acaba de verificar su código no debe
+                    // terminar subiendo fotos solo porque esta llamada falló.
+                    // Se loguea porque antes se tragaba en silencio y el síntoma
+                    // ("el front pide fotos de más") era indistinguible de un bug de
+                    // la propia regla.
+                    console.error(
+                        "[GuestFormScreen] getPortal() falló; no se pudo leer el estado de verificación del huésped",
+                        e,
                     )
-                } catch {
-                    setDocVerified(false)
+                    setDocVerified(isDocumentAlreadyVerified(undefined, hasOtpToken))
                 }
 
                 // Base schema from the identify session (has prefilledData + legacy
@@ -139,14 +164,12 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                             }
                             : formSchema
                     }
-                } catch (e: any) {
-                    if (e?.status === 401) {
-                        // Verification token missing/expired (OTP plan 20260731 §"Endpoints
-                        // que ahora exigen el token"): re-run /identify to get a fresh
-                        // challenge, reusing the existing "resume" flow in IdentifyScreen.
-                        clearVerificationToken(reservationUuid, guestUuid)
-                        toast.info("Tu sesión de verificación expiró. Verifica el código nuevamente.")
-                        router.push(`${basePath}/identify?guest_uuid=${guestUuid}`)
+                } catch (raw: unknown) {
+                    if (asCheckinError(raw).status === 401) {
+                        // Token ausente/vencido (plan OTP 20260731 §"Endpoints que
+                        // ahora exigen el token"): /identify emite un desafío nuevo
+                        // reusando el flujo de "resume" que ya vive ahí.
+                        expireVerificationSession(guestUuid)
                         return
                     }
                     console.warn("[GuestFormScreen] /form endpoint unavailable; using identify session schema")
@@ -156,12 +179,15 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                     setSchema(resSchema)
                     if (resSchema.prefilledData) {
                         // Also check for OCR data saved by VerifyScreen's handleOcrConfirm
-                        let ocrOverrides: Record<string, any> = {}
+                        const ocrOverrides: Record<string, unknown> = {}
                         try {
                             const ocrKey = `checkin-ocr-data-${reservationUuid}-${guestUuid}`
                             const raw = localStorage.getItem(ocrKey)
                             if (raw) {
-                                const ocr = JSON.parse(raw)
+                                const ocr = JSON.parse(raw) as Partial<Record<
+                                    "firstName" | "lastName" | "documentNumber" | "dateOfBirth" | "expirationDate",
+                                    string
+                                >>
                                 // Map OCR fields → form fields
                                 if (ocr.firstName) ocrOverrides.name = ocr.firstName
                                 if (ocr.lastName) ocrOverrides.lastname = ocr.lastName
@@ -192,10 +218,26 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                         }
 
                         setForm(prev => {
-                            const updated = { ...prev } as any
+                            // Prefill dinámico: las claves salen del schema del backend,
+                            // no del tipo. Registro indexable acá, UN cast al salir.
+                            let updated: Record<string, unknown> = { ...prev }
                             const schemaIncludes = (key: string) =>
                                 resSchema.requiredFields.includes(key)
                                 || resSchema.optionalFields.includes(key)
+
+                            // Precedencia, de menor a mayor: defaults hardcodeados →
+                            // datos de la reserva (esto) → prefilledData del backend →
+                            // OCR. La reserva va primero porque el documento es la
+                            // fuente autoritativa de la identidad; lo que el PM tecleó
+                            // solo rellena lo que nadie más ha dicho todavía.
+                            updated = applyPrefillPatch(
+                                updated,
+                                mainGuestPrefillPatch(mainGuestPrefill, {
+                                    includeContact: true,
+                                    schemaIncludesPhone: schemaIncludes("phone"),
+                                }),
+                                HARDCODED_DEFAULTS,
+                            )
                             // prefilledData from backend: apply when field is empty OR still at its hardcoded default
                             Object.entries(resSchema.prefilledData).forEach(([k, v]) => {
                                 // Contact data is sensitive. Do not hydrate it into the
@@ -225,11 +267,11 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                             // required now (OTP plan 20260731), unlike phone, so wiping it
                             // here would erase what the guest already typed on a remount.
                             if (!schemaIncludes("phone")) updated.phone = ""
-                            return updated as GuestFormData
+                            return updated as unknown as GuestFormData
                         })
                     }
                 }
-            } catch (e) {
+            } catch {
                 toast.error("Error al cargar catálogos")
             } finally {
                 setIsLoadingSchema(false)
@@ -327,7 +369,20 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
 
     const userFieldsValid = areDynamicFieldsValid(dynamicFields, dynamicValues)
 
-    const isFormValid = baseValid && dynamicValid && userFieldsValid
+    /**
+     * El backend usa dos nociones distintas de "verificado" (§A.4): el portal
+     * reporta `approved`/`form` mirando solo `person_verified_at`, pero
+     * /main/complete, /main/sign y /guarantee/setup-intent exigen además que el
+     * documento NO esté vencido. Un recurrente cuyo documento venció desde su
+     * última estadía pasa el portal, llena todo, FIRMA, y recién ahí recibe un
+     * 403 "Guest identity has not been verified" que no explica nada.
+     *
+     * La fecha llega en `prefilledData` de /form (o del OCR), así que se puede
+     * cortar acá y decirle qué pasa, en vez de dejarlo chocar al final.
+     */
+    const documentExpired = isDocumentExpired(form.identificationExpiryDate)
+
+    const isFormValid = baseValid && dynamicValid && userFieldsValid && !documentExpired
 
     // Catalogs loaded separately via CatalogService (not included in formSchema response)
     const docTypeOptions = identTypes.length > 0
@@ -539,10 +594,29 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                 </CollapsibleSection>
             )}
 
+            {/* El documento venció: el backend lo va a rechazar igual, así que se
+                dice acá y no después de que el huésped firme. */}
+            {documentExpired && (
+                <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 p-4">
+                    <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-bold text-red-800">Tu documento está vencido</p>
+                        <p className="text-xs text-red-700 mt-0.5">
+                            No podemos completar el registro con un documento de identidad vencido.
+                            Contacta al anfitrión para continuar con tu check-in.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* CTA */}
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
-                    {isFormValid ? (
+                    {documentExpired ? (
+                        <button disabled className="w-full flex items-center justify-center h-14 bg-slate-100 text-slate-400 rounded-xl font-bold text-lg cursor-not-allowed">
+                            Documento vencido
+                        </button>
+                    ) : isFormValid ? (
                         <button 
                             onClick={handleSubmit} 
                             className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"

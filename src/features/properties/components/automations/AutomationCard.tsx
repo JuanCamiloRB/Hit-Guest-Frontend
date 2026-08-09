@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
 import { Settings2, Loader2, AlertCircle, Clock, FileSignature } from "lucide-react"
 import {
     Card,
@@ -98,6 +98,10 @@ export function AutomationCard({
     // Optimistic provider choice: the Select holds the chosen option immediately,
     // even before (or if) the backend reflects it — so the picker doesn't snap back.
     const [optimisticProvider, setOptimisticProvider] = useState<string | null>(null)
+    // Last value that actually persisted, so a rejected change can be undone.
+    // A ref, not state: it must not trigger a render, it only records what to
+    // restore if the next attempt fails.
+    const previousProviderRef = useRef<string | null>(null)
 
     const effectiveProviderName = optimisticProvider ?? providerName
     const selectedProvider = definition.providerOptions.find(p => normalizeSlug(p.value) === normalizeSlug(effectiveProviderName))
@@ -159,6 +163,13 @@ export function AutomationCard({
 
     const handleProviderChange = useCallback(async (newProvider: string) => {
         if (!propertyUuid) return
+        // The optimistic value was already applied by the Select's onValueChange so
+        // the trigger doesn't flicker. Every path that does NOT persist has to undo
+        // it — otherwise the picker keeps showing an option that was never saved and
+        // only snaps back on the next reload, which reads exactly like "the selector
+        // doesn't work".
+        const rollback = () => setOptimisticProvider(previousProviderRef.current)
+
         // Resolve by slug from /providers; fall back to the option's known id if the
         // provider record isn't in the list (e.g. excluded by the active-only filter).
         const providerId = findProviderId(newProvider)
@@ -168,7 +179,19 @@ export function AutomationCard({
         // Surface the real reason instead of failing mutely.
         if (newProvider && providerId == null) {
             const label = definition.providerOptions.find(p => p.value === newProvider)?.label ?? newProvider
+            // The slugs the backend actually returned are the only way to tell a
+            // missing seed apart from a slug that simply doesn't match our option
+            // value. Without this the toast is a dead end for whoever debugs it.
+            console.error(
+                `[AutomationCard] No se pudo resolver providerId para "${newProvider}".`,
+                {
+                    buscado: normalizeSlug(newProvider),
+                    slugsDisponibles: providers.map(p => getProviderSlug(p)),
+                    providersRecibidos: providers.length,
+                },
+            )
             toast.error(`"${label}" no está disponible todavía. Falta habilitar el proveedor en el backend (seed del provider).`)
+            rollback()
             return
         }
         try {
@@ -177,6 +200,7 @@ export function AutomationCard({
                 providerId,
             })
 
+            previousProviderRef.current = newProvider
             onChanged(result)
         } catch (err) {
             if (err instanceof ApiError && err.status === 405) {
@@ -184,8 +208,9 @@ export function AutomationCard({
             } else {
                 notifyError(err, "Error al cambiar el proveedor")
             }
+            rollback()
         }
-    }, [propertyUuid, automation, definition, findProviderId, onChanged])
+    }, [propertyUuid, automation, definition, findProviderId, onChanged, providers])
 
     // ── Save config parameters ────────────────────────────────────────────────
 

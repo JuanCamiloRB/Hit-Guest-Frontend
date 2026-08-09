@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Camera, CheckCircle2, ScanLine, RotateCcw, ImageIcon } from "lucide-react"
+import { Camera, CheckCircle2, ScanLine, RotateCcw } from "lucide-react"
 
 interface DocumentUploadProps {
   label: string
@@ -24,25 +24,31 @@ export function DocumentUpload({
   const [progress, setProgress] = useState(0)
   const [tempBase64, setTempBase64] = useState<string | null>(null)
 
-  // Simulate scanning
+  // Animación de "escaneo" (puramente visual: no hay OCR acá, la foto se manda
+  // después con el formulario).
+  //
+  // Un solo efecto, y el final vive DENTRO del temporizador. Antes eran dos: uno
+  // que subía el progreso y otro que observaba `progress >= 100` para cerrar. Esa
+  // separación hacía que el cierre dependiera de un re-render intermedio, y
+  // cualquier cosa que alterara `progress` desde afuera podía dispararlo — el
+  // final de la animación no es un estado que haya que vigilar, es el último paso
+  // de la animación misma.
+  const STEPS = 5
+  const STEP_MS = 250
   useEffect(() => {
-    if (state === "scanning") {
-      const interval = setInterval(() => {
-        setProgress((prev) => prev + 20)
-      }, 250)
-      return () => clearInterval(interval)
-    }
-  }, [state])
-
-  // Watch for completion
-  useEffect(() => {
-    if (state === "scanning" && progress >= 100) {
-      setState("done")
-      if (tempBase64) {
+    if (state !== "scanning" || !tempBase64) return
+    let step = 0
+    const interval = setInterval(() => {
+      step += 1
+      setProgress(step * (100 / STEPS))
+      if (step >= STEPS) {
+        clearInterval(interval)
+        setState("done")
         onChange(tempBase64)
       }
-    }
-  }, [state, progress, tempBase64, onChange])
+    }, STEP_MS)
+    return () => clearInterval(interval)
+  }, [state, tempBase64, onChange])
 
   const startScan = () => {
     setState("scanning")
@@ -52,6 +58,7 @@ export function DocumentUpload({
   const reset = () => {
     setState("idle")
     setProgress(0)
+    setTempBase64(null)
     onChange(null)
   }
 
@@ -86,11 +93,15 @@ export function DocumentUpload({
               onChange={(e) => {
                 const file = e.target.files?.[0]
                 if (file) {
-                  startScan()
                   const reader = new FileReader()
                   reader.onload = (event) => {
                     if (event.target?.result) {
                       setTempBase64(event.target.result as string)
+                      // La animación empieza solo cuando la imagen ya está en
+                      // memoria. Antes arrancaba primero y el efecto capturaba
+                      // `tempBase64 = null`: con una lectura lenta podía mostrar
+                      // "Documento capturado" sin entregar nada al formulario.
+                      startScan()
                     }
                   }
                   reader.readAsDataURL(file)

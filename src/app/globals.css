@@ -35,6 +35,8 @@
   --color-warning-sunk: var(--warning-sunk);
   --color-info: var(--info);
   --color-info-sunk: var(--info-sunk);
+  --color-danger: var(--danger);
+  --color-danger-sunk: var(--danger-sunk);
   --color-neutral: var(--neutral);
   --color-neutral-sunk: var(--neutral-sunk);
 
@@ -110,6 +112,12 @@
   --warning-sunk: #FBEEDC;
   --info: #3B6FF5;
   --info-sunk: #E4EBFE;
+  /* El único estado que faltaba: sin él, cada componente que tenía que pintar
+     un fallo se inventaba su propio rojo (red-600 sobre red-50/60, que no llega
+     a 4.5:1). --destructive es el color de un BOTÓN destructivo, no la tinta de
+     una pastilla de estado; son trabajos distintos y por eso van separados. */
+  --danger: #BF2E1B;
+  --danger-sunk: #FBE9E6;
   --neutral: #757CA0;
   --neutral-sunk: #EEF0F6;
 

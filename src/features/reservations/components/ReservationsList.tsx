@@ -2,6 +2,7 @@
 
 import { Reservation } from "@/types"
 import { getColumns } from "./columns"
+import { DEFAULT_SORTING } from "./reservation-sorting"
 import { DataTable } from "@/components/shared/data-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -284,7 +285,7 @@ export default function ReservationsList() {
                 )}
             </div>
 
-            <DataTable columns={columns} data={filtered} />
+            <DataTable columns={columns} data={filtered} defaultSorting={[...DEFAULT_SORTING]} />
 
             <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
                 <AlertDialogContent>

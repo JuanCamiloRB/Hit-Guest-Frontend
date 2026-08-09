@@ -1,4 +1,6 @@
 import { ContactChallengeScreen } from "@/features/checkin/components/ContactChallengeScreen"
+import { PortalStatusScreen } from "@/features/checkin/components/PortalStatusScreen"
+import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
 import { redirect } from "next/navigation"
 
 export default async function CheckinContactChallengeByExternalPage({
@@ -17,9 +19,18 @@ export default async function CheckinContactChallengeByExternalPage({
 
     const basePath = `/checkin/${resolvedParams.reference}/${resolvedParams.listingUuid}/${resolvedParams.externalId}`
 
+    const portal = await checkinServerService.getPortalByExternal(
+        resolvedParams.reference,
+        resolvedParams.listingUuid,
+        resolvedParams.externalId,
+    )
+    if (portal.portalStatus) {
+        return <PortalStatusScreen status={portal.portalStatus} message={portal.message} />
+    }
+
     return (
         <ContactChallengeScreen
-            reservationUuid={resolvedParams.reference}
+            reservationUuid={portal.reservation.uuid}
             guestUuid={resolvedSearchParams.guest_uuid}
             basePath={basePath}
         />

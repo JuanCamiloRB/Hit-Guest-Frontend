@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { notFound, redirect } from "next/navigation"
 import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
 import { ContactChallengeScreen } from "@/features/checkin/components/ContactChallengeScreen"
+import { PortalStatusScreen } from "@/features/checkin/components/PortalStatusScreen"
 
 export const metadata: Metadata = {
     title: "Verificación | Hit Guest",
@@ -16,26 +17,27 @@ export default async function SecondaryContactChallengePage({
 }) {
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
+    const basePath = `/checkin/${resolvedParams.reference}/s/${resolvedParams.guestToken}`
 
-    try {
-        if (!resolvedSearchParams.guest_uuid) {
-            redirect(`/checkin/${resolvedParams.reference}/s/${resolvedParams.guestToken}/identify`)
-        }
+    // Antes del fetch: sin guest no hay desafío que resolver.
+    if (!resolvedSearchParams.guest_uuid) redirect(`${basePath}/identify`)
 
-        const status = await checkinServerService.getSecondaryGateStatus(resolvedParams.reference, resolvedParams.guestToken)
-        if (!status.mainGuestCompleted) return notFound()
-
-        const basePath = `/checkin/${resolvedParams.reference}/s/${resolvedParams.guestToken}`
-        return (
-            <ContactChallengeScreen
-                reservationUuid={resolvedParams.reference}
-                guestUuid={resolvedSearchParams.guest_uuid!}
-                basePath={basePath}
-                isSecondary={true}
-            />
-        )
-    } catch (error) {
-        if (error && typeof error === 'object' && 'digest' in error && String(error.digest).startsWith('NEXT_REDIRECT')) throw error;
-        return notFound()
+    const gate = await checkinServerService.resolveSecondaryGate(
+        resolvedParams.reference,
+        resolvedParams.guestToken,
+    )
+    if (gate.kind === "unavailable") notFound()
+    if (gate.kind === "portal_closed") {
+        return <PortalStatusScreen status={gate.portalStatus} message={gate.message} />
     }
+    if (!gate.status.mainGuestCompleted) notFound()
+
+    return (
+        <ContactChallengeScreen
+            reservationUuid={resolvedParams.reference}
+            guestUuid={resolvedSearchParams.guest_uuid}
+            basePath={basePath}
+            isSecondary={true}
+        />
+    )
 }

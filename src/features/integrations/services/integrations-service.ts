@@ -9,6 +9,9 @@
  *   PATCH  /api/v1/integrations/{id}          → setStatus (activate/deactivate)
  *   DELETE /api/v1/integrations/{id}          → disconnect (204)
  *
+ * `{id}` above accepts either the numeric id or the root-level HIT token per
+ * the API contract; this service addresses it by token.
+ *
  * apiClient unwraps the `{ data }` envelope, so every method that returns an
  * Integration receives the inner resource directly.
  */
@@ -61,27 +64,44 @@ class IntegrationsService {
         return apiClient.patch<Integration>(url, payload)
     }
 
-    /** Activate (8) or deactivate (10) an integration by its numeric id. */
+    /**
+     * Builds `/integrations/{id}` from the ROOT-level token, refusing to build a
+     * URL out of a missing one.
+     *
+     * This is the guard for the bug that shipped as `PATCH /integrations/undefined
+     * → 404`: template literals happily interpolate `undefined`, so a field that
+     * the API never returned turned into a valid-looking request. Fail here, with
+     * a name, instead of at the backend with a 404.
+     */
+    private integrationUrl(token: string): string {
+        if (!token) {
+            throw new Error(
+                "[integrations] Falta el token raíz de la integración. "
+                + "Usa `integration.token`, no `integration.parameters.token`.",
+            )
+        }
+        return `${API_BASE}/integrations/${encodeURIComponent(token)}`
+    }
+
+    /** Activate (8) or deactivate (10) an integration by its root-level token. */
     async setStatus(
-        id: number,
+        token: string,
         statusProviderId: IntegrationStatus,
     ): Promise<Integration> {
-        const url = `${API_BASE}/integrations/${id}`
-        return apiClient.patch<Integration>(url, { statusProviderId })
+        return apiClient.patch<Integration>(this.integrationUrl(token), { statusProviderId })
     }
 
-    activate(id: number): Promise<Integration> {
-        return this.setStatus(id, INTEGRATION_STATUS.ACTIVE)
+    activate(token: string): Promise<Integration> {
+        return this.setStatus(token, INTEGRATION_STATUS.ACTIVE)
     }
 
-    deactivate(id: number): Promise<Integration> {
-        return this.setStatus(id, INTEGRATION_STATUS.INACTIVE)
+    deactivate(token: string): Promise<Integration> {
+        return this.setStatus(token, INTEGRATION_STATUS.INACTIVE)
     }
 
     /** Remove the integration link (204). Imported data is preserved. */
-    async disconnect(id: number): Promise<void> {
-        const url = `${API_BASE}/integrations/${id}`
-        await apiClient.delete<void>(url)
+    async disconnect(token: string): Promise<void> {
+        await apiClient.delete<void>(this.integrationUrl(token))
     }
 }
 

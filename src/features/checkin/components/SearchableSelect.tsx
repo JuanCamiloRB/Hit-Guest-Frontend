@@ -39,7 +39,19 @@ export function SearchableSelect({
       )
     : options
 
-  const selectedOption = value ? options.find((o) => o.id === value) : null
+  // Se compara por string a propósito.
+  //
+  // Los catálogos del backend entregan `id` como string (`String(item.uuid ||
+  // item.id)`), pero el tipo de las opciones —y lo que el formulario guarda—
+  // es número, y cada pantalla normalizaba distinto: `IdentifyScreen` hacía
+  // `Number(c.id)` y los formularios no. Con `===` estricto, un borrador
+  // guardado con una forma y unas opciones cargadas con la otra no casaban, y
+  // el select mostraba el placeholder como si el huésped no hubiera elegido
+  // nada — perdiendo visualmente un dato que sí estaba guardado.
+  const selectedOption =
+    value === "" || value == null
+      ? null
+      : options.find((o) => String(o.id) === String(value)) ?? null
 
   // Close on outside click
   useEffect(() => {

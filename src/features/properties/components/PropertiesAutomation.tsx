@@ -14,6 +14,38 @@ import { Button } from "@/components/ui/button"
 import { automationService, canonicalSlug } from "../services/automation-service"
 import { listingsService } from "../services/listings-service"
 import { definitionForAutomation } from "../data/automation-definitions"
+import { resolveProviderAvailability } from "../lib/provider-availability"
+import type { AutomationDefinition } from "../types/automation"
+
+/**
+ * Diagnostic only — never changes what the UI renders.
+ *
+ * Our option values are hardcoded slugs ("didit", "textract"). If the backend
+ * seeds them under a different slug, `findProviderId` can't resolve a providerId
+ * and the change is rejected with a toast that gives no way to tell a MISSING
+ * seed from a RENAMED one. Printing both sides settles it in one page load.
+ */
+function reportUnmatchedProviderSlugs(
+    definition: AutomationDefinition,
+    automation: PropertyAutomation,
+    countryProviderSlugs: string[],
+): void {
+    if (definition.providerOptions.length < 2) return
+    const { unavailableValues, providersLoaded } = resolveProviderAvailability(
+        definition.providerOptions.map(option => option.value),
+        countryProviderSlugs,
+        automation.provider?.parameters?.slug ?? automation.providerName,
+    )
+    if (unavailableValues.length === 0) return
+    console.warn(
+        `[PropertiesAutomation] "${definition.title}": estos slugs de opción no aparecen en /providers del país.`,
+        {
+            sinCoincidencia: unavailableValues,
+            slugsDelPais: countryProviderSlugs,
+            providersCargados: providersLoaded,
+        },
+    )
+}
 import { catalogService } from "@/features/auth/services/catalog-service"
 import type { PropertyAutomation, Provider } from "../types/automation"
 import { AutomationCard, type ListingMeta } from "./automations"
@@ -177,21 +209,23 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                 <div className="grid grid-cols-1 gap-4">
                     {automations.map(automation => {
                         const def = definitionForAutomation(automation)
-                        const availableSlugs = new Set(countryProviderSlugs)
-                        const currentSlug = canonicalSlug(
-                            automation.provider?.parameters?.slug ?? automation.providerName,
-                        )
-                        const countryDefinition = {
-                            ...def,
-                            providerOptions: def.providerOptions.filter(option => {
-                                const optionSlug = canonicalSlug(option.value)
-                                return availableSlugs.has(optionSlug) || optionSlug === currentSlug
-                            }),
-                        }
+                        // Every option the definition declares stays selectable.
+                        //
+                        // This used to be filtered against the country's /providers
+                        // slugs, which removed any option whose slug didn't match —
+                        // collapsing the 2-option identity automations to 1 and making
+                        // the card render a static label instead of the selector. The
+                        // match is not trustworthy enough to gate the UI on it: our
+                        // option values ("didit", "textract") have never been verified
+                        // against what the backend actually seeds. If a provider really
+                        // is missing, handleProviderChange already fails with an
+                        // explicit toast and rolls the selection back — an honest
+                        // failure beats a pre-emptive block built on a guess.
+                        reportUnmatchedProviderSlugs(def, automation, countryProviderSlugs)
                         return (
                             <AutomationCard
                                 key={automation.uuid}
-                                definition={countryDefinition}
+                                definition={def}
                                 automation={automation}
                                 propertyUuid={propertyUuid}
                                 providers={providers}

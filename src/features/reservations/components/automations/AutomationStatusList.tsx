@@ -32,13 +32,15 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                        Estado de Automatización
-                    </h4>
+            <div className="flex items-center justify-between gap-3">
+                <div className="flex items-baseline gap-2">
+                    {/* Era `text-[10px] uppercase tracking-[0.2em]` en gris claro:
+                        el mismo tratamiento que las etiquetas de dato de arriba,
+                        así que el encabezado de la sección más importante del
+                        panel no se distinguía de un metadato. */}
+                    <h4 className="text-sm font-bold text-ink">Automatizaciones</h4>
                     {isPolling && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-500">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-warning">
                             <Loader2 size={11} className="animate-spin" /> Actualizando
                         </span>
                     )}
@@ -47,7 +49,7 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                     type="button"
                     onClick={refresh}
                     disabled={isLoading}
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400 hover:text-primary transition-colors disabled:opacity-50"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded text-xs font-medium text-ink-3 transition-colors hover:text-primary disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                     <RefreshCw size={13} className={cn(isLoading && "animate-spin")} />
                     Refrescar
@@ -55,32 +57,35 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
             </div>
 
             {isLoading ? (
-                <div className="flex items-center justify-center py-10 gap-2 text-slate-400">
-                    <Loader2 className="animate-spin" size={20} />
-                    <span className="text-sm">Cargando automatizaciones...</span>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                    {/* Skeletons con la forma real de la tarjeta: el spinner
+                        centrado hacía saltar el layout al llegar los datos. */}
+                    {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="h-[104px] animate-pulse rounded-xl border border-rule bg-sunk" />
+                    ))}
                 </div>
             ) : error ? (
-                <div className="rounded-xl border border-red-100 bg-red-50/60 px-4 py-6 text-center">
-                    <p className="text-sm text-red-600">{error}</p>
+                <div className="rounded-xl bg-danger-sunk px-4 py-6 text-center">
+                    <p className="text-sm text-danger">{error}</p>
                     <button
                         type="button"
                         onClick={refresh}
-                        className="mt-2 text-xs font-semibold text-red-700 underline"
+                        className="mt-2 text-xs font-semibold text-danger underline underline-offset-2"
                     >
                         Reintentar
                     </button>
                 </div>
             ) : items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 py-10 text-center">
-                    <div className="rounded-full bg-slate-50 p-3 text-slate-300">
+                <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-rule py-10 text-center">
+                    <div className="rounded-full bg-sunk p-3 text-ink-4">
                         <Zap size={22} />
                     </div>
-                    <p className="text-sm text-slate-400">
+                    <p className="text-sm text-ink-3">
                         No hay automatizaciones configuradas para esta propiedad.
                     </p>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {items.map(item => (
                         <AutomationStatusItem
                             key={item.automationUuid}

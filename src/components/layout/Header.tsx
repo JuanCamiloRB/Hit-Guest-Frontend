@@ -23,6 +23,21 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Logo } from "@/components/ui/Logo"
 import { BalanceWidget } from "@/features/billing/components/BalanceWidget"
+import {
+    DEFAULT_LANGUAGE,
+    isAvailableLanguage,
+    type Language,
+} from "@/lib/i18n/dictionaries"
+
+/**
+ * Todos los idiomas que el selector muestra, disponibles o no. Cuáles se pueden
+ * elegir lo decide `isAvailableLanguage`, no esta lista: así el inglés sigue
+ * visible como "Próximamente" en vez de desaparecer sin explicación.
+ */
+const LANGUAGE_OPTIONS: { code: Language; label: string }[] = [
+    { code: "es", label: "Español (ES)" },
+    { code: "en", label: "English (EN)" },
+]
 
 export function Header() {
     const { user, logout } = useAuth()
@@ -50,27 +65,43 @@ export function Header() {
                     {/* Prepaid balance chip → billing */}
                     <BalanceWidget />
 
-                    {/* Language Switcher */}
+                    {/* Language Switcher.
+                        El fallback de SSR decía "EN" sobre una interfaz entera en
+                        español. Ahora refleja el idioma real del producto, y el
+                        inglés aparece deshabilitado mientras no exista la
+                        librería: ofrecerlo dejaba al PM a medio traducir. */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="hidden sm:inline-flex h-10 w-auto px-3 gap-2 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 uppercase text-xs font-bold tracking-wider">
-                                <Languages className="h-4 w-4" />
-                                {isMounted ? language : "EN"}
+                            <Button
+                                variant="ghost"
+                                aria-label="Idioma de la interfaz"
+                                className="hidden sm:inline-flex h-10 w-auto px-3 gap-2 text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 uppercase text-xs font-bold tracking-wider"
+                            >
+                                <Languages className="h-4 w-4" aria-hidden />
+                                {isMounted ? language : DEFAULT_LANGUAGE}
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem 
-                                onClick={() => setLanguage('es')}
-                                className={isMounted && language === 'es' ? "bg-primary/10 font-medium" : ""}
-                            >
-                                Español (ES)
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                                onClick={() => setLanguage('en')}
-                                className={isMounted && language === 'en' ? "bg-primary/10 font-medium" : ""}
-                            >
-                                English (EN)
-                            </DropdownMenuItem>
+                        <DropdownMenuContent align="end" className="w-48">
+                            {LANGUAGE_OPTIONS.map(({ code, label }) => {
+                                const available = isAvailableLanguage(code)
+                                return (
+                                    <DropdownMenuItem
+                                        key={code}
+                                        disabled={!available}
+                                        onClick={() => available && setLanguage(code)}
+                                        className={isMounted && language === code ? "bg-primary/10 font-medium" : ""}
+                                    >
+                                        <span className="flex w-full items-center justify-between gap-2">
+                                            {label}
+                                            {!available && (
+                                                <span className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                                                    Próximamente
+                                                </span>
+                                            )}
+                                        </span>
+                                    </DropdownMenuItem>
+                                )
+                            })}
                         </DropdownMenuContent>
                     </DropdownMenu>
 

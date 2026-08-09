@@ -1,6 +1,7 @@
 // Listings Service - Handles individual unit persistence
 import { apiClient } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
+import type { ExternalPmsId } from "../types"
 
 export interface ListingApiPayload {
     uuid?: string
@@ -27,6 +28,13 @@ export interface ListingApiPayload {
     extra?: any
     statusRecordId?: number
     status_record_id?: number
+    /**
+     * Maps this listing to its counterpart in a PMS / channel. Only camelCase
+     * here on purpose: unlike the fields above, the documented `/listings`
+     * contract names this key exactly once (`externalPmsIds`), and inventing a
+     * snake_case twin would be guessing at a contract that already answered.
+     */
+    externalPmsIds?: ExternalPmsId[]
 }
 
 class ListingsService {

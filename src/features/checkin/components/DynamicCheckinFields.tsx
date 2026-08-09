@@ -99,6 +99,12 @@ export function DynamicCheckinFields({ fields, values, onChange }: DynamicChecki
         const ids = [...new Set(catIds)]
         if (ids.length === 0) return
         let active = true
+        // La regla marca este setState por ser síncrono dentro del efecto, pero
+        // acá es el patrón correcto: encender la bandera ANTES de lanzar el
+        // fetch. Derivarla de "faltan categorías en `optionsByCat`" sería peor —
+        // si la petición falla, el componente se quedaría cargando para siempre
+        // en vez de mostrar el select vacío, que es lo que hace hoy.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoadingCats(true)
         Promise.all(
             ids.map(async (id) => {
@@ -114,6 +120,10 @@ export function DynamicCheckinFields({ fields, values, onChange }: DynamicChecki
                     return next
                 })
             })
+            // Un catálogo dinámico no disponible no debe producir un rechazo
+            // global sin manejar. El backend volverá a validar el campo al
+            // enviar; aquí degradamos al select vacío y liberamos el spinner.
+            .catch(() => {})
             .finally(() => {
                 if (active) setLoadingCats(false)
             })

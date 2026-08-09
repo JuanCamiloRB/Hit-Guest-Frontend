@@ -2,6 +2,7 @@ import { WelcomeScreen } from "@/features/checkin/components/WelcomeScreen"
 import { DiditCallbackClient } from "@/features/checkin/components/DiditCallbackClient"
 import { PortalStatusScreen } from "@/features/checkin/components/PortalStatusScreen"
 import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
+import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 
 export default async function CheckinByUuidPage({
     params,
@@ -29,18 +30,14 @@ export default async function CheckinByUuidPage({
         )
     }
 
+    // Solo la petición va en el try. Construir el JSX acá adentro hacía que este
+    // catch pudiera tragarse un error lanzado al renderizar —incluidas las
+    // señales de control de Next, que funcionan lanzando— y lo reportara como
+    // "reserva no encontrada".
+    let portal: CheckinPortalResponse
     try {
-        const portal = await checkinServerService.getPortal(resolvedParams.reference)
-        const basePath = `/checkin/${resolvedParams.reference}`
-
-        // v4.5: cancelled (29) / deleted (108) reservations return only a status
-        // + message, with no reservation data — show a dedicated screen.
-        if (portal.portalStatus) {
-            return <PortalStatusScreen status={portal.portalStatus} message={portal.message} />
-        }
-
-        return <WelcomeScreen portal={portal} basePath={basePath} />
-    } catch (error) {
+        portal = await checkinServerService.getPortal(resolvedParams.reference)
+    } catch {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
                 <h1 className="text-2xl font-bold text-slate-800 mb-2">Reserva no encontrada</h1>
@@ -48,4 +45,12 @@ export default async function CheckinByUuidPage({
             </div>
         )
     }
+
+    // v4.5: cancelled (29) / deleted (108) reservations return only a status
+    // + message, with no reservation data — show a dedicated screen.
+    if (portal.portalStatus) {
+        return <PortalStatusScreen status={portal.portalStatus} message={portal.message} />
+    }
+
+    return <WelcomeScreen portal={portal} basePath={`/checkin/${resolvedParams.reference}`} />
 }

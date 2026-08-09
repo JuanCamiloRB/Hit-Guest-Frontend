@@ -34,15 +34,38 @@ export interface IntegrationParameters {
     pmsProperties?: PmsProperty[]
 }
 
+/**
+ * The integration resource.
+ *
+ * ⚠️ The published `IntegrationResource` doc still shows `id` and `userId`, but
+ * the LIVE response returns neither — it returns `userUuid` instead. That gap is
+ * exactly what produced `PATCH /integrations/undefined → 404`: the old type
+ * declared `id: number`, TypeScript happily type-checked `integration.id`, and
+ * the missing field interpolated as the string "undefined" at runtime.
+ *
+ * Rule this type now follows: only `token` is declared as guaranteed, because it
+ * is the only field the frontend actually consumes AND it is confirmed present
+ * in the live payload. Everything the frontend does not consume stays optional,
+ * so a doc/response mismatch can never again become a runtime bug.
+ */
 export interface Integration {
-    id: number
-    userId: number
+    /**
+     * HIT internal identifier, and the id used to address this integration in
+     * `/integrations/{id}` — the route takes this alphanumeric token in place of
+     * the numeric id. NOT `parameters.token`, which is the KunasPMS provider
+     * key. Neither is ever surfaced to the PM.
+     */
+    token: string
     providerId: number
     name: string
-    /** HIT internal identifier — do not surface to the PM. */
-    token: string
     parameters: IntegrationParameters
     statusProviderId: IntegrationStatus
+    /** Present in the live response; absent from the published doc. Unused. */
+    userUuid?: string
+    /** In the published doc; absent from the live response. Unused — never address by it. */
+    id?: number
+    /** In the published doc; absent from the live response. Unused. */
+    userId?: number
 }
 
 // ─── Payloads ──────────────────────────────────────────────────────────────

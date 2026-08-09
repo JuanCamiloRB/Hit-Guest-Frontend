@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useFormContext } from "react-hook-form"
-import { AlertCircle, FileSignature, Loader2, Plus } from "lucide-react"
+import { AlertCircle, AlertTriangle, FileSignature, Loader2, Plus } from "lucide-react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
@@ -84,7 +84,11 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
         catalogService.getCountries()
             .then((countries) => {
                 const country = countries.find((item) => Number(item.id) === Number(countryId))
-                const countryIso2 = country?.extra?.iso2 ?? country?.iso2
+                // El fallback a `country.iso2` (raíz) se eliminó: `getCountries()`
+                // normaliza SIEMPRE a `extra.iso2` y nunca expuso ese campo en la
+                // raíz, así que era una rama muerta que el `any` del catálogo
+                // mantenía invisible.
+                const countryIso2 = country?.extra?.iso2
                 if (!countryIso2) throw new Error("No se pudo resolver el país de la propiedad.")
 
                 return Promise.all([
@@ -357,6 +361,19 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                             </SelectContent>
                         </Select>
                     )}
+                </div>
+            )}
+
+            {mode === "per_source" && availableToAdd.length > 0 && (
+                <div className="flex items-start gap-2.5 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                    <AlertTriangle size={16} className="shrink-0 mt-0.5" />
+                    <div>
+                        <p className="font-semibold">Canales sin contrato configurado</p>
+                        <p className="mt-0.5">
+                            Las reservas de {availableToAdd.map((s) => s.name).join(", ")} no
+                            podrán firmar contrato. Si es intencional, puedes ignorar este aviso.
+                        </p>
+                    </div>
                 </div>
             )}
 

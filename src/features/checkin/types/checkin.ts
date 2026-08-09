@@ -40,6 +40,7 @@ export interface GuestVerificationInfo {
     | "not_started"  // guest identified, no verification record yet
     | "pending"      // Didit session created, waiting for user
     | "in_progress"  // biometrics in progress
+    | "resubmitted"  // Didit "Resubmitted" — guest re-sent documents, still in flight
     | "in_review"    // under manual review
     | "approved"     // person_verified_at set — ready for form
     | "rejected"     // rejected by Didit
@@ -47,8 +48,40 @@ export interface GuestVerificationInfo {
     | "expired"      // document expired
     | "completed"    // is_checkin_completed = true
     | "contact_challenge_pending"  // OTP plan 20260731: sent, not yet verified by the guest
+    /**
+     * TRAMPA: biométrico aprobado pero el huésped AÚN NO está verificado — le
+     * falta escalar a KYC (documento vencido o ausente). Llega con
+     * `currentStep: "verification"`, no `"form"`. Tratar "pass" como éxito manda
+     * al formulario a alguien a quien `/main/complete` va a rechazar con un 403
+     * "Guest identity has not been verified."
+     */
+    | "pass"
+    /**
+     * RECUPERABLE: el biométrico pasó pero la creación automática de la sesión
+     * KYC de seguimiento falló. No es terminal — al volver a llamar `/identify`
+     * el backend reintenta crear esa sesión SIN pedirle al huésped repetir el
+     * biométrico. Sin manejarlo, el huésped queda en un spinner hasta el timeout.
+     */
+    | "kyc_session_failed"
+    /** Registro `kyc_session_failed` viejo, ya reemplazado por un reintento exitoso. */
+    | "superseded"
+    /**
+     * RECUPERABLE: rechazo de OCR/face-match/duplicado en el flujo de IA propia.
+     * Llega con `currentStep: "rejected"`, pero a diferencia de un rechazo de
+     * Didit el huésped puede reintentar de inmediato subiendo mejores fotos.
+     */
+    | "ocr_rejected"
   currentStep: "verification" | "form" | "rejected" | "completed" | "contact_challenge"
   verifiedAt: string | null         // ISO date when approved/completed, null otherwise
+}
+
+/**
+ * Estados desde los que el huésped puede salir por sí mismo reiniciando el flujo
+ * en `/identify`, en vez de quedarse esperando o tener que llamar al anfitrión.
+ * Ambos son terminales para el sondeo actual pero NO para el check-in.
+ */
+export function isSelfRecoverableVerification(status: string): boolean {
+  return status === "kyc_session_failed" || status === "ocr_rejected"
 }
 
 /**
@@ -88,8 +121,15 @@ export interface PortalContractInfo {
   document_uuid?: string | null
   reservationSourceId?: number | null
   reservation_source_id?: number | null
-  // "pending" = TuFirma sent, waiting for the guest to sign externally (email link)
-  status: "not_started" | "pending" | "signed" | "completed"
+  /**
+   * "pending"  = TuFirma envió el contrato, espera la firma externa (link por email).
+   * "signed"   = firmado nativamente, pero OJO: no implica que se pueda descargar
+   *              (ver `signedContractUrl`, que es la única señal válida).
+   * "rejected" = el firmante rechazó o falló en TuFirma (SIGNER_REJECTED /
+   *              SIGNER_FAILED). Es terminal y el huésped no tiene reintento: hay
+   *              que decírselo, no dejarlo creyendo que su registro quedó completo.
+   */
+  status: "not_started" | "pending" | "signed" | "completed" | "rejected"
   hasNativeSignature: boolean               // a native signature already saved for the main guest
   signedAt?: string | null                  // ISO timestamp when the contract was signed
   signedContractUrl?: string | null         // relative URL to download the SIGNED PDF (when available)
@@ -119,7 +159,15 @@ export interface ContractPreview {
  * Card-on-file guarantee (backend plan 20260731 — Stripe SetupIntent, no
  * charge). Applies only when `ContractPreview.guarantee !== null`.
  */
-export type GuaranteeStatus = "not_started" | "pending" | "active" | "failed"
+/**
+ * `detached` = la tarjeta se desvinculó del huésped (flujo administrativo, fuera
+ * del portal). Ningún endpoint del portal la produce, pero el modelo la define y
+ * `/guarantee/status` la puede devolver, así que el portal tiene que saber
+ * mostrarla: para el huésped es lo mismo que no tener tarjeta, hay que pedirle
+ * una nueva. Sin este valor el estado caía en un "no debería pasar" que dejaba
+ * la pantalla trabada.
+ */
+export type GuaranteeStatus = "not_started" | "pending" | "active" | "failed" | "detached"
 
 /**
  * POST /checkin/{reservationUuid}/main/guarantee/setup-intent
@@ -133,10 +181,17 @@ export type GuaranteeStatus = "not_started" | "pending" | "active" | "failed"
 export interface GuaranteeSetupIntent {
   clientSecret: string
   publishableKey: string
-  /** Configured guarantee amount, e.g. "200" — informational only, nothing is
-   *  held or charged at this step. */
-  guaranteeAmount: string
+  /**
+   * Monto configurado de la garantía — informativo, no se retiene ni se cobra
+   * nada en este paso. El backend lo expone sin castear (puede llegar `"200"`,
+   * `200` o `null` si la property no lo fijó), así que el tipo lo refleja en vez
+   * de mentir con `string`: declararlo `string` hacía que `amount && currency`
+   * pareciera seguro cuando en realidad podía renderizar un número.
+   */
+  guaranteeAmount: string | number | null
   currency: string
+  /** Agregado por backend en `20260807_fix-checkin-minor-gaps.md` (A4). */
+  message?: string
 }
 
 /**
@@ -159,6 +214,28 @@ export interface GuaranteeStatusResponse {
   guarantee: GuaranteeStatusInfo
 }
 
+/**
+ * Datos del titular capturados al crear la reserva (manual o sincronizada).
+ *
+ * Origen en backend: `extra.guestName`, `extra.guestCountry`,
+ * `extra.guestPhone` y `emailGuest` del recurso de reserva.
+ *
+ * `nationalityId` debe ser el ID NUMÉRICO del catálogo de países, no el nombre:
+ * la reserva guarda texto libre ("Colombia") y resolverlo en el front se rompe
+ * con "USA" / "Estados Unidos" / "United States".
+ *
+ * `name` y `lastname` deben venir SEPARADOS. La reserva los tiene en un único
+ * campo libre y partirlo aquí es indecidible en español; ver
+ * `lib/main-guest-prefill.ts`.
+ */
+export interface MainGuestPrefill {
+  name?: string
+  lastname?: string
+  nationalityId?: number
+  phone?: string
+  email?: string
+}
+
 export interface CheckinPortalResponse {
   /**
    * v4.5: explicit portal lifecycle state. Present ONLY for cancelled (29) or
@@ -175,6 +252,12 @@ export interface CheckinPortalResponse {
     departureDate: string            // "Y-m-d"
     totalGuestsAllowed: number       // $reservation->total_guests
     checkinAllowed?: boolean         // v4.2: whether check-in is currently allowed
+    /**
+     * Datos del TITULAR registrados al crear la reserva, para precargar su
+     * check-in. Opcional: mientras el backend no lo mande, el formulario se
+     * comporta igual que hoy. Ver `lib/main-guest-prefill.ts`.
+     */
+    mainGuestPrefill?: MainGuestPrefill
   }
   progress: {
     registered: number               // guests->count()
@@ -267,7 +350,13 @@ export interface ContactChallengeDirective {
   expiresIn: number
   /** Segundos de cooldown antes de poder reenviar — usar SIEMPRE este valor. */
   resendAfter: number
-  attemptsRemaining: number
+  /**
+   * `null` = desconocido. `/identify` siempre manda un número, pero la respuesta
+   * del reenvío NO incluye este campo: tras reenviar, el backend reinició los
+   * intentos y el front no sabe a cuántos. Se representa como desconocido en vez
+   * de inventar un máximo — el próximo intento fallido trae el valor real.
+   */
+  attemptsRemaining: number | null
 }
 
 /**
@@ -300,8 +389,26 @@ export interface ResendContactChallengeResponse {
  * Backend evalúa el resultado de la sesión Didit y decide si necesita KYC o ya está verificado.
  */
 export interface VerificationResultResponse {
-  status: "verified" | "kyc_required" | "failed" | "pending"  // "pending" = aún en proceso, seguir esperando
+  /**
+   * - `verified`          → identidad confirmada, seguir al formulario.
+   * - `kyc_required`      → falta una sesión de documento NUEVA (`kycUrl`); es el
+   *                         caso `status:"pass"` de §A (biométrico aprobado que
+   *                         debe escalar a KYC).
+   * - `restart_required`  → `kyc_session_failed`: el backend no logró abrir esa
+   *                         sesión. NO hay URL que relanzar — se sale volviendo a
+   *                         `/identify`, donde el backend la reintenta sin pedirle
+   *                         al huésped repetir el biométrico.
+   * - `contact_challenge` → huésped recurrente con el OTP de posesión pendiente:
+   *                         no avanza por sondeo, hay que llevarlo a esa pantalla.
+   * - `failed`            → rechazo. `retryable` distingue el rechazo de OCR
+   *                         (reintentable de inmediato con mejores fotos) del
+   *                         rechazo de Didit (terminal para el huésped).
+   * - `pending`           → aún en proceso, seguir esperando.
+   */
+  status: "verified" | "kyc_required" | "restart_required" | "contact_challenge" | "failed" | "pending"
   kycUrl?: string                        // Solo si status === "kyc_required"
+  /** Solo con status "failed": el huésped puede reintentar por su cuenta. */
+  retryable?: boolean
   guestData?: {                          // Solo si status === "verified"
     firstName?: string
     lastName?: string
@@ -536,6 +643,16 @@ export interface SecondaryGateStatus {
   mainGuestName?: string
   reservation: CheckinReservationV4
   guestToken: string
+  /**
+   * Reserva cancelada (29) o eliminada (108). El portal responde 200 SIN
+   * `registeredGuests` en esos casos (decisión explícita del backend de no usar
+   * 4xx), así que quien deriva este gate del portal DEBE propagarlo en vez de
+   * indexar el arreglo: hacerlo tiraba un TypeError que las páginas de
+   * acompañante leían como `notFound()`, mostrando "no encontrada" en vez de
+   * decirle al huésped que su reserva fue cancelada.
+   */
+  portalStatus?: "cancelled" | "deleted"
+  portalMessage?: string
 }
 
 // ─── Guest Form Data (22 campos - Huésped Principal) ─────────────

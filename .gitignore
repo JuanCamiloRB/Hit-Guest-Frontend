@@ -50,8 +50,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# file-sync duplicates (iCloud/Dropbox), e.g. "catalog 2.ts"
-* 2.ts
-* 2.tsx
-* 2.js
-* 2.jsx
+# File-sync duplicates (iCloud/Dropbox), e.g. "catalog 2.ts" or
+# "catalog 17.ts". The numeric suffix is not stable, so do not special-case 2.
+* [0-9]*.ts
+* [0-9]*.tsx
+* [0-9]*.js
+* [0-9]*.jsx

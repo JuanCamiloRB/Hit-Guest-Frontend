@@ -1,6 +1,7 @@
 import { WelcomeScreen } from "@/features/checkin/components/WelcomeScreen"
 import { PortalStatusScreen } from "@/features/checkin/components/PortalStatusScreen"
 import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
+import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 
 export default async function CheckinByExternalPage({
     params,
@@ -9,17 +10,18 @@ export default async function CheckinByExternalPage({
 }) {
     const resolvedParams = await params;
 
+    let portal: CheckinPortalResponse | null = null
     try {
-        const portal = await checkinServerService.getPortal(resolvedParams.reference)
-        const basePath = `/checkin/${resolvedParams.reference}/${resolvedParams.listingUuid}/${resolvedParams.externalId}`
+        portal = await checkinServerService.getPortalByExternal(
+            resolvedParams.reference,
+            resolvedParams.listingUuid,
+            resolvedParams.externalId,
+        )
+    } catch {
+        portal = null
+    }
 
-        // v4.5: cancelled (29) / deleted (108) reservations return only a status + message.
-        if (portal.portalStatus) {
-            return <PortalStatusScreen status={portal.portalStatus} message={portal.message} />
-        }
-
-        return <WelcomeScreen portal={portal} basePath={basePath} />
-    } catch (error) {
+    if (!portal) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
                 <h1 className="text-2xl font-bold text-slate-800 mb-2">Reserva no encontrada</h1>
@@ -27,4 +29,11 @@ export default async function CheckinByExternalPage({
             </div>
         )
     }
+
+    const basePath = `/checkin/${resolvedParams.reference}/${resolvedParams.listingUuid}/${resolvedParams.externalId}`
+    if (portal.portalStatus) {
+        return <PortalStatusScreen status={portal.portalStatus} message={portal.message} />
+    }
+
+    return <WelcomeScreen portal={portal} basePath={basePath} />
 }

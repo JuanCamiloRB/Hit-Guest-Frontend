@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState } from "react"
+import { useEffect, useState, type ComponentType, type ReactNode } from "react"
 import { reservationsService, ReservationDetailData } from "../services/reservations-service"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -17,13 +17,19 @@ import {
     FileText,
     Loader2,
     Users,
+    Mail,
+    Phone,
+    Moon,
 } from "lucide-react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
+import { SectionCard } from "@/components/ui/section-card"
+import { StatusPill } from "@/components/ui/status-pill"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
     Dialog,
     DialogContent,
@@ -42,9 +48,15 @@ import {
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { cn } from "@/lib/utils"
 import { COMMUNICATION_LOCALES, LOCALE_LABELS, type CommunicationLocale } from "@/lib/locales"
 import { ReservationDialog } from "./ReservationDialog"
+import {
+    getReservationStatusMeta,
+    isReservationActionable,
+    isExternalReservation,
+    formatGuestName,
+    guestInitials,
+} from "./reservation-status-meta"
 import { AutomationStatusList } from "./automations"
 import { GuestDocumentsCard } from "./GuestDocumentsCard"
 import { PropertyDocumentsCard } from "./PropertyDocumentsCard"
@@ -66,9 +78,11 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
             try {
                 const result = await reservationsService.getById(reservationId)
                 if (mounted) setData(result)
-            } catch (e: any) {
+            } catch (e) {
                 console.error("[OperationsPanel] Error loading reservation:", e)
-                if (mounted) setError(e.message || "Error al cargar la reserva")
+                if (mounted) {
+                    setError(e instanceof Error ? e.message : "Error al cargar la reserva")
+                }
             } finally {
                 if (mounted) setIsLoading(false)
             }
@@ -133,54 +147,107 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
         window.open(`mailto:${email}?subject=${subject}&body=${body}`, "_blank", "noopener,noreferrer")
     }
 
+    // Esqueleto con la forma real del panel, no un spinner centrado: mantiene
+    // la posición de cada bloque para que nada salte al llegar los datos.
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-[40vh] gap-3 text-slate-400">
-                <Loader2 className="animate-spin" size={24} />
-                <span className="text-sm font-medium">Cargando reserva...</span>
+            <div className="mx-auto flex max-w-7xl flex-col gap-6 pb-10" aria-busy>
+                <span className="sr-only" role="status">Cargando reserva…</span>
+                <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                    <div className="space-y-2">
+                        <Skeleton className="h-3 w-40" />
+                        <Skeleton className="h-8 w-64" />
+                    </div>
+                    <Skeleton className="h-9 w-52" />
+                </div>
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+                    <div className="flex flex-col gap-6 lg:col-span-8">
+                        <Skeleton className="h-80 rounded-xl" />
+                        <Skeleton className="h-48 rounded-xl" />
+                    </div>
+                    <div className="flex flex-col gap-6 lg:col-span-4">
+                        <Skeleton className="h-56 rounded-xl" />
+                        <Skeleton className="h-40 rounded-xl" />
+                    </div>
+                </div>
             </div>
         )
     }
 
     if (error || !data) {
         return (
-            <div className="flex items-center justify-center min-h-[40vh]">
-                <p className="text-slate-500 text-sm">{error || "Reserva no encontrada"}</p>
+            <div className="mx-auto flex min-h-[40vh] max-w-md flex-col items-center justify-center gap-3 text-center">
+                <p className="text-base font-semibold text-ink">
+                    {error ? "No pudimos cargar la reserva" : "Reserva no encontrada"}
+                </p>
+                {error && <p className="text-sm text-ink-3">{error}</p>}
+                <Button asChild variant="outline">
+                    <Link href="/dashboard/reservations">Volver a reservas</Link>
+                </Button>
             </div>
         )
     }
 
+    const statusMeta = getReservationStatusMeta(data.status)
+    const guestName = formatGuestName(data.guestName)
+    const isActionable = isReservationActionable(data.status)
+    // Un canal que no es Direct llega por channel manager / OTA; el panel antes
+    // rotulaba TODA reserva como "Reserva Externa", contradiciendo el
+    // "Plataforma Direct" que mostraba justo al lado.
+    const isExternal = isExternalReservation(data.source)
+    const amount = `$${data.totalPrice.toLocaleString("es-CO")} ${data.currency}`
+    const disabledReason = isActionable
+        ? undefined
+        : `La reserva está ${statusMeta.label.toLowerCase()}: no admite acciones sobre el huésped.`
+
     return (
         <div className="flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto pb-10">
             {/* Breadcrumbs & Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div className="space-y-1">
-                    <div className="flex items-center text-xs font-medium text-slate-500 gap-1.5">
-                        <Link href="/dashboard/reservations" className="hover:text-primary transition-colors">
-                            Operaciones
-                        </Link>
-                        <ChevronRight size={12} className="text-slate-400" />
-                        <span className="text-primary font-semibold truncate max-w-[160px] sm:max-w-none inline-block align-bottom">Reserva {data.externalId || `${reservationId.slice(0, 8)}...`}</span>
-                    </div>
-                    <h1 className="text-xl sm:text-3xl font-bold text-slate-900 tracking-tight">Panel de Operaciones</h1>
-                    <p className="text-sm text-slate-500">Gestión detallada de la reserva y automatizaciones</p>
+            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                <div className="min-w-0 space-y-1">
+                    <nav aria-label="Ruta de navegación">
+                        <ol className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
+                            <li>
+                                <Link
+                                    href="/dashboard/reservations"
+                                    className="rounded transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                                >
+                                    Reservas
+                                </Link>
+                            </li>
+                            <ChevronRight size={12} aria-hidden className="text-ink-4" />
+                            <li aria-current="page" className="truncate font-semibold text-ink-2">
+                                {data.externalId || `${reservationId.slice(0, 8)}…`}
+                            </li>
+                        </ol>
+                    </nav>
+                    {/* El h1 nombra la reserva concreta, no la plantilla de la
+                        pantalla: "Panel de Operaciones" es idéntico en las mil
+                        reservas y no ayuda a saber cuál estás mirando. */}
+                    <h1 className="truncate text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+                        {guestName}
+                    </h1>
+                    <p className="text-sm text-ink-3">
+                        {data.propertyName} · {format(data.checkIn, "d MMM", { locale: es })} –{" "}
+                        {format(data.checkOut, "d MMM yyyy", { locale: es })}
+                    </p>
                 </div>
-                <div className="flex items-center gap-2 sm:gap-3">
-                    <Button onClick={() => window.print()} variant="outline" className="bg-white border-slate-200 text-slate-700 shadow-sm gap-2 text-xs sm:text-sm">
-                        <Printer size={16} />
+                <div className="flex shrink-0 items-center gap-2">
+                    <Button onClick={() => window.print()} variant="outline" className="gap-2">
+                        <Printer size={16} aria-hidden />
                         Imprimir
                     </Button>
-                    <ReservationDialog 
-                        mode="edit" 
+                    <ReservationDialog
+                        mode="edit"
                         reservationUuid={reservationId}
                         trigger={
-                            <Button 
-                                className="bg-primary hover:bg-primary text-white shadow-md gap-2 text-xs sm:text-sm"
+                            <Button
+                                className="gap-2"
                                 disabled={data.source === "Airbnb"}
                                 title={data.source === "Airbnb" ? "Las reservas de Airbnb no se pueden editar manualmente" : "Editar los detalles de la reserva"}
                             >
-                                <Edit size={16} />
-                                Editar Reserva
+                                <Edit size={16} aria-hidden />
+                                Editar reserva
                             </Button>
                         }
                     />
@@ -191,108 +258,74 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                 {/* Main Content Area */}
                 <div className="lg:col-span-8 flex flex-col gap-6">
                     {/* Guest & Reservation Info Card */}
-                    <Card className="border-fuchsia-200 border-2 overflow-hidden shadow-sm">
-                        <CardContent className="p-4 sm:p-6">
+                    <Card className="overflow-hidden border-rule p-0 shadow-sm">
+                        <CardContent className="p-5 sm:p-6">
                             {/* Top row: Guest & Status */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-6 sm:mb-8">
-                                <div className="flex items-center gap-4">
-                                    <div className="relative">
-                                        <Avatar className="h-16 w-16 bg-red-50 border-2 border-red-50 p-1">
-                                            <AvatarFallback className="bg-red-100 text-red-500 font-bold">
-                                                {data.guestName.split(" ").map((n: string) => n[0]).join("")}
-                                            </AvatarFallback>
-                                        </Avatar>
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                            <h2 className="text-lg sm:text-2xl font-bold text-slate-900 leading-none">{data.guestName}</h2>
-                                            {data.source === "Airbnb" && (
-                                                <Badge className="bg-rose-100 text-rose-500 border-none px-1.5 py-0 text-[10px] font-bold uppercase tracking-tight">
-                                                    ▲ ICAL IMPORT
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <div className="flex items-center gap-4 mt-1">
-                                            <div className="flex items-center gap-1.5 text-slate-500 text-sm">
-                                                <svg viewBox="0 0 24 24" fill="none" className="w-4 h-4 text-slate-400" stroke="currentColor" strokeWidth="2">
-                                                    <path d="M17 1l4 4-4 4m-12 5l-4-4 4-4m-1 7h16" />
-                                                </svg>
-                                                <span>Reserva Externa</span>
-                                            </div>
-                                            <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                                            <span className="text-slate-500 text-sm font-medium">Plataforma {data.source}</span>
-                                        </div>
+                            <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                                <div className="flex min-w-0 items-center gap-4">
+                                    <Avatar className="size-14 shrink-0">
+                                        <AvatarFallback className="bg-primary/10 text-base font-bold text-primary">
+                                            {guestInitials(guestName)}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    <div className="min-w-0">
+                                        <h2 className="truncate text-lg font-bold leading-tight text-ink sm:text-xl">
+                                            {guestName}
+                                        </h2>
+                                        <p className="mt-1 truncate text-sm text-ink-3">
+                                            {isExternal
+                                                ? `Reserva externa · ${data.source}`
+                                                : "Reserva directa"}
+                                            {data.externalId && ` · ${data.externalId}`}
+                                        </p>
                                     </div>
                                 </div>
-                                <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1">
-                                    <Badge className={cn(
-                                        "px-3 py-1 text-[11px] font-bold uppercase tracking-wider mb-1",
-                                        data.status === "CONFIRMED" ? "bg-emerald-50 text-emerald-500 border-emerald-100" : "bg-amber-50 text-amber-500 border-amber-100"
-                                    )}>
-                                        {data.status === "CONFIRMED" ? "CONFIRMADA" : "PENDIENTE"}
-                                    </Badge>
-                                    <span className="text-slate-400 text-xs font-medium">ID: {data.externalId}</span>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    {data.source === "Airbnb" && (
+                                        <Badge variant="secondary" className="font-medium">
+                                            Importada por iCal
+                                        </Badge>
+                                    )}
+                                    <StatusPill tone={statusMeta.tone}>{statusMeta.label}</StatusPill>
                                 </div>
                             </div>
 
-                            {/* Details Row */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-8 pt-6 sm:pt-8 border-t border-slate-100">
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2.5 bg-slate-50 rounded-xl text-slate-400 shrink-0">
-                                        <Home size={20} />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Propiedad</span>
-                                        <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-snug">{data.propertyName}</h3>
-                                        <span className="text-sm text-slate-500">{data.unitName}</span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2.5 bg-slate-50 rounded-xl text-primary shrink-0">
-                                        <Calendar size={20} />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Estancia</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-base sm:text-lg font-bold text-slate-800 leading-snug">{format(data.checkIn, "d MMM", { locale: es })}</span>
-                                            <ChevronRight size={14} className="text-slate-300 mt-0.5" />
-                                            <span className="text-base sm:text-lg font-bold text-slate-800 leading-snug">{format(data.checkOut, "d MMM", { locale: es })}</span>
-                                        </div>
-                                        <div className="flex items-center gap-3 text-sm text-slate-400 font-medium">
-                                            <span>{format(data.checkIn, "HH:mm")}</span>
-                                            <span>{format(data.checkOut, "HH:mm")}</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2.5 bg-slate-50 rounded-xl text-primary shrink-0">
-                                        <Users size={20} />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Huéspedes</span>
-                                        <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-snug">{data.totalGuests}</h3>
-                                        <span className="text-sm text-slate-500 font-medium">
-                                            {data.totalGuests === 1 ? "huésped en total" : "huéspedes en total"}
+                            {/* Details Row.
+                                Antes cada dato venía en un chip de icono redondeado —
+                                uno gris y tres morados sin criterio, y el morado es el
+                                color de ACCIÓN de la marca, no el de un adorno. Ahora el
+                                icono acompaña a la etiqueta en tinta apagada y el valor
+                                es lo único con peso: la jerarquía la lleva el dato. */}
+                            <dl className="mt-6 grid grid-cols-2 gap-x-4 gap-y-6 border-t border-rule pt-6 lg:grid-cols-4">
+                                <DetailCell icon={Home} label="Propiedad" value={data.propertyName} hint={data.unitName} />
+                                <DetailCell
+                                    icon={Calendar}
+                                    label="Estancia"
+                                    value={
+                                        <span className="flex items-center gap-1.5">
+                                            {format(data.checkIn, "d MMM", { locale: es })}
+                                            <ChevronRight size={14} aria-hidden className="text-ink-4" />
+                                            {format(data.checkOut, "d MMM", { locale: es })}
                                         </span>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-start gap-3">
-                                    <div className="p-2.5 bg-slate-50 rounded-xl text-primary shrink-0">
-                                        <CreditCard size={20} />
-                                    </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total</span>
-                                        <h3 className="text-base sm:text-lg font-bold text-slate-800 leading-snug">${data.totalPrice.toLocaleString("es-CO")} {data.currency}</h3>
-                                        <span className="text-sm text-slate-500 font-medium">Pagado • Stripe</span>
-                                    </div>
-                                </div>
-                            </div>
+                                    }
+                                    hint={`${format(data.checkIn, "HH:mm")} → ${format(data.checkOut, "HH:mm")}`}
+                                />
+                                <DetailCell
+                                    icon={Moon}
+                                    label="Noches"
+                                    value={data.nights}
+                                    hint={data.nights === 1 ? "noche" : "noches"}
+                                />
+                                <DetailCell
+                                    icon={Users}
+                                    label="Huéspedes"
+                                    value={data.totalGuests}
+                                    hint={data.totalGuests === 1 ? "huésped" : "huéspedes"}
+                                />
+                            </dl>
 
                             {/* Automation Section — live status + manual redispatch */}
-                            <div className="mt-8 pt-8 border-t border-slate-100">
+                            <div className="mt-6 border-t border-rule pt-6">
                                 <AutomationStatusList reservationUuid={data.uuid} totalGuests={data.totalGuests} />
                             </div>
                         </CardContent>
@@ -304,145 +337,240 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                     {/* Property Documents */}
                     <PropertyDocumentsCard reservationUuid={data.uuid} />
 
-                    {/* Activity Log */}
-                    <Card className="shadow-sm">
-                        <CardHeader className="flex flex-row items-center justify-between pb-4">
-                            <CardTitle className="text-xl font-bold text-slate-800">Bitácora de Actividad</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex gap-4">
-                                <div className="p-2 rounded-full h-fit bg-primary/10 text-primary">
-                                    <FileText size={20} />
-                                </div>
-                                <div className="flex flex-col">
-                                    <span className="text-base font-bold text-slate-800">Reserva creada</span>
-                                    <span className="text-xs text-slate-400 font-medium tracking-tight">
-                                        {data.source} • ID: {data.externalId || data.uuid.slice(0, 8)}
-                                    </span>
-                                </div>
+                    {/* Activity Log.
+                        Un solo evento fijo. Se rotula como "Origen" en vez de
+                        "Bitácora de Actividad": una bitácora con una entrada
+                        inmutable promete un historial que el backend todavía no
+                        expone, y el operador la lee como si no hubiera pasado nada. */}
+                    <SectionCard
+                        title="Origen de la reserva"
+                        description="El historial por evento aún no está disponible."
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="h-fit rounded-lg bg-sunk p-2 text-ink-3">
+                                <FileText size={18} aria-hidden />
                             </div>
-                        </CardContent>
-                    </Card>
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold text-ink">Reserva creada</p>
+                                <p className="truncate text-xs text-ink-3">
+                                    {isExternal ? `Importada desde ${data.source}` : "Creada en HIT Guest"}
+                                    {" · "}
+                                    {data.externalId || data.uuid.slice(0, 8)}
+                                </p>
+                            </div>
+                        </div>
+                    </SectionCard>
                 </div>
 
                 {/* Sidebar Areas */}
-                <div className="lg:col-span-4 flex flex-col gap-6">
-                    {/* Quick Actions */}
-                    <Card className="bg-primary text-white border-none shadow-lg">
-                        <CardHeader className="pb-4">
-                            <CardTitle className="text-xs font-bold uppercase tracking-[0.2em] text-primary/50">Acciones Rápidas</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            <Dialog open={sendDialogOpen} onOpenChange={openSendDialog}>
-                                <DialogTrigger asChild>
-                                    <Button variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-none justify-between h-12 px-5 group">
-                                        <div className="flex items-center gap-3">
-                                            <Send size={18} className="text-primary/50 group-hover:text-white transition-colors" />
-                                            <span className="font-semibold">Enviar Link de Check-in</span>
-                                        </div>
-                                        <ChevronRight size={16} className="text-white/40" />
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-[440px]">
-                                    <DialogHeader>
-                                        <DialogTitle>Enviar link de check-in</DialogTitle>
-                                        <DialogDescription>
-                                            Se enviará al correo indicado. Por defecto, el del huésped principal.
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-4 py-2">
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="checkin-link-email">Correo del huésped</Label>
-                                            <Input
-                                                id="checkin-link-email"
-                                                type="email"
-                                                value={recipientEmail}
-                                                onChange={(e) => setRecipientEmail(e.target.value)}
-                                                placeholder="huesped@correo.com"
-                                            />
-                                            {recipientEmail.trim() !== "" && !isValidEmail && (
-                                                <p className="text-xs text-destructive">Ingresa un correo válido.</p>
-                                            )}
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="checkin-link-locale">Idioma del correo</Label>
-                                            <Select value={localeChoice} onValueChange={(v) => setLocaleChoice(v as "default" | CommunicationLocale)}>
-                                                <SelectTrigger id="checkin-link-locale">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="default">
-                                                        Idioma de la propiedad{data.communicationsLocale ? ` · ${LOCALE_LABELS[data.communicationsLocale]}` : ""}
-                                                    </SelectItem>
-                                                    {COMMUNICATION_LOCALES.map((loc) => (
-                                                        <SelectItem key={loc} value={loc}>{LOCALE_LABELS[loc]}</SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button variant="outline" onClick={() => setSendDialogOpen(false)} disabled={isSendingLink}>
-                                            Cancelar
-                                        </Button>
+                <div className="flex flex-col gap-6 lg:col-span-4">
+                    {/* Quick Actions.
+                        El título y los iconos estaban en `text-primary/50`, es
+                        decir morado al 50% SOBRE morado: invisibles. Todo lo que
+                        va dentro de esta tarjeta se pinta con blancos. */}
+                    <Card className="border-none bg-primary p-0 text-white shadow-sm">
+                        <CardContent className="p-5">
+                            <h3 className="text-sm font-bold text-white">Acciones rápidas</h3>
+                            {disabledReason && (
+                                <p className="mt-1 text-xs text-white/70">{disabledReason}</p>
+                            )}
+                            <div className="mt-4 space-y-2">
+                                <Dialog open={sendDialogOpen} onOpenChange={openSendDialog}>
+                                    <DialogTrigger asChild>
                                         <Button
-                                            onClick={handleSendCheckinLink}
-                                            disabled={isSendingLink || !isValidEmail}
-                                            className="bg-primary hover:bg-primary text-white"
+                                            variant="secondary"
+                                            disabled={!isActionable}
+                                            title={disabledReason}
+                                            className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:opacity-40"
                                         >
-                                            {isSendingLink && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            {isSendingLink ? "Enviando..." : "Enviar"}
+                                            <span className="flex items-center gap-3">
+                                                <Send size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />
+                                                <span className="font-semibold">Enviar link de check-in</span>
+                                            </span>
+                                            <ChevronRight size={16} aria-hidden className="text-white/50" />
                                         </Button>
-                                    </DialogFooter>
-                                </DialogContent>
-                            </Dialog>
-                            <Button onClick={handleCopyCheckinLink} variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-none justify-between h-12 px-5 group">
-                                <div className="flex items-center gap-3">
-                                    <Copy size={18} className="text-primary/50 group-hover:text-white transition-colors" />
-                                    <span className="font-semibold">Copiar Link de Check-in</span>
-                                </div>
-                                <ChevronRight size={16} className="text-white/40" />
-                            </Button>
-                            <Button onClick={handleMessageGuest} disabled={!data.email} variant="secondary" className="w-full bg-white/10 hover:bg-white/20 text-white border-none justify-between h-12 px-5 group disabled:opacity-50">
-                                <div className="flex items-center gap-3">
-                                    <MessageSquare size={18} className="text-primary/50 group-hover:text-white transition-colors" />
-                                    <span className="font-semibold">Mensaje al Huésped</span>
-                                </div>
-                                <ChevronRight size={16} className="text-white/40" />
-                            </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[440px]">
+                                        <DialogHeader>
+                                            <DialogTitle>Enviar link de check-in</DialogTitle>
+                                            <DialogDescription>
+                                                Se enviará al correo indicado. Por defecto, el del huésped principal.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="space-y-4 py-2">
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="checkin-link-email">Correo del huésped</Label>
+                                                <Input
+                                                    id="checkin-link-email"
+                                                    type="email"
+                                                    value={recipientEmail}
+                                                    onChange={(e) => setRecipientEmail(e.target.value)}
+                                                    placeholder="huesped@correo.com"
+                                                />
+                                                {recipientEmail.trim() !== "" && !isValidEmail && (
+                                                    <p className="text-xs text-destructive">Ingresa un correo válido.</p>
+                                                )}
+                                            </div>
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="checkin-link-locale">Idioma del correo</Label>
+                                                <Select value={localeChoice} onValueChange={(v) => setLocaleChoice(v as "default" | CommunicationLocale)}>
+                                                    <SelectTrigger id="checkin-link-locale">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="default">
+                                                            Idioma de la propiedad{data.communicationsLocale ? ` · ${LOCALE_LABELS[data.communicationsLocale]}` : ""}
+                                                        </SelectItem>
+                                                        {COMMUNICATION_LOCALES.map((loc) => (
+                                                            <SelectItem key={loc} value={loc}>{LOCALE_LABELS[loc]}</SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                        <DialogFooter>
+                                            <Button variant="outline" onClick={() => setSendDialogOpen(false)} disabled={isSendingLink}>
+                                                Cancelar
+                                            </Button>
+                                            <Button
+                                                onClick={handleSendCheckinLink}
+                                                disabled={isSendingLink || !isValidEmail}
+                                                className="bg-primary hover:bg-primary text-white"
+                                            >
+                                                {isSendingLink && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                {isSendingLink ? "Enviando..." : "Enviar"}
+                                            </Button>
+                                        </DialogFooter>
+                                    </DialogContent>
+                                </Dialog>
+                                <Button
+                                    onClick={handleCopyCheckinLink}
+                                    variant="secondary"
+                                    disabled={!isActionable}
+                                    title={disabledReason}
+                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:opacity-40"
+                                >
+                                    <span className="flex items-center gap-3">
+                                        <Copy size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />
+                                        <span className="font-semibold">Copiar link de check-in</span>
+                                    </span>
+                                    <ChevronRight size={16} aria-hidden className="text-white/50" />
+                                </Button>
+                                <Button
+                                    onClick={handleMessageGuest}
+                                    variant="secondary"
+                                    disabled={!data.email || !isActionable}
+                                    title={!data.email ? "El huésped no tiene correo registrado" : disabledReason}
+                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:opacity-40"
+                                >
+                                    <span className="flex items-center gap-3">
+                                        <MessageSquare size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />
+                                        <span className="font-semibold">Escribir al huésped</span>
+                                    </span>
+                                    <ChevronRight size={16} aria-hidden className="text-white/50" />
+                                </Button>
+                            </div>
                         </CardContent>
                     </Card>
 
-                    {/* Price Breakdown */}
-                    <Card className="bg-primary text-white border-none shadow-lg overflow-hidden relative">
-                        {/* Background subtle gradient/shape */}
-                        <div className="absolute top-0 right-0 p-6 opacity-20 transform translate-x-4 -translate-y-4">
-                            <CreditCard size={120} />
+                    {/* Importe.
+                        Antes era una SEGUNDA tarjeta morada idéntica a la de
+                        acciones — dos bloques del color de marca compitiendo, sin
+                        jerarquía entre "haz algo" y "esto es un dato" — y repetía
+                        el total tres veces (titular, fila "Total" y grid de
+                        arriba). También rotulaba "Pagado" y "Stripe"/"Manual":
+                        ReservationDetailData NO trae estado ni método de pago, así
+                        que eran literales inventados. Se quedan solo los datos que
+                        la API sí devuelve. */}
+                    <SectionCard title="Importe">
+                        <div className="flex items-baseline justify-between gap-3">
+                            <span className="text-2xl font-bold tracking-tight text-ink">{amount}</span>
+                            <span className="shrink-0 text-xs text-ink-3">
+                                {data.nights} {data.nights === 1 ? "noche" : "noches"}
+                            </span>
                         </div>
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-3">
+                            <CreditCard size={13} aria-hidden />
+                            Valor total de la reserva
+                        </p>
+                    </SectionCard>
 
-                        <CardContent className="p-6">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-primary/50">Total Reserva</span>
-                            <div className="flex items-center justify-between mt-1 mb-6">
-                                <h3 className="text-2xl sm:text-3xl font-bold tracking-tight">${data.totalPrice.toLocaleString("es-CO")} {data.currency}</h3>
-                                <div className="p-2 bg-white/20 rounded-lg">
-                                    <CreditCard size={20} />
-                                </div>
-                            </div>
-
-                            <div className="space-y-3 pt-6 border-t border-white/20">
-                                <div className="flex items-center justify-between text-sm font-medium">
-                                    <span className="text-primary/30">Total</span>
-                                    <span>${data.totalPrice.toLocaleString("es-CO")} {data.currency}</span>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-2 mt-6">
-                                <Badge className="bg-white/20 hover:bg-white/20 text-white border-none px-3 py-1 text-xs">Pagado</Badge>
-                                <Badge className="bg-white/20 hover:bg-white/20 text-white border-none px-3 py-1 text-xs">{data.source === "Airbnb" ? "Stripe" : "Manual"}</Badge>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    {/* Contacto: el panel ya traía email y teléfono y solo los
+                        usaba dentro de diálogos, así que el operador no podía
+                        verlos sin abrir uno. */}
+                    {(data.email || data.phone) && (
+                        <SectionCard title="Contacto del huésped">
+                            <dl className="space-y-3">
+                                {data.email && (
+                                    <ContactRow icon={Mail} label="Correo" value={data.email} href={`mailto:${data.email}`} />
+                                )}
+                                {data.phone && (
+                                    <ContactRow icon={Phone} label="Teléfono" value={data.phone} href={`tel:${data.phone}`} />
+                                )}
+                            </dl>
+                        </SectionCard>
+                    )}
                 </div>
+            </div>
+        </div>
+    )
+}
+
+/**
+ * One label/value pair in the reservation summary grid.
+ *
+ * A `<dt>/<dd>` pair, not two `<span>`s: the association between "Huéspedes"
+ * and "2" is the whole point of the cell, and a screen reader had no way to
+ * hear it before.
+ */
+function DetailCell({
+    icon: Icon,
+    label,
+    value,
+    hint,
+}: {
+    icon: ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }>
+    label: string
+    value: ReactNode
+    hint?: string
+}) {
+    return (
+        <div className="min-w-0">
+            <dt className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
+                <Icon size={14} aria-hidden className="shrink-0 text-ink-4" />
+                {label}
+            </dt>
+            <dd className="mt-1.5 truncate text-base font-bold leading-snug text-ink">{value}</dd>
+            {hint && <p className="mt-0.5 truncate text-xs text-ink-3">{hint}</p>}
+        </div>
+    )
+}
+
+/** A guest contact detail, rendered as an actionable mailto:/tel: link. */
+function ContactRow({
+    icon: Icon,
+    label,
+    value,
+    href,
+}: {
+    icon: ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }>
+    label: string
+    value: string
+    href: string
+}) {
+    return (
+        <div className="flex items-center gap-3">
+            <Icon size={16} aria-hidden className="shrink-0 text-ink-4" />
+            <div className="min-w-0">
+                <dt className="text-xs text-ink-3">{label}</dt>
+                <dd>
+                    <a
+                        href={href}
+                        className="block truncate rounded text-sm font-medium text-ink transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    >
+                        {value}
+                    </a>
+                </dd>
             </div>
         </div>
     )

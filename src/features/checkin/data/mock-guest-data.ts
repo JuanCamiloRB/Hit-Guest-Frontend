@@ -5,7 +5,6 @@
  */
 
 import type {
-  CheckinReservation,
   CheckinReservationV4,
   CheckinPortalResponse,
   IdentifyPayload,
@@ -19,7 +18,9 @@ import type {
   GuestFormSchemaResponse,
   OCRResult,
   VerificationResultResponse,
+  VerificationDirective,
 } from "@/features/checkin/types/checkin"
+import type { CheckinApiError } from "@/features/checkin/lib/checkin-error"
 
 // ─── Mock Reservation Context ────────────────────────────────────
 
@@ -277,21 +278,21 @@ export const mockPortalResponse = (): CheckinPortalResponse => ({
  *   - { type: "verified_ok" }          → Skip verification
  */
 export const mockIdentifyResponse = (payload: IdentifyPayload): IdentifyResponse => {
-  let verificationType: any = { type: 'document_upload' };
-  let prefilledData: any = {};
+  let verificationType: VerificationDirective = { type: 'document_upload' };
+  let prefilledData: Record<string, unknown> = {};
 
   // Error triggers (for QA/testing)
   if (payload.identificationNumber === "403") {
-    const err: any = new Error("El huésped principal debe completar primero"); err.status = 403; throw err;
+    const err = new Error("El huésped principal debe completar primero") as CheckinApiError; err.status = 403; throw err;
   }
   if (payload.identificationNumber === "409") {
-    const err: any = new Error("Este documento ya está asociado a un huésped"); err.status = 409; throw err;
+    const err = new Error("Este documento ya está asociado a un huésped") as CheckinApiError; err.status = 409; throw err;
   }
   if (payload.identificationNumber === "999") {
-    const err: any = new Error("La reserva ya tiene todos sus huéspedes registrados"); err.status = 422; throw err;
+    const err = new Error("La reserva ya tiene todos sus huéspedes registrados") as CheckinApiError; err.status = 422; throw err;
   }
   if (payload.identificationNumber === "500") {
-    const err: any = new Error("Error interno del servidor"); err.status = 500; throw err;
+    const err = new Error("Error interno del servidor") as CheckinApiError; err.status = 500; throw err;
   }
 
   // Caso 0: Check-in ya completado anteriormente

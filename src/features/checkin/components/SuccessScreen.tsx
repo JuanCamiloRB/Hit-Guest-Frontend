@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { CheckCircle2, Home, Users, Calendar, MapPin, Download, Clock, FileText, Loader2, Mail } from "lucide-react"
+import { CheckCircle2, Home, Users, Calendar, MapPin, Download, Clock, FileText, Loader2, Mail, XCircle } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
+import { normalizeApiError } from "@/lib/notify-error"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { isMainGuestCompleted, pendingGuestsCount, type CheckinPortalResponse } from "@/features/checkin/types/checkin"
@@ -34,18 +35,23 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
     const [documents, setDocuments] = useState<ReservationDocument[]>([])
     const [docsLoading, setDocsLoading] = useState(true)
     const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null)
+    const [downloadingContract, setDownloadingContract] = useState(false)
 
     const hasContract = !!portal.contract?.signingProvider
     const [contractStatus, setContractStatus] = useState<string | null>(portal.contract?.status ?? null)
     const [signedAt, setSignedAt] = useState<string | null>(portal.contract?.signedAt ?? null)
     const [signedUrlReady, setSignedUrlReady] = useState<boolean>(!!portal.contract?.signedContractUrl)
-    const [hasNativeSignature, setHasNativeSignature] = useState<boolean>(!!portal.contract?.hasNativeSignature)
-    // The signed PDF (with the legal evidence page) lives at /contract/signed and is
-    // generated on-demand. The signature is embedded as soon as the guest signs
-    // (status "signed" / hasNativeSignature), so we don't wait for the async
-    // "completed" step (cron) to offer the download. tufirma's "pending" still
-    // waits on the external signature.
-    const contractReady = contractStatus === "completed" || contractStatus === "signed" || hasNativeSignature || signedUrlReady
+    // `signedContractUrl` es la ÚNICA señal válida de que el PDF se puede
+    // descargar: el backend la publica exactamente cuando `canDownload`, y la deja
+    // en null si no.
+    //
+    // Antes esto también aceptaba `status === "signed"` y `hasNativeSignature`, que
+    // se ponen en true en cuanto el titular firma — ANTES de completar el check-in.
+    // Un acompañante que llegaba a esta pantalla en esa ventana veía el botón de
+    // descarga sobre una URL que el backend todavía no habilitaba, y el archivo
+    // fallaba. Esperar `signedContractUrl` no retrasa el caso normal: con proveedor
+    // síncrono aparece junto con el `complete` del titular.
+    const contractReady = signedUrlReady
 
     useEffect(() => {
         let mounted = true
@@ -75,7 +81,6 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 if (active && c) {
                     setContractStatus(c.status)
                     if (c.signedAt) setSignedAt(c.signedAt)
-                    if (c.hasNativeSignature) setHasNativeSignature(true)
                     if (c.signedContractUrl) setSignedUrlReady(true)
                     if (c.status === "completed") {
                         checkinService.getReservationDocuments(reservationUuid, p)
@@ -100,6 +105,31 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             toast.error("No se pudo descargar el PDF")
         } finally {
             setDownloadingDoc(null)
+        }
+    }
+
+    /**
+     * El contrato firmado ya no se abre navegando a la URL.
+     *
+     * `signedContractUrl` garantiza que el backend habilitó la descarga, pero NO
+     * que el PDF se pueda generar: §4 devuelve un 422 en JSON cuando la
+     * configuración del contrato cambió desde que se firmó (el drift que el
+     * backend dejó como gap vigente). Navegando, el huésped terminaba viendo el
+     * JSON crudo en una pestaña en blanco, sin saber a quién recurrir.
+     */
+    const handleDownloadSignedContract = async () => {
+        setDownloadingContract(true)
+        try {
+            await checkinService.openSignedContract(reservationUuid)
+        } catch (error) {
+            const { status, message } = normalizeApiError(error)
+            toast.error(
+                status === 422
+                    ? message || "Tu contrato firmado necesita regenerarse. Contacta al anfitrión."
+                    : "No pudimos abrir tu contrato firmado. Intenta de nuevo en un momento.",
+            )
+        } finally {
+            setDownloadingContract(false)
         }
     }
 
@@ -156,10 +186,13 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                         </div>
                     </div>
                     <button
-                        onClick={() => checkinService.openSignedContract(reservationUuid)}
-                        className="w-full flex items-center justify-center gap-2 h-11 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98]"
+                        onClick={handleDownloadSignedContract}
+                        disabled={downloadingContract}
+                        className="w-full flex items-center justify-center gap-2 h-11 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                     >
-                        <Download size={16} />
+                        {downloadingContract
+                            ? <Loader2 size={16} className="animate-spin" />
+                            : <Download size={16} />}
                         Descargar contrato firmado
                     </button>
                 </div>
@@ -175,6 +208,25 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                             {contractStatus === "pending"
                                 ? "Esperando la firma en TuFirma. Te avisaremos cuando esté lista para descargar."
                                 : "Estamos finalizando tu contrato firmado; podrás descargarlo en un momento."}
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/*
+              * Firma rechazada o fallida en TuFirma (SIGNER_REJECTED / SIGNER_FAILED).
+              * Es terminal y el huésped no tiene reintento por su cuenta, pero antes
+              * no se renderizaba nada para este estado: la pantalla decía "registro
+              * completado" y el huésped se iba creyendo que estaba todo en orden.
+              */}
+            {hasContract && contractStatus === "rejected" && (
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
+                    <XCircle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+                    <div>
+                        <p className="text-sm font-bold text-red-800">Tu contrato no pudo firmarse</p>
+                        <p className="text-xs text-red-700 mt-0.5">
+                            La firma digital fue rechazada. Tus datos quedaron registrados, pero el
+                            anfitrión debe reenviarte el contrato — contáctalo para completarlo.
                         </p>
                     </div>
                 </div>

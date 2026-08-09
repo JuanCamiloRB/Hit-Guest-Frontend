@@ -2,6 +2,7 @@ import { apiClient } from "@/lib/api-client"
 import { API_BASE, CONFIG } from "@/lib/config"
 import { normalizeLocale, type CommunicationLocale } from "@/lib/locales"
 import { parseCalendarDate } from "@/lib/calendar-date"
+import { composeGuestName } from "../lib/guest-name"
 import { Reservation } from "@/types"
 import { differenceInDays } from "date-fns"
 import { listingsService } from "@/features/properties/services/listings-service"
@@ -65,6 +66,11 @@ function mapReservationStatus(r: any): Reservation["status"] {
  *  `sire_colombia`, so they're split into sireIn/sireOut by name (see sireKind). */
 const SLUG_TO_KEY: Record<string, keyof AutomationStatus> = {
     tufirma: "contract",
+    // The native signature provider signs the same contract as TuFirma. It was
+    // missing here, so a reservation signed with it left the CONTRATO column on
+    // "—" forever: the slug matched nothing and, unlike check-in, there was no
+    // name-based fallback to catch it.
+    hitguest_signature: "contract",
     ttlock: "code",
     tra_colombia: "tra",
 }
@@ -78,12 +84,21 @@ function liveStatusToLight(s: string): TrafficLightState {
 /** Matches the Identity Verification automations (orders 1 & 2) by name. */
 const CHECKIN_NAME_RE = /identity|verificaci[oó]n|check-?in/i
 
+/**
+ * Last-resort match for the signature automation by name, so a signature
+ * provider we don't have in SLUG_TO_KEY yet still lights the CONTRATO column
+ * instead of silently reading as "not configured". Same defensive shape as
+ * CHECKIN_NAME_RE, and evaluated AFTER it so it can't steal a check-in row.
+ */
+const CONTRACT_NAME_RE = /firma|contrato|signature/i
+
 /** SIRE check-out (order 8) vs check-in (order 7), told apart by the name. */
 function sireKind(name: string): "sireIn" | "sireOut" {
     return /out|check-?out|salida/i.test(name) ? "sireOut" : "sireIn"
 }
 
-function buildTrafficLight(items: AutomationStatusItem[], checkinCompleted: boolean): AutomationStatus {
+/** Exported for testing: pure mapping from live automation rows to the table's lights. */
+export function buildTrafficLight(items: AutomationStatusItem[], checkinCompleted: boolean): AutomationStatus {
     const base: AutomationStatus = {
         link: "none",
         checkin: "none",
@@ -110,6 +125,16 @@ function buildTrafficLight(items: AutomationStatusItem[], checkinCompleted: bool
             base[key] = liveStatusToLight(item.status)
         } else if (CHECKIN_NAME_RE.test(item.automationName || "")) {
             checkinStates.push(liveStatusToLight(item.status))
+        } else if (CONTRACT_NAME_RE.test(item.automationName || "")) {
+            base.contract = liveStatusToLight(item.status)
+        } else {
+            // A row that matches no key and no name regex lights NOTHING — the
+            // column silently reads as "not configured". That is how the CONTRATO
+            // dash survived unnoticed, so make the leftovers visible instead.
+            console.warn(
+                "[reservations] Automatización sin columna asignada; su estado no se muestra en la tabla.",
+                { slug: item.providerSlug, nombre: item.automationName, estado: item.status },
+            )
         }
     }
 
@@ -245,29 +270,77 @@ interface ListingLookupEntry {
  * that's what this builds the map from, instead of trusting anything on the
  * raw reservation shape.
  */
-async function buildListingLookup(): Promise<Map<string, ListingLookupEntry>> {
+export interface ListingLookupResult {
+    map: Map<string, ListingLookupEntry>
+    /** Propiedades cuyos alojamientos no se pudieron cargar. */
+    failedProperties: string[]
+}
+
+export async function buildListingLookup(): Promise<ListingLookupResult> {
     const map = new Map<string, ListingLookupEntry>()
+    const failedProperties: string[] = []
+
+    let properties: Awaited<ReturnType<typeof propertiesService.list>>
     try {
-        const properties = await propertiesService.list()
-        await Promise.all(
-            properties.map(async (property) => {
-                const listings = await listingsService.listByProperty(property.uuid)
-                for (const listing of listings) {
-                    if (!listing?.uuid) continue
-                    map.set(listing.uuid, {
-                        propertyId: property.uuid,
-                        propertyName: property.name,
-                        unitName: listing.internalName || listing.internal_name
-                            ? `${listing.name ?? "Alojamiento"} (${listing.internalName ?? listing.internal_name})`
-                            : listing.name || "Alojamiento",
-                    })
-                }
-            }),
-        )
+        properties = await propertiesService.list()
     } catch (error) {
-        console.error("[ReservationsService] No se pudo construir el mapa de propiedades/alojamientos:", error)
+        console.error("[ReservationsService] No se pudo listar propiedades:", error)
+        return { map, failedProperties }
     }
-    return map
+
+    // `Promise.allSettled`, no `Promise.all`: con `all`, un solo 503 en una
+    // propiedad rechazaba de inmediato y el mapa se devolvía a medio construir
+    // —las propiedades que aún no habían resuelto no llegaban a agregarse—, así
+    // que una petición caída dejaba sin alojamiento a reservas de propiedades
+    // que habían respondido perfectamente. Ahora cada propiedad cae sola.
+    const results = await Promise.allSettled(
+        properties.map(async (property) => {
+            const listings = await listingsService.listByProperty(property.uuid)
+            return { property, listings }
+        }),
+    )
+
+    for (let i = 0; i < results.length; i++) {
+        const result = results[i]
+        if (result.status === "rejected") {
+            failedProperties.push(properties[i]?.name || properties[i]?.uuid || "desconocida")
+            continue
+        }
+        const { property, listings } = result.value
+        for (const listing of listings) {
+            if (!listing?.uuid) continue
+            map.set(listing.uuid, {
+                propertyId: property.uuid,
+                propertyName: property.name,
+                unitName: listing.internalName || listing.internal_name
+                    ? `${listing.name ?? "Alojamiento"} (${listing.internalName ?? listing.internal_name})`
+                    : listing.name || "Alojamiento",
+            })
+        }
+    }
+
+    if (failedProperties.length > 0) {
+        console.error(
+            `[ReservationsService] No se pudieron cargar los alojamientos de ${failedProperties.length} ` +
+            `propiedad(es): ${failedProperties.join(", ")}. Sus reservas se mostrarán sin propiedad.`,
+        )
+    }
+
+    return { map, failedProperties }
+}
+
+/**
+ * Lee un conteo no negativo de un campo de la API, o `undefined` si no vino.
+ *
+ * `undefined` y `0` NO son lo mismo aquí: la columna CHECK-IN muestra "0 de 3
+ * verificados" solo cuando el backend afirma que van cero, y vuelve a su
+ * etiqueta binaria cuando simplemente no reportó el dato. Un `Number(x) || 0`
+ * habría colapsado los dos casos y afirmado que no ha llegado nadie.
+ */
+function readCount(raw: unknown): number | undefined {
+    if (raw === null || raw === undefined || raw === "") return undefined
+    const n = Number(raw)
+    return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : undefined
 }
 
 function warnIfPaginated(response: unknown): void {
@@ -293,8 +366,7 @@ export class ReservationsService {
         const checkIn = parseCalendarDate(r.arrivalDate || r.arrival_date)
         const checkOut = parseCalendarDate(r.departureDate || r.departure_date)
 
-        const guestName = r.extra?.guestName
-            || r.extra?.guest_name
+        const guestName = composeGuestName(r.extra)
             || r.mainGuest?.name
             || r.emailGuest?.split("@")[0]
             || "Huésped"
@@ -603,10 +675,11 @@ export class ReservationsService {
 
         try {
             // Independent requests — run together instead of one blocking the other.
-            const [response, listingLookup] = await Promise.all([
+            const [response, lookupResult] = await Promise.all([
                 apiClient.get<any>(url),
                 buildListingLookup(),
             ])
+            const { map: listingLookup, failedProperties } = lookupResult
 
             // Extract array from standard { success: true, data: [...] } structure
             const dataArray = response?.data && Array.isArray(response.data)
@@ -628,9 +701,9 @@ export class ReservationsService {
                 const checkIn = parseCalendarDate(r.arrivalDate || r.arrival_date)
                 const checkOut = parseCalendarDate(r.departureDate || r.departure_date)
                 
-                // ── Guest name: API returns extra.guestName (camelCase) ──
-                const guestName = r.extra?.guestName 
-                    || r.extra?.guest_name 
+                // ── Guest name: `extra` guarda nombre y apellido por separado;
+                // las reservas antiguas traen el nombre entero en guest_name ──
+                const guestName = composeGuestName(r.extra)
                     || r.mainGuest?.name
                     || r.emailGuest?.split("@")[0]
                     || "Huésped"
@@ -689,10 +762,30 @@ export class ReservationsService {
                     status,
                     source: sourceName,
                     totalPrice: Number(r.totalPrice || r.total_price || 0),
+                    totalGuests: readCount(r.totalGuests ?? r.total_guests),
+                    // Conteo de huéspedes con el check-in completo. Se leen las
+                    // claves plausibles porque NINGUNA está confirmada contra un
+                    // payload real de GET /reservations — ver readCount().
+                    completedGuests: readCount(
+                        r.completedGuests
+                        ?? r.completed_guests
+                        ?? r.checkinCompletedGuests
+                        ?? r.checkin_completed_guests
+                        ?? r.progress?.completed,
+                    ),
                 }
             })
 
-            if (unmatchedListings > 0 && listingLookup.size > 0) {
+            // Dos causas MUY distintas producen el mismo síntoma, y el aviso
+            // anterior siempre culpaba a la segunda: mandaba a revisar el
+            // contrato del backend cuando lo único que había pasado era un 503.
+            if (unmatchedListings > 0 && failedProperties.length > 0) {
+                console.warn(
+                    `[reservations] ${unmatchedListings}/${reservations.length} reservas sin propiedad porque no se ` +
+                        `pudieron cargar los alojamientos de: ${failedProperties.join(", ")}. Es un fallo de red o del ` +
+                        `backend, NO un problema del contrato — reintentar antes de investigar los nombres de campo.`,
+                )
+            } else if (unmatchedListings > 0 && listingLookup.size > 0) {
                 console.error(
                     `[reservations] ${unmatchedListings}/${reservations.length} reservas no pudieron unirse al mapa ` +
                         `de propiedades/alojamientos — ninguna de las claves candidatas (listing.uuid, listingUuid, ` +

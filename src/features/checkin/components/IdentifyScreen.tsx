@@ -1,6 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import {
+    normalizeMainGuestPrefill,
+    mainGuestPrefillPatch,
+    applyPrefillPatch,
+} from "@/features/checkin/lib/main-guest-prefill"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Loader2, ShieldCheck, Users, CheckCircle2 } from "lucide-react"
@@ -13,6 +18,9 @@ import { SearchableSelect } from "@/features/checkin/components/SearchableSelect
 import { ReadOnlyField } from "@/features/checkin/components/ReadOnlyField"
 import { CatalogService } from "@/features/auth/services/catalog-service"
 import type { IdentifyPayload, IdentifySessionData } from "@/features/checkin/types/checkin"
+import { getVerificationToken } from "@/features/checkin/lib/verification-token"
+import { isDocumentAlreadyVerified } from "@/features/checkin/lib/doc-verification"
+import { asCheckinError, type CheckinApiError } from "@/features/checkin/lib/checkin-error"
 
 /** Guest-facing terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
 const GUEST_TERMS_URL = "https://hitguest.com/terminos-servicio1/"
@@ -70,10 +78,10 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 const countries = await catalogs.getCountries()
                 if (!mounted) return
                 const mappedCountries = (countries || [])
-                    .map((c: any) => ({ id: Number(c.id), label: String(c.name), sublabel: c.extra?.iso2 }))
+                    .map((c) => ({ id: Number(c.id), label: String(c.name), sublabel: c.extra?.iso2 }))
                     .filter(o => Number.isFinite(o.id))
                 setCountryOptions(mappedCountries)
-            } catch (e) {
+            } catch {
                 toast.error("No fue posible cargar catálogos. Intenta de nuevo.")
             } finally {
                 if (mounted) setIsLoadingCatalogs(false)
@@ -97,6 +105,35 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
         return () => { active = false }
     }, [nationalityIso2])
 
+    /**
+     * Titular primerizo: precarga lo que el PM registró al crear la reserva.
+     *
+     * Este paso ocurre ANTES de verificar identidad y cualquiera con el link
+     * llega hasta aquí, así que `includeContact: false` — solo nombre y
+     * nacionalidad, que es además lo único que esta pantalla pide. El correo y
+     * el teléfono se precargan más adelante, en el formulario, que ya está
+     * detrás de la verificación.
+     *
+     * No corre en modo resume (ese ya se precarga desde /form, con más datos)
+     * ni para acompañantes (los datos de la reserva son del titular).
+     */
+    useEffect(() => {
+        if (isResume || isSecondary || !isMainGuest) return
+        let active = true
+        checkinService.getPortal(reservationUuid)
+            .then(portal => {
+                if (!active) return
+                const patch = mainGuestPrefillPatch(
+                    normalizeMainGuestPrefill(portal.reservation?.mainGuestPrefill),
+                    { includeContact: false },
+                )
+                if (Object.keys(patch).length === 0) return
+                setForm(f => applyPrefillPatch(f, patch))
+            })
+            .catch(() => {})
+        return () => { active = false }
+    }, [isResume, isSecondary, isMainGuest, reservationUuid])
+
     // Resume mode: prefill the guest's already-registered data from /form. Reuses the
     // same prefilledData source as the guest form (DRY). Document type/number are then
     // rendered read-only so the identity can't change.
@@ -105,7 +142,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
         let active = true
         checkinService.getGuestFormSchema(reservationUuid, resumeGuestUuid)
             .then(schema => {
-                const p = schema?.prefilledData as Record<string, any> | undefined
+                const p = schema?.prefilledData as Record<string, unknown> | undefined
                 if (!active || !p) return
                 setForm(f => ({
                     ...f,
@@ -125,9 +162,13 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
     // currently-filtered list.
     const [lockedDocTypeLabel, setLockedDocTypeLabel] = useState("")
     const docTypeLabel = docTypeOptions.find(d => d.id === Number(form.identificationTypeId))?.label ?? ""
-    useEffect(() => {
-        if (isResume && docTypeLabel) setLockedDocTypeLabel(docTypeLabel)
-    }, [isResume, docTypeLabel])
+    // Ajuste en render, no en efecto (patrón documentado por React para "guardar
+    // el último valor bueno"): no hay nada externo que sincronizar, solo recordar
+    // la etiqueta ya resuelta. En un efecto costaba un render extra y quedaba como
+    // si fuera una suscripción a algo.
+    if (isResume && docTypeLabel && docTypeLabel !== lockedDocTypeLabel) {
+        setLockedDocTypeLabel(docTypeLabel)
+    }
 
     const isValid =
         form.name.trim().length >= 2 &&
@@ -138,9 +179,9 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
         acceptedTerms
 
     // Detects the backend's "document already registered in this reservation" error.
-    const isDuplicateDocError = (e: any): boolean => {
-        if (e?.status === 409) return true
-        const blob = `${e?.message ?? ""} ${JSON.stringify(e?.errors ?? {})}`.toLowerCase()
+    const isDuplicateDocError = (e: CheckinApiError): boolean => {
+        if (e.status === 409) return true
+        const blob = `${e.message ?? ""} ${JSON.stringify(e.errors ?? {})}`.toLowerCase()
         return blob.includes("registrad") || blob.includes("already registered") || blob.includes("already associated")
     }
 
@@ -167,16 +208,28 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 return true
             }
 
-            const verif: any = (match as any).verification ?? {}
-            const status = String(verif.status ?? "").toLowerCase()
-            const step = String(verif.currentStep ?? "").toLowerCase()
-
-            // Already verified by the backend → skip straight to the form.
-            if (status === "approved" || status === "completed" || step === "form") {
+            // Ya verificado por el backend → derecho al formulario. Se incluye el
+            // token del OTP (misma regla que usa el formulario para decidir si
+            // pide fotos, ver `doc-verification.ts`): un recurrente que ya
+            // aprobó su código y reenvía /identify caía en el mensaje de
+            // "documento ya registrado", sin salida, teniendo el backend ya
+            // confirmada su identidad.
+            const hasOtpToken = getVerificationToken(reservationUuid, match.uuid) !== null
+            if (isDocumentAlreadyVerified(match, hasOtpToken)) {
                 toast.info("Tu identidad ya fue verificada. Continuamos con tus datos.")
                 router.push(`${basePath}/guest?guest_uuid=${match.uuid}`)
                 return true
             }
+
+            // ⚠️ `verificationUrl` NO forma parte del portal (§1/§A solo expone
+            // `status`, `currentStep` y `verifiedAt`); únicamente `/verify/result`
+            // (§3) lo agrega. Es decir que hoy esta rama está INERTE: siempre cae al
+            // `return false` de abajo y el huésped ve el error de documento
+            // duplicado. Se deja tipada como opcional —en vez de borrarla— porque
+            // sigue siendo la reanudación correcta si el portal llega a exponer el
+            // campo, y borrarla escondería la decisión. Antes iba con `any`, que la
+            // hacía parecer un camino vivo.
+            const verif = (match.verification ?? {}) as Partial<{ verificationUrl: string }>
 
             // A pending Didit session is still available → resume that EXACT session.
             // We must NOT invent a "document_upload" directive when there's no URL —
@@ -241,8 +294,16 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 localStorage.setItem(triggerKey, payload.identificationNumber)
             } catch {}
 
-            // G2 + G3: Route based on backend-decided verification.type
-            switch (response.verification.type) {
+            // G2 + G3: Route based on backend-decided verification.type.
+            //
+            // By this point the backend may ALREADY have created the provider
+            // session (the Didit log shows "creating Didit session" before this
+            // response reaches us). So an absent or unknown directive is a
+            // contract mismatch, not a guest error: it must be logged with the
+            // real payload and reported, never swallowed. Reading `.type` off an
+            // undefined `verification` used to throw a TypeError inside this
+            // try, which the catch below then mislabelled as a "422".
+            switch (response.verification?.type) {
                 case "verified_ok":
                     // G6: Guest already verified — skip directly to form
                     router.push(`${basePath}/guest?guest_uuid=${response.guest.uuid}`)
@@ -256,9 +317,27 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                     // possession of their historical email first (OTP plan 20260731).
                     router.push(`${basePath}/contact-challenge?guest_uuid=${response.guest.uuid}`)
                     break
+                default:
+                    // No `break`-less fallthrough: without this the guest stayed on
+                    // the form with no navigation, no toast and no log at all.
+                    console.error(
+                        "[IdentifyScreen] identify() devolvió una directiva de verificación inutilizable",
+                        { verification: response.verification, response },
+                    )
+                    toast.error("No pudimos continuar con la verificación. Intenta de nuevo o contacta al anfitrión.")
             }
-        } catch (e: any) {
-            console.error("[IdentifyScreen] 422 error details:", { status: e.status, message: e.message, errors: e.errors })
+        } catch (raw: unknown) {
+            const e = asCheckinError(raw)
+            // Log the WHOLE error: this block catches every failure, not just 422s
+            // (the old "422 error details" label sent us looking for a validation
+            // error that was never there), and the backend's own message is the
+            // only thing that explains a provider-side failure.
+            console.error("[IdentifyScreen] identify() falló:", {
+                status: e.status,
+                message: e.message,
+                errors: e.errors,
+                error: e,
+            })
             // Document already registered → this is almost always the same guest coming
             // back after an interrupted attempt (e.g. failed Didit callback). Resume them
             // instead of dead-ending. Falls through to the error display if not resolvable.
@@ -275,7 +354,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 toast.error("Este documento ya está asociado a un huésped en esta reserva")
             } else if (e.status === 422) {
                 // Check if it's specifically a max_guests error or a validation error
-                if (e.message?.toLowerCase().includes("maximum") || e.message?.toLowerCase().includes("máximo")) {
+                if (e.message.toLowerCase().includes("maximum") || e.message.toLowerCase().includes("máximo")) {
                     router.push(`${basePath}?error=max_guests`)
                 } else if (e.errors && typeof e.errors === 'object') {
                     // Field-level validation errors

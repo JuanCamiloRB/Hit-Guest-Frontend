@@ -66,7 +66,7 @@ export function useIdentifySession(reservationUuid: string) {
                 return null
             }
             return data
-        } catch (e) {
+        } catch {
             return null
         }
     }, [reservationUuid])
@@ -75,7 +75,7 @@ export function useIdentifySession(reservationUuid: string) {
         try {
             localStorage.removeItem(getStorageKey(reservationUuid, guestUuid))
             localStorage.removeItem(getStorageKey(reservationUuid))
-        } catch (e) {}
+        } catch {}
     }, [reservationUuid])
 
     const getGuestUuid = useCallback((): string | null => {

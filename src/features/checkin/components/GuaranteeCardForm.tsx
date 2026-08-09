@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import { loadStripe, type Stripe, type StripeCardElement } from "@stripe/stripe-js"
 import { Loader2, ShieldCheck, AlertTriangle, CreditCard } from "lucide-react"
 import { checkinService } from "@/features/checkin/services/checkin-service"
+import { normalizeApiError } from "@/lib/notify-error"
+import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { GuaranteeInfoCard } from "@/features/checkin/components/GuaranteeInfoCard"
 import type { GuaranteeStatus, GuaranteeStatusInfo } from "@/features/checkin/types/checkin"
 
@@ -36,6 +38,11 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
     const stripeRef = useRef<Stripe | null>(null)
     const cardElementRef = useRef<StripeCardElement | null>(null)
     const clientSecretRef = useRef<string | null>(null)
+    // Vivo mientras el componente esté montado. Los handlers usaban un `let
+    // alive = true` local que se ponía en false DESPUÉS del await, así que
+    // durante la espera valía siempre true: si el huésped salía de la pantalla
+    // a mitad del sondeo, este seguía pegándole al backend hasta el timeout.
+    const mountedRef = useRef(true)
 
     // The single source of truth — the last known backend state. Everything
     // else (card form visible vs. polling spinner vs. confirmation) is derived
@@ -50,6 +57,9 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
     const [cardMounted, setCardMounted] = useState(false)
     const [submitting, setSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    // El sondeo se agotó sin respuesta del webhook. Solo habilita el botón de
+    // volver a comprobar: no cambia el estado, que sigue siendo el del backend.
+    const [pollTimedOut, setPollTimedOut] = useState(false)
     // "Antes de continuar" info gate (Ricardo/Didier thread 20260801) — shown
     // once, before the guest's first attempt at this reservation+guest ever
     // reaches Stripe. Not persisted: a "failed" or "pending" status already
@@ -58,6 +68,9 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
     const [infoAcknowledged, setInfoAcknowledged] = useState(false)
 
     const applyStatusInfo = (info: GuaranteeStatusInfo) => {
+        // El backend ya respondió algo distinto de "esperando": el aviso de
+        // sondeo agotado deja de aplicar.
+        if (info.status !== "pending") setPollTimedOut(false)
         setStatus(info.status)
         setCardBrand(info.cardBrand)
         setCardLast4(info.cardLast4)
@@ -71,11 +84,29 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
             const intent = await checkinService.createGuaranteeSetupIntent(reservationUuid, guestUuid)
             if (!active()) return
             clientSecretRef.current = intent.clientSecret
-            setAmount(intent.guaranteeAmount)
+            setAmount(intent.guaranteeAmount == null ? null : String(intent.guaranteeAmount))
             setCurrency(intent.currency)
 
             const stripe = await loadStripe(intent.publishableKey)
-            if (!active() || !stripe || !containerRef.current) return
+            if (!active()) return
+
+            // Estos dos casos se descartaban en el mismo `return` silencioso que
+            // el desmontaje, y no son lo mismo: desmontar es normal, esto es un
+            // fallo. Sin aviso, la pantalla se quedaba en "Preparando
+            // formulario…" con "Autorizar tarjeta" deshabilitado para siempre —
+            // el huésped no podía registrar la tarjeta ni sabía por qué.
+            if (!stripe) {
+                // `loadStripe` resuelve null cuando js.stripe.com no llegó a
+                // cargar: bloqueador de anuncios, red corporativa o CSP.
+                console.error("[GuaranteeCardForm] loadStripe() devolvió null — Stripe.js no cargó")
+                setError("No pudimos cargar el formulario de pago seguro. Si usas un bloqueador de anuncios, desactívalo para este sitio e intenta de nuevo.")
+                return
+            }
+            if (!containerRef.current) {
+                console.error("[GuaranteeCardForm] el contenedor del campo de tarjeta no llegó a montarse")
+                setError("No pudimos preparar el formulario de tarjeta. Intenta de nuevo.")
+                return
+            }
             stripeRef.current = stripe
 
             const elements = stripe.elements()
@@ -96,9 +127,10 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
             })
             cardElementRef.current = card
             setCardMounted(true)
-        } catch (err: any) {
+        } catch (raw: unknown) {
             if (!active()) return
-            if (err?.status === 401) {
+            const err = asCheckinError(raw)
+            if (err.status === 401) {
                 // OTP plan 20260731: verificationToken missing/expired — parent screen
                 // clears it and redirects back to the OTP step.
                 onSessionExpired()
@@ -126,7 +158,35 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
             }
         }
         if (active()) {
-            setError("Esto está tardando más de lo normal. Puedes seguir esperando o intentar con otra tarjeta.")
+            setError("Esto está tardando más de lo normal. Vuelve a comprobar en unos segundos o intenta con otra tarjeta.")
+            setPollTimedOut(true)
+        }
+    }
+
+    /**
+     * Vuelve a preguntar por el estado tras agotarse el sondeo.
+     *
+     * El webhook de Stripe puede tardar más que la ventana de 60 s. Cuando eso
+     * pasaba, el estado quedaba en "pending" para siempre: el paso del contrato
+     * exige la garantía en "active" para habilitar el botón de finalizar, y esta
+     * pantalla no ofrecía ni reintento (solo aparece en "failed") ni forma de
+     * volver a consultar. El check-in quedaba trabado y la única salida era
+     * recargar la página.
+     */
+    const handleRecheck = async () => {
+        setError(null)
+        setPollTimedOut(false)
+        try {
+            const res = await checkinService.getGuaranteeStatus(reservationUuid, guestUuid)
+            applyStatusInfo(res.guarantee)
+            if (res.guarantee.status === "pending") await pollUntilResolved(() => mountedRef.current)
+        } catch (err) {
+            if (normalizeApiError(err).status === 401) {
+                onSessionExpired()
+                return
+            }
+            setError("No pudimos consultar el estado de tu tarjeta. Intenta de nuevo.")
+            setPollTimedOut(true)
         }
     }
 
@@ -134,17 +194,26 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
     // plan §1.5: this status is never included in the main portal response and
     // never persisted client-side, so a reload must always re-ask the backend).
     useEffect(() => {
-        let alive = true
-        const active = () => alive
+        mountedRef.current = true
+        const active = () => mountedRef.current
 
         checkinService.getGuaranteeStatus(reservationUuid, guestUuid)
             .then(async (res) => {
                 if (!active()) return
                 applyStatusInfo(res.guarantee)
-                if (res.guarantee.status === "failed") {
-                    // A "failed" status means the guest already passed the info gate in
-                    // an earlier attempt — go straight to a fresh SetupIntent, same as
-                    // handleRetry does for a failure discovered mid-session.
+                if (res.guarantee.status === "failed" || res.guarantee.status === "detached") {
+                    // "failed": el huésped ya pasó la puerta de información en un
+                    // intento anterior → directo a un SetupIntent nuevo, igual que
+                    // hace handleRetry ante un fallo detectado a mitad de sesión.
+                    //
+                    // "detached": la tarjeta se desvinculó fuera del portal. Para el
+                    // huésped equivale a no tener ninguna, y necesita el mismo
+                    // formulario nuevo. Sin esta rama el estado no disparaba ni el
+                    // formulario ni el sondeo: quedaba en "Preparando formulario…"
+                    // para siempre, con el botón deshabilitado y SIN botón de
+                    // reintento (ese solo aparece en "failed") — y como el paso del
+                    // contrato exige garantía "active", el check-in quedaba trabado
+                    // sin salida.
                     await mountCardForm(active)
                 } else if (res.guarantee.status === "pending") {
                     // A previous submission is still awaiting its webhook — resume
@@ -155,12 +224,21 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                 // once the guest clicks through it (handleContinueFromInfo).
                 // "active" needs neither the form nor polling — just the confirmation view.
             })
-            .catch(() => {
-                if (active()) applyStatusInfo({ status: "not_started", cardBrand: null, cardLast4: null, failureReason: null })
+            .catch((err: unknown) => {
+                if (!active()) return
+                if (normalizeApiError(err).status === 401) {
+                    // Mismo 401 que maneja mountCardForm: el verificationToken
+                    // venció. Degradarlo a "not_started" mostraba la puerta de
+                    // información y recién rebotaba al huésped DESPUÉS de que
+                    // aceptara — un paso muerto sobre un token ya vencido.
+                    onSessionExpired()
+                    return
+                }
+                applyStatusInfo({ status: "not_started", cardBrand: null, cardLast4: null, failureReason: null })
             })
 
         return () => {
-            alive = false
+            mountedRef.current = false
             cardElementRef.current?.unmount()
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -174,6 +252,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
 
         setSubmitting(true)
         setError(null)
+        setPollTimedOut(false)
         try {
             const { error: stripeError } = await stripe.confirmCardSetup(clientSecret, {
                 payment_method: { card },
@@ -189,9 +268,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
             // its webhook does. Mark pending and poll until it confirms.
             setStatus("pending")
             onStatusChange("pending")
-            let alive = true
-            await pollUntilResolved(() => alive)
-            alive = false
+            await pollUntilResolved(() => mountedRef.current)
         } finally {
             setSubmitting(false)
         }
@@ -200,14 +277,13 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
     /** Guest clicked through the "antes de continuar" gate — now safe to start Stripe tokenization. */
     const handleContinueFromInfo = async () => {
         setInfoAcknowledged(true)
-        let alive = true
-        await mountCardForm(() => alive)
-        alive = false
+        await mountCardForm(() => mountedRef.current)
     }
 
     /** The SetupIntent behind a backend-confirmed failure is terminal — get a fresh one. */
     const handleRetry = async () => {
         setError(null)
+        setPollTimedOut(false)
         setStatus("not_started")
         onStatusChange("not_started")
         cardElementRef.current?.unmount()
@@ -215,9 +291,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
         clientSecretRef.current = null
         setCardMounted(false)
         setCardComplete(false)
-        let alive = true
-        await mountCardForm(() => alive)
-        alive = false
+        await mountCardForm(() => mountedRef.current)
     }
 
     if (status === null) {
@@ -263,9 +337,37 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
             )}
 
             {status === "pending" ? (
-                <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-                    <Loader2 size={16} className="animate-spin text-[var(--color-brand-purple)]" />
-                    Confirmando tu tarjeta…
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                        {pollTimedOut
+                            ? <CreditCard size={16} className="text-slate-400" />
+                            : <Loader2 size={16} className="animate-spin text-[var(--color-brand-purple)]" />}
+                        {pollTimedOut
+                            ? "Tu tarjeta sigue sin confirmarse."
+                            : "Confirmando tu tarjeta…"}
+                    </div>
+                    {/* Única salida cuando el webhook de Stripe tarda más que la
+                        ventana de sondeo: sin esto el estado quedaba en "pending"
+                        para siempre y el botón de finalizar el check-in —que exige
+                        la garantía "active"— no volvía a habilitarse nunca. */}
+                    {pollTimedOut && (
+                        <div className="flex flex-wrap gap-3">
+                            <button
+                                type="button"
+                                onClick={handleRecheck}
+                                className="text-xs font-semibold text-[var(--color-brand-purple)] hover:underline"
+                            >
+                                Volver a comprobar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleRetry}
+                                className="text-xs font-semibold text-slate-500 hover:underline"
+                            >
+                                Intentar con otra tarjeta
+                            </button>
+                        </div>
+                    )}
                 </div>
             ) : (
                 <>

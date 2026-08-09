@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, XCircle } from "lucide-react"
+import { checkinService } from "@/features/checkin/services/checkin-service"
 
 interface DiditCallbackClientProps {
     verificationSessionId: string
@@ -54,52 +55,108 @@ interface ResolvedContext {
 }
 
 /**
- * Resolves the check-in context preferring localStorage, then falling back to the
- * reservation/guest passed via the URL. With just the reservation we can still
- * resume (land the guest on the welcome screen, which re-fetches the portal).
+ * Resolves the check-in context for THIS callback.
+ *
+ * The URL wins over localStorage. The backend puts reservation + guest in the
+ * callback path precisely so the flow survives a lost or stale stored context;
+ * preferring localStorage defeated that and actively misrouted the guest: a
+ * guest who started a SECOND reservation within the 2h TTL (same guest uuid,
+ * different reservation uuid) was sent back to the FIRST reservation, because
+ * the stale entry outranked the correct value sitting in the URL.
+ *
+ * localStorage is still consulted, but only when it describes the same
+ * reservation — it carries the secondary-guest basePath shape
+ * (/checkin/{ref}/s/{guestToken}) that the URL alone cannot reconstruct.
  */
 function resolveContext(urlReservation?: string, urlGuest?: string): ResolvedContext | null {
     const ls = readPendingContext()
-    const reservationUuid = ls?.reservationUuid || urlReservation || ""
+
+    const reservationUuid = urlReservation || ls?.reservationUuid || ""
     if (!reservationUuid) return null
-    const guestUuid = ls?.guestUuid || urlGuest || undefined
-    const basePath = ls?.basePath || `/checkin/${reservationUuid}`
+
+    const stored = ls && ls.reservationUuid === reservationUuid ? ls : null
+    const guestUuid = urlGuest || stored?.guestUuid || undefined
+    const basePath = stored?.basePath || `/checkin/${reservationUuid}`
+
     return { reservationUuid, guestUuid, basePath }
 }
 
-export function DiditCallbackClient({ status, reservationUuid, guestUuid }: DiditCallbackClientProps) {
+export function DiditCallbackClient({
+    verificationSessionId,
+    status,
+    reservationUuid,
+    guestUuid,
+}: DiditCallbackClientProps) {
     const router = useRouter()
     const [state, setState] = useState<CallbackState>("redirecting")
 
     useEffect(() => {
-        const ctx = resolveContext(reservationUuid, guestUuid)
-
-        if (!ctx) {
-            setState("no_context")
-            return
-        }
-
         // Terminal failures: show error then send back to retry. Everything else
         // (Approved / In Review / In Progress) forwards to the verify screen, which
         // polls the portal — the source of truth for the final outcome.
         const FAILURE_STATUSES = ["declined", "expired", "abandoned", "failed", "rejected"]
         const isFailure = FAILURE_STATUSES.includes(status.toLowerCase())
 
-        // Without a guestUuid we can't deep-link to /verify, so we resume on the
-        // welcome screen which re-fetches the portal and routes the guest correctly.
-        const verifyHref = ctx.guestUuid
-            ? `${ctx.basePath}/verify?guest_uuid=${ctx.guestUuid}&from_didit_callback=1`
-            : ctx.basePath
-
-        if (!isFailure) {
-            router.replace(verifyHref)
-        } else {
+        const routeTo = (ctx: ResolvedContext) => {
+            // Without a guestUuid we can't deep-link to /verify, so we resume on the
+            // welcome screen which re-fetches the portal and routes the guest correctly.
+            if (!isFailure) {
+                router.replace(
+                    ctx.guestUuid
+                        ? `${ctx.basePath}/verify?guest_uuid=${ctx.guestUuid}&from_didit_callback=1`
+                        : ctx.basePath,
+                )
+                return
+            }
             setState("failed")
             const failHref = ctx.guestUuid
                 ? `${ctx.basePath}/verify?guest_uuid=${ctx.guestUuid}&didit_error=${encodeURIComponent(status)}`
                 : ctx.basePath
             setTimeout(() => router.replace(failHref), 2000)
         }
+
+        // Camino normal: URL y/o localStorage alcanzan. Se resuelve de forma
+        // síncrona a propósito — no se le agrega una llamada de red al caso feliz.
+        const local = resolveContext(reservationUuid, guestUuid)
+        if (local) {
+            routeTo(local)
+            return
+        }
+
+        // Sin contexto local. Pasa de verdad: en navegadores embebidos
+        // (WhatsApp/Instagram → Safari) y en modo privado el localStorage no se
+        // comparte, y si el backend no anexó la reserva a la URL no queda nada que
+        // leer. Antes esto terminaba en "Sesión expirada" y el huésped tenía que
+        // rehacer la verificación entera.
+        //
+        // El `verificationSessionId` del callback sí sobrevive siempre, y el backend
+        // sabe a qué reserva y huésped pertenece.
+        if (!verificationSessionId) {
+            // No se puede derivar del render: para llegar acá primero hay que
+            // haber intentado resolver el contexto desde localStorage, que en el
+            // servidor no existe.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setState("no_context")
+            return
+        }
+
+        let alive = true
+        checkinService.resolveDiditSessionContext(verificationSessionId).then((remote) => {
+            if (!alive) return
+            if (!remote) {
+                setState("no_context")
+                return
+            }
+            // El basePath del acompañante (/checkin/{ref}/s/{token}) no se puede
+            // reconstruir desde acá; el del titular sirve para ambos, porque
+            // /verify vuelve a pedir el portal y reencamina.
+            routeTo({
+                reservationUuid: remote.reservationUuid,
+                guestUuid: remote.guestUuid,
+                basePath: `/checkin/${remote.reservationUuid}`,
+            })
+        })
+        return () => { alive = false }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [])
 

@@ -49,6 +49,13 @@ import { getOverrideFieldSchema } from "../data/automation-definitions"
 import { LISTING_OVERRIDE_STATUS, type PropertyAutomation, type ListingAutomationOverride } from "../types/automation"
 import { AutomationOverrideModal } from "./automations/AutomationOverrideModal"
 import { Badge } from "@/components/ui/badge"
+import { ExternalPmsIdsField } from "./ExternalPmsIdsField"
+import {
+    hasIncompleteExternalPmsId,
+    normalizeExternalPmsIds,
+    toExternalPmsIdsPayload,
+} from "../lib/external-pms-ids"
+import type { ExternalPmsId } from "../types"
 
 const defaultUnit = {
     name: "",
@@ -60,6 +67,7 @@ const defaultUnit = {
     contactPhone: "",
     statusRecordId: 6,
     isActive: true,
+    externalPmsIds: [] as ExternalPmsId[],
     extra: {
         currency: "COP",
         picturesUrl: [],
@@ -116,6 +124,17 @@ export function PropertiesUnits() {
     // Automation whose override modal is currently open
     const [editingOverrideAutomation, setEditingOverrideAutomation] = useState<PropertyAutomation | null>(null)
 
+    // This dialog has no zod resolver, so incomplete external-id rows are marked
+    // only once the PM actually tries to save — flagging a row they just added
+    // and haven't filled in yet would be nagging, not helping.
+    const [showExternalPmsIdErrors, setShowExternalPmsIdErrors] = useState(false)
+    const externalPmsIdRowErrors = showExternalPmsIdErrors
+        ? (unitForm.externalPmsIds ?? []).map((row) => ({
+            sourcePmsId: row.sourcePmsId ? undefined : "Selecciona el origen",
+            externalId: String(row.externalId ?? "").trim() ? undefined : "Ingresa el ID externo",
+        }))
+        : undefined
+
     useEffect(() => {
         catalogService.getRoomTypes().then((rooms) => {
             if (rooms.length > 0) setRoomTypes(rooms)
@@ -129,6 +148,7 @@ export function PropertiesUnits() {
         setUnitForm({ ...defaultUnit })
         setEditingIndex(null)
         setListingOverrides({})
+        setShowExternalPmsIdErrors(false)
         setPropertyAutomations([])
         // New listing under an existing property: load automations so the user can
         // configure override drafts that get created right after the listing is saved.
@@ -160,6 +180,7 @@ export function PropertiesUnits() {
             // API returns statusRecord: { id } — determine isActive
             isActive:      raw.isActive ?? (raw.statusRecord?.id === 6 || raw.statusRecordId === 6 || raw.status_record_id === 6) ?? true,
             statusRecordId: raw.statusRecord?.id || raw.statusRecordId || raw.status_record_id || 6,
+            externalPmsIds: normalizeExternalPmsIds(raw),
             extra: {
                 ...defaultUnit.extra,
                 ...(raw.extra || {}),
@@ -174,6 +195,7 @@ export function PropertiesUnits() {
         setUnitForm(normalized)
         setEditingIndex(index)
         setListingOverrides({})
+        setShowExternalPmsIdErrors(false)
 
         // Load property automations and listing overrides for existing listings
         if (propertyUuid && raw.uuid) {
@@ -204,6 +226,16 @@ export function PropertiesUnits() {
         if (!unitForm.name || unitForm.name.trim().length < 2) {
             toast.error("El nombre de la unidad es requerido", {
                 description: "Por favor asigna un nombre de al menos 2 caracteres.",
+            })
+            return
+        }
+
+        // The property form gets this from zod; this dialog has no resolver, so the
+        // same rule is enforced here rather than letting a half-filled row 422.
+        if (hasIncompleteExternalPmsId(unitForm.externalPmsIds)) {
+            setShowExternalPmsIdErrors(true)
+            toast.error("Identificación externa incompleta", {
+                description: "Revisa la pestaña General: cada origen necesita su ID externo, o quita la fila.",
             })
             return
         }
@@ -244,6 +276,7 @@ export function PropertiesUnits() {
                     contactPhone:  rest.contactPhone   || undefined,
                     statusRecordId: unitForm.isActive !== false ? 6 : 7,
                     extra: cleanExtra,
+                    externalPmsIds: toExternalPmsIdsPayload(unitForm.externalPmsIds),
                 }
 
                 // UPDATE also needs price at top-level (PUT /listings accepts it; POST does not)
@@ -262,6 +295,10 @@ export function PropertiesUnits() {
                         contactEmail:  apiData.contact?.email  || unitForm.contactEmail,
                         contactPhone:  apiData.contact?.phone  || unitForm.contactPhone,
                         isActive:      apiData.statusRecord ? apiData.statusRecord.id === 6 : unitForm.isActive,
+                        // Pinned to what was just sent: the key the listing response
+                        // carries these under is not confirmed, so `...apiData` is
+                        // not trusted to restate them.
+                        externalPmsIds: payload.externalPmsIds,
                         // Restore price checking root and extra
                         price:         apiData.price || apiData.startPrice || apiData.start_price || apiData.extra?.price || apiData.extra?.startPrice || unitForm.price,
                         extra: {
@@ -282,6 +319,7 @@ export function PropertiesUnits() {
                     const savedUnit = {
                         ...unitForm,
                         uuid: newListingUuid,
+                        externalPmsIds: payload.externalPmsIds,
                         // Restore price checking root and extra
                         price: apiData.price || apiData.startPrice || apiData.start_price || apiData.extra?.price || apiData.extra?.startPrice || unitForm.price,
                         extra: {
@@ -434,6 +472,27 @@ export function PropertiesUnits() {
                                                         onChange={(e) => setUnitForm({ ...unitForm, internalName: e.target.value })}
                                                     />
                                                 </div>
+                                            </div>
+
+                                            <div className="grid gap-2 border-t border-slate-100 pt-4">
+                                                <div className="space-y-0.5">
+                                                    <Label className="text-sm font-medium">Identificación Externa</Label>
+                                                    <p className="text-[10px] text-muted-foreground">
+                                                        Si este alojamiento ya existe en tu PMS o canal, registra su
+                                                        origen y el ID que tiene allí.
+                                                    </p>
+                                                </div>
+                                                <ExternalPmsIdsField
+                                                    subject="alojamiento"
+                                                    value={unitForm.externalPmsIds ?? []}
+                                                    onChange={(next) => {
+                                                        setUnitForm({ ...unitForm, externalPmsIds: next })
+                                                        // Clearing as they fix it: keeping stale red on a row the PM
+                                                        // is already correcting reads as "still wrong".
+                                                        if (showExternalPmsIdErrors) setShowExternalPmsIdErrors(false)
+                                                    }}
+                                                    rowErrors={externalPmsIdRowErrors}
+                                                />
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-4">

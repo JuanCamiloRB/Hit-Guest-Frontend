@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { normalizeLocale, DEFAULT_COMMUNICATION_LOCALE, type CommunicationLocale } from "@/lib/locales"
+import { normalizeExternalPmsIds, toExternalPmsIdsPayload } from "../lib/external-pms-ids"
 
 export type {
     PropertyAutomation,
@@ -265,10 +266,12 @@ export const propertyFormSchema = z.object({
         cleaning_task: z.boolean().optional(),
     }).optional(),
 
-    // External PMS IDs
+    // External PMS IDs — origin (source_pms catalog) + id in that origin.
+    // `min(1)` on both halves so a row the PM added but never filled in is caught
+    // by the form instead of by a 422 from the backend.
     externalPmsIds: z.array(z.object({
-        sourcePmsId: z.number().int().positive(),
-        externalId: z.string().max(60),
+        sourcePmsId: z.number().int().positive("Selecciona el origen"),
+        externalId: z.string().min(1, "Ingresa el ID externo").max(60, "Máximo 60 caracteres"),
     })).optional(),
 })
 
@@ -329,12 +332,9 @@ export function formDataToApiPayload(data: PropertyFormData): PropertyApiPayload
                 policies: data.policies,
                 roomTypes: data.roomTypes,
             },
-            ...(data.externalPmsIds && data.externalPmsIds.length > 0 ? {
-                externalPmsIds: data.externalPmsIds.map((id: any) => ({
-                    sourcePmsId: id.sourcePmsId,
-                    externalId: id.externalId,
-                }))
-            } : {})
+            // Always sent, `[]` included: omitting the key when the PM removes
+            // their last mapping would make the removal unexpressible.
+            externalPmsIds: toExternalPmsIdsPayload(data.externalPmsIds),
         }
     
     console.log("📤 [formDataToApiPayload] Final Payload to API:", JSON.stringify(payload, null, 2));
@@ -375,17 +375,17 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
         lng = parseFloat(rawLng) || 0
     }
 
-    // Capture external_id (Nombre Interno) from multiple possible locations
-    let external_id = apiData.externalId 
-        || apiData.external_id 
-        || (apiData as any).external_id
-        || extra.internal_name 
+    // Capture external_id (Nombre Interno) from multiple possible locations.
+    //
+    // It deliberately does NOT fall back to `pmsIdentifiers[0].externalId`. It used
+    // to: an empty internal name was filled with the PMS id, and since this field
+    // is written back to `extra.internal_name` on save, the PMS id silently became
+    // the property's internal name. They are two different things and now have two
+    // different fields — the PMS identifiers live in `externalPmsIds` below.
+    const external_id = apiData.externalId
+        || apiData.external_id
+        || extra.internal_name
         || ""
-    
-    // If not found, try pmsIdentifiers
-    if (!external_id && apiData.pmsIdentifiers && apiData.pmsIdentifiers.length > 0) {
-        external_id = apiData.pmsIdentifiers[0].externalId
-    }
 
     const extractedThumbnail = extra.thumbnail_url || extra.thumbnailUrl || ((extra as any).picturesUrl && (extra as any).picturesUrl.length > 0 ? (extra as any).picturesUrl[0] : "") || ((extra as any).pictures_url && (extra as any).pictures_url.length > 0 ? (extra as any).pictures_url[0] : "") || "";
     console.log("🔥 [apiResponseToFormData] Extracted Thumbnail:", extractedThumbnail, "from extra:", extra);
@@ -486,6 +486,9 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
                 // statusRecord can come as nested { id } or flat statusRecordId / status_record_id
                 isActive: u.isActive ?? (u.statusRecord?.id === 6 || u.statusRecordId === 6 || u.status_record_id === 6 || u.status === "ACT") ?? true,
                 statusRecordId: u.statusRecord?.id || u.statusRecordId || u.status_record_id || 6,
+                // The key a listing response carries these under is not confirmed
+                // against a live payload, so the normalizer reads every plausible one.
+                externalPmsIds: normalizeExternalPmsIds(u),
                 customFields: u.customFields || [],
                 extra: {
                     maxOccupancy: extraData.maxOccupancy || extraData.max_occupancy || 2,
@@ -515,9 +518,6 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
             online_checkin: true,
             cleaning_task: true,
         },
-        externalPmsIds: apiData.pmsIdentifiers?.map((id) => ({
-            sourcePmsId: id.sourcePmsId,
-            externalId: id.externalId,
-        })) || []
+        externalPmsIds: normalizeExternalPmsIds(apiData),
     }
 }

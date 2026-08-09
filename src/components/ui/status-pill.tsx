@@ -21,6 +21,7 @@ const statusPillVariants = cva(
                 success: "bg-success-sunk text-success",
                 warning: "bg-warning-sunk text-warning",
                 info: "bg-info-sunk text-info",
+                danger: "bg-danger-sunk text-danger",
                 idle: "bg-neutral-sunk text-ink-3",
                 none: "text-ink-4 font-medium",
             },

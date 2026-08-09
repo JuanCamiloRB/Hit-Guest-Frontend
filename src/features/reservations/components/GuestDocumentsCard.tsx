@@ -1,24 +1,22 @@
 "use client"
 
-import React, { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
     reservationsService,
     type ReservationGuest,
     type ReservationGuestVerificationStatus,
 } from "../services/reservations-service"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { SectionCard } from "@/components/ui/section-card"
+import { StatusPill } from "@/components/ui/status-pill"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
     FileText,
     Loader2,
-    CheckCircle2,
-    Clock,
     Image as ImageIcon,
     RefreshCw,
     X,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
 import { AuthenticatedImage } from "./AuthenticatedImage"
 
 interface GuestDocumentsCardProps {
@@ -74,7 +72,7 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
             type="button"
             onClick={() => void refreshGuests()}
             disabled={isRefreshing}
-            className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink-3 transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             aria-label="Actualizar documentos y estados de huéspedes"
         >
             <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
@@ -82,59 +80,47 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
         </button>
     )
 
+    // El título de la sección no cambia entre estados: se declara una vez para
+    // que cargando / vacío / con datos no puedan divergir.
+    const description =
+        guests.length > 0
+            ? `${guests.length} ${guests.length === 1 ? "huésped registrado" : "huéspedes registrados"}`
+            : undefined
+
     if (isLoading) {
         return (
-            <Card className="shadow-sm">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <FileText size={18} className="text-primary" />
-                        Documentos de Huéspedes
-                        {refreshButton}
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-center py-8 text-slate-400 gap-2">
-                        <Loader2 size={18} className="animate-spin" />
-                        <span className="text-sm">Cargando...</span>
-                    </div>
-                </CardContent>
-            </Card>
+            <SectionCard title="Documentos de huéspedes" actions={refreshButton}>
+                <div className="flex items-center justify-center gap-2 py-8 text-ink-3">
+                    <Loader2 size={18} className="animate-spin" />
+                    <span className="text-sm">Cargando…</span>
+                </div>
+            </SectionCard>
         )
     }
 
     if (guests.length === 0) {
         return (
-            <Card className="shadow-sm">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <FileText size={18} className="text-primary" />
-                        Documentos de Huéspedes
-                        {refreshButton}
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-slate-400 text-center py-6">
-                        No hay huéspedes registrados aún
+            <SectionCard title="Documentos de huéspedes" actions={refreshButton}>
+                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                    <div className="rounded-full bg-sunk p-3 text-ink-4">
+                        <FileText size={20} aria-hidden />
+                    </div>
+                    <p className="text-sm text-ink-3">
+                        Aún no hay huéspedes registrados. Aparecerán aquí cuando completen el check-in.
                     </p>
-                </CardContent>
-            </Card>
+                </div>
+            </SectionCard>
         )
     }
 
     return (
         <>
-            <Card className="shadow-sm">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                        <FileText size={18} className="text-primary" />
-                        Documentos de Huéspedes
-                        <Badge variant="secondary" className="text-xs">
-                            {guests.length} {guests.length === 1 ? "huésped" : "huéspedes"}
-                        </Badge>
-                        {refreshButton}
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+            <SectionCard
+                title="Documentos de huéspedes"
+                description={description}
+                actions={refreshButton}
+            >
+                <div className="space-y-4">
                     {guests.map((guest, idx) => (
                         <GuestDocumentRow
                             key={guest.uuid || `guest-${idx}`}
@@ -142,8 +128,8 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
                             onPreview={setPreviewUrl}
                         />
                     ))}
-                </CardContent>
-            </Card>
+                </div>
+            </SectionCard>
 
             {/* Image Preview Modal */}
             {previewUrl && (
@@ -186,7 +172,7 @@ function GuestDocumentRow({
     const verifiedAt = formatVerifiedAt(guest.verifiedAt)
 
     return (
-        <div className="border border-slate-100 rounded-xl p-4 space-y-3">
+        <div className="space-y-3 rounded-xl border border-rule p-4">
             {/* Guest header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
@@ -196,8 +182,8 @@ function GuestDocumentRow({
                         </AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-slate-800">{fullName}</span>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                        <span className="text-sm font-semibold text-ink">{fullName}</span>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-ink-3">
                             {guest.isMain && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/20 text-primary">
                                     Principal
@@ -246,9 +232,9 @@ function GuestDocumentRow({
                     )}
                 </div>
             ) : (
-                <div className="flex items-center gap-2 py-3 px-4 bg-slate-50 rounded-lg">
-                    <ImageIcon size={16} className="text-slate-300" />
-                    <span className="text-xs text-slate-400">
+                <div className="flex items-center gap-2 rounded-lg bg-sunk px-4 py-3">
+                    <ImageIcon size={16} aria-hidden className="text-ink-4" />
+                    <span className="text-xs text-ink-3">
                         {isIdentityVerified
                             ? "Identidad verificada; imágenes no disponibles"
                             : "Documentos aún no disponibles"}
@@ -272,6 +258,11 @@ function verificationPendingLabel(status: ReservationGuestVerificationStatus): s
     return "Identidad pendiente"
 }
 
+/**
+ * Ahora delega en `StatusPill` en lugar de repintar su propio verde/ámbar: es
+ * el mismo estado que muestran las automatizaciones justo encima, y con dos
+ * paletas distintas se leía como si fueran cosas diferentes.
+ */
 function StatusBadge({
     completed,
     completedLabel,
@@ -282,18 +273,9 @@ function StatusBadge({
     pendingLabel: string
 }) {
     return (
-        <Badge className={cn(
-            "text-[10px] font-bold uppercase tracking-wide",
-            completed
-                ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                : "bg-amber-50 text-amber-600 border-amber-100",
-        )}>
-            {completed ? (
-                <><CheckCircle2 size={10} className="mr-1" /> {completedLabel}</>
-            ) : (
-                <><Clock size={10} className="mr-1" /> {pendingLabel}</>
-            )}
-        </Badge>
+        <StatusPill tone={completed ? "success" : "warning"}>
+            {completed ? completedLabel : pendingLabel}
+        </StatusPill>
     )
 }
 
@@ -319,7 +301,7 @@ function DocumentThumbnail({
     return (
         <button
             onClick={onClick}
-            className="relative group overflow-hidden rounded-lg border border-slate-200 hover:border-primary/20 transition-all aspect-[3/2] bg-slate-50"
+            className="group relative aspect-3/2 overflow-hidden rounded-lg border border-rule bg-sunk transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
             <AuthenticatedImage
                 src={url}

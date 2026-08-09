@@ -99,4 +99,14 @@ export interface Reservation {
     source: "Airbnb" | "Booking" | "Direct"
     totalPrice: number
     automationStatus?: AutomationStatus
+    /** Huéspedes esperados en la reserva (`total_guests`). */
+    totalGuests?: number
+    /**
+     * Huéspedes que ya completaron su check-in.
+     *
+     * `undefined` significa "el backend no lo reportó", que NO es lo mismo que
+     * cero: la columna CHECK-IN vuelve a su etiqueta binaria en ese caso en vez
+     * de afirmar que no ha llegado nadie.
+     */
+    completedGuests?: number
 }
