@@ -16,6 +16,14 @@ import {
 } from "lucide-react"
 import { isSignatureProvider, type AutomationDefinition, type ParameterFieldSchema, type PropertyAutomation } from "../types/automation"
 
+// IDs estables del catálogo backend. Normalmente se resuelven por slug desde
+// GET /providers; estos valores son el fallback documentado cuando el filtro por
+// país/estado no devuelve todavía el registro.
+const IDENTITY_PROVIDER_IDS = {
+    didit: 1000,
+    textract: 1004,
+} as const
+
 export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
     // ── Order 1: Identity Verification (Main Guest) ──────────────────
     {
@@ -32,12 +40,14 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         providerOptions: [
             {
                 value: "didit",
+                providerId: IDENTITY_PROVIDER_IDS.didit,
                 label: "Verificación avanzada",
                 description: "Reconocimiento facial y verificación de documento en tiempo real. El huésped completa la verificación directamente en el check-in.",
                 parametersSchema: [],
             },
             {
                 value: "textract",
+                providerId: IDENTITY_PROVIDER_IDS.textract,
                 label: "Verificación esencial",
                 description: "El huésped sube fotos de su documento. La IA extrae y valida los datos automáticamente.",
                 parametersSchema: [],
@@ -60,12 +70,14 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         providerOptions: [
             {
                 value: "didit",
+                providerId: IDENTITY_PROVIDER_IDS.didit,
                 label: "Verificación avanzada",
                 description: "Reconocimiento facial y verificación de documento en tiempo real.",
                 parametersSchema: [],
             },
             {
                 value: "textract",
+                providerId: IDENTITY_PROVIDER_IDS.textract,
                 label: "Verificación esencial",
                 description: "El huésped sube fotos de su documento. La IA extrae y valida los datos automáticamente.",
                 parametersSchema: [],

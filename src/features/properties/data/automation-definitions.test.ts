@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { definitionForAutomation } from "./automation-definitions"
+import { AUTOMATION_DEFINITIONS, definitionForAutomation } from "./automation-definitions"
 import type { PropertyAutomation, Provider } from "../types/automation"
 
 function makeProvider(slug: string, signature = false): Provider {
@@ -41,6 +41,16 @@ function makeAutomation(overrides: Partial<PropertyAutomation>): PropertyAutomat
 }
 
 describe("definitionForAutomation", () => {
+    it("mantiene los providerId requeridos para activar ambas verificaciones", () => {
+        for (const definitionId of ["identity-verification-main", "identity-verification-secondary"]) {
+            const options = AUTOMATION_DEFINITIONS.find((item) => item.id === definitionId)?.providerOptions
+            expect(options).toEqual(expect.arrayContaining([
+                expect.objectContaining({ value: "didit", providerId: 1000 }),
+                expect.objectContaining({ value: "textract", providerId: 1004 }),
+            ]))
+        }
+    })
+
     it("identifies contract routing by signature capability, regardless of order", () => {
         const definition = definitionForAutomation(makeAutomation({
             executionOrder: 11,

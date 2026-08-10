@@ -108,6 +108,13 @@ export function AutomationCard({
         // Single-provider automations (TRA, SIRE, PDF, TTLock) default to their only
         // option, so the config modal can open even before a provider is reflected.
         ?? (definition.providerOptions.length === 1 ? definition.providerOptions[0] : null)
+    // La selección optimista va primero: si la fila inactiva ya tenía Didit y el
+    // usuario acaba de escoger Textract, activar debe enviar la nueva elección,
+    // no el providerId viejo que todavía conserva la respuesta del backend.
+    const activationProviderId = findProviderId(effectiveProviderName)
+        ?? automation.providerId
+        ?? selectedProvider?.providerId
+    const requiresProviderToActivate = definition.order <= 2
 
     // Whether the SELECTED provider actually has config fields to fill. The
     // definition-level `requiresConfig` is coarse; what really matters is the
@@ -121,6 +128,14 @@ export function AutomationCard({
     const handleToggle = useCallback(async (checked: boolean) => {
         if (!propertyUuid) {
             toast.error("Guarda la propiedad antes de configurar automatizaciones")
+            return
+        }
+        // El backend exige `providerId` al activar cualquiera de las dos
+        // verificaciones de identidad. Una fila nueva puede venir sin proveedor;
+        // en ese caso no enviamos un PATCH incompleto que inevitablemente termina
+        // en 422: el PM debe elegir Didit o Textract en el selector visible.
+        if (checked && requiresProviderToActivate && activationProviderId == null) {
+            toast.error("Selecciona un proveedor de verificación antes de activar esta automatización.")
             return
         }
         // Turning ON an automation that still needs its credentials (recipients, TRA
@@ -140,7 +155,7 @@ export function AutomationCard({
             const result = await automationService.toggle(
                 automation.uuid,
                 checked,
-                automation.providerId,
+                activationProviderId,
             )
 
             onChanged(result)
@@ -157,7 +172,15 @@ export function AutomationCard({
         } finally {
             setToggling(false)
         }
-    }, [propertyUuid, automation, definition, onChanged, selectedProviderNeedsConfig])
+    }, [
+        propertyUuid,
+        automation,
+        definition,
+        onChanged,
+        selectedProviderNeedsConfig,
+        requiresProviderToActivate,
+        activationProviderId,
+    ])
 
     // ── Change provider ───────────────────────────────────────────────────────
 
@@ -192,6 +215,15 @@ export function AutomationCard({
             )
             toast.error(`"${label}" no está disponible todavía. Falta habilitar el proveedor en el backend (seed del provider).`)
             rollback()
+            return
+        }
+
+        // Una identidad inactiva necesita que el usuario pueda escoger proveedor
+        // ANTES de activarla, pero no hace falta guardar un estado intermedio. El
+        // toggle siguiente enviará juntos statusProviderId=8 + providerId, que es
+        // el payload atómico exigido por el backend.
+        if (!automation.isActive) {
+            previousProviderRef.current = newProvider
             return
         }
         try {
@@ -305,10 +337,10 @@ export function AutomationCard({
                             </div>
 
                             {/* Provider selector (multi-option) */}
-                            {isActive && !isContractRouting && definition.providerOptions.length > 1 && (
+                            {!isContractRouting && definition.providerOptions.length > 1 && (
                                 <div className="space-y-1.5">
                                     <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                        Proveedor
+                                        Proveedor {requiresProviderToActivate && !isActive && "requerido para activar"}
                                     </Label>
                                     <Select
                                         value={effectiveProviderName ?? ""}
