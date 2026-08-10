@@ -49,6 +49,10 @@ export function AddressAutocomplete({
     const [open, setOpen] = useState(false)
     const [loading, setLoading] = useState(false)
     const [resolving, setResolving] = useState(false)
+    // El buscador de direcciones no está configurado en este entorno. Se muestra
+    // para que el usuario sepa que tiene que colocar el pin a mano, en vez de
+    // pelearse con un campo que no responde.
+    const [unavailable, setUnavailable] = useState(false)
     const sessionRef = useRef<string>(newSessionToken())
     const containerRef = useRef<HTMLDivElement>(null)
     // Suppress the fetch that would fire right after a selection sets `value`.
@@ -76,6 +80,7 @@ export function AddressAutocomplete({
                 )
                 const data = await res.json()
                 if (!active) return
+                setUnavailable(data?.unavailable === true)
                 setSuggestions(data?.suggestions ?? [])
                 setOpen((data?.suggestions ?? []).length > 0)
             } catch {
@@ -156,6 +161,19 @@ export function AddressAutocomplete({
                         </li>
                     ))}
                 </ul>
+            )}
+
+            {/*
+              * El buscador no está configurado en este entorno. Decirlo evita el
+              * peor final posible: el usuario escribe la dirección, no aparece
+              * ninguna sugerencia, y se va convencido de que quedó ubicada —
+              * cuando en realidad la propiedad se guardó sin coordenadas.
+              */}
+            {unavailable && (
+                <p className="mt-1.5 text-xs text-amber-700">
+                    El buscador de direcciones no está disponible ahora mismo. Escribe la dirección
+                    y ubica la propiedad arrastrando el pin en el mapa.
+                </p>
             )}
         </div>
     )

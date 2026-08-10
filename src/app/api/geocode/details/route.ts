@@ -1,4 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
+import { nominatimLookup } from "@/lib/geocoding/nominatim"
+
+interface GoogleAddressComponent {
+    types?: string[]
+    longText?: string
+    shortText?: string
+}
+
+interface GooglePlaceDetailsResponse {
+    error?: { message?: string }
+    formattedAddress?: string
+    location?: { latitude?: number; longitude?: number }
+    addressComponents?: GoogleAddressComponent[]
+}
 
 /**
  * GET /api/geocode/details?placeId=<id>&session=<token>
@@ -11,7 +25,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 /** Picks the value of the first address component matching any of `types`. */
 function pickComponent(
-    components: any[],
+    components: GoogleAddressComponent[],
     types: string[],
     field: "longText" | "shortText" = "longText",
 ): string {
@@ -24,11 +38,22 @@ export async function GET(req: NextRequest) {
     const placeId = req.nextUrl.searchParams.get("placeId")?.trim()
     const session = req.nextUrl.searchParams.get("session") ?? undefined
 
-    if (!key) {
-        console.warn("[geocode/details] GOOGLE_MAPS_API_KEY is not set")
-        return NextResponse.json({ error: "Geocoding no configurado" }, { status: 503 })
-    }
     if (!placeId) return NextResponse.json({ error: "placeId requerido" }, { status: 400 })
+
+    // Mismo proveedor que resolvió las sugerencias: sin clave, el `placeId` es un
+    // identificador de OSM y se resuelve contra Nominatim.
+    if (!key) {
+        try {
+            const details = await nominatimLookup(placeId)
+            if (!details) {
+                return NextResponse.json({ error: "No se pudo obtener la ubicación" }, { status: 404 })
+            }
+            return NextResponse.json(details)
+        } catch (error) {
+            console.error("[geocode/details] Nominatim error:", (error as Error)?.message)
+            return NextResponse.json({ error: "Error de geocodificación" }, { status: 502 })
+        }
+    }
 
     try {
         const url = new URL(`https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}`)
@@ -42,13 +67,13 @@ export async function GET(req: NextRequest) {
             },
             cache: "no-store",
         })
-        const data = await res.json().catch(() => ({}))
+        const data = await res.json().catch(() => ({})) as GooglePlaceDetailsResponse
         if (!res.ok) {
             console.error("[geocode/details] Google error:", res.status, data?.error?.message)
             return NextResponse.json({ error: "No se pudo obtener la ubicación" }, { status: 502 })
         }
 
-        const components: any[] = data?.addressComponents ?? []
+        const components = data.addressComponents ?? []
         return NextResponse.json({
             lat: data?.location?.latitude ?? null,
             lng: data?.location?.longitude ?? null,
@@ -58,8 +83,8 @@ export async function GET(req: NextRequest) {
             // ISO2 country code, e.g. "CO" — matched against the catalog's iso2.
             countryCode: pickComponent(components, ["country"], "shortText"),
         })
-    } catch (error: any) {
-        console.error("[geocode/details] Error:", error?.message)
+    } catch (error: unknown) {
+        console.error("[geocode/details] Error:", error instanceof Error ? error.message : error)
         return NextResponse.json({ error: "Error de geocodificación" }, { status: 502 })
     }
 }

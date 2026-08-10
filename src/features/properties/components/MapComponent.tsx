@@ -2,13 +2,12 @@
 
 import { MapContainer, TileLayer, Marker, useMap } from "react-leaflet"
 import L from "leaflet"
-import { useState, useEffect, useMemo } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import "leaflet/dist/leaflet.css"
 
 // Fix for default Leaflet icon paths in Next.js
 if (typeof window !== 'undefined') {
-    // @ts-ignore
-    delete (L.Icon.Default.prototype as any)._getIconUrl
+    delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl
     L.Icon.Default.mergeOptions({
         iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
         iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
@@ -22,22 +21,21 @@ interface MapComponentProps {
     onChange: (lat: number, lng: number) => void
 }
 
+interface MapViewProps extends MapComponentProps {
+    /**
+     * Nivel de zoom inicial. Lo decide el llamador con `resolveMapView()`: nivel
+     * de calle cuando hay una ubicación real, vista de mundo cuando todavía no,
+     * para que el usuario pueda navegar hasta su ciudad y soltar el pin.
+     */
+    zoom?: number
+}
+
 function DraggableMarker({ lat, lng, onChange }: MapComponentProps) {
-    const [position, setPosition] = useState<L.LatLngExpression>([lat, lng])
-    const map = useMap()
-
-    useEffect(() => {
-        setPosition([lat, lng])
-    }, [lat, lng])
-
     const eventHandlers = useMemo(() => ({
-        dragend(e: any) {
-            const marker = e.target
-            if (marker != null) {
-                const pos = marker.getLatLng()
-                setPosition(pos)
-                onChange(pos.lat, pos.lng)
-            }
+        dragend(event: L.LeafletEvent) {
+            const marker = event.target as L.Marker
+            const position = marker.getLatLng()
+            onChange(position.lat, position.lng)
         },
     }), [onChange])
 
@@ -45,27 +43,35 @@ function DraggableMarker({ lat, lng, onChange }: MapComponentProps) {
         <Marker
             draggable={true}
             eventHandlers={eventHandlers}
-            position={position}
+            position={[lat, lng]}
         />
     )
 }
 
 // Helper to update map view when props change
-function ChangeView({ center }: { center: L.LatLngExpression }) {
+function ChangeView({ center, zoom }: { center: L.LatLngExpression; zoom: number }) {
     const map = useMap()
+    const lastZoom = useRef(zoom)
     useEffect(() => {
-        map.setView(center, map.getZoom())
-    }, [center, map])
+        // Se preserva el zoom que el usuario haya elegido a mano; solo se fuerza
+        // cuando el llamador lo cambia, que es el salto de "sin ubicación" (vista
+        // de mundo) a una dirección ya resuelta (nivel de calle). Sin esto, quien
+        // se acercaba para colocar el pin veía el mapa alejarse solo en cuanto
+        // arrastraba, porque cada arrastre reescribe el centro.
+        const nextZoom = zoom !== lastZoom.current ? zoom : map.getZoom()
+        lastZoom.current = zoom
+        map.setView(center, nextZoom)
+    }, [center, zoom, map])
     return null
 }
 
-export default function MapComponent({ lat, lng, onChange }: MapComponentProps) {
+export default function MapComponent({ lat, lng, onChange, zoom = 15 }: MapViewProps) {
     const center = useMemo<L.LatLngExpression>(() => [lat, lng], [lat, lng])
 
     return (
         <MapContainer
             center={center}
-            zoom={15}
+            zoom={zoom}
             scrollWheelZoom={false}
             className="h-full w-full z-0"
         >
@@ -74,7 +80,7 @@ export default function MapComponent({ lat, lng, onChange }: MapComponentProps) 
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <DraggableMarker lat={lat} lng={lng} onChange={onChange} />
-            <ChangeView center={center} />
+            <ChangeView center={center} zoom={zoom} />
         </MapContainer>
     )
 }

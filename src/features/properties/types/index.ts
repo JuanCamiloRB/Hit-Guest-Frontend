@@ -27,9 +27,71 @@ export type {
 
 export { AUTOMATION_ORDERS, AUTOMATION_STATUS, GUEST_TYPE_LABELS, mapGuestTypeToApi } from "./automation"
 
+// La línea de arriba re-exporta, pero no deja un binding usable en este módulo:
+// el seed de automatizaciones necesita el VALOR para no repetir el número 10.
+import { AUTOMATION_STATUS } from "./automation"
 import type { PropertyAutomation } from "./automation"
 
 // ── API Payload Types (what the backend expects in camelCase) ──
+
+/** Fila de automatización tal como la acepta `POST /properties`. */
+export interface PropertyAutomationSeedItem {
+    name: string
+    /** Slug canónico del backend, en snake_case. */
+    providerSlug: string
+    guestType: "main_guest" | "secondary_guest" | "all"
+    executionOrder: number
+    statusProviderId: number
+    parameters: Record<string, unknown>
+}
+
+/**
+ * Lo MÍNIMO que `POST /properties` exige en `automations`.
+ *
+ * El backend rechaza la creación con 422 si la lista falta o si no incluye estas
+ * dos filas: «Identity Verification for main guest must be included in the
+ * automations list» y «Digital Contract (TuFirma) must be included in the
+ * automations list».
+ *
+ * ## Esto NO vuelve obligatorio el contrato para el huésped
+ *
+ * Las dos filas se crean INACTIVAS (`statusProviderId` = 10). Lo que se manda es
+ * la FILA DE CONFIGURACIÓN, no la automatización encendida: el contrato solo
+ * empieza a aplicarse cuando el PM la activa a mano en la pestaña de
+ * Automatizaciones, que además solo existe una vez guardada la propiedad. Sin
+ * esto, crear cualquier propiedad fallaba con un 422 imposible de resolver desde
+ * la interfaz, porque la pestaña donde se configuran todavía no existía.
+ *
+ * ## Por qué solo dos filas y no las ocho de antes
+ *
+ * El seed anterior mandaba las 8 automatizaciones conocidas, incluidas TRA y SIRE
+ * —que son exclusivas de Colombia— y por eso se eliminó por completo en
+ * `2af05bc`: sembraba proveedores colombianos en propiedades de otros países. Esa
+ * eliminación arregló el problema del país pero rompió la creación, porque la
+ * validación del backend siguió exigiendo estas dos. Mandando solo lo exigido, el
+ * mapa país/proveedor del backend sigue decidiendo el resto.
+ */
+export const REQUIRED_AUTOMATION_SEED: PropertyAutomationSeedItem[] = [
+    {
+        name: "Identity Verification - Main Guest",
+        providerSlug: "didit",
+        guestType: "main_guest",
+        executionOrder: 1,
+        statusProviderId: AUTOMATION_STATUS.INACTIVE,
+        parameters: { _init: true },
+    },
+    {
+        name: "Digital Contract",
+        providerSlug: "tufirma",
+        guestType: "main_guest",
+        // Los órdenes 1 y 2 están reservados para las verificaciones de identidad
+        // principal/secundaria. Mantener el contrato en 3 evita que
+        // `definitionForAutomation()` lo pinte como una segunda verificación.
+        executionOrder: 3,
+        statusProviderId: AUTOMATION_STATUS.INACTIVE,
+        parameters: { _init: true },
+    },
+]
 
 export interface PropertyApiPayload {
     name: string
@@ -68,6 +130,12 @@ export interface PropertyApiPayload {
         sourcePmsId: number
         externalId: string
     }[]
+    /**
+     * Solo en la creación. `POST /properties` la exige con al menos las filas de
+     * `REQUIRED_AUTOMATION_SEED`; en la actualización no se manda (las
+     * automatizaciones se administran desde su propia pestaña).
+     */
+    automations?: PropertyAutomationSeedItem[]
     // NOTE: units are NOT included here — managed separately via listingsService
 }
 

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { AddressAutocomplete, type PlaceDetails } from "./AddressAutocomplete"
+import { resolveMapView } from "../lib/map-view"
 import {
     Card,
     CardContent,
@@ -64,9 +65,15 @@ export function PropertiesLocation() {
         loadCatalogs()
     }, [])
 
-    // Using flat structure from PropertyFormData
-    const lat = form.watch("latitude") || 0
-    const lng = form.watch("longitude") || 0
+    // Using flat structure from PropertyFormData.
+    //
+    // Nada de `|| 0`: el esquema declara `.default(0)`, así que "sin ubicación" y
+    // "coordenada cero" son el mismo valor, y centrar ahí a zoom de calle dejaba
+    // al usuario en mar abierto — un rectángulo azul que parecía un mapa roto.
+    // `resolveMapView` decide centro y zoom, y además dice si la ubicación es real.
+    const rawLat = form.watch("latitude")
+    const rawLng = form.watch("longitude")
+    const mapView = resolveMapView(rawLat, rawLng)
 
     const handleMapChange = useCallback((newLat: number, newLng: number) => {
         form.setValue("latitude", newLat, { shouldValidate: true, shouldDirty: true })
@@ -167,8 +174,30 @@ export function PropertiesLocation() {
                     />
                 </div>
 
+                {/*
+                  * Sin coordenadas el formulario igual se guarda —el esquema las
+                  * rellena con 0— y la propiedad queda registrada en mar abierto.
+                  * Antes eso no se avisaba en ninguna parte: el único indicio era
+                  * un mapa azul que parecía estar cargando.
+                  */}
+                {!mapView.hasCoordinates && (
+                    <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                        <MapPin size={16} className="mt-0.5 shrink-0 text-amber-500" />
+                        <p className="text-xs leading-relaxed text-amber-800">
+                            <span className="font-bold">Esta propiedad todavía no tiene ubicación en el mapa.</span>{" "}
+                            Elige una sugerencia en la dirección, o arrastra el pin hasta el punto exacto.
+                            Sin esto no podremos mostrar la propiedad ni calcular distancias.
+                        </p>
+                    </div>
+                )}
+
                 <div className="aspect-video w-full rounded-xl bg-slate-100 border-2 border-slate-200 relative overflow-hidden shadow-inner group">
-                    <MapComponent lat={Number(lat)} lng={Number(lng)} onChange={handleMapChange} />
+                    <MapComponent
+                        lat={mapView.lat}
+                        lng={mapView.lng}
+                        zoom={mapView.zoom}
+                        onChange={handleMapChange}
+                    />
                     <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
                         <Badge className="bg-white/90 text-[var(--color-brand-purple)] border border-[var(--color-brand-purple)]/20 shadow-sm backdrop-blur-sm px-3 py-1 font-bold">
                             Arrastra el pin para ajustar

@@ -415,15 +415,36 @@ export function PropertiesUnits() {
                     </Button>
 
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0">
-                            <DialogHeader className="p-6 pb-2">
+                        {/*
+                          * `overflow-hidden` acompaña a `max-h-[90vh]`: sin él, cuando el
+                          * contenido excedía la altura máxima no se recortaba, se PINTABA
+                          * FUERA de la caja del diálogo. Con esto, cualquier regresión
+                          * futura del scroll se ve como contenido cortado (evidente) en
+                          * vez de campos flotando fuera del modal.
+                          */}
+                        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                            <DialogHeader className="p-6 pb-2 shrink-0">
                                 <DialogTitle>{editingIndex !== null ? "Editar Unidad" : "Añadir Unidad"}</DialogTitle>
                                 <DialogDescription>
                                     Configura los detalles del alojamiento.
                                 </DialogDescription>
                             </DialogHeader>
-                            
-                            <ScrollArea className="flex-1 px-6 py-2">
+
+                            {/*
+                              * `min-h-0` es imprescindible, no decorativo.
+                              *
+                              * Los ítems de un contenedor flex tienen `min-height: auto`, así
+                              * que se niegan a encogerse por debajo de su contenido: con solo
+                              * `flex-1`, este Root crecía hasta la altura del formulario
+                              * entero. El Viewport de Radix es `size-full` DEL ROOT, de modo
+                              * que tampoco desbordaba nunca → no había barra de scroll, y el
+                              * formulario quedaba cortado a 90vh con el resto pintado fuera
+                              * del diálogo: el campo de correo (obligatorio) y el botón de
+                              * guardar quedaban físicamente inalcanzables, porque Radix
+                              * bloquea el scroll de la página mientras el modal está abierto.
+                              * Resultado: era imposible crear un alojamiento.
+                              */}
+                            <ScrollArea className="flex-1 min-h-0 px-6 py-2">
                                 <div className="space-y-6 pb-6">
                                     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border">
                                         <div className="space-y-0.5">

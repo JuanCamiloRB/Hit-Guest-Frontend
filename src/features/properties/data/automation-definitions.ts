@@ -78,13 +78,13 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         order: 3,
         id: "digital-contract",
         title: "Firma Digital",
-        description: "Firma de contrato digital con validez legal antes de completar el check-in. Obligatorio para generar el PDF del contrato.",
+        description: "Firma opcional de un contrato digital antes de completar el check-in. Solo aplica cuando el administrador la activa y configura.",
         icon: FileText,
         color: "text-blue-500",
         bgColor: "bg-blue-50",
         guestType: "main",
         requiresConfig: true,
-        isMandatory: true,
+        isMandatory: false,
         providerOptions: [
             {
                 value: "tufirma",
