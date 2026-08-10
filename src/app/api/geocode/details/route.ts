@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { nominatimLookup } from "@/lib/geocoding/nominatim"
+import { isNominatimPlaceId, nominatimLookup } from "@/lib/geocoding/nominatim"
 
 interface GoogleAddressComponent {
     types?: string[]
@@ -35,14 +35,16 @@ function pickComponent(
 
 export async function GET(req: NextRequest) {
     const key = process.env.GOOGLE_MAPS_API_KEY
+    const googleEnabled = process.env.GEOCODING_PROVIDER === "google" && Boolean(key)
     const placeId = req.nextUrl.searchParams.get("placeId")?.trim()
     const session = req.nextUrl.searchParams.get("session") ?? undefined
 
     if (!placeId) return NextResponse.json({ error: "placeId requerido" }, { status: 400 })
 
-    // Mismo proveedor que resolvió las sugerencias: sin clave, el `placeId` es un
-    // identificador de OSM y se resuelve contra Nominatim.
-    if (!key) {
+    // Un id N/W/R pertenece siempre a OpenStreetMap, incluso si Google se activa
+    // más adelante entre la búsqueda y la selección del usuario. Así nunca se
+    // envía un identificador nativo al endpoint incompatible de Google.
+    if (!googleEnabled || !key || isNominatimPlaceId(placeId)) {
         try {
             const details = await nominatimLookup(placeId)
             if (!details) {

@@ -80,8 +80,8 @@ export function PropertiesLocation() {
         form.setValue("longitude", newLng, { shouldValidate: true, shouldDirty: true })
     }, [form])
 
-    // Applies a Google Places selection: coordinates + address parts, matching the
-    // country against the catalog by ISO2/ISO3 and auto-filling its timezone.
+    // Aplica la selección del proveedor geográfico nativo (o Google cuando se
+    // habilite): coordenadas + dirección, país y zona horaria.
     const handlePlaceSelect = (d: PlaceDetails) => {
         if (d.lat != null && d.lng != null) {
             form.setValue("latitude", d.lat, { shouldDirty: true, shouldValidate: true })

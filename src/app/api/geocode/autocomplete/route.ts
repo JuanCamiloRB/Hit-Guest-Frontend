@@ -11,6 +11,19 @@ interface GoogleAutocompleteResponse {
     }>
 }
 
+async function nativeAutocomplete(q: string) {
+    try {
+        const suggestions = await nominatimSearch(q)
+        return NextResponse.json({ suggestions, provider: "nominatim" })
+    } catch (error: unknown) {
+        console.error(
+            "[geocode/autocomplete] Nominatim error:",
+            error instanceof Error ? error.message : error,
+        )
+        return NextResponse.json({ suggestions: [], unavailable: true })
+    }
+}
+
 /**
  * GET /api/geocode/autocomplete?q=<text>&session=<token>
  *
@@ -22,29 +35,17 @@ interface GoogleAutocompleteResponse {
  */
 export async function GET(req: NextRequest) {
     const key = process.env.GOOGLE_MAPS_API_KEY
+    // Google queda opt-in mientras su API está deshabilitada en los ambientes.
+    // Tener una clave antigua/inválida ya no basta para desviar el flujo nativo.
+    const googleEnabled = process.env.GEOCODING_PROVIDER === "google" && Boolean(key)
     const q = req.nextUrl.searchParams.get("q")?.trim() ?? ""
     const session = req.nextUrl.searchParams.get("session") ?? undefined
 
     if (q.length < 3) return NextResponse.json({ suggestions: [] })
 
-    // Sin clave de Google se busca igual, contra Nominatim (OpenStreetMap), que
-    // no requiere credenciales. Antes esta rama devolvía una lista vacía y el
-    // campo quedaba muerto: el usuario escribía la dirección, nunca aparecía una
-    // sugerencia, y la propiedad terminaba guardada sin coordenadas. Google
-    // sigue siendo el preferido cuando la clave existe.
-    if (!key) {
-        try {
-            const suggestions = await nominatimSearch(q)
-            return NextResponse.json({ suggestions, provider: "nominatim" })
-        } catch (error) {
-            console.error("[geocode/autocomplete] Nominatim error:", (error as Error)?.message)
-            // `unavailable` distingue "el buscador no funciona" de "no hubo
-            // resultados": el cliente lo usa para decirle al usuario que ubique
-            // la propiedad arrastrando el pin, en vez de dejarlo escribiendo
-            // contra un campo que no responde.
-            return NextResponse.json({ suggestions: [], unavailable: true })
-        }
-    }
+    // OpenStreetMap/Nominatim es el proveedor nativo y el predeterminado. Google
+    // solo se usa cuando se habilita explícitamente con GEOCODING_PROVIDER=google.
+    if (!googleEnabled || !key) return nativeAutocomplete(q)
 
     try {
         const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
@@ -63,7 +64,7 @@ export async function GET(req: NextRequest) {
         const data = await res.json().catch(() => ({})) as GoogleAutocompleteResponse
         if (!res.ok) {
             console.error("[geocode/autocomplete] Google error:", res.status, data?.error?.message)
-            return NextResponse.json({ suggestions: [] }, { status: 502 })
+            return nativeAutocomplete(q)
         }
         const suggestions = (data.suggestions ?? []).flatMap(({ placePrediction }) => {
             const placeId = placePrediction?.placeId
@@ -73,6 +74,6 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ suggestions })
     } catch (error: unknown) {
         console.error("[geocode/autocomplete] Error:", error instanceof Error ? error.message : error)
-        return NextResponse.json({ suggestions: [] }, { status: 502 })
+        return nativeAutocomplete(q)
     }
 }
