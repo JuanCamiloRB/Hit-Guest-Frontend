@@ -36,6 +36,11 @@ import type {
     ListingOverrideStatus,
 } from "../types/automation"
 import { LISTING_OVERRIDE_STATUS, isSignatureProvider } from "../types/automation"
+import {
+    normalizeAutomationStatus,
+    normalizeExecutionOrder,
+    normalizeOptionalId,
+} from "../lib/automation-numbers"
 
 /**
  * Canonicalizes a provider slug so comparisons are stable regardless of the
@@ -80,14 +85,15 @@ class AutomationService {
      * Handles camelCase / snake_case variants from Laravel resources.
      */
     private normalize(raw: any): PropertyAutomation {
-        const executionOrder: number = raw.executionOrder ?? raw.execution_order ?? 0
-        const statusProviderId: 8 | 10 = raw.statusProviderId ?? raw.status_provider_id ?? 10
+        const executionOrder = normalizeExecutionOrder(raw.executionOrder ?? raw.execution_order)
+        const statusProviderId = normalizeAutomationStatus(raw.statusProviderId ?? raw.status_provider_id)
+        const providerId = normalizeOptionalId(raw.providerId ?? raw.provider_id)
         const provider = raw.provider ?? null
         return {
             ...raw,
             uuid: raw.uuid,
             propertyUuid: raw.propertyUuid ?? raw.property_uuid ?? "",
-            providerId: raw.providerId ?? raw.provider_id ?? null,
+            providerId,
             name: raw.name ?? "",
             guestType: raw.guestType ?? raw.guest_type ?? "all",
             executionOrder,
