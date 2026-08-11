@@ -4,7 +4,7 @@ import {
     PropertyApiResponse,
     PropertyFormData,
     formDataToApiPayload,
-    REQUIRED_AUTOMATION_SEED,
+    INITIAL_AUTOMATION_SEED,
 } from "../types"
 import { apiClient, handleSessionExpired } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
@@ -31,15 +31,12 @@ class PropertiesService {
     // ── CREATE ──
     async create(data: PropertyFormData): Promise<PropertyApiResponse> {
         const basePayload: PropertyApiPayload = formDataToApiPayload(data)
-        // `POST /properties` VALIDA la lista de automatizaciones: sin ella responde
-        // 422 exigiendo la verificación de identidad del titular y el contrato
-        // digital. Se manda el mínimo exigido y ambas filas INACTIVAS — es la
-        // configuración, no la automatización encendida; nada se le impone al
-        // huésped hasta que el PM la active en su pestaña. Ver
-        // `REQUIRED_AUTOMATION_SEED` para por qué no se mandan las 8 de antes.
+        // Solo se siembra la configuración de identidad principal y queda
+        // INACTIVA. El contrato digital es opcional: no debe existir hasta que el
+        // PM decida configurarlo expresamente.
         const payload: PropertyApiPayload = {
             ...basePayload,
-            automations: REQUIRED_AUTOMATION_SEED,
+            automations: INITIAL_AUTOMATION_SEED,
         }
         const url = `${API_BASE}/properties`
 

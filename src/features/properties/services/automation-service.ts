@@ -229,9 +229,8 @@ class AutomationService {
      * Primary endpoint for activation/deactivation and provider configuration.
      *   Activate:   { statusProviderId: 8, providerId, parameters }
      *   Deactivate: { statusProviderId: 10 }
-     * The Digital Contract automation (identified by `provider.parameters.signature`,
-     * not by executionOrder — see getContractRoutingAutomation()) cannot be
-     * deactivated (returns 422).
+     * Digital Contract is optional and can be inactive. It is identified by
+     * `provider.parameters.signature`, never by executionOrder.
      */
     async configure(
         automationUuid: string,
@@ -250,9 +249,7 @@ class AutomationService {
     /**
      * Finds the property's "Digital Contract" automation — the one whose
      * `parameters` carries `contract_mode`/`by_source`. Per the backend plan
-     * this automation always exists and is always active, but a property
-     * created before this feature (or with no automations yet) legitimately
-     * has none — callers treat `null` as "not configured".
+     * this automation is optional; callers must treat `null` as "not configured".
      *
      * Identified by `provider.parameters.signature` being present, NOT by
      * `executionOrder === 3` (⚠️ 20260803_frontend-property-automations-api.md:

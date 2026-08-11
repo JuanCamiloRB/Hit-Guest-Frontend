@@ -190,8 +190,8 @@ export interface PropertyAutomationUpdatePayload {
  * Primary endpoint for activation/deactivation and provider-specific config.
  *   Activate:   { statusProviderId: 8, providerId: <id>, parameters: { ... } }
  *   Deactivate: { statusProviderId: 10 }
- * Digital Contract is identified by provider.parameters.signature and cannot
- * be deactivated. Its executionOrder is country-dependent.
+ * Digital Contract is optional and is identified by provider.parameters.signature.
+ * Its executionOrder is country-dependent.
  */
 export interface PropertyAutomationConfigurePayload {
   statusProviderId: AutomationStatus    // required
