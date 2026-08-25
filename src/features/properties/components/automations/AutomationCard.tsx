@@ -21,14 +21,25 @@ import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { cn } from "@/lib/utils"
 import { automationService } from "../../services/automation-service"
-import { isSignatureProvider, AUTOMATION_STATUS } from "../../types/automation"
+import { isSignatureProvider, AUTOMATION_STATUS, mapGuestTypeToApi } from "../../types/automation"
+import { ALL_SOURCES_KEY, CONTRACT_TYPE_LABELS, summarizeContractRouting } from "../../types/contract-routing"
 import type { PropertyAutomation, AutomationDefinition, Provider } from "../../types/automation"
+import type { ReservationSource } from "../../services/reservation-source-service"
 import { ApiError } from "@/types/api"
 import { ConfigModal } from "./ConfigModal"
 import { ListingOverridesPanel } from "./ListingOverridesPanel"
 import type { ListingMeta } from "./AutomationOverrideModal"
 
 const BACKEND_PENDING_MSG = "El backend aún no tiene este endpoint implementado. Contacta al equipo de desarrollo."
+
+/** Traduce el fallo de una acción de la tarjeta al mensaje que corresponde. */
+function notifyAutomationError(err: unknown, fallback: string): void {
+    if (err instanceof ApiError && err.status === 405) {
+        toast.error(BACKEND_PENDING_MSG, { duration: 6000 })
+        return
+    }
+    notifyError(err, fallback)
+}
 
 const normalizeSlug = (slug: string | null | undefined) =>
     (slug ?? "").toLowerCase().replace(/-/g, "_")
@@ -56,13 +67,24 @@ function getProviderSlug(provider: Provider | undefined | null): string | null {
 
 interface Props {
     definition: AutomationDefinition
-    automation: PropertyAutomation
+    /**
+     * `null` = el provider declara este slot para el país, pero la propiedad aún
+     * no tiene su fila. El PM puede crearla desde esta tarjeta; se crea inactiva
+     * y luego se configura/activa por el endpoint específico de configuración.
+     */
+    automation: PropertyAutomation | null
     propertyUuid: string
     providers: Provider[]
     listings: ListingMeta[]
     onChanged: (updated: PropertyAutomation | null) => void
     /** Jumps to the Documentos tab — only used by the Digital Contract card. */
     onNavigateToDocuments?: () => void
+    /**
+     * Catálogo de canales de reserva, solo para traducir las claves de
+     * `by_source` a nombres en la tarjeta de Contrato. Cosmético: si falta, la
+     * tarjeta muestra el id crudo del canal en vez de ocultar el routing.
+     */
+    sources?: ReservationSource[]
 }
 
 export function AutomationCard({
@@ -73,15 +95,21 @@ export function AutomationCard({
     listings,
     onChanged,
     onNavigateToDocuments,
+    sources,
 }: Props) {
-    const isActive = automation.isActive
-    // Digital Contract doesn't pick one property-wide provider anymore —
-    // who signs is chosen PER CHANNEL in the contract-routing screen (Documentos
-    // tab). Its provider selector here would be misleading, so it's replaced with
-    // a link to that screen instead (backend plan §2.3).
+    const isActive = automation?.isActive ?? false
+    // La tarjeta de Contrato NO elige proveedor acá. Quién firma se decide por canal en
+    // Documentos (`parameters.by_source[].provider_slug`), que es el único campo
+    // que el portal del huésped consume y el único filtrado por
+    // `contract_types` — la firma nativa no puede firmar una garantía. Un
+    // selector propio en esta tarjeta escribía otro campo (`provider_id`), no
+    // cambiaba quién firma de verdad y habilitaba esa combinación inválida. Acá
+    // se muestra lo configurado y se enciende/apaga; nada más.
     const isContractRouting = definition.id === "digital-contract"
-        || (!!automation.provider && isSignatureProvider(automation.provider))
-
+        || (!!automation?.provider && isSignatureProvider(automation.provider))
+    const routingSummary = isContractRouting
+        ? summarizeContractRouting(automation?.parameters)
+        : null
     const providerName = automation?.providerName
         ?? getProviderSlug(providers.find(p => p.id === automation?.providerId))
         ?? null
@@ -90,6 +118,17 @@ export function AutomationCard({
         if (!slug) return undefined
         const target = normalizeSlug(slug)
         return providers.find(p => normalizeSlug(getProviderSlug(p)) === target)?.id
+    }, [providers])
+
+    /**
+     * Nombre visible de un proveedor de firma a partir del slug guardado en el
+     * routing. Cae al slug crudo si el catálogo no lo tiene: mostrar el dato real
+     * es mejor que ocultar la fila configurada.
+     */
+    const signatureProviderLabel = useCallback((slug: string | null): string | null => {
+        if (!slug) return null
+        const target = normalizeSlug(slug)
+        return providers.find(p => normalizeSlug(getProviderSlug(p)) === target)?.name ?? slug
     }, [providers])
 
     const [toggling, setToggling] = useState(false)
@@ -111,17 +150,53 @@ export function AutomationCard({
     // La selección optimista va primero: si la fila inactiva ya tenía Didit y el
     // usuario acaba de escoger Textract, activar debe enviar la nueva elección,
     // no el providerId viejo que todavía conserva la respuesta del backend.
-    const activationProviderId = findProviderId(effectiveProviderName)
-        ?? automation.providerId
+    // `effectiveProviderName` es null mientras no haya fila ni elección: sin el
+    // fallback al slug de la opción seleccionada, una automatización de un solo
+    // proveedor (TTLock, PDF, TRA, SIRE, TuFirma) nunca resuelve su id contra
+    // `/providers` y el activarla muere en "falta elegir proveedor".
+    const activationProviderId = findProviderId(effectiveProviderName ?? selectedProvider?.value ?? null)
+        ?? automation?.providerId
         ?? selectedProvider?.providerId
-    const requiresProviderToActivate = definition.order <= 2
+    const requiresProviderToActivate = definition.id === "identity-verification-main"
+        || definition.id === "identity-verification-secondary"
 
     // Whether the SELECTED provider actually has config fields to fill. The
     // definition-level `requiresConfig` is coarse; what really matters is the
-    // chosen provider's schema. Firma Digital (TuFirma / HIT native) has an empty
+    // chosen provider's schema. Contrato (TuFirma / HIT native) has an empty
     // parametersSchema — HIT manages the creds — so it must activate directly
     // instead of bouncing to an empty config modal (the "no se puede activar" bug).
     const selectedProviderNeedsConfig = (selectedProvider?.parametersSchema?.length ?? 0) > 0
+
+    /**
+     * Claves REQUERIDAS por el esquema del proveedor que todavía no tienen valor.
+     * Un array vacío cuenta como faltante: TTLock exige al menos una cerradura, y
+     * `locks: []` pasaría cualquier chequeo de "existe la clave".
+     */
+    const missingRequiredParams = (selectedProvider?.parametersSchema ?? [])
+        .filter((field) => field.required)
+        .filter((field) => {
+            const value = (automation?.parameters ?? {})[field.key]
+            if (Array.isArray(value)) return value.length === 0
+            return value == null || value === ""
+        })
+        .map((field) => field.key)
+    const hasOperationalTrigger = Array.isArray(automation?.parameters?.triggerTypes)
+        && automation.parameters.triggerTypes.length > 0
+
+    const createInactiveAutomation = useCallback(async () => {
+        if (activationProviderId == null) {
+            throw new Error("El proveedor de esta automatización no está disponible para la propiedad.")
+        }
+        return automationService.create({
+            propertyUuid,
+            providerId: activationProviderId,
+            name: definition.title,
+            guestType: mapGuestTypeToApi(definition.guestType),
+            executionOrder: definition.order,
+            parameters: {},
+            statusProviderId: AUTOMATION_STATUS.INACTIVE,
+        })
+    }, [activationProviderId, definition, propertyUuid])
 
     // ── Toggle active / inactive ──────────────────────────────────────────────
 
@@ -130,45 +205,68 @@ export function AutomationCard({
             toast.error("Guarda la propiedad antes de configurar automatizaciones")
             return
         }
+        // La firma no se enciende desde acá mientras no haya routing: su fila
+        // nace en Documentos, con el proveedor DERIVADO de lo que el PM eligió
+        // por canal. Activarla antes crearía una automatización que no sabe qué
+        // ni con quién firmar.
+        if (checked && isContractRouting && (!automation || !routingSummary)) {
+            toast.info("Configura primero qué se firma y quién firma, en la pestaña Documentos.")
+            onNavigateToDocuments?.()
+            return
+        }
         // El backend exige `providerId` al activar cualquiera de las dos
-        // verificaciones de identidad. Una fila nueva puede venir sin proveedor;
-        // en ese caso no enviamos un PATCH incompleto que inevitablemente termina
-        // en 422: el PM debe elegir Didit o Textract en el selector visible.
+        // verificaciones de identidad, y crear una fila nueva lo exige siempre.
+        // No enviamos un payload incompleto que inevitablemente termina en 422.
         if (checked && requiresProviderToActivate && activationProviderId == null) {
-            toast.error("Selecciona un proveedor de verificación antes de activar esta automatización.")
+            toast.error(
+                definition.providerOptions.length > 1
+                    ? "Selecciona un proveedor antes de activar esta automatización."
+                    : "El proveedor de esta automatización todavía no está habilitado en el backend.",
+            )
             return
         }
         // Turning ON an automation that still needs its credentials (recipients, TRA
         // token+rnt, SIRE creds…) → open the config modal instead of failing activation
         // with a 422. Saving the config activates it.
         if (checked && selectedProviderNeedsConfig) {
-            const hasParams = Object.entries(automation?.parameters ?? {})
-                .some(([k, v]) => k !== "_init" && v != null && v !== "")
-            if (!hasParams) {
+            // Se mira si están TODOS los requeridos, no si hay "alguno": con una
+            // configuración a medias esto intentaba activar, el backend devolvía
+            // 422, y el botón "Configurar" —que solo se veía estando activa— no
+            // aparecía. El PM quedaba sin camino para terminar de cargarla.
+            if (missingRequiredParams.length > 0 || !hasOperationalTrigger) {
                 setConfigOpen(true)
-                toast.info("Completa la configuración para activar esta automatización.")
+                toast.info(
+                    !hasOperationalTrigger
+                        ? "Selecciona al menos un disparador antes de activar esta automatización."
+                        : "Completa la configuración para activar esta automatización.",
+                )
                 return
             }
         }
         setToggling(true)
+        let createdTarget: PropertyAutomation | null = null
         try {
-            const result = await automationService.toggle(
-                automation.uuid,
-                checked,
-                activationProviderId,
-            )
+            let target = automation
+            if (!target) {
+                target = await createInactiveAutomation()
+                createdTarget = target
+            }
+            const result = await automationService.toggle(target.uuid, checked, activationProviderId)
 
-            onChanged(result)
+            onChanged({
+                ...result,
+                provider: result.provider ?? target.provider,
+                providerName: result.providerName ?? target.providerName,
+            })
             toast.success(checked ? `${definition.title} activado` : `${definition.title} desactivado`)
         } catch (err) {
+            // El POST ya pudo haber creado la fila aunque falle la activación.
+            // Retenerla evita que el siguiente intento mande otro POST duplicado.
+            if (createdTarget) onChanged(createdTarget)
             // Activating an automation can fail validation: the backend returns the
             // missing config fields (parameters.token, parameters.recipients, …).
             // Surface that list instead of a generic message.
-            if (err instanceof ApiError && err.status === 405) {
-                toast.error(BACKEND_PENDING_MSG, { duration: 6000 })
-            } else {
-                notifyError(err, "Error al actualizar la automatización")
-            }
+            notifyAutomationError(err, "Error al actualizar la automatización")
         } finally {
             setToggling(false)
         }
@@ -180,6 +278,12 @@ export function AutomationCard({
         selectedProviderNeedsConfig,
         requiresProviderToActivate,
         activationProviderId,
+        missingRequiredParams,
+        hasOperationalTrigger,
+        isContractRouting,
+        routingSummary,
+        onNavigateToDocuments,
+        createInactiveAutomation,
     ])
 
     // ── Change provider ───────────────────────────────────────────────────────
@@ -218,11 +322,12 @@ export function AutomationCard({
             return
         }
 
-        // Una identidad inactiva necesita que el usuario pueda escoger proveedor
-        // ANTES de activarla, pero no hace falta guardar un estado intermedio. El
-        // toggle siguiente enviará juntos statusProviderId=8 + providerId, que es
-        // el payload atómico exigido por el backend.
-        if (!automation.isActive) {
+        // Una fila inactiva —o inexistente— necesita que el usuario pueda escoger
+        // proveedor ANTES de activarla, pero no hace falta guardar un estado
+        // intermedio. El toggle siguiente enviará juntos statusProviderId=8 +
+        // providerId, que es el payload atómico exigido por el backend; si la fila
+        // todavía no existe, ese mismo toggle la crea con el proveedor elegido.
+        if (!automation?.isActive) {
             previousProviderRef.current = newProvider
             return
         }
@@ -235,11 +340,8 @@ export function AutomationCard({
             previousProviderRef.current = newProvider
             onChanged(result)
         } catch (err) {
-            if (err instanceof ApiError && err.status === 405) {
-                toast.error(BACKEND_PENDING_MSG, { duration: 6000 })
-            } else {
-                notifyError(err, "Error al cambiar el proveedor")
-            }
+            // Siempre sobre una fila existente: este camino nunca crea.
+            notifyAutomationError(err, "Error al cambiar el proveedor")
             rollback()
         }
     }, [propertyUuid, automation, definition, findProviderId, onChanged, providers])
@@ -248,37 +350,54 @@ export function AutomationCard({
 
     const handleSaveConfig = useCallback(async (params: Record<string, unknown>) => {
         if (!propertyUuid) return
+        if (!Array.isArray(params.triggerTypes) || params.triggerTypes.length === 0) {
+            toast.error("Selecciona al menos un disparador. Sin él, la automatización no puede ejecutarse.")
+            return
+        }
         setConfigSaving(true)
+        let createdTarget: PropertyAutomation | null = null
         try {
             // Strip the front-only "_init" marker so it isn't persisted/validated.
-            const cleanParams = Object.fromEntries(
+            let cleanParams = Object.fromEntries(
                 Object.entries(params).filter(([key]) => key !== "_init"),
             )
-            // Backend owns creation of the country-specific row. Saving config
-            // only updates that existing automation and activates it.
-            const result = await automationService.configure(automation.uuid, {
+            const selectedSlug = normalizeSlug(selectedProvider?.value)
+            if (selectedSlug === normalizeSlug("sire_colombia")) {
+                // Backend gap documented in the tracker: `guest_filter` is not
+                // validated, but SIRE must never receive nationals. Enforce the
+                // only safe value at the write boundary, not just visually.
+                cleanParams = { ...cleanParams, guest_filter: "foreign_only" }
+            }
+            let target = automation
+            if (!target) {
+                target = await createInactiveAutomation()
+                createdTarget = target
+            }
+            const result = await automationService.configure(target.uuid, {
                 statusProviderId: AUTOMATION_STATUS.ACTIVE,
+                providerId: activationProviderId,
                 parameters: cleanParams,
             })
-            onChanged(result)
+            onChanged({
+                ...result,
+                provider: result.provider ?? target.provider,
+                providerName: result.providerName ?? target.providerName,
+            })
             setConfigOpen(false)
             toast.success("Configuración guardada")
         } catch (err) {
-            if (err instanceof ApiError && err.status === 405) {
-                toast.error(BACKEND_PENDING_MSG, { duration: 6000 })
-            } else {
-                notifyError(err, "Error al guardar la configuración")
-            }
+            // Crear y configurar son dos operaciones. Si solo falla la segunda,
+            // la fila inactiva ya existe y debe quedar reflejada en el estado.
+            if (createdTarget) onChanged(createdTarget)
+            notifyAutomationError(err, "Error al guardar la configuración")
         } finally {
             setConfigSaving(false)
         }
-    }, [propertyUuid, automation, onChanged])
+    }, [propertyUuid, automation, onChanged, selectedProvider, createInactiveAutomation, activationProviderId])
 
-    // Configured = has at least one meaningful parameter (ignoring the _init marker)
-    const hasMeaningfulParams = Object.entries(automation?.parameters ?? {})
-        .some(([k, v]) => k !== "_init" && v != null && v !== "")
     // Only nag for config when the selected provider actually has fields to fill.
-    const needsConfig = selectedProviderNeedsConfig && isActive && !hasMeaningfulParams
+    const needsConfig = selectedProviderNeedsConfig
+        && (missingRequiredParams.length > 0 || !hasOperationalTrigger)
 
     const showOverridesPanel = isActive
         && !!automation
@@ -329,7 +448,11 @@ export function AutomationCard({
                                         : <Switch
                                             checked={isActive}
                                             onCheckedChange={handleToggle}
-                                            disabled={definition.isMandatory}
+                                            // Mandatory identity rows may arrive inactive and must
+                                            // remain activatable. The backend only forbids turning
+                                            // an active structural slot off.
+                                            disabled={definition.isMandatory && isActive}
+                                            aria-label={definition.title}
                                             className="data-[state=checked]:bg-[var(--color-brand-purple)]"
                                         />
                                     }
@@ -380,12 +503,49 @@ export function AutomationCard({
                                 </p>
                             )}
 
-                            {/* Digital Contract: routing lives in Documentos, per channel */}
-                            {isActive && isContractRouting && (
-                                <p className="text-xs text-slate-400">
-                                    Qué se firma y con quién se configura por canal de reserva, en la
-                                    pestaña Documentos.
-                                </p>
+                            {/* Digital Contract: espejo de solo lectura del routing */}
+                            {isContractRouting && (
+                                <div className="space-y-1">
+                                    <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                        {routingSummary ? "Contrato configurado" : "Sin configurar"}
+                                    </Label>
+                                    {routingSummary ? (
+                                        /* Se enumera canal · qué se firma · quién firma, porque
+                                           "N canales configurados" no le decía al PM qué tiene
+                                           activo. El nombre del canal es cosmético: sin catálogo
+                                           se muestra el id crudo, nunca se oculta la fila. */
+                                        <div className="space-y-0.5">
+                                            {routingSummary.channels.map((channel) => (
+                                                <p key={channel.sourceKey} className="text-sm text-slate-600">
+                                                    {[
+                                                        channel.sourceKey === ALL_SOURCES_KEY
+                                                            ? "Todos los canales"
+                                                            : sources?.find((s) => String(s.id) === channel.sourceKey)?.name
+                                                                ?? `Canal ${channel.sourceKey}`,
+                                                        CONTRACT_TYPE_LABELS[channel.contractType],
+                                                        signatureProviderLabel(channel.providerSlug),
+                                                    ].filter(Boolean).join(" · ")}
+                                                </p>
+                                            ))}
+                                        </div>
+                                    ) : isActive ? (
+                                        /* Estado que esta UI no puede producir (el toggle exige
+                                           routing para encender): la fila se activó por otro
+                                           camino. Sin routing, el portal del huésped no resuelve
+                                           contrato y el check-in avanza sin firmar — decirlo es
+                                           mejor que un "sin configurar" neutro bajo un badge ACTIVO. */
+                                        <p className="text-sm text-amber-700">
+                                            Está activa pero sin definir qué se firma ni quién firma:
+                                            los huéspedes completan su check-in sin contrato.
+                                            Configúrala en la pestaña Documentos.
+                                        </p>
+                                    ) : (
+                                        <p className="text-sm text-slate-500">
+                                            Qué se firma y quién firma se define por canal de reserva, en
+                                            la pestaña Documentos.
+                                        </p>
+                                    )}
+                                </div>
                             )}
 
                             {/* Footer: time indicator + config button */}
@@ -394,19 +554,28 @@ export function AutomationCard({
                                     <Clock className="h-3.5 w-3.5" />
                                     <span>Tiempo Real</span>
                                 </div>
-                                {isActive && isContractRouting && onNavigateToDocuments && (
+                                {/* Siempre visible: sin routing es el ÚNICO camino
+                                    para configurar la firma, y con routing es
+                                    donde se cambia quién firma. */}
+                                {isContractRouting && onNavigateToDocuments && (
                                     <Button
                                         type="button"
                                         variant="ghost"
                                         size="sm"
                                         onClick={onNavigateToDocuments}
-                                        className="h-8 text-xs font-bold gap-1.5 px-3 text-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/5"
+                                        className={cn(
+                                            "h-8 text-xs font-bold gap-1.5 px-3 hover:bg-[var(--color-brand-purple)]/5",
+                                            routingSummary
+                                                ? "text-[var(--color-brand-purple)]"
+                                                : "text-amber-600 hover:text-amber-700",
+                                        )}
                                     >
+                                        {!routingSummary && <AlertCircle size={13} />}
                                         <FileSignature className="h-3.5 w-3.5" />
-                                        Configurar contrato y firma
+                                        {routingSummary ? "Configurar contrato y firma" : "Configurar (requerido)"}
                                     </Button>
                                 )}
-                                {isActive && !isContractRouting && selectedProviderNeedsConfig && selectedProvider && (
+                                {!isContractRouting && selectedProviderNeedsConfig && selectedProvider && (
                                     <Button
                                         type="button"
                                         variant="ghost"

@@ -63,7 +63,56 @@ export async function GET(req: NextRequest) {
             r.status === "fulfilled" ? r.value : [],
         )
 
-        return NextResponse.json({ properties, listings })
+        // 3. Automations per property, also in parallel — feeds the property
+        // cards' badges. Sanitized on purpose: the sideloaded `provider` object
+        // serializes its credentials (open backend finding), and row `parameters`
+        // hold third-party tokens for TRA/SIRE/TTLock. The cards only need the
+        // slug + status, plus the signature row's routing keys.
+        //
+        // A failed fetch yields `null` (not `[]`): "we don't know" must not
+        // render as "nothing is configured" downstream.
+        interface RawAutomationRow {
+            providerSlug?: string | null
+            provider_slug?: string | null
+            statusProviderId?: number | string
+            status_provider_id?: number | string
+            parameters?: Record<string, unknown> | null
+            provider?: { parameters?: { slug?: string | null } } | null
+        }
+        const automationsResults = await Promise.allSettled(
+            properties.map((p) =>
+                serverFetch<RawAutomationRow[] | { data?: RawAutomationRow[] }>(`/properties/${p.uuid}/automations?includeProvider=true`, { token, requireUserToken: true })
+                    .then((res) => {
+                        const list = Array.isArray(res) ? res : Array.isArray(res?.data) ? res.data : []
+                        return list.map((a) => {
+                            const slug = a.providerSlug ?? a.provider_slug
+                                ?? a.provider?.parameters?.slug ?? null
+                            const isSignature = typeof slug === "string"
+                                && ["tufirma", "hitguest_signature"].includes(slug.toLowerCase().replace(/-/g, "_"))
+                            const params = a.parameters ?? {}
+                            return {
+                                _propertyUuid: p.uuid,
+                                providerSlug: slug,
+                                statusProviderId: Number(a.statusProviderId ?? a.status_provider_id ?? 0),
+                                parameters: isSignature
+                                    ? { contract_mode: params.contract_mode, by_source: params.by_source }
+                                    : undefined,
+                            }
+                        })
+                    })
+                    .catch((err) => {
+                        console.warn(`[BFF] Failed to fetch automations for property ${p.uuid}:`, err.message)
+                        return null
+                    }),
+            ),
+        )
+        const automationsByProperty: Record<string, unknown[] | null> = {}
+        properties.forEach((p, i) => {
+            const result = automationsResults[i]
+            automationsByProperty[p.uuid] = result.status === "fulfilled" ? result.value : null
+        })
+
+        return NextResponse.json({ properties, listings, automationsByProperty })
     } catch (error: any) {
         console.error("[BFF /properties-with-listings] Error:", error.message)
         return NextResponse.json(

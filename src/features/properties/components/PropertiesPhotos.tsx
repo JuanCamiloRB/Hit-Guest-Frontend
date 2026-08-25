@@ -13,6 +13,11 @@ import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { propertiesService, PROPERTY_IMAGE_LIMITS, extractPicturesUrl } from "../services/properties-service"
+import {
+    validatePropertyImages,
+    ALLOWED_IMAGE_ACCEPT,
+    ALLOWED_IMAGE_FORMATS_LABEL,
+} from "../lib/property-image-validation"
 
 /**
  * Property photo gallery, backed by the real images endpoints:
@@ -44,31 +49,19 @@ export function PropertiesPhotos() {
         setValue("thumbnailUrl", list[0] ?? "", { shouldDirty: true })
     }
 
-    /** Client-side guardrails; the backend re-validates and is the final word. */
-    function validate(files: File[]): string | null {
-        if (files.length > PROPERTY_IMAGE_LIMITS.maxPerUpload) {
-            return `Máximo ${PROPERTY_IMAGE_LIMITS.maxPerUpload} imágenes por carga.`
-        }
-        for (const file of files) {
-            if (!file.type.startsWith("image/")) {
-                return `"${file.name}" no es una imagen.`
-            }
-            if (file.size > PROPERTY_IMAGE_LIMITS.maxBytes) {
-                return `"${file.name}" supera los 5 MB.`
-            }
-        }
-        return null
-    }
-
     async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         const files = e.target.files ? Array.from(e.target.files) : []
         // Reset the input so re-selecting the same file still fires onChange.
         e.target.value = ""
         if (files.length === 0 || !uuid) return
 
-        const error = validate(files)
-        if (error) {
-            toast.error("No se pudo subir", { description: error })
+        // El guardarraíl del cliente; el backend revalida y tiene la última
+        // palabra. Antes esto aceptaba cualquier `image/*`, así que un .avif se
+        // subía y el 422 llegaba después de esperar la carga — sin decir qué
+        // formatos sí se pueden usar.
+        const failure = validatePropertyImages(files, PROPERTY_IMAGE_LIMITS)
+        if (failure) {
+            toast.error(failure.title, { description: failure.description })
             return
         }
 
@@ -107,6 +100,13 @@ export function PropertiesPhotos() {
                 </CardTitle>
                 <CardDescription>
                     Sube fotos de alta calidad para atraer a más huéspedes. La primera imagen será la portada.
+                    <br />
+                    {/* Los formatos se nombran ANTES de elegir el archivo: descubrirlos
+                        por un rechazo es lo que hacía perder una carga entera. */}
+                    <span className="font-medium text-slate-600">
+                        Formatos: {ALLOWED_IMAGE_FORMATS_LABEL}
+                    </span>
+                    {" · "}
                     Máx. {PROPERTY_IMAGE_LIMITS.maxPerUpload} por carga · 5 MB c/u.
                 </CardDescription>
             </CardHeader>
@@ -159,7 +159,7 @@ export function PropertiesPhotos() {
                             <input
                                 type="file"
                                 multiple
-                                accept="image/*"
+                                accept={ALLOWED_IMAGE_ACCEPT}
                                 className="hidden"
                                 ref={fileInputRef}
                                 onChange={handleFileChange}

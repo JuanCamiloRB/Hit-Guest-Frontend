@@ -33,6 +33,17 @@ import {
 import { cn } from "@/lib/utils"
 import { apiResponseToFormData } from "../types"
 import { useAuthStore } from "@/lib/store/auth-store"
+import {
+    derivePropertyBadges,
+    type PropertyAutomationOverviewRow,
+    type PropertyBadge,
+} from "../lib/property-badges"
+
+/** Resumen por propiedad para las tarjetas. `badges: null` = no se pudo saber. */
+interface PropertyOverview {
+    activeListings: number
+    badges: PropertyBadge[] | null
+}
 
 // ── BFF helper ─────────────────────────────────────────────────────────
 // Calls our own Next.js API routes (same-origin, no CORS preflight).
@@ -71,6 +82,9 @@ export function PropertiesList() {
     const [isLoading, setIsLoading] = useState(true)
     const [isLoadingListings, setIsLoadingListings] = useState(false)
     const [activeTab, setActiveTab] = useState("properties")
+    // `null` = todavía no llegó el agregado: las tarjetas muestran "—", nunca un
+    // cero inventado.
+    const [overviewByProperty, setOverviewByProperty] = useState<Record<string, PropertyOverview> | null>(null)
 
     // ── Cache refs: avoid re-fetching when switching tabs ──
     const propertiesCacheRef = useRef<Property[] | null>(null)
@@ -139,20 +153,27 @@ export function PropertiesList() {
         }
     }, [])
 
-    // ── Fetch listings (lazy — only when Alojamientos tab is active) ──
+    // ── Fetch listings + resumen por propiedad (agregado) ──
+    const listingsInFlightRef = useRef(false)
     const fetchListings = useCallback(async () => {
         // Return cached data if available
         if (listingsCacheRef.current) {
             setUnits(listingsCacheRef.current)
             return
         }
+        // El montaje y el cambio de pestaña pueden pedirlo casi a la vez; una
+        // sola petición alcanza para los dos.
+        if (listingsInFlightRef.current) return
+        listingsInFlightRef.current = true
 
         setIsLoadingListings(true)
         try {
             // Use the aggregated BFF endpoint — 1 request, server does the N calls
-            const response = await bffFetch<{ properties: any[]; listings: any[] }>(
-                "/api/bff/properties-with-listings",
-            )
+            const response = await bffFetch<{
+                properties: any[]
+                listings: any[]
+                automationsByProperty?: Record<string, PropertyAutomationOverviewRow[] | null>
+            }>("/api/bff/properties-with-listings")
 
             const apiUnits = response.listings || []
 
@@ -177,6 +198,31 @@ export function PropertiesList() {
 
             listingsCacheRef.current = convertedUnits
             setUnits(convertedUnits)
+
+            // Resumen por propiedad para las tarjetas: conteo de alojamientos
+            // activos + insignias de automatizaciones encendidas. Solo datos que
+            // el backend afirma: un fetch de automations caído llega como `null`
+            // y la tarjeta no muestra insignias (tampoco la ausencia de
+            // cerradura) en vez de afirmar "nada configurado".
+            const autoMap = response.automationsByProperty ?? {}
+            const activeCounts: Record<string, number> = {}
+            for (const unit of convertedUnits) {
+                if (unit.status === "ACTIVE" && unit.propertyId) {
+                    activeCounts[unit.propertyId] = (activeCounts[unit.propertyId] ?? 0) + 1
+                }
+            }
+            const overview: Record<string, PropertyOverview> = {}
+            const propertyUuids = new Set<string>([
+                ...(response.properties ?? []).map((p) => String(p.uuid)),
+                ...Object.keys(autoMap),
+            ])
+            for (const uuid of propertyUuids) {
+                overview[uuid] = {
+                    activeListings: activeCounts[uuid] ?? 0,
+                    badges: derivePropertyBadges(autoMap[uuid] ?? null),
+                }
+            }
+            setOverviewByProperty(overview)
 
             // Also update properties cache if we got them from the aggregated endpoint
             if (response.properties && !propertiesCacheRef.current) {
@@ -219,14 +265,19 @@ export function PropertiesList() {
             console.error("[PropertiesList] Error fetching listings:", error)
             setUnits([])
         } finally {
+            listingsInFlightRef.current = false
             setIsLoadingListings(false)
         }
     }, [])
 
-    // ── Initial load: only properties ──
+    // ── Initial load ──
+    // Properties primero (pinta rápido) y el agregado en segundo plano: de él
+    // salen el conteo de alojamientos y las insignias de las tarjetas. Ambos
+    // cachean, así que el cambio de pestaña no repite nada.
     useEffect(() => {
         fetchProperties()
-    }, [fetchProperties])
+        fetchListings()
+    }, [fetchProperties, fetchListings])
 
     // ── Lazy load listings when switching to Alojamientos tab ──
     useEffect(() => {
@@ -265,7 +316,11 @@ export function PropertiesList() {
                 <div>
                     <h2 className="text-3xl font-extrabold tracking-tight text-[var(--color-brand-navy)] drop-shadow-sm">Propiedades y Alojamientos</h2>
                     <p className="text-[var(--color-brand-navy)]/60 text-sm font-medium">
-                        Gestiona tus propiedades, unidades y configuraciones de automatización.
+                        {properties.length > 0
+                            ? `${properties.length} ${properties.length === 1 ? "propiedad" : "propiedades"}${overviewByProperty
+                                ? ` · ${Object.values(overviewByProperty).reduce((sum, o) => sum + o.activeListings, 0)} alojamientos activos`
+                                : ""}`
+                            : "Gestiona tus propiedades, unidades y configuraciones de automatización."}
                     </p>
                 </div>
                 <Button asChild className="bg-gradient-to-r from-[var(--color-brand-purple)] to-[var(--color-brand-blue)] hover:opacity-90 text-white shadow-lg shadow-brand-purple/20 border-none px-6 h-11 transition-all duration-300 transform hover:scale-[1.02]">
@@ -335,7 +390,12 @@ export function PropertiesList() {
                     ) : (
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {filteredProperties.map((property: Property) => (
-                                <PropertyCard key={property.id} property={property} />
+                                <PropertyCard
+                                    key={property.id}
+                                    property={property}
+                                    activeListings={overviewByProperty?.[property.uuid ?? ""]?.activeListings ?? null}
+                                    badges={overviewByProperty?.[property.uuid ?? ""]?.badges ?? null}
+                                />
                             ))}
                         </div>
                     )}

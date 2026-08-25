@@ -14,9 +14,10 @@
  *   GET    /reservations/{reservationUuid}/documents/{documentUuid}/pdf     → PDF (binary)
  */
 
-import { apiClient } from "@/lib/api-client"
+import { apiClient, handleSessionExpired } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
 import { useAuthStore } from "@/lib/store/auth-store"
+import { ApiError, type ApiErrorResponse } from "@/types/api"
 import type {
     DocumentType,
     PropertyDocument,
@@ -48,16 +49,12 @@ class PropertyDocumentService {
     // ── Document types (catalog) ─────────────────────────────────────────────
 
     async getTypes(): Promise<DocumentType[]> {
-        try {
-            const res = await apiClient.get<any>(`${API_BASE}/property-document-types`, {
-                suppressUnauthorizedRedirect: true,
-            })
-            const items = Array.isArray(res) ? res : res?.data ?? []
-            return items as DocumentType[]
-        } catch (error) {
-            console.error("[PropertyDocumentService] getTypes error:", error)
-            return []
+        const res = await apiClient.get<unknown>(`${API_BASE}/property-document-types`)
+        if (Array.isArray(res)) return res as DocumentType[]
+        if (res && typeof res === "object" && Array.isArray((res as { data?: unknown }).data)) {
+            return (res as { data: DocumentType[] }).data
         }
+        return []
     }
 
     // ── CRUD ─────────────────────────────────────────────────────────────────
@@ -75,23 +72,19 @@ class PropertyDocumentService {
         if (params.perPage)                qs.set("per_page", String(params.perPage))
 
         const url = `${API_BASE}/properties/${propertyUuid}/documents${qs.toString() ? `?${qs}` : ""}`
-        try {
-            const res = await fetch(url, {
-                headers: { Accept: "application/json", ...this.authHeader() },
-                cache: "no-store",
-            })
-            if (!res.ok) {
-                if (res.status === 404 || res.status === 401) return { items: [], meta: null }
-                throw new Error(`HTTP ${res.status}`)
-            }
-            const json = await res.json()
-            const items: PropertyDocument[] = Array.isArray(json?.data) ? json.data : []
-            const meta: PaginationMeta | null = json?.meta ?? null
-            return { items, meta }
-        } catch (error) {
-            console.error("[PropertyDocumentService] list error:", error)
-            return { items: [], meta: null }
+        const res = await fetch(url, {
+            headers: { Accept: "application/json", ...this.authHeader() },
+            cache: "no-store",
+        })
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({ message: `HTTP ${res.status}` })) as ApiErrorResponse
+            if (res.status === 401) handleSessionExpired()
+            throw new ApiError(res.status, body)
         }
+        const json = await res.json()
+        const items: PropertyDocument[] = Array.isArray(json?.data) ? json.data : []
+        const meta: PaginationMeta | null = json?.meta ?? null
+        return { items, meta }
     }
 
     async get(propertyUuid: string, documentUuid: string): Promise<PropertyDocument> {
@@ -140,7 +133,7 @@ class PropertyDocumentService {
         const res = await apiClient.get<{ uuid: string; rendered: string }>(
             `${API_BASE}/reservations/${reservationUuid}/documents/${documentUuid}/render`,
         )
-        return (res as any)?.rendered ?? ""
+        return res.rendered ?? ""
     }
 
     /**

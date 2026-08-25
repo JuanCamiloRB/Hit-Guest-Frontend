@@ -33,7 +33,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Plus, Trash2, Edit2, Building, BedDouble, Bath, Clock, Settings2, Shield, Zap, Loader2, Info } from "lucide-react"
+import { Plus, Trash2, Edit2, Building, BedDouble, Bath, Clock, Settings2, Shield, Zap, Loader2, Info, TriangleAlert } from "lucide-react"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import { useState, useEffect, useRef } from "react"
 import { Switch } from "@/components/ui/switch"
@@ -46,21 +46,31 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { listingsService } from "../services/listings-service"
 import { automationService } from "../services/automation-service"
 import { getOverrideFieldSchema } from "../data/automation-definitions"
-import { LISTING_OVERRIDE_STATUS, type PropertyAutomation, type ListingAutomationOverride } from "../types/automation"
+import { type PropertyAutomation, type ListingAutomationOverride } from "../types/automation"
 import { AutomationOverrideModal } from "./automations/AutomationOverrideModal"
 import { Badge } from "@/components/ui/badge"
 import { ExternalPmsIdsField } from "./ExternalPmsIdsField"
 import {
     hasIncompleteExternalPmsId,
     normalizeExternalPmsIds,
-    toExternalPmsIdsPayload,
+    readExternalPmsIds,
+    readExternalIdentifierServerErrors,
+    sameExternalPmsIds,
 } from "../lib/external-pms-ids"
+import { ApiError } from "@/types/api"
+import {
+    validateUnitForm,
+    toFieldErrorMap,
+    UNIT_LIMITS,
+    type UnitFormTab,
+} from "../lib/unit-form-validation"
+import { toListingPayload } from "../lib/listing-payload"
 import type { ExternalPmsId } from "../types"
 
 const defaultUnit = {
     name: "",
     internalName: "",
-    roomTypeId: 1,
+    roomTypeId: 0,
     thumbnailUrl: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=60",
     contactName: "",
     contactEmail: "",
@@ -82,11 +92,26 @@ const defaultUnit = {
         wifiDetails: { network: "", password: "" },
         amenities: [],
         cancellationPolicy: "STANDARD",
+        inheritAmenities: true,
         inheritWifi: true,
         inheritSchedule: true,
         inheritPolicies: true,
     },
     price: "",
+}
+
+/**
+ * Mensaje de error bajo un input. Aparece cinco veces en el tab General, así que
+ * se extrae — no antes: es el tercer uso lo que lo justifica, no el primero.
+ * Devuelve `null` sin mensaje para poder llamarlo sin envolverlo en un `&&`.
+ */
+function FieldError({ message }: { message?: string }) {
+    if (!message) return null
+    return (
+        <p role="alert" className="text-xs text-destructive">
+            {message}
+        </p>
+    )
 }
 
 /** A draft override is worth persisting only if it changes something vs. inheriting. */
@@ -99,8 +124,6 @@ function isMeaningfulOverride(o: ListingAutomationOverride): boolean {
 
 export function PropertiesUnits() {
     const { control, watch } = useFormContext()
-    const propWifiNetwork = watch("wifiNetwork")
-    const propWifiPassword = watch("wifiPassword")
     // uuid is injected by the edit page — undefined for new properties
     const propertyUuid: string | undefined = watch("uuid")
 
@@ -114,6 +137,9 @@ export function PropertiesUnits() {
     const [unitForm, setUnitForm] = useState({ ...defaultUnit })
     const [roomTypes, setRoomTypes] = useState<CatalogOption[]>([])
     const [currencies, setCurrencies] = useState<CatalogOption[]>([])
+    const [roomTypesLoading, setRoomTypesLoading] = useState(true)
+    const [isSavingUnit, setIsSavingUnit] = useState(false)
+    const saveLockRef = useRef(false)
 
     // ── Automations overrides state ──────────────────────────────────────────
     // Active property-level automations of the parent property
@@ -128,20 +154,55 @@ export function PropertiesUnits() {
     // only once the PM actually tries to save — flagging a row they just added
     // and haven't filled in yet would be nagging, not helping.
     const [showExternalPmsIdErrors, setShowExternalPmsIdErrors] = useState(false)
-    const externalPmsIdRowErrors = showExternalPmsIdErrors
-        ? (unitForm.externalPmsIds ?? []).map((row) => ({
-            sourcePmsId: row.sourcePmsId ? undefined : "Selecciona el origen",
-            externalId: String(row.externalId ?? "").trim() ? undefined : "Ingresa el ID externo",
+
+    // Errores de campo del intento de guardado, indexados por campo. Se limpian
+    // al reabrir el diálogo — no al teclear: un error que desaparece mientras el
+    // PM corrige OTRO campo hace parecer que ya está resuelto.
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+
+    // Snapshot de los identificadores al abrir el diálogo: decide si la sección
+    // se editó (contrato 2026-08-23: la clave solo viaja si cambió — `[]` borra
+    // todas las filas y la clave omitida no toca nada).
+    const initialExternalPmsIdsRef = useRef<ExternalPmsId[]>([])
+    // Errores 422 del backend atribuidos a filas de identificadores (las claves
+    // llegan como `externalIdentifiers.N.campo`). Se limpian al editar la
+    // sección o reabrir el diálogo.
+    const [serverIdentifierErrors, setServerIdentifierErrors] = useState<
+        Record<number, { sourcePmsId?: string; externalId?: string }>
+    >({})
+
+    // Las pestañas pasan a ser controladas para poder ABRIR la que tiene el
+    // error. Antes eran `defaultValue="general"` y el aviso de identificación
+    // externa decía "Revisa la pestaña General" — un rodeo de texto para algo
+    // que la UI puede hacer sola.
+    const [activeTab, setActiveTab] = useState<UnitFormTab | "automations">("general")
+    // Errores por fila: los de completitud local y los que el backend atribuyó
+    // (422) conviven — el mensaje del servidor llega ya localizado y manda.
+    const hasServerIdentifierErrors = Object.keys(serverIdentifierErrors).length > 0
+    const externalPmsIdRowErrors = showExternalPmsIdErrors || hasServerIdentifierErrors
+        ? (unitForm.externalPmsIds ?? []).map((row, index) => ({
+            sourcePmsId: (showExternalPmsIdErrors && !row.sourcePmsId ? "Selecciona el origen" : undefined)
+                ?? serverIdentifierErrors[index]?.sourcePmsId,
+            externalId: (showExternalPmsIdErrors && !String(row.externalId ?? "").trim() ? "Ingresa el ID externo" : undefined)
+                ?? serverIdentifierErrors[index]?.externalId,
         }))
         : undefined
 
     useEffect(() => {
-        catalogService.getRoomTypes().then((rooms) => {
-            if (rooms.length > 0) setRoomTypes(rooms)
-        })
-        catalogService.getCurrencies().then((curr) => {
-            if (curr.length > 0) setCurrencies(curr)
-        })
+        // `active` como en el resto del repo (ContractRoutingSection,
+        // GuaranteePreview): sin él, salir de la propiedad antes de que el
+        // catálogo responda escribe estado sobre un componente desmontado.
+        let active = true
+        Promise.all([catalogService.getRoomTypes(), catalogService.getCurrencies()])
+            .then(([rooms, curr]) => {
+                if (!active) return
+                setRoomTypes(rooms)
+                if (curr.length > 0) setCurrencies(curr)
+            })
+            .finally(() => {
+                if (active) setRoomTypesLoading(false)
+            })
+        return () => { active = false }
     }, [])
 
     const handleOpenAddDialog = () => {
@@ -149,7 +210,13 @@ export function PropertiesUnits() {
         setEditingIndex(null)
         setListingOverrides({})
         setShowExternalPmsIdErrors(false)
+        setFieldErrors({})
+        initialExternalPmsIdsRef.current = []
+        setServerIdentifierErrors({})
+        setActiveTab("general")
         setPropertyAutomations([])
+        saveLockRef.current = false
+        setIsSavingUnit(false)
         // New listing under an existing property: load automations so the user can
         // configure override drafts that get created right after the listing is saved.
         if (propertyUuid) {
@@ -169,7 +236,7 @@ export function PropertiesUnits() {
             ...raw,
             internalName:  raw.internalName  || raw.internal_name  || "",
             // API returns roomType: { id, name } — flatten to roomTypeId
-            roomTypeId:    raw.roomType?.id  || raw.roomTypeId    || raw.room_type_id    || 1,
+            roomTypeId:    raw.roomType?.id  || raw.roomTypeId    || raw.room_type_id    || 0,
             // API returns contact: { name, email, phone } — flatten
             contactName:   raw.contact?.name  || raw.contactName   || raw.contact_name   || "",
             contactEmail:  raw.contact?.email || raw.contactEmail  || raw.contact_email  || "",
@@ -184,6 +251,7 @@ export function PropertiesUnits() {
             extra: {
                 ...defaultUnit.extra,
                 ...(raw.extra || {}),
+                inheritAmenities: raw.extra?.amenities === undefined,
                 currency: raw.extra?.currency || "COP",
                 // Ensure wifi nulls become empty strings for controlled inputs
                 wifiDetails: {
@@ -196,6 +264,12 @@ export function PropertiesUnits() {
         setEditingIndex(index)
         setListingOverrides({})
         setShowExternalPmsIdErrors(false)
+        setFieldErrors({})
+        initialExternalPmsIdsRef.current = normalized.externalPmsIds ?? []
+        setServerIdentifierErrors({})
+        setActiveTab("general")
+        saveLockRef.current = false
+        setIsSavingUnit(false)
 
         // Load property automations and listing overrides for existing listings
         if (propertyUuid && raw.uuid) {
@@ -223,61 +297,55 @@ export function PropertiesUnits() {
     }
 
     const handleSaveUnit = async () => {
-        if (!unitForm.name || unitForm.name.trim().length < 2) {
-            toast.error("El nombre de la unidad es requerido", {
-                description: "Por favor asigna un nombre de al menos 2 caracteres.",
-            })
+        if (saveLockRef.current) return
+        // Este diálogo no tiene resolver de zod (el formulario de propiedad sí),
+        // así que las reglas se aplican acá. Antes sólo se comprobaba el nombre:
+        // todo lo demás —incluido el correo que la UI marca con asterisco— viajaba
+        // al backend y volvía como 422 crudo, con el PM sin saber qué campo era.
+        const errors = validateUnitForm(unitForm)
+        if (errors.length > 0) {
+            setFieldErrors(toFieldErrorMap(errors))
+            // Abrir la pestaña del primer error: el correo vive al final del tab
+            // General y es justo el que el PM no ve antes de pulsar guardar.
+            setActiveTab(errors[0].tab)
+            window.setTimeout(() => document.getElementById(errors[0].field)?.focus(), 0)
+            toast.error(
+                errors.length === 1 ? "Falta un dato de la unidad" : `Faltan ${errors.length} datos de la unidad`,
+                { description: errors[0].message },
+            )
             return
         }
+        setFieldErrors({})
 
         // The property form gets this from zod; this dialog has no resolver, so the
         // same rule is enforced here rather than letting a half-filled row 422.
         if (hasIncompleteExternalPmsId(unitForm.externalPmsIds)) {
             setShowExternalPmsIdErrors(true)
+            setActiveTab("general")
             toast.error("Identificación externa incompleta", {
-                description: "Revisa la pestaña General: cada origen necesita su ID externo, o quita la fila.",
+                description: "Cada origen necesita su ID externo, o quita la fila.",
             })
             return
         }
 
+        saveLockRef.current = true
+        setIsSavingUnit(true)
+
         // ── Existing property: persist via API immediately ──
         if (propertyUuid) {
             try {
-                // Build the payload matching POST /listings schema
-                const { extra = {} as any, ...rest } = unitForm as any
-                const {
-                    inheritWifi,
-                    inheritSchedule,
-                    inheritPolicies,
-                    wifiDetails,
-                    checkIn,
-                    checkOut,
-                    cancellationPolicy,
-                    ...cleanExtra
-                } = extra
-
-                if (!inheritWifi)      cleanExtra.wifiDetails = wifiDetails
-                if (!inheritSchedule)  { cleanExtra.checkIn = checkIn; cleanExtra.checkOut = checkOut }
-                if (!inheritPolicies)  cleanExtra.cancellationPolicy = cancellationPolicy
-
-                // Store price purely inside extra as requested by the backend
                 const unitPrice = Number(unitForm.price) || 0
-                cleanExtra.startPrice = unitPrice
-
-                const payload = {
+                // Dirty-gating del contrato 2026-08-23: `externalPmsIds` solo
+                // viaja si la sección cambió respecto a lo cargado — `[]` borra
+                // todas las filas y la clave omitida no toca nada.
+                const identifiersDirty = !sameExternalPmsIds(
+                    initialExternalPmsIdsRef.current,
+                    unitForm.externalPmsIds,
+                )
+                const payload = toListingPayload(
                     propertyUuid,
-                    name:          rest.name,
-                    internalName:  rest.internalName  || undefined,
-                    roomTypeId:    Number(rest.roomTypeId) || 1,
-                    description:   rest.description   || undefined,
-                    thumbnailUrl:  rest.thumbnailUrl   || undefined,
-                    contactName:   rest.contactName    || undefined,
-                    contactEmail:  rest.contactEmail   || undefined,
-                    contactPhone:  rest.contactPhone   || undefined,
-                    statusRecordId: unitForm.isActive !== false ? 6 : 7,
-                    extra: cleanExtra,
-                    externalPmsIds: toExternalPmsIdsPayload(unitForm.externalPmsIds),
-                }
+                    identifiersDirty ? unitForm : { ...unitForm, externalPmsIds: undefined },
+                )
 
                 // UPDATE also needs price at top-level (PUT /listings accepts it; POST does not)
                 const updatePayload = { ...payload, price: unitPrice, start_price: unitPrice }
@@ -285,7 +353,7 @@ export function PropertiesUnits() {
                 if (editingIndex !== null && (unitForm as any).uuid) {
                     // UPDATE existing listing — use updatePayload which includes root-level price (PUT accepts it)
                     const updated = await listingsService.update((unitForm as any).uuid, updatePayload as any)
-                    const apiData = updated?.data || {}
+                    const apiData = updated?.data ?? updated ?? {}
                     // Rebuild local state: price comes from extra.startPrice
                     const refreshed = {
                         ...unitForm,
@@ -295,10 +363,13 @@ export function PropertiesUnits() {
                         contactEmail:  apiData.contact?.email  || unitForm.contactEmail,
                         contactPhone:  apiData.contact?.phone  || unitForm.contactPhone,
                         isActive:      apiData.statusRecord ? apiData.statusRecord.id === 6 : unitForm.isActive,
-                        // Pinned to what was just sent: the key the listing response
-                        // carries these under is not confirmed, so `...apiData` is
-                        // not trusted to restate them.
-                        externalPmsIds: payload.externalPmsIds,
+                        // Rehidratar SIEMPRE desde la respuesta (contrato
+                        // 2026-08-23: `update` carga la relación y los `id` de
+                        // las filas —nuevos o recreados por cambio de source—
+                        // solo existen allí; el próximo guardado sin ellos es un
+                        // 422). `null` = la respuesta no trajo la clave: se
+                        // conserva lo local en vez de inventar un vacío.
+                        externalPmsIds: readExternalPmsIds(apiData) ?? unitForm.externalPmsIds,
                         // Restore price checking root and extra
                         price:         apiData.price || apiData.startPrice || apiData.start_price || apiData.extra?.price || apiData.extra?.startPrice || unitForm.price,
                         extra: {
@@ -314,12 +385,18 @@ export function PropertiesUnits() {
                 } else {
                     // CREATE new listing
                     const created = await listingsService.create(payload as any)
-                    const apiData = created?.data || {}
+                    const apiData = created?.data ?? created ?? {}
                     const newListingUuid = apiData.uuid || created?.uuid
+                    if (!newListingUuid) {
+                        throw new Error("El backend creó la unidad sin devolver su UUID.")
+                    }
                     const savedUnit = {
                         ...unitForm,
                         uuid: newListingUuid,
-                        externalPmsIds: payload.externalPmsIds,
+                        // Los `id` de las filas recién creadas vienen en la
+                        // respuesta del POST; sin rehidratarlos, editar sin
+                        // recargar la página fallaría con 422 (contrato §1).
+                        externalPmsIds: readExternalPmsIds(apiData) ?? unitForm.externalPmsIds,
                         // Restore price checking root and extra
                         price: apiData.price || apiData.startPrice || apiData.start_price || apiData.extra?.price || apiData.extra?.startPrice || unitForm.price,
                         extra: {
@@ -362,7 +439,29 @@ export function PropertiesUnits() {
                 }
             } catch (err) {
                 console.error("[PropertiesUnits] Error saving listing:", err)
-                notifyError(err, "Error al guardar la unidad. Intenta de nuevo o guarda la propiedad completa.")
+                // 422 de identificadores: atribuir cada error a su fila (las
+                // claves llegan como `externalIdentifiers.N.campo`); el mensaje
+                // ya viene localizado y se muestra tal cual. Un error de `id`
+                // (fila obsoleta) se ancla al campo visible de la fila.
+                const identifierErrors = err instanceof ApiError
+                    ? readExternalIdentifierServerErrors(err.errors)
+                    : []
+                if (identifierErrors.length > 0) {
+                    const byRow: Record<number, { sourcePmsId?: string; externalId?: string }> = {}
+                    for (const serverError of identifierErrors) {
+                        const slot = serverError.field === "sourcePmsId" ? "sourcePmsId" : "externalId"
+                        byRow[serverError.index] = { ...byRow[serverError.index], [slot]: serverError.message }
+                    }
+                    setServerIdentifierErrors(byRow)
+                    setActiveTab("general")
+                    toast.error("Revisa la identificación externa", {
+                        description: identifierErrors[0].message,
+                    })
+                } else {
+                    notifyError(err, "Error al guardar la unidad. Intenta de nuevo o guarda la propiedad completa.")
+                }
+                saveLockRef.current = false
+                setIsSavingUnit(false)
                 return
             }
         } else {
@@ -374,6 +473,8 @@ export function PropertiesUnits() {
             }
         }
 
+        saveLockRef.current = false
+        setIsSavingUnit(false)
         setIsDialogOpen(false)
     }
 
@@ -414,7 +515,12 @@ export function PropertiesUnits() {
                         <Plus className="mr-2 h-4 w-4" /> Añadir Unidad
                     </Button>
 
-                    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                    <Dialog
+                        open={isDialogOpen}
+                        onOpenChange={(open) => {
+                            if (!isSavingUnit) setIsDialogOpen(open)
+                        }}
+                    >
                         {/*
                           * `overflow-hidden` acompaña a `max-h-[90vh]`: sin él, cuando el
                           * contenido excedía la altura máxima no se recortaba, se PINTABA
@@ -422,7 +528,7 @@ export function PropertiesUnits() {
                           * futura del scroll se ve como contenido cortado (evidente) en
                           * vez de campos flotando fuera del modal.
                           */}
-                        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+                        <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden p-0 sm:max-w-[600px]">
                             <DialogHeader className="p-6 pb-2 shrink-0">
                                 <DialogTitle>{editingIndex !== null ? "Editar Unidad" : "Añadir Unidad"}</DialogTitle>
                                 <DialogDescription>
@@ -457,7 +563,11 @@ export function PropertiesUnits() {
                                         />
                                     </div>
 
-                                    <Tabs defaultValue="general" className="w-full">
+                                    <Tabs
+                                        value={activeTab}
+                                        onValueChange={(v) => setActiveTab(v as UnitFormTab | "automations")}
+                                        className="w-full"
+                                    >
                                         {/* AUTOM tab only exists once the property is saved — mirrors the
                                             property-level Automatización tab behavior */}
                                         <TabsList className={cn("grid mb-4", propertyUuid ? "grid-cols-5" : "grid-cols-4")}>
@@ -474,24 +584,32 @@ export function PropertiesUnits() {
                                         </TabsList>
 
                                         <TabsContent value="general" className="space-y-4">
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <div className="grid gap-2">
                                                     <Label htmlFor="name">Nombre de Unidad <span className="text-destructive">*</span></Label>
                                                     <Input
                                                         id="name"
                                                         placeholder="Suite Junior"
+                                                        maxLength={UNIT_LIMITS.name}
+                                                        aria-invalid={!!fieldErrors.name}
                                                         value={unitForm.name ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, name: e.target.value })}
                                                     />
+                                                    <FieldError message={fieldErrors.name} />
                                                 </div>
                                                 <div className="grid gap-2">
                                                     <Label htmlFor="internalName">Nombre Interno / Número</Label>
                                                     <Input
                                                         id="internalName"
                                                         placeholder="Ej. SJ-101"
+                                                        // Límite del backend (`internal_name`, 15). El más
+                                                        // estrecho del recurso: "Apto 105 Insula" ya no cabe.
+                                                        maxLength={UNIT_LIMITS.internalName}
+                                                        aria-invalid={!!fieldErrors.internalName}
                                                         value={unitForm.internalName ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, internalName: e.target.value })}
                                                     />
+                                                    <FieldError message={fieldErrors.internalName} />
                                                 </div>
                                             </div>
 
@@ -508,54 +626,72 @@ export function PropertiesUnits() {
                                                     value={unitForm.externalPmsIds ?? []}
                                                     onChange={(next) => {
                                                         setUnitForm({ ...unitForm, externalPmsIds: next })
+                                                        if (hasServerIdentifierErrors) setServerIdentifierErrors({})
                                                         // Clearing as they fix it: keeping stale red on a row the PM
                                                         // is already correcting reads as "still wrong".
                                                         if (showExternalPmsIdErrors) setShowExternalPmsIdErrors(false)
                                                     }}
                                                     rowErrors={externalPmsIdRowErrors}
                                                 />
+                                                {/* Quitar la última fila y guardar ES el borrado
+                                                    (`externalPmsIds: []`, sin deshacer — contrato
+                                                    2026-08-23): mismo aviso que el formulario de
+                                                    propiedad, antes de pulsar guardar. */}
+                                                {initialExternalPmsIdsRef.current.length > 0
+                                                    && (unitForm.externalPmsIds ?? []).length === 0 && (
+                                                    <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                                                        <TriangleAlert size={16} className="mt-0.5 shrink-0" />
+                                                        Al guardar se eliminarán los vínculos con el PMS/canal
+                                                        y las reservas externas de esos orígenes dejarán de
+                                                        asociarse a este alojamiento.
+                                                    </p>
+                                                )}
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <div className="grid gap-2">
                                                     <Label htmlFor="roomTypeId">Categoría del Alojamiento</Label>
                                                     <Select
-                                                        value={String(unitForm.roomTypeId)}
+                                                        value={unitForm.roomTypeId ? String(unitForm.roomTypeId) : undefined}
                                                         onValueChange={(value) => setUnitForm({ ...unitForm, roomTypeId: parseInt(value) })}
+                                                        disabled={roomTypesLoading || roomTypes.length === 0}
                                                     >
-                                                        <SelectTrigger>
+                                                        <SelectTrigger id="roomTypeId" aria-invalid={!!fieldErrors.roomTypeId}>
                                                             <SelectValue placeholder="Seleccionar tipo" />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {roomTypes.length > 0 ? (
-                                                                roomTypes.map(rt => (
-                                                                    <SelectItem key={rt.id} value={String(rt.id)}>{rt.name}</SelectItem>
-                                                                ))
-                                                            ) : (
-                                                                <>
-                                                                    <SelectItem value="1">Alojamiento Entero</SelectItem>
-                                                                    <SelectItem value="2">Habitación Privada</SelectItem>
-                                                                    <SelectItem value="3">Habitación Compartida</SelectItem>
-                                                                </>
-                                                            )}
+                                                            {roomTypes.map(rt => (
+                                                                <SelectItem key={rt.id} value={String(rt.id)}>{rt.name}</SelectItem>
+                                                            ))}
                                                         </SelectContent>
                                                     </Select>
+                                                    <FieldError message={fieldErrors.roomTypeId} />
+                                                    {!roomTypesLoading && roomTypes.length === 0 && (
+                                                        <p className="flex items-start gap-1.5 text-xs text-amber-700">
+                                                            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                                            No se pudo cargar el catálogo. Recarga la página antes de guardar.
+                                                        </p>
+                                                    )}
                                                 </div>
                                                 <div className="grid gap-2">
                                                     <Label htmlFor="maxOccupancy">Capacidad Máxima</Label>
                                                     <Input
                                                         id="maxOccupancy"
                                                         type="number"
+                                                        min={1}
+                                                        step={1}
+                                                        aria-invalid={!!fieldErrors.maxOccupancy}
                                                         value={unitForm.extra.maxOccupancy ?? 2}
                                                         onChange={(e) => setUnitForm({ 
                                                             ...unitForm, 
                                                             extra: { ...unitForm.extra, maxOccupancy: parseInt(e.target.value) || 0 } 
                                                         })}
                                                     />
+                                                    <FieldError message={fieldErrors.maxOccupancy} />
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <div className="grid gap-2">
                                                     <Label htmlFor="currency">Moneda</Label>
                                                     <Select
@@ -589,44 +725,59 @@ export function PropertiesUnits() {
                                                     <Input
                                                         id="price"
                                                         type="number"
+                                                        // `type="number"` por sí solo acepta negativos; el
+                                                        // guardado hacía `Number(price) || 0` y publicaba la
+                                                        // unidad sin precio en silencio.
+                                                        min={0}
                                                         placeholder="250000"
+                                                        aria-invalid={!!fieldErrors.price}
                                                         value={unitForm.price ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, price: e.target.value })}
                                                     />
+                                                    <FieldError message={fieldErrors.price} />
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <div className="grid gap-2">
                                                     <Label htmlFor="contactName">Nombre de Contacto</Label>
                                                     <Input
                                                         id="contactName"
                                                         placeholder="Nombre del encargado"
+                                                        maxLength={UNIT_LIMITS.contactName}
+                                                        aria-invalid={!!fieldErrors.contactName}
                                                         value={unitForm.contactName ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, contactName: e.target.value })}
                                                     />
+                                                    <FieldError message={fieldErrors.contactName} />
                                                 </div>
                                                 <div className="grid gap-2">
                                                     <Label htmlFor="contactPhone">Teléfono de Contacto</Label>
                                                     <Input
                                                         id="contactPhone"
                                                         placeholder="+57..."
+                                                        maxLength={UNIT_LIMITS.contactPhone}
+                                                        aria-invalid={!!fieldErrors.contactPhone}
                                                         value={unitForm.contactPhone ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, contactPhone: e.target.value })}
                                                     />
+                                                    <FieldError message={fieldErrors.contactPhone} />
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <div className="grid gap-2">
                                                     <Label htmlFor="contactEmail">Correo Electrónico <span className="text-destructive">*</span></Label>
                                                     <Input
                                                         id="contactEmail"
                                                         type="email"
                                                         placeholder="ejemplo@kunas.co"
+                                                        maxLength={UNIT_LIMITS.contactEmail}
+                                                        aria-invalid={!!fieldErrors.contactEmail}
                                                         value={unitForm.contactEmail ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, contactEmail: e.target.value })}
                                                     />
+                                                    <FieldError message={fieldErrors.contactEmail} />
                                                 </div>
                                             </div>
 
@@ -653,7 +804,7 @@ export function PropertiesUnits() {
                                                 </div>
                                                 
                                                 {!unitForm.extra.inheritSchedule && (
-                                                    <div className="grid grid-cols-2 gap-6 p-4 bg-slate-50 rounded-xl border">
+                                                    <div className="grid grid-cols-1 gap-6 rounded-xl border bg-slate-50 p-4 sm:grid-cols-2">
                                                         <div className="space-y-3">
                                                             <p className="text-[10px] font-bold text-slate-400 uppercase">Check-in</p>
                                                             <div className="grid grid-cols-1 gap-2">
@@ -711,7 +862,7 @@ export function PropertiesUnits() {
                                                 </div>
 
                                                 {!unitForm.extra.inheritWifi && (
-                                                    <div className="grid grid-cols-2 gap-4">
+                                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                         <div className="grid gap-2">
                                                             <Label htmlFor="unitWifiNetwork">Red WiFi Especial</Label>
                                                             <Input
@@ -748,7 +899,7 @@ export function PropertiesUnits() {
                                         </TabsContent>
 
                                         <TabsContent value="rooms" className="space-y-6">
-                                            <div className="grid grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                                                 <div className="space-y-4 p-4 border rounded-xl bg-slate-50/30">
                                                     <div className="flex items-center gap-2">
                                                         <BedDouble className="h-4 w-4 text-primary" />
@@ -758,13 +909,18 @@ export function PropertiesUnits() {
                                                         <div className="space-y-1">
                                                             <Label className="text-[10px]">Cant. Habitaciones / Camas</Label>
                                                             <Input 
+                                                                id="bedRoom"
                                                                 type="number" 
+                                                                min={1}
+                                                                step={1}
+                                                                aria-invalid={!!fieldErrors.bedRoom}
                                                                 value={unitForm.extra.bedRoom ?? 1}
                                                                 onChange={(e) => setUnitForm({
                                                                     ...unitForm,
                                                                     extra: { ...unitForm.extra, bedRoom: parseInt(e.target.value) || 1 }
                                                                 })}
                                                             />
+                                                            <FieldError message={fieldErrors.bedRoom} />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -778,13 +934,18 @@ export function PropertiesUnits() {
                                                         <div className="space-y-1">
                                                             <Label className="text-[10px]">Cantidad</Label>
                                                             <Input 
+                                                                id="bathRoom"
                                                                 type="number" 
+                                                                min={1}
+                                                                step={1}
+                                                                aria-invalid={!!fieldErrors.bathRoom}
                                                                 value={unitForm.extra.bathRoom ?? 1}
                                                                 onChange={(e) => setUnitForm({
                                                                     ...unitForm,
                                                                     extra: { ...unitForm.extra, bathRoom: parseInt(e.target.value) || 1 }
                                                                 })}
                                                             />
+                                                            <FieldError message={fieldErrors.bathRoom} />
                                                         </div>
                                                     </div>
                                                 </div>
@@ -949,13 +1110,24 @@ export function PropertiesUnits() {
                                 </div>
                             </ScrollArea>
 
-                            <DialogFooter className="p-6 border-t bg-muted/5">
-                                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                            {/*
+                              * `shrink-0` es la contraparte del header, que ya lo tiene.
+                              * Sin él, el footer es el ÚNICO ítem encogible de la columna
+                              * flex: en un viewport bajo el navegador le quita altura para
+                              * que el diálogo quepa en `max-h-[90vh]`, y los botones se
+                              * comprimen contra el último campo del formulario en vez de
+                              * quedar en su propia banda. Con esto, el que cede es el área
+                              * de scroll, que para eso está.
+                              */}
+                            <DialogFooter className="p-6 border-t bg-muted/5 shrink-0">
+                                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSavingUnit}>Cancelar</Button>
                                 <Button
                                     type="button"
                                     onClick={handleSaveUnit}
+                                    disabled={isSavingUnit || roomTypesLoading || roomTypes.length === 0}
                                     className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold"
                                 >
+                                    {isSavingUnit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     {editingIndex !== null ? "Guardar Cambios" : "Añadir Unidad"}
                                 </Button>
                             </DialogFooter>

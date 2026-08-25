@@ -27,10 +27,23 @@ import { cn } from "@/lib/utils"
 import { propertiesService } from "../services/properties-service"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
+import type { PropertyBadge } from "../lib/property-badges"
 
 interface PropertyCardProps {
     property: Property
     onStatusChange?: (uuid: string, newStatus: "ACTIVE" | "INACTIVE") => void
+    /** `null` = el agregado todavía no llegó — se muestra "—", nunca un 0 inventado. */
+    activeListings?: number | null
+    /** `null` = no se pudo consultar: no se afirma nada (tampoco ausencias). */
+    badges?: PropertyBadge[] | null
+}
+
+/** Tono visual por clase de insignia — presentación, la derivación vive en `property-badges.ts`. */
+const BADGE_STYLES: Record<PropertyBadge["kind"], string> = {
+    identity: "bg-brand-purple/10 text-brand-purple border-brand-purple/20",
+    contract: "bg-blue-50 text-blue-700 border-blue-200",
+    ops: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    absent: "bg-slate-100 text-slate-500 border-slate-200",
 }
 
 /**
@@ -80,7 +93,7 @@ const TypeLabel = ({ type }: { type?: string | number }) => {
     }
 }
 
-export function PropertyCard({ property, onStatusChange }: PropertyCardProps) {
+export function PropertyCard({ property, onStatusChange, activeListings = null, badges = null }: PropertyCardProps) {
     const propertyId = property.uuid || property.id
     // Prefer the configured catalog label; fall back to the id/string switch while
     // the catalog loads or for values it doesn't know.
@@ -195,6 +208,33 @@ export function PropertyCard({ property, onStatusChange }: PropertyCardProps) {
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
+                </div>
+
+                {/* Alojamientos activos + automatizaciones encendidas (del BFF agregado) */}
+                <div className="space-y-2">
+                    <div className="flex items-baseline gap-1.5">
+                        <span className="text-xl font-extrabold text-[var(--color-brand-navy)] tabular-nums">
+                            {activeListings ?? "—"}
+                        </span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            {activeListings === 1 ? "Alojamiento activo" : "Alojamientos activos"}
+                        </span>
+                    </div>
+                    {/* `badges === null` = no se pudo consultar: no se pinta nada,
+                        porque afirmar "Sin cerradura" sin el dato sería mentir. */}
+                    {badges && badges.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                            {badges.map((badge) => (
+                                <Badge
+                                    key={badge.key}
+                                    variant="outline"
+                                    className={cn("px-2 py-0.5 text-[10px] font-bold border", BADGE_STYLES[badge.kind])}
+                                >
+                                    {badge.label}
+                                </Badge>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Status switch */}

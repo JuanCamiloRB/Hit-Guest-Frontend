@@ -18,9 +18,10 @@
  *   POST   /api/v1/reservations/{uuid}/automation-records/{id}/redispatch → redispatch
  */
 
-import { apiClient } from "@/lib/api-client"
+import { apiClient, handleSessionExpired } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
 import { useAuthStore } from "@/lib/store/auth-store"
+import { ApiError, type ApiErrorResponse } from "@/types/api"
 import type {
     PropertyAutomation,
     PropertyAutomationCreatePayload,
@@ -35,7 +36,7 @@ import type {
     ListingAutomationOverrideUpdatePayload,
     ListingOverrideStatus,
 } from "../types/automation"
-import { LISTING_OVERRIDE_STATUS, isSignatureProvider } from "../types/automation"
+import { LISTING_OVERRIDE_STATUS } from "../types/automation"
 import {
     normalizeAutomationStatus,
     normalizeExecutionOrder,
@@ -49,6 +50,121 @@ import {
  */
 export function canonicalSlug(slug: string | null | undefined): string {
     return (slug ?? "").toLowerCase().replace(/-/g, "_")
+}
+
+/**
+ * Recorta un `Provider` a la forma EXACTA que el frontend usa.
+ *
+ * El backend serializa el modelo `Provider` completo cuando viene sideloaded,
+ * incluidos sus `parameters` — y ahí es donde TuFirma y Stripe Card On File
+ * guardan tokens y llaves. Lo tiene priorizado de su lado; esto es defensa
+ * adicional: lo que no entra al modelo no puede terminar en el estado de React,
+ * en un `console.log` ni en un reporte de error.
+ *
+ * ## Allowlist PROFUNDA, no superficial
+ *
+ * Recortar solo el primer nivel no alcanza: una rama permitida arrastra lo que
+ * lleve adentro. `default_setup.slots[].parameters` es el caso concreto — hoy
+ * trae las claves de credenciales con valor vacío, pero nada impide que mañana
+ * traiga un `client_secret` con valor. Por eso cada rama se reconstruye campo
+ * por campo, y de los `parameters` de un slot **se conservan las claves y se
+ * vacían los valores**: `fieldsForSlot` solo lee `Object.keys()`, así que
+ * blanquearlos no pierde nada y elimina el vector entero.
+ *
+ * Devuelve `Provider` de verdad —no un genérico con `as`— para que el tipo no
+ * afirme campos que esta función acaba de borrar.
+ */
+export function sanitizeProvider(raw: unknown): Provider | null {
+    if (!raw || typeof raw !== "object") return null
+    const p = raw as Record<string, unknown>
+    const params = (p.parameters && typeof p.parameters === "object" ? p.parameters : {}) as Record<string, unknown>
+
+    const id = typeof p.id === "number" && Number.isFinite(p.id) ? p.id : null
+    const name = typeof p.name === "string" ? p.name : null
+    if (id == null || name == null) return null
+
+    const parameters: Provider["parameters"] = {
+        slug: typeof params.slug === "string" ? params.slug : "",
+    }
+
+    const internalUse = params.internalUse as Record<string, unknown> | undefined
+    if (typeof internalUse?.path === "string") {
+        parameters.internalUse = { path: internalUse.path }
+    }
+
+    const billing = params.billing as Record<string, unknown> | undefined
+    if (typeof billing?.billable === "boolean" && typeof billing.unit_cost === "number") {
+        parameters.billing = { billable: billing.billable, unit_cost: billing.unit_cost }
+    }
+
+    if (Array.isArray(params.applicable_countries)
+        && params.applicable_countries.every((item) => typeof item === "string")) {
+        parameters.applicable_countries = [...params.applicable_countries] as string[]
+    }
+
+    const signature = params.signature as Record<string, unknown> | undefined
+    const contractTypes = Array.isArray(signature?.contract_types)
+        ? signature.contract_types.filter(
+            (value): value is "agreement_only" | "guarantee_only" | "agreement_and_guarantee" =>
+                value === "agreement_only"
+                || value === "guarantee_only"
+                || value === "agreement_and_guarantee",
+        )
+        : null
+    if (typeof signature?.synchronous === "boolean" && contractTypes) {
+        parameters.signature = {
+            synchronous: signature.synchronous,
+            contract_types: contractTypes,
+        }
+    }
+
+    if (typeof params.verification_type === "string") {
+        parameters.verification_type = params.verification_type
+    }
+
+    const setup = params.default_setup as Record<string, unknown> | undefined
+    if (setup && typeof setup === "object") {
+        const slots = Array.isArray(setup.slots)
+            ? setup.slots.flatMap((value) => {
+                if (!value || typeof value !== "object") return []
+                const slot = value as Record<string, unknown>
+                const guestType = slot.guest_type
+                const status = slot.status_provider_id
+                if (
+                    typeof slot.name !== "string"
+                    || typeof slot.order !== "number"
+                    || !Number.isFinite(slot.order)
+                    || (guestType !== "main_guest" && guestType !== "secondary_guest" && guestType !== "all")
+                    || (status !== 8 && status !== 10)
+                ) return []
+
+                const slotParameters = slot.parameters && typeof slot.parameters === "object"
+                    ? Object.fromEntries(
+                        Object.keys(slot.parameters as Record<string, unknown>).map((key) => [key, ""]),
+                    )
+                    : undefined
+                return [{
+                    name: slot.name,
+                    order: slot.order,
+                    guest_type: guestType as "main_guest" | "secondary_guest" | "all",
+                    status_provider_id: status as 8 | 10,
+                    ...(slotParameters ? { parameters: slotParameters } : {}),
+                }]
+            })
+            : []
+        parameters.default_setup = { enabled: setup.enabled === true, slots }
+    }
+
+    return {
+        id,
+        name,
+        description: typeof p.description === "string" ? p.description : null,
+        order: typeof p.order === "number" && Number.isFinite(p.order) ? p.order : 0,
+        statusProviderId: typeof p.statusProviderId === "number"
+            ? p.statusProviderId
+            : typeof p.status_provider_id === "number" ? p.status_provider_id : 0,
+        parameters,
+    }
 }
 
 // ── Query param helpers ─────────────────────────────────────────────────────
@@ -88,9 +204,12 @@ class AutomationService {
         const executionOrder = normalizeExecutionOrder(raw.executionOrder ?? raw.execution_order)
         const statusProviderId = normalizeAutomationStatus(raw.statusProviderId ?? raw.status_provider_id)
         const providerId = normalizeOptionalId(raw.providerId ?? raw.provider_id)
-        const provider = raw.provider ?? null
+        // Sanitizado y sin `...raw`: nada que el modelo no nombre entra al
+        // estado del cliente. El `token` de la automatización se descarta a
+        // propósito — ningún consumidor del frontend lee su valor (el que SÍ se
+        // usa es el del override de listing, que se conserva).
+        const provider = sanitizeProvider(raw.provider ?? null)
         return {
-            ...raw,
             uuid: raw.uuid,
             propertyUuid: raw.propertyUuid ?? raw.property_uuid ?? "",
             providerId,
@@ -98,14 +217,21 @@ class AutomationService {
             guestType: raw.guestType ?? raw.guest_type ?? "all",
             executionOrder,
             parameters: raw.parameters ?? {},
-            token: raw.token ?? null,
+            token: null,
             statusProviderId,
             deletedAt: raw.deletedAt ?? raw.deleted_at ?? null,
             provider,
-            property: raw.property ?? null,
-            usageRecords: raw.usageRecords ?? raw.usage_records ?? null,
+            // `property` y `usageRecords` NO se copian: llegan como objetos crudos
+            // del backend y ningún consumidor del frontend los lee en este flujo.
+            // Dejarlos entrar contradecía la garantía de que solo entra lo que el
+            // modelo nombra.
             isActive: statusProviderId === 8,
-            providerName: raw.providerName ?? provider?.parameters?.slug ?? provider?.parameters?.internalUse?.path ?? null,
+            // `providerSlug` es nuevo en la respuesta (reescritura del contrato de
+            // `POST /properties`, 2026-08-12) y va PRIMERO: permite identificar el
+            // provider sin depender del objeto `provider` sideloaded, que además el
+            // backend serializa completo con sus credenciales adentro.
+            providerName: raw.providerSlug ?? raw.provider_slug ?? raw.providerName
+                ?? provider?.parameters?.slug ?? provider?.parameters?.internalUse?.path ?? null,
             automationOrder: executionOrder,
         }
     }
@@ -129,18 +255,8 @@ class AutomationService {
         if (opts.includeProvider) params.set("includeProvider", "true")
         const qs = params.toString() ? `?${params}` : ""
         const url = `${API_BASE}/properties/${propertyUuid}/automations${qs}`
-        try {
-            const response = await apiClient.get<any>(url, { suppressUnauthorizedRedirect: true })
-            return this.normalizeList(response)
-        } catch (error: any) {
-            console.error("[AutomationService] list error:", error)
-            // 404 = property has no automations yet; 401 = possible race condition
-            // right after property creation where the backend hasn't propagated
-            // the auth context. In both cases return empty to avoid triggering
-            // the global handleUnauthorized → logout flow.
-            if (error?.status === 404 || error?.status === 401) return []
-            throw error
-        }
+        const response = await apiClient.get<unknown>(url)
+        return this.normalizeList(response)
     }
 
     // ── Global list (filterable) ────────────────────────────────────────────
@@ -159,14 +275,8 @@ class AutomationService {
         if (params.includeProperty)  qs.set("includeProperty", "true")
         if (params.page)             qs.set("page", String(params.page))
         const url = `${API_BASE}/property-automations${qs.toString() ? `?${qs}` : ""}`
-        try {
-            const response = await apiClient.get<any>(url, { suppressUnauthorizedRedirect: true })
-            return this.normalizeList(response)
-        } catch (error: any) {
-            console.error("[AutomationService] listGlobal error:", error)
-            if (error?.status === 404 || error?.status === 401) return []
-            throw error
-        }
+        const response = await apiClient.get<unknown>(url)
+        return this.normalizeList(response)
     }
 
     // ── CRUD ────────────────────────────────────────────────────────────────
@@ -247,23 +357,6 @@ class AutomationService {
     }
 
     /**
-     * Finds the property's "Digital Contract" automation — the one whose
-     * `parameters` carries `contract_mode`/`by_source`. Per the backend plan
-     * this automation is optional; callers must treat `null` as "not configured".
-     *
-     * Identified by `provider.parameters.signature` being present, NOT by
-     * `executionOrder === 3` (⚠️ 20260803_frontend-property-automations-api.md:
-     * a country/provider-map refactor means which automations get auto-created,
-     * and in what order, now depends on the property's country — executionOrder
-     * for anything from position 3 onward is no longer a reliable identifier).
-     * Requires `includeProvider: true` so `provider` is actually populated.
-     */
-    async getContractRoutingAutomation(propertyUuid: string): Promise<PropertyAutomation | null> {
-        const automations = await this.list(propertyUuid, { includeProvider: true })
-        return automations.find((a) => a.provider != null && isSignatureProvider(a.provider)) ?? null
-    }
-
-    /**
      * Convenience wrapper: activate or deactivate via configure endpoint.
      */
     async toggle(automationUuid: string, isActive: boolean, currentProviderId?: number | null): Promise<PropertyAutomation> {
@@ -290,7 +383,8 @@ class AutomationService {
 
     /**
      * POST /api/v1/property-automations/{uuid}/restore
-     * Restores a soft-deleted automation and sets status to active (8).
+     * Restores a soft-deleted automation. The backend returns it active (8) only
+     * when it still has a provider; otherwise it remains inactive (10).
      */
     async restore(automationUuid: string): Promise<PropertyAutomation> {
         const url = `${API_BASE}/property-automations/${automationUuid}/restore`
@@ -331,31 +425,30 @@ class AutomationService {
         if (params.includeIntegrations) qs.set("includeIntegrations", "true")
         if (params.country)             qs.set("country", params.country)
 
-        const all: Provider[] = []
-        try {
-            for (let page = 1; page <= MAX_PAGES; page++) {
-                const pageQs = new URLSearchParams(qs)
-                pageQs.set("page", String(page))
-                const res = await fetch(`${API_BASE}/providers?${pageQs}`, {
-                    headers: { Accept: "application/json", ...this.authHeader() },
-                    cache: "no-store",
-                })
-                if (!res.ok) {
-                    if (res.status === 404 || res.status === 401) break
-                    throw new Error(`HTTP ${res.status}`)
-                }
-                const json = await res.json()
-                const items = Array.isArray(json?.data) ? json.data : []
-                all.push(...items)
-
-                const lastPage = Number(json?.meta?.last_page ?? 1)
-                if (page >= lastPage) break
+        const all: unknown[] = []
+        for (let page = 1; page <= MAX_PAGES; page++) {
+            const pageQs = new URLSearchParams(qs)
+            pageQs.set("page", String(page))
+            const res = await fetch(`${API_BASE}/providers?${pageQs}`, {
+                headers: { Accept: "application/json", ...this.authHeader() },
+                cache: "no-store",
+            })
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({ message: `HTTP ${res.status}` })) as ApiErrorResponse
+                if (res.status === 401) handleSessionExpired()
+                // A provider selector is a closed set. Returning a partial page after
+                // an auth/network failure can make a valid configured provider look
+                // deleted and must never be treated as a successful catalog load.
+                throw new ApiError(res.status, body)
             }
-            return all
-        } catch (error: any) {
-            console.error("[AutomationService] listProviders error:", error)
-            return all
+            const json = await res.json()
+            const items = Array.isArray(json?.data) ? json.data : []
+            all.push(...items)
+
+            const lastPage = Number(json?.meta?.last_page ?? 1)
+            if (page >= lastPage) break
         }
+        return all.flatMap((provider) => sanitizeProvider(provider) ?? [])
     }
 
     // ── Reservation Automation Status ────────────────────────────────────────
@@ -367,9 +460,8 @@ class AutomationService {
         const status: AutomationLiveStatus = raw.status ?? "not_started"
         const payload = raw.responsePayload ?? raw.response_payload ?? null
         const pdfPath = payload?.pdf_path ?? raw.contractPdfPath ?? raw.contract_pdf_path ?? null
-        // Backend action flags (dispatch panel contract). Defaults keep the old
-        // behaviour when an older backend doesn't send them yet: canDispatch falls
-        // back to the not_started heuristic, and gates default to "satisfied".
+        // Backend action flags (dispatch panel contract). Missing authorization
+        // flags never fall back to client heuristics: these actions can bill.
         const pick = <T,>(camel: T | undefined, snake: T | undefined, fallback: T): T =>
             (camel ?? snake ?? fallback)
         return {
@@ -385,11 +477,19 @@ class AutomationService {
             lastSuccessAt: raw.lastSuccessAt ?? raw.last_success_at ?? null,
             requiresCheckin: pick(raw.requiresCheckin, raw.requires_checkin, null),
             redispatchRequiresCheckin: pick(raw.redispatchRequiresCheckin, raw.redispatch_requires_checkin, null),
-            canManualDispatch: pick(raw.canManualDispatch, raw.can_manual_dispatch, true),
-            reservationCheckinCompleted: pick(raw.reservationCheckinCompleted, raw.reservation_checkin_completed, true),
-            mainGuestCheckinCompleted: pick(raw.mainGuestCheckinCompleted, raw.main_guest_checkin_completed, true),
-            canDispatch: pick(raw.canDispatch, raw.can_dispatch, status === "not_started"),
-            canRedispatch: pick(raw.canRedispatch, raw.can_redispatch, status === "failed"),
+            canManualDispatch: pick(raw.canManualDispatch, raw.can_manual_dispatch, false),
+            // Conservadores a propósito: de estos depende habilitar acciones que
+            // FACTURAN (el reenvío de PDF crea un consumo nuevo cada vez). Asumir
+            // "completado" cuando el backend no lo dice ofrecería un cargo que
+            // nadie autorizó.
+            reservationCheckinCompleted: pick(raw.reservationCheckinCompleted, raw.reservation_checkin_completed, false),
+            mainGuestCheckinCompleted: pick(raw.mainGuestCheckinCompleted, raw.main_guest_checkin_completed, false),
+            // Autoritativos: el backend ya aplicó los once gates de despacho al
+            // calcularlos. Sin el flag se asume `false` — inferirlo del estado
+            // ofrecía un botón que el backend no autorizó, y el 422 llegaba
+            // recién al pulsarlo.
+            canDispatch: pick(raw.canDispatch, raw.can_dispatch, false),
+            canRedispatch: pick(raw.canRedispatch, raw.can_redispatch, false),
         }
     }
 
@@ -414,6 +514,47 @@ class AutomationService {
 
     // ── Usage Records ────────────────────────────────────────────────────────
 
+    private normalizeUsageRecord(raw: any): AutomationUsageRecord {
+        const rawError = raw.lastError ?? raw.last_error ?? null
+        const lastError = typeof rawError === "string"
+            ? rawError
+            : rawError && typeof rawError === "object"
+                ? {
+                    message: typeof rawError.message === "string" ? rawError.message : "",
+                    httpStatus: typeof (rawError.httpStatus ?? rawError.http_status) === "number"
+                        ? (rawError.httpStatus ?? rawError.http_status)
+                        : null,
+                    // El body externo es para soporte backend. No entra al estado
+                    // ni se muestra al PM: puede contener PII o credenciales.
+                    httpBody: null,
+                }
+                : null
+        const rawPayload = raw.responsePayload ?? raw.response_payload
+        const responsePayload = rawPayload && typeof rawPayload === "object"
+            ? Object.fromEntries(
+                ["pdf_path", "skipped", "reason"]
+                    .filter((key) => (rawPayload as Record<string, unknown>)[key] !== undefined)
+                    .map((key) => [key, (rawPayload as Record<string, unknown>)[key]]),
+            )
+            : null
+
+        return {
+            id: Number(raw.id),
+            status: raw.status,
+            triggeredBy: raw.triggeredBy ?? raw.triggered_by ?? null,
+            automationUuid: raw.automationUuid ?? raw.automation_uuid ?? null,
+            automationName: raw.automationName ?? raw.automation_name ?? null,
+            providerSlug: raw.providerSlug ?? raw.provider_slug ?? null,
+            guestUuid: raw.guestUuid ?? raw.guest_uuid ?? null,
+            billable: raw.billable === true,
+            unitCost: raw.unitCost ?? raw.unit_cost ?? null,
+            lastError,
+            responsePayload,
+            createdAt: raw.createdAt ?? raw.created_at ?? "",
+            updatedAt: raw.updatedAt ?? raw.updated_at ?? "",
+        }
+    }
+
     /**
      * GET /api/v1/reservations/{reservationUuid}/automation-records
      * Returns automation execution history for a reservation, newest first.
@@ -427,7 +568,7 @@ class AutomationService {
         try {
             const response = await apiClient.get<any>(url)
             const items = response?.data ?? response
-            return Array.isArray(items) ? items : []
+            return Array.isArray(items) ? items.map((item) => this.normalizeUsageRecord(item)) : []
         } catch (error: any) {
             console.error("[AutomationService] listUsageRecords error:", error)
             throw error
@@ -467,8 +608,7 @@ class AutomationService {
 
     /**
      * POST /api/v1/reservations/{reservationUuid}/property-automations/{automationUuid}/resend-pdf
-     * Resends the Guest Report PDF email for an already-completed automation.
-     * Unlike dispatch, this is allowed for completed automations.
+     * Resends the Guest Report PDF regardless of its previous execution status.
      */
     async resendPdf(reservationUuid: string, automationUuid: string): Promise<{ message: string }> {
         const url = `${API_BASE}/reservations/${reservationUuid}/property-automations/${automationUuid}/resend-pdf`
@@ -483,8 +623,8 @@ class AutomationService {
     // ── Convenience ──────────────────────────────────────────────────────────
 
     /**
-     * Upsert by executionOrder: configure if record exists, create if not.
-     * Used when the backend may or may not have auto-created the 8 default records.
+     * Legacy convenience helper. Identity orders are stable, but non-identity
+     * order is country-dependent; callers must not use this to identify a provider.
      */
     async upsertByOrder(
         propertyUuid: string,
@@ -514,6 +654,7 @@ class AutomationService {
         const statusRecordId: ListingOverrideStatus =
             (r.statusRecordId ?? r.status_record_id ?? LISTING_OVERRIDE_STATUS.ACTIVE) as ListingOverrideStatus
         const rawPa = r.propertyAutomation ?? r.property_automation ?? null
+        const paProvider = sanitizeProvider(rawPa?.provider ?? null)
         return {
             uuid: r.uuid,
             listingUuid: r.listingUuid ?? r.listing_uuid ?? listingUuid ?? "",
@@ -531,9 +672,10 @@ class AutomationService {
                     guestType: rawPa.guestType ?? rawPa.guest_type,
                     executionOrder: rawPa.executionOrder ?? rawPa.execution_order,
                     parameters: rawPa.parameters ?? null,
-                    token: rawPa.token ?? null,
+                    // El token de la automatización anidada no lo lee nadie.
+                    token: null,
                     statusProviderId: rawPa.statusProviderId ?? rawPa.status_provider_id,
-                    provider: rawPa.provider ?? null,
+                    provider: paProvider,
                 }
                 : null,
             isActive: statusRecordId === LISTING_OVERRIDE_STATUS.ACTIVE,

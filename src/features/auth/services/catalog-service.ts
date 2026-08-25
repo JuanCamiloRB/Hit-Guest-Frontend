@@ -33,6 +33,18 @@ export interface CountryOption extends CatalogOption {
     extra: CountryExtra
 }
 
+/** Country endpoints return either IANA strings or objects with `zoneName`. */
+export function normalizeCountryTimezones(value: unknown): string[] {
+    if (!Array.isArray(value)) return []
+    return Array.from(new Set(value.flatMap((timezone) => {
+        if (typeof timezone === "string") return timezone.trim() ? [timezone.trim()] : []
+        if (!timezone || typeof timezone !== "object") return []
+        const row = timezone as Record<string, unknown>
+        const candidate = row.zoneName ?? row.zone_name ?? row.name ?? row.id
+        return typeof candidate === "string" && candidate.trim() ? [candidate.trim()] : []
+    })))
+}
+
 /** Country-aware identification type (from GET /catalogs/identification-types). */
 export interface IdentificationTypeOption {
     id: number
@@ -215,7 +227,7 @@ export class CatalogService {
                     iso3: str(c.iso3),
                     emoji: str(c.emoji) ?? "",
                     phone_prefix: str(c.phonecode, c.phone_code, c.calling_code) ?? "",
-                    timezones: Array.isArray(c.timezones) ? (c.timezones as string[]) : [],
+                    timezones: normalizeCountryTimezones(c.timezones),
                 }
             }))
         }).catch(error => {

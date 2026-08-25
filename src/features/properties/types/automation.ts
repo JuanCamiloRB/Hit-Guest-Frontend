@@ -46,19 +46,57 @@ export interface PropertyAutomation {
   automationOrder?: number
 }
 
+/**
+ * Una fila que el backend declara que corresponde crear para una propiedad,
+ * dentro de `provider.parameters.default_setup.slots`.
+ *
+ * Es el contrato que responde "qué automatizaciones aplican a este país":
+ * `GET /providers?country=CO` filtra por `applicable_countries` y cada provider
+ * trae sus slots. Verificado contra guest.hit.tools el 2026-08-13 — hoy devuelve
+ * hitguest_signature(10), ttlock(20), pdf_report(30), tra_colombia(40) y
+ * sire_colombia(50 y 51).
+ *
+ * Reemplaza lo que el frontend tenía escrito a mano: el `executionOrder`
+ * canónico 1..8 no existe (los reales son 10/20/30/40/50/51), y las claves de
+ * `parameters` tampoco coincidían — TTLock pide además `client_id` y
+ * `client_secret`.
+ */
+export interface ProviderSetupSlot {
+  name: string
+  order: number
+  guest_type: GuestType
+  /** 8 = nace activa (hitguest_signature), 10 = nace inactiva (el resto). */
+  status_provider_id: AutomationStatus
+  /** Plantilla con las claves exactas que el provider espera; valores vacíos. */
+  parameters?: Record<string, unknown>
+}
+
 /** Provider record from GET /api/v1/providers */
 export interface Provider {
   id: number
   name: string
   description: string | null
   parameters: {
+    /** Vacío en filas Integration que comparten la tabla pero no son automations. */
     slug: string
-    internalUse: {
-      path: string
-      tokenName: string
-      tokenAbilities: string[]
+    /**
+     * Qué filas corresponde crear para una propiedad de un país donde este
+     * provider aplica. `enabled: false` = no se ofrece (hoy: tufirma y
+     * stripe_card_on_file).
+     */
+    default_setup?: {
+      enabled: boolean
+      slots: ProviderSetupSlot[]
     }
-    billing: { billable: boolean; unit_cost: number }
+    /**
+     * Solo `path`. `tokenName` y `tokenAbilities` describen credenciales, no se
+     * usan, y `sanitizeProvider()` los descarta antes de que el objeto llegue
+     * acá — declararlos haría que el tipo afirme algo falso.
+     */
+    internalUse?: { path: string }
+    billing?: { billable: boolean; unit_cost: number }
+    /** Presente solo en los providers de identidad (didit, textract). */
+    verification_type?: string
     /** ISO2 country codes where this provider applies, or ["ALL"]. */
     applicable_countries?: string[]
     /**
@@ -75,7 +113,6 @@ export interface Provider {
   }
   order: number
   statusProviderId: number
-  integrations?: unknown[] | null
 }
 
 /** Providers whose `parameters.signature` is present — the only ones relevant to contract routing. */
@@ -135,7 +172,10 @@ export type AutomationTriggeredBy =
   | "on_checkin_completed"
   | "on_main_guest_checkin_completed"
   | "on_guest_checkin_completed"
+  | "at_time_of_day"
+  | "on_physical_checkout"
   | "after_automation"
+  | "on_main_guest_form_submitted"
   | "manual_dispatch"
   | "manual_redispatch"
   | "manual_resend"
@@ -195,7 +235,7 @@ export interface PropertyAutomationUpdatePayload {
  */
 export interface PropertyAutomationConfigurePayload {
   statusProviderId: AutomationStatus    // required
-  providerId?: number                   // required when activating identity verification (order <= 2)
+  providerId?: number                   // required when activating identity: guestType != all + order <= 2
   parameters?: Record<string, unknown>
 }
 
@@ -218,6 +258,9 @@ export interface TTLockLock {
 export interface TTLockParameters {
   username: string
   password: string
+  /** Obligatorias desde ago-2026: deben ser las credenciales del cliente, no las de HIT. */
+  client_id: string
+  client_secret: string
   locks: TTLockLock[]
 }
 
@@ -237,7 +280,8 @@ export interface SireColombiaParameters {
   document_type: string
   document_number: string
   password: string
-  company_code: string              // NIT o código empresa del que reporta
+  /** Override opcional: solo para PMs que reportan por más de una empresa. */
+  company_code?: string
 }
 
 // ─── Frontend UI Definition Types ────────────────────────────────────
@@ -321,14 +365,7 @@ export interface ListingOverridePropertyAutomation {
   parameters: Record<string, unknown> | null   // base params (used to show effective value)
   token?: string | null
   statusProviderId?: number
-  provider?: {
-    id: number
-    name: string
-    parameters: {
-      slug: string
-      internalUse?: { tokenName?: string; tokenAbilities?: string[] }
-    }
-  } | null
+  provider?: Provider | null
 }
 
 export interface ListingAutomationOverride {

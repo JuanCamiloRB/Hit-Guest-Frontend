@@ -3,20 +3,18 @@
 import { useEffect, useRef, useState } from "react"
 import { Loader2, MapPin, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {
+    formatSuggestion,
+    mergeTypedAddress,
+    type GeocodePlaceDetails,
+} from "@/lib/geocoding/address"
 
-export interface PlaceDetails {
-    lat: number | null
-    lng: number | null
-    formattedAddress: string
-    city: string
-    state: string
-    /** ISO2 country code, e.g. "CO". */
-    countryCode: string
-}
+export type PlaceDetails = GeocodePlaceDetails
 
 interface Suggestion {
     placeId: string
     description: string
+    details?: PlaceDetails
 }
 
 interface AddressAutocompleteProps {
@@ -27,6 +25,8 @@ interface AddressAutocompleteProps {
     placeholder?: string
     className?: string
 }
+
+type UnavailableReason = "manual_search_required" | "provider_error" | null
 
 /** A short opaque token grouping keystrokes + the details call into one billed session. */
 function newSessionToken(): string {
@@ -53,10 +53,16 @@ export function AddressAutocomplete({
     // para que el usuario sepa que tiene que colocar el pin a mano, en vez de
     // pelearse con un campo que no responde.
     const [unavailable, setUnavailable] = useState(false)
+    const [unavailableReason, setUnavailableReason] = useState<UnavailableReason>(null)
+    const [noResults, setNoResults] = useState(false)
+    const [manualSearchAvailable, setManualSearchAvailable] = useState(false)
     const sessionRef = useRef<string>(newSessionToken())
     const containerRef = useRef<HTMLDivElement>(null)
     // Suppress the fetch that would fire right after a selection sets `value`.
     const skipNextFetch = useRef(false)
+    // Details can resolve after the PM has resumed typing. Only the most recent
+    // selection is allowed to update the form.
+    const selectionVersionRef = useRef(0)
 
     // Debounced autocomplete fetch on value change. All setState runs inside the
     // timeout callback (async) — never synchronously in the effect body, per
@@ -70,10 +76,21 @@ export function AddressAutocomplete({
         let active = true
         const t = setTimeout(async () => {
             if (q.length < 3) {
-                if (active) { setSuggestions([]); setOpen(false); setLoading(false) }
+                if (active) {
+                    setSuggestions([])
+                    setOpen(false)
+                    setLoading(false)
+                    setUnavailable(false)
+                    setUnavailableReason(null)
+                    setNoResults(false)
+                    setManualSearchAvailable(false)
+                }
                 return
             }
-            if (active) setLoading(true)
+            if (active) {
+                setLoading(true)
+                setNoResults(false)
+            }
             try {
                 const res = await fetch(
                     `/api/geocode/autocomplete?q=${encodeURIComponent(q)}&session=${sessionRef.current}`,
@@ -81,10 +98,22 @@ export function AddressAutocomplete({
                 const data = await res.json()
                 if (!active) return
                 setUnavailable(data?.unavailable === true)
-                setSuggestions(data?.suggestions ?? [])
-                setOpen((data?.suggestions ?? []).length > 0)
+                setUnavailableReason(data?.reason ?? null)
+                setManualSearchAvailable(data?.manualSearchAvailable === true)
+                const nextSuggestions: Suggestion[] = Array.isArray(data?.suggestions)
+                    ? data.suggestions
+                    : []
+                setSuggestions(nextSuggestions)
+                setOpen(nextSuggestions.length > 0)
+                setNoResults(data?.unavailable !== true && nextSuggestions.length === 0)
             } catch {
-                if (active) setSuggestions([])
+                if (active) {
+                    setSuggestions([])
+                    setUnavailable(true)
+                    setUnavailableReason("provider_error")
+                    setNoResults(false)
+                    setManualSearchAvailable(false)
+                }
             } finally {
                 if (active) setLoading(false)
             }
@@ -101,26 +130,80 @@ export function AddressAutocomplete({
         return () => document.removeEventListener("mousedown", onClick)
     }, [])
 
+    const handleInputChange = (nextValue: string) => {
+        selectionVersionRef.current += 1
+        onChange(nextValue)
+    }
+
+    const handleManualSearch = async () => {
+        const q = value.trim()
+        if (q.length < 3 || loading || resolving) return
+
+        setLoading(true)
+        setUnavailable(false)
+        setUnavailableReason(null)
+        setNoResults(false)
+        try {
+            const res = await fetch(
+                `/api/geocode/autocomplete?q=${encodeURIComponent(q)}&session=${sessionRef.current}&mode=search`,
+            )
+            const data = await res.json()
+            const nextSuggestions: Suggestion[] = Array.isArray(data?.suggestions)
+                ? data.suggestions
+                : []
+            setSuggestions(nextSuggestions)
+            setOpen(nextSuggestions.length > 0)
+            setUnavailable(data?.unavailable === true)
+            setUnavailableReason(data?.reason ?? null)
+            setNoResults(data?.unavailable !== true && nextSuggestions.length === 0)
+        } catch {
+            setSuggestions([])
+            setUnavailable(true)
+            setUnavailableReason("provider_error")
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const handlePick = async (s: Suggestion) => {
-        skipNextFetch.current = true
-        onChange(s.description)
+        const typedValue = value
+        const selectionVersion = ++selectionVersionRef.current
         setOpen(false)
         setSuggestions([])
         setResolving(true)
         try {
+            if (s.details) {
+                const details = mergeTypedAddress(s.details, typedValue)
+                skipNextFetch.current = true
+                onChange(details.addressLine1 || details.formattedAddress || s.description)
+                onSelect(details)
+                return
+            }
             const res = await fetch(
                 `/api/geocode/details?placeId=${encodeURIComponent(s.placeId)}&session=${sessionRef.current}`,
             )
             if (res.ok) {
-                const details: PlaceDetails = await res.json()
+                const providerDetails: PlaceDetails = await res.json()
+                if (selectionVersion !== selectionVersionRef.current) return
+                const details = mergeTypedAddress(providerDetails, typedValue)
+                skipNextFetch.current = true
+                onChange(details.addressLine1 || details.formattedAddress || s.description)
                 onSelect(details)
+            } else if (selectionVersion === selectionVersionRef.current) {
+                skipNextFetch.current = true
+                onChange(formatSuggestion(s.description, typedValue))
             }
         } catch {
-            // Non-fatal: the address text is already set; the user can still drag the pin.
+            if (selectionVersion === selectionVersionRef.current) {
+                skipNextFetch.current = true
+                onChange(formatSuggestion(s.description, typedValue))
+            }
         } finally {
             setResolving(false)
-            // A new session starts after each completed selection.
-            sessionRef.current = newSessionToken()
+            if (selectionVersion === selectionVersionRef.current) {
+                // A new session starts after each completed selection.
+                sessionRef.current = newSessionToken()
+            }
         }
     }
 
@@ -131,7 +214,13 @@ export function AddressAutocomplete({
                 <input
                     type="text"
                     value={value}
-                    onChange={(e) => onChange(e.target.value)}
+                    onChange={(e) => handleInputChange(e.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter" && manualSearchAvailable) {
+                            event.preventDefault()
+                            void handleManualSearch()
+                        }
+                    }}
                     onFocus={() => suggestions.length > 0 && setOpen(true)}
                     placeholder={placeholder}
                     autoComplete="off"
@@ -156,7 +245,9 @@ export function AddressAutocomplete({
                                 className="flex w-full items-start gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-primary/10"
                             >
                                 <Search className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                <span className="line-clamp-2">{s.description}</span>
+                                <span className="line-clamp-2">
+                                    {formatSuggestion(s.description, value)}
+                                </span>
                             </button>
                         </li>
                     ))}
@@ -170,9 +261,26 @@ export function AddressAutocomplete({
               * cuando en realidad la propiedad se guardó sin coordenadas.
               */}
             {unavailable && (
-                <p className="mt-1.5 text-xs text-amber-700">
-                    El buscador de direcciones no está disponible ahora mismo. Escribe la dirección
-                    y ubica la propiedad arrastrando el pin en el mapa.
+                <p className="mt-1.5 text-xs text-amber-700" role="status">
+                    {unavailableReason === "manual_search_required"
+                        ? "Completa la dirección y presiona Enter o Buscar dirección."
+                        : "El buscador mundial de direcciones no está respondiendo. Intenta nuevamente o ubica la propiedad arrastrando el pin."}
+                </p>
+            )}
+            {manualSearchAvailable && (
+                <button
+                    type="button"
+                    onClick={() => void handleManualSearch()}
+                    disabled={loading || resolving || value.trim().length < 3}
+                    className="mt-2 inline-flex h-9 items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                    {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                    Buscar dirección
+                </button>
+            )}
+            {noResults && !loading && (
+                <p className="mt-1.5 text-xs text-slate-500" role="status">
+                    No encontramos coincidencias. Agrega calle, ciudad o localidad y país; la unidad se conservará automáticamente.
                 </p>
             )}
         </div>

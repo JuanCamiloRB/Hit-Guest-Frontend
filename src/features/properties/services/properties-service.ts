@@ -4,7 +4,6 @@ import {
     PropertyApiResponse,
     PropertyFormData,
     formDataToApiPayload,
-    INITIAL_AUTOMATION_SEED,
 } from "../types"
 import { apiClient, handleSessionExpired } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
@@ -26,18 +25,21 @@ export function extractPicturesUrl(property: PropertyApiResponse): string[] {
     return property.extra?.picturesUrl ?? property.extra?.pictures_url ?? []
 }
 
+/** Payload exacto del alta manual; exportado para fijar que no elige automations. */
+export function buildPropertyCreatePayload(data: PropertyFormData): PropertyApiPayload {
+    return formDataToApiPayload(data)
+}
+
 class PropertiesService {
     
     // ── CREATE ──
     async create(data: PropertyFormData): Promise<PropertyApiResponse> {
-        const basePayload: PropertyApiPayload = formDataToApiPayload(data)
-        // Solo se siembra la configuración de identidad principal y queda
-        // INACTIVA. El contrato digital es opcional: no debe existir hasta que el
-        // PM decida configurarlo expresamente.
-        const payload: PropertyApiPayload = {
-            ...basePayload,
-            automations: INITIAL_AUTOMATION_SEED,
-        }
+        // `automations` es opcional. Omitirlo es la única alta neutral: el backend
+        // crea sus dos slots estructurales de identidad sin proveedor y el PM elige
+        // después Didit o Textract, de forma independiente para principal y
+        // secundarios. Enviar Didit acá elegía por el PM sin que el formulario se
+        // lo preguntara.
+        const payload = buildPropertyCreatePayload(data)
         const url = `${API_BASE}/properties`
 
         try {
@@ -75,10 +77,14 @@ class PropertiesService {
 
         try {
             const response = await apiClient.get<any>(url)
-            
-            // Debug: log raw response to verify which fields the backend persists
-            console.log("🔍 [PropertiesService] RAW getByUuid response:", JSON.stringify(response, null, 2))
-            
+
+            // El volcado crudo de la respuesta se eliminó a propósito. Cuando una
+            // automatización viene con su provider cargado, el backend serializa el
+            // modelo `Provider` COMPLETO —incluidos sus `parameters`, donde TuFirma
+            // y Stripe Card On File guardan tokens y llaves— y esto los escribía en
+            // la consola del navegador. El backend lo tiene priorizado de su lado;
+            // mientras tanto, acá no se loguea ni se cachea el provider entero.
+
             // Handle different response structures
             if (response?.data) {
                 return response.data

@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
     Tabs,
@@ -53,10 +53,12 @@ import { PropertiesAmenities } from "./PropertiesAmenities"
 import { PropertiesAutomation } from "./PropertiesAutomation"
 import { PropertiesDocuments } from "./documents"
 import { ExternalPmsIdsField } from "./ExternalPmsIdsField"
-import { propertyFormSchema, PropertyFormData, apiResponseToFormData } from "../types"
-import { toExternalPmsIdsPayload } from "../lib/external-pms-ids"
+import { propertyFormSchema, PropertyFormData, type PropertyApiResponse } from "../types"
 import { propertiesService } from "../services/properties-service"
 import { listingsService } from "../services/listings-service"
+import { toListingPayload, type ListingDraft } from "../lib/listing-payload"
+import { readExternalIdentifierServerErrors } from "../lib/external-pms-ids"
+import { ApiError } from "@/types/api"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { COMMUNICATION_LOCALES, LOCALE_LABELS, DEFAULT_COMMUNICATION_LOCALE } from "@/lib/locales"
 
@@ -66,6 +68,7 @@ interface PropertyFormProps {
 
 export function PropertyForm({ initialData }: PropertyFormProps) {
     const [isLoading, setIsLoading] = useState(false)
+    const submitLockRef = useRef(false)
     const [propertyTypes, setPropertyTypes] = useState<CatalogOption[]>([])
     const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
 
@@ -123,7 +126,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         resolver: zodResolver(propertyFormSchema) as any,
         defaultValues: (initialData ? { ...initialData, uuid: initialData.uuid } : {
             name: "",
-            external_id: "",
             description: "",
             email: "",
             phone: "",
@@ -184,7 +186,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         phone:          { label: "Teléfono",               tab: "Detalles" },
         propertyTypeId: { label: "Tipo de propiedad",      tab: "Detalles" },
         statusRecordId: { label: "Estado",                 tab: "Detalles" },
-        external_id:    { label: "Nombre interno (ID)",    tab: "Detalles" },
         externalPmsIds: { label: "Identificación externa", tab: "Detalles" },
         description:    { label: "Descripción",            tab: "Detalles" },
         thumbnailUrl:   { label: "URL de miniatura",       tab: "Detalles" },
@@ -235,69 +236,92 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     }
 
     async function onSubmit(values: PropertyFormData) {
+        if (submitLockRef.current) return
+        submitLockRef.current = true
         setIsLoading(true)
         try {
-            console.log("[PropertyForm] Starting save process...", values)
             let propertyUuid = initialData?.uuid
 
+            // Contrato 2026-08-23: `externalPmsIds: []` BORRA todas las filas y
+            // la clave omitida no toca nada. Solo viaja si el PM editó la
+            // sección — mandarla siempre convertía cualquier guardado en un
+            // borrado potencial (o en un 422 al reenviar filas sin editar).
+            const submitValues: PropertyFormData = form.formState.dirtyFields.externalPmsIds
+                ? values
+                : { ...values, externalPmsIds: undefined }
+
             if (propertyUuid) {
-                await propertiesService.update(propertyUuid, values)
+                await propertiesService.update(propertyUuid, submitValues)
                 toast.success("Propiedad actualizada")
                 router.push("/dashboard/properties")
             } else {
-                const response = await propertiesService.create(values)
-                propertyUuid = response.uuid || (response as any).data?.uuid
-                toast.success("Propiedad creada")
- 
-                // Restore manual creation: units MUST be created via separate /listings endpoint
-                const pendingUnits = values.units || []
-                if (pendingUnits.length > 0 && propertyUuid) {
-                    let created = 0
-                    for (const u of pendingUnits as any[]) {
-                        try {
-                            const { extra = {} as any, ...rest } = u
-                            const {
-                                inheritWifi, inheritSchedule, inheritPolicies,
-                                wifiDetails, checkIn, checkOut, cancellationPolicy,
-                                ...cleanExtra
-                            } = extra as any
- 
-                            if (!inheritWifi)     cleanExtra.wifiDetails = wifiDetails
-                            if (!inheritSchedule) { cleanExtra.checkIn = checkIn; cleanExtra.checkOut = checkOut }
-                            if (!inheritPolicies) cleanExtra.cancellationPolicy = cancellationPolicy
- 
-                            const unitPrice = Number(u.price || rest.price) || 0
-                            cleanExtra.startPrice = unitPrice  // Backend mapea extra.startPrice
- 
-                            await listingsService.create({
-                                propertyUuid,
-                                name:          u.name,
-                                internalName:  u.internalName,
-                                roomTypeId:    Number(u.roomTypeId) || 1,
-                                description:   u.description,
-                                thumbnailUrl:  u.thumbnailUrl,
-                                contactName:   u.contactName,
-                                contactEmail:  u.contactEmail,
-                                contactPhone:  u.contactPhone,
-                                statusRecordId: u.isActive !== false ? 6 : 7,
-                                extra:         cleanExtra,
-                                externalPmsIds: toExternalPmsIdsPayload(u.externalPmsIds),
-                            })
-                            created++
-                        } catch (uErr) {
-                            console.error("[PropertyForm] Error creating listing:", uErr)
-                        }
-                    }
-                    if (created > 0) toast.info(`${created} unidad(es) añadida(s).`)
+                const response = await propertiesService.create(submitValues)
+                const responseWithEnvelope = response as PropertyApiResponse & { data?: PropertyApiResponse }
+                propertyUuid = response.uuid || responseWithEnvelope.data?.uuid
+                if (!propertyUuid) {
+                    throw new Error("El backend creó la propiedad sin devolver su UUID.")
                 }
  
-                // Redirect to edit page on the automations tab so the user can
-                // immediately configure the automations created with the property.
-                router.push(`/dashboard/properties/${propertyUuid}?tab=automations`)
+                // Restore manual creation: units MUST be created via separate /listings endpoint
+                const pendingUnits = (values.units ?? []) as ListingDraft[]
+                const failedUnits: string[] = []
+                for (const [index, unit] of pendingUnits.entries()) {
+                    try {
+                        // Sequential on purpose: this endpoint also creates related
+                        // records and the API does not document bulk/rate semantics.
+                        // Sin identificadores no se manda la clave (contrato
+                        // 2026-08-23: presencia = intención).
+                        await listingsService.create(toListingPayload(propertyUuid, {
+                            ...unit,
+                            externalPmsIds: unit.externalPmsIds?.length ? unit.externalPmsIds : undefined,
+                        }))
+                    } catch (unitError) {
+                        console.error("[PropertyForm] Error creating listing:", unitError)
+                        failedUnits.push(String(unit.name || `Unidad ${index + 1}`))
+                    }
+                }
+
+                if (failedUnits.length > 0) {
+                    toast.warning("Propiedad creada con alojamientos pendientes", {
+                        description: `No se pudieron crear: ${failedUnits.join(", ")}. Agrégalos nuevamente desde la propiedad.`,
+                    })
+                } else {
+                    toast.success(
+                        pendingUnits.length > 0
+                            ? `Propiedad y ${pendingUnits.length} alojamiento(s) creados`
+                            : "Propiedad creada",
+                    )
+                }
+ 
+                // A partial listing failure needs a visible recovery destination.
+                router.push(`/dashboard/properties/${propertyUuid}?tab=${failedUnits.length ? "units" : "automations"}`)
             }
         } catch (error) {
             console.error("[PropertyForm] Save error:", error)
-            notifyError(error, "Hubo un problema al intentar guardar los cambios.")
+            // 422 de identificadores: las claves llegan como
+            // `externalIdentifiers.N.campo` (tercer nombre del mismo dato) y se
+            // atribuyen a la fila real del formulario — el mensaje viene ya
+            // localizado y se muestra tal cual. Un error de `id` (fila obsoleta)
+            // se ancla al campo visible de esa fila.
+            const identifierErrors = error instanceof ApiError
+                ? readExternalIdentifierServerErrors(error.errors)
+                : []
+            if (identifierErrors.length > 0) {
+                for (const serverError of identifierErrors) {
+                    const field = serverError.field === "sourcePmsId" ? "sourcePmsId" : "externalId"
+                    form.setError(
+                        `externalPmsIds.${serverError.index}.${field}` as Parameters<typeof form.setError>[0],
+                        { type: "server", message: serverError.message },
+                    )
+                }
+                setActiveTab("details")
+                toast.error("Revisa la identificación externa", {
+                    description: identifierErrors[0].message,
+                })
+            } else {
+                notifyError(error, "Hubo un problema al intentar guardar los cambios.")
+            }
+            submitLockRef.current = false
             setIsLoading(false)
         }
     }
@@ -407,36 +431,25 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                 </CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4 pt-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Nombre de la Propiedad <span className="text-destructive">*</span></FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="Hotel Oasis" {...field} />
-                                                </FormControl>
-                                                <FormDescription>El nombre comercial que verán los huéspedes.</FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="external_id"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Nombre Interno (ID)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="HOTEL_OASIS_001" {...field} />
-                                                </FormControl>
-                                                <FormDescription>Identificador único para uso administrativo.</FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
+                                {/*
+                                  * `internal_name` es exclusivo de los Listings: el backend no
+                                  * lo acepta en el `extra` de una propiedad. El campo se quitó
+                                  * de esta vista para no ofrecer un dato que nunca se guarda.
+                                  */}
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Nombre de la Propiedad <span className="text-destructive">*</span></FormLabel>
+                                            <FormControl>
+                                                <Input placeholder="Hotel Oasis" {...field} />
+                                            </FormControl>
+                                            <FormDescription>El nombre comercial que verán los huéspedes.</FormDescription>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <FormField
@@ -608,6 +621,19 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                                 onChange={field.onChange}
                                                 rowErrors={externalPmsIdRowErrors}
                                             />
+                                            {/* Quitar la última fila y guardar ES el borrado
+                                                (`externalPmsIds: []`, sin deshacer): se avisa
+                                                antes de que el PM pulse guardar, no después. */}
+                                            {(initialData?.externalPmsIds?.length ?? 0) > 0
+                                                && form.formState.dirtyFields.externalPmsIds
+                                                && (field.value ?? []).length === 0 && (
+                                                <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                                                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                                                    Al guardar se eliminarán los vínculos con el PMS/canal
+                                                    y las reservas externas de esos orígenes dejarán de
+                                                    asociarse a esta propiedad.
+                                                </p>
+                                            )}
                                         </FormItem>
                                     )}
                                 />

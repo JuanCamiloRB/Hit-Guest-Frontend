@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Settings2, Loader2, AlertCircle } from "lucide-react"
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
     DialogHeader,
     DialogTitle,
     DialogFooter,
@@ -33,11 +34,10 @@ export function ConfigModal({
     onSave,
     isSaving,
 }: Props) {
-    const [params, setParams] = useState<Record<string, unknown>>({})
-
-    useEffect(() => {
-        setParams(currentParameters ?? {})
-    }, [open, currentParameters])
+    // AutomationCard mounts this modal only while it is open, so the initializer
+    // receives a fresh snapshot every time. An effect that copied props into state
+    // caused an avoidable second render and tripped React's set-state-in-effect rule.
+    const [params, setParams] = useState<Record<string, unknown>>(() => currentParameters ?? {})
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -47,9 +47,9 @@ export function ConfigModal({
                         <Settings2 size={18} className="text-[var(--color-brand-purple)]" />
                         Configurar: {definition.title}
                     </DialogTitle>
-                    <p className="text-sm text-slate-500 mt-1">
+                    <DialogDescription className="text-sm text-slate-500 mt-1">
                         Proveedor: <span className="font-semibold">{provider.label}</span>
-                    </p>
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4 py-2">
@@ -71,8 +71,12 @@ export function ConfigModal({
                         ))
                     )}
 
-                    {/* Universal trigger config — supported by every automation. */}
-                    <TriggerConfigSection params={params} setParams={setParams} />
+                    <TriggerConfigSection
+                        params={params}
+                        setParams={setParams}
+                        providerSlug={provider.value}
+                        required
+                    />
                 </div>
 
                 <DialogFooter className="gap-2">

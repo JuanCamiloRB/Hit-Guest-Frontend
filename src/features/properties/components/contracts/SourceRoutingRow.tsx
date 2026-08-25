@@ -2,19 +2,14 @@
 
 import { AlertCircle, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { DocumentEditor } from "../documents/DocumentEditor"
 import { GuaranteePreview } from "./GuaranteePreview"
 import {
     CONTRACT_TYPE_LABELS,
+    CONTRACT_TYPE_OWNERS,
     isNativeSignatureAllowed,
     requiresAgreementDocument,
     requiresGuaranteeText,
@@ -64,9 +59,7 @@ export function SourceRoutingRow({
 
     // Only providers that actually support the CHOSEN contract_type — read
     // from parameters.signature.contract_types, never hardcoded (backend plan §3.2).
-    const availableProviders = providers.filter((p) =>
-        providerSupportsContractType(p, routing.contract_type),
-    )
+    const availableProviders = providers.filter((p) => providerSupportsContractType(p, routing.contract_type))
 
     const handleContractTypeChange = (contract_type: ContractType) => {
         // A provider valid for the old contract_type may not be valid for the
@@ -74,7 +67,10 @@ export function SourceRoutingRow({
         // instead of silently carrying over an invalid combination.
         const current = providers.find((p) => p.parameters.slug === routing.provider_slug)
         const stillValid = current && providerSupportsContractType(current, contract_type)
-        onChange({ contract_type, provider_slug: stillValid ? routing.provider_slug : "" })
+        onChange({
+            contract_type,
+            provider_slug: stillValid ? routing.provider_slug : "",
+        })
     }
 
     return (
@@ -97,9 +93,7 @@ export function SourceRoutingRow({
 
             {/* contract_type */}
             <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                    Qué se firma
-                </Label>
+                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Qué se firma</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {CONTRACT_TYPES.map((type) => (
                         <button
@@ -114,7 +108,10 @@ export function SourceRoutingRow({
                                     : "border-slate-200 text-slate-600 hover:border-slate-300",
                             )}
                         >
-                            {CONTRACT_TYPE_LABELS[type]}
+                            <span className="block">{CONTRACT_TYPE_LABELS[type]}</span>
+                            <span className="mt-0.5 block text-[10px] font-medium opacity-70">
+                                {CONTRACT_TYPE_OWNERS[type]}
+                            </span>
                         </button>
                     ))}
                 </div>
@@ -122,9 +119,7 @@ export function SourceRoutingRow({
 
             {/* provider_slug */}
             <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
-                    Quién firma
-                </Label>
+                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Quién firma</Label>
                 <Select
                     value={routing.provider_slug || undefined}
                     onValueChange={(slug) => onChange({ ...routing, provider_slug: slug })}

@@ -2,8 +2,8 @@
 
 import { MapPin, Globe, Search, Loader2 } from "lucide-react"
 import { useFormContext } from "react-hook-form"
-import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form"
-import { useState, useCallback, useEffect } from "react"
+import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
+import { useState, useCallback, useEffect, useRef } from "react"
 import dynamic from "next/dynamic"
 import { toast } from "sonner"
 import {
@@ -15,7 +15,11 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
+import {
+    catalogService,
+    type CatalogOption,
+    type CountryOption,
+} from "@/features/auth/services/catalog-service"
 import { AddressAutocomplete, type PlaceDetails } from "./AddressAutocomplete"
 import { resolveMapView } from "../lib/map-view"
 import {
@@ -39,10 +43,10 @@ const MapComponent = dynamic(() => import("./MapComponent"), {
 
 export function PropertiesLocation() {
     const form = useFormContext()
-    const [countries, setCountries] = useState<any[]>([])
+    const [countries, setCountries] = useState<CountryOption[]>([])
     const [timezoneGroups, setTimezoneGroups] = useState<{group: string, options: CatalogOption[]}[]>([])
-    const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
     const [tzSearch, setTzSearch] = useState("")
+    const pendingCountryCodeRef = useRef("")
 
     const filteredTimezoneGroups = timezoneGroups.map(tg => ({
         ...tg,
@@ -51,16 +55,12 @@ export function PropertiesLocation() {
 
     useEffect(() => {
         async function loadCatalogs() {
-            try {
-                const [countriesData, timezonesData] = await Promise.all([
-                    catalogService.getCountries(),
-                    catalogService.getTimezonesGrouped()
-                ])
-                setCountries(countriesData)
-                setTimezoneGroups(timezonesData)
-            } finally {
-                setIsLoadingCatalogs(false)
-            }
+            const [countriesData, timezonesData] = await Promise.all([
+                catalogService.getCountries(),
+                catalogService.getTimezonesGrouped()
+            ])
+            setCountries(countriesData)
+            setTimezoneGroups(timezonesData)
         }
         loadCatalogs()
     }, [])
@@ -80,6 +80,41 @@ export function PropertiesLocation() {
         form.setValue("longitude", newLng, { shouldValidate: true, shouldDirty: true })
     }, [form])
 
+    const applyCountry = useCallback((countryCode: string): boolean => {
+        const normalizedCountryCode = countryCode.trim().toUpperCase()
+        if (!normalizedCountryCode) return false
+
+        const countryMatch = countries.find(
+            (country) => country.extra.iso2?.toUpperCase() === normalizedCountryCode,
+        )
+        if (!countryMatch) return false
+
+        const nextCountryId = Number(countryMatch.id)
+        if (!Number.isInteger(nextCountryId) || nextCountryId <= 0) return false
+
+        const previousCountryId = Number(form.getValues("countryId"))
+        form.setValue("countryId", nextCountryId, { shouldDirty: true, shouldValidate: true })
+
+        if (previousCountryId !== nextCountryId) {
+            const countryTimezones = countryMatch.extra.timezones ?? []
+            // A country-level guess is only safe when exactly one timezone is
+            // available. Otherwise clear the stale zone from the prior country
+            // and let the PM choose the correct one.
+            form.setValue("timezone", countryTimezones.length === 1 ? countryTimezones[0] : "", {
+                shouldDirty: true,
+                shouldValidate: true,
+            })
+        }
+        return true
+    }, [countries, form])
+
+    // A fast geocode response can beat the country catalog request. Keep the ISO
+    // code pending and apply it as soon as the catalog becomes available.
+    useEffect(() => {
+        if (!pendingCountryCodeRef.current) return
+        if (applyCountry(pendingCountryCodeRef.current)) pendingCountryCodeRef.current = ""
+    }, [applyCountry])
+
     // Aplica la selección del proveedor geográfico nativo (o Google cuando se
     // habilite): coordenadas + dirección, país y zona horaria.
     const handlePlaceSelect = (d: PlaceDetails) => {
@@ -87,24 +122,18 @@ export function PropertiesLocation() {
             form.setValue("latitude", d.lat, { shouldDirty: true, shouldValidate: true })
             form.setValue("longitude", d.lng, { shouldDirty: true, shouldValidate: true })
         }
-        if (d.formattedAddress) {
-            form.setValue("address", d.formattedAddress, { shouldDirty: true, shouldValidate: true })
+        if (d.addressLine1 || d.formattedAddress) {
+            form.setValue("address", d.addressLine1 || d.formattedAddress, { shouldDirty: true, shouldValidate: true })
         }
-        if (d.city) form.setValue("city", d.city, { shouldDirty: true, shouldValidate: true })
-        if (d.state) form.setValue("state", d.state, { shouldDirty: true, shouldValidate: true })
+        // Empty provider components must also overwrite old values. Otherwise,
+        // changing from an apartment to a house keeps the former unit/city/state.
+        form.setValue("addressDetail", d.addressLine2, { shouldDirty: true, shouldValidate: true })
+        form.setValue("city", d.city, { shouldDirty: true, shouldValidate: true })
+        form.setValue("state", d.state, { shouldDirty: true, shouldValidate: true })
 
         if (d.countryCode) {
-            const countryMatch = countries.find(
-                (c: any) => c.extra?.iso2 === d.countryCode || c.extra?.iso3 === d.countryCode,
-            )
-            if (countryMatch) {
-                form.setValue("countryId", parseInt(countryMatch.id), { shouldDirty: true, shouldValidate: true })
-                const currentTimezone = form.getValues("timezone")
-                const countryTimezones: string[] = countryMatch.extra?.timezones || []
-                if (!currentTimezone && countryTimezones.length > 0) {
-                    form.setValue("timezone", countryTimezones[0], { shouldDirty: true, shouldValidate: true })
-                }
-            }
+            pendingCountryCodeRef.current = d.countryCode
+            if (applyCountry(d.countryCode)) pendingCountryCodeRef.current = ""
         }
 
         toast.success("Ubicación seleccionada", {
@@ -135,7 +164,16 @@ export function PropertiesLocation() {
                             <FormControl>
                                 <AddressAutocomplete
                                     value={field.value ?? ""}
-                                    onChange={field.onChange}
+                                    onChange={(nextAddress) => {
+                                        if (nextAddress !== field.value) {
+                                            // Text edits invalidate the previous geocode. A
+                                            // subsequent suggestion selection restores exact
+                                            // coordinates through handlePlaceSelect.
+                                            form.setValue("latitude", 0, { shouldDirty: true })
+                                            form.setValue("longitude", 0, { shouldDirty: true })
+                                        }
+                                        field.onChange(nextAddress)
+                                    }}
                                     onSelect={handlePlaceSelect}
                                     placeholder="Escribe y elige de las sugerencias (ej. Pullman Hotel Miami)…"
                                 />

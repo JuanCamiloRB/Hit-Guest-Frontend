@@ -16,14 +16,6 @@ import {
 } from "lucide-react"
 import { isSignatureProvider, type AutomationDefinition, type ParameterFieldSchema, type PropertyAutomation } from "../types/automation"
 
-// IDs estables del catálogo backend. Normalmente se resuelven por slug desde
-// GET /providers; estos valores son el fallback documentado cuando el filtro por
-// país/estado no devuelve todavía el registro.
-const IDENTITY_PROVIDER_IDS = {
-    didit: 1000,
-    textract: 1004,
-} as const
-
 export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
     // ── Order 1: Identity Verification (Main Guest) ──────────────────
     {
@@ -36,18 +28,19 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-violet-50",
         guestType: "main",
         requiresConfig: false,
-        isMandatory: false,
+        // Structural slot: the backend creates it for every property and rejects
+        // deactivation once active. The PM still chooses the provider and can
+        // activate an initially inactive slot.
+        isMandatory: true,
         providerOptions: [
             {
                 value: "didit",
-                providerId: IDENTITY_PROVIDER_IDS.didit,
                 label: "Verificación avanzada",
                 description: "Reconocimiento facial y verificación de documento en tiempo real. El huésped completa la verificación directamente en el check-in.",
                 parametersSchema: [],
             },
             {
                 value: "textract",
-                providerId: IDENTITY_PROVIDER_IDS.textract,
                 label: "Verificación esencial",
                 description: "El huésped sube fotos de su documento. La IA extrae y valida los datos automáticamente.",
                 parametersSchema: [],
@@ -66,18 +59,16 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-violet-50",
         guestType: "secondary",
         requiresConfig: false,
-        isMandatory: false,
+        isMandatory: true,
         providerOptions: [
             {
                 value: "didit",
-                providerId: IDENTITY_PROVIDER_IDS.didit,
                 label: "Verificación avanzada",
                 description: "Reconocimiento facial y verificación de documento en tiempo real.",
                 parametersSchema: [],
             },
             {
                 value: "textract",
-                providerId: IDENTITY_PROVIDER_IDS.textract,
                 label: "Verificación esencial",
                 description: "El huésped sube fotos de su documento. La IA extrae y valida los datos automáticamente.",
                 parametersSchema: [],
@@ -89,7 +80,17 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
     {
         order: 3,
         id: "digital-contract",
-        title: "Firma Digital",
+        // "Contrato", no "Firma Digital": la firma dejó de ser un nodo suelto y
+        // es un atributo del contrato de cada canal (spec de Ricardo,
+        // `docs/RICARDO_API_CONTRACTS.md` §8.1.5). El nombre viejo hacía leer la
+        // tarjeta como si configurara quién firma, cuando eso se decide en la
+        // pestaña Documentos.
+        //
+        // Este título es la ÚNICA fuente: la tarjeta de Propiedades y el panel de
+        // automatizaciones de una reserva lo leen de acá vía
+        // `TITLE_BY_DEFINITION_ID` / `AUTOMATION_TITLE_OVERRIDES`
+        // (`reservations/components/automations/automation-status-meta.ts`).
+        title: "Contrato",
         description: "Firma opcional de un contrato digital antes de completar el check-in. Solo aplica cuando el administrador la activa y configura.",
         icon: FileText,
         color: "text-blue-500",
@@ -113,8 +114,6 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
                 label: "HIT Guest — Firma Nativa",
                 description: "Firma dibujada directamente en el portal del huésped, sin dependencia externa ni email.",
                 parametersSchema: [],
-                // Fallback id if the slug can't be resolved from GET /providers.
-                providerId: 1005,
             },
         ],
     },
@@ -147,6 +146,26 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
                     {
                         key: "password",
                         label: "Contraseña TTLock",
+                        type: "password",
+                        required: true,
+                        placeholder: "••••••••",
+                    },
+                    // El slot real de `default_setup` pide también estas dos
+                    // (verificado en `GET /providers?country=CO` el 2026-08-13:
+                    // params = client_id, client_secret, locks, password,
+                    // username). La referencia vieja de proveedores decía que HIT
+                    // las gestionaba internamente y por eso faltaban acá: el PM
+                    // guardaba una configuración incompleta.
+                    {
+                        key: "client_id",
+                        label: "Client ID",
+                        type: "text",
+                        required: true,
+                        placeholder: "Client ID de la app TTLock",
+                    },
+                    {
+                        key: "client_secret",
+                        label: "Client Secret",
                         type: "password",
                         required: true,
                         placeholder: "••••••••",
@@ -318,11 +337,15 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
                         placeholder: "••••••••",
                     },
                     {
+                        // OPCIONAL a propósito, no un olvido: el job lee la empresa
+                        // reportante de la propia página de login de SIRE y solo usa
+                        // este parámetro cuando viene con valor. Solo hace falta para
+                        // PMs que reportan por más de una empresa.
                         key: "company_code",
-                        label: "NIT / Código Empresa",
+                        label: "NIT / Código Empresa (opcional)",
                         type: "text",
-                        required: true,
-                        placeholder: "NIT del establecimiento",
+                        required: false,
+                        placeholder: "Solo si reportas por más de una empresa",
                     },
                 ],
             },
@@ -385,11 +408,15 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
                         placeholder: "••••••••",
                     },
                     {
+                        // OPCIONAL a propósito, no un olvido: el job lee la empresa
+                        // reportante de la propia página de login de SIRE y solo usa
+                        // este parámetro cuando viene con valor. Solo hace falta para
+                        // PMs que reportan por más de una empresa.
                         key: "company_code",
-                        label: "NIT / Código Empresa",
+                        label: "NIT / Código Empresa (opcional)",
                         type: "text",
-                        required: true,
-                        placeholder: "NIT del establecimiento",
+                        required: false,
+                        placeholder: "Solo si reportas por más de una empresa",
                     },
                 ],
             },
@@ -418,22 +445,39 @@ function normalizedSlug(value: string | null | undefined): string {
  * card, so adding a backend provider never makes the row disappear.
  */
 export function definitionForAutomation(automation: PropertyAutomation): AutomationDefinition {
-    if (automation.executionOrder <= 2) {
+    const providerSlug = automation.provider?.parameters?.slug ?? automation.providerName
+    const slug = normalizedSlug(providerSlug ?? automation.name)
+
+    // La capacidad del provider gana sobre cualquier orden. El backend puede
+    // renumerar las filas y la firma estructural también usa main_guest; si se
+    // mira primero `order <= 2`, hitguest_signature se pinta como una segunda
+    // verificación principal (aunque el resto de la tarjeta detecte que es firma).
+    const isSignature =
+        (!!automation.provider && isSignatureProvider(automation.provider))
+        || slug === "hitguestsignature"
+        || slug === "tufirma"
+    if (isSignature) {
+        return { ...DEFINITION_BY_ID.get("digital-contract")!, order: automation.executionOrder }
+    }
+
+    // La señal semántica de identidad es `verification_type`. Los slugs conocidos
+    // mantienen la clasificación cuando la relación provider no viene sideloaded.
+    // El criterio histórico guestType+order queda solo como fallback para filas
+    // legacy que todavía no exponen providerSlug.
+    const isIdentityProvider =
+        !!automation.provider?.parameters?.verification_type
+        || slug === "didit"
+        || slug === "textract"
+    const isLegacyIdentity = !providerSlug
+        && automation.executionOrder <= 2
+        && automation.guestType !== "all"
+    if ((isIdentityProvider || isLegacyIdentity) && automation.guestType !== "all") {
         const identityId = automation.guestType === "secondary_guest"
             ? "identity-verification-secondary"
             : "identity-verification-main"
         return { ...DEFINITION_BY_ID.get(identityId)!, order: automation.executionOrder }
     }
 
-    if (automation.provider && isSignatureProvider(automation.provider)) {
-        return { ...DEFINITION_BY_ID.get("digital-contract")!, order: automation.executionOrder }
-    }
-
-    const slug = normalizedSlug(
-        automation.provider?.parameters?.slug
-        ?? automation.providerName
-        ?? automation.name,
-    )
     let id: string | null = null
     if (slug.includes("ttlock")) id = "smart-lock-codes"
     else if (slug.includes("pdfreport")) id = "guest-report-pdf"
@@ -444,7 +488,6 @@ export function definitionForAutomation(automation: PropertyAutomation): Automat
 
     if (id) return { ...DEFINITION_BY_ID.get(id)!, order: automation.executionOrder }
 
-    const providerSlug = automation.provider?.parameters?.slug ?? automation.providerName ?? ""
     return {
         order: automation.executionOrder,
         id: `automation-${automation.uuid}`,

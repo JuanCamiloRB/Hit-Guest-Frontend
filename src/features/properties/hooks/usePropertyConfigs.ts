@@ -37,7 +37,7 @@ const BIOMETRIC_RE = /didit|veriff|sumsub|metamap|jumio/
 
 function contractLabel(slug: string): string {
     if (slug.includes("tufirma")) return "TuFirma"
-    return "Firma digital"
+    return "Contrato"
 }
 
 /** Folds one property's automations into the badge-level summary. */

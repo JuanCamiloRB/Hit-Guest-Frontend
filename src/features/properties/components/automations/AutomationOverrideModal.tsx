@@ -184,9 +184,10 @@ export function AutomationOverrideModal({
                             uuid: activePa.uuid,
                             name: activePa.name,
                             parameters: activePa.parameters ?? null,
-                            provider: activePa.provider
-                                ? { id: activePa.provider.id, name: activePa.provider.name, parameters: activePa.provider.parameters }
-                                : null,
+                            // El provider ya viene recortado por `sanitizeProvider()`
+                            // en el servicio: reconstruir un subconjunto acá solo
+                            // duplicaba la decisión de qué campos son seguros.
+                            provider: activePa.provider ?? null,
                         }
                         : override?.propertyAutomation ?? null,
                     isActive,

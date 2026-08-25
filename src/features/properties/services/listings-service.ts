@@ -105,13 +105,14 @@ class ListingsService {
         
         try {
             // Ensure numeric values and mapping for both camelCase and snake_case
+            const roomTypeId = Number(data.room_type_id ?? data.roomTypeId)
             const payload = {
                 ...data,
                 // Duplicate fields to snake_case to prevent backend nulls
                 property_uuid: data.propertyUuid || (data as any).property_uuid,
                 propertyUuid: data.propertyUuid || (data as any).property_uuid,
-                room_type_id: Number(data.room_type_id || (data as any).roomTypeId) || 1,
-                roomTypeId: Number(data.room_type_id || (data as any).roomTypeId) || 1,
+                room_type_id: roomTypeId,
+                roomTypeId,
                 internal_name: data.internal_name || (data as any).internalName,
                 internalName: data.internal_name || (data as any).internalName,
                 status_record_id: Number(data.statusRecordId || data.status_record_id) || 6,
@@ -134,8 +135,6 @@ class ListingsService {
                 }
             }
             
-            console.log("🚀 [ListingsService] ENVIANDO a Kunas API:", JSON.stringify(payload, null, 2))
-            
             return await apiClient.post<any>(url, payload)
         } catch (error: any) {
             console.error("[ListingsService] Create error:", error)
@@ -148,10 +147,11 @@ class ListingsService {
         const url = `${API_BASE}/listings/${uuid}`
         
         try {
+            const roomTypeId = Number(data.room_type_id ?? data.roomTypeId)
             const payload = {
                 ...data,
-                room_type_id: Number(data.room_type_id || (data as any).roomTypeId) || 1,
-                roomTypeId: Number(data.room_type_id || (data as any).roomTypeId) || 1,
+                room_type_id: roomTypeId,
+                roomTypeId,
                 internal_name: data.internal_name || (data as any).internalName,
                 internalName: data.internal_name || (data as any).internalName,
                 status_record_id: Number(data.statusRecordId || data.status_record_id) || 6,

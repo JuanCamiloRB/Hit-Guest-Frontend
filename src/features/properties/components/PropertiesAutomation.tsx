@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useFormContext } from "react-hook-form"
 import { Sparkles, Loader2, AlertCircle } from "lucide-react"
 import {
@@ -13,39 +13,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { automationService, canonicalSlug } from "../services/automation-service"
 import { listingsService } from "../services/listings-service"
-import { definitionForAutomation } from "../data/automation-definitions"
-import { resolveProviderAvailability } from "../lib/provider-availability"
-import type { AutomationDefinition } from "../types/automation"
-
-/**
- * Diagnostic only — never changes what the UI renders.
- *
- * Our option values are hardcoded slugs ("didit", "textract"). If the backend
- * seeds them under a different slug, `findProviderId` can't resolve a providerId
- * and the change is rejected with a toast that gives no way to tell a MISSING
- * seed from a RENAMED one. Printing both sides settles it in one page load.
- */
-function reportUnmatchedProviderSlugs(
-    definition: AutomationDefinition,
-    automation: PropertyAutomation,
-    countryProviderSlugs: string[],
-): void {
-    if (definition.providerOptions.length < 2) return
-    const { unavailableValues, providersLoaded } = resolveProviderAvailability(
-        definition.providerOptions.map(option => option.value),
-        countryProviderSlugs,
-        automation.provider?.parameters?.slug ?? automation.providerName,
-    )
-    if (unavailableValues.length === 0) return
-    console.warn(
-        `[PropertiesAutomation] "${definition.title}": estos slugs de opción no aparecen en /providers del país.`,
-        {
-            sinCoincidencia: unavailableValues,
-            slugsDelPais: countryProviderSlugs,
-            providersCargados: providersLoaded,
-        },
-    )
-}
+import { reservationSourceService, type ReservationSource } from "../services/reservation-source-service"
+import { bindCatalogProviders, buildAutomationSlots } from "../lib/automation-catalog"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import type { PropertyAutomation, Provider } from "../types/automation"
 import { AutomationCard, type ListingMeta } from "./automations"
@@ -77,6 +46,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
     const [providers, setProviders] = useState<Provider[]>([])
     const [countryProviderSlugs, setCountryProviderSlugs] = useState<string[]>([])
     const [listings, setListings] = useState<ListingMeta[]>([])
+    const [sources, setSources] = useState<ReservationSource[]>([])
     const [completedRequestKey, setCompletedRequestKey] = useState("")
     const [loadFailure, setLoadFailure] = useState<{ key: string; message: string } | null>(null)
     const requestKey = `${propertyUuid}:${countryId ?? ""}`
@@ -98,10 +68,15 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                 throw new Error("No se pudo resolver el país de la propiedad.")
             }
 
-            const [automationRows, providerRows, listingRows] = await Promise.all([
+            const [automationRows, providerRows, listingRows, sourceRows] = await Promise.all([
                 automationService.list(propertyUuid, { includeProvider: true }),
                 automationService.listProviders({ statusProviderId: 8, country: countryIso2 }),
                 listingsService.listByProperty(propertyUuid),
+                // Solo para traducir las claves de `by_source` a nombres en la
+                // tarjeta de Contrato. Cosmético a propósito: si falla, la tarjeta
+                // muestra el id crudo del canal — nunca se bloquea la pestaña ni
+                // se oculta el routing por no tener el catálogo.
+                reservationSourceService.list().catch(() => [] as ReservationSource[]),
             ])
 
             if (!active) return
@@ -113,10 +88,15 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             for (const automation of automationRows) {
                 if (automation.provider) providerMap.set(automation.provider.id, automation.provider)
             }
-            setProviders(Array.from(providerMap.values()))
-            setCountryProviderSlugs(providerRows.map(provider => canonicalSlug(
-                provider.parameters?.slug ?? provider.parameters?.internalUse?.path,
-            )))
+            // `parameters.slug` es la frontera entre automation e Integration.
+            // Colasistencia, Taxxa, Webpos y Kunas comparten tabla pero no tienen
+            // job del pipeline; no deben llegar a ningún selector de automations.
+            const automationProviders = Array.from(providerMap.values())
+                .filter((provider) => !!provider.parameters?.slug)
+            setProviders(automationProviders)
+            setCountryProviderSlugs(providerRows.flatMap((provider) =>
+                provider.parameters?.slug ? [canonicalSlug(provider.parameters.slug)] : [],
+            ))
             setListings(
                 (listingRows as PropertyListingRow[]).map(l => ({
                     uuid: l.uuid,
@@ -124,6 +104,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                     internalName: l.internalName ?? l.internal_name ?? null,
                 }))
             )
+            setSources(sourceRows)
         }
 
         load()
@@ -134,6 +115,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                     setProviders([])
                     setCountryProviderSlugs([])
                     setListings([])
+                    setSources([])
                     setLoadFailure({
                         key: requestKey,
                         message: error instanceof Error ? error.message : "No se pudieron cargar las automatizaciones.",
@@ -145,8 +127,14 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
         return () => { active = false }
     }, [propertyUuid, countryId, requestKey])
 
-    const handleChanged = useCallback((updated: PropertyAutomation | null, automationUuid: string) => {
+    const handleChanged = useCallback((updated: PropertyAutomation | null, automationUuid: string | null) => {
         setAutomations(prev => {
+            // Fila recién creada: no había uuid previo al que apuntar.
+            if (!automationUuid) {
+                return updated
+                    ? [...prev, updated].sort((a, b) => a.executionOrder - b.executionOrder)
+                    : prev
+            }
             if (!updated) return prev.filter(a => a.uuid !== automationUuid)
             const previous = prev.find(a => a.uuid === automationUuid)
             const merged = previous ? {
@@ -162,6 +150,26 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                 : [...prev, merged].sort((a, b) => a.executionOrder - b.executionOrder)
         })
     }, [])
+
+    /**
+     * Lo que se renderiza NO es la lista cruda del backend.
+     *
+     * `GET /properties/{uuid}/automations` solo devuelve las filas que existen.
+     * El alta neutral omite `automations`: el backend crea los dos slots
+     * estructurales de identidad, mientras TTLock, PDF, TRA y SIRE no tienen fila
+     * y por eso no había tarjeta; sin tarjeta, tampoco había forma de crearlas.
+     *
+     * `buildAutomationSlots` cruza esas filas con los `default_setup.slots` que
+     * publican los providers de `GET /providers?country=`: quien ya tiene fila se
+     * comporta igual que siempre, y quien no la tiene aparece como tarjeta
+     * disponible. El PM crea la fila inactiva desde la tarjeta y luego la activa
+     * mediante `/configure`, después de completar credenciales y disparadores.
+     * Nombre, orden y campos salen del backend, no de una lista fija acá.
+     */
+    const slots = useMemo(
+        () => buildAutomationSlots(automations, providers),
+        [automations, providers],
+    )
 
     return (
         <div className="space-y-6">
@@ -207,37 +215,32 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4">
-                    {automations.map(automation => {
-                        const def = definitionForAutomation(automation)
-                        // Every option the definition declares stays selectable.
-                        //
-                        // This used to be filtered against the country's /providers
-                        // slugs, which removed any option whose slug didn't match —
-                        // collapsing the 2-option identity automations to 1 and making
-                        // the card render a static label instead of the selector. The
-                        // match is not trustworthy enough to gate the UI on it: our
-                        // option values ("didit", "textract") have never been verified
-                        // against what the backend actually seeds. If a provider really
-                        // is missing, handleProviderChange already fails with an
-                        // explicit toast and rolls the selection back — an honest
-                        // failure beats a pre-emptive block built on a guess.
-                        reportUnmatchedProviderSlugs(def, automation, countryProviderSlugs)
+                    {slots.map(({ key, definition: def, automation }) => {
+                        const catalogDefinition = bindCatalogProviders(
+                            def,
+                            automation,
+                            providers,
+                            countryProviderSlugs,
+                        )
                         return (
                             <AutomationCard
-                                key={automation.uuid}
-                                definition={def}
+                                key={key}
+                                definition={catalogDefinition}
                                 automation={automation}
                                 propertyUuid={propertyUuid}
                                 providers={providers}
                                 listings={listings}
-                                onChanged={updated => handleChanged(updated, automation.uuid)}
+                                onChanged={updated => handleChanged(updated, automation?.uuid ?? null)}
                                 onNavigateToDocuments={onNavigateToDocuments}
+                                sources={sources}
                             />
                         )
                     })}
-                    {!loadError && propertyUuid && automations.length === 0 && (
+                    {!loadError && propertyUuid && slots.length === 0 && (
                         <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
-                            El backend no devolvió automatizaciones para esta propiedad.
+                            {countryProviderSlugs.length === 0
+                                ? "No se pudo determinar qué automatizaciones aplican al país de esta propiedad."
+                                : "El backend no devolvió automatizaciones para esta propiedad."}
                         </div>
                     )}
                 </div>

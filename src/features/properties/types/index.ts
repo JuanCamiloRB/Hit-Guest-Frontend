@@ -27,56 +27,28 @@ export type {
 
 export { AUTOMATION_ORDERS, AUTOMATION_STATUS, GUEST_TYPE_LABELS, mapGuestTypeToApi } from "./automation"
 
-// La línea de arriba re-exporta, pero no deja un binding usable en este módulo:
-// el seed de automatizaciones necesita el VALOR para no repetir el número 10.
-import { AUTOMATION_STATUS } from "./automation"
 import type { PropertyAutomation } from "./automation"
 
 // ── API Payload Types (what the backend expects in camelCase) ──
 
-/** Fila de automatización tal como la acepta `POST /properties`. */
+/**
+ * Fila de automatización tal como la acepta `POST /properties` tras la
+ * reescritura del contrato (2026-08-12).
+ *
+ * `providerSlug`, `executionOrder` y `parameters` son opcionales en el backend.
+ * `executionOrder` además es **inútil enviarlo**: el servidor renumera siempre
+ * —1 y 2 para los slots de identidad, 3 en adelante para el resto preservando el
+ * orden del array— así que mandarlo solo sugiere un control que no existe.
+ */
 export interface PropertyAutomationSeedItem {
     name: string
-    /** Slug canónico del backend, en snake_case. */
-    providerSlug: string
+    /** Slug CANÓNICO del backend, en snake_case (`sire_colombia`, no `sire-colombia`). */
+    providerSlug?: string
     guestType: "main_guest" | "secondary_guest" | "all"
-    executionOrder: number
-    statusProviderId: number
-    parameters: Record<string, unknown>
+    /** Solo 8 (activa) o 10 (inactiva); cualquier otro valor responde 422. */
+    statusProviderId: 8 | 10
+    parameters?: Record<string, unknown>
 }
-
-/**
- * Configuración mínima inicial enviada por `POST /properties`.
- *
- * La verificación principal conserva una fila de configuración porque el backend
- * la usa como punto de extensión, pero se crea INACTIVA. No se ejecuta ninguna
- * verificación hasta que el PM seleccione proveedor y la active expresamente.
- *
- * ## El contrato NO se crea automáticamente
- *
- * El contrato digital es opcional. Su fila debe nacer únicamente cuando el PM lo
- * configure; sembrar TuFirma durante la creación hacía que el backend legado lo
- * forzara a activo y luego rechazara desactivarlo con 422.
- *
- * ## Por qué solo una fila y no las ocho de antes
- *
- * El seed anterior mandaba las 8 automatizaciones conocidas, incluidas TRA y SIRE
- * —que son exclusivas de Colombia— y por eso se eliminó por completo en
- * `2af05bc`: sembraba proveedores colombianos en propiedades de otros países. Esa
- * eliminación arregló el problema del país. Con el contrato ya opcional, solo se
- * conserva la identidad principal inactiva; el mapa país/proveedor del backend
- * sigue decidiendo el resto.
- */
-export const INITIAL_AUTOMATION_SEED: PropertyAutomationSeedItem[] = [
-    {
-        name: "Identity Verification - Main Guest",
-        providerSlug: "didit",
-        guestType: "main_guest",
-        executionOrder: 1,
-        statusProviderId: AUTOMATION_STATUS.INACTIVE,
-        parameters: { _init: true },
-    },
-]
 
 export interface PropertyApiPayload {
     name: string
@@ -103,7 +75,6 @@ export interface PropertyApiPayload {
             network?: string | null
             password?: string | null
         } | null
-        internal_name?: string | null
         currency?: string
         /** Language for guest communications: "es" | "en" | "pt". */
         communicationsLocale?: string
@@ -116,9 +87,13 @@ export interface PropertyApiPayload {
         externalId: string
     }[]
     /**
-     * Solo en la creación. `POST /properties` la exige con al menos las filas de
-     * `INITIAL_AUTOMATION_SEED`; en la actualización no se manda (las
-     * automatizaciones se administran desde su propia pestaña).
+     * Solo en la creación; en la actualización no se manda (las automatizaciones
+     * se administran desde su propia pestaña).
+     *
+     * El backend lo declara **nullable**, pero acá se modela como opcional a
+     * propósito: la política del frontend es **omitirlo** cuando no hay nada que
+     * sembrar, nunca mandar `null`. Este tipo describe el payload que ESTE
+     * cliente construye, no la totalidad de lo que la API tolera.
      */
     automations?: PropertyAutomationSeedItem[]
     // NOTE: units are NOT included here — managed separately via listingsService
@@ -134,8 +109,6 @@ export interface PropertyExtra {
     // UI-specific extras (flexible)
     type?: string                 // Backward compatibility
     propertyTypeId?: number | string | null
-    internalName?: string
-    internal_name?: string | null
     thumbnailUrl?: string
     thumbnail_url?: string | null
     startPrice?: number
@@ -152,6 +125,13 @@ export interface WifiDetails {
 }
 
 export interface ExternalPmsId {
+    /**
+     * Id de la fila en `external_identifiers` (contrato 2026-08-23). Presente en
+     * toda fila que ya existe en el backend, y OBLIGATORIO reenviarlo al editar
+     * esa fila: sin él, el mismo `sourcePmsId` devuelve 422 `*_source_taken`.
+     * Las filas recién agregadas en el formulario no lo tienen todavía.
+     */
+    id?: number
     sourcePmsId: number
     externalId: string
 }
@@ -230,7 +210,6 @@ export interface PropertyApiResponse {
         /** Response shape: objects {id, name}. Send IDs (number[]) on create/update. */
         amenities?: Array<{ id: number; name: string }> | number[]
         wifiDetails?: { network?: string | null; password?: string | null } | null
-        internal_name?: string | null
         currency?: string
         thumbnailUrl?: string
         thumbnail_url?: string
@@ -252,8 +231,6 @@ export interface PropertyApiResponse {
     }[]
 
     // ── Legacy flat fields (some endpoints still return these) ─────────────────
-    externalId?: string
-    external_id?: string
     amenity_ids?: (string | number)[]
     amenities?: (string | number)[]
     price?: number | string | null
@@ -280,7 +257,6 @@ export const propertyFormSchema = z.object({
     countryId: z.number().int().positive(),
     latitude: z.coerce.number().min(-90).max(90).default(0),
     longitude: z.coerce.number().min(-180).max(180).default(0),
-    external_id: z.string().max(60).optional(),
     timezone: z.string().max(120, "Máximo 120 caracteres").optional(),
     statusRecordId: z.number().int().positive(),
     propertyTypeId: z.coerce.number().min(1, "El tipo de propiedad es obligatorio"),
@@ -323,6 +299,9 @@ export const propertyFormSchema = z.object({
     // `min(1)` on both halves so a row the PM added but never filled in is caught
     // by the form instead of by a 422 from the backend.
     externalPmsIds: z.array(z.object({
+        // El id de la fila existente viaja de vuelta en el PATCH — editarla sin
+        // él es un 422 por contrato (2026-08-23). Las filas nuevas no lo tienen.
+        id: z.number().int().positive().optional(),
         sourcePmsId: z.number().int().positive("Selecciona el origen"),
         externalId: z.string().min(1, "Ingresa el ID externo").max(60, "Máximo 60 caracteres"),
     })).optional(),
@@ -364,12 +343,13 @@ export function formDataToApiPayload(data: PropertyFormData): PropertyApiPayload
             countryId: data.countryId,
             latitude: (data.latitude !== undefined && data.latitude !== null) ? String(data.latitude) : "0.00000000",
             longitude: (data.longitude !== undefined && data.longitude !== null) ? String(data.longitude) : "0.00000000",
-            timezone: data.timezone || "America/Bogota",
+            // The API declares timezone optional. Never persist Bogotá for an
+            // international property just because the PM has not chosen a zone.
+            ...(data.timezone ? { timezone: data.timezone } : {}),
             statusRecordId: data.statusRecordId,
             propertyTypeId: Number(data.propertyTypeId),
 
             extra: {
-                internal_name: data.external_id || null,
                 currency: "COP",
                 communicationsLocale: data.communicationsLocale || DEFAULT_COMMUNICATION_LOCALE,
                 thumbnailUrl: data.thumbnailUrl,
@@ -385,12 +365,15 @@ export function formDataToApiPayload(data: PropertyFormData): PropertyApiPayload
                 policies: data.policies,
                 roomTypes: data.roomTypes,
             },
-            // Always sent, `[]` included: omitting the key when the PM removes
-            // their last mapping would make the removal unexpressible.
-            externalPmsIds: toExternalPmsIdsPayload(data.externalPmsIds),
+            // Contrato 2026-08-23: `[]` BORRA todas las filas y la clave omitida
+            // no toca nada. Por eso la clave viaja solo si el formulario la puso
+            // (dirty-gating en el caller): serializarla siempre —el comentario
+            // anterior lo defendía cuando `[]` era un no-op— destruía datos.
+            ...(data.externalPmsIds !== undefined
+                ? { externalPmsIds: toExternalPmsIdsPayload(data.externalPmsIds) }
+                : {}),
         }
-    
-    console.log("📤 [formDataToApiPayload] Final Payload to API:", JSON.stringify(payload, null, 2));
+
     return payload
 }
 
@@ -428,20 +411,11 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
         lng = parseFloat(rawLng) || 0
     }
 
-    // Capture external_id (Nombre Interno) from multiple possible locations.
-    //
-    // It deliberately does NOT fall back to `pmsIdentifiers[0].externalId`. It used
-    // to: an empty internal name was filled with the PMS id, and since this field
-    // is written back to `extra.internal_name` on save, the PMS id silently became
-    // the property's internal name. They are two different things and now have two
-    // different fields — the PMS identifiers live in `externalPmsIds` below.
-    const external_id = apiData.externalId
-        || apiData.external_id
-        || extra.internal_name
-        || ""
+    // `internal_name` es de Listings, no de propiedades: el backend no lo acepta
+    // en el `extra` de una propiedad, así que no se lee ni se escribe acá. Los
+    // identificadores del PMS —que son otra cosa— viven en `externalPmsIds`.
 
     const extractedThumbnail = extra.thumbnail_url || extra.thumbnailUrl || ((extra as any).picturesUrl && (extra as any).picturesUrl.length > 0 ? (extra as any).picturesUrl[0] : "") || ((extra as any).pictures_url && (extra as any).pictures_url.length > 0 ? (extra as any).pictures_url[0] : "") || "";
-    console.log("🔥 [apiResponseToFormData] Extracted Thumbnail:", extractedThumbnail, "from extra:", extra);
 
     return {
         name: apiData.name || "",
@@ -455,8 +429,7 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
         countryId: apiData.countryId || apiData.country_id || location.countryId || location.country?.id || 48,
         latitude: lat,
         longitude: lng,
-        timezone: apiData.timezone || location.timezone || "America/Bogota",
-        external_id: external_id,
+        timezone: apiData.timezone || location.timezone || "",
         statusRecordId: apiData.statusRecordId || apiData.status_record_id || apiData.statusRecord?.id || 6,
         propertyTypeId: Number(apiData.propertyType?.id || apiData.propertyTypeId || apiData.property_type_id || (extra as any).propertyTypeId || (extra as any).type || 102),
         thumbnailUrl: extractedThumbnail,
@@ -529,7 +502,7 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
                 description: u.description || "",
                 thumbnailUrl: u.thumbnailUrl || u.thumbnail_url || "",
                 // roomType can come as nested { id, name } or flat roomTypeId / room_type_id
-                roomTypeId: String(u.roomType?.id || u.roomTypeId || u.room_type_id || "1"),
+                roomTypeId: String(u.roomType?.id || u.roomTypeId || u.room_type_id || "0"),
                 // contact can come as nested { name, email, phone } or flat camelCase/snake_case
                 contactName:  u.contact?.name  || u.contactName  || u.contact_name  || "",
                 contactEmail: u.contact?.email || u.contactEmail || u.contact_email || "",
@@ -559,6 +532,7 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
                     inheritWifi: !hasWifi,
                     inheritSchedule: !hasSchedule,
                     inheritPolicies: !hasPolicies,
+                    inheritAmenities: extraData.amenities === undefined,
                 }
             }
         }),

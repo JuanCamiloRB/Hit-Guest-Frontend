@@ -9,7 +9,7 @@ function makeProvider(slug: string, signature = false): Provider {
         description: null,
         parameters: {
             slug,
-            internalUse: { path: slug, tokenName: "", tokenAbilities: [] },
+            internalUse: { path: slug },
             billing: { billable: false, unit_cost: 0 },
             ...(signature ? {
                 signature: {
@@ -41,14 +41,25 @@ function makeAutomation(overrides: Partial<PropertyAutomation>): PropertyAutomat
 }
 
 describe("definitionForAutomation", () => {
-    it("mantiene los providerId requeridos para activar ambas verificaciones", () => {
+    it("no fija IDs de providers: se resuelven desde GET /providers del país", () => {
         for (const definitionId of ["identity-verification-main", "identity-verification-secondary"]) {
             const options = AUTOMATION_DEFINITIONS.find((item) => item.id === definitionId)?.providerOptions
             expect(options).toEqual(expect.arrayContaining([
-                expect.objectContaining({ value: "didit", providerId: 1000 }),
-                expect.objectContaining({ value: "textract", providerId: 1004 }),
+                expect.objectContaining({ value: "didit" }),
+                expect.objectContaining({ value: "textract" }),
             ]))
+            expect(options?.every((option) => option.providerId === undefined)).toBe(true)
         }
+    })
+
+    it("no confunde una automation no-identidad de orden bajo con identidad", () => {
+        const definition = definitionForAutomation(makeAutomation({
+            executionOrder: 1,
+            guestType: "all",
+            provider: makeProvider("future_provider"),
+        }))
+
+        expect(definition.id).toBe("automation-automation-1")
     })
 
     it("identifies contract routing by signature capability, regardless of order", () => {
@@ -60,6 +71,32 @@ describe("definitionForAutomation", () => {
 
         expect(definition.id).toBe("digital-contract")
         expect(definition.order).toBe(11)
+    })
+
+    it("no pinta hitguest_signature como identidad principal aunque tenga orden bajo y main_guest", () => {
+        const definition = definitionForAutomation(makeAutomation({
+            executionOrder: 1,
+            guestType: "main_guest",
+            providerId: 99,
+            provider: makeProvider("hitguest_signature", true),
+        }))
+
+        expect(definition.id).toBe("digital-contract")
+        // "Contrato": la firma es un atributo del contrato, no una automatización
+        // aparte. El id sigue siendo `digital-contract` porque es la llave que
+        // cruza con el `automationName` del backend, no un texto de producto.
+        expect(definition.title).toBe("Contrato")
+    })
+
+    it("reconoce la firma por providerSlug aunque el provider no venga sideloaded", () => {
+        const definition = definitionForAutomation(makeAutomation({
+            executionOrder: 1,
+            guestType: "main_guest",
+            provider: null,
+            providerName: "hitguest_signature",
+        }))
+
+        expect(definition.id).toBe("digital-contract")
     })
 
     it("identifies known provider automations by slug, regardless of order", () => {

@@ -8,13 +8,7 @@ import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import { Button } from "@/components/ui/button"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { propertyDocumentService } from "../../services/property-document-service"
 import { reservationSourceService, type ReservationSource } from "../../services/reservation-source-service"
 import { automationService } from "../../services/automation-service"
@@ -24,24 +18,31 @@ import {
     documentChannelId,
     type PropertyDocument,
 } from "../../types/document"
-import {
-    AUTOMATION_STATUS,
-    isSignatureProvider,
-    type Provider,
-    type PropertyAutomation,
-} from "../../types/automation"
+import { AUTOMATION_STATUS, isSignatureProvider, type Provider, type PropertyAutomation } from "../../types/automation"
 import {
     ALL_SOURCES_KEY,
     parseContractRouting,
+    routingForMode,
+    CONTRACT_TYPE_LABELS,
+    CONTRACT_TYPE_OWNERS,
     type ContractMode,
     type ContractRoutingParameters,
     type SourceRouting,
 } from "../../types/contract-routing"
 import { detectMode, findLockstepGaps, planDocumentSync } from "../../lib/contract-routing-sync"
+import {
+    buildSignatureAutomationCreatePayload,
+    findSignatureAutomation,
+    findSignatureProvider,
+} from "../../lib/signature-automation"
 import { ContractModeToggle } from "./ContractModeToggle"
 import { SourceRoutingRow } from "./SourceRoutingRow"
 
-const DEFAULT_ROUTING: SourceRouting = { contract_type: "agreement_only", provider_slug: "" }
+const DEFAULT_ROUTING: SourceRouting = {
+    contract_type: "agreement_only",
+    provider_slug: "",
+}
+
 
 interface Props {
     propertyUuid: string
@@ -61,7 +62,10 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     const countryId: number | undefined = watch("countryId")
     const requestKey = `${propertyUuid}:${countryId ?? ""}`
     const [completedRequestKey, setCompletedRequestKey] = useState("")
-    const [loadFailure, setLoadFailure] = useState<{ key: string; message: string } | null>(null)
+    const [loadFailure, setLoadFailure] = useState<{
+        key: string
+        message: string
+    } | null>(null)
     const loading = completedRequestKey !== requestKey
     const loadError = loadFailure?.key === requestKey ? loadFailure.message : null
 
@@ -81,7 +85,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     useEffect(() => {
         let active = true
 
-        catalogService.getCountries()
+        catalogService
+            .getCountries()
             .then((countries) => {
                 const country = countries.find((item) => Number(item.id) === Number(countryId))
                 // El fallback a `country.iso2` (raíz) se eliminó: `getCountries()`
@@ -97,7 +102,10 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                         statusProviderId: AUTOMATION_STATUS.ACTIVE,
                         country: countryIso2,
                     }),
-                    automationService.getContractRoutingAutomation(propertyUuid),
+                    // La lista completa y no solo la fila de firma: se identifica
+                    // por `provider.parameters.signature`, nunca por
+                    // executionOrder (el orden depende del país).
+                    automationService.list(propertyUuid, { includeProvider: true }),
                     propertyDocumentService.list(propertyUuid, {
                         propertyDocumentTypeId: AGREEMENT_DOCUMENT_TYPE_ID,
                         perPage: 100,
@@ -105,7 +113,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     propertyDocumentService.getTypes(),
                 ] as const)
             })
-            .then(([sourcesRes, providersRes, automationRes, docsRes, typesRes]) => {
+            .then(([sourcesRes, providersRes, automationRows, docsRes, typesRes]) => {
                 if (!active) return
                 setLoadFailure(null)
                 // A null `meta` means the documents fetch itself failed (the service
@@ -116,9 +124,17 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     throw new Error("No se pudieron cargar los documentos de contrato existentes.")
                 }
 
-                setSources(sourcesRes)
                 const signatureProviders = new Map(
-                    providersRes.filter(isSignatureProvider).map(provider => [provider.id, provider]),
+                    providersRes.filter(isSignatureProvider).map((provider) => [provider.id, provider]),
+                )
+                setSources(sourcesRes)
+                // `providerSlug` es suficiente y es la señal estable recomendada
+                // por el backend. Exigir el objeto `provider` sideloaded hacía que
+                // una fila existente pareciera ausente cuando la relación no venía
+                // incluida o era sanitizada.
+                const automationRes = findSignatureAutomation(
+                    automationRows,
+                    Array.from(signatureProviders.values()),
                 )
                 if (automationRes?.provider && isSignatureProvider(automationRes.provider)) {
                     signatureProviders.set(automationRes.provider.id, automationRes.provider)
@@ -126,14 +142,14 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 setProviders(Array.from(signatureProviders.values()))
                 setAutomation(automationRes)
                 setAgreementDocs(docsRes.items)
-                setShortcodes(
-                    typesRes.find((t) => t.id === AGREEMENT_DOCUMENT_TYPE_ID)?.parameters?.shortcodes ?? [],
-                )
+                setShortcodes(typesRes.find((t) => t.id === AGREEMENT_DOCUMENT_TYPE_ID)?.parameters?.shortcodes ?? [])
 
                 const parsed = parseContractRouting(automationRes?.parameters)
                 const initialMode = parsed?.contract_mode ?? detectMode(docsRes.items) ?? "all_sources"
+                const allowedSourceIds = new Set(sourcesRes.map((source) => source.id))
+                const initialRouting = routingForMode(initialMode, parsed?.by_source ?? {}, allowedSourceIds)
                 setMode(initialMode)
-                setBySource(parsed?.by_source ?? {})
+                setBySource(initialRouting)
 
                 const initialTexts: Record<string, string> = {}
                 for (const doc of docsRes.items) {
@@ -156,7 +172,9 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 if (active) setCompletedRequestKey(requestKey)
             })
 
-        return () => { active = false }
+        return () => {
+            active = false
+        }
     }, [propertyUuid, countryId, requestKey])
 
     // ── Mode switch ──────────────────────────────────────────────────────────
@@ -167,7 +185,9 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
         // keys that don't make sense in it (a numeric source id in all_sources
         // mode, or "all" in per_source mode) — the PM reconfigures explicitly.
         if (next === "all_sources") {
-            setBySource({ [ALL_SOURCES_KEY]: bySource[ALL_SOURCES_KEY] ?? DEFAULT_ROUTING })
+            setBySource({
+                [ALL_SOURCES_KEY]: bySource[ALL_SOURCES_KEY] ?? DEFAULT_ROUTING,
+            })
         } else {
             const rest = { ...bySource }
             delete rest[ALL_SOURCES_KEY]
@@ -184,7 +204,11 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     const availableToAdd = sources.filter((s) => !configuredSourceIds.includes(s.id))
 
     const addChannel = (sourceId: number) => {
-        setBySource((prev) => ({ ...prev, [String(sourceId)]: DEFAULT_ROUTING }))
+        setBySource((prev) => ({
+            ...prev,
+            [String(sourceId)]: DEFAULT_ROUTING,
+        }))
+        setSaveError(null)
     }
     const removeChannel = (key: string) => {
         setBySource((prev) => {
@@ -197,19 +221,29 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             delete rest[key]
             return rest
         })
+        setSaveError(null)
     }
 
     // ── Save ─────────────────────────────────────────────────────────────────
 
-    const desired: ContractRoutingParameters = { contract_mode: mode, by_source: bySource }
+    const desired: ContractRoutingParameters = {
+        contract_mode: mode,
+        by_source: routingForMode(mode, bySource, new Set(sources.map((source) => source.id))),
+    }
     const gaps = findLockstepGaps(desired, texts)
 
+    // Esta pantalla puede VERSE configurada sin routing persistido: al cargar,
+    // el modo y los textos se infieren de los property_documents cuando la
+    // automatización no tiene `contract_mode`/`by_source` guardados. Esa
+    // inferencia es un buen prellenado, pero presentarla sin aviso hacía que
+    // Documentos y la tarjeta de Contrato se contradijeran ("configurado" acá,
+    // "Sin configurar" allá). Derivado, no estado: guardar actualiza
+    // `automation` y el aviso desaparece solo.
+    const routingPersistedInAutomation = parseContractRouting(automation?.parameters) !== null
+    const showsUnsavedInference = !routingPersistedInAutomation && agreementDocs.length > 0
+
     const handleSave = async () => {
-        if (!automation) {
-            setSaveError("La propiedad no tiene una automatización de firma creada por el backend. Contacta a soporte.")
-            return
-        }
-        if (Object.keys(bySource).length === 0) {
+        if (Object.keys(desired.by_source).length === 0) {
             setSaveError("Configura al menos un canal antes de guardar.")
             return
         }
@@ -217,46 +251,89 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             setSaveError("Completa el texto de contrato de los canales marcados antes de guardar.")
             return
         }
-        if (Object.values(bySource).some((r) => !r.provider_slug)) {
+        if (Object.values(desired.by_source).some((r) => !r.provider_slug)) {
             setSaveError("Selecciona el proveedor de firma de cada canal antes de guardar.")
+            return
+        }
+        const selectedProviderSlugs = new Set(
+            Object.values(desired.by_source).map((routing) => routing.provider_slug),
+        )
+        const unresolvedProvider = Array.from(selectedProviderSlugs).find(
+            (providerSlug) => !findSignatureProvider(providers, providerSlug),
+        )
+        if (unresolvedProvider) {
+            setSaveError("No se pudo resolver el proveedor de firma seleccionado. Recarga la página e intenta nuevamente.")
+            return
+        }
+        // El tracker distingue la FILA de automatización de quien firma cada
+        // canal: existe una sola PropertyAutomation estructural, cuyo provider es
+        // hitguest_signature. TuFirma se selecciona únicamente dentro de
+        // by_source[].provider_slug; no crea una segunda fila de automatización.
+        const structuralProvider = findSignatureProvider(providers, "hitguest_signature")
+        if (!structuralProvider) {
+            setSaveError("HIT Guest Signature no está disponible para esta propiedad. Recarga la página e intenta nuevamente.")
             return
         }
 
         setSaving(true)
         setSaveError(null)
+        let routingPersisted = false
         try {
+            // 0. Si falta la fila estructural, el PM la crea INACTIVA. Crear no
+            // equivale a activar: `/configure` es el endpoint que valida el
+            // routing contra los documentos ya sincronizados.
+            let target = automation
+            if (!target) {
+                target = await automationService.create(
+                    buildSignatureAutomationCreatePayload(propertyUuid, structuralProvider),
+                )
+                setAutomation(target)
+            }
+
             // 1. property_documents first — configure() validates against their
             //    live state at call time, not against what we're about to send (§1.4).
             const plan = planDocumentSync(agreementDocs, desired, texts)
-            await Promise.all([
-                ...plan.creates.map((c) =>
-                    propertyDocumentService.create(propertyUuid, {
+            // Execute deterministically. A conversion update must happen before
+            // creating the remaining channel rows; deletes run last so a transient
+            // failure does not remove more legal text than necessary. This cannot
+            // make independent backend endpoints transactional, but it makes the
+            // partial state predictable and therefore reconcilable.
+            for (const update of plan.updates) {
+                await propertyDocumentService.update(propertyUuid, update.documentUuid, {
+                    ...(update.reservationSourceId !== undefined ? { reservationSourceId: update.reservationSourceId } : {}),
+                    ...(update.content !== undefined ? { content: update.content } : {}),
+                })
+            }
+            for (const create of plan.creates) {
+                await propertyDocumentService.create(propertyUuid, {
                         propertyDocumentTypeId: AGREEMENT_DOCUMENT_TYPE_ID,
                         statusRecordId: DOCUMENT_STATUS.ACTIVE,
-                        reservationSourceId: c.reservationSourceId,
-                        content: c.content,
-                    }),
-                ),
-                ...plan.updates.map((u) =>
-                    propertyDocumentService.update(propertyUuid, u.documentUuid, {
-                        ...(u.reservationSourceId !== undefined
-                            ? { reservationSourceId: u.reservationSourceId }
-                            : {}),
-                        ...(u.content !== undefined ? { content: u.content } : {}),
-                    }),
-                ),
-                ...plan.deletes.map((uuid) => propertyDocumentService.remove(propertyUuid, uuid)),
-            ])
+                        reservationSourceId: create.reservationSourceId,
+                        content: create.content,
+                })
+            }
+            for (const documentUuid of plan.deletes) {
+                await propertyDocumentService.remove(propertyUuid, documentUuid)
+            }
 
             // 2. Only now configure the automation with the final routing.
             //    `parameters` is typed `Record<string, unknown>` on the payload —
             //    ContractRoutingParameters is a plain object whose values are all
             //    assignable to `unknown`, just not structurally an index signature.
             const routingParameters = desired as unknown as Record<string, unknown>
-            const result = await automationService.configure(automation.uuid, {
+            // El PM puede crear, activar y desactivar automatizaciones. Si esta
+            // propiedad todavía no tiene la fila de firma, el mismo guardado la
+            // crea con el proveedor seleccionado; no necesita intervención de HIT.
+            // `provider_id` de la fila satisface el contrato de creación, mientras
+            // que el routing efectivo por canal vive en by_source.provider_slug.
+            const result = await automationService.configure(target.uuid, {
                 statusProviderId: AUTOMATION_STATUS.ACTIVE,
+                // Mantiene una sola fila estructural aunque el routing seleccione
+                // TuFirma para uno o más canales.
+                providerId: structuralProvider.id,
                 parameters: routingParameters,
             })
+            routingPersisted = true
             setAutomation(result)
 
             // Refresh from the server so the next edit starts from real uuids
@@ -269,6 +346,30 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
 
             toast.success("Contrato y firma guardados")
         } catch (err) {
+            // Every write above is an independent request. Always reconcile after
+            // a failure so a retry plans from server truth instead of stale UUIDs
+            // and cannot duplicate documents that were already created.
+            try {
+                const [refreshedDocs, refreshedAutomations] = await Promise.all([
+                    propertyDocumentService.list(propertyUuid, {
+                        propertyDocumentTypeId: AGREEMENT_DOCUMENT_TYPE_ID,
+                        perPage: 100,
+                    }),
+                    automationService.list(propertyUuid, { includeProvider: true }),
+                ])
+                setAgreementDocs(refreshedDocs.items)
+                setAutomation(findSignatureAutomation(refreshedAutomations, providers))
+
+                // `configure()` already committed and only the final refresh failed.
+                // The requested routing is live; reporting the whole save as failed
+                // would invite a destructive duplicate retry.
+                if (routingPersisted) {
+                    toast.success("Contrato y firma guardados")
+                    return
+                }
+            } catch (reconcileError) {
+                console.error("[ContractRoutingSection] reconciliation error:", reconcileError)
+            }
             if (err instanceof ApiError && err.status === 422) {
                 const errors = err.errors
                 const first = Array.isArray(errors)
@@ -310,22 +411,56 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     </div>
                     <div>
                         <h3 className="text-lg font-bold text-slate-900">Contrato y firma</h3>
-                        <p className="text-sm text-slate-500">
-                            Qué se firma y con quién, por canal de reserva.
-                        </p>
+                        <p className="text-sm text-slate-500">Qué se firma y con quién, por canal de reserva.</p>
                     </div>
                 </div>
                 <ContractModeToggle value={mode} onChange={handleModeChange} disabled={saving} />
             </div>
 
+            {showsUnsavedInference && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                    <p>
+                        Hay textos de contrato guardados, pero la automatización de Contrato
+                        todavía no tiene guardado qué se firma ni quién firma por canal — las
+                        reservas no generan contrato hasta que guardes esta configuración.
+                    </p>
+                </div>
+            )}
+
+            {Object.keys(desired.by_source).length > 0 && (
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-purple-100 bg-purple-50 px-3 py-2 text-sm text-slate-700">
+                    <span className="font-semibold text-[var(--color-brand-purple)]">
+                        {routingPersistedInAutomation ? "Configuración activa:" : "Configuración sin guardar:"}
+                    </span>
+                    <span>
+                        {mode === "all_sources"
+                            ? "Un contrato para todos los canales"
+                            : "Un contrato distinto por canal"}
+                    </span>
+                    {mode === "all_sources" && desired.by_source[ALL_SOURCES_KEY] && (
+                        <span className="text-slate-500">
+                            · {CONTRACT_TYPE_LABELS[desired.by_source[ALL_SOURCES_KEY].contract_type]} (
+                            {CONTRACT_TYPE_OWNERS[desired.by_source[ALL_SOURCES_KEY].contract_type]})
+                        </span>
+                    )}
+                </div>
+            )}
+
             {mode === "all_sources" ? (
                 <SourceRoutingRow
                     sourceLabel="Todos los canales"
                     routing={bySource[ALL_SOURCES_KEY] ?? DEFAULT_ROUTING}
-                    onChange={(r) => setBySource({ [ALL_SOURCES_KEY]: r })}
+                    onChange={(r) => {
+                        setBySource({ [ALL_SOURCES_KEY]: r })
+                        setSaveError(null)
+                    }}
                     providers={providers}
                     text={texts[ALL_SOURCES_KEY] ?? ""}
-                    onTextChange={(t) => setTexts((prev) => ({ ...prev, [ALL_SOURCES_KEY]: t }))}
+                    onTextChange={(t) => {
+                        setTexts((prev) => ({ ...prev, [ALL_SOURCES_KEY]: t }))
+                        setSaveError(null)
+                    }}
                     shortcodes={shortcodes}
                     hasTextGap={gaps.includes(ALL_SOURCES_KEY)}
                 />
@@ -336,10 +471,16 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                             key={key}
                             sourceLabel={sources.find((s) => s.id === Number(key))?.name ?? `Canal ${key}`}
                             routing={routing}
-                            onChange={(r) => setBySource((prev) => ({ ...prev, [key]: r }))}
+                            onChange={(r) => {
+                                setBySource((prev) => ({ ...prev, [key]: r }))
+                                setSaveError(null)
+                            }}
                             providers={providers}
                             text={texts[key] ?? ""}
-                            onTextChange={(t) => setTexts((prev) => ({ ...prev, [key]: t }))}
+                            onTextChange={(t) => {
+                                setTexts((prev) => ({ ...prev, [key]: t }))
+                                setSaveError(null)
+                            }}
                             shortcodes={shortcodes}
                             hasTextGap={gaps.includes(key)}
                             onRemove={() => removeChannel(key)}
@@ -370,8 +511,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     <div>
                         <p className="font-semibold">Canales sin contrato configurado</p>
                         <p className="mt-0.5">
-                            Las reservas de {availableToAdd.map((s) => s.name).join(", ")} no
-                            podrán firmar contrato. Si es intencional, puedes ignorar este aviso.
+                            Las reservas de {availableToAdd.map((s) => s.name).join(", ")} no podrán firmar contrato. Si
+                            es intencional, puedes ignorar este aviso.
                         </p>
                     </div>
                 </div>
