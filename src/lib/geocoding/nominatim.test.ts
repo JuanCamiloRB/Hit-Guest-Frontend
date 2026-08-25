@@ -71,8 +71,14 @@ describe("mapPlaceDetails", () => {
             lat: null,
             lng: null,
             formattedAddress: "",
+            addressLine1: "",
+            addressLine2: "",
+            streetNumber: "",
+            streetName: "",
             city: "",
+            suburb: "",
             state: "",
+            postalCode: "",
             countryCode: "",
         })
     })
@@ -82,11 +88,25 @@ describe("mapPlaceDetails", () => {
             lat: "-37.79961",
             lon: "144.89513",
             display_name: "188 Ballarat Road, Footscray, Victoria, 3011, Australia",
-            address: { road: "Ballarat Road", suburb: "Footscray", state: "Victoria", country_code: "au" },
+            address: {
+                unit: "907",
+                house_number: "188",
+                road: "Ballarat Road",
+                suburb: "Footscray",
+                state: "Victoria",
+                postcode: "3011",
+                country_code: "au",
+            },
         })
         expect(d).toMatchObject({
+            addressLine1: "188 Ballarat Road",
+            addressLine2: "907",
+            streetNumber: "188",
+            streetName: "Ballarat Road",
             city: "Footscray",
+            suburb: "Footscray",
             state: "Victoria",
+            postalCode: "3011",
             countryCode: "AU",
             formattedAddress: "188 Ballarat Road, Footscray, Victoria, 3011, Australia",
         })

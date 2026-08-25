@@ -1,29 +1,26 @@
 import "server-only"
+import type { GeocodePlaceDetails } from "./address"
 
 /**
  * Búsqueda de direcciones sin clave, contra Nominatim (OpenStreetMap).
  *
- * Existe como alternativa a Google Places porque `GOOGLE_MAPS_API_KEY` puede no
- * estar configurada —hoy no lo está— y sin ella el campo de dirección quedaba
- * muerto: el usuario escribía, no aparecía ninguna sugerencia, y la propiedad
- * terminaba guardada sin coordenadas. Es el mismo proyecto que ya sirve los
- * tiles del mapa, así que no agrega un proveedor nuevo al sistema.
- *
- * Google sigue siendo el preferido cuando hay clave: da mejores resultados y su
- * política de uso no tiene los límites de abajo.
+ * Es el modo nativo gratuito cuando no existe un proveedor comercial. Contra el
+ * servidor público se ejecuta únicamente por una acción explícita del PM
+ * (Enter/botón), nunca como autocomplete por pulsación. Una instancia propia o
+ * administrada sí puede habilitar autocomplete mediante NOMINATIM_BASE_URL.
  *
  * ## Límites de uso (política de Nominatim)
  *
  * Es un servicio comunitario y gratuito: pide un `User-Agent` que identifique la
  * aplicación y un máximo aproximado de 1 petición por segundo. Por eso las
- * búsquedas se cachean en memoria — el mismo texto no se vuelve a pedir — y el
- * cliente ya viene con debounce. Para un flujo de alta de propiedades es de
- * sobra; no serviría para un buscador de cara al público.
+ * búsquedas se cachean en memoria — el mismo texto no se vuelve a pedir. Para un
+ * flujo administrativo de alta de propiedades es suficiente; no serviría para
+ * un buscador público de alto tráfico.
  */
 
 /** Cómo se identifica esta app ante Nominatim, según su política de uso. */
 const USER_AGENT = "HitGuest/1.0 (property address lookup; +https://hitguest.com)"
-const BASE = "https://nominatim.openstreetmap.org"
+const BASE = (process.env.NOMINATIM_BASE_URL || "https://nominatim.openstreetmap.org").replace(/\/$/, "")
 
 /** El mismo texto no se vuelve a pedir dentro de esta ventana. */
 const CACHE_TTL_MS = 5 * 60 * 1000
@@ -32,20 +29,12 @@ const CACHE_MAX_ENTRIES = 200
 export interface GeocodeSuggestion {
     placeId: string
     description: string
-}
-
-export interface GeocodePlaceDetails {
-    lat: number | null
-    lng: number | null
-    formattedAddress: string
-    city: string
-    state: string
-    /** ISO2 en MAYÚSCULAS, como lo devuelve Google y como lo espera el catálogo. */
-    countryCode: string
+    /** Search already returns full address details; avoids a second public call. */
+    details: GeocodePlaceDetails
 }
 
 /** Un resultado de Nominatim, con solo los campos que se leen. */
-interface NominatimItem {
+export interface NominatimItem {
     osm_type?: string
     osm_id?: number | string
     lat?: string
@@ -99,10 +88,23 @@ function toCoordinate(raw: string | undefined): number | null {
 
 export function mapPlaceDetails(item: NominatimItem): GeocodePlaceDetails {
     const address = item.address ?? {}
+    const streetNumber = address.house_number ?? ""
+    const streetName =
+        address.road
+        ?? address.pedestrian
+        ?? address.residential
+        ?? address.footway
+        ?? address.path
+        ?? ""
+    const addressLine2 = address.unit ?? address.flat ?? address.apartment ?? ""
     return {
         lat: toCoordinate(item.lat),
         lng: toCoordinate(item.lon),
         formattedAddress: item.display_name ?? "",
+        addressLine1: [streetNumber, streetName].filter(Boolean).join(" "),
+        addressLine2,
+        streetNumber,
+        streetName,
         city:
             address.city
             ?? address.town
@@ -111,7 +113,14 @@ export function mapPlaceDetails(item: NominatimItem): GeocodePlaceDetails {
             ?? address.suburb
             ?? address.county
             ?? "",
+        suburb:
+            address.suburb
+            ?? address.city_district
+            ?? address.neighbourhood
+            ?? address.quarter
+            ?? "",
         state: address.state ?? address.region ?? "",
+        postalCode: address.postcode ?? "",
         // Nominatim lo devuelve en minúsculas ("au"); el catálogo de países se
         // compara contra el ISO2 de Google, que llega en mayúsculas. Sin esto el
         // país no casaría y la zona horaria no se autocompletaría.
@@ -171,7 +180,11 @@ export async function nominatimSearch(q: string): Promise<GeocodeSuggestion[]> {
         .map((item) => {
             const placeId = toPlaceId(item)
             if (!placeId) return null
-            return { placeId, description: item.display_name ?? "" }
+            return {
+                placeId,
+                description: item.display_name ?? "",
+                details: mapPlaceDetails(item),
+            }
         })
         .filter((s): s is GeocodeSuggestion => s !== null && s.description !== "")
 

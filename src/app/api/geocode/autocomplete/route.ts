@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { nominatimSearch } from "@/lib/geocoding/nominatim"
+import { toGeocoderQuery } from "@/lib/geocoding/address"
+import { resolveAutocompleteProvider } from "@/lib/geocoding/provider"
 
 interface GoogleAutocompleteResponse {
     error?: { message?: string }
@@ -35,17 +37,38 @@ async function nativeAutocomplete(q: string) {
  */
 export async function GET(req: NextRequest) {
     const key = process.env.GOOGLE_MAPS_API_KEY
-    // Google queda opt-in mientras su API está deshabilitada en los ambientes.
-    // Tener una clave antigua/inválida ya no basta para desviar el flujo nativo.
-    const googleEnabled = process.env.GEOCODING_PROVIDER === "google" && Boolean(key)
-    const q = req.nextUrl.searchParams.get("q")?.trim() ?? ""
+    const provider = resolveAutocompleteProvider({
+        provider: process.env.GEOCODING_PROVIDER,
+        googleApiKey: key,
+        nominatimBaseUrl: process.env.NOMINATIM_BASE_URL,
+    })
+    const rawQuery = req.nextUrl.searchParams.get("q")?.trim() ?? ""
+    const q = toGeocoderQuery(rawQuery)
     const session = req.nextUrl.searchParams.get("session") ?? undefined
+    const explicitSearch = req.nextUrl.searchParams.get("mode") === "search"
 
-    if (q.length < 3) return NextResponse.json({ suggestions: [] })
+    if (rawQuery.length < 3) return NextResponse.json({ suggestions: [] })
 
-    // OpenStreetMap/Nominatim es el proveedor nativo y el predeterminado. Google
-    // solo se usa cuando se habilita explícitamente con GEOCODING_PROVIDER=google.
-    if (!googleEnabled || !key) return nativeAutocomplete(q)
+    // The public OSM Nominatim instance expressly forbids client autocomplete.
+    // It is available here only when the project points to its own/managed
+    // instance. A missing global provider is a configuration error, not an empty
+    // result set; exposing that distinction lets the UI give an actionable error.
+    if (provider !== "google" || !key) {
+        if (provider === "nominatim") return nativeAutocomplete(q)
+        // Public Nominatim permits moderate searches initiated by an end user,
+        // but expressly forbids using its public service for per-keystroke
+        // autocomplete. Enter/button requests are therefore the free fallback.
+        if (explicitSearch) return nativeAutocomplete(q)
+        return NextResponse.json(
+            {
+                suggestions: [],
+                unavailable: true,
+                reason: "manual_search_required",
+                manualSearchAvailable: true,
+            },
+            { status: 503 },
+        )
+    }
 
     try {
         const res = await fetch("https://places.googleapis.com/v1/places:autocomplete", {
@@ -64,7 +87,10 @@ export async function GET(req: NextRequest) {
         const data = await res.json().catch(() => ({})) as GoogleAutocompleteResponse
         if (!res.ok) {
             console.error("[geocode/autocomplete] Google error:", res.status, data?.error?.message)
-            return nativeAutocomplete(q)
+            return NextResponse.json(
+                { suggestions: [], unavailable: true, reason: "provider_error" },
+                { status: 502 },
+            )
         }
         const suggestions = (data.suggestions ?? []).flatMap(({ placePrediction }) => {
             const placeId = placePrediction?.placeId
@@ -74,6 +100,9 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ suggestions })
     } catch (error: unknown) {
         console.error("[geocode/autocomplete] Error:", error instanceof Error ? error.message : error)
-        return nativeAutocomplete(q)
+        return NextResponse.json(
+            { suggestions: [], unavailable: true, reason: "provider_error" },
+            { status: 502 },
+        )
     }
 }
