@@ -1,10 +1,27 @@
 /**
  * Almacenamiento del `verificationToken` (plan OTP 20260731 — "Dónde guardar el
- * verificationToken en el cliente"). sessionStorage, NO localStorage: el token
- * es de sesión, vence a los 60 minutos en el servidor, y no debe sobrevivir
- * entre pestañas/dispositivos — a diferencia del resto de los datos del checkin
- * (sesión de identify, borradores del formulario), que sí usan localStorage a
- * propósito para sobrevivir a una pestaña cerrada.
+ * verificationToken en el cliente").
+ *
+ * ## Por qué `localStorage` — corregido el 2026-08-19
+ *
+ * Antes vivía en `sessionStorage`, razonando que el token «no debe sobrevivir
+ * entre pestañas». El problema es que **todo el estado que ese token acompaña ya
+ * vive en `localStorage`**: la sesión de identify (`useIdentifySession`), el
+ * borrador del formulario, los datos del OCR y el pendiente de Didit. Con dos
+ * vidas distintas para un mismo estado, el huésped que volvía al portal —pestaña
+ * descartada por iOS, link abierto otra vez desde el correo, salto del navegador
+ * in-app de Gmail/WhatsApp a Safari— se encontraba con el flujo a medio camino y
+ * **sin la credencial que ese flujo necesita**: `/form` respondía 401, se le
+ * decía «tu sesión expiró» y volvía al OTP, una y otra vez.
+ *
+ * Qué NO cambia con esto: sigue sin cruzar entre dispositivos ni entre
+ * navegadores distintos (ningún almacenamiento web lo hace), y sigue muriendo
+ * por `expiresAt` —el servidor lo vence a los 60 minutos y acá se borra solo al
+ * leerlo—. Lo que cambia es que deja de morir por cerrar una pestaña.
+ *
+ * El modelo de amenaza tampoco se mueve materialmente: el `guestUuid` y el resto
+ * de la sesión del huésped ya estaban en `localStorage`, así que el token no
+ * agrega una superficie nueva — y a diferencia de esos datos, se autodestruye.
  *
  * Indexado por reservationUuid + guestUuid (un acompañante de la misma reserva
  * tiene su propio token independiente).
@@ -32,10 +49,39 @@ interface StoredToken {
     token: string
     /** ISO del backend. `null` para tokens legacy guardados sin vencimiento. */
     expiresAt: string | null
+    /**
+     * Duración de la ventana OBSERVADA al guardar (`expiresAt - ahora`), para
+     * espejar el TTL deslizante del backend (2026-08-24: cada request que pasa
+     * el gate renueva la expiración). Las respuestas gateadas NO traen el
+     * `expiresAt` nuevo, y el contrato prohíbe quemar los 60 min — extender por
+     * la duración observada es lo único que no inventa. `null` en registros
+     * guardados antes de este cambio: esos no se extienden.
+     */
+    ttlMs: number | null
 }
 
 function storageKey(reservationUuid: string, guestUuid: string): string {
     return `checkin-verification-token-${reservationUuid}-${guestUuid}`
+}
+
+/**
+ * Lee el valor crudo, migrando el que haya quedado en `sessionStorage`.
+ *
+ * La migración no es cosmética: al desplegar el cambio de almacenamiento hay
+ * huéspedes con el token guardado en el sitio viejo, a mitad del check-in.
+ * Ignorarlo los expulsaría al OTP — justo el bug que este cambio corrige.
+ */
+function readRaw(key: string): string | null {
+    const current = localStorage.getItem(key)
+    if (current) return current
+
+    const legacy = sessionStorage.getItem(key)
+    if (!legacy) return null
+    // Se mueve, no se copia: dejarlo en los dos lados haría que borrar el token
+    // en uno dejara vivo al otro.
+    localStorage.setItem(key, legacy)
+    sessionStorage.removeItem(key)
+    return legacy
 }
 
 /**
@@ -45,19 +91,38 @@ function storageKey(reservationUuid: string, guestUuid: string): string {
  * acepta sin vencimiento conocido — si de verdad está vencido, el 401 del
  * backend lo resuelve como siempre.
  */
-function parseStored(raw: string): StoredToken {
-    try {
-        const parsed = JSON.parse(raw)
-        if (parsed && typeof parsed === "object" && typeof parsed.token === "string") {
-            return {
-                token: parsed.token,
-                expiresAt: typeof parsed.expiresAt === "string" ? parsed.expiresAt : null,
+function parseStored(raw: string): StoredToken | null {
+    const trimmed = raw.trim()
+    // Solo un valor que NO sea un objeto JSON puede ser un token legacy.
+    //
+    // Antes se intentaba `JSON.parse` sobre cualquier cosa y, si el objeto no
+    // traía un `token` string, se caía igual al camino legacy y se devolvía **el
+    // JSON entero como si fuese el token**. Con eso el front mandaba
+    // `X-Checkin-Verification-Token: {"expiresAt":"…"}`, el backend lo rechazaba
+    // con 401, el huésped volvía al OTP, se guardaba la misma basura otra vez…
+    // y el check-in no avanzaba nunca. Peor: ese valor se guardaba sin
+    // `expiresAt`, así que se consideraba vigente para siempre y jamás se
+    // auto-limpiaba.
+    if (trimmed.startsWith("{")) {
+        try {
+            const parsed = JSON.parse(trimmed)
+            if (parsed && typeof parsed === "object") {
+                const token = typeof parsed.token === "string" ? parsed.token.trim() : ""
+                if (!token) return null
+                const ttlMs = Number(parsed.ttlMs)
+                return {
+                    token,
+                    expiresAt: typeof parsed.expiresAt === "string" ? parsed.expiresAt : null,
+                    ttlMs: Number.isFinite(ttlMs) && ttlMs > 0 ? ttlMs : null,
+                }
             }
+        } catch {
+            // Un JSON roto tampoco es un token legacy: era nuestro formato y se
+            // corrompió. Tratarlo como credencial garantizaría un 401.
+            return null
         }
-    } catch {
-        // No era JSON → formato legacy.
     }
-    return { token: raw, expiresAt: null }
+    return trimmed ? { token: trimmed, expiresAt: null, ttlMs: null } : null
 }
 
 /** `true` si ya venció (con margen). Una fecha ilegible se trata como vigente. */
@@ -74,10 +139,17 @@ function isExpired(expiresAt: string | null, now: number): boolean {
  */
 export function getVerificationToken(reservationUuid: string, guestUuid: string): string | null {
     try {
-        const raw = sessionStorage.getItem(storageKey(reservationUuid, guestUuid))
+        const raw = readRaw(storageKey(reservationUuid, guestUuid))
         if (!raw) return null
 
         const stored = parseStored(raw)
+        // Guardado corrupto: se borra en el momento. Mandarlo produciría un 401
+        // que el flujo interpretaría como "sesión expirada", devolviendo al
+        // huésped a un OTP que no arregla nada.
+        if (!stored) {
+            clearVerificationToken(reservationUuid, guestUuid)
+            return null
+        }
         if (isExpired(stored.expiresAt, Date.now())) {
             clearVerificationToken(reservationUuid, guestUuid)
             return null
@@ -106,9 +178,14 @@ export function getVerificationTokenState(
     guestUuid: string,
 ): VerificationTokenState {
     try {
-        const raw = sessionStorage.getItem(storageKey(reservationUuid, guestUuid))
+        const raw = readRaw(storageKey(reservationUuid, guestUuid))
         if (!raw) return "absent"
-        return isExpired(parseStored(raw).expiresAt, Date.now()) ? "expired" : "valid"
+        const stored = parseStored(raw)
+        // Un guardado corrupto no es una credencial: para el flujo es como no
+        // tenerla. Reportarlo "valid" hacía que los chequeos previos dieran vía
+        // libre a una llamada condenada al 401.
+        if (!stored) return "absent"
+        return isExpired(stored.expiresAt, Date.now()) ? "expired" : "valid"
     } catch {
         return "absent"
     }
@@ -124,19 +201,79 @@ export function setVerificationToken(
     guestUuid: string,
     token: string,
     expiresAt?: string | null,
-): void {
+): boolean {
+    // El tipo promete `string`, así que TypeScript da este caso por imposible —
+    // por eso hay que comprobarlo en runtime: describe lo que el contrato
+    // promete, no lo que la respuesta trae. Guardar un token vacío o ausente no
+    // dejaba un hueco: dejaba basura que se mandaba como credencial y devolvía
+    // 401 en cada llamada del check-in.
+    const clean = typeof token === "string" ? token.trim() : ""
+    if (!clean) {
+        console.error(
+            "[verification-token] El backend no devolvió un `verificationToken` usable en "
+            + "/contact-challenges/{id}/verify; no se guarda nada. El huésped no podrá continuar "
+            + "hasta que ese endpoint devuelva el token que documenta el contrato.",
+        )
+        clearVerificationToken(reservationUuid, guestUuid)
+        return false
+    }
+
     try {
-        const payload: StoredToken = { token, expiresAt: expiresAt ?? null }
-        sessionStorage.setItem(storageKey(reservationUuid, guestUuid), JSON.stringify(payload))
+        // Captura la ventana observada para el TTL deslizante: solo una fecha
+        // futura legible produce un ttl; cualquier otra cosa deja `null` y ese
+        // token simplemente no se extiende (nunca se inventa una duración).
+        const expiresMs = expiresAt ? Date.parse(expiresAt) : NaN
+        const ttlMs = Number.isFinite(expiresMs) && expiresMs > Date.now()
+            ? expiresMs - Date.now()
+            : null
+        const payload: StoredToken = { token: clean, expiresAt: expiresAt ?? null, ttlMs }
+        localStorage.setItem(storageKey(reservationUuid, guestUuid), JSON.stringify(payload))
+        return true
     } catch {
-        // Storage no disponible (modo privado, cuota) — al huésped se le pedirá
-        // el OTP otra vez en la próxima llamada protegida, sin romper nada.
+        // Storage no disponible (modo privado, cuota). Devolver `false` es lo que
+        // permite a quien llama NO mandar al huésped a un paso que va a rebotar:
+        // sin credencial, la siguiente llamada protegida responde 401.
+        console.error("[verification-token] No se pudo persistir el token de verificación.")
+        return false
+    }
+}
+
+/**
+ * Espeja el TTL deslizante del backend (2026-08-24): cada request que pasa el
+ * gate renueva el token del servidor a 60 min desde ese momento, pero las
+ * respuestas gateadas no devuelven el `expiresAt` nuevo — así que al ENVIAR el
+ * token se extiende la copia local por la misma duración observada al
+ * guardarlo. Sin esto, el vencimiento local fijo se vuelve pesimista y expulsa
+ * al OTP a un huésped cuyo token el servidor mantiene vivo (el falso positivo
+ * crece cuanto más trabajó: formulario, documentos, contrato).
+ *
+ * Si la extensión resulta optimista (petición que nunca llegó, TTL acortado en
+ * backend), el gate responde 401 con `code` y la recuperación borra el token —
+ * el mismo camino de siempre. Un token legacy sin `ttlMs` no se extiende.
+ */
+export function touchVerificationToken(reservationUuid: string, guestUuid: string): void {
+    try {
+        const key = storageKey(reservationUuid, guestUuid)
+        const raw = readRaw(key)
+        if (!raw) return
+        const stored = parseStored(raw)
+        if (!stored || !stored.ttlMs || isExpired(stored.expiresAt, Date.now())) return
+        localStorage.setItem(key, JSON.stringify({
+            ...stored,
+            expiresAt: new Date(Date.now() + stored.ttlMs).toISOString(),
+        }))
+    } catch {
+        // no-op: extender el reloj local es una optimización, nunca un requisito.
     }
 }
 
 export function clearVerificationToken(reservationUuid: string, guestUuid: string): void {
     try {
-        sessionStorage.removeItem(storageKey(reservationUuid, guestUuid))
+        const key = storageKey(reservationUuid, guestUuid)
+        localStorage.removeItem(key)
+        // También el sitio viejo: un token sin migrar todavía resucitaría en la
+        // siguiente lectura.
+        sessionStorage.removeItem(key)
     } catch {
         // no-op
     }

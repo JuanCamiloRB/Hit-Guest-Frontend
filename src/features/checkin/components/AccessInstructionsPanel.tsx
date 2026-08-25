@@ -21,6 +21,10 @@ const ACCESS_DOCUMENT_TYPES = new Set([
 ])
 
 export function isAccessInstructionDocument(document: PortalDocument): boolean {
+    // `documents` is supplied at runtime by the portal. A legacy/mixed record
+    // without `type` must be ignored, not crash the entire success screen after
+    // the guest has already signed and completed the check-in.
+    if (typeof document.type !== "string") return false
     return ACCESS_DOCUMENT_TYPES.has(document.type.trim().toLowerCase())
 }
 

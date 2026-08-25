@@ -48,19 +48,13 @@ export interface GuestVerificationInfo {
     | "expired"      // document expired
     | "completed"    // is_checkin_completed = true
     | "contact_challenge_pending"  // OTP plan 20260731: sent, not yet verified by the guest
-    /**
-     * TRAMPA: biométrico aprobado pero el huésped AÚN NO está verificado — le
-     * falta escalar a KYC (documento vencido o ausente). Llega con
-     * `currentStep: "verification"`, no `"form"`. Tratar "pass" como éxito manda
-     * al formulario a alguien a quien `/main/complete` va a rechazar con un 403
-     * "Guest identity has not been verified."
-     */
+    /** Transición de Didit: no es éxito ni implica por sí sola escalada a KYC. */
     | "pass"
     /**
      * RECUPERABLE: el biométrico pasó pero la creación automática de la sesión
      * KYC de seguimiento falló. No es terminal — al volver a llamar `/identify`
      * el backend reintenta crear esa sesión SIN pedirle al huésped repetir el
-     * biométrico. Sin manejarlo, el huésped queda en un spinner hasta el timeout.
+     * biométrico. Sin manejarlo, el huésped queda en un spinner indefinido.
      */
     | "kyc_session_failed"
     /** Registro `kyc_session_failed` viejo, ya reemplazado por un reintento exitoso. */
@@ -73,6 +67,14 @@ export interface GuestVerificationInfo {
     | "ocr_rejected"
   currentStep: "verification" | "form" | "rejected" | "completed" | "contact_challenge"
   verifiedAt: string | null         // ISO date when approved/completed, null otherwise
+  /** Etapa real de Didit. Cambia de biometric a kyc cuando el backend escala. */
+  sessionType: "biometric" | "kyc" | null
+  startedAt: string | null
+  expiresAt: string | null
+  /** Señal autoritativa del backend para dejar de bloquear esperando. */
+  isStale: boolean
+  /** URL de la sesión Didit actualmente accionable, si existe. */
+  verificationUrl: string | null
 }
 
 /**
@@ -262,7 +264,11 @@ export interface CheckinPortalResponse {
   progress: {
     registered: number               // guests->count()
     completed: number                // guests->where(is_checkin_completed, true)->count()
-    isFullyCompleted: boolean        // completedCount >= total_guests
+    /**
+     * Authoritative backend aggregate: exactly one completed main guest,
+     * registered === completed, and completed >= total_guests.
+     */
+    isFullyCompleted: boolean
   }
   registeredGuests: RegisteredGuest[]
   /** v4.3: active property documents with render/pdf URLs. [] if none configured. */
@@ -329,7 +335,7 @@ export interface IdentifyResponse {
 
 /** El backend decide qué tipo de verificación necesita el guest */
 export type VerificationDirective =
-  | { type: "session"; subtype?: "biometric" | "kyc"; url: string }  // Didit — backend only sends url, frontend defaults subtype to "biometric"
+  | { type: "session"; sessionType: "biometric" | "kyc"; url: string }
   | { type: "document_upload" }             // Textract → mostrar upload UI
   | { type: "verified_ok" }                 // Ya verificado → saltar a form
   | ContactChallengeDirective               // Huésped recurrente: probar posesión del email (OTP plan 20260731)
@@ -357,6 +363,14 @@ export interface ContactChallengeDirective {
    * de inventar un máximo — el próximo intento fallido trae el valor real.
    */
   attemptsRemaining: number | null
+  /**
+   * 2026-08-24: `true` cuando `/identify` está RETOMANDO un challenge que este
+   * huésped ya resolvió y cuya sesión sigue viva — mismo `challengeId`, SIN
+   * correo nuevo, y `expiresIn` calculado sobre la ventana de sesión (el código
+   * en sí ya venció, pero reingresarlo emite un token fresco). El copy debe
+   * decir «reingresa el código que te enviamos», nunca «te enviamos un código».
+   */
+  alreadyVerified?: boolean
 }
 
 /**
@@ -391,9 +405,8 @@ export interface ResendContactChallengeResponse {
 export interface VerificationResultResponse {
   /**
    * - `verified`          → identidad confirmada, seguir al formulario.
-   * - `kyc_required`      → falta una sesión de documento NUEVA (`kycUrl`); es el
-   *                         caso `status:"pass"` de §A (biométrico aprobado que
-   *                         debe escalar a KYC).
+   * - `kyc_required`      → `sessionType:"kyc"` expone una sesión de documento
+   *                         nueva en `kycUrl`. `pass` por sí solo NO la identifica.
    * - `restart_required`  → `kyc_session_failed`: el backend no logró abrir esa
    *                         sesión. NO hay URL que relanzar — se sale volviendo a
    *                         `/identify`, donde el backend la reintenta sin pedirle
@@ -403,12 +416,16 @@ export interface VerificationResultResponse {
    * - `failed`            → rechazo. `retryable` distingue el rechazo de OCR
    *                         (reintentable de inmediato con mejores fotos) del
    *                         rechazo de Didit (terminal para el huésped).
+   * - `stale`             → el backend agotó su ventana de espera; dejar de bloquear
+   *                         y orientar al huésped a soporte.
    * - `pending`           → aún en proceso, seguir esperando.
    */
-  status: "verified" | "kyc_required" | "restart_required" | "contact_challenge" | "failed" | "pending"
+  status: "verified" | "kyc_required" | "restart_required" | "contact_challenge" | "failed" | "stale" | "pending"
   kycUrl?: string                        // Solo si status === "kyc_required"
   /** Solo con status "failed": el huésped puede reintentar por su cuenta. */
   retryable?: boolean
+  /** Estado terminal original, conservado para presentar recuperación precisa. */
+  failureReason?: "ocr_rejected" | "rejected" | "fail" | "expired"
   guestData?: {                          // Solo si status === "verified"
     firstName?: string
     lastName?: string
@@ -487,7 +504,8 @@ export interface GuestFormSchemaResponse {
 export interface GuestProfile {
   name: string
   lastname: string
-  email?: string
+  /** Required by both completion endpoints, regardless of the provider schema. */
+  email: string
   phone?: string
   dateOfBirth: string
   genderId: number | null
@@ -495,6 +513,15 @@ export interface GuestProfile {
   cityOfResidence?: string
   countryOfResidenceId?: number
   identificationExpiryDate?: string   // from OCR expirationDate (required for secondary)
+}
+
+/**
+ * The secondary completion contract can update the identity fields captured in
+ * its editable form. The main completion contract deliberately cannot.
+ */
+export interface SecondaryGuestProfile extends GuestProfile {
+  identificationTypeId?: number | null
+  identificationNumber?: string | null
 }
 
 export interface GuestExtra {
@@ -534,7 +561,7 @@ export interface SignMainGuestResponse {
 }
 
 export interface CompleteSecondaryGuestPayload {
-  profile: GuestProfile
+  profile: SecondaryGuestProfile
   extra: GuestExtra
 }
 
@@ -555,7 +582,7 @@ export interface CompleteGuestResponse {
 
 /** Backend response from POST /secondary/{guestUuid}/documents */
 export interface OCRResult {
-  extractedData: {
+  extractedData?: {
     // Real backend fields (v4.1)
     name?: string
     lastname?: string

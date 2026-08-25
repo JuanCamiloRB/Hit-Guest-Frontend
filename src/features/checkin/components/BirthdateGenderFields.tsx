@@ -12,8 +12,12 @@ interface Props {
 
 /**
  * Shared "Fecha de nacimiento" + "Género" row used by both guest forms.
- * `items-end` keeps both inputs on the same baseline even when the birth-date
- * label wraps to two lines and "Género" doesn't. The date is capped at today.
+ *
+ * Una sola columna en móvil: a dos columnas la etiqueta "Fecha de nacimiento"
+ * no entra en el ancho disponible, se parte en dos líneas y se cruza con
+ * "Género" —que no se parte— dejando los dos campos desalineados y el valor de
+ * género truncado ("Homb..."). A partir de `md` vuelven a convivir, y ahí
+ * `items-end` los mantiene sobre la misma línea base. La fecha se topa en hoy.
  */
 export function BirthdateGenderFields({
     genderOptions,
@@ -23,7 +27,7 @@ export function BirthdateGenderFields({
     onGenderChange,
 }: Props) {
     return (
-        <div className="grid grid-cols-2 gap-3 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:items-end">
             <div className="space-y-1.5">
                 <label className="text-sm font-semibold text-slate-700 leading-tight block">
                     Fecha de nacimiento<span className="text-red-400 ml-0.5">*</span>

@@ -11,24 +11,47 @@ describe("normalizeVerificationResult — §A traducida a decisiones", () => {
                 .toEqual({ status: "verified" })
         })
 
+        it("acepta estados de Didit sin depender de capitalización", () => {
+            expect(normalizeVerificationResult(portal({ status: "Approved", currentStep: "Form" })))
+                .toEqual({ status: "verified" })
+        })
+
+        it("acepta verified con capitalización distinta en la forma no legacy", () => {
+            expect(normalizeVerificationResult(portal({ status: "VERIFIED", currentStep: "verification" })))
+                .toEqual({ status: "verified" })
+        })
+
         it("acepta el check-in ya completado", () => {
             expect(normalizeVerificationResult(portal({ status: "completed", currentStep: "completed" })))
                 .toEqual({ status: "verified" })
         })
     })
 
-    describe("'pass' — la trampa: biométrico aprobado que aún NO está verificado", () => {
-        it("con sesión de documento pendiente, devuelve esa sesión para completarla", () => {
+    describe("escalada a KYC — la etapa manda, no 'pass'", () => {
+        it("pending con sessionType kyc devuelve la sesión nueva", () => {
             expect(normalizeVerificationResult(portal({
-                status: "pass",
+                status: "pending",
                 currentStep: "verification",
+                sessionType: "kyc",
                 verificationUrl: "https://verify.didit.me/session/nueva",
             }))).toEqual({ status: "kyc_required", kycUrl: "https://verify.didit.me/session/nueva" })
         })
 
-        it("nunca se reporta como verificado — llega con currentStep 'verification'", () => {
-            expect(normalizeVerificationResult(portal({ status: "pass", currentStep: "verification" })).status)
-                .not.toBe("verified")
+        it("pass con URL pero sin sessionType kyc sigue esperando", () => {
+            expect(normalizeVerificationResult(portal({
+                status: "pass",
+                currentStep: "verification",
+                verificationUrl: "https://verify.didit.me/session/desconocida",
+            }))).toEqual({ status: "pending" })
+        })
+
+        it("la URL biométrica nunca se confunde con una escalada", () => {
+            expect(normalizeVerificationResult(portal({
+                status: "pending",
+                currentStep: "verification",
+                sessionType: "biometric",
+                verificationUrl: "https://verify.didit.me/session/biometrica",
+            }))).toEqual({ status: "pending" })
         })
     })
 
@@ -69,6 +92,24 @@ describe("normalizeVerificationResult — §A traducida a decisiones", () => {
         })
     })
 
+    describe("espera huérfana", () => {
+        it("respeta isStale como señal autoritativa del backend", () => {
+            expect(normalizeVerificationResult(portal({
+                status: "pending",
+                currentStep: "verification",
+                isStale: true,
+            }))).toEqual({ status: "stale" })
+        })
+
+        it("no inventa un timeout cuando isStale es false", () => {
+            expect(normalizeVerificationResult(portal({
+                status: "pending",
+                currentStep: "verification",
+                isStale: false,
+            }))).toEqual({ status: "pending" })
+        })
+    })
+
     describe("contact_challenge — no avanza por sondeo", () => {
         it("lo detecta por status", () => {
             expect(normalizeVerificationResult(portal({ status: "contact_challenge_pending", currentStep: "contact_challenge" })))
@@ -86,12 +127,12 @@ describe("normalizeVerificationResult — §A traducida a decisiones", () => {
             // El huésped puede volver a intentar de una con mejores fotos.
             // Tratarlo como terminal lo mandaba al anfitrión sin necesidad.
             expect(normalizeVerificationResult(portal({ status: "ocr_rejected", currentStep: "rejected" })))
-                .toEqual({ status: "failed", retryable: true })
+                .toEqual({ status: "failed", retryable: true, failureReason: "ocr_rejected" })
         })
 
         it.each(["rejected", "fail", "expired"])("'%s' de Didit es terminal", (status) => {
             expect(normalizeVerificationResult(portal({ status, currentStep: "rejected" })))
-                .toEqual({ status: "failed", retryable: false })
+                .toEqual({ status: "failed", retryable: false, failureReason: status })
         })
     })
 

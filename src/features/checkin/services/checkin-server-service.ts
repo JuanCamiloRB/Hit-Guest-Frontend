@@ -1,6 +1,7 @@
 import "server-only"
 
 import type { CheckinPortalResponse, CheckinReservationV4, SecondaryGateStatus, SmartlockCode } from "../types/checkin"
+import { assertRenderablePortal } from "../lib/portal-payload"
 
 const API_BASE = (
     process.env.API_URL_GUEST
@@ -70,7 +71,11 @@ export const checkinServerService = {
         })
         const json = await response.json().catch(() => ({}))
         if (!response.ok) throw new Error(json?.message || "Error loading reservation")
-        return normalizePortal((json?.data ?? json) as CheckinPortalResponse & Record<string, unknown>)
+        // Un 200 sin el shape renderizable se lanza como si fuera un fallo de
+        // red: cada wrapper ya tiene su catch/fallback (incidente 2026-08-20).
+        return assertRenderablePortal(
+            normalizePortal((json?.data ?? json) as CheckinPortalResponse & Record<string, unknown>),
+        )
     },
 
     /**
@@ -98,7 +103,11 @@ export const checkinServerService = {
         })
         const json = await response.json().catch(() => ({}))
         if (!response.ok) throw new Error(json?.message || "Error loading reservation")
-        return normalizePortal((json?.data ?? json) as CheckinPortalResponse & Record<string, unknown>)
+        // Un 200 sin el shape renderizable se lanza como si fuera un fallo de
+        // red: cada wrapper ya tiene su catch/fallback (incidente 2026-08-20).
+        return assertRenderablePortal(
+            normalizePortal((json?.data ?? json) as CheckinPortalResponse & Record<string, unknown>),
+        )
     },
 
     async getSecondaryGateStatus(reservationUuid: string, guestToken: string): Promise<SecondaryGateStatus> {

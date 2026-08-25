@@ -29,18 +29,52 @@
  * verificar. Lo único que decide este valor es si se piden dos fotos de más.
  */
 
-import type { RegisteredGuest } from "../types/checkin"
+import type { RegisteredGuest, VerificationDirective, VerificationResultResponse } from "../types/checkin"
 
 /** Lo mínimo que se necesita de un huésped del portal — no el objeto entero. */
 type VerifiableGuest = Pick<RegisteredGuest, "isCompleted" | "verification">
 
+export type PreFormVerificationStep = "home" | "form" | "contact_challenge" | "verify" | "identify"
+
+/**
+ * Guard shared by the main and secondary forms. It never chooses a provider:
+ * `/identify` already did that. It only prevents the form from mounting before
+ * the backend has reported a terminal verification state.
+ */
+export function resolvePreFormVerificationStep(input: {
+    identityVerified: boolean
+    resultStatus?: VerificationResultResponse["status"]
+    directiveType?: VerificationDirective["type"]
+    portalStatus?: "cancelled" | "deleted"
+    /** True only when the backend-issued OTP verification token is present. */
+    contactChallengeSatisfied?: boolean
+}): PreFormVerificationStep {
+    if (input.portalStatus) return "home"
+    if (input.contactChallengeSatisfied) return "form"
+    if (input.resultStatus === "contact_challenge" || input.directiveType === "contact_challenge") {
+        return "contact_challenge"
+    }
+    if (input.identityVerified || input.directiveType === "verified_ok") return "form"
+    return input.directiveType ? "verify" : "identify"
+}
+
 export function isDocumentAlreadyVerified(
     guest: VerifiableGuest | undefined,
     hasContactChallengeToken: boolean,
+    verificationResult?: Pick<VerificationResultResponse, "status"> | null,
 ): boolean {
     // El OTP aprobado alcanza por sí solo: sobrevive tanto a que el portal no
     // haya avanzado el estado como a que el portal no responda.
     if (hasContactChallengeToken) return true
+    // The contact challenge is an explicit backend gate and has precedence over
+    // stale approved/form projections. Only the token issued after OTP success
+    // can move this guest past it.
+    if (verificationResult?.status === "contact_challenge") return false
+    if (guest?.verification?.status === "contact_challenge_pending"
+        || guest?.verification?.currentStep === "contact_challenge") return false
+    // The lightweight polling endpoint can expose Didit's terminal result before
+    // the broader portal projection catches up. Both are backend observations.
+    if (verificationResult?.status === "verified") return true
     if (!guest) return false
 
     const status = guest.verification?.status

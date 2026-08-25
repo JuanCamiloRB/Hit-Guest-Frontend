@@ -138,7 +138,21 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
             // `expiresAt` se guarda junto al token (no se descarta): es lo único
             // que le permite al resto del flujo saber que la credencial murió
             // ANTES de gastar el trabajo del huésped contra un 401.
-            setVerificationToken(reservationUuid, guestUuid, res.verificationToken, res.expiresAt)
+            const stored = setVerificationToken(
+                reservationUuid, guestUuid, res.verificationToken, res.expiresAt,
+            )
+            if (!stored) {
+                // El código era correcto, pero nos quedamos sin la credencial que
+                // exigen /form, /sign y ambos /complete. Seguir al formulario
+                // garantizaría un 401 que lo devolvería acá, a repetir un código
+                // que ya funcionó: el bucle que el huésped no puede romper.
+                // Se corta acá y se le dice la verdad.
+                setError(
+                    "Verificamos tu código, pero no pudimos guardar la sesión en este navegador. "
+                    + "Si estás en modo privado, ábrelo en una ventana normal; si no, contacta al anfitrión.",
+                )
+                return
+            }
             toast.success("Código verificado")
             router.push(`${basePath}/guest?guest_uuid=${guestUuid}`)
         } catch (raw: unknown) {
@@ -179,6 +193,9 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 // backend; queda en desconocido hasta que un intento fallido
                 // devuelva la cifra verdadera.
                 attemptsRemaining: null,
+                // Reenviar SÍ manda un correo nuevo: el modo "reingresa el código
+                // anterior" (alreadyVerified) deja de aplicar.
+                alreadyVerified: false,
             })
             setResendAvailableAt(Date.now() + res.resendAfter * 1000)
             setAttemptsRemaining(null)
@@ -265,9 +282,16 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
                     Confirma que eres tú
                 </h1>
+                {/* `alreadyVerified` (2026-08-24): /identify está retomando un
+                    challenge ya resuelto — NO se envió correo nuevo. Decir
+                    "enviamos" haría al huésped esperar un correo que no llega. */}
                 <p className="text-slate-500 text-sm">
-                    Ya tienes una verificación de identidad previa. Para reutilizarla, ingresa el código de 6 dígitos
-                    que enviamos a <strong>{challenge.maskedDestination}</strong>.
+                    {challenge.alreadyVerified
+                        ? <>Ya habías verificado este código. Reingresa el código de 6 dígitos
+                            que te enviamos antes a <strong>{challenge.maskedDestination}</strong> —
+                            no te enviamos uno nuevo.</>
+                        : <>Ya tienes una verificación de identidad previa. Para reutilizarla, ingresa el código de 6 dígitos
+                            que enviamos a <strong>{challenge.maskedDestination}</strong>.</>}
                 </p>
             </div>
 
@@ -277,7 +301,12 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                         <Mail size={20} className="text-brand-purple" />
                     </div>
                     <p className="text-xs text-slate-500">
-                        El código vence en unos minutos. Si no lo ves, revisa spam o pide uno nuevo.
+                        {challenge.alreadyVerified
+                            // En este modo el countdown es la ventana de sesión, no
+                            // la vida del código: afirmar que "vence en minutos"
+                            // empujaría a pedir un reenvío innecesario.
+                            ? "Busca el correo que ya te llegó. Si no lo encuentras, pide un código nuevo."
+                            : "El código vence en unos minutos. Si no lo ves, revisa spam o pide uno nuevo."}
                     </p>
                 </div>
 

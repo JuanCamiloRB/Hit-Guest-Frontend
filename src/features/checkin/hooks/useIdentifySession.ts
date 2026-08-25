@@ -57,12 +57,25 @@ export function useIdentifySession(reservationUuid: string) {
         try {
             const key = getStorageKey(reservationUuid, guestUuid)
             let raw = localStorage.getItem(key)
-            // Fallback to reservation-only key if guest-specific not found
-            if (!raw && guestUuid) raw = localStorage.getItem(getStorageKey(reservationUuid))
+            let sourceKey = key
+            // Once the route identifies a guest, never accept another guest's
+            // reservation-wide fallback. Doing so can mount the wrong provider
+            // UI after a callback (for example Textract after returning from Didit).
+            if (!raw && guestUuid) {
+                const fallback = localStorage.getItem(getStorageKey(reservationUuid))
+                if (fallback) {
+                    const candidate = JSON.parse(fallback) as IdentifySessionData
+                    if (candidate.guestUuid === guestUuid) {
+                        raw = fallback
+                        sourceKey = getStorageKey(reservationUuid)
+                    }
+                }
+            }
             if (!raw) return null
             const data: IdentifySessionData = JSON.parse(raw)
+            if (guestUuid && data.guestUuid !== guestUuid) return null
             if (Date.now() - data.timestamp > SESSION_TTL_MS) {
-                localStorage.removeItem(key)
+                localStorage.removeItem(sourceKey)
                 return null
             }
             return data

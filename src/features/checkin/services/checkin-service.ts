@@ -28,11 +28,29 @@ import {
   mockOCRResult,
   mockVerificationResult,
 } from "../data/mock-guest-data"
-import { getVerificationToken } from "../lib/verification-token"
+import { getVerificationToken, touchVerificationToken } from "../lib/verification-token"
 import { normalizeVerificationResult } from "../lib/verification-result"
+import { assertRenderablePortal } from "../lib/portal-payload"
 import type { CheckinApiError, CheckinFailedField } from "../lib/checkin-error"
 
 const USE_MOCK = false;
+const POLLING_REQUEST_TIMEOUT_MS = 20_000
+
+/**
+ * Business staleness is decided by the backend (`isStale`), but a single HTTP
+ * request can still hang before the backend answers. Bound read requests so the
+ * polling state machine gets another turn; this does not declare verification
+ * failed and does not replace the backend's timeout.
+ */
+async function fetchPollingRead(url: string, init: RequestInit): Promise<Response> {
+    const controller = new AbortController()
+    const timer = setTimeout(() => controller.abort(), POLLING_REQUEST_TIMEOUT_MS)
+    try {
+        return await fetch(url, { ...init, signal: controller.signal })
+    } finally {
+        clearTimeout(timer)
+    }
+}
 
 /**
  * Converts a single snake_case string to camelCase.
@@ -146,7 +164,7 @@ export class CheckinService {
             "Accept-Language": "es",
             "X-Locale": "es",
         }
-        const response = await fetch(url, { headers, cache: "no-store" })
+        const response = await fetchPollingRead(url, { headers, cache: "no-store" })
         if (!response.ok) {
             const err = await response.json().catch(() => ({}))
             // Mismo error enriquecido que el resto del servicio: varios llamadores
@@ -158,7 +176,11 @@ export class CheckinService {
         const portal = json.data || json
         const rawCodes = portal.smartlockCodes ?? portal.smartlock_codes
 
-        return {
+        // Un 200 sin el shape renderizable se lanza como si fuera un fallo de
+        // red: todos los llamadores (post-complete, sondeos, wrappers) ya tienen
+        // catch para eso, y dejarlo pasar es lo que reventaba el render de
+        // /success (incidente 2026-08-20, contratos §3).
+        return assertRenderablePortal({
             ...portal,
             smartlockCodes: Array.isArray(rawCodes)
                 ? rawCodes.map((code: Record<string, unknown>) => ({
@@ -169,7 +191,7 @@ export class CheckinService {
                     validUntil: String(code.validUntil ?? code.valid_until ?? ""),
                 }))
                 : undefined,
-        } as CheckinPortalResponse
+        } as CheckinPortalResponse)
     }
 
     /**
@@ -203,12 +225,33 @@ export class CheckinService {
         // forma del contrato (§7), así que se tipa la respuesta cruda como el
         // contrato menos ese campo, en vez de anular el chequeo con `any`.
         const raw = await this.postWithAppToken<
-            Omit<IdentifyResponse, "formSchema"> & { formSchema?: RawPayload }
+            Omit<IdentifyResponse, "formSchema" | "verification"> & {
+                verification: IdentifyResponse["verification"] | {
+                    type: "session"
+                    url: string
+                    sessionType?: "biometric" | "kyc"
+                    session_type?: "biometric" | "kyc"
+                    subtype?: "biometric" | "kyc"
+                }
+                formSchema?: RawPayload
+            }
         >(`${API_BASE}/checkin/${reservationUuid}/identify`, apiPayload);
+        const verification = raw.verification.type === "session"
+            ? {
+                type: "session" as const,
+                url: raw.verification.url,
+                // `sessionType` es canónico. Los otros nombres solo mantienen
+                // interoperabilidad durante el despliegue coordinado.
+                sessionType: raw.verification.sessionType
+                    ?? raw.verification.session_type
+                    ?? raw.verification.subtype
+                    ?? "biometric",
+            }
+            : raw.verification
         return {
             guest: raw.guest,
             reservationGuest: raw.reservationGuest,
-            verification: raw.verification,
+            verification,
             formSchema: normalizeFormSchema(raw.formSchema),
         };
     }
@@ -297,7 +340,7 @@ export class CheckinService {
      * POST /api/v1/checkin/{reservationUuid}/contact-challenges/{challengeId}/verify
      * (OTP plan 20260731). Confirms the 6-digit code sent to the recurring
      * guest's historical email. On success, the caller must persist
-     * `verificationToken` (sessionStorage, via verification-token.ts) — it's
+     * `verificationToken` (localStorage, via verification-token.ts) — it's
      * required as `X-Checkin-Verification-Token` on /form, /sign,
      * /guarantee/setup-intent and both /complete endpoints from this point on.
      * Rate limit: 10 req/min per challengeId (backend-enforced, surfaces as 429).
@@ -426,7 +469,7 @@ export class CheckinService {
     }
 
     /**
-     * GET /api/v1/checkin/{reservationUuid}/verify/result?guest_uuid={guestUuid}&session_id={verificationSessionId}
+     * GET /api/v1/checkin/{reservationUuid}/verify/result?guest_uuid={guestUuid}
      * Called after a Didit biometric session completes (via SDK onComplete or Didit callback redirect).
      * Backend evaluates the Didit webhook result and returns:
      *   - "verified"    : guest existed in Didit with valid docs → go to form
@@ -434,7 +477,6 @@ export class CheckinService {
      *   - "failed"      : biometric failed → show error
      *
      * identificationNumberTrigger is ONLY used for mock routing (111 → verified, 112 → kyc_required).
-     * verificationSessionId is the ID Didit sends in the callback URL (?verificationSessionId=xxx).
      */
     /**
      * GET /api/v1/checkin/didit/session/{sessionId}/context
@@ -477,15 +519,13 @@ export class CheckinService {
     async checkVerificationResult(
         reservationUuid: string,
         guestUuid: string,
-        identificationNumberTrigger?: string,
-        verificationSessionId?: string
+        identificationNumberTrigger?: string
     ): Promise<VerificationResultResponse> {
         if (USE_MOCK) {
             await new Promise(res => setTimeout(res, 1000))
             return mockVerificationResult(identificationNumberTrigger || '111')
         }
         const params = new URLSearchParams({ guest_uuid: guestUuid })
-        if (verificationSessionId) params.set('session_id', verificationSessionId)
         const raw = await this.getWithAppToken<unknown>(
             `${API_BASE}/checkin/${reservationUuid}/verify/result?${params.toString()}`
         )
@@ -621,6 +661,11 @@ export class CheckinService {
      */
     private withVerificationToken(reservationUuid: string, guestUuid: string): Record<string, string> {
         const token = getVerificationToken(reservationUuid, guestUuid)
+        // Enviar el token ES usarlo: el backend renueva su TTL deslizante con
+        // cada request que pasa el gate (2026-08-24), y acá se espeja en la
+        // copia local. Si la petición termina en 401, la recuperación borra el
+        // token igual — extender de más converge siempre al mismo camino.
+        if (token) touchVerificationToken(reservationUuid, guestUuid)
         return token ? { "X-Checkin-Verification-Token": token } : {}
     }
 
@@ -637,7 +682,7 @@ export class CheckinService {
             "X-Locale": "es",
             ...extraHeaders,
         }
-        const response = await fetch(url, { headers, cache: "no-store" })
+        const response = await fetchPollingRead(url, { headers, cache: "no-store" })
         if (!response.ok) {
             const err = await response.json().catch(() => ({}))
             throw this.buildHttpError(response.status, err, response.headers)
@@ -658,19 +703,40 @@ export class CheckinService {
      */
     private buildHttpError(status: number, body: unknown, headers?: Headers): CheckinApiError {
         const payload = (body ?? {}) as Record<string, unknown>
-        const message = typeof payload.message === "string" && payload.message
+        // Some Laravel/BFF versions wrap the OCR error in `data`. Normalize both
+        // shapes here so the screen never loses errorType or the actionable
+        // validation message merely because an intermediary wrapped the body.
+        const nested = payload.data && typeof payload.data === "object"
+            ? payload.data as Record<string, unknown>
+            : {}
+        const details = payload.errors && typeof payload.errors === "object"
+            ? payload.errors
+            : nested.errors && typeof nested.errors === "object"
+                ? nested.errors
+                : undefined
+        const firstValidationMessage = details
+            ? Object.values(details as Record<string, unknown>)
+                .flatMap((value) => Array.isArray(value) ? value : [value])
+                .find((value): value is string => typeof value === "string" && value.trim().length > 0)
+            : undefined
+        const explicitMessage = typeof payload.message === "string" && payload.message
             ? payload.message
-            : "Error en la solicitud"
+            : typeof nested.message === "string" && nested.message
+                ? nested.message
+                : undefined
+        const message = explicitMessage ?? firstValidationMessage ?? "Error en la solicitud"
         const error = new Error(message) as CheckinApiError
         error.status = status
-        if (payload.errors && typeof payload.errors === "object") {
-            error.errors = payload.errors as Record<string, string[]>
+        if (details) {
+            error.errors = details as Record<string, string[]>
         }
         // OCR / document-verification failures carry a structured shape:
         // { errorType, failedFields:[{field, reason, confidence}], message }
-        if (typeof payload.errorType === "string") error.errorType = payload.errorType
-        if (Array.isArray(payload.failedFields)) {
-            error.failedFields = payload.failedFields as CheckinFailedField[]
+        const errorType = payload.errorType ?? payload.error_type ?? nested.errorType ?? nested.error_type
+        if (typeof errorType === "string") error.errorType = errorType
+        const failedFields = payload.failedFields ?? payload.failed_fields ?? nested.failedFields ?? nested.failed_fields
+        if (Array.isArray(failedFields)) {
+            error.failedFields = failedFields as CheckinFailedField[]
         }
         // Contact-challenge OTP errors (backend plan 20260731): { code, message,
         // attemptsRemaining? } (422) or { code, message, retryAfter? } (429).

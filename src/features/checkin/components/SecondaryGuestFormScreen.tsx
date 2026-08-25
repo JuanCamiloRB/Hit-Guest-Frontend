@@ -1,24 +1,21 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { getErrorMessage, notifyError } from "@/lib/notify-error"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { CatalogService, type IdentificationTypeOption, type CatalogOption, type CountryOption } from "@/features/auth/services/catalog-service"
-import { 
-    GuestFormData,
-    GuestFormSchemaResponse,
-    CompleteSecondaryGuestPayload
-} from "@/features/checkin/types/checkin"
+import type { GuestFormData, GuestFormSchemaResponse } from "@/features/checkin/types/checkin"
 import { useLocalStorage } from "@/features/checkin/hooks/useLocalStorage"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { getVerificationToken } from "@/features/checkin/lib/verification-token"
 import { useVerificationRecovery } from "@/features/checkin/hooks/useVerificationRecovery"
-import { isDocumentAlreadyVerified } from "@/features/checkin/lib/doc-verification"
+import { isDocumentAlreadyVerified, resolvePreFormVerificationStep } from "@/features/checkin/lib/doc-verification"
 import { isDocumentExpired } from "@/features/checkin/lib/document-expiry"
 import { classifyCompleteFailure } from "@/features/checkin/lib/complete-failure"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
+import { buildSecondaryCompletionPayload } from "@/features/checkin/lib/secondary-completion"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { FormInput } from "@/features/checkin/components/FormInput"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
@@ -40,10 +37,12 @@ interface SecondaryGuestFormScreenProps {
 
 export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath }: SecondaryGuestFormScreenProps) {
     const router = useRouter()
+    const searchParams = useSearchParams()
     const expireVerificationSession = useVerificationRecovery(reservationUuid, basePath)
     const { load } = useIdentifySession(reservationUuid)
-    const session = load()
-    const guestUuid = session?.guestUuid
+    const routedGuestUuid = searchParams.get("guest_uuid") || ""
+    const session = load(routedGuestUuid || undefined)
+    const guestUuid = routedGuestUuid || session?.guestUuid || ""
 
     const [form, setForm] = useLocalStorage<Partial<GuestFormData>>(`checkin-secondary-form-${guestToken}`, {
         name: session?.guestName ?? "",
@@ -96,9 +95,42 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                 // que siga contando aunque la llamada falle.
                 const hasOtpToken = getVerificationToken(reservationUuid, guestUuid) !== null
                 try {
-                    const portal = await checkinService.getPortal(reservationUuid)
-                    const currentGuest = portal.registeredGuests.find((guest) => guest.uuid === guestUuid)
-                    setDocVerified(isDocumentAlreadyVerified(currentGuest, hasOtpToken))
+                    const [portalResult, verificationResult] = await Promise.allSettled([
+                        checkinService.getPortal(reservationUuid),
+                        checkinService.checkVerificationResult(reservationUuid, guestUuid),
+                    ])
+                    if (portalResult.status === "rejected") {
+                        console.error(
+                            "[SecondaryGuestFormScreen] getPortal() falló; se usa /verify/result como respaldo",
+                            portalResult.reason,
+                        )
+                    }
+                    const portal = portalResult.status === "fulfilled" ? portalResult.value : null
+                    const currentGuest = portal?.registeredGuests?.find((guest) => guest.uuid === guestUuid)
+                    const activeResult = verificationResult.status === "fulfilled"
+                        ? verificationResult.value
+                        : null
+                    const identityVerified = session?.verification.type === "verified_ok"
+                        || isDocumentAlreadyVerified(currentGuest, hasOtpToken, activeResult)
+                    setDocVerified(identityVerified)
+                    const nextStep = resolvePreFormVerificationStep({
+                        identityVerified,
+                        resultStatus: activeResult?.status,
+                        directiveType: session?.verification.type,
+                        portalStatus: portal?.portalStatus,
+                        contactChallengeSatisfied: hasOtpToken,
+                    })
+                    if (nextStep !== "form") {
+                        const target = nextStep === "home"
+                            ? basePath
+                            : nextStep === "contact_challenge"
+                            ? `${basePath}/contact-challenge?guest_uuid=${guestUuid}`
+                            : nextStep === "verify"
+                                ? `${basePath}/verify?guest_uuid=${guestUuid}`
+                                : `${basePath}/identify`
+                        router.replace(target)
+                        return
+                    }
                 } catch (e) {
                     // Mismo motivo que en GuestFormScreen: tragado en silencio, el
                     // síntoma era indistinguible de un bug de la regla misma.
@@ -128,8 +160,9 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                     } catch (raw: unknown) {
                         if (asCheckinError(raw).status === 401) {
                             // Plan OTP 20260731: token ausente/vencido — /identify
-                            // emite un desafío nuevo por su flujo de "resume".
-                            expireVerificationSession(guestUuid)
+                            // retoma el desafío por su flujo de "resume". El error
+                            // viaja para decidir por su `code` (2026-08-24).
+                            expireVerificationSession(guestUuid, raw)
                             return
                         }
                         console.warn("[SecondaryGuestFormScreen] /form endpoint unavailable; using identify session schema")
@@ -310,40 +343,13 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
         ? genders.map((g) => ({ id: Number(g.id), label: g.name }))
         : mockGenders.map((g) => ({ id: g.id, label: g.nameTranslations.es }))
 
-    const nextPath = `${basePath}/success`
+    const nextPath = `${basePath}/success?guest_uuid=${guestUuid}`
 
     const handleSubmit = async () => {
         if (!guestUuid) return
         setIsSubmitting(true)
         try {
-            const payload: CompleteSecondaryGuestPayload = {
-                profile: {
-                    name: form.name as string,
-                    lastname: form.lastname as string,
-                    email: form.email || undefined,
-                    phone: form.phone || undefined,
-                    dateOfBirth: form.dateOfBirth as string,
-                    genderId: form.genderId ? Number(form.genderId) : null,
-                    nationalityId: Number(form.nationalityId),
-                    cityOfResidence: form.cityOfResidence || undefined,
-                    countryOfResidenceId: form.countryOfResidenceId ? Number(form.countryOfResidenceId) : undefined,
-                    identificationExpiryDate: form.identificationExpiryDate || undefined,
-                },
-                extra: {
-                    countryOfOriginId: form.countryOfOriginId ? Number(form.countryOfOriginId) : undefined,
-                    countryDestinationId: form.countryDestinationId ? Number(form.countryDestinationId) : undefined,
-                    cityOfOrigin: form.cityOfOrigin || undefined,
-                    reasonForTripId: form.reasonForTripId ? Number(form.reasonForTripId) : undefined,
-                    documentImage1: form.documentImage1 || null,
-                    documentImage2: form.documentImage2 || null,
-                    arrivalTime: form.arrivalTime,
-                    departureTime: form.departureTime,
-                    arrivalFlight: form.arrivalFlight,
-                    departureFlight: form.departureFlight,
-                    // Provider-declared dynamic fields (v4.6) — sent verbatim under their keys.
-                    ...(form.dynamicExtra ?? {}),
-                }
-            }
+            const payload = buildSecondaryCompletionPayload(form)
 
             // Backend only returns { message } — re-fetch portal for updated state
             await checkinService.completeSecondaryGuest(reservationUuid, guestUuid, payload)
@@ -352,20 +358,23 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             localStorage.removeItem(`checkin-secondary-form-${guestToken}`)
             localStorage.setItem(`checkin-secondary-done-${reservationUuid}-${guestToken}`, 'true')
 
-            // Re-fetch portal to check if all guests are done
-            const portal = await checkinService.getPortal(reservationUuid)
-
-            if (portal.progress.isFullyCompleted) {
-                toast.success("¡Check-in completado para todos los huéspedes!")
-            } else {
+            // Completion is already committed. A convenience refresh must never
+            // turn that success into an error or invite a duplicate submission.
+            try {
+                const portal = await checkinService.getPortal(reservationUuid)
+                toast.success(portal.progress.isFullyCompleted
+                    ? "¡Check-in completado para todos los huéspedes!"
+                    : "Tus datos fueron registrados correctamente")
+            } catch {
                 toast.success("Tus datos fueron registrados correctamente")
             }
             router.push(nextPath)
         } catch (raw: unknown) {
             const error = asCheckinError(raw)
             if (error.status === 401) {
-                // El token venció (60 min) entre la pantalla del OTP y este envío.
-                expireVerificationSession(guestUuid)
+                // El token venció entre la pantalla del OTP y este envío. El error
+                // viaja para que la recuperación decida por su `code` (2026-08-24).
+                expireVerificationSession(guestUuid, raw)
             } else if (error.status === 403) {
                 // §18 devuelve 403 por DOS causas distintas: "el titular no
                 // completó todavía" y "la identidad de este huésped no está
@@ -441,7 +450,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             {/* ── Personal Section ── */}
             <CollapsibleSection icon={<User size={18} />} title="Datos personales" expanded={expanded.personal} onToggle={() => toggleSection("personal")} badge={form.name && form.lastname ? "✓" : undefined}>
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <FormInput label="Nombre" value={form.name || ""} onChange={(v) => updateField("name", v)} placeholder="Ej. Ricardo" required />
                         <FormInput label="Apellidos" value={form.lastname || ""} onChange={(v) => updateField("lastname", v)} placeholder="Ej. Lombana" required />
                     </div>
@@ -469,7 +478,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                         )}
                         
                         {(isFieldVisible('countryOfResidenceId') || isFieldVisible('cityOfResidence')) && (
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {isFieldVisible('countryOfResidenceId') && (
                                     <SearchableSelect label="País de residencia" options={countryOptions} value={form.countryOfResidenceId ?? ""} onChange={(v) => updateField("countryOfResidenceId", v)} placeholder="Seleccionar..." required={isFieldRequired('countryOfResidenceId')} />
                                 )}
@@ -488,7 +497,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                         )}
 
                         {(isFieldVisible('countryDestinationId') || isFieldVisible('cityDestination')) && (
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {isFieldVisible('countryDestinationId') && (
                                     <SearchableSelect label="País destino" options={countryOptions} value={form.countryDestinationId ?? ""} onChange={(v) => updateField("countryDestinationId", v)} placeholder="Seleccionar..." required={isFieldRequired('countryDestinationId')} />
                                 )}
@@ -511,7 +520,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             {(isFieldVisible('arrivalTime') || isFieldVisible('departureTime') || isFieldVisible('arrivalFlight') || isFieldVisible('departureFlight')) && (
                 <CollapsibleSection icon={<Plane size={18} />} title="Información de viaje" expanded={expanded.travel} onToggle={() => toggleSection("travel")} optional>
                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {isFieldVisible('arrivalTime') && (
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-semibold text-slate-700">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-red-400 ml-0.5">*</span>}</label>
@@ -525,7 +534,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                                 </div>
                             )}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {isFieldVisible('arrivalFlight') && (
                                 <FormInput label="# Vuelo llegada" value={form.arrivalFlight || ""} onChange={(v) => updateField("arrivalFlight", v)} placeholder="Ej. AV123" required={isFieldRequired('arrivalFlight')} />
                             )}

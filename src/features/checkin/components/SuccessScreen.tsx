@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { CheckCircle2, Home, Users, Calendar, MapPin, Download, Clock, FileText, Loader2, Mail, XCircle } from "lucide-react"
+import { CheckCircle2, Home, Users, Calendar, MapPin, Download, Clock, FileText, Loader2, Mail, XCircle, RefreshCw } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { normalizeApiError } from "@/lib/notify-error"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { checkinService } from "@/features/checkin/services/checkin-service"
-import { isMainGuestCompleted, pendingGuestsCount, type CheckinPortalResponse } from "@/features/checkin/types/checkin"
+import { isMainGuestCompleted, pendingGuestsCount, type CheckinPortalResponse, type PortalContractInfo } from "@/features/checkin/types/checkin"
+import { resolveContractSigningState, isContractTransitional } from "@/features/checkin/lib/contract-signing"
+import { completedEntryCopy, resolveCompletedEntryReason } from "@/features/checkin/lib/success-entry"
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
 
 interface ReservationDocument {
@@ -25,10 +27,20 @@ interface SuccessScreenProps {
 export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
     const res = portal.reservation;
     const searchParams = useSearchParams()
+    const completedEntryReason = resolveCompletedEntryReason(
+        searchParams.get("entry"),
+        searchParams.get("guest_uuid"),
+        portal.registeredGuests,
+    )
+    const completedCopy = completedEntryReason ? completedEntryCopy(completedEntryReason) : null
     const mainCompleted = isMainGuestCompleted(portal)
     const pendingGuests = Math.max(0, pendingGuestsCount(portal))
-    const isMainDone = searchParams.get("main_done") === "true" || (mainCompleted && !portal.progress.isFullyCompleted)
     const contractPending = searchParams.get("contract_pending") === "1"
+    // TuFirma's `pending_signature` is intentionally NOT main-guest completion:
+    // secondary guests stay locked until the webhook. The query flag describes
+    // the response that just happened and must outrank any stale navigation cache.
+    const isMainDone = !contractPending
+        && (searchParams.get("main_done") === "true" || (mainCompleted && !portal.progress.isFullyCompleted))
     const hasPendingSecondaries = mainCompleted && pendingGuests > 0
     const welcomeHref = `/checkin/${reservationUuid}`
 
@@ -37,21 +49,40 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
     const [downloadingDoc, setDownloadingDoc] = useState<string | null>(null)
     const [downloadingContract, setDownloadingContract] = useState(false)
 
-    const hasContract = !!portal.contract?.signingProvider
-    const [contractStatus, setContractStatus] = useState<string | null>(portal.contract?.status ?? null)
-    const [signedAt, setSignedAt] = useState<string | null>(portal.contract?.signedAt ?? null)
-    const [signedUrlReady, setSignedUrlReady] = useState<boolean>(!!portal.contract?.signedContractUrl)
+    // Un solo objeto en vez de tres piezas sueltas (status/signedAt/url): el
+    // estado que se muestra sale de los tres a la vez, y tenerlos separados dejaba
+    // que se actualizaran de a uno y describieran un contrato que no existía.
+    const [contract, setContract] = useState<PortalContractInfo | null>(portal.contract ?? null)
+    // El sondeo se dio por vencido. No es un error: TuFirma se firma al ritmo de
+    // una persona y puede tardar horas. Lo que no se puede hacer es dejar el
+    // spinner girando para siempre fingiendo que sigue mirando.
+    const [pollStalled, setPollStalled] = useState(false)
+    const [refreshing, setRefreshing] = useState(false)
+
     // `signedContractUrl` es la ÚNICA señal válida de que el PDF se puede
-    // descargar: el backend la publica exactamente cuando `canDownload`, y la deja
-    // en null si no.
-    //
-    // Antes esto también aceptaba `status === "signed"` y `hasNativeSignature`, que
-    // se ponen en true en cuanto el titular firma — ANTES de completar el check-in.
-    // Un acompañante que llegaba a esta pantalla en esa ventana veía el botón de
-    // descarga sobre una URL que el backend todavía no habilitaba, y el archivo
-    // fallaba. Esperar `signedContractUrl` no retrasa el caso normal: con proveedor
-    // síncrono aparece junto con el `complete` del titular.
-    const contractReady = signedUrlReady
+    // descargar (ver `resolveContractSigningState`): el backend la publica
+    // exactamente cuando `canDownload`, y la deja en null si no.
+    const contractState = resolveContractSigningState(contract)
+    const contractReady = contractState === "available"
+
+    // El titular con TuFirma llega acá con su registro guardado pero SIN firmar:
+    // el backend lo deja incompleto hasta el webhook (§3 del contrato), así que
+    // este cierre NO puede titular "Completado" — eso hacía leer el flujo como
+    // terminado sin firma (reporte 2026-08-21). El flag cubre el envío recién
+    // hecho (el portal puede no reflejarlo todavía); el estado del portal cubre
+    // la reapertura — pero solo para el TITULAR: la firma pendiente es suya, y
+    // un acompañante con su registro completo no debe leer "falta tu firma".
+    // Cuando el webhook llega, el sondeo existente actualiza `contract` y el
+    // cierre pasa solo a verde.
+    const viewerIsMain = portal.registeredGuests.some(
+        (guest) => guest.uuid === searchParams.get("guest_uuid") && guest.isMain,
+    )
+    const awaitingSignature =
+        (contractState === "awaiting_external" && (viewerIsMain || contractPending))
+        || (contractPending && contractState === "awaiting_guest")
+    // Fail closed on malformed legacy data: `slice()` on a non-string timestamp
+    // would otherwise crash this screen immediately after a successful signature.
+    const signedAt = typeof contract?.signedAt === "string" ? contract.signedAt : null
 
     useEffect(() => {
         let mounted = true
@@ -62,40 +93,95 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
         return () => { mounted = false }
     }, [reservationUuid, portal])
 
-    // Poll the portal while the contract is in a transitional state (tufirma "pending"
-    // waiting on the external signature, or hitguest "signed" before "completed"),
-    // until it reaches "completed" — then the signed PDF becomes downloadable.
+    /**
+     * ¿Tiene sentido seguir mirando el portal?
+     *
+     * `isContractTransitional` cubre lo que puede cambiar solo: la firma externa
+     * de TuFirma (webhook) y la generación del PDF firmado.
+     *
+     * El segundo término cubre una carrera real: `contract_pending=1` lo pone el
+     * envío que ACABA de ocurrir —el backend respondió `pending_signature`— pero
+     * el portal que renderizó esta página se pidió en el servidor y puede haber
+     * salido antes de que ese estado se persistiera, devolviendo `not_started`.
+     * Antes el sondeo se armaba solo mirando el estado, así que en esa ventana no
+     * arrancaba nunca y —al no estar el estado en las dependencias— tampoco se
+     * rearmaba después: el huésped se quedaba con el aviso de "falta firmar" y una
+     * pantalla que ya no volvía a consultar nada.
+     */
+    const shouldPollContract =
+        isContractTransitional(contractState)
+        || (contractPending && contractState === "awaiting_guest")
+
     useEffect(() => {
-        if (!hasContract) return
-        if (signedUrlReady) return // already downloadable — nothing to wait for
-        if (contractStatus !== "pending" && contractStatus !== "signed") return
+        // `pollStalled` está en las dependencias a propósito: es lo que apaga el
+        // sondeo cuando se agota el presupuesto Y lo que lo vuelve a encender
+        // cuando el huésped pulsa "Actualizar", con un presupuesto nuevo.
+        if (!shouldPollContract || pollStalled) return
         let active = true
         let elapsed = 0
-        const INTERVAL = 8000
-        const TIMEOUT = 10 * 60 * 1000
+        // Arranca corto porque el caso nativo se resuelve en segundos, y se abre
+        // porque el caso de TuFirma depende de que una persona abra un correo.
+        let interval = 8000
+        const MAX_INTERVAL = 30_000
+        const BUDGET = 10 * 60 * 1000
         let timer: ReturnType<typeof setTimeout>
         const tick = async () => {
             try {
                 const p = await checkinService.getPortal(reservationUuid)
-                const c = p.contract
-                if (active && c) {
-                    setContractStatus(c.status)
-                    if (c.signedAt) setSignedAt(c.signedAt)
-                    if (c.signedContractUrl) setSignedUrlReady(true)
-                    if (c.status === "completed") {
+                if (!active) return
+                if (p.contract) {
+                    setContract(p.contract)
+                    // Los documentos de la reserva cambian cuando el contrato
+                    // firmado pasa a existir, no antes.
+                    if (p.contract.signedContractUrl) {
                         checkinService.getReservationDocuments(reservationUuid, p)
-                            .then(d => { if (active) setDocuments(d) }).catch(() => {})
+                            .then(d => { if (active) setDocuments(d) })
+                            .catch(() => {})
                         return
                     }
                 }
             } catch {}
-            elapsed += INTERVAL
-            if (active && elapsed < TIMEOUT) timer = setTimeout(tick, INTERVAL)
+            elapsed += interval
+            if (!active) return
+            if (elapsed >= BUDGET) {
+                // Se agotó el presupuesto y el contrato sigue sin resolverse. Con
+                // TuFirma es lo esperable —se firma cuando la persona abre el
+                // correo, no en diez minutos—, así que se deja de sondear y se le
+                // dice, en vez de dejar un spinner girando indefinidamente sobre
+                // un sondeo que ya había terminado en silencio.
+                setPollStalled(true)
+                return
+            }
+            interval = Math.min(interval * 1.5, MAX_INTERVAL)
+            timer = setTimeout(tick, interval)
         }
-        timer = setTimeout(tick, INTERVAL)
+        timer = setTimeout(tick, interval)
         return () => { active = false; clearTimeout(timer) }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [reservationUuid, hasContract])
+    }, [reservationUuid, shouldPollContract, pollStalled])
+
+    /**
+     * Consulta manual tras agotarse el sondeo. Es el mismo GET del portal, pedido
+     * por el huésped: lo único que puede hacer desde acá es preguntar de nuevo —
+     * no existe un endpoint de reenvío que el huésped pueda llamar.
+     */
+    const handleRefreshContract = async () => {
+        setRefreshing(true)
+        try {
+            const p = await checkinService.getPortal(reservationUuid)
+            if (p.contract) setContract(p.contract)
+            // Rearma el sondeo si sigue en un estado que puede cambiar solo.
+            setPollStalled(false)
+            if (p.contract?.signedContractUrl) {
+                await checkinService.getReservationDocuments(reservationUuid, p)
+                    .then(setDocuments)
+                    .catch(() => {})
+            }
+        } catch {
+            toast.error("No pudimos consultar el estado de tu contrato. Intenta de nuevo.")
+        } finally {
+            setRefreshing(false)
+        }
+    }
 
     const handleDownloadPdf = async (docUuid: string) => {
         setDownloadingDoc(docUuid)
@@ -143,24 +229,37 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             <ProgressBar currentStep={5} totalSteps={5} isSuccess />
 
             <div className="relative mt-4">
-                <div className="absolute inset-0 bg-green-500 blur-3xl opacity-20 rounded-full" />
-                <div className="bg-gradient-to-tr from-green-400 to-green-500 w-24 h-24 rounded-full flex items-center justify-center shadow-2xl shadow-green-500/30 relative z-10">
-                    <CheckCircle2 size={48} className="text-white" />
+                <div className={`absolute inset-0 ${awaitingSignature ? "bg-amber-400" : "bg-green-500"} blur-3xl opacity-20 rounded-full`} />
+                <div className={`bg-gradient-to-tr w-24 h-24 rounded-full flex items-center justify-center shadow-2xl relative z-10 ${awaitingSignature
+                    ? "from-amber-400 to-amber-500 shadow-amber-500/30"
+                    : "from-green-400 to-green-500 shadow-green-500/30"}`}
+                >
+                    {awaitingSignature
+                        ? <Mail size={48} className="text-white" />
+                        : <CheckCircle2 size={48} className="text-white" />}
                 </div>
             </div>
 
             <div className="space-y-3">
                 <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 leading-tight">
-                    {isMainDone ? "¡Tu Registro Está Listo!" : "¡Check-in Completado!"}
+                    {completedCopy?.title ?? (awaitingSignature
+                        ? "Tu registro quedó guardado"
+                        : isMainDone ? "¡Tu Registro Está Listo!" : "¡Check-in Completado!")}
                 </h1>
                 <p className="text-slate-500 text-base max-w-[300px] mx-auto">
-                    {isMainDone
-                        ? "Los huéspedes acompañantes ya pueden iniciar su registro."
-                        : "Tus datos y documentos han sido validados exitosamente. Ya estás un paso más cerca de tu estadía."}
+                    {completedCopy?.description ?? (awaitingSignature
+                        ? "Tu check-in se completará cuando firmes el contrato. Te llegará un correo de TuFirma para hacerlo."
+                        : isMainDone
+                            ? "Los huéspedes acompañantes ya pueden iniciar su registro."
+                            : "Tus datos y documentos han sido validados exitosamente. Ya estás un paso más cerca de tu estadía.")}
                 </p>
             </div>
 
-            {contractPending && !contractReady && contractStatus !== "pending" && (
+            {/* El envío acaba de responder `pending_signature` pero el portal todavía
+                no lo refleja: se le dice al huésped lo que tiene que hacer sin
+                esperar a que el estado se persista. Cuando el portal lo confirma,
+                lo reemplaza la tarjeta de "esperando la firma" de abajo. */}
+            {contractPending && contractState === "awaiting_guest" && (
                 <div className="bg-brand-purple/5 border border-brand-purple/15 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
                     <Mail size={18} className="text-brand-purple flex-shrink-0 mt-0.5" />
                     <div>
@@ -198,18 +297,48 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 </div>
             )}
 
-            {/* Contract still processing (tufirma "pending" / hitguest "signed") → spinner. */}
-            {hasContract && !contractReady && (contractStatus === "pending" || contractStatus === "signed") && (
-                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
-                    <Loader2 size={18} className="text-amber-500 flex-shrink-0 mt-0.5 animate-spin" />
-                    <div>
-                        <p className="text-sm font-bold text-amber-800">Procesando tu contrato…</p>
-                        <p className="text-xs text-amber-700 mt-0.5">
-                            {contractStatus === "pending"
-                                ? "Esperando la firma en TuFirma. Te avisaremos cuando esté lista para descargar."
-                                : "Estamos finalizando tu contrato firmado; podrás descargarlo en un momento."}
-                        </p>
+            {/*
+              * Contrato en curso. Los dos casos NO son el mismo y por eso se
+              * redactan distinto: `awaiting_external` depende de que el huésped
+              * abra su correo (acción suya, puede tardar horas), `finalizing`
+              * depende del backend generando el PDF (segundos).
+              *
+              * Cuando el sondeo se agota, el spinner se cambia por un estado
+              * quieto con consulta manual: seguir animando algo que ya dejó de
+              * mirarse es mentirle al huésped.
+              */}
+            {isContractTransitional(contractState) && (
+                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
+                    <div className="flex items-start gap-3">
+                        {pollStalled
+                            ? <Clock size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                            : <Loader2 size={18} className="text-amber-500 flex-shrink-0 mt-0.5 animate-spin" />}
+                        <div>
+                            <p className="text-sm font-bold text-amber-800">
+                                {contractState === "awaiting_external"
+                                    ? "Falta tu firma en TuFirma"
+                                    : "Procesando tu contrato…"}
+                            </p>
+                            <p className="text-xs text-amber-700 mt-0.5">
+                                {contractState === "awaiting_external"
+                                    ? "Abre el correo de TuFirma y firma tu contrato. Si no lo ves, revisa la carpeta de spam."
+                                    : "Estamos finalizando tu contrato firmado; podrás descargarlo en un momento."}
+                            </p>
+                        </div>
                     </div>
+                    {pollStalled && (
+                        <button
+                            type="button"
+                            onClick={handleRefreshContract}
+                            disabled={refreshing}
+                            className="w-full flex items-center justify-center gap-2 h-10 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl font-bold text-xs transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            {refreshing
+                                ? <Loader2 size={14} className="animate-spin" />
+                                : <RefreshCw size={14} />}
+                            Ya firmé, actualizar estado
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -219,7 +348,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
               * no se renderizaba nada para este estado: la pantalla decía "registro
               * completado" y el huésped se iba creyendo que estaba todo en orden.
               */}
-            {hasContract && contractStatus === "rejected" && (
+            {contractState === "rejected" && (
                 <div className="bg-red-50 border border-red-100 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
                     <XCircle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
                     <div>
@@ -309,7 +438,9 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                         <Download className="text-brand-purple" size={24} />
                     </div>
                     <div className="flex-1">
-                        <h3 className="font-bold text-slate-800 text-sm">Check-in Completado</h3>
+                        <h3 className="font-bold text-slate-800 text-sm">
+                            {awaitingSignature ? "Registro guardado" : "Check-in Completado"}
+                        </h3>
                         <p className="text-xs text-slate-500">No hay documentos disponibles para descargar.</p>
                     </div>
                 </div>

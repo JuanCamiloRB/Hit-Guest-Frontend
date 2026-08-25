@@ -3,20 +3,25 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Camera, Upload, Loader2, CheckCircle2, XCircle, RotateCcw, FileText } from "lucide-react"
+import { ArrowLeft, Camera, Upload, Loader2, CheckCircle2, XCircle, RotateCcw, FileText, Clock } from "lucide-react"
 import { toast } from "sonner"
+import { normalizeVerificationResult } from "@/features/checkin/lib/verification-result"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { CatalogService } from "@/features/auth/services/catalog-service"
 import type { OCRResult, IdentifySessionData } from "@/features/checkin/types/checkin"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
+import { diditCompletionAction } from "@/features/checkin/lib/didit-completion"
+import type { VerificationResult } from "@didit-protocol/sdk-web"
 
 interface VerifyScreenProps {
     reservationUuid: string
     guestUuid: string
     basePath: string
     isSecondary?: boolean
+    /** Exact local draft owned by the route; avoids sharing main/secondary OCR edits. */
+    formStorageKey?: string
     /** True when redirected back from Didit callback URL — checks localStorage for pending KYC */
     fromCallback?: boolean
     /**
@@ -73,18 +78,27 @@ const DOC_ERROR_UI: Record<string, { retry: RetryScope; message: string }> = {
     DUPLICATE_DOCUMENT:         { retry: "none",      message: "Este documento ya está registrado para otro huésped. Contacta al anfitrión." },
     EXPIRED_DOCUMENT:           { retry: "none",      message: "El documento está vencido. No es posible continuar el registro." },
     DOCUMENT_NUMBER_MISMATCH:   { retry: "none",      message: "El número del documento no coincide con el registrado. Contacta al anfitrión." },
+    UNSUPPORTED_DOCUMENT_LAYOUT:{ retry: "documents", message: "Este formato de documento no es compatible con la validación automática. Usa tu pasaporte para continuar." },
 }
 
-export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary = false, fromCallback = false, diditError }: VerifyScreenProps) {
+export function VerifyScreen({
+    reservationUuid,
+    guestUuid,
+    basePath,
+    isSecondary = false,
+    formStorageKey = `checkin-guest-form-${reservationUuid}`,
+    fromCallback = false,
+    diditError,
+}: VerifyScreenProps) {
     const router = useRouter()
-    const { load, clear } = useIdentifySession(reservationUuid)
+    const { load, saveRaw, clear } = useIdentifySession(reservationUuid)
 
     // Defer localStorage read to client-side to avoid SSR/hydration mismatch.
     // Server has no localStorage → renders null; client loads after mount.
     const [session, setSession] = useState<IdentifySessionData | null>(null)
     const [sessionLoaded, setSessionLoaded] = useState(false)
 
-    const [verificationState, setVerificationState] = useState<"idle" | "verifying" | "polling" | "waiting_portal" | "ocr_confirm" | "failed" | "expired">("idle")
+    const [verificationState, setVerificationState] = useState<"idle" | "verifying" | "polling" | "waiting_portal" | "ocr_confirm" | "failed" | "expired" | "stale">("idle")
     const [progress, setProgress] = useState(0)
     const [frontFile, setFrontFile] = useState<File | null>(null)
     const [backFile, setBackFile] = useState<File | null>(null)
@@ -117,6 +131,8 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
     })
 
     const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+    /** Token de la corrida de sondeo vigente — ver `startPortalPolling`. */
+    const pollGenerationRef = useRef<object | null>(null)
     // Last Didit session URL we launched — the reconcile loop never re-opens it
     // (a consumed session returns 403) and uses it to detect when the backend hands
     // back a genuinely new session (e.g. the document step after the biometric).
@@ -165,10 +181,6 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
     // El setState síncrono acá es deliberado: localStorage no existe en el
     // servidor, así que leerlo en el render rompería la hidratación.
     useEffect(() => {
-        const loadedSession = load()
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setSession(loadedSession)
-
         if (fromCallback && !guestUuid) {
             // Didit redirected to /verify?from_didit_callback=1 without guest_uuid.
             // Recover guest context from the pending-didit key set by launchDiditSession.
@@ -183,8 +195,14 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
             } catch {}
         }
 
+        // The URL identifies the guest. Loading only by reservation here could
+        // hydrate this page with another guest's last provider directive.
+        const loadedSession = load(guestUuid || undefined)
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSession(loadedSession)
+
         setSessionLoaded(true)
-    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [fromCallback, guestUuid, reservationUuid, basePath, router, load])
 
     // Mismo motivo que el efecto de arriba: lee localStorage y traduce los
     // parámetros de la URL del callback a estado inicial de la pantalla.
@@ -199,9 +217,37 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
             // eslint-disable-next-line react-hooks/set-state-in-effect
             setIdentTrigger(localStorage.getItem(triggerKey) || '')
         } catch {}
-        // Set initial Didit step — backend doesn't send subtype, always starts as biometric
+        // La etapa la decide el backend; una sesión reanudada puede ser KYC.
         if (verification && verification.type === 'session') {
-            setDiditStep(verification.subtype ?? 'biometric')
+            setDiditStep(verification.sessionType)
+        }
+        // A callback remount and a direct reopen both lose the in-memory ref. The
+        // persisted marker is proof that THIS browser already launched a Didit
+        // session for this reservation+guest, so both entries must reconcile with
+        // `/verify/result` instead of rendering the stale directive from /identify.
+        let shouldResumePolling = fromCallback
+        try {
+            const pending = JSON.parse(localStorage.getItem("checkin-pending-didit") || "null")
+            if (
+                pending?.reservationUuid === reservationUuid
+                && pending?.guestUuid === guestUuid
+                && typeof pending?.launchedUrl === "string"
+            ) {
+                lastLaunchedUrlRef.current = pending.launchedUrl
+                if (pending.step === "biometric" || pending.step === "kyc") {
+                    setDiditStep(pending.step)
+                }
+                shouldResumePolling = true
+            } else if (fromCallback && verification?.type === "session") {
+                // `fromCallback` means this locally persisted session was just
+                // consumed. This fallback also protects Safari/private-mode
+                // callbacks where persisting the pending key was unavailable.
+                lastLaunchedUrlRef.current = verification.url
+            }
+        } catch {
+            if (fromCallback && verification?.type === "session") {
+                lastLaunchedUrlRef.current = verification.url
+            }
         }
         // A terminal Didit status wins over polling: the session is over, there is
         // nothing left for the portal to confirm. Show the guest WHY it stopped —
@@ -213,17 +259,19 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                 ?? "La verificación no pudo completarse. Intenta de nuevo.",
             )
             setVerificationState("failed")
-        } else if (fromCallback) {
-            // Redirected back from Didit (mobile) — start portal polling immediately.
+        } else if (shouldResumePolling) {
+            // Redirected back from Didit or reopened after launching it — reconcile
+            // immediately against the backend-owned verification state.
             startPortalPolling()
         }
         return () => {
+            pollGenerationRef.current = null
             if (pollingRef.current) clearTimeout(pollingRef.current)
             import('@didit-protocol/sdk-web').then(({ DiditSdk }) => {
                 if (DiditSdk.shared.isPresented) DiditSdk.shared.destroy()
             }).catch(() => {})
         }
-        // A propósito solo estas cuatro: `startPortalPolling` se recrea en cada
+        // A propósito no se incluye `startPortalPolling`: se recrea en cada
         // render, así que incluirlo reiniciaría el sondeo continuamente — que es
         // justo lo que este efecto arranca. `diditError`/`fromCallback` vienen de
         // la URL y no cambian sin navegar.
@@ -237,177 +285,190 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
     // funcionaba solo porque ambas se invocan de forma asíncrona. Las
     // declaraciones de función se elevan y quitan esa dependencia del orden.
     // ── Portal Polling (v4.3) ──
-    // After Didit completes, poll GET portal with exponential backoff
-    // watching registeredGuests[guestUuid].verification.currentStep:
-    //   "form"     → backend processed webhook, guest verified → go to form
-    //   "rejected" → verification rejected → show error
-    //   else       → keep waiting (pending/in_progress/in_review)
+    // After Didit completes, /verify/result drives the verification state with
+    // exponential backoff. The broad portal read runs independently only to
+    // detect reservation availability and provide contextual copy.
     function startPortalPolling() {
         setVerificationState("waiting_portal")
         setProgress(50)
-        let elapsed = 0
         let currentInterval = 2000
-        const MAX_INTERVAL = 15000
-        const TIMEOUT_MS = 3 * 60 * 1000
+        // Keep feedback responsive after returning from Didit. The backend owns
+        // business staleness (`isStale`); this cap only limits how long the guest
+        // waits between fresh observations of that state.
+        const MAX_INTERVAL = 5000
         if (pollingRef.current) clearTimeout(pollingRef.current)
 
-        // The backend rejects /verify/result for some reservation sources (404).
-        // Stop calling it after the first 404 and rely on portal polling only.
-        let activeCheckAvailable = true
+        /**
+         * Marca de generación del sondeo.
+         *
+         * Limpiar `pollingRef` no alcanza: si el desmontaje (o un relanzamiento)
+         * ocurre mientras `poll()` está esperando una respuesta, el timer que se
+         * cancela es el VIEJO — la petición en vuelo termina después, llama a
+         * `scheduleNext()` y programa uno NUEVO que ya nadie va a limpiar. Ese
+         * sondeo zombi sigue pegándole a la API y escribiendo estado sobre una
+         * pantalla desmontada. Cada arranque toma su propio token y cualquier
+         * continuación comprueba que siga siendo la vigente antes de actuar.
+         */
+        const generation = {}
+        pollGenerationRef.current = generation
+        const isCurrent = () => pollGenerationRef.current === generation
 
-        const poll = async () => {
-            elapsed += currentInterval
-            if (elapsed >= TIMEOUT_MS) {
-                // El mensaje va también a la pantalla, no solo al toast: sin esto
-                // el huésped quedaba con el texto por defecto ("intenta con fotos
-                // más claras"), que no tiene nada que ver con una espera agotada
-                // en una verificación de Didit — y encima el toast se va solo.
-                const msg = "La confirmación está tardando más de lo normal. Puedes reintentar; si sigue igual, contacta al anfitrión."
+        // Portal is a broader fallback projection and may be much slower. Keep at
+        // most one request in flight. It only guards reservation availability and
+        // supplies status copy; /verify/result is the documented verification
+        // state source, so the two projections cannot race to choose navigation.
+        let portalReadInFlight = false
+
+        const stopPolling = () => {
+            if (isCurrent()) pollGenerationRef.current = null
+        }
+
+        /** Applies the same backend state machine regardless of which read saw it first. */
+        const applyOutcome = (
+            outcome: ReturnType<typeof normalizeVerificationResult>,
+        ): boolean => {
+            if (!isCurrent()) return true
+
+            if (outcome.status === "kyc_required" && outcome.kycUrl) {
+                // The same URL is the consumed/current session, not a new KYC step.
+                if (outcome.kycUrl === lastLaunchedUrlRef.current) return false
+                toast.info("Necesitamos validar tu documento de identidad.")
+                void launchDiditSession(outcome.kycUrl, "kyc")
+                return true
+            }
+            if (outcome.status === "verified") {
+                setProgress(100)
+                handleVerificationSuccess()
+                return true
+            }
+            if (outcome.status === "restart_required") {
+                stopPolling()
+                setFailureMessage(KYC_RESTART_MESSAGE)
+                setVerificationState("failed")
+                return true
+            }
+            if (outcome.status === "stale") {
+                stopPolling()
+                setVerificationState("stale")
+                return true
+            }
+            if (outcome.status === "contact_challenge") {
+                stopPolling()
+                router.replace(`${basePath}/contact-challenge?guest_uuid=${guestUuid}`)
+                return true
+            }
+            if (outcome.status === "failed") {
+                stopPolling()
+                const msg = outcome.retryable || outcome.failureReason === "ocr_rejected"
+                    ? OCR_REJECTED_MESSAGE
+                    : outcome.failureReason === "expired"
+                        ? "Tu documento está vencido."
+                        : outcome.failureReason === "fail"
+                            ? "La verificación no pudo completarse. Intenta de nuevo."
+                            : "La verificación fue rechazada. Contacta al anfitrión si necesitas ayuda."
                 setFailureMessage(msg)
                 setVerificationState("failed")
                 toast.error(msg)
-                return
+                return true
             }
+            return false
+        }
+
+        const observePortal = async () => {
             try {
                 const portal = await checkinService.getPortal(reservationUuid)
-
-                // La reserva se canceló o eliminó mientras el huésped verificaba.
-                // El backend responde 200 SIN `registeredGuests` (decisión explícita
-                // de no usar 4xx), así que el `.find()` de abajo tiraría y el catch
-                // lo leería como un fallo de red — dejando al huésped sondeando en
-                // silencio hasta el timeout de 3 minutos, sin saber qué pasó.
+                if (!isCurrent()) return
                 if (portal.portalStatus) {
+                    stopPolling()
                     setVerificationState("failed")
                     setFailureMessage(portal.message || "Esta reserva ya no está disponible. Contacta al anfitrión.")
                     return
                 }
-
-                const guest = portal.registeredGuests.find(g => g.uuid === guestUuid)
-                const verif = guest?.verification
-                if (!verif) { scheduleNext(); return }
+                const verif = portal.registeredGuests.find(g => g.uuid === guestUuid)?.verification
+                if (!verif) return
                 setPortalVerifStatus(verif.status)
-
-                // El biométrico pasó, pero abrir la validación de documento falló.
-                // Llega con currentStep "verification", así que sin este corte el
-                // huésped seguiría sondeando un estado que no va a avanzar solo.
-                // Es recuperable: reiniciar en /identify hace que el backend
-                // reintente esa sesión sin pedirle repetir el reconocimiento facial.
-                if (verif.status === "kyc_session_failed") {
-                    setVerificationState("failed")
-                    setFailureMessage(KYC_RESTART_MESSAGE)
-                    return
-                }
-
-                // El OTP de posesión quedó pendiente (huésped recurrente): el
-                // portal no va a moverse solo de acá, hay que llevarlo al código.
-                if (verif.currentStep === "contact_challenge") {
-                    router.replace(`${basePath}/contact-challenge?guest_uuid=${guestUuid}`)
-                    return
-                }
-
-                if (verif.currentStep === "form") {
-                    setProgress(100)
-                    handleVerificationSuccess()
-                    return
-                } else if (verif.currentStep === "rejected") {
-                    setVerificationState("failed")
-                    const msg = verif.status === "expired"
-                        ? "Tu documento está vencido."
-                        : verif.status === "fail"
-                        ? "La verificación no pudo completarse. Intenta de nuevo."
-                        // Rechazo de la lectura del documento: a diferencia de un
-                        // rechazo de Didit, el huésped puede reintentar de una con
-                        // mejores fotos. Mandarlo al anfitrión sería un callejón.
-                        : verif.status === "ocr_rejected"
-                        ? OCR_REJECTED_MESSAGE
-                        : "La verificación fue rechazada. Contacta al anfitrión si necesitas ayuda."
-                    // También en pantalla, no solo en el toast: el toast se va solo
-                    // y dejaba el mensaje genérico de fondo contradiciéndolo.
-                    setFailureMessage(msg)
-                    toast.error(msg)
-                    return
-                }
             } catch {
-                // Network error — keep polling silently
+                // A failed broad projection must not delay or cancel the lightweight read.
             }
+        }
 
-            // Active check: the backend may have created a KYC session after the
-            // biometric pass (doc expired/missing). The portal stays at
-            // currentStep="verification" in that case, so ask /verify/result directly.
-            if (activeCheckAvailable) {
-                try {
-                    const result = await checkinService.checkVerificationResult(
-                        reservationUuid, guestUuid, identTrigger
-                    )
-                    if (result.status === "kyc_required" && result.kycUrl) {
-                        // Backend needs the guest to complete a document session. Only launch
-                        // it if it's NOT the session we just ran — re-opening a consumed
-                        // session returns 403 ("URL de verificación no válida"). If it's the
-                        // same URL, keep polling (the webhook is still processing it).
-                        if (result.kycUrl === lastLaunchedUrlRef.current) {
-                            scheduleNext()
-                            return
-                        }
-                        toast.info("Necesitamos validar tu documento de identidad.")
-                        launchDiditSession(result.kycUrl, "kyc")
-                        return
-                    }
-                    if (result.status === "verified") {
-                        setProgress(100)
-                        handleVerificationSuccess()
-                        return
-                    }
-                    // La sesión de documento no se pudo abrir. No hay URL que
-                    // relanzar: se sale reiniciando en /identify, y el backend la
-                    // reintenta SIN pedirle repetir el reconocimiento facial.
-                    if (result.status === "restart_required") {
-                        setFailureMessage(KYC_RESTART_MESSAGE)
-                        setVerificationState("failed")
-                        return
-                    }
-                    // Huésped recurrente al que le falta el código del correo:
-                    // esto no avanza por sondeo, hay que llevarlo a esa pantalla.
-                    if (result.status === "contact_challenge") {
-                        router.replace(`${basePath}/contact-challenge?guest_uuid=${guestUuid}`)
-                        return
-                    }
-                    if (result.status === "failed") {
-                        const msg = result.retryable
-                            ? OCR_REJECTED_MESSAGE
-                            : "La verificación no pudo completarse. Intenta de nuevo."
-                        setFailureMessage(msg)
-                        setVerificationState("failed")
-                        toast.error(msg)
-                        return
-                    }
-                } catch (raw: unknown) {
-                    if (asCheckinError(raw).status === 404) activeCheckAvailable = false
+        const observeVerificationResult = async () => {
+            try {
+                const result = await checkinService.checkVerificationResult(
+                    reservationUuid, guestUuid, identTrigger,
+                )
+                if (!isCurrent()) return
+                applyOutcome(result)
+            } catch (raw: unknown) {
+                if (!isCurrent()) return
+                const error = asCheckinError(raw)
+                // Contract: 404 means the reservation or the guest-reservation
+                // link does not exist. It is not a source-specific capability
+                // signal and cannot recover by polling the broad projection.
+                if (error.status === 404) {
+                    stopPolling()
+                    setFailureMessage(error.message || "No encontramos esta verificación. Contacta al anfitrión.")
+                    setVerificationState("failed")
                 }
             }
-            scheduleNext()
+        }
+
+        const poll = async () => {
+            // Start the broad portal observation detached and deduplicated. The
+            // lightweight endpoint controls the cadence, so an initial `pending`
+            // response is checked again in 2s even if GET /checkin is still slow.
+            if (!portalReadInFlight) {
+                portalReadInFlight = true
+                void observePortal().finally(() => { portalReadInFlight = false })
+            }
+            await observeVerificationResult()
+            if (isCurrent()) scheduleNext()
         }
 
         const scheduleNext = () => {
-            currentInterval = Math.min(currentInterval * 1.5, MAX_INTERVAL)
+            if (!isCurrent()) return
             pollingRef.current = setTimeout(poll, currentInterval)
+            currentInterval = Math.min(currentInterval * 1.5, MAX_INTERVAL)
         }
 
-        pollingRef.current = setTimeout(poll, currentInterval)
+        // The SDK/callback has already told us the biometric session ended. Read
+        // backend state now; only subsequent non-terminal observations back off.
+        pollingRef.current = setTimeout(poll, 0)
     }
 
     function handleVerificationSuccess() {
+        pollGenerationRef.current = null
         if (pollingRef.current) clearTimeout(pollingRef.current)
+        try {
+            const pending = JSON.parse(localStorage.getItem("checkin-pending-didit") || "null")
+            if (pending?.reservationUuid === reservationUuid && pending?.guestUuid === guestUuid) {
+                localStorage.removeItem("checkin-pending-didit")
+            }
+        } catch {}
         toast.success("Identidad verificada exitosamente")
         setTimeout(() => router.push(`${basePath}/guest?guest_uuid=${guestUuid}`), 600)
     }
 
     async function launchDiditSession(url: string, step: "biometric" | "kyc") {
+        pollGenerationRef.current = null
         if (pollingRef.current) clearTimeout(pollingRef.current)
         // Remember the session we're launching so the reconcile loop never re-opens
         // a consumed session (which Didit rejects with 403).
         lastLaunchedUrlRef.current = url
         setDiditStep(step)
         setVerificationState("polling")
+        // `/identify` is only the initial directive. When polling advances from
+        // biometric to KYC, persist the new backend-provided directive so a cancel
+        // or reload never falls back to the old facial-verification copy/URL.
+        if (session) {
+            const nextSession: IdentifySessionData = {
+                ...session,
+                verification: { type: "session", sessionType: step, url },
+                timestamp: Date.now(),
+            }
+            setSession(nextSession)
+            saveRaw(nextSession)
+        }
         // Persist context so the Didit callback page can redirect back correctly
         try {
             localStorage.setItem('checkin-pending-didit', JSON.stringify({
@@ -415,38 +476,39 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                 guestUuid,
                 basePath,
                 step,
+                launchedUrl: url,
                 startedAt: Date.now(),
             }))
         } catch {}
         try {
             const { DiditSdk } = await import('@didit-protocol/sdk-web')
-            // El SDK no exporta el tipo de este callback, así que se declara lo
-            // que de verdad se lee — no `any`, que dejaría pasar cualquier typo.
-            type DiditCompletion = {
-                type?: "completed" | "cancelled" | "error" | string
-                session?: { status?: string }
-            }
-            DiditSdk.shared.onComplete = (result: DiditCompletion) => {
-                const sessionStatus = result?.session?.status
+            DiditSdk.shared.onComplete = (result: VerificationResult) => {
                 // Close the Didit modal as soon as the session finishes. After completion
                 // the SDK can navigate its iframe to the return/callback URL — which 404s
                 // (backend domain redirect) and would flash a "404 NOT FOUND" inside the
                 // modal. Destroying it here shows our own "Procesando..." screen instead.
                 try { if (DiditSdk.shared.isPresented) DiditSdk.shared.destroy() } catch {}
-                if (result.type === 'completed' && sessionStatus === 'Approved') {
-                    // A Didit session being "Approved" does NOT mean the guest is fully
-                    // verified — a new guest still needs a document step after the
-                    // biometric. The backend is the source of truth: reconcile via portal
-                    // + /verify/result, which will either confirm "form" (verified), launch
-                    // the next session (documents), or fail. We never advance on a timer.
+                const action = diditCompletionAction(result)
+                if (action === "reconcile") {
+                    // `completed` is the SDK success signal. Its session.status can still
+                    // be `Pending` (the SDK even defaults to it when Didit omits status),
+                    // so it must not gate reconciliation. The backend remains the source
+                    // of truth and decides verified / KYC required / rejected.
                     startPortalPolling()
-                } else if (sessionStatus === 'Expired' || result.type === 'error') {
-                    // The Didit session backing this URL is older than 7 days and expired.
-                    // Don't drop the guest back to idle (that just reopens the same dead URL) —
-                    // surface a dedicated expired state so they can reset.
-                    setVerificationState('expired')
-                } else if (result.type === 'cancelled') {
+                } else if (action === "cancelled") {
+                    // The session remains reusable, but it is no longer waiting for
+                    // a completed Didit flow. Remove the polling marker; the idle
+                    // screen keeps the persisted canonical directive and lets the
+                    // guest resume it explicitly.
+                    try {
+                        const pending = JSON.parse(localStorage.getItem("checkin-pending-didit") || "null")
+                        if (pending?.reservationUuid === reservationUuid && pending?.guestUuid === guestUuid) {
+                            localStorage.removeItem("checkin-pending-didit")
+                        }
+                    } catch {}
                     setVerificationState('idle')
+                } else if (action === "expired") {
+                    setVerificationState('expired')
                 } else {
                     setVerificationState("failed")
                     toast.error("La verificación no fue exitosa. Intenta de nuevo.")
@@ -461,8 +523,7 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
 
     const handleSessionVerification = () => {
         if (!verification || verification.type !== "session") return
-        // Backend always sends biometric session first — subtype defaults to "biometric"
-        launchDiditSession(verification.url, verification.subtype ?? 'biometric')
+        launchDiditSession(verification.url, verification.sessionType)
     }
 
     const MAX_FILE_SIZE_MB = 10
@@ -472,6 +533,10 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
     const goToSelfie = () => {
         if (!frontFile) {
             toast.error("La foto frontal del documento es obligatoria")
+            return
+        }
+        if (requiresBackImage && !backFile) {
+            toast.error("La foto del reverso del documento es obligatoria")
             return
         }
         if (frontFile.size > MAX_FILE_SIZE_BYTES) {
@@ -494,10 +559,15 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
      */
     const handleUploadError = (raw: unknown) => {
         const e = asCheckinError(raw)
-        const errorType = e.errorType
+        // `errorType` is the OCR contract; some validation responses expose the
+        // same discriminator as `code`. Accept both while backend versions roll.
+        const errorType = e.errorType ?? (e.code && DOC_ERROR_UI[e.code] ? e.code : undefined)
         const ui = errorType ? DOC_ERROR_UI[errorType] : undefined
-        // Prefer the backend's localized message; fall back to our action copy.
-        const message = e.message || ui?.message || "No pudimos verificar tu identidad. Intenta de nuevo con fotos más claras."
+        // This new validation exists specifically to tell the guest to switch to
+        // a passport. A generic backend 422 message must not erase that recovery.
+        const message = errorType === "UNSUPPORTED_DOCUMENT_LAYOUT"
+            ? ui!.message
+            : e.message || ui?.message || "No pudimos verificar tu identidad. Intenta de nuevo con fotos más claras."
         setDocErrorType(errorType ?? null)
         setFailureMessage(message)
 
@@ -529,6 +599,14 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
             toast.error("La foto frontal del documento es obligatoria")
             return
         }
+        // Defensa adicional por si el catálogo termina de cargar o el estado se
+        // restaura mientras el huésped ya está en el paso de la selfie. El
+        // backend exige back_image para todo documento que no sea de una cara.
+        if (requiresBackImage && !backFile) {
+            toast.error("La foto del reverso del documento es obligatoria")
+            setCaptureStep("documents")
+            return
+        }
         if (!selfieFile) {
             toast.error("La selfie es obligatoria")
             return
@@ -558,7 +636,11 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
 
             setOcrResult(ocr)
             // Backend may split data across extractedData and formSchema.prefilledData
-            const d = ocr.extractedData
+            // Aunque el contrato declara `extractedData`, una respuesta 2xx sin
+            // ese bloque no debe convertir una aprobación ya persistida en un
+            // error de JavaScript. `prefilledData` sigue siendo una fuente válida
+            // y el formulario permite confirmar los datos extraídos.
+            const d = ocr.extractedData ?? {}
             const p = (ocr.formSchema?.prefilledData ?? {}) as Record<string, unknown>
             setEditOcr({
                 firstName: d.name || d.firstName || String(p.name || ""),
@@ -568,42 +650,13 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                 expirationDate: d.expirationDate || String(p.expirationDate || ""),
             })
 
-            // A successful OCR response proves only that the files were read and
-            // matched. The backend approves the guest here *only* when the actual
-            // automation for this guest is `document_upload`; if it is `session`
-            // (Didit), the same endpoint returns 200 but approval still depends on
-            // Didit's webhook. Reconcile against the portal before exposing the
-            // form, otherwise /complete rejects the guest with 403.
-            try {
-                const portal = await checkinService.getPortal(reservationUuid)
-                if (portal.portalStatus) {
-                    setVerificationState("failed")
-                    setFailureMessage(portal.message || "Esta reserva ya no está disponible. Contacta al anfitrión.")
-                    return
-                }
-                const current = portal.registeredGuests.find((guest) => guest.uuid === guestUuid)?.verification
-                if (current?.currentStep === "form" || current?.currentStep === "completed") {
-                    setVerificationState("ocr_confirm")
-                    toast.success("Documento analizado correctamente")
-                    return
-                }
-                if (current?.currentStep === "rejected") {
-                    const message = current.status === "ocr_rejected"
-                        ? OCR_REJECTED_MESSAGE
-                        : "La verificación fue rechazada. Contacta al anfitrión si necesitas ayuda."
-                    setFailureMessage(message)
-                    setVerificationState("failed")
-                    return
-                }
-            } catch (reconcileError) {
-                // The upload already succeeded. Do not ask for the same files again
-                // because a transient portal error can turn that into a duplicate-
-                // document rejection; the polling loop will retry reconciliation.
-                console.warn("[VerifyScreen] OCR succeeded but portal reconciliation failed", reconcileError)
-            }
-
-            toast.info("Documento analizado. Estamos confirmando tu identidad.")
-            startPortalPolling()
+            // Contrato síncrono de Textract: un 200 significa que la identidad ya
+            // quedó aprobada y persistida. No hay webhook posterior que esperar.
+            // Consultar el portal acá añadía una carrera: el primer intento podía
+            // verse como pendiente/error aunque el backend ya lo hubiera aprobado,
+            // y el segundo pasaba porque para entonces el portal sí lo reflejaba.
+            setVerificationState("ocr_confirm")
+            toast.success("Documento analizado correctamente")
         } catch (e: unknown) {
             handleUploadError(e)
         }
@@ -612,7 +665,6 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
     const handleOcrConfirm = () => {
         // Overwrite guest form in localStorage with fresh OCR + prefilledData.
         // We intentionally do NOT merge with stale stored values so the OCR data wins cleanly.
-        const formKey = `checkin-guest-form-${reservationUuid}`
         const prefilledExtras = (ocrResult?.formSchema?.prefilledData ?? {}) as Record<string, unknown>
 
         const merged = {
@@ -624,7 +676,7 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
             dateOfBirth: editOcr.dateOfBirth,
             ...(editOcr.expirationDate ? { identificationExpiryDate: editOcr.expirationDate } : {}),
         }
-        localStorage.setItem(formKey, JSON.stringify(merged))
+        localStorage.setItem(formStorageKey, JSON.stringify(merged))
         try {
             const ocrDataKey = `checkin-ocr-data-${reservationUuid}-${guestUuid}`
             localStorage.setItem(ocrDataKey, JSON.stringify(editOcr))
@@ -651,6 +703,7 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
      * the guest back to /identify to request a fresh verification session.
      */
     const handleResetVerification = () => {
+        pollGenerationRef.current = null
         if (pollingRef.current) clearTimeout(pollingRef.current)
         lastLaunchedUrlRef.current = null
         try {
@@ -663,7 +716,6 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
 
     const portalStatusMessages: Record<string, string> = {
         not_started: "Iniciando verificación...",
-        pending: "Completa la verificación en la ventana abierta",
         in_progress: "Verificando tu identidad...",
         in_review: "Tu verificación está siendo revisada por nuestro equipo",
     }
@@ -685,7 +737,7 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
             diditStep === "biometric" ? "Procesando verificación facial..." : "Procesando verificación de documento..."
         const loadingSubtitle =
             verificationState === "verifying" ? "Extrayendo datos con Inteligencia Artificial..." :
-            verificationState === "waiting_portal" ? (portalStatusMessages[portalVerifStatus] || "El servidor está confirmando tu identidad con Didit...") :
+            verificationState === "waiting_portal" && portalVerifStatus !== "pending" ? (portalStatusMessages[portalVerifStatus] || "El servidor está confirmando tu identidad con Didit...") :
             diditStep === "biometric" ? "Completando reconocimiento facial con Didit..." : "Completando verificación de documento con Didit..."
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 animate-in fade-in zoom-in-95 duration-500 pb-24 text-center px-4">
@@ -703,7 +755,14 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                 </div>
                 <div className="space-y-3 w-full max-w-xs">
                     <h2 className="text-2xl font-bold tracking-tight text-slate-900">{loadingTitle}</h2>
-                    <p className="text-slate-500 text-sm">{loadingSubtitle}</p>
+                    {verificationState === "waiting_portal" && portalVerifStatus === "pending" ? (
+                        <p className="text-slate-500 text-sm">
+                            <span className="md:hidden">Estamos confirmando tu verificación. Mantén esta pantalla abierta.</span>
+                            <span className="hidden md:inline">Completa la verificación en la ventana abierta.</span>
+                        </p>
+                    ) : (
+                        <p className="text-slate-500 text-sm">{loadingSubtitle}</p>
+                    )}
                     {verificationState === "polling" && (
                         <>
                             <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden mt-6">
@@ -775,6 +834,30 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                         </button>
                     </div>
                 </div>
+            </div>
+        )
+    }
+
+    // ── Espera huérfana según el backend ──
+    if (verificationState === "stale") {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
+                <div className="bg-amber-50 w-24 h-24 rounded-full flex items-center justify-center border border-amber-100">
+                    <Clock size={40} className="text-amber-400" />
+                </div>
+                <div className="space-y-2">
+                    <h2 className="text-xl font-bold text-slate-900">No pudimos confirmar la verificación</h2>
+                    <p className="text-slate-500 text-sm max-w-xs">
+                        La verificación quedó pendiente más tiempo del esperado. Contacta al anfitrión para que pueda revisar tu caso.
+                    </p>
+                </div>
+                <Link
+                    href={basePath}
+                    className="flex items-center gap-2 h-12 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-all active:scale-[0.98]"
+                >
+                    <ArrowLeft size={18} />
+                    Volver al inicio
+                </Link>
             </div>
         )
     }
@@ -882,9 +965,9 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                 </p>
             </div>
 
-            {/* session: Didit — copy based on subtype (biometric vs kyc), defaults to biometric */}
+            {/* session: Didit — copy based on the backend's canonical sessionType */}
             {verification.type === "session" && (() => {
-                const copy = diditCopy[verification.subtype ?? 'biometric']
+                const copy = diditCopy[verification.sessionType]
                 return (
                     <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm text-center space-y-6">
                         <div className="bg-slate-50 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto border border-slate-100 shadow-inner">
@@ -913,9 +996,19 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                 <div className="space-y-4">
                     {/* A retryable error keeps us in the capture view; show why inline. */}
                     {failureMessage && (
-                        <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                            <XCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
-                            <span>{failureMessage}</span>
+                        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                            <div className="flex items-start gap-2">
+                                <XCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
+                                <span>{failureMessage}</span>
+                            </div>
+                            {docErrorType === "UNSUPPORTED_DOCUMENT_LAYOUT" && (
+                                <Link
+                                    href={`${basePath}/identify`}
+                                    className="mt-2 ml-6 inline-flex font-semibold underline underline-offset-2"
+                                >
+                                    Cambiar el tipo de documento a pasaporte
+                                </Link>
+                            )}
                         </div>
                     )}
 
@@ -955,7 +1048,7 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                             {requiresBackImage ? (
                                 <div className="space-y-2">
                                     <label className="text-sm font-semibold text-slate-700">
-                                        Foto Reverso <span className="text-slate-400 text-xs">(Opcional)</span>
+                                        Foto Reverso<span className="text-red-400 ml-0.5">*</span>
                                     </label>
                                     {backFile ? (
                                         <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
@@ -1048,12 +1141,12 @@ export function VerifyScreen({ reservationUuid, guestUuid, basePath, isSecondary
                             onClick={handleSessionVerification}
                             className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
                         >
-                            {diditCopy[verification.subtype ?? 'biometric'].button}
+                            {diditCopy[verification.sessionType].button}
                         </button>
                     ) : captureStep === "documents" ? (
                         <button
                             onClick={goToSelfie}
-                            disabled={!frontFile}
+                            disabled={!frontFile || (requiresBackImage && !backFile)}
                             className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             Continuar

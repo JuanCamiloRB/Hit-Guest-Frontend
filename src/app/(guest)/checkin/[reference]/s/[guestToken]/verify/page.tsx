@@ -39,6 +39,7 @@ export default async function SecondaryVerifyPage({
             guestUuid={resolvedSearchParams.guest_uuid}
             basePath={basePath}
             isSecondary={true}
+            formStorageKey={`checkin-secondary-form-${resolvedParams.guestToken}`}
             // A secondary guest returns from Didit to THIS basePath
             // (/checkin/{ref}/s/{token}/verify?...&from_didit_callback=1).
             // Dropping the flag here left them on a static screen: the portal

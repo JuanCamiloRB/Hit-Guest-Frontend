@@ -26,7 +26,7 @@ export function GuaranteeInfoCard({ onContinue }: GuaranteeInfoCardProps) {
             <div className="space-y-1.5">
                 <span className="text-[11px] font-bold tracking-wider text-brand-blue uppercase">Antes de continuar</span>
                 <p className="text-sm text-slate-500">
-                    Para tu check-in, solo necesitamos registrar una tarjeta como respaldo del contrato de garantía que vas a firmar.
+                    Para tu check-in, solo necesitamos registrar una tarjeta como respaldo del contrato de garantía que acabas de aceptar.
                 </p>
             </div>
 

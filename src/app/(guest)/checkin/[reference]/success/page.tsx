@@ -17,7 +17,24 @@ export default async function CheckinSuccessByUuidPage({ params }: { params: Pro
     }
 
     if (!portal) {
-        return <div className="text-center p-8">Reserva no encontrada</div>
+        // El huésped llega acá SEGUNDOS después de un envío que pudo haber sido
+        // exitoso (el POST ya hizo commit aunque esta lectura falle). "Reserva no
+        // encontrada" sería falso y lo induciría a repetir un proceso no
+        // idempotente — se le dice la verdad: no se pudo CARGAR, y reintentar es
+        // gratis. Mismo bloque en las tres rutas hermanas de /success.
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 gap-4">
+                <h1 className="text-2xl font-bold text-slate-800">No pudimos cargar el estado de tu check-in</h1>
+                <p className="text-slate-500 max-w-sm">
+                    Si ya habías enviado tu registro, quedó guardado — no repitas el proceso.
+                    Intenta cargar de nuevo en un momento.
+                </p>
+                {/* href="" recarga esta misma URL, query incluida. */}
+                <a href="" className="h-12 px-6 flex items-center justify-center rounded-xl bg-brand-purple font-bold text-white">
+                    Reintentar
+                </a>
+            </div>
+        )
     }
 
     // Cancelada (29) o eliminada (108): el backend responde 200 con solo status +

@@ -41,6 +41,18 @@ const mainGuest: RegisteredGuest = {
 }
 
 describe("WelcomeScreen guest list", () => {
+    it("does not reconstruct full completion when the authoritative backend flag is false", () => {
+        const completedMain: RegisteredGuest = { ...mainGuest, isCompleted: true }
+        const portal = makePortal([completedMain], 1)
+        portal.progress.completed = 1
+        portal.progress.isFullyCompleted = false
+
+        render(<WelcomeScreen portal={portal} basePath="/checkin/res-uuid" />)
+
+        expect(screen.queryByRole("link", { name: /Ver Resumen de Check-in/i })).not.toBeInTheDocument()
+        expect(screen.getByText("1/1 completados")).toBeInTheDocument()
+    })
+
     it("renders the full long name in a single text node (no truncation, no per-word wrapping)", () => {
         render(<WelcomeScreen portal={makePortal([mainGuest])} basePath="/checkin/res-uuid" />)
 
@@ -157,5 +169,72 @@ describe("WelcomeScreen con el registro cerrado (checkinAllowed: false)", () => 
         render(<WelcomeScreen portal={makePortal([completedMain, pendingSecondary])} basePath="/checkin/res-uuid" />)
 
         expect(screen.getByRole("link", { name: "Registrar" })).toBeInTheDocument()
+    })
+})
+
+/**
+ * Firma externa (TuFirma): el titular ya envió su formulario y `/main/complete`
+ * respondió `pending_signature`, pero `isCompleted` NO pasa a `true` hasta que
+ * llega el webhook. El hub lo mostraba idéntico a alguien que no había empezado
+ * —"Pendiente" + "Continuar mi registro"— y lo devolvía al formulario, cuya
+ * pantalla de contrato ya no tenía sus datos (se borran del localStorage al
+ * enviar). La acción que resuelve el check-in está en su correo, no acá.
+ */
+describe("WelcomeScreen — titular esperando la firma externa de TuFirma", () => {
+    const awaitingSignature = (): CheckinPortalResponse => ({
+        ...makePortal([mainGuest], 1),
+        contract: {
+            signingProvider: "tufirma",
+            status: "pending",
+            hasNativeSignature: false,
+            signedAt: null,
+            signedContractUrl: null,
+        },
+    })
+
+    it("no lo invita a continuar un registro que ya envió", () => {
+        render(<WelcomeScreen portal={awaitingSignature()} basePath="/checkin/res-uuid" />)
+
+        expect(screen.queryByRole("link", { name: /Continuar mi registro/i })).not.toBeInTheDocument()
+    })
+
+    it("lo lleva al estado de su firma, no de vuelta al formulario", () => {
+        render(<WelcomeScreen portal={awaitingSignature()} basePath="/checkin/res-uuid" />)
+
+        const cta = screen.getByRole("link", { name: /Ver estado de mi firma/i })
+        expect(cta).toHaveAttribute("href", "/checkin/res-uuid/contract?guest_uuid=main-uuid")
+    })
+
+    it("distingue 'falta firmar' de 'pendiente' en la fila del titular", () => {
+        render(<WelcomeScreen portal={awaitingSignature()} basePath="/checkin/res-uuid" />)
+
+        expect(screen.getByText("Falta firmar")).toBeInTheDocument()
+        expect(screen.queryByText("Pendiente")).not.toBeInTheDocument()
+    })
+
+    it("con el proveedor nativo el estado `pending` NO es una espera del huésped", () => {
+        // Con firma nativa no hay correo que abrir: `pending` es el backend
+        // terminando. Mandarlo a "ver el estado de su firma" lo dejaría esperando
+        // algo que nunca le va a llegar.
+        const portal: CheckinPortalResponse = {
+            ...makePortal([mainGuest], 1),
+            contract: {
+                signingProvider: "hitguest_signature",
+                status: "pending",
+                hasNativeSignature: false,
+                signedAt: null,
+                signedContractUrl: null,
+            },
+        }
+        render(<WelcomeScreen portal={portal} basePath="/checkin/res-uuid" />)
+
+        expect(screen.getByRole("link", { name: /Continuar mi registro/i })).toBeInTheDocument()
+        expect(screen.queryByText("Falta firmar")).not.toBeInTheDocument()
+    })
+
+    it("sin contrato configurado el hub se comporta como siempre", () => {
+        render(<WelcomeScreen portal={makePortal([mainGuest], 1)} basePath="/checkin/res-uuid" />)
+
+        expect(screen.getByRole("link", { name: /Continuar mi registro/i })).toBeInTheDocument()
     })
 })

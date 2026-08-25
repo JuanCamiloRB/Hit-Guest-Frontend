@@ -18,13 +18,15 @@ interface DiditCallbackClientProps {
     guestUuid?: string
 }
 
-type CallbackState = "redirecting" | "failed" | "no_context"
+type CallbackState = "redirecting" | "failed" | "no_context" | "secondary_context_missing"
 
 interface PendingDiditContext {
     reservationUuid: string
     guestUuid: string
     basePath: string
     step: "biometric" | "kyc"
+    /** URL already consumed by Didit; VerifyScreen must not reopen it after remount. */
+    launchedUrl?: string
     startedAt: number
 }
 
@@ -52,6 +54,8 @@ interface ResolvedContext {
     reservationUuid: string
     guestUuid?: string
     basePath: string
+    /** True when the original /s/{guestToken} path survived in localStorage. */
+    hasScopedBasePath: boolean
 }
 
 /**
@@ -78,7 +82,7 @@ function resolveContext(urlReservation?: string, urlGuest?: string): ResolvedCon
     const guestUuid = urlGuest || stored?.guestUuid || undefined
     const basePath = stored?.basePath || `/checkin/${reservationUuid}`
 
-    return { reservationUuid, guestUuid, basePath }
+    return { reservationUuid, guestUuid, basePath, hasScopedBasePath: stored != null }
 }
 
 export function DiditCallbackClient({
@@ -91,6 +95,7 @@ export function DiditCallbackClient({
     const [state, setState] = useState<CallbackState>("redirecting")
 
     useEffect(() => {
+        let alive = true
         // Terminal failures: show error then send back to retry. Everything else
         // (Approved / In Review / In Progress) forwards to the verify screen, which
         // polls the portal — the source of truth for the final outcome.
@@ -115,12 +120,42 @@ export function DiditCallbackClient({
             setTimeout(() => router.replace(failHref), 2000)
         }
 
-        // Camino normal: URL y/o localStorage alcanzan. Se resuelve de forma
-        // síncrona a propósito — no se le agrega una llamada de red al caso feliz.
+        /**
+         * A secondary callback cannot be reconstructed from reservation+guest:
+         * its route also contains an opaque guestToken that neither callback
+         * contract returns. Verify the guest role before using the generic main
+         * route; otherwise we would cross the secondary security/routing boundary.
+         */
+        const routeWithKnownScope = async (ctx: ResolvedContext) => {
+            if (!ctx.guestUuid || ctx.hasScopedBasePath) {
+                routeTo(ctx)
+                return
+            }
+            try {
+                const portal = await checkinService.getPortal(ctx.reservationUuid)
+                if (!alive) return
+                const guest = portal.registeredGuests?.find((item) => item.uuid === ctx.guestUuid)
+                if (!guest) {
+                    setState("no_context")
+                    return
+                }
+                if (!guest.isMain) {
+                    setState("secondary_context_missing")
+                    return
+                }
+                routeTo(ctx)
+            } catch {
+                if (alive) setState("no_context")
+            }
+        }
+
+        // Camino normal: URL y/o localStorage alcanzan. Cuando sobrevivió el
+        // basePath original se resuelve sin red; si solo quedaron reserva+guest,
+        // el portal confirma el rol antes de usar la ruta genérica del titular.
         const local = resolveContext(reservationUuid, guestUuid)
         if (local) {
-            routeTo(local)
-            return
+            void routeWithKnownScope(local)
+            return () => { alive = false }
         }
 
         // Sin contexto local. Pasa de verdad: en navegadores embebidos
@@ -140,20 +175,17 @@ export function DiditCallbackClient({
             return
         }
 
-        let alive = true
         checkinService.resolveDiditSessionContext(verificationSessionId).then((remote) => {
             if (!alive) return
             if (!remote) {
                 setState("no_context")
                 return
             }
-            // El basePath del acompañante (/checkin/{ref}/s/{token}) no se puede
-            // reconstruir desde acá; el del titular sirve para ambos, porque
-            // /verify vuelve a pedir el portal y reencamina.
-            routeTo({
+            void routeWithKnownScope({
                 reservationUuid: remote.reservationUuid,
                 guestUuid: remote.guestUuid,
                 basePath: `/checkin/${remote.reservationUuid}`,
+                hasScopedBasePath: false,
             })
         })
         return () => { alive = false }
@@ -201,6 +233,20 @@ export function DiditCallbackClient({
                         </h2>
                         <p className="text-slate-500 text-sm">
                             Tu sesión ha expirado. Por favor regresa al link de check-in original e intenta de nuevo.
+                        </p>
+                    </>
+                )}
+
+                {state === "secondary_context_missing" && (
+                    <>
+                        <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-5">
+                            <XCircle className="w-8 h-8 text-amber-500" />
+                        </div>
+                        <h2 className="text-xl font-semibold text-slate-800 mb-2">
+                            Vuelve a tu enlace de invitación
+                        </h2>
+                        <p className="text-slate-500 text-sm">
+                            Tu verificación fue recibida, pero necesitamos el enlace personal del acompañante para continuar de forma segura.
                         </p>
                     </>
                 )}

@@ -13,7 +13,20 @@ const TODOS_LOS_ESTADOS: GuestVerificationInfo["status"][] = [
     "contact_challenge_pending", "pass", "kyc_session_failed", "superseded", "ocr_rejected",
 ]
 
-const guest = (v: GuestVerificationInfo) => ({ isCompleted: false, verification: v })
+const guest = (
+    v: Pick<GuestVerificationInfo, "status" | "currentStep"> & Partial<GuestVerificationInfo>,
+) => ({
+    isCompleted: false,
+    verification: {
+        verifiedAt: null,
+        sessionType: null,
+        startedAt: null,
+        expiresAt: null,
+        isStale: false,
+        verificationUrl: null,
+        ...v,
+    } as GuestVerificationInfo,
+})
 
 describe("estados de verificación del backend", () => {
     it("el tipo cubre los 15 estados que el backend emite", () => {
@@ -77,7 +90,7 @@ describe("estados de verificación del backend", () => {
         it("tolera isCompleted:true junto a un verification.status que no es 'completed'", () => {
             // status_reservation_id === 30 pisa isCompleted sin tocar verification.
             expect(isDocumentAlreadyVerified(
-                { isCompleted: true, verification: { status: "approved", currentStep: "form", verifiedAt: null } },
+                { ...guest({ status: "approved", currentStep: "form" }), isCompleted: true },
                 false,
             )).toBe(true)
         })

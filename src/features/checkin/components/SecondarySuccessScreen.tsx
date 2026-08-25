@@ -4,6 +4,8 @@ import Link from "next/link"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { CheckCircle2, MapPin, CalendarDays, Home } from "lucide-react"
+import { useSearchParams } from "next/navigation"
+import { completedEntryCopy, resolveCompletedEntryReason } from "@/features/checkin/lib/success-entry"
 
 interface SecondarySuccessScreenProps {
     portal: CheckinPortalResponse
@@ -12,6 +14,13 @@ interface SecondarySuccessScreenProps {
 
 export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuccessScreenProps) {
     const res = portal.reservation;
+    const searchParams = useSearchParams()
+    const completedEntryReason = resolveCompletedEntryReason(
+        searchParams.get("entry"),
+        searchParams.get("guest_uuid"),
+        portal.registeredGuests,
+    )
+    const completedCopy = completedEntryReason ? completedEntryCopy(completedEntryReason) : null
 
     return (
         <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
@@ -21,9 +30,11 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mb-2">
                     <CheckCircle2 className="h-10 w-10 text-green-600" />
                 </div>
-                <h1 className="text-3xl font-black text-slate-900 tracking-tight">¡Registro Exitoso!</h1>
+                <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+                    {completedCopy?.title ?? "¡Registro Exitoso!"}
+                </h1>
                 <p className="text-slate-500 text-sm max-w-sm">
-                    Tus datos han sido registrados correctamente.
+                    {completedCopy?.description ?? "Tus datos han sido registrados correctamente."}
                 </p>
             </div>
 

@@ -261,6 +261,11 @@ export const mockPortalResponse = (): CheckinPortalResponse => ({
         status: 'pending',      // change to 'approved' to simulate verification done
         currentStep: 'verification', // change to 'form' to skip to form in polling
         verifiedAt: null,
+        sessionType: 'biometric',
+        startedAt: null,
+        expiresAt: null,
+        isStale: false,
+        verificationUrl: null,
       },
     },
     // Remaining 2 guests are unknown — frontend shows them as "Huésped 2", "Huésped 3"
@@ -321,11 +326,11 @@ export const mockIdentifyResponse = (payload: IdentifyPayload): IdentifyResponse
   }
   // Caso 3: Guest existe en Didit con docs válidos — biometría pasa → va directo a form (no necesita KYC)
   else if (payload.identificationNumber === "111") {
-    verificationType = { type: 'session', subtype: 'biometric', url: 'https://verify.didit.me/u/JxXnsWmXTy-VGB9-9qI1RA' };
+    verificationType = { type: 'session', sessionType: 'biometric', url: 'https://verify.didit.me/u/JxXnsWmXTy-VGB9-9qI1RA' };
   }
   // Caso 4: Guest nuevo en Didit — biometría pasa → pero no tiene docs → necesita KYC
   else if (payload.identificationNumber === "112") {
-    verificationType = { type: 'session', subtype: 'biometric', url: 'https://verify.didit.me/u/JxXnsWmXTy-VGB9-9qI1RA' };
+    verificationType = { type: 'session', sessionType: 'biometric', url: 'https://verify.didit.me/u/JxXnsWmXTy-VGB9-9qI1RA' };
   }
 
   return {

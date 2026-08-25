@@ -21,6 +21,8 @@ import type { IdentifyPayload, IdentifySessionData } from "@/features/checkin/ty
 import { getVerificationToken } from "@/features/checkin/lib/verification-token"
 import { isDocumentAlreadyVerified } from "@/features/checkin/lib/doc-verification"
 import { asCheckinError, type CheckinApiError } from "@/features/checkin/lib/checkin-error"
+import { buildCompletedCheckinHref } from "@/features/checkin/lib/success-entry"
+import { findRecoverableGuest } from "@/features/checkin/lib/identify-recovery"
 
 /** Guest-facing terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
 const GUEST_TERMS_URL = "https://hitguest.com/terminos-servicio1/"
@@ -194,17 +196,16 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
     const resumeExistingGuest = async (payload: IdentifyPayload): Promise<boolean> => {
         try {
             const portal = await checkinService.getPortal(reservationUuid)
-            const norm = (s?: string) => (s ?? "").trim().toLowerCase()
-            const match = portal.registeredGuests?.find(g =>
-                payload.isMainGuest
-                    ? g.isMain
-                    : norm(g.name) === norm(payload.name) && norm(g.lastname) === norm(payload.lastname)
+            const match = findRecoverableGuest(
+                portal.registeredGuests,
+                payload.isMainGuest,
+                resumeGuestUuid,
             )
             if (!match) return false
 
             if (match.isCompleted) {
-                toast.success("Ya completaste tu check-in anteriormente")
-                router.push(`${basePath}/success?guest_uuid=${match.uuid}`)
+                toast.info("Este check-in ya estaba completado")
+                router.push(buildCompletedCheckinHref(basePath, match.uuid, "identity_already_completed"))
                 return true
             }
 
@@ -221,29 +222,28 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 return true
             }
 
-            // ⚠️ `verificationUrl` NO forma parte del portal (§1/§A solo expone
-            // `status`, `currentStep` y `verifiedAt`); únicamente `/verify/result`
-            // (§3) lo agrega. Es decir que hoy esta rama está INERTE: siempre cae al
-            // `return false` de abajo y el huésped ve el error de documento
-            // duplicado. Se deja tipada como opcional —en vez de borrarla— porque
-            // sigue siendo la reanudación correcta si el portal llega a exponer el
-            // campo, y borrarla escondería la decisión. Antes iba con `any`, que la
-            // hacía parecer un camino vivo.
-            const verif = (match.verification ?? {}) as Partial<{ verificationUrl: string }>
+            // El portal actual sí puede exponer la sesión Didit accionable. Se
+            // conserva también su etapa: asumir biometría acá reabría la sesión
+            // equivocada cuando el backend ya había escalado a KYC.
+            const verif = match.verification
 
             // A pending Didit session is still available → resume that EXACT session.
             // We must NOT invent a "document_upload" directive when there's no URL —
             // that would switch the provider from Didit to Textract. If we can't safely
             // re-derive the original provider, bail and let the backend handle it
             // (identify should be idempotent and return a fresh verification directive).
-            if (verif.verificationUrl) {
+            if (verif?.verificationUrl) {
                 const data: IdentifySessionData = {
                     guestUuid: match.uuid,
                     guestName: match.name,
                     guestLastname: match.lastname,
                     isMainGuest: match.isMain,
                     isCheckinCompleted: false,
-                    verification: { type: "session", subtype: "biometric", url: verif.verificationUrl },
+                    verification: {
+                        type: "session",
+                        sessionType: verif.sessionType ?? "biometric",
+                        url: verif.verificationUrl,
+                    },
                     formSchema: { requiredFields: [], optionalFields: [], prefilledData: {} },
                     timestamp: Date.now(),
                     identificationTypeId: Number(payload.identificationTypeId) || undefined,
@@ -279,8 +279,8 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
 
             // G8: Handle already-completed re-entry
             if (response.reservationGuest.isCheckinCompleted) {
-                toast.success("Ya completaste tu check-in anteriormente")
-                router.push(`${basePath}/success?guest_uuid=${response.guest.uuid}`)
+                toast.info("Este check-in ya estaba completado")
+                router.push(buildCompletedCheckinHref(basePath, response.guest.uuid, "identity_already_completed"))
                 return
             }
 

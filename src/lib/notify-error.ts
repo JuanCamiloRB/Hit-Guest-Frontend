@@ -54,30 +54,35 @@ const DEFAULT_FALLBACK = "Algo salió mal. Intenta de nuevo en unos minutos."
 export function normalizeApiError(error: unknown, fallback = DEFAULT_FALLBACK): NormalizedError {
     if (typeof error === "string") return { message: error || fallback, details: [] }
 
-    const e = error as any
-    const status = typeof e?.status === "number" ? e.status : undefined
+    const e = error && typeof error === "object"
+        ? error as Record<string, unknown>
+        : {}
+    const status = typeof e.status === "number" ? e.status : undefined
     let message: string =
-        typeof e?.message === "string" && e.message.trim() ? e.message : fallback
+        typeof e.message === "string" && e.message.trim() ? e.message : fallback
 
     // 403 = recurso de otra cuenta (policy). Laravel's default text is English
     // ("This action is unauthorized.") — replace it; keep any localized message.
-    if (status === 403 && /unauthorized|forbidden|this action/i.test(message)) {
+    if (status === 403 && /unauthorized|forbidden|this action|do not have permission/i.test(message)) {
         message = "No tienes permiso para acceder a este recurso."
     }
 
     const details: string[] = []
 
     // OCR-style structured failures: failedFields: [{ field, reason, confidence }]
-    if (Array.isArray(e?.failedFields)) {
+    if (Array.isArray(e.failedFields)) {
         for (const f of e.failedFields) {
-            const label = FIELD_LABELS[f?.field] || f?.field || ""
-            const reason = REASON_LABELS[f?.reason] || (f?.reason ? String(f.reason).toLowerCase() : "")
+            const field = f && typeof f === "object" ? f as Record<string, unknown> : {}
+            const fieldKey = typeof field.field === "string" ? field.field : ""
+            const reasonKey = typeof field.reason === "string" ? field.reason : ""
+            const label = FIELD_LABELS[fieldKey] || fieldKey
+            const reason = REASON_LABELS[reasonKey] || reasonKey.toLowerCase()
             if (label) details.push(reason ? `${label}: ${reason}` : String(label))
         }
     }
 
     // Validation errors: array of strings, Record<string, string[]>, or array of records.
-    const errs = e?.errors
+    const errs = e.errors
     if (errs) {
         const pushVal = (v: unknown) => {
             if (Array.isArray(v)) v.forEach((x) => details.push(String(x)))

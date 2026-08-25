@@ -25,7 +25,7 @@ import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { getVerificationToken } from "@/features/checkin/lib/verification-token"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { useVerificationRecovery } from "@/features/checkin/hooks/useVerificationRecovery"
-import { isDocumentAlreadyVerified } from "@/features/checkin/lib/doc-verification"
+import { isDocumentAlreadyVerified, resolvePreFormVerificationStep } from "@/features/checkin/lib/doc-verification"
 import { isDocumentExpired } from "@/features/checkin/lib/document-expiry"
 import { FormInput } from "@/features/checkin/components/FormInput"
 import { DynamicCheckinFields, areDynamicFieldsValid, getProviderUserFields } from "@/features/checkin/components/DynamicCheckinFields"
@@ -110,15 +110,56 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                 // no responda.
                 const hasOtpToken = getVerificationToken(reservationUuid, guestUuid) !== null
                 try {
-                    const portal = await checkinService.getPortal(reservationUuid)
-                    const currentGuest = portal.registeredGuests.find((guest) => guest.uuid === guestUuid)
-                    setDocVerified(isDocumentAlreadyVerified(currentGuest, hasOtpToken))
+                    // `/verify/result` is the polling contract and can already be
+                    // terminal while the broader portal projection is catching up.
+                    // Observe both instead of degrading a successful Didit flow to
+                    // the form's legacy document-photo fallback.
+                    const [portalResult, verificationResult] = await Promise.allSettled([
+                        checkinService.getPortal(reservationUuid),
+                        checkinService.checkVerificationResult(reservationUuid, guestUuid),
+                    ])
+                    if (portalResult.status === "rejected") {
+                        console.error(
+                            "[GuestFormScreen] getPortal() falló; se usa /verify/result como respaldo",
+                            portalResult.reason,
+                        )
+                    }
+                    const portal = portalResult.status === "fulfilled" ? portalResult.value : null
+                    const currentGuest = portal?.registeredGuests?.find((guest) => guest.uuid === guestUuid)
+                    const activeResult = verificationResult.status === "fulfilled"
+                        ? verificationResult.value
+                        : null
+                    const identityVerified = session?.verification.type === "verified_ok"
+                        || isDocumentAlreadyVerified(currentGuest, hasOtpToken, activeResult)
+                    setDocVerified(identityVerified)
+
+                    // A stale/direct navigation must not turn an unfinished Didit
+                    // flow into a Textract-looking form. The backend status chooses
+                    // the route; the frontend never substitutes a provider.
+                    const nextStep = resolvePreFormVerificationStep({
+                        identityVerified,
+                        resultStatus: activeResult?.status,
+                        directiveType: session?.verification.type,
+                        portalStatus: portal?.portalStatus,
+                        contactChallengeSatisfied: hasOtpToken,
+                    })
+                    if (nextStep !== "form") {
+                        const target = nextStep === "home"
+                            ? basePath
+                            : nextStep === "contact_challenge"
+                            ? `${basePath}/contact-challenge?guest_uuid=${guestUuid}`
+                            : nextStep === "verify"
+                                ? `${basePath}/verify?guest_uuid=${guestUuid}`
+                                : `${basePath}/identify`
+                        router.replace(target)
+                        return
+                    }
                     // Datos que el PM registró al crear la reserva. SOLO para el
                     // titular: son suyos, y dárselos a un acompañante le mostraría
                     // el correo y el teléfono de otra persona. Se aprovecha esta
                     // misma llamada al portal — no añade ninguna petición.
                     const isMainGuest = currentGuest?.isMain ?? session?.isMainGuest ?? false
-                    if (isMainGuest) {
+                    if (isMainGuest && portal) {
                         mainGuestPrefill = normalizeMainGuestPrefill(portal.reservation?.mainGuestPrefill)
                     }
                 } catch (e) {
@@ -167,9 +208,10 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                 } catch (raw: unknown) {
                     if (asCheckinError(raw).status === 401) {
                         // Token ausente/vencido (plan OTP 20260731 §"Endpoints que
-                        // ahora exigen el token"): /identify emite un desafío nuevo
-                        // reusando el flujo de "resume" que ya vive ahí.
-                        expireVerificationSession(guestUuid)
+                        // ahora exigen el token"): /identify retoma el desafío por
+                        // su flujo de "resume". El error viaja para que la
+                        // recuperación decida por su `code` (2026-08-24).
+                        expireVerificationSession(guestUuid, raw)
                         return
                     }
                     console.warn("[GuestFormScreen] /form endpoint unavailable; using identify session schema")
@@ -460,7 +502,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             {/* ── Personal Section ── */}
             <CollapsibleSection icon={<User size={18} />} title="Datos personales" expanded={expanded.personal} onToggle={() => toggleSection("personal")} badge={form.name && form.lastname ? "✓" : undefined}>
                 <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <FormInput label="Nombre" value={form.name} onChange={(v) => updateField("name", v)} placeholder="Ej. Ricardo" required />
                         <FormInput label="Apellidos" value={form.lastname} onChange={(v) => updateField("lastname", v)} placeholder="Ej. Lombana" required />
                     </div>
@@ -504,7 +546,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                         )}
                         
                         {(isFieldVisible('countryOfResidenceId') || isFieldVisible('cityOfResidence')) && (
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {isFieldVisible('countryOfResidenceId') && (
                                     <SearchableSelect label="País de residencia" options={countryOptions} value={form.countryOfResidenceId} onChange={(v) => updateField("countryOfResidenceId", v)} placeholder="Seleccionar..." required={isFieldRequired('countryOfResidenceId')} />
                                 )}
@@ -523,7 +565,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                         )}
 
                         {(isFieldVisible('countryDestinationId') || isFieldVisible('cityDestination')) && (
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {isFieldVisible('countryDestinationId') && (
                                     <SearchableSelect label="País destino" options={countryOptions} value={form.countryDestinationId} onChange={(v) => updateField("countryDestinationId", v)} placeholder="Seleccionar..." required={isFieldRequired('countryDestinationId')} />
                                 )}
@@ -546,7 +588,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             {(isFieldVisible('arrivalTime') || isFieldVisible('departureTime') || isFieldVisible('arrivalFlight') || isFieldVisible('departureFlight')) && (
                 <CollapsibleSection icon={<Plane size={18} />} title="Información de viaje" expanded={expanded.travel} onToggle={() => toggleSection("travel")} optional>
                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {isFieldVisible('arrivalTime') && (
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-semibold text-slate-700">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-red-400 ml-0.5">*</span>}</label>
@@ -560,7 +602,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                                 </div>
                             )}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {isFieldVisible('arrivalFlight') && (
                                 <FormInput label="# Vuelo llegada" value={form.arrivalFlight} onChange={(v) => updateField("arrivalFlight", v)} placeholder="Ej. AV123" required={isFieldRequired('arrivalFlight')} />
                             )}

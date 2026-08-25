@@ -4,9 +4,10 @@ import { useEffect, type ReactNode } from "react"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
-import { Clock, CreditCard, IdCard, Key, ShieldCheck, Calendar, Users, CheckCircle2, Circle, Lock, UserCircle, ArrowRight, Share2 } from "lucide-react"
+import { Clock, CreditCard, IdCard, Key, ShieldCheck, Calendar, Users, CheckCircle2, Circle, Lock, UserCircle, ArrowRight, Share2, Mail } from "lucide-react"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 import { isMainGuestCompleted } from "@/features/checkin/types/checkin"
+import { resolveContractSigningState } from "@/features/checkin/lib/contract-signing"
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
 
 interface WelcomeScreenProps {
@@ -138,6 +139,19 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
     const mainGuest = registeredGuests.find(g => g.isMain)
     const mainCompleted = isMainGuestCompleted(portal)
 
+    /**
+     * El titular ya llenó todo y lo único que falta es que firme desde el correo
+     * de TuFirma.
+     *
+     * Con firma externa `isCompleted` NO pasa a `true` hasta que llega el webhook,
+     * así que sin esto el hub lo mostraba igual que a alguien que no empezó
+     * ("Pendiente" + "Continuar mi registro") y lo mandaba a rehacer un formulario
+     * que ya había enviado. La diferencia importa porque la acción que resuelve el
+     * check-in no está en el portal, está en su bandeja de entrada.
+     */
+    const mainAwaitingExternalSignature =
+        !mainCompleted && resolveContractSigningState(portal.contract) === "awaiting_external"
+
     // Returns the correct "continue" URL for a known guest based on their verification state,
     // avoiding unnecessary roundtrips through /identify when the step is already known.
     const getContinueLink = (guest: typeof registeredGuests[0]) => {
@@ -151,10 +165,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
     // never turn a pending guest into a completed one.
     const isGuestDone = (g: { isCompleted: boolean }) => g.isCompleted
 
-    const localCompleted = Math.max(
-        progress.completed,
-        registeredGuests.filter(g => isGuestDone(g)).length
-    )
+    const completedCount = progress.completed
 
     const arrival = new Date(res.arrivalDate + "T12:00:00")
     const departure = new Date(res.departureDate + "T12:00:00")
@@ -165,7 +176,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
         return d.toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })
     }
 
-    const isFullyCompleted = progress.isFullyCompleted || (res.totalGuestsAllowed > 0 && localCompleted >= res.totalGuestsAllowed)
+    const isFullyCompleted = progress.isFullyCompleted
 
     // ── Guest list logic ──────────────────────────────────────────────────────
     // registeredGuests: guests known to the backend (have name from PMS or /identify)
@@ -195,7 +206,13 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
     let primaryCtaHref: string | null = null
     let primaryCtaLabel = ""
     if (!isFullyCompleted && checkinOpen) {
-        if (!mainCompleted) {
+        if (mainAwaitingExternalSignature && mainGuest) {
+            // Se lo lleva a la pantalla del contrato, que en este estado explica que
+            // la firma está en su correo. "Continuar mi registro" sería falso: no
+            // hay nada más que llenar.
+            primaryCtaHref = `${basePath}/contract?guest_uuid=${mainGuest.uuid}`
+            primaryCtaLabel = "Ver estado de mi firma"
+        } else if (!mainCompleted) {
             primaryCtaHref = mainGuest ? getContinueLink(mainGuest) : `${basePath}/identify`
             primaryCtaLabel = mainGuest ? "Continuar mi registro" : "Comenzar mi registro"
         } else {
@@ -310,13 +327,15 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-500 font-medium">Progreso del registro</span>
                         <span className="font-bold text-brand-purple">
-                            {localCompleted}/{res.totalGuestsAllowed} completados
+                            {completedCount}/{res.totalGuestsAllowed} completados
                         </span>
                     </div>
                     <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div
                             className="h-full bg-brand-purple transition-all duration-500"
-                            style={{ width: `${res.totalGuestsAllowed > 0 ? (localCompleted / res.totalGuestsAllowed) * 100 : 0}%` }}
+                            style={{ width: `${res.totalGuestsAllowed > 0
+                                ? Math.min(100, (completedCount / res.totalGuestsAllowed) * 100)
+                                : 0}%` }}
                         />
                     </div>
                 </div>
@@ -339,7 +358,11 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                     <span className={BADGE_MAIN}>Principal</span>
                                     {isGuestDone(mainGuest)
                                         ? <span className={BADGE_DONE}>Completado</span>
-                                        : <span className={BADGE_PENDING}>Pendiente</span>
+                                        : mainAwaitingExternalSignature
+                                            // "Pendiente" a secas hacía pensar que
+                                            // faltaba llenar algo acá.
+                                            ? <span className={BADGE_LOCKED}><Mail size={11} />Falta firmar</span>
+                                            : <span className={BADGE_PENDING}>Pendiente</span>
                                     }
                                 </>
                             }

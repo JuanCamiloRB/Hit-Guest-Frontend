@@ -16,4 +16,14 @@ describe("isAccessInstructionDocument", () => {
         "does not expose %s as access instructions",
         (type) => expect(isAccessInstructionDocument(document(type))).toBe(false),
     )
+
+    it("ignora un documento legacy sin type en vez de tumbar la pantalla de éxito", () => {
+        const malformed = {
+            uuid: "legacy-document",
+            renderUrl: "/render",
+            pdfUrl: "/pdf",
+        } as PortalDocument
+
+        expect(isAccessInstructionDocument(malformed)).toBe(false)
+    })
 })

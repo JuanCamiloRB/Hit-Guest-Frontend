@@ -8,9 +8,11 @@ vi.mock("next/navigation", () => ({
 }))
 
 const resolveDiditSessionContext = vi.fn()
+const getPortal = vi.fn()
 vi.mock("@/features/checkin/services/checkin-service", () => ({
     checkinService: {
         resolveDiditSessionContext: (...args: unknown[]) => resolveDiditSessionContext(...args),
+        getPortal: (...args: unknown[]) => getPortal(...args),
     },
 }))
 
@@ -40,10 +42,14 @@ describe("DiditCallbackClient — context resolution", () => {
         replace.mockReset()
         resolveDiditSessionContext.mockReset()
         resolveDiditSessionContext.mockResolvedValue(null)
+        getPortal.mockReset()
+        getPortal.mockResolvedValue({
+            registeredGuests: [{ uuid: GUEST, isMain: true }],
+        })
         localStorage.clear()
     })
 
-    it("uses the reservation from the URL even when localStorage holds a different, still-valid one", () => {
+    it("uses the reservation from the URL even when localStorage holds a different, still-valid one", async () => {
         // Same guest, earlier reservation, inside the 2h TTL — the exact shape
         // that used to send the guest back to the wrong reservation.
         seedPendingContext({
@@ -61,9 +67,9 @@ describe("DiditCallbackClient — context resolution", () => {
             />,
         )
 
-        expect(replace).toHaveBeenCalledWith(
+        await waitFor(() => expect(replace).toHaveBeenCalledWith(
             `/checkin/${RESERVATION_IN_URL}/verify?guest_uuid=${GUEST}&from_didit_callback=1`,
-        )
+        ))
     })
 
     it("keeps the stored basePath when it belongs to the SAME reservation (secondary-guest link)", () => {
@@ -102,7 +108,7 @@ describe("DiditCallbackClient — context resolution", () => {
         )
     })
 
-    it("resumes from the URL alone with no stored context at all", () => {
+    it("resumes a main guest from the URL alone with no stored context at all", async () => {
         render(
             <DiditCallbackClient
                 verificationSessionId=""
@@ -112,9 +118,27 @@ describe("DiditCallbackClient — context resolution", () => {
             />,
         )
 
-        expect(replace).toHaveBeenCalledWith(
+        await waitFor(() => expect(replace).toHaveBeenCalledWith(
             `/checkin/${RESERVATION_IN_URL}/verify?guest_uuid=${GUEST}&from_didit_callback=1`,
+        ))
+    })
+
+    it("does not route a secondary through the generic main path when its guest token was lost", async () => {
+        getPortal.mockResolvedValue({
+            registeredGuests: [{ uuid: GUEST, isMain: false }],
+        })
+
+        const { findByText } = render(
+            <DiditCallbackClient
+                verificationSessionId="sess-1"
+                status="Approved"
+                reservationUuid={RESERVATION_IN_URL}
+                guestUuid={GUEST}
+            />,
         )
+
+        expect(await findByText("Vuelve a tu enlace de invitación")).toBeInTheDocument()
+        expect(replace).not.toHaveBeenCalled()
     })
 
     it("shows the expired state when neither the URL nor localStorage has a reservation", () => {
@@ -149,7 +173,7 @@ describe("DiditCallbackClient — context resolution", () => {
             expect(resolveDiditSessionContext).toHaveBeenCalledWith("sess-abc")
         })
 
-        it("NO consulta al backend cuando el contexto local alcanza", () => {
+        it("NO consulta el endpoint de contexto cuando la URL alcanza", async () => {
             render(
                 <DiditCallbackClient
                     verificationSessionId="sess-abc"
@@ -159,9 +183,10 @@ describe("DiditCallbackClient — context resolution", () => {
                 />,
             )
 
-            // El caso feliz no paga una ida de red extra.
+            // No necesita resolver otra vez la sesión; el portal solo confirma
+            // que el guest de una ruta sin /s/{token} sea realmente el titular.
             expect(resolveDiditSessionContext).not.toHaveBeenCalled()
-            expect(replace).toHaveBeenCalled()
+            await waitFor(() => expect(replace).toHaveBeenCalled())
         })
 
         it("cae en 'Sesión expirada' si el backend tampoco puede resolverlo", async () => {
