@@ -56,3 +56,8 @@ next-env.d.ts
 * [0-9]*.tsx
 * [0-9]*.js
 * [0-9]*.jsx
+
+# Local agent tooling (symlinked skills, agent state)
+.agents/
+.claude/skills/agent-browser
+skills-lock.json

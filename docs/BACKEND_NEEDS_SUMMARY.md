@@ -19,7 +19,21 @@
 
 ## Bloqueante activo
 
-*(ninguno)*
+- ⚠️ **Origen de la reserva — `PUT /reservations/{uuid}`** (abierto 2026-08-19).
+  Ningún endpoint expone si una reserva entró por sincronización o la creó el PM
+  a mano: `source` es el canal comercial, y `source_pms` solo existe a nivel
+  Listing. Sin ese dato no podemos diferenciar en la UI, y el bloqueo que había
+  (adivinando por canal) impedía editar reservas creadas a mano.
+  Detalle y `curl` en
+  [`BACKEND_NEEDS_RESERVATION_ORIGIN.md`](./BACKEND_NEEDS_RESERVATION_ORIGIN.md).
+
+- ⚠️ **Garantía con tarjeta — `POST /checkin/{uuid}/main/guarantee/setup-intent`**
+  (abierto 2026-08-19). No bloquea desarrollo, **bloquea el diagnóstico**: el
+  endpoint responde 200 y el huésped igual queda trabado en «Preparando
+  formulario…». Necesitamos saber si un 200 puede traer `publishableKey` /
+  `clientSecret` ausente o vacío, y un body real para reproducirlo.
+  Detalle, evidencia y `curl` en
+  [`BACKEND_NEEDS_GUARANTEE_SETUP_INTENT.md`](./BACKEND_NEEDS_GUARANTEE_SETUP_INTENT.md).
 
 - ✅ **`send-checkin-link` 401 "Invalid or unauthorized token provided"** — Resuelto. Causa raíz confirmada: el Handler del backend mapeaba `AuthorizationException` (policy) a **401** en vez de 403, por eso parecía un problema de token/guard. Corregido; el endpoint funciona.
 

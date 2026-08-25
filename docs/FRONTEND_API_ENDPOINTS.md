@@ -479,25 +479,19 @@ La lista puede ser array o `{data: []}`. El detalle puede ser recurso directo o
       "sourcePmsId": 1,
       "externalId": "PMS-123"
     }
-  ],
-  "automations": [
-    {
-      "name": "Identity Verification - Main Guest",
-      "providerSlug": "didit",
-      "guestType": "main_guest",
-      "executionOrder": 1,
-      "statusProviderId": 10,
-      "parameters": {
-        "_init": true
-      }
-    }
   ]
 }
 ```
 
-En creación se envían ocho semillas de automatización, órdenes `1..8`, todas
-inactivas (`statusProviderId = 10`). Los slugs son `didit`, `tufirma`, `ttlock`,
-`pdf_report`, `tra_colombia` y `sire_colombia`.
+`automations` es nullable/opcional. El cliente actual lo omite porque el alta no
+pregunta al PM qué provider de identidad desea; el backend crea los dos slots
+estructurales sin provider. Si en el futuro se envía el array, se usan slugs
+canónicos, `statusProviderId` solo `8|10`, y se omite `executionOrder` porque el
+servidor renumera: identidad en 1/2 y el resto desde 3 preservando orden relativo.
+
+Los slots de identidad principal y secundarios son obligatorios en existencia,
+no en estado: el backend los crea siempre, pero el PM puede activarlos o
+desactivarlos. Al activar uno debe seleccionar un provider de verificación.
 
 ### 6.3 Actualizar
 
@@ -601,7 +595,11 @@ Filtros soportados por el frontend:
 | ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | `/property-automations`        | `propertyUuid[eq]`, `providerId[eq]`, `guestType[eq]`, `statusProviderId[eq]`, `includeProvider`, `includeProperty`, `page` |
 | `/property-automations/{uuid}` | `includeProvider`, `includeUsageRecords`                                                                                    |
-| `/providers`                   | `statusProviderId[eq]`, `includeIntegrations`                                                                               |
+| `/providers`                   | `statusProviderId[eq]`, `includeIntegrations`, `country`, `page`                                                            |
+
+`/providers` pagina a 15; el servicio sigue todas las páginas. La UI de
+automations filtra por presencia de `parameters.slug`, porque la misma tabla
+contiene Integrations sin job del pipeline.
 
 ### 8.2 Crear
 
@@ -615,11 +613,15 @@ Filtros soportados por el frontend:
   "guestType": "all",
   "executionOrder": 4,
   "parameters": {},
-  "statusProviderId": 8
+  "statusProviderId": 10
 }
 ```
 
 `guestType`: `main_guest`, `secondary_guest` o `all`.
+
+Cuando el provider está disponible para el país pero la propiedad todavía no
+tiene la fila, el PM la crea inactiva con este endpoint. Después completa
+credenciales y disparadores, y la activa de forma atómica con `/configure`.
 
 ### 8.3 Editar y configurar
 
@@ -671,6 +673,8 @@ TTLock:
 {
   "username": "usuario",
   "password": "secreto",
+  "client_id": "cliente",
+  "client_secret": "secreto-del-cliente",
   "locks": [
     {
       "lock_id": 123,
@@ -705,9 +709,21 @@ SIRE Colombia:
   "document_type": "CC",
   "document_number": "123",
   "password": "secreto",
-  "company_code": "900123456"
+  "company_code": "900123456",
+  "guest_filter": "foreign_only"
 }
 ```
+
+`company_code` es opcional. `guest_filter` se fuerza a `foreign_only` para SIRE;
+el backend todavía no lo valida. Las automations operativas deben guardar al
+menos un valor válido en `triggerTypes`, o el despachador las omite en silencio.
+
+Triggers configurables: `on_main_guest_checkin_completed`,
+`on_guest_checkin_completed`, `on_checkin_completed`, `at_time_of_day`,
+`on_physical_checkout` y `after_automation`. Los eliminados
+`on_physical_checkin`, `after_checkin` y `after_checkout` responden 422.
+`after_automation` exige hoy un `predecessor_automation_id` entero que el recurso
+público no expone; el portal no permite crear esa cadena hasta que exista UUID.
 
 ## 9. Overrides por alojamiento
 
@@ -959,6 +975,8 @@ header Bearer; no existe una ruta fija construida por el frontend.
 ```
 
 Estados: `not_started`, `pending`, `completed`, `failed`.
+`canDispatch` y `canRedispatch` son autoritativos; si faltan, el cliente asume
+`false` y no infiere permisos a partir del estado.
 
 ### 12.2 Historial y consumo
 
@@ -993,6 +1011,11 @@ Todas usan `POST`, `SESSION` y payload `{}`:
 - `/reservations/{reservationUuid}/automation-records/{recordId}/redispatch`
 - `/reservations/{reservationUuid}/property-automations/{automationUuid}/dispatch`
 - `/reservations/{reservationUuid}/property-automations/{automationUuid}/resend-pdf`
+
+`dispatch` es solo para una automation que nunca corrió; `redispatch`, para el
+último registro fallido. `resend-pdf` funciona sin importar el estado anterior,
+exige check-in de reserva completo y crea un consumo nuevo, por lo que la UI pide
+confirmación explícita.
 
 Respuesta esperada:
 
@@ -1093,7 +1116,7 @@ Respuesta:
   },
   "verification": {
     "type": "session",
-    "subtype": "biometric",
+    "sessionType": "biometric",
     "url": "https://..."
   },
   "formSchema": {
@@ -1105,7 +1128,7 @@ Respuesta:
 }
 ```
 
-Directivas posibles: `session`, `document_upload`, `verified_ok`.
+Directivas actuales: `session`, `document_upload`, `contact_challenge`.
 
 ### 13.3 Esquema de formulario
 
@@ -1136,26 +1159,34 @@ Directivas posibles: `session`, `document_upload`, `verified_ok`.
 
 Query:
 
-- `guest_uuid` obligatorio;
-- `session_id` opcional.
+- `guest_uuid` obligatorio.
 
-Respuesta normalizada:
+El tracker vigente no declara `session_id` para este endpoint. La sesión exacta
+se usa únicamente en `/checkin/didit/session/{sessionId}/context`; el polling se
+resuelve por el vínculo reserva + huésped.
+
+Respuesta del backend:
 
 ```json
 {
-  "status": "verified",
-  "guestData": {
-    "firstName": "Nombre",
-    "lastName": "Apellido",
-    "documentNumber": "123",
-    "dateOfBirth": "1990-01-01",
-    "expirationDate": "2030-01-01"
+  "verification": {
+    "status": "pending",
+    "currentStep": "verification",
+    "verifiedAt": null,
+    "sessionType": "kyc",
+    "startedAt": "2026-08-12T10:00:00Z",
+    "expiresAt": "2026-08-12T10:15:00Z",
+    "isStale": false,
+    "verificationUrl": "https://verify.didit.me/..."
   }
 }
 ```
 
-Estados: `verified`, `kyc_required`, `failed`, `pending`. Para
-`kyc_required` puede incluir `kycUrl`.
+El frontend normaliza esa máquina a `verified`, `kyc_required`,
+`restart_required`, `contact_challenge`, `failed`, `stale` o `pending`.
+La escalada se detecta por `sessionType: "kyc"`; `pass` no es éxito ni señal
+suficiente para escalar. `isStale` es la única señal para abandonar la espera:
+el frontend no aplica un timeout propio.
 
 ### 13.5 Firma nativa
 
@@ -1272,6 +1303,9 @@ Respuesta:
 
 Errores OCR pueden incluir `errorType` y
 `failedFields: [{field, reason, confidence}]`.
+`UNSUPPORTED_DOCUMENT_LAYOUT` es reintentable con otro documento y la UI debe
+indicar explícitamente que el huésped use su pasaporte. Por tolerancia de
+versiones, el cliente también acepta `error_type`.
 
 ### 13.9 Documentos del huésped
 
@@ -1496,9 +1530,28 @@ La respuesta del backend se reenvía sin normalizar.
 
 ### 17.3 Geocodificación
 
+El modo gratuito nativo no requiere configuración y usa una búsqueda explícita
+con OpenStreetMap/Nominatim: el PM completa la dirección y presiona Enter o
+`Buscar dirección`. No se consulta por cada tecla porque el servidor público de
+Nominatim lo prohíbe.
+
+Configuración comercial opcional:
+
+```env
+GEOCODING_PROVIDER=google
+GOOGLE_MAPS_API_KEY=...
+```
+
+La clave nunca se expone al navegador. Si `GOOGLE_MAPS_API_KEY` existe, Google
+se activa aunque `GEOCODING_PROVIDER` no esté definido. Una instancia Nominatim
+propia/administrada puede habilitar autocomplete mediante
+`GEOCODING_PROVIDER=nominatim` y `NOMINATIM_BASE_URL`.
+
 `GET /api/geocode/autocomplete?q={texto}&session={token}`
 
 - `q` requiere al menos tres caracteres.
+- Los prefijos inequívocos de unidad se quitan solo para consultar al proveedor
+  (`907/188 ...` → `188 ...`) y se restauran al seleccionar la dirección.
 - `session` es opcional pero recomendado para agrupar facturación.
 - Respuesta:
 
@@ -1512,6 +1565,11 @@ La respuesta del backend se reenvía sin normalizar.
   ]
 }
 ```
+
+Sin proveedor de autocomplete, la consulta automática responde `503` con
+`reason: "manual_search_required"` y la UI ofrece la búsqueda gratuita. Esta
+envía `mode=search`; los fallos responden con `reason: "provider_error"` y una
+búsqueda válida sin coincidencias responde `200` con `suggestions: []`.
 
 El handler llama server-to-server:
 
@@ -1532,8 +1590,14 @@ El handler llama server-to-server:
   "lat": 4.711,
   "lng": -74.0721,
   "formattedAddress": "Bogotá, Colombia",
+  "addressLine1": "Carrera 7 72-41",
+  "addressLine2": "501",
+  "streetNumber": "72-41",
+  "streetName": "Carrera 7",
   "city": "Bogotá",
+  "suburb": "Chapinero",
   "state": "Bogotá",
+  "postalCode": "110221",
   "countryCode": "CO"
 }
 ```

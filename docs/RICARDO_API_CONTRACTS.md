@@ -1901,42 +1901,31 @@ POST /api/v1/checkin/{reservationUuid}/secondary/{guestUuid}/complete
 
 ### 13.5 Resultado Didit
 
-El handoff v4.1 registró esta ruta como gap recomendado:
-
 ```http
 GET /api/v1/checkin/{reservationUuid}/verify/result?guest_uuid={guestUuid}
 ```
 
-Respuestas propuestas:
+Respuesta vigente:
 
 ```json
 {
-  "status": "verified",
-  "guestData": {
-    "firstName": "Nombre",
-    "lastName": "Apellido",
-    "documentNumber": "123",
-    "dateOfBirth": "1990-01-01",
-    "expirationDate": "2030-01-01"
+  "verification": {
+    "status": "pending",
+    "currentStep": "verification",
+    "verifiedAt": null,
+    "sessionType": "kyc",
+    "startedAt": "2026-08-12T10:00:00Z",
+    "expiresAt": "2026-08-12T10:15:00Z",
+    "isStale": false,
+    "verificationUrl": "https://verify.didit.me/..."
   }
 }
 ```
 
-```json
-{
-  "status": "kyc_required",
-  "kycUrl": "https://verify.didit.me/..."
-}
-```
-
-```json
-{
-  "status": "failed"
-}
-```
-
-En el handoff original era `PENDIENTE`; el frontend actual ya consume la ruta y
-también admite `session_id`.
+El frontend detecta la sesión documental con `sessionType: "kyc"`, no con
+`status: "pass"`. `isStale` decide cuándo dejar de esperar; no se replica en el
+cliente el umbral temporal del backend. El único query documentado por el
+tracker vigente es `guest_uuid`; no se envía un `session_id` inventado.
 
 ## 14. Extensiones v4.2–v4.7
 

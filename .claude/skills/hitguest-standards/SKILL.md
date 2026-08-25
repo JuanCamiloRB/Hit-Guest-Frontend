@@ -80,6 +80,21 @@ copiarlo, no reinventarlo:
   (`ContractScreen` → `IdentifyScreen`/`RegisterForm`) se copió tal cual
   (misma estructura `<label>`/`<input type="checkbox">`/`peer-checked`) en vez
   de crear una versión distinta cada vez.
+- **Widgets imperativos de terceros** (hoy: Stripe Elements en
+  `GuaranteeCardForm.tsx`) — dos reglas que se aprendieron con un bug real de
+  producción, y que aplican a cualquier librería que monte un nodo por su cuenta:
+  1. **El montaje se dispara desde un `useEffect`, nunca desde un event handler
+     ni desde un `.then()`.** React asigna los refs en la fase de commit, antes
+     de correr los efectos: montar desde un efecto convierte en garantía lo que
+     de otro modo es una carrera contra el render. El código anterior llamaba a
+     `mountCardForm()` desde tres sitios y leía `containerRef.current` sin que
+     nada asegurara que el nodo existiera — funcionaba solo porque el `await`
+     del fetch alcanzaba a darle tiempo al render.
+  2. **El nodo host no puede estar bajo renderizado condicional mientras el
+     widget viva.** Estaba dentro de una rama de un ternario sobre el status, así
+     que un cambio de estado lo desmontaba y React se llevaba el iframe de
+     Stripe con él, dejando la referencia al element apuntando a un huérfano. Se
+     oculta (`hidden`), no se quita.
 - **Servicio**: clase con instancia exportada al final
   (`export const xService = new XService()`), JSDoc de cabecera listando cada
   endpoint real, distinción explícita token de sesión vs. token de app.
@@ -197,15 +212,28 @@ aplican, corregir esta sección (Regla 7):
   secreto de cuenta. Antes de marcar un `NEXT_PUBLIC_*` como problema, verificar
   si es de este tipo (documentado como público a propósito) o si es un secreto
   real mal puesto ahí.
-- **Stripe**: el `publishableKey` siempre viene en la respuesta del backend
+- **Stripe**: el `publishableKey` se toma **siempre de la respuesta del backend**
   (`GuaranteeSetupIntent.publishableKey`), nunca hardcodeado ni en env — así
   el backend puede cambiar de cuenta test/live sin release de frontend. La
   secret key de Stripe no aparece en ningún archivo de este repo (verificado
   por grep) — y no debería aparecer nunca, ese cobro lo hace el backend.
-- **Token de sesión del PM**: `auth-store.ts` persiste explícitamente solo
-  `user`/`isAuthenticated` (`partialize`) — el token de sesión en sí queda
-  afuera de ese storage a propósito, no se guarda en `localStorage` vía este
-  store.
+  ⚠️ **Corregido 2026-08-19**: esta regla decía que el `publishableKey` «siempre
+  viene» en la respuesta. Eso describe de dónde **debe** salir, no una garantía
+  verificada — que un 200 pueda traerlo ausente o vacío está **abierto** con
+  backend (skill `hitguest-api-contracts` §2c). Por eso
+  `readUsableSetupIntent()` lo valida en runtime antes de llamar a `loadStripe`:
+  sin ese corte, un 200 incompleto reventaba dentro de Stripe.js con un error
+  irreconocible y el huésped quedaba trabado en «Preparando formulario…».
+- **Token de sesión del PM**: ⚠️ corregido 2026-08-13 — esta regla afirmaba que
+  el token quedaba fuera de `localStorage`, y es **falso**. `partialize` en
+  `auth-store.ts` persiste `user` **entero**, y `auth-service.verifyOtp()` mete
+  el token dentro de ese objeto vía `mapUserResponse(userResponse, token, …)`
+  (`User.token?: string` en `features/auth/types/index.ts:77`). O sea: el token
+  de sesión **sí** vive en `localStorage`, en `auth-storage → state.user.token`,
+  y de ahí lo lee `automationService.authHeader()`. Útil saberlo para depurar
+  (es de donde se saca un token para probar la API por `curl`), y es una
+  decisión de seguridad a revisar —no algo que ya esté resuelto—: cualquier XSS
+  lo lee. No repetir la afirmación vieja sin volver a mirar `partialize`.
 - Antes de commitear, si se tocó algo con `process.env`, confirmar que una key
   realmente privilegiada (no el app token de bajo privilegio) nunca lleva
   prefijo `NEXT_PUBLIC_`.
@@ -228,6 +256,10 @@ aplican, corregir esta sección (Regla 7):
 
 ## Skills relacionados
 
+- `hitguest-api-contracts` — **los contratos reales del backend**, con lo que
+  está verificado contra `guest.hit.tools` separado de lo que es solo
+  documentación (y de lo que ya se demostró falso). Es la contraparte concreta
+  de la Regla 1: cargarlo ANTES de tocar código que hable con la API.
 - `hitguest-add-feature` — flujo paso a paso para agregar un feature completo.
 - `hitguest-add-feature-tdd` — la misma variante con TDD (Vitest + RTL).
 
