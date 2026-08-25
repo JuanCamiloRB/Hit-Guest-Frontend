@@ -52,9 +52,8 @@ export function getAutomationCellMeta(
  * Progreso de check-in de una reserva, para la columna CHECK-IN.
  *
  * `completed` es `null` cuando el backend no reportó el conteo. Es un estado
- * distinto de `0`: "no sabemos cuántos van" no es "no ha llegado ninguno", y
- * mostrar "0 de 3 verificados" cuando en realidad ya se registraron los tres
- * sería mentirle al operador. En ese caso se vuelve a la etiqueta binaria.
+ * distinto de `0`: "no sabemos cuántos van" no es "no ha llegado ninguno".
+ * En ese caso se vuelve a la etiqueta binaria.
  */
 export interface CheckinProgress {
     completed: number | null
@@ -62,8 +61,16 @@ export interface CheckinProgress {
 }
 
 /**
- * La celda de CHECK-IN: "1 de 3 verificados" en vez de un "En proceso" que no
+ * La celda de CHECK-IN: "1 de 3 completados" en vez de un "En proceso" que no
  * dice cuánto falta.
+ *
+ * Habla ÚNICAMENTE de check-ins completos — decisión de producto (Didier,
+ * 2026-08-21): esta es la columna CHECK-IN y el tablero de operaciones cuenta
+ * check-ins terminados, así que un huésped verificado que no completó cuenta
+ * como cero. La verificación de identidad es otro eje del contrato (§2d) y se
+ * consulta en el detalle de la reserva, no acá. (La variante que mostraba
+ * "N de M verificados" mientras nadie completaba, del 2026-08-19, se retiró —
+ * mezclar los dos ejes en una columna llamada CHECK-IN confundía al operador.)
  *
  * Verde solo cuando están TODOS: mientras falte uno el ámbar sigue pidiendo
  * acción, que es justo lo que el operador necesita ver de un vistazo.
@@ -84,13 +91,12 @@ export function getCheckinCellMeta(
     const completed = progress?.completed
     if (completed === null || completed === undefined || total <= 0) return base
 
-    // Un backend que reporte 3 de 2 no debe pintar "3 de 2 verificados".
+    // Un backend que reporte 3 de 2 no debe pintar "3 de 2 completados".
     const done = Math.min(Math.max(completed, 0), total)
-    const noun = total === 1 ? "verificado" : "verificados"
 
     return {
         tone: done >= total ? "success" : "warning",
-        label: `${done} de ${total} ${noun}`,
+        label: `${done} de ${total} ${total === 1 ? "completado" : "completados"}`,
     }
 }
 

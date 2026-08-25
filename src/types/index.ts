@@ -31,7 +31,6 @@ export interface Property {
     createdAt: string
     updatedAt: string
     name: string
-    internalName?: string
     description?: string
     type: string
     status: "ACTIVE" | "INACTIVE"

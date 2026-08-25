@@ -47,7 +47,7 @@ export async function request<T>(
     
     // Handle headers safely
     const customHeaders = options?.headers 
-        ? (Object.fromEntries(new Headers(options.headers as any).entries())) 
+        ? Object.fromEntries(new Headers(options.headers).entries())
         : {}
 
     // Reflect the PM's selected UI language so the backend returns error
@@ -88,10 +88,10 @@ export async function request<T>(
         headers,
     })
 
-    let data: any
+    let data: unknown
     try {
         data = await response.json()
-    } catch (e) {
+    } catch {
         data = { message: "Could not parse response" }
     }
 
@@ -103,28 +103,32 @@ export async function request<T>(
     }
 
     // Support both { data: T } and direct T responses
-    return data?.data !== undefined ? data.data : data
+    if (data && typeof data === "object" && "data" in data) {
+        const nested = (data as { data?: unknown }).data
+        if (nested !== undefined) return nested as T
+    }
+    return data as T
 }
 
 export const apiClient = {
     get: <T>(url: string, options?: RequestOptions) => 
         request<T>(url, { ...options, method: "GET" }),
     
-    post: <T>(url: string, body?: any, options?: RequestOptions) =>
+    post: <T>(url: string, body?: unknown, options?: RequestOptions) =>
         request<T>(url, {
             ...options,
             method: "POST",
             body: body ? JSON.stringify(body) : undefined,
         }),
     
-    put: <T>(url: string, body?: any, options?: RequestOptions) =>
+    put: <T>(url: string, body?: unknown, options?: RequestOptions) =>
         request<T>(url, {
             ...options,
             method: "PUT",
             body: body ? JSON.stringify(body) : undefined,
         }),
 
-    patch: <T>(url: string, body?: any, options?: RequestOptions) =>
+    patch: <T>(url: string, body?: unknown, options?: RequestOptions) =>
         request<T>(url, {
             ...options,
             method: "PATCH",
@@ -139,7 +143,7 @@ export const publicClient = {
     get: <T>(url: string) =>
         request<T>(url, { method: "GET", skipAuth: true }),
 
-    post: <T>(url: string, body?: any) =>
+    post: <T>(url: string, body?: unknown) =>
         request<T>(url, {
             method: "POST",
             skipAuth: true,

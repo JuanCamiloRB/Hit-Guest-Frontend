@@ -3,6 +3,11 @@ import { API_BASE, CONFIG } from "@/lib/config"
 import { normalizeLocale, type CommunicationLocale } from "@/lib/locales"
 import { parseCalendarDate } from "@/lib/calendar-date"
 import { composeGuestName } from "../lib/guest-name"
+import {
+    mergeIdentityDocuments,
+    readIdentityDocument,
+    type GuestIdentityDocument,
+} from "../lib/identity-document"
 import { Reservation } from "@/types"
 import { differenceInDays } from "date-fns"
 import { listingsService } from "@/features/properties/services/listings-service"
@@ -162,11 +167,35 @@ export interface ReservationGuest {
     identificationType?: string
     isMain: boolean
     isCheckinCompleted: boolean
+    /** Derivados de `identityDocument`; se conservan porque son el contrato que ya consume la UI. */
     documentImage1?: string | null
     documentImage2?: string | null
     verificationStatus: ReservationGuestVerificationStatus
     /** ISO timestamp supplied by the backend verification record, when available. */
     verifiedAt?: string | null
+    /**
+     * Siempre presente (`EMPTY_IDENTITY_DOCUMENT` cuando no se pudo leer), para
+     * que la tarjeta no tenga que encadenar opcionales en cada acceso.
+     */
+    identityDocument: GuestIdentityDocument
+}
+
+/** Rutas legacy relativas a `/storage/`; las nuevas ya son absolutas. */
+function storageBase(): string {
+    return CONFIG.API_URL_GUEST.replace(/\/api\/v1\/?$/, "") + "/storage/"
+}
+
+/**
+ * El uuid con el que se cruzan el portal y el endpoint del PM. Una sola función
+ * para las dos ramas: si cada una resolviera el uuid a su manera, el merge
+ * fallaría en silencio y desaparecerían todas las fotos.
+ */
+function readGuestUuid(raw: unknown): string | null {
+    if (!raw || typeof raw !== "object") return null
+    const guest = raw as Record<string, { uuid?: string } | string | undefined>
+    const profile = (guest.guestProfile ?? guest.guest_profile) as { uuid?: string } | undefined
+    const uuid = profile?.uuid ?? guest.uuid ?? guest.id
+    return typeof uuid === "string" && uuid !== "" ? uuid : null
 }
 
 export type ReservationGuestVerificationStatus =
@@ -209,6 +238,56 @@ function normalizeGuestVerificationStatus(
     if (isCheckinCompleted) return "completed"
     if (typeof verifiedAt === "string" && verifiedAt.trim()) return "approved"
     return "not_started"
+}
+
+/**
+ * ¿Este huésped superó la verificación de identidad?
+ *
+ * Estaba escrito a mano dentro de `GuestDocumentsCard`; vive acá porque ahora
+ * también lo necesita el conteo de la lista de reservas, y una segunda copia es
+ * exactamente el patrón que ya causó el bug de `identity-document.ts` (la misma
+ * lectura duplicada en dos ramas, y solo una se actualizó).
+ *
+ * **Verificado NO es lo mismo que check-in completo**, y el contrato del portal
+ * los publica por separado: `progress.completed` cuenta `isCompleted`, mientras
+ * que `verification` es un objeto aparte de cada huésped. El tracker del backend
+ * lo advierte explícitamente — «es esperable ver `isCompleted:true` junto a
+ * `verification.status` distinto de `completed`». Tratarlos como uno solo es lo
+ * que hacía que un huésped ya verificado se mostrara como «0 de 1».
+ */
+export function isVerifiedGuestStatus(status: ReservationGuestVerificationStatus): boolean {
+    return status === "approved" || status === "completed" || status === "verified"
+}
+
+/**
+ * Lee el estado de UN huésped del portal (`registeredGuests[]`).
+ *
+ * Una sola lectura del contrato para quien consuma el estado por huésped (hoy,
+ * la ficha del detalle vía `getGuests`). La lista ya no muestra verificación:
+ * su columna CHECK-IN habla solo de completados (decisión de producto,
+ * 2026-08-21) y ese conteo viene en `GET /reservations`.
+ *
+ * `isCompleted` y `verification` se devuelven por separado porque el contrato
+ * los publica por separado y pueden discrepar legítimamente: con
+ * `status_reservation_id = 30` el backend fuerza `isCompleted: true` en todos
+ * los huéspedes **sin tocar** `verification`.
+ */
+function readPortalGuestVerification(raw: unknown): {
+    status: ReservationGuestVerificationStatus
+    verifiedAt: string | null
+    isCompleted: boolean
+} {
+    const guest = (raw ?? {}) as Record<string, unknown>
+    const verification = (guest.verification ?? {}) as Record<string, unknown>
+    const isCompleted = Boolean(guest.isCompleted ?? guest.is_completed ?? false)
+    const rawVerifiedAt = verification.verifiedAt ?? verification.verified_at ?? null
+    const verifiedAt = typeof rawVerifiedAt === "string" ? rawVerifiedAt : null
+    const status = normalizeGuestVerificationStatus(
+        verification.status ?? guest.verificationStatus ?? guest.verification_status,
+        isCompleted,
+        verifiedAt,
+    )
+    return { status, verifiedAt, isCompleted }
 }
 
 export interface ReservationDetailData {
@@ -333,7 +412,7 @@ export async function buildListingLookup(): Promise<ListingLookupResult> {
  * Lee un conteo no negativo de un campo de la API, o `undefined` si no vino.
  *
  * `undefined` y `0` NO son lo mismo aquí: la columna CHECK-IN muestra "0 de 3
- * verificados" solo cuando el backend afirma que van cero, y vuelve a su
+ * completados" solo cuando el backend afirma que van cero, y vuelve a su
  * etiqueta binaria cuando simplemente no reportó el dato. Un `Number(x) || 0`
  * habría colapsado los dos casos y afirmado que no ha llegado nadie.
  */
@@ -487,15 +566,22 @@ export class ReservationsService {
                 if (guests.length > 0) {
                     // The portal is authoritative for verification status but does NOT
                     // include document images. Fetch them from /guests and merge by uuid.
-                    const imageMap = await this.fetchGuestImageMap(reservationUuid)
-                    return guests.map((g: any): ReservationGuest => {
-                        const isCompleted = g.isCompleted ?? g.is_completed ?? false
-                        const uuid = g.uuid || g.id
-                        const images = imageMap.get(uuid)
-                        const verifiedAt =
-                            g.verification?.verifiedAt
-                            ?? g.verification?.verified_at
-                            ?? null
+                    const identityMap = await this.fetchGuestIdentityDocuments(reservationUuid)
+                    let matched = 0
+                    const mapped = guests.map((g: any): ReservationGuest => {
+                        const portalVerification = readPortalGuestVerification(g)
+                        const isCompleted = portalVerification.isCompleted
+                        const uuid = readGuestUuid(g) ?? ""
+                        const fromMap = identityMap.get(uuid)
+                        if (fromMap) matched++
+                        // El huésped del portal también se lee: su forma
+                        // `documentImage1/2` es el último nivel de precedencia, y así
+                        // esas URLs pasan por la misma resolución que el resto.
+                        const identityDocument = mergeIdentityDocuments(
+                            fromMap,
+                            readIdentityDocument(g, storageBase()),
+                        )
+                        const verifiedAt = portalVerification.verifiedAt
                         return {
                             uuid,
                             name: g.name || "",
@@ -504,18 +590,25 @@ export class ReservationsService {
                             identificationType: g.identificationType || g.identification_type || "",
                             isMain: g.isMain ?? g.is_main ?? false,
                             isCheckinCompleted: isCompleted,
-                            documentImage1: g.documentImage1 || g.document_image_1 || images?.image1 || null,
-                            documentImage2: g.documentImage2 || g.document_image_2 || images?.image2 || null,
-                            verificationStatus: normalizeGuestVerificationStatus(
-                                g.verification?.status
-                                ?? g.verificationStatus
-                                ?? g.verification_status,
-                                isCompleted,
-                                verifiedAt,
-                            ),
+                            documentImage1: identityDocument.front,
+                            documentImage2: identityDocument.back,
+                            identityDocument,
+                            verificationStatus: portalVerification.status,
                             verifiedAt,
                         }
                     })
+                    // Si el endpoint del PM trajo documentos y NINGUNO cruzó con el
+                    // portal, el merge dejó de funcionar: las fotos desaparecen sin
+                    // un solo error. Es exactamente el modo de fallo que ocultó este
+                    // bug, así que se grita (mismo criterio que `warnIfPaginated`).
+                    if (identityMap.size > 0 && matched === 0) {
+                        console.error(
+                            "[ReservationsService] Ningún huésped del portal cruzó con el mapa de documentos "
+                            + `(${guests.length} del portal, ${identityMap.size} con documento). `
+                            + "Los documentos no se mostrarán: los dos endpoints ya no comparten el uuid.",
+                        )
+                    }
+                    return mapped
                 }
             } else {
                 console.warn(`[GuestDocuments] Portal returned HTTP ${response.status}`)
@@ -532,29 +625,13 @@ export class ReservationsService {
             return guests.map((g: any): ReservationGuest => {
                 // pivot = guest_reservation relationship data
                 const pivot = g.pivot || {}
-                const pivotExtra = pivot.extra || {}
-                // v4.6: guest data nested under guestProfile. Images MUST come from
-                // reservationSpecificData.documentImages (resolved, authenticated URLs
-                // via reservations.identity-documents.show) — NOT guestProfile.extra,
-                // which holds a raw internal storage path that isn't servable.
+                // v4.6: los datos del huésped van anidados en `guestProfile`. Las
+                // imágenes NO se leen de `guestProfile.extra`: ahí el backend deja
+                // una ruta de almacenamiento interna que no se puede servir. La
+                // precedencia real vive en `lib/identity-document.ts`.
                 const profile = g.guestProfile || g.guest_profile || {}
                 const profileExtra = profile.extra || {}
-                const reservationSpecific = g.reservationSpecificData || g.reservation_specific_data || {}
-                const docImages =
-                    reservationSpecific.documentImages
-                    || reservationSpecific.document_images
-                    || pivotExtra.document_images
-                    || pivotExtra.documentImages
-                    || {}
-
-                // Legacy paths are relative to /storage/; new values are absolute URLs.
-                const storageBase = CONFIG.API_URL_GUEST.replace(/\/api\/v1\/?$/, "") + "/storage/"
-                const resolveImageUrl = (path: string | null): string | null => {
-                    if (!path) return null
-                    return /^https?:\/\//i.test(path) ? path : `${storageBase}${path}`
-                }
-                const frontPath = docImages.front || null
-                const backPath = docImages.back || null
+                const identityDocument = readIdentityDocument(g, storageBase())
 
                 // Check every possible location the backend may put this flag
                 const isCompleted =
@@ -591,8 +668,9 @@ export class ReservationsService {
                     identificationType: g.identificationType?.name || g.identification_type?.name || g.identificationTypeName,
                     isMain: g.isMainGuest ?? g.is_main_guest ?? pivot.is_main_guest ?? pivot.isMainGuest ?? g.isMain ?? g.is_main ?? false,
                     isCheckinCompleted: isCompleted,
-                    documentImage1: resolveImageUrl(frontPath),
-                    documentImage2: resolveImageUrl(backPath),
+                    documentImage1: identityDocument.front,
+                    documentImage2: identityDocument.back,
+                    identityDocument,
                     verificationStatus,
                     verifiedAt:
                         g.verification?.verifiedAt
@@ -608,46 +686,30 @@ export class ReservationsService {
 
     /**
      * Fetches GET /reservations/{uuid}/guests and returns a map of
-     * guestUuid → document image URLs. Used to enrich the portal response,
-     * which is authoritative for verification status but omits images.
-     * v4.5: images come as full HTTP URLs under reservationSpecificData.documentImages.
+     * guestUuid → documento de identidad. Enriquece la respuesta del portal, que
+     * es autoritativa para el estado de verificación pero no trae imágenes.
+     *
+     * La lectura del contrato vive en `lib/identity-document.ts`: estaba escrita
+     * acá y otra vez en la rama de fallback, y esa duplicación es la razón por la
+     * que la clave `identityDocument` (2026-08-17) no se leía en ninguna de las
+     * dos. Un mapa vacío por error de red deja `isReported: false`, que la UI
+     * distingue de «el backend dice que no hay imágenes».
      */
-    private async fetchGuestImageMap(
+    private async fetchGuestIdentityDocuments(
         reservationUuid: string,
-    ): Promise<Map<string, { image1: string | null; image2: string | null }>> {
-        const map = new Map<string, { image1: string | null; image2: string | null }>()
+    ): Promise<Map<string, GuestIdentityDocument>> {
+        const map = new Map<string, GuestIdentityDocument>()
         try {
             const url = `${API_BASE}/reservations/${reservationUuid}/guests`
             const raw: any = await apiClient.get(url)
             const guests = Array.isArray(raw) ? raw : (raw?.data ?? [])
-            const storageBase = CONFIG.API_URL_GUEST.replace(/\/api\/v1\/?$/, "") + "/storage/"
-            const resolveImageUrl = (path: string | null): string | null => {
-                if (!path) return null
-                return /^https?:\/\//i.test(path) ? path : `${storageBase}${path}`
-            }
             for (const g of guests) {
-                // v4.6: the guest is nested under guestProfile (uuid lives there).
-                const profile = g.guestProfile || g.guest_profile || {}
-                const uuid = profile.uuid || g.uuid || g.id
+                const uuid = readGuestUuid(g)
                 if (!uuid) continue
-                const pivotExtra = g.pivot?.extra || {}
-                // Reservation context: use ONLY reservationSpecificData.documentImages
-                // (resolved, authenticated URLs). guestProfile.extra.documentImages is a
-                // raw internal storage path — not usable and leaks internal paths.
-                const reservationSpecific = g.reservationSpecificData || g.reservation_specific_data || {}
-                const docImages =
-                    reservationSpecific.documentImages
-                    || reservationSpecific.document_images
-                    || pivotExtra.document_images
-                    || pivotExtra.documentImages
-                    || {}
-                map.set(uuid, {
-                    image1: resolveImageUrl(docImages.front || null),
-                    image2: resolveImageUrl(docImages.back || null),
-                })
+                map.set(uuid, readIdentityDocument(g, storageBase()))
             }
         } catch (error) {
-            console.warn("[ReservationsService] fetchGuestImageMap failed:", error)
+            console.warn("[ReservationsService] fetchGuestIdentityDocuments failed:", error)
         }
         return map
     }
@@ -795,7 +857,12 @@ export class ReservationsService {
                 )
             }
 
-            // Fetch automation status for each reservation in parallel
+            // Estado de automatizaciones por reserva.
+            //
+            // La columna CHECK-IN habla solo de check-ins COMPLETOS (decisión de
+            // producto, 2026-08-21), y ese conteo ya viene en `GET /reservations`
+            // (`completedGuests`). La consulta al portal por reserva que traía el
+            // conteo de verificados se eliminó junto con ese eje de la celda.
             const statusResults = await Promise.allSettled(
                 reservations.map((res: Reservation) =>
                     automationService.getReservationStatus(res.id).catch(() => [] as AutomationStatusItem[])

@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { Loader2, RotateCcw, History, Play, FileText, Send, Lock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -52,6 +53,7 @@ export function AutomationStatusItem({
     const meta = notApplicable ? NOT_APPLICABLE_META : getStatusMeta(item)
     const title = automationTitle(item.providerSlug, item.automationName)
     const providerLabel = PROVIDER_LABELS[item.providerSlug] || item.providerSlug
+    const [confirmingResend, setConfirmingResend] = useState(false)
     const lastRun = formatRunDate(item.lastRunAt)
     // Cooldown comes only from an explicit 429 (no proactive lastRunAt block, so
     // admin tokens — exempt from the 5-min limit — are never falsely blocked).
@@ -64,7 +66,7 @@ export function AutomationStatusItem({
     // backend sends canDispatch/canRedispatch — and still honor an explicit
     // can_manual_dispatch=false from the backend on top of it.
     const canManual =
-        !notApplicable && MANUALLY_DISPATCHABLE_SLUGS.has(item.providerSlug) && item.canManualDispatch !== false
+        !notApplicable && MANUALLY_DISPATCHABLE_SLUGS.has(item.providerSlug) && item.canManualDispatch
     // Why an action is blocked by an unmet checkin gate (null when not blocked).
     // Only relevant for manually-dispatchable automations — otherwise there's no
     // button to explain, so we don't show a "blocked" note either.
@@ -73,10 +75,14 @@ export function AutomationStatusItem({
         : null
     // item.providerSlug is canonicalized (underscore) upstream in normalizeStatusItem.
     const isPdfReport = item.providerSlug === "pdf_report"
-    // Resend uses the dedicated POST .../resend-pdf endpoint. Available whenever the
-    // PDF ran successfully at least once — even if a later retry failed (wasSuccessful).
-    const canResendPdf =
-        isPdfReport && (item.status === "completed" || item.wasSuccessful) && item.usageRecordId != null
+    // `POST .../resend-pdf` recibe el UUID de la AUTOMATIZACIÓN y funciona sin
+    // importar el estado previo. Exigir `usageRecordId` escondía el botón justo
+    // cuando más se necesita: cuando el PDF nunca llegó a enviarse.
+    //
+    // Sus gates son cuatro —automatización activa, provider `pdf_report`, reserva
+    // con el check-in completo y cooldown de 5 minutos—, de los cuales acá solo se
+    // pueden anticipar dos; los otros dos llegan como 422/429 al pulsar.
+    const canResendPdf = isPdfReport && item.reservationCheckinCompleted
     const isDigitalContract = item.providerSlug === "hitguest_signature" || item.providerSlug === "tufirma"
     const hasSignedContract = isDigitalContract && item.status === "completed"
     const signedContractUrl = `${API_BASE}/checkin/${reservationUuid}/contract/signed`
@@ -175,18 +181,37 @@ export function AutomationStatusItem({
                         </Button>
                     ) : null}
 
+                    {/* Cada reenvío crea un registro de uso NUEVO: se factura otra
+                        vez. Por eso el primer clic no envía — pide confirmación y
+                        dice el costo. Un solo clic sobre una acción facturable es
+                        una factura que el PM no eligió. */}
                     {canResendPdf && (
                         <Button
                             size="sm"
                             variant="outline"
                             disabled={isDispatching || inCooldown}
-                            onClick={() => onResendPdf(item)}
-                            className="h-8 gap-1.5 border-primary/20 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-60"
+                            onClick={() => {
+                                if (confirmingResend) {
+                                    setConfirmingResend(false)
+                                    onResendPdf(item)
+                                } else {
+                                    setConfirmingResend(true)
+                                }
+                            }}
+                            onBlur={() => setConfirmingResend(false)}
+                            className={cn(
+                                "h-8 gap-1.5 disabled:opacity-60",
+                                confirmingResend
+                                    ? "border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+                                    : "border-primary/20 text-primary hover:bg-primary/10 hover:text-primary",
+                            )}
                         >
                             {isDispatching ? (
                                 <><Loader2 size={14} className="animate-spin" /> Enviando...</>
                             ) : inCooldown ? (
                                 <>Espera {formatCooldown(cooldownLeft)}</>
+                            ) : confirmingResend ? (
+                                <><Send size={14} /> Confirmar — genera un cargo</>
                             ) : (
                                 <><Send size={14} /> Reenviar PDF</>
                             )}

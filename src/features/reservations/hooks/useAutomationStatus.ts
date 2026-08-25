@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
+import { normalizeApiError } from "@/lib/notify-error"
 import { automationService } from "@/features/properties/services/automation-service"
 import type { AutomationStatusItem } from "@/features/properties/types/automation"
 
@@ -39,6 +40,21 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
 
     const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const mountedRef = useRef(true)
+    /**
+     * Reserva cuyo sondeo está vigente.
+     *
+     * `mountedRef` sola no alcanza cuando CAMBIA la reserva: el cleanup la pone en
+     * `false`, el efecto de la reserva nueva la vuelve a poner en `true`, y la
+     * petición de la reserva vieja —que seguía en vuelo— responde, ve `true`,
+     * escribe datos de otra reserva y reprograma su propio sondeo. Comparar contra
+     * el uuid vigente distingue las dos corridas; `mountedRef` sigue cubriendo el
+     * desmontaje puro.
+     */
+    const activeUuidRef = useRef<string | null>(null)
+    const isCurrent = useCallback(
+        () => mountedRef.current && activeUuidRef.current === reservationUuid,
+        [reservationUuid],
+    )
 
     /**
      * Start a 5-minute cooldown for an automation. The backend returns 429 without
@@ -56,35 +72,47 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
 
     const fetchStatus = useCallback(async (): Promise<AutomationStatusItem[]> => {
         const data = await automationService.getReservationStatus(reservationUuid)
-        if (mountedRef.current) {
+        if (isCurrent()) {
             setItems(data)
             setError(null)
         }
         return data
-    }, [reservationUuid])
+    }, [reservationUuid, isCurrent])
 
-    const scheduleNext = useCallback((list: AutomationStatusItem[]) => {
+    /**
+     * Reprograma el sondeo mientras haya algo en `pending`.
+     *
+     * `mountedRef` se comprueba TAMBIÉN después del await: limpiar el timer al
+     * desmontar no cancela una petición en vuelo, y esa continuación volvía a
+     * llamar a `scheduleNext()` programando un timer nuevo que ya nadie iba a
+     * limpiar — el mismo sondeo zombi que había en el polling de Didit. Sigue
+     * pegándole a la API sobre una pantalla que ya no existe.
+     */
+    const scheduleNext = useCallback(function scheduleNextPoll(list: AutomationStatusItem[]) {
         if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
-        if (!hasPending(list)) return
+        if (!hasPending(list) || !isCurrent()) return
         pollTimerRef.current = setTimeout(async () => {
+            if (!isCurrent()) return
             try {
                 const data = await fetchStatus()
-                scheduleNext(data)
+                if (!isCurrent()) return
+                scheduleNextPoll(data)
             } catch {
                 // Network blip — keep polling on the same cadence.
-                scheduleNext(list)
+                if (!isCurrent()) return
+                scheduleNextPoll(list)
             }
         }, POLL_INTERVAL_MS)
-    }, [fetchStatus, hasPending])
+    }, [fetchStatus, hasPending, isCurrent])
 
     const refresh = useCallback(async () => {
         try {
             const data = await fetchStatus()
             scheduleNext(data)
-        } catch (e: any) {
-            if (mountedRef.current) setError(e?.message || "Error al cargar el estado de automatizaciones")
+        } catch (error: unknown) {
+            if (isCurrent()) setError(normalizeApiError(error, "Error al cargar el estado de automatizaciones").message)
         }
-    }, [fetchStatus, scheduleNext])
+    }, [fetchStatus, scheduleNext, isCurrent])
 
     const redispatch = useCallback(async (item: AutomationStatusItem) => {
         if (item.usageRecordId == null) return
@@ -94,9 +122,8 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
             toast.success(`"${item.automationName}" reenviada. Procesando...`)
             const data = await fetchStatus()
             scheduleNext(data)
-        } catch (e: any) {
-            const status = e?.status
-            const message: string = e?.message || ""
+        } catch (error: unknown) {
+            const { status, message } = normalizeApiError(error, "")
             if (status === 429) {
                 startCooldown(item.automationUuid)
                 toast.error("Espera unos minutos antes de reintentar esta automatización.")
@@ -111,7 +138,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 toast.error(message || "No se pudo reenviar la automatización.")
             }
         } finally {
-            if (mountedRef.current) {
+            if (isCurrent()) {
                 setRedispatchingUuids(prev => {
                     const next = new Set(prev)
                     next.delete(item.automationUuid)
@@ -119,7 +146,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 })
             }
         }
-    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown])
+    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown, isCurrent])
 
     const dispatch = useCallback(async (item: AutomationStatusItem) => {
         if (!item.automationUuid) return
@@ -129,9 +156,8 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
             toast.success(`"${item.automationName}" disparada. Procesando...`)
             const data = await fetchStatus()
             scheduleNext(data)
-        } catch (e: any) {
-            const status = e?.status
-            const message: string = e?.message || ""
+        } catch (error: unknown) {
+            const { status, message } = normalizeApiError(error, "")
             if (status === 429) {
                 startCooldown(item.automationUuid)
                 toast.error("Espera unos minutos antes de volver a dispararla.")
@@ -146,7 +172,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 toast.error(message || "No se pudo disparar la automatización.")
             }
         } finally {
-            if (mountedRef.current) {
+            if (isCurrent()) {
                 setDispatchingUuids(prev => {
                     const next = new Set(prev)
                     next.delete(item.automationUuid)
@@ -154,7 +180,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 })
             }
         }
-    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown])
+    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown, isCurrent])
 
     const resendPdf = useCallback(async (item: AutomationStatusItem) => {
         if (!item.automationUuid) return
@@ -162,9 +188,13 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
         try {
             await automationService.resendPdf(reservationUuid, item.automationUuid)
             toast.success("Reporte PDF reenviado al correo.")
-        } catch (e: any) {
-            const status = e?.status
-            const message: string = e?.message || ""
+            // El reenvío crea un usage record nuevo. Si el panel estaba estable
+            // no había polling activo: resincroniza y vuelve a sondear si queda
+            // una ejecución pendiente.
+            const data = await fetchStatus()
+            scheduleNext(data)
+        } catch (error: unknown) {
+            const { status, message } = normalizeApiError(error, "")
             if (status === 429) {
                 startCooldown(item.automationUuid)
                 toast.error("Espera unos minutos antes de reenviar el reporte.")
@@ -176,7 +206,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 toast.error(message || "No se pudo reenviar el reporte PDF.")
             }
         } finally {
-            if (mountedRef.current) {
+            if (isCurrent()) {
                 setDispatchingUuids(prev => {
                     const next = new Set(prev)
                     next.delete(item.automationUuid)
@@ -184,27 +214,28 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 })
             }
         }
-    }, [reservationUuid, startCooldown])
+    }, [reservationUuid, startCooldown, fetchStatus, scheduleNext, isCurrent])
 
     // Initial load + polling setup
     useEffect(() => {
         mountedRef.current = true
+        activeUuidRef.current = reservationUuid
         setIsLoading(true)
         ;(async () => {
             try {
                 const data = await fetchStatus()
                 scheduleNext(data)
-            } catch (e: any) {
-                if (mountedRef.current) setError(e?.message || "Error al cargar el estado de automatizaciones")
+            } catch (error: unknown) {
+                if (isCurrent()) setError(normalizeApiError(error, "Error al cargar el estado de automatizaciones").message)
             } finally {
-                if (mountedRef.current) setIsLoading(false)
+                if (isCurrent()) setIsLoading(false)
             }
         })()
         return () => {
             mountedRef.current = false
             if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
         }
-    }, [fetchStatus, scheduleNext])
+    }, [fetchStatus, scheduleNext, isCurrent, reservationUuid])
 
     // 1s ticking clock — only runs while an explicit 429 cooldown is active. We no
     // longer derive a cooldown from lastRunAt: the backend's 5-min limit doesn't

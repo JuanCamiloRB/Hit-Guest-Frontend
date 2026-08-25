@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import {
     reservationsService,
+    isVerifiedGuestStatus,
     type ReservationGuest,
     type ReservationGuestVerificationStatus,
 } from "../services/reservations-service"
@@ -12,22 +13,39 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
     FileText,
+    Info,
     Loader2,
     Image as ImageIcon,
     RefreshCw,
     X,
 } from "lucide-react"
 import { AuthenticatedImage } from "./AuthenticatedImage"
+import {
+    describeDocumentOrigin,
+    describeIdentityMethod,
+    describeMissingImages,
+} from "./identity-document-meta"
 
 interface GuestDocumentsCardProps {
     reservationUuid: string
+}
+
+/**
+ * El documento abierto en el modal. Lleva al huésped, no solo la URL, porque el
+ * aviso de procedencia («esta foto es de otra estancia») solo tiene sentido
+ * junto a la imagen que describe.
+ */
+interface DocumentPreview {
+    url: string
+    guest: ReservationGuest
+    sideLabel: string
 }
 
 export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps) {
     const [guests, setGuests] = useState<ReservationGuest[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isRefreshing, setIsRefreshing] = useState(false)
-    const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+    const [preview, setPreview] = useState<DocumentPreview | null>(null)
 
     const refreshGuests = useCallback(async () => {
         setIsRefreshing(true)
@@ -125,31 +143,36 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
                         <GuestDocumentRow
                             key={guest.uuid || `guest-${idx}`}
                             guest={guest}
-                            onPreview={setPreviewUrl}
+                            onPreview={setPreview}
                         />
                     ))}
                 </div>
             </SectionCard>
 
             {/* Image Preview Modal */}
-            {previewUrl && (
+            {preview && (
                 <div
                     className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
-                    onClick={() => setPreviewUrl(null)}
+                    onClick={() => setPreview(null)}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={`Documento de ${preview.guest.name} — ${preview.sideLabel}`}
                 >
                     <div className="relative max-w-3xl max-h-[90vh] w-full">
                         <button
-                            onClick={() => setPreviewUrl(null)}
+                            onClick={() => setPreview(null)}
+                            aria-label="Cerrar"
                             className="absolute -top-10 right-0 text-white hover:text-slate-200 transition-colors"
                         >
                             <X size={24} />
                         </button>
-                        <div onClick={(e) => e.stopPropagation()}>
+                        <div onClick={(e) => e.stopPropagation()} className="space-y-2">
                             <AuthenticatedImage
-                                src={previewUrl}
-                                alt="Documento"
-                                className="w-full h-auto max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                                src={preview.url}
+                                alt={`Documento de ${preview.guest.name} — ${preview.sideLabel}`}
+                                className="w-full h-auto max-h-[80vh] object-contain rounded-lg shadow-2xl"
                             />
+                            <DocumentOriginNotice guest={preview.guest} />
                         </div>
                     </div>
                 </div>
@@ -158,18 +181,34 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
     )
 }
 
+/**
+ * Aviso de procedencia del documento. No se pinta cuando la foto es de esta
+ * misma reserva: ese es el caso normal y no merece tinta.
+ */
+function DocumentOriginNotice({ guest }: { guest: ReservationGuest }) {
+    const notice = describeDocumentOrigin(guest.identityDocument)
+    if (!notice) return null
+    return (
+        <div className="flex items-start gap-2 rounded-lg bg-info-sunk px-3 py-2 text-xs text-info">
+            <Info size={14} aria-hidden className="mt-px shrink-0" />
+            <span>{notice}</span>
+        </div>
+    )
+}
+
 function GuestDocumentRow({
     guest,
     onPreview,
 }: {
     guest: ReservationGuest
-    onPreview: (url: string) => void
+    onPreview: (preview: DocumentPreview) => void
 }) {
     const initials = `${guest.name?.[0] || ""}${guest.lastname?.[0] || ""}`.toUpperCase() || "?"
     const fullName = `${guest.name} ${guest.lastname}`.trim() || "Huésped"
     const hasDocuments = guest.documentImage1 || guest.documentImage2
-    const isIdentityVerified = isVerifiedStatus(guest.verificationStatus)
+    const isIdentityVerified = isVerifiedGuestStatus(guest.verificationStatus)
     const verifiedAt = formatVerifiedAt(guest.verifiedAt)
+    const methodMeta = describeIdentityMethod(guest.identityDocument)
 
     return (
         <div className="space-y-3 rounded-xl border border-rule p-4">
@@ -200,6 +239,11 @@ function GuestDocumentRow({
                     </div>
                 </div>
                 <div className="flex flex-wrap justify-end gap-1.5">
+                    {/* Cómo superó identidad EN esta reserva; puede diferir de quién
+                        capturó la foto (el recurrente por OTP trae una de Didit). */}
+                    {methodMeta && (
+                        <StatusPill tone={methodMeta.tone}>{methodMeta.label}</StatusPill>
+                    )}
                     <StatusBadge
                         completed={isIdentityVerified}
                         completedLabel="Identidad verificada"
@@ -220,14 +264,14 @@ function GuestDocumentRow({
                         <DocumentThumbnail
                             url={guest.documentImage1}
                             label="Frente"
-                            onClick={() => onPreview(guest.documentImage1!)}
+                            onClick={() => onPreview({ url: guest.documentImage1!, guest, sideLabel: "Frente" })}
                         />
                     )}
                     {guest.documentImage2 && (
                         <DocumentThumbnail
                             url={guest.documentImage2}
                             label="Reverso"
-                            onClick={() => onPreview(guest.documentImage2!)}
+                            onClick={() => onPreview({ url: guest.documentImage2!, guest, sideLabel: "Reverso" })}
                         />
                     )}
                 </div>
@@ -235,18 +279,12 @@ function GuestDocumentRow({
                 <div className="flex items-center gap-2 rounded-lg bg-sunk px-4 py-3">
                     <ImageIcon size={16} aria-hidden className="text-ink-4" />
                     <span className="text-xs text-ink-3">
-                        {isIdentityVerified
-                            ? "Identidad verificada; imágenes no disponibles"
-                            : "Documentos aún no disponibles"}
+                        {describeMissingImages(guest.identityDocument, isIdentityVerified)}
                     </span>
                 </div>
             )}
         </div>
     )
-}
-
-function isVerifiedStatus(status: ReservationGuestVerificationStatus): boolean {
-    return status === "approved" || status === "completed" || status === "verified"
 }
 
 function verificationPendingLabel(status: ReservationGuestVerificationStatus): string {

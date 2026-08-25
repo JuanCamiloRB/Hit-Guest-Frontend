@@ -89,6 +89,7 @@ export function AutomationHistoryModal({ reservationUuid, automation, onClose }:
                                     <th className="py-2 pr-2">Fecha</th>
                                     <th className="py-2 pr-2">Estado</th>
                                     <th className="py-2 pr-2">Origen</th>
+                                    <th className="py-2 pr-2">Cargo</th>
                                     <th className="py-2">Detalle</th>
                                 </tr>
                             </thead>
@@ -112,6 +113,11 @@ export function AutomationHistoryModal({ reservationUuid, automation, onClose }:
                                                 </span>
                                             </td>
                                             <td className="py-2.5 pr-2 text-slate-500 whitespace-nowrap text-xs">{origin}</td>
+                                            <td className="py-2.5 pr-2 text-slate-500 whitespace-nowrap text-xs">
+                                                {rec.billable
+                                                    ? `Facturable${rec.unitCost != null ? ` · ${rec.unitCost}` : ""}`
+                                                    : "Sin cargo"}
+                                            </td>
                                             <td className="py-2.5 text-slate-500 break-words">
                                         {detail}
                                         {rec.responsePayload?.pdf_path != null && (
@@ -137,15 +143,15 @@ export function AutomationHistoryModal({ reservationUuid, automation, onClose }:
     )
 }
 
-/** Renders a short, human-friendly summary of a success payload. */
-function describePayload(payload: Record<string, unknown> | null): string {
+/**
+ * Resumen cerrado para el PM. `responsePayload` es un detalle crudo de soporte:
+ * nunca se enumeran claves/valores arbitrarios ni se hace JSON.stringify.
+ */
+export function describePayload(payload: Record<string, unknown> | null): string {
     if (!payload || typeof payload !== "object") return "—"
-    // Skip pdf_path (shown as a link separately) and error
-    const SKIP = new Set(["error", "pdf_path"])
-    const entries = Object.entries(payload).filter(([k]) => !SKIP.has(k))
-    if (entries.length === 0) return "—"
-    return entries
-        .slice(0, 3)
-        .map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : String(v)}`)
-        .join(" · ")
+    if (payload.skipped === true && payload.reason === "no_recipients") {
+        return "No se envió: no hay destinatarios configurados."
+    }
+    if (payload.skipped === true) return "La ejecución fue omitida."
+    return "—"
 }

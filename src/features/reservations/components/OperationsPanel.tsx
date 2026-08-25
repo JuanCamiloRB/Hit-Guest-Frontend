@@ -25,7 +25,6 @@ import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { SectionCard } from "@/components/ui/section-card"
 import { StatusPill } from "@/components/ui/status-pill"
@@ -241,11 +240,26 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         mode="edit"
                         reservationUuid={reservationId}
                         trigger={
-                            <Button
-                                className="gap-2"
-                                disabled={data.source === "Airbnb"}
-                                title={data.source === "Airbnb" ? "Las reservas de Airbnb no se pueden editar manualmente" : "Editar los detalles de la reserva"}
-                            >
+                            /* Sin `disabled` a propósito.
+                             *
+                             * Estuvo bloqueado con `source === "Airbnb"` y el aviso «las
+                             * reservas de Airbnb no se pueden editar manualmente», una
+                             * regla que NINGÚN contrato respalda: `PUT /reservations/{uuid}`
+                             * se documenta sin restricción por canal (FRONTEND_API_ENDPOINTS
+                             * §11.2), y Booking —que también se sincroniza— nunca estuvo
+                             * bloqueado.
+                             *
+                             * El bug que lo destapó: `source` es el CANAL COMERCIAL que el PM
+                             * elige al crear, no el mecanismo de importación. Una reserva
+                             * creada a mano en este mismo dashboard con canal Airbnb (las de
+                             * `externalId` "MANUAL-…", que genera este frontend) quedaba
+                             * bloqueada como si Airbnb la hubiera importado.
+                             *
+                             * Quién puede editar qué lo decide el backend: si rechaza una
+                             * reserva sincronizada, su error se muestra tal cual. Adivinarlo
+                             * acá solo podía equivocarse en los dos sentidos.
+                             */
+                            <Button className="gap-2" title="Editar los detalles de la reserva">
                                 <Edit size={16} aria-hidden />
                                 Editar reserva
                             </Button>
@@ -281,11 +295,14 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     </div>
                                 </div>
                                 <div className="flex shrink-0 items-center gap-2">
-                                    {data.source === "Airbnb" && (
-                                        <Badge variant="secondary" className="font-medium">
-                                            Importada por iCal
-                                        </Badge>
-                                    )}
+                                    {/* Acá iba un badge «Importada por iCal» derivado de
+                                        `source === "Airbnb"`. Se quitó porque afirmaba un
+                                        MECANISMO (iCal) a partir de un CANAL: el backend no
+                                        expone por dónde entró la reserva —`source_pms` solo
+                                        existe a nivel Listing, en `externalPmsIds`—, así que
+                                        una reserva creada a mano con canal Airbnb se anunciaba
+                                        como importada. El canal ya se lee al lado del nombre
+                                        («Reserva externa · Airbnb»), que sí es verdad. */}
                                     <StatusPill tone={statusMeta.tone}>{statusMeta.label}</StatusPill>
                                 </div>
                             </div>
@@ -353,7 +370,12 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             <div className="min-w-0">
                                 <p className="text-sm font-semibold text-ink">Reserva creada</p>
                                 <p className="truncate text-xs text-ink-3">
-                                    {isExternal ? `Importada desde ${data.source}` : "Creada en HIT Guest"}
+                                    {/* Antes decía «Importada desde Airbnb» / «Creada en HIT
+                                        Guest» según el canal, y en una reserva creada a mano
+                                        con canal Airbnb afirmaba justo lo contrario de lo que
+                                        había pasado. El canal SÍ lo sabemos; cómo entró la
+                                        reserva, no — hasta que el backend lo exponga. */}
+                                    {isExternal ? `Canal ${data.source}` : "Reserva directa"}
                                     {" · "}
                                     {data.externalId || data.uuid.slice(0, 8)}
                                 </p>

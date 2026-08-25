@@ -476,7 +476,12 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             window.dispatchEvent(new Event("reservationCreated"))
         } catch (error: any) {
             console.error("[ReservationDialog] Submit error:", error)
-            notifyError(error, "Error al crear la reserva")
+            // El fallback distingue el modo: al editar decía "Error al crear la
+            // reserva". Importa más ahora que el botón de editar dejó de bloquear
+            // por canal — si el backend rechaza una reserva sincronizada, este es
+            // el mensaje que lo cuenta, y `notifyError` ya prefiere el texto del
+            // backend cuando viene.
+            notifyError(error, mode === "edit" ? "Error al actualizar la reserva" : "Error al crear la reserva")
         } finally {
             setIsLoading(false)
         }

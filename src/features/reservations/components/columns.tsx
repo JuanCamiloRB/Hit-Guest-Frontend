@@ -174,8 +174,10 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             compareLight(key, a.original.automationStatus, b.original.automationStatus)) as SortingFn<Reservation>,
         cell: ({ row }: { row: Row<Reservation> }) => {
             const res = row.original
-            // CHECK-IN dice cuántos huéspedes van ("1 de 3 verificados"); el
-            // resto de columnas solo tienen un estado que mostrar.
+            // CHECK-IN dice cuántos huéspedes TERMINARON su check-in ("1 de 3
+            // completados") — solo ese eje, por decisión de producto (2026-08-21):
+            // la verificación de identidad se mira en el detalle, no en la lista.
+            // El resto de columnas solo tienen un estado que mostrar.
             const { tone, label } = key === "checkin"
                 ? getCheckinCellMeta(res.automationStatus, {
                     completed: res.completedGuests ?? null,

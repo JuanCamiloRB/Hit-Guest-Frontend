@@ -178,8 +178,9 @@ export function UserManagement() {
     }
 
     /**
-     * 403 arrives generic ("Invalid or unauthorized token provided") — show our own
-     * message. The owner-protection 422s come translated → show them directly.
+     * 403 means the authenticated user lacks permission for this resource; it is
+     * not an expired session. Keep a stable local message instead of coupling the
+     * UI to the backend wording, which is localized through X-Locale.
      */
     const handleTeamError = (error: unknown, fallback: string) => {
         if (error instanceof ApiError) {

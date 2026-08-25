@@ -82,6 +82,33 @@ describe("isExternalReservation", () => {
         expect(isExternalReservation("Booking")).toBe(true)
         expect(isExternalReservation("Direct")).toBe(false)
     })
+
+    /**
+     * Responde por el CANAL COMERCIAL, no por cómo entró la reserva al sistema.
+     *
+     * Confundir las dos cosas costó un bug real (2026-08-19): «Editar reserva»
+     * se deshabilitaba con `source === "Airbnb"` y la reserva `MANUAL-5ZOBAR`
+     * —creada a mano en el dashboard, con `externalId` generado por este mismo
+     * frontend— quedaba bloqueada como si Airbnb la hubiera importado. Junto al
+     * bloqueo se mostraban un badge «Importada por iCal» y un «Importada desde
+     * Airbnb», ambos derivados de este mismo booleano.
+     *
+     * El backend NO expone el origen de una reserva: `source` es el canal, y
+     * `source_pms` (100 Airbnb / 101 Booking / 134 KunasPMS) solo existe a nivel
+     * Listing, en `externalPmsIds[]` — ver `BACKEND_NEEDS_RESERVATION_ORIGIN.md`.
+     *
+     * Hasta que exista ese campo, nada puede deducir de acá que una reserva fue
+     * importada, ni bloquear su edición.
+     */
+    it("no autoriza a deducir el origen ni a bloquear la edición", () => {
+        // Un canal externo NO implica que la reserva la haya importado ese canal:
+        // el PM pudo crearla a mano y elegir ese canal.
+        expect(isExternalReservation("Airbnb")).toBe(true)
+        // Y si alguna vez sirviera para bloquear, tendría que valer igual para
+        // Booking — que también se sincroniza y nunca estuvo bloqueado. Esa
+        // asimetría era la señal de que la regla estaba inventada.
+        expect(isExternalReservation("Booking")).toBe(isExternalReservation("Airbnb"))
+    })
 })
 
 describe("formatGuestName", () => {
