@@ -790,6 +790,65 @@ por cada fila de la lista — el conteo de completados ya viene en
 de arriba vale); lo que cambió es qué eje muestra la lista. La verificación por
 huésped se consulta en el detalle de la reserva (§2b).
 
+## 2g. Edición de reservas del PM — contrato reescrito por backend el 2026-08-24
+
+*(del handoff del 2026-08-24, suite backend 1519/0; ⚠️ no reverificado por curl)*
+
+`GET|PUT|PATCH /reservations/{uuid}`, `GET|POST /reservations`:
+
+1. **Origen a nivel reserva (🆕, responde nuestro BACKEND_NEEDS_RESERVATION_ORIGIN):**
+   `isImported: bool` (la creó una integración), `importSource: "calry"|"kunas_pms"|null`,
+   `syncedAt: ISO|null`. Los dos primeros son retroactivos; **`syncedAt` es
+   forward-only**: `null` = «no sabemos», NUNCA pintarlo como «sin sincronizar»
+   si `isImported` es true. `source` sigue siendo el canal comercial, no el
+   origen técnico.
+2. **PUT no rechaza reservas sincronizadas** (confirmado: nada mira el origen).
+   El 422 fantasma de `externalId` contra una cancelada gemela quedó corregido
+   en backend. `externalId`: si se manda debe traer valor — **omitirlo está
+   bien** (clave para editar sin regenerar códigos).
+3. **Round-trip GET→PUT ya es fiel**: el request acepta las formas anidadas
+   (`statusReservation:{id}`, `listing:{uuid}`, `mainGuest:{uuid}`,
+   `source:{id}`) además de las planas; la plana GANA si van las dos.
+   `mainGuest: null` reenviado NO borra el huésped; `guestUuid: null` explícito
+   SÍ. `extra` se mergea, y cinco claves se descartan si se mandan
+   (`calryRecord`, `kunasPmsRecord`, `syncedAt`, `manualEdits`,
+   `overwrittenEdits` — propiedad del backend).
+4. **Qué pisa el PMS**: solo el webhook `reservation.updated`, y solo 6 campos
+   (`arrivalDate`, `departureDate`, `totalGuests`, `totalPrice`, `currency`, y
+   `source` si el payload trae canal). `emailGuest`/`mainGuest`/status/
+   `externalId`/`listing` y el resto de `extra` NUNCA. Los imports por polling
+   no pisan nada y no hay cron. Decisión de producto: el PMS gana, no se
+   bloquea la edición — pero queda rastro: `extra.manualEdits`
+   ({campoCamel: ISO}) y `extra.overwrittenEdits[]`
+   ({field SNAKE_CASE, previous/incoming strings para mostrar,
+   manuallyEditedAt, overwrittenAt, source}; máx 20; solo conflictos reales).
+   ⚠️ Colateral: si el PMS BAJA `totalGuests`, la reserva puede pasar a
+   completada de golpe y disparar automatizaciones facturables.
+5. **Errores del PUT**: 422 camelCase con envelope estándar; **hay DOS shapes
+   de 404** (el de binding trae clave `error` extra; una reserva CANCELADA
+   devuelve ese 404, no un 200 con `deletedAt`); 403 nuevo al mover la reserva
+   a un listing de otro cliente; 422 nuevo en `arrivalDate`/`departureDate` si
+   una sola fecha queda incoherente contra el valor GUARDADO; 422 nuevo en
+   `listingId` al mover a un listing sin automatizaciones de identidad activas
+   (main y secondary). Mensajes localizados (en/es; pt cae a fallback) — se
+   muestran tal cual.
+6. `totalPrice` llega como **string** (`"1250.00"`); `deletedAt` no aparece en
+   una reserva viva (es `when`, no null); `mainGuest` presente pero `null` sin
+   huésped; `restore` omite los contadores.
+
+**✅ Corregido e implementado en frontend el 2026-08-27** (pendiente de
+deploy): el diálogo de edición ya NO regenera `externalId` ni fuerza
+`statusReservationId: 27` (ambos se mandan solo al crear); los 422 de campo se
+anclan al control real del formulario con el mensaje del backend tal cual
+(`lib/reservation-edit-errors.ts`); el origen se lee con
+`lib/reservation-origin.ts` (tri-estado `originKnown` — «creada manualmente»
+solo con `false` explícito; `syncedAt` null simplemente no se muestra) y se
+pinta en el detalle («Importada desde Calry · última sincronización») + aviso
+ámbar no bloqueante al editar una importada; `extra.overwrittenEdits` se lee
+tolerante por fila (campo desconocido muestra su clave, fila malformada se
+descarta sin tirar la lista) y el detalle muestra «El PMS revirtió N cambios».
+La lista conserva `origin` en el tipo aunque aún no lo pinte.
+
 ## 3. Portal de check-in
 
 Rutas públicas (protegidas solo por lo impredecible del UUID), autenticadas con

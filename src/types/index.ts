@@ -108,4 +108,15 @@ export interface Reservation {
      * de afirmar que no ha llegado nadie.
      */
     completedGuests?: number
+    /**
+     * Origen técnico de la reserva (contrato 2026-08-24): quién la creó (PM vs
+     * integración PMS) y última sincronización. Ver
+     * `features/reservations/lib/reservation-origin.ts`.
+     */
+    origin?: {
+        isImported: boolean
+        originKnown: boolean
+        importSourceLabel: string | null
+        syncedAt: string | null
+    }
 }

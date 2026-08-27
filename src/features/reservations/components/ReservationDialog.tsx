@@ -19,6 +19,7 @@ import {
     Send,
     Plane,
     Edit,
+    AlertCircle,
 } from "lucide-react"
 import { format, differenceInDays, addDays } from "date-fns"
 import { es } from "date-fns/locale"
@@ -63,6 +64,12 @@ import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
+import {
+    PMS_MANAGED_FIELDS_NOTICE,
+    readReservationOrigin,
+    type ReservationOrigin,
+} from "../lib/reservation-origin"
+import { readReservationFieldErrors } from "../lib/reservation-edit-errors"
 import { propertiesService } from "@/features/properties/services/properties-service"
 import { listingsService } from "@/features/properties/services/listings-service"
 import { catalogService } from "@/features/auth/services/catalog-service"
@@ -336,14 +343,21 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
         }
     }, [open, loadProperties, loadReservationSources, loadCountries, loadCurrencies])
 
+    // Origen técnico de la reserva en edición: solo informa (aviso «gestionado
+    // por el PMS»), nunca bloquea — decisión de producto del backend: el PM
+    // manda y el PMS gana después (contrato §2g.4).
+    const [editingOrigin, setEditingOrigin] = useState<ReservationOrigin | null>(null)
+
     // ── Load Reservation for Edit ──
     useEffect(() => {
         if (open && mode === "edit" && reservationUuid) {
             const loadReservation = async () => {
                 setIsLoading(true)
+                setEditingOrigin(null)
                 try {
                     const raw = await reservationsService.getRawById(reservationUuid)
-                    
+                    setEditingOrigin(readReservationOrigin(raw))
+
                     // Pre-fill form
                     const fromDate = parseCalendarDate(raw.arrivalDate || raw.arrival_date)
                     const toDate = parseCalendarDate(raw.departureDate || raw.departure_date)
@@ -427,13 +441,12 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             ? values.dates.to 
             : addDays(values.dates.from, 1);
 
-        const payload = {
+        const payload: Record<string, unknown> = {
             listingUuid: values.listingId,
             listing_uuid: values.listingId,
             listingId: values.listingId,
             listing_id: values.listingId,
             reservationSourceId: Number(values.reservationSourceId),
-            externalId: `MANUAL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
             arrivalDate: format(values.dates.from, "yyyy-MM-dd"),
             departureDate: format(departure, "yyyy-MM-dd"),
             emailGuest: values.emailGuest,
@@ -452,12 +465,21 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                 guest_country_id: countries.find((c) => c.name === values.guestCountry)?.id ?? null,
                 guest_phone: values.guestPhone || null,
             },
-            statusReservationId: 27, // 27 = Confirmada
+        }
+
+        // Solo al CREAR: el código manual y el estado inicial. En EDICIÓN ambos
+        // se omiten a propósito (contrato §2g: omitir `externalId` está bien):
+        // este mismo payload regeneraba `MANUAL-XXXXXX` en cada edición —
+        // rompiendo el vínculo de una reserva importada con su código del PMS,
+        // que es la llave con la que los imports la encuentran— y forzaba el
+        // estado de vuelta a Confirmada (27), reseteando una reserva En Progreso.
+        if (mode !== "edit") {
+            payload.externalId = `MANUAL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+            payload.statusReservationId = 27 // 27 = Confirmada
         }
 
         try {
             if (mode === "edit" && reservationUuid) {
-                // Ensure we don't send extra id fields if not needed, but keep payload simple
                 await reservationsService.update(reservationUuid, payload)
                 toast.success("Reserva actualizada exitosamente", {
                     description: "Los cambios han sido guardados.",
@@ -476,12 +498,38 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             window.dispatchEvent(new Event("reservationCreated"))
         } catch (error: any) {
             console.error("[ReservationDialog] Submit error:", error)
-            // El fallback distingue el modo: al editar decía "Error al crear la
-            // reserva". Importa más ahora que el botón de editar dejó de bloquear
-            // por canal — si el backend rechaza una reserva sincronizada, este es
-            // el mensaje que lo cuenta, y `notifyError` ya prefiere el texto del
-            // backend cuando viene.
-            notifyError(error, mode === "edit" ? "Error al actualizar la reserva" : "Error al crear la reserva")
+            // 422 con claves de campo (contrato §2g.5): se ancla cada mensaje —ya
+            // localizado, se muestra tal cual— al control real del formulario. Las
+            // claves que este formulario no edita (p. ej. `externalId`, que en
+            // edición ya ni se envía) caen al toast con el texto del backend, que
+            // es el único que trae el detalle específico.
+            const fieldErrors = readReservationFieldErrors(error)
+            const FORM_FIELD_BY_API_KEY: Record<string, keyof ReservationFormValues> = {
+                arrivalDate: "dates",
+                departureDate: "dates",
+                listingId: "listingId",
+                listingUuid: "listingId",
+                emailGuest: "emailGuest",
+                totalGuests: "totalGuests",
+                totalPrice: "totalPrice",
+                currency: "currency",
+                reservationSourceId: "reservationSourceId",
+            }
+            for (const fieldError of fieldErrors) {
+                const formField = FORM_FIELD_BY_API_KEY[fieldError.field]
+                if (!formField) continue
+                form.setError(formField, { type: "server", message: fieldError.message })
+            }
+            if (fieldErrors.length > 0) {
+                toast.error(
+                    mode === "edit" ? "No se pudo actualizar la reserva" : "No se pudo crear la reserva",
+                    { description: fieldErrors[0].message },
+                )
+            } else {
+                // El fallback distingue el modo: al editar decía "Error al crear la
+                // reserva". `notifyError` ya prefiere el texto del backend cuando viene.
+                notifyError(error, mode === "edit" ? "Error al actualizar la reserva" : "Error al crear la reserva")
+            }
         } finally {
             setIsLoading(false)
         }
@@ -508,6 +556,20 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             : "Registra una nueva reserva. El huésped recibirá el link para completar su check-in online."}
                     </DialogDescription>
                 </DialogHeader>
+
+                {/* Aviso, no bloqueo: el backend decidió que el PM manda y el PMS
+                    gana después (§2g.4). Solo con `isImported === true` explícito —
+                    una clave ausente no es noticia y no debe generar avisos falsos. */}
+                {mode === "edit" && editingOrigin?.isImported && (
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                        <p>
+                            Reserva sincronizada
+                            {editingOrigin.importSourceLabel ? ` desde ${editingOrigin.importSourceLabel}` : " desde el PMS"}.{" "}
+                            {PMS_MANAGED_FIELDS_NOTICE}
+                        </p>
+                    </div>
+                )}
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">

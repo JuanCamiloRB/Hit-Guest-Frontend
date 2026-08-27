@@ -294,7 +294,16 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex shrink-0 items-center gap-2">
+                                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                                    {/* El indicador operativo principal (pedido de producto
+                                        2026-08-27): si el check-in de la reserva está completo.
+                                        Sale del flag autoritativo del backend
+                                        (`isCheckinCompleted`, ya mapeado a
+                                        `automationStatus.checkin`), el mismo que pinta la pila
+                                        del huésped abajo — una sola fuente, dos lugares. */}
+                                    <StatusPill tone={data.automationStatus.checkin === "success" ? "success" : "warning"}>
+                                        {data.automationStatus.checkin === "success" ? "Check-in completo" : "Check-in pendiente"}
+                                    </StatusPill>
                                     {/* Acá iba un badge «Importada por iCal» derivado de
                                         `source === "Airbnb"`. Se quitó porque afirmaba un
                                         MECANISMO (iCal) a partir de un CANAL: el backend no
@@ -370,18 +379,56 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             <div className="min-w-0">
                                 <p className="text-sm font-semibold text-ink">Reserva creada</p>
                                 <p className="truncate text-xs text-ink-3">
-                                    {/* Antes decía «Importada desde Airbnb» / «Creada en HIT
-                                        Guest» según el canal, y en una reserva creada a mano
-                                        con canal Airbnb afirmaba justo lo contrario de lo que
-                                        había pasado. El canal SÍ lo sabemos; cómo entró la
-                                        reserva, no — hasta que el backend lo exponga. */}
-                                    {isExternal ? `Canal ${data.source}` : "Reserva directa"}
+                                    {/* El backend ya expone el origen técnico (2026-08-24,
+                                        `isImported`/`importSource` — retroactivos). «Creada
+                                        manualmente» solo se afirma con un `false` EXPLÍCITO:
+                                        si la clave no vino, se cae al canal, que es lo único
+                                        que sí sabemos (ausente ≠ negado). */}
+                                    {data.origin.isImported
+                                        ? `Importada desde ${data.origin.importSourceLabel ?? "el PMS"}`
+                                        : data.origin.originKnown
+                                            ? "Creada manualmente en HitGuest"
+                                            : isExternal ? `Canal ${data.source}` : "Reserva directa"}
                                     {" · "}
                                     {data.externalId || data.uuid.slice(0, 8)}
                                 </p>
+                                {/* `syncedAt` es forward-only: `null` = «no sabemos», así que
+                                    simplemente no se muestra — nunca «sin sincronizar». */}
+                                {data.origin.isImported && data.origin.syncedAt && (
+                                    <p className="text-xs text-ink-3">
+                                        Última sincronización:{" "}
+                                        {format(new Date(data.origin.syncedAt), "d MMM yyyy, HH:mm", { locale: es })}
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </SectionCard>
+
+                    {/* Ediciones manuales que el webhook del PMS pisó (§2g.4). El PMS
+                        gana por decisión de producto — esto es el registro del
+                        conflicto, para que la reversión deje de ser silenciosa.
+                        `previous`/`incoming` son strings del backend para mostrar. */}
+                    {data.overwrittenEdits.length > 0 && (
+                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-2">
+                            <p className="text-sm font-bold text-amber-800">
+                                El PMS revirtió {data.overwrittenEdits.length}{" "}
+                                {data.overwrittenEdits.length === 1 ? "cambio manual" : "cambios manuales"}
+                            </p>
+                            <ul className="space-y-1">
+                                {data.overwrittenEdits.map((edit, index) => (
+                                    <li key={`${edit.fieldLabel}-${index}`} className="text-xs text-amber-800">
+                                        <span className="font-semibold">{edit.fieldLabel}:</span>{" "}
+                                        {edit.previous} → {edit.incoming}
+                                        {edit.overwrittenAt && (
+                                            <span className="text-amber-700">
+                                                {" "}· {format(new Date(edit.overwrittenAt), "d MMM yyyy, HH:mm", { locale: es })}
+                                            </span>
+                                        )}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
 
                 {/* Sidebar Areas */}

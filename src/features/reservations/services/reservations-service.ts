@@ -8,6 +8,12 @@ import {
     readIdentityDocument,
     type GuestIdentityDocument,
 } from "../lib/identity-document"
+import {
+    readOverwrittenEdits,
+    readReservationOrigin,
+    type OverwrittenEdit,
+    type ReservationOrigin,
+} from "../lib/reservation-origin"
 import { Reservation } from "@/types"
 import { differenceInDays } from "date-fns"
 import { listingsService } from "@/features/properties/services/listings-service"
@@ -310,6 +316,10 @@ export interface ReservationDetailData {
     externalId: string
     /** Property's default communication language (from listing.communicationsLocale). */
     communicationsLocale?: CommunicationLocale
+    /** Origen técnico (PMS vs manual) — contrato 2026-08-24 §2g. */
+    origin: ReservationOrigin
+    /** Ediciones manuales que el webhook del PMS pisó (extra.overwrittenEdits). */
+    overwrittenEdits: OverwrittenEdit[]
     automationStatus: {
         link: "success" | "pending" | "none"
         checkin: "success" | "pending" | "none"
@@ -498,6 +508,11 @@ export class ReservationsService {
             totalGuests: Number(r.totalGuests || r.total_guests || 1),
             externalId: r.externalId || r.external_id || "",
             communicationsLocale: normalizeLocale(listing?.communicationsLocale || listing?.communications_locale),
+            // Origen técnico + rastro de conflictos con el PMS (contrato 2026-08-24
+            // §2g) — antes estas claves llegaban en la respuesta y este mapeo las
+            // descartaba en silencio.
+            origin: readReservationOrigin(r),
+            overwrittenEdits: readOverwrittenEdits(r.extra),
             automationStatus: {
                 link: r.listing ? "success" : "pending",
                 checkin: r.isCheckinCompleted ? "success" : "pending",
@@ -835,6 +850,11 @@ export class ReservationsService {
                         ?? r.checkin_completed_guests
                         ?? r.progress?.completed,
                     ),
+                    // Origen técnico (contrato 2026-08-24 §2g). Se conserva aunque
+                    // la lista aún no lo pinte: descartar claves que el backend ya
+                    // manda es el fallo más silencioso (nada revienta, el dato
+                    // simplemente nunca llega a quien lo necesite).
+                    origin: readReservationOrigin(r),
                 }
             })
 
