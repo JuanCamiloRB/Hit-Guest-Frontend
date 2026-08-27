@@ -154,13 +154,15 @@ export function Sidebar({ className }: { className?: string }) {
                         aria-label="HIT Guest — ir al tablero"
                         className="rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
                     >
+                        {/* Marca HIT (hit.tools), un poco MAYOR que el logo de
+                            HIT GUEST del header interno (pedido 2026-08-27). */}
                         <Image
                             src="/logos/hit-icon-white.png"
-                            alt="HIT Guest"
+                            alt="HIT"
                             width={468}
                             height={292}
                             priority
-                            className="h-9 w-auto object-contain"
+                            className="h-11 w-auto object-contain"
                         />
                     </Link>
                 </div>

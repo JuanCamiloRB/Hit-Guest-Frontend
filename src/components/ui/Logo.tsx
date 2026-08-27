@@ -10,8 +10,11 @@ interface LogoProps {
 
 // Real brand icon exports (public/logos, copied from what Daniel sent as
 // "Recurso 1.png"/"Recurso 8.png") — replaces the earlier hand-drawn SVG
-// reconstruction. No "Guest" wordmark file exists yet, so every call site
-// uses variant="icon" only (per the 20260804 decision — never show the text).
+// reconstruction. No "Guest" wordmark FILE exists; the wordmark is typeset.
+// La decisión del 20260804 («nunca mostrar el texto») quedó revertida por
+// producto el 2026-08-27: el logo del sidebar es HIT (hit.tools) y el del
+// header interno es HIT GUEST — el lockup icon+«Guest» de `variant="full"` es
+// exactamente para eso, y debe verse un poco MENOR que el ícono del sidebar.
 const ICON_SRC = {
     light: "/logos/hit-icon-navy.png", // navy + purple dot — light backgrounds
     dark: "/logos/hit-icon-white.png", // solid white — dark/navy backgrounds
@@ -28,7 +31,12 @@ export function Logo({ className, variant = "icon", showText = true, isWhite = f
             alt="HIT Guest"
             width={ICON_WIDTH}
             height={ICON_HEIGHT}
-            className={cn("h-10 w-auto object-contain", variant === "icon" && className)}
+            // En el lockup completo el ícono va compacto (h-8): el logo de HIT
+            // GUEST del header debe leerse menor que el de HIT del sidebar.
+            className={cn(
+                variant === "icon" ? "h-10 w-auto object-contain" : "h-8 w-auto object-contain",
+                variant === "icon" && className,
+            )}
         />
     )
 
@@ -39,7 +47,7 @@ export function Logo({ className, variant = "icon", showText = true, isWhite = f
             {icon}
             {showText && (
                 <span className={cn(
-                    "font-sans font-black text-[22px] leading-none tracking-tighter uppercase translate-y-[1px]",
+                    "font-sans font-black text-[18px] leading-none tracking-tighter uppercase translate-y-[1px]",
                     isWhite ? "text-white" : "text-[#222755]"
                 )}>
                     Guest

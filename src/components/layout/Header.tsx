@@ -55,7 +55,9 @@ export function Header() {
                 <div className="flex items-center gap-4">
                     <MobileSidebar />
                     <Link href="/dashboard" className="hidden md:block transition-transform hover:scale-[1.02] active:scale-[0.98]">
-                        <Logo variant="icon" className="h-10 w-auto" />
+                        {/* HIT GUEST: ícono + wordmark, menor que el HIT del
+                            sidebar (pedido 2026-08-27). */}
+                        <Logo variant="full" />
                     </Link>
                 </div>
             </div>
