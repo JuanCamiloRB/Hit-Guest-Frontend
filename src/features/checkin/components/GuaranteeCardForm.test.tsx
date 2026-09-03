@@ -196,6 +196,46 @@ describe("GuaranteeCardForm — montaje del campo de tarjeta", () => {
     })
 })
 
+describe("GuaranteeCardForm — reintento durante un montaje en vuelo", () => {
+    /**
+     * La carrera del iPhone (2026-09-03): `mountCardForm` tiene dos awaits antes
+     * de `card.mount()`. Un reintento lanzado mientras el montaje anterior sigue
+     * en vuelo terminaba con DOS iframes de Stripe apilados en el mismo
+     * contenedor — lo tipeado y los placeholders superpuestos. Solo el montaje
+     * vigente puede llegar a montar.
+     */
+    it("un reintento a mitad de vuelo no deja dos campos montados", async () => {
+        const { stripe, card } = stripeDouble()
+        getGuaranteeStatus.mockResolvedValue(statusOf("failed"))
+        loadStripeMock.mockResolvedValue(stripe as never)
+
+        // Setup-intents controlados a mano: el primero queda EN VUELO hasta que
+        // el reintento ya arrancó el segundo montaje.
+        const pending: Array<(v: ReturnType<typeof setupIntentPayload>) => void> = []
+        createGuaranteeSetupIntent.mockImplementation(
+            () => new Promise((resolve) => { pending.push(resolve) }),
+        )
+        const user = userEvent.setup()
+
+        renderForm()
+
+        // Primer montaje arrancó y espera su setup-intent.
+        await waitFor(() => expect(createGuaranteeSetupIntent).toHaveBeenCalledTimes(1))
+
+        // Reintento mientras el primero sigue en vuelo → segundo montaje.
+        await user.click(await screen.findByRole("button", { name: /Intentar con otra tarjeta/i }))
+        await waitFor(() => expect(createGuaranteeSetupIntent).toHaveBeenCalledTimes(2))
+
+        // Ahora responden los DOS setup-intents, el zombi incluido.
+        pending.forEach((resolve) => resolve(setupIntentPayload()))
+
+        await waitFor(() => expect(card.mount).toHaveBeenCalledTimes(1))
+        // Y sigue siendo uno aunque el zombi termine de procesar su respuesta.
+        await new Promise((r) => setTimeout(r, 0))
+        expect(card.mount).toHaveBeenCalledTimes(1)
+    })
+})
+
 describe("GuaranteeCardForm — el contenedor sobrevive al estado pending", () => {
     it("mantiene el nodo del campo en el DOM mientras se confirma la tarjeta", async () => {
         getGuaranteeStatus.mockResolvedValue(statusOf("pending"))

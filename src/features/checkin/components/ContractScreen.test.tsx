@@ -57,7 +57,13 @@ vi.mock("@/features/checkin/components/SignaturePad", () => ({
 }))
 
 vi.mock("@/features/checkin/components/GuaranteeCardForm", () => ({
-    GuaranteeCardForm: () => null,
+    // Doble con una sola perilla: permite que un test lleve la tarjeta a
+    // "active" (el único status que reabre el cierre fijo de la pantalla).
+    GuaranteeCardForm: ({ onStatusChange }: { onStatusChange: (s: "active") => void }) => (
+        <button type="button" onClick={() => onStatusChange("active")}>
+            Simular tarjeta activa
+        </button>
+    ),
 }))
 
 function portal(contractStatus: "not_started" | "signed" = "not_started", completed = false) {
@@ -326,7 +332,11 @@ describe("ContractScreen — fases contrato → tarjeta cuando hay garantía", (
         expect(mocks.completeMainGuest).not.toHaveBeenCalled()
     })
 
-    it("FASE 2: el botón final espera a que la tarjeta esté activa", async () => {
+    it("FASE 2: el cierre fijo NO está en pantalla hasta que la tarjeta esté activa", async () => {
+        // Dos CTAs a la vez (reporte de Didier, 2026-09-04): el sub-paso de la
+        // garantía trae su propio botón, y el "Completar check-in" fijo —más
+        // grande y más cerca del pulgar— quedaba deshabilitado debajo. El 95%
+        // tocaba el muerto. Ahora el cierre se RETIRA durante el sub-paso.
         mocks.getPortal.mockResolvedValue(portal())
 
         render(<ContractScreen reservationUuid="reservation-1" basePath="/checkin/reservation-1" />)
@@ -335,10 +345,15 @@ describe("ContractScreen — fases contrato → tarjeta cuando hay garantía", (
         fireEvent.click(screen.getByRole("checkbox"))
         fireEvent.click(screen.getByRole("button", { name: "Firmar y continuar" }))
 
+        await screen.findByText("Tarjeta de garantía")
+        expect(screen.queryByRole("button", { name: "Completar check-in" })).not.toBeInTheDocument()
+        expect(mocks.completeMainGuest).not.toHaveBeenCalled()
+
+        // La tarjeta queda activa → el cierre reaparece como ÚNICO primario, ya
+        // habilitado, y sigue sin llamar a complete hasta que el huésped lo toque.
+        fireEvent.click(screen.getByRole("button", { name: "Simular tarjeta activa" }))
         const finalizar = await screen.findByRole("button", { name: "Completar check-in" })
-        // GuaranteeCardForm está mockeado y nunca reporta "active", así que el
-        // gate sigue cerrado — que es exactamente el invariante del contrato.
-        expect(finalizar).toBeDisabled()
+        expect(finalizar).toBeEnabled()
         expect(mocks.completeMainGuest).not.toHaveBeenCalled()
     })
 

@@ -1,6 +1,7 @@
 "use client"
 
 import { SearchableSelect } from "./SearchableSelect"
+import { DateField } from "./DateField"
 
 interface Props {
     genderOptions: { id: number; label: string }[]
@@ -28,18 +29,17 @@ export function BirthdateGenderFields({
 }: Props) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:items-end">
-            <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700 leading-tight block">
-                    Fecha de nacimiento<span className="text-red-400 ml-0.5">*</span>
-                </label>
-                <input
-                    type="date"
-                    value={dateOfBirth}
-                    max={new Date().toISOString().split("T")[0]}
-                    onChange={(e) => onDateOfBirthChange(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all"
-                />
-            </div>
+            {/* Segmentado (DD/MM/AAAA), no `type="date"`: el calendario nativo de
+                iOS era el punto de fricción número uno del check-in — una fecha
+                de nacimiento se teclea, no se navega. */}
+            <DateField
+                label="Fecha de nacimiento"
+                required
+                value={dateOfBirth}
+                onChange={onDateOfBirthChange}
+                max={new Date().toISOString().split("T")[0]}
+                autoCompleteKind="bday"
+            />
             <div className="space-y-1.5">
                 <SearchableSelect
                     label="Género"

@@ -9,6 +9,7 @@ import { normalizeVerificationResult } from "@/features/checkin/lib/verification
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
+import { DateField } from "@/features/checkin/components/DateField"
 import { CatalogService } from "@/features/auth/services/catalog-service"
 import type { OCRResult, IdentifySessionData } from "@/features/checkin/types/checkin"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
@@ -811,15 +812,21 @@ export function VerifyScreen({
                             <label className="text-sm font-semibold text-slate-700">Número de Documento</label>
                             <input type="text" value={editOcr.documentNumber} onChange={e => setEditOcr({...editOcr, documentNumber: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" />
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-slate-700">Fecha de Nacimiento</label>
-                            <input type="date" value={editOcr.dateOfBirth} onChange={e => setEditOcr({...editOcr, dateOfBirth: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" />
-                        </div>
+                        {/* Segmentadas (DD/MM/AAAA): son fechas que el huésped está
+                            LEYENDO del documento — se teclean, no se navegan por un
+                            calendario. El valor sigue siendo el mismo YYYY-MM-DD. */}
+                        <DateField
+                            label="Fecha de Nacimiento"
+                            value={editOcr.dateOfBirth}
+                            onChange={(v) => setEditOcr({ ...editOcr, dateOfBirth: v })}
+                            autoCompleteKind="bday"
+                        />
                         {editOcr.expirationDate !== undefined && (
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-slate-700">Vencimiento del Documento</label>
-                                <input type="date" value={editOcr.expirationDate} onChange={e => setEditOcr({...editOcr, expirationDate: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" />
-                            </div>
+                            <DateField
+                                label="Vencimiento del Documento"
+                                value={editOcr.expirationDate}
+                                onChange={(v) => setEditOcr({ ...editOcr, expirationDate: v })}
+                            />
                         )}
                     </div>
                 </div>
@@ -846,13 +853,31 @@ export function VerifyScreen({
                     <Clock size={40} className="text-amber-400" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-slate-900">No pudimos confirmar la verificación</h2>
+                    <h2 className="text-xl font-bold text-slate-900">No pudimos confirmar tu identidad</h2>
+                    {/* En este estado el backend no reporta la causa (`isStale` llega
+                        sin motivo), así que el copy dice «puede deberse a» — nombra la
+                        causa más frecuente sin afirmarla (pedido de producto,
+                        2026-09-04, anexo al caso del escaneo con el lente sucio). */}
                     <p className="text-slate-500 text-sm max-w-xs">
-                        La verificación quedó pendiente más tiempo del esperado. Contacta al anfitrión para que pueda revisar tu caso.
+                        Puede deberse a una captura del documento poco nítida, con poca luz
+                        o con sombras. Vuelve al inicio e inténtalo de nuevo cuidando la
+                        imagen. Si sigue sin funcionar, contacta al anfitrión.
                     </p>
                 </div>
                 <Link
                     href={basePath}
+                    onClick={() => {
+                        // Sin esto, "Volver al inicio" era un loop: el marcador
+                        // `checkin-pending-didit` sobrevive a la navegación, la
+                        // reentrada al paso de verificación reanuda el sondeo, y el
+                        // huésped cae otra vez en la misma espera → mismo stale
+                        // (reportado por Didier el 2026-09-02). Limpiarlo hace que
+                        // la reentrada muestre la tarjeta de Didit —con su salida de
+                        // "Reinicia tu verificación"— en vez de la espera automática.
+                        // Solo se borra el marcador local: la decisión sobre la
+                        // sesión en sí sigue siendo del backend.
+                        try { localStorage.removeItem("checkin-pending-didit") } catch {}
+                    }}
                     className="flex items-center gap-2 h-12 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
                     <ArrowLeft size={18} />
@@ -964,6 +989,21 @@ export function VerifyScreen({
                         : "Sube una foto de tu documento y una selfie para verificar tu identidad."}
                 </p>
             </div>
+
+            {/* Pedido de producto (Didier, 2026-09-02): avisar ANTES de lanzar la
+                cámara. Un escaneo con el lente sucio o poca luz no falla con un
+                error — se queda a medias y deja al huésped esperando. Prevenirlo
+                es más barato que recuperarlo. Aplica a los dos flujos con cámara. */}
+            {(verification.type === "session" || verification.type === "document_upload") && (
+                <div className="flex items-start gap-2.5 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
+                    <Camera size={16} className="mt-0.5 shrink-0 text-amber-500" aria-hidden />
+                    <p className="text-sm text-amber-800">
+                        Antes de empezar, <span className="font-semibold">limpia el lente de tu cámara</span>{" "}
+                        y ubícate en un lugar <span className="font-semibold">con buena luz</span>. Así
+                        evitas que el escaneo falle por una imagen borrosa u oscura.
+                    </p>
+                </div>
+            )}
 
             {/* session: Didit — copy based on the backend's canonical sessionType */}
             {verification.type === "session" && (() => {

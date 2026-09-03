@@ -84,6 +84,17 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
     // durante la espera valía siempre true: si el huésped salía de la pantalla
     // a mitad del sondeo, este seguía pegándole al backend hasta el timeout.
     const mountedRef = useRef(true)
+    /**
+     * Identifica el montaje EN CURSO del campo de tarjeta. `mountCardForm` tiene
+     * dos awaits antes de `card.mount()`, y `alive()` solo miraba si el
+     * componente seguía vivo — no si otro montaje lo había reemplazado. Con un
+     * reintento (o doble tap) mientras el anterior seguía en vuelo, los dos
+     * terminaban montando y quedaban DOS iframes de Stripe apilados en el mismo
+     * contenedor: uno con lo tipeado y otro con sus placeholders, superpuestos
+     * (reportado en iPhone el 2026-09-03). Cada montaje toma su número al
+     * empezar y aborta en cuanto deja de ser el vigente.
+     */
+    const mountRunRef = useRef(0)
 
     // The single source of truth — the last known backend state. Everything
     // else (card form visible vs. polling spinner vs. confirmation) is derived
@@ -137,7 +148,8 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
      * texto — y ninguno se podía distinguir desde la pantalla.
      */
     const mountCardForm = async () => {
-        const alive = () => mountedRef.current
+        const run = ++mountRunRef.current
+        const alive = () => mountedRef.current && run === mountRunRef.current
 
         let intent
         try {
@@ -210,6 +222,11 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
         }
         stripeRef.current = stripe
 
+        if (cardElementRef.current) {
+            // Otro montaje llegó primero y su campo ya está vivo: montar encima
+            // apilaría un segundo iframe sobre el suyo.
+            return
+        }
         try {
             const elements = stripe.elements()
             const card = elements.create("card", {
@@ -414,6 +431,9 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
 
     /** El SetupIntent detrás de un fallo confirmado es terminal — pedir uno nuevo. */
     const handleRetry = () => {
+        // Invalida cualquier montaje que siga en vuelo: su continuación tardía
+        // ya no puede montar un campo sobre el que está por crearse.
+        mountRunRef.current++
         setProblem(null)
         setPollTimedOut(false)
         cardElementRef.current?.unmount()

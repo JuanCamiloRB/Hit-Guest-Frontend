@@ -473,6 +473,45 @@ describe("VerifyScreen — contrato síncrono de Textract", () => {
         expect(screen.getByText("Procesando verificación...")).toBeInTheDocument()
     })
 
+    it("salir de la espera huérfana borra el marcador que la reanudaba (el loop de stale)", async () => {
+        // El bug reportado: stale → "Volver al inicio" → reentrada → el marcador
+        // `checkin-pending-didit` reanudaba el sondeo → misma espera → mismo
+        // stale. El enlace debe romper el ciclo borrando el marcador local.
+        vi.useFakeTimers()
+        mocks.session.verification = {
+            type: "session",
+            sessionType: "biometric",
+            url: "https://verification.didit.me/biometric",
+        }
+        localStorage.setItem("checkin-pending-didit", JSON.stringify({
+            reservationUuid: "reservation",
+            guestUuid: "guest",
+            basePath: "/checkin/reservation",
+            step: "biometric",
+            launchedUrl: "https://verification.didit.me/biometric",
+            startedAt: Date.now(),
+        }))
+        mocks.getPortal.mockResolvedValue({ registeredGuests: [{ uuid: "guest" }] })
+        // El backend es quien declara la espera huérfana; el front solo obedece.
+        mocks.checkVerificationResult.mockResolvedValue({ status: "stale" })
+
+        render(
+            <VerifyScreen
+                reservationUuid="reservation"
+                guestUuid="guest"
+                basePath="/checkin/reservation"
+            />,
+        )
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+
+        const salida = screen.getByRole("link", { name: /Volver al inicio/ })
+        fireEvent.click(salida)
+
+        expect(localStorage.getItem("checkin-pending-didit")).toBeNull()
+    })
+
     it("al volver en móvil usa la sesión local consumida si localStorage no conservó el pending", async () => {
         vi.useFakeTimers()
         const consumedUrl = "https://verification.didit.me/kyc-without-pending-key"

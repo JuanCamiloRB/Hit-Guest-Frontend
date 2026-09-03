@@ -841,6 +841,19 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
     /** FASE 1 con garantía por delante: el botón continúa, no completa. */
     const isContractPhaseCta = guaranteeRequired && !showGuaranteePhase
 
+    /**
+     * Un solo botón primario por pantalla (regla de Didier del 2026-08-19,
+     * reintroducida sin querer al agregar la puerta de información de la
+     * garantía). Mientras el sub-paso de la garantía tiene su propio CTA
+     * («Continuar con confianza», «Autorizar tarjeta»), el cierre fijo se
+     * RETIRA en vez de quedarse deshabilitado: el botón más grande y más
+     * cercano al pulgar no puede ser uno muerto — el 95% toca ahí y lee
+     * «está trabado». Reaparece, ya habilitado, cuando la tarjeta queda
+     * activa. Con error de configuración se conserva: ahí es el único CTA
+     * («Reintentar carga»).
+     */
+    const fixedCtaHidden = !configurationError && showGuaranteePhase && guaranteeStatus !== "active"
+
     return (
         <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
             <ProgressBar currentStep={4} totalSteps={5} />
@@ -1032,6 +1045,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             </div>
             )}
 
+            {!fixedCtaHidden && (
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     {/* Un solo botón primario en pantalla, siempre. Antes convivían
@@ -1067,6 +1081,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     </button>
                 </div>
             </div>
+            )}
         </div>
     )
 }
