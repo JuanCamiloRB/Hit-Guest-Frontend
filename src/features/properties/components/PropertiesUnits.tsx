@@ -41,7 +41,6 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { listingsService } from "../services/listings-service"
 import { automationService } from "../services/automation-service"
@@ -537,20 +536,33 @@ export function PropertiesUnits() {
                             </DialogHeader>
 
                             {/*
-                              * `min-h-0` es imprescindible, no decorativo.
+                              * Contenedor de scroll NATIVO, no `ScrollArea` de Radix.
                               *
-                              * Los ítems de un contenedor flex tienen `min-height: auto`, así
-                              * que se niegan a encogerse por debajo de su contenido: con solo
-                              * `flex-1`, este Root crecía hasta la altura del formulario
-                              * entero. El Viewport de Radix es `size-full` DEL ROOT, de modo
-                              * que tampoco desbordaba nunca → no había barra de scroll, y el
-                              * formulario quedaba cortado a 90vh con el resto pintado fuera
-                              * del diálogo: el campo de correo (obligatorio) y el botón de
-                              * guardar quedaban físicamente inalcanzables, porque Radix
-                              * bloquea el scroll de la página mientras el modal está abierto.
-                              * Resultado: era imposible crear un alojamiento.
+                              * Con `ScrollArea` el `min-h-0` sí limitaba su Root (medido:
+                              * 494px en una ventana de 768), pero el Viewport de Radix es
+                              * `size-full`, o sea `height: 100%`, y un porcentaje NO resuelve
+                              * contra un padre cuya altura la fijó flexbox y no la propiedad
+                              * `height`: el Viewport caía a `height: auto` y medía **824px
+                              * siempre**, la altura del formulario completo. Consecuencia
+                              * medida en Chrome: `scrollHeight === clientHeight`, así que no
+                              * había nada que scrollear, Radix no montaba la barra, y el
+                              * excedente se pintaba FUERA de la caja del diálogo —de ahí que
+                              * en el reporte se vieran campos por debajo de los botones—. El
+                              * correo de contacto, que es obligatorio, quedaba fuera del
+                              * diálogo e inalcanzable: era imposible crear un alojamiento sin
+                              * bajar el zoom del navegador.
+                              *
+                              * `overflow-hidden` en el Root (lo que trae el shadcn canónico)
+                              * NO lo arregla: se comprobó y el Viewport sigue midiendo 824 —
+                              * solo recortaría el desborde, dejando el campo igual de
+                              * inalcanzable pero sin la pista visual.
+                              *
+                              * Un `div` con `overflow-y-auto` no depende de ningún porcentaje:
+                              * `flex-1 min-h-0` le da la altura y el desbordamiento es suyo.
+                              * De paso, en Windows la barra nativa se ve siempre, que es
+                              * justo lo que faltaba para saber que había más formulario.
                               */}
-                            <ScrollArea className="flex-1 min-h-0 px-6 py-2">
+                            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2">
                                 <div className="space-y-6 pb-6">
                                     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border">
                                         <div className="space-y-0.5">
@@ -1108,7 +1120,7 @@ export function PropertiesUnits() {
 
                                     </Tabs>
                                 </div>
-                            </ScrollArea>
+                            </div>
 
                             {/*
                               * `shrink-0` es la contraparte del header, que ya lo tiene.
