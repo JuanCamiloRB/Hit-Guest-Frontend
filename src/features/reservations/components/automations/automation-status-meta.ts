@@ -226,6 +226,22 @@ const ERROR_CODE_LABELS: Record<string, string> = {
     insufficient_balance: "Saldo insuficiente. Recarga tu saldo para ejecutar esta automatización.",
 }
 
+/**
+ * Códigos que llegan ENVUELTOS en un mensaje más largo, no como el string
+ * completo — p. ej. el 402 del proveedor de firmas llega como
+ * `HTTP request returned status code 402: {"message":"SIGNATURES.ERRORS.INSUFFICIENT_SIGNATURES",…}`
+ * (observado en producción el 2026-09-04). Se busca el código DENTRO del texto
+ * y se muestra la instrucción, no el JSON crudo con el path truncado.
+ */
+const ERROR_CODE_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
+    {
+        pattern: /INSUFFICIENT_SIGNATURES/,
+        label:
+            "El servicio de firmas se quedó sin cupo de firmas disponibles. "
+            + "Repórtalo a soporte de HIT Guest para reponerlo; el contrato se podrá reintentar después.",
+    },
+]
+
 /** Reads a human message from a record's `lastError` (string or {message} object). */
 export function errorMessage(
     err: string | AutomationErrorDetail | null | undefined,
@@ -233,7 +249,9 @@ export function errorMessage(
     if (!err) return null
     const raw = typeof err === "string" ? err : err.message ?? null
     if (!raw) return null
-    return ERROR_CODE_LABELS[raw.trim()] ?? raw
+    const exact = ERROR_CODE_LABELS[raw.trim()]
+    if (exact) return exact
+    return ERROR_CODE_PATTERNS.find(({ pattern }) => pattern.test(raw))?.label ?? raw
 }
 
 /**

@@ -7,6 +7,7 @@ import {
     PROVIDER_LABELS,
     getStatusMeta,
     automationTitle,
+    errorMessage,
 } from "./automation-status-meta"
 
 describe("PROVIDER_LABELS", () => {
@@ -140,5 +141,19 @@ describe("getStatusMeta", () => {
     // para que deje de competir con las filas que sí piden acción.
     it("renders 'no aplica' as absence rather than another pill", () => {
         expect(NOT_APPLICABLE_META.tone).toBe("none")
+    })
+})
+
+describe("errorMessage — códigos envueltos en mensajes largos", () => {
+    it("el 402 del proveedor de firmas se traduce a una instrucción, no al JSON crudo", () => {
+        // Observado en producción (2026-09-04): la tarjeta de Contrato mostraba el
+        // envoltorio HTTP con el path truncado.
+        const crudo = 'HTTP request returned status code 402: {"message":"SIGNATURES.ERRORS.INSUFFICIENT_SIGNATURES","statusCode":402,"path":"/api/public/documents/transactions-batch (truncated...)'
+        expect(errorMessage(crudo)).toMatch(/sin cupo de firmas/)
+        expect(errorMessage(crudo)).not.toMatch(/statusCode/)
+    })
+
+    it("un error desconocido se muestra tal cual: el detalle del backend no se pierde", () => {
+        expect(errorMessage("Algo específico del backend")).toBe("Algo específico del backend")
     })
 })

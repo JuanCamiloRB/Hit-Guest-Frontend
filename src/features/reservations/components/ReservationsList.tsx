@@ -2,6 +2,8 @@
 
 import { Reservation } from "@/types"
 import { getColumns } from "./columns"
+import { consumptionService } from "@/features/billing/services/consumption-service"
+import { formatUsd } from "@/features/billing/types"
 import { DEFAULT_SORTING } from "./reservation-sorting"
 import { DataTable } from "@/components/shared/data-table"
 import { Button } from "@/components/ui/button"
@@ -78,6 +80,33 @@ export default function ReservationsList() {
     const [isLoading, setIsLoading] = useState(true)
     const [deleteTarget, setDeleteTarget] = useState<Reservation | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    /**
+     * Consumo facturado de la reserva que se está por eliminar, con el id al que
+     * pertenece (se deriva en render: sin id coincidente no se muestra — así no
+     * hace falta resetear estado al abrir/cerrar el diálogo).
+     *
+     * Hoy eliminar una reserva la saca también del tablero de saldos (el tablero
+     * se arma desde GET /reservations); mientras backend define cómo conservar
+     * esa contabilidad, lo mínimo es que el PM lo sepa ANTES de confirmar.
+     */
+    const [deleteConsumption, setDeleteConsumption] = useState<{ forId: string; total: number } | null>(null)
+
+    useEffect(() => {
+        if (!deleteTarget) return
+        let active = true
+        consumptionService
+            .getReservationCosts([deleteTarget])
+            .then(([cost]) => {
+                if (active && cost) setDeleteConsumption({ forId: deleteTarget.id, total: cost.total })
+            })
+            .catch(() => {
+                // Sin el dato no se bloquea nada: el aviso simplemente no aparece.
+            })
+        return () => { active = false }
+    }, [deleteTarget])
+
+    const deleteTargetConsumption =
+        deleteTarget && deleteConsumption?.forId === deleteTarget.id ? deleteConsumption.total : null
 
     // ── Filters (client-side over the loaded reservations) ──
     const [search, setSearch] = useState("")
@@ -294,6 +323,13 @@ export default function ReservationsList() {
                         <AlertDialogDescription>
                             Estás a punto de eliminar la reserva de <strong>{deleteTarget?.guestName}</strong>.
                             Esta acción no se puede deshacer.
+                            {deleteTargetConsumption !== null && deleteTargetConsumption > 0 && (
+                                <span className="mt-2 block rounded-lg bg-amber-50 px-3 py-2 text-amber-800">
+                                    Esta reserva tiene consumo registrado por{" "}
+                                    <strong>{formatUsd(deleteTargetConsumption)}</strong>. Al eliminarla,
+                                    ese consumo dejará de mostrarse en el tablero de saldos.
+                                </span>
+                            )}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
