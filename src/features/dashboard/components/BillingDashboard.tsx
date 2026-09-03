@@ -25,6 +25,7 @@ export function BillingDashboard() {
         refMonth,
         setRefMonth,
         isLoadingCosts,
+        refetchBalance,
     } = useBillingData()
 
     return (
@@ -38,6 +39,7 @@ export function BillingDashboard() {
                 balance={balance}
                 balancePending={balancePending}
                 isLoadingBalance={isLoadingBalance}
+                onRetryBalance={refetchBalance}
                 summary={summary}
                 isLoadingCosts={isLoadingCosts}
             />

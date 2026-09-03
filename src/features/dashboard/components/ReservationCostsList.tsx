@@ -143,7 +143,15 @@ export function ReservationCostsList({ costs, isLoading }: Props) {
                                                     : "text-slate-300"
                                             }`}
                                         >
-                                            {item.consumed ? formatUsd(item.amount) : "—"}
+                                            {/* Tres estados, no dos: facturó (monto), corrió gratis
+                                                ("Sin cargo": la firma nativa) o no corrió ("—").
+                                                El "—" para una firma ejecutada se leía como plata
+                                                perdida. */}
+                                            {item.consumed
+                                                ? formatUsd(item.amount)
+                                                : item.freeCount > 0
+                                                    ? <span className="text-xs font-medium text-slate-400">Sin cargo</span>
+                                                    : "—"}
                                         </TableCell>
                                     ))}
                                     <TableCell className="text-right font-extrabold text-[var(--color-brand-navy)] tabular-nums">

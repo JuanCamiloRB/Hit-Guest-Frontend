@@ -30,12 +30,22 @@ export function classifyRecord(
     automationName?: string | null,
 ): CostCategory | null {
     const s = canonicalSlug(providerSlug)
+    const name = automationName ?? ""
 
-    if (s.includes("tufirma") || s.includes("firma") || s.includes("contract")) return "contract"
+    // Identidad PRIMERO: "textract" contiene "tra", así que el orden anterior
+    // clasificaba la verificación esencial en la columna TRA.
+    if (s.includes("textract") || CHECKIN_NAME_RE.test(s) || CHECKIN_NAME_RE.test(name)) {
+        return "checkin"
+    }
+    // "signature" incluido: la firma nativa es `hitguest_signature` y no contiene
+    // ni "firma" ni "contract" — sus ejecuciones (gratuitas) no clasificaban.
+    if (/tufirma|firma|signature|contract/.test(s) || /signature|contract|contrato/i.test(name)) {
+        return "contract"
+    }
     if (s.includes("ttlock") || s.includes("lock") || s.includes("access")) return "access"
-    if (s.includes("tra")) return "tra"
+    // Con borde: el substring pelado también matchea "registra", "extra"…
+    if (/(^|_)tra(_|$)/.test(s)) return "tra"
     if (s.includes("sire")) return "sire"
-    if (CHECKIN_NAME_RE.test(s) || CHECKIN_NAME_RE.test(automationName ?? "")) return "checkin"
 
     return null
 }

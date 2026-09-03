@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import {
     Dialog,
@@ -18,8 +18,17 @@ import {
     billingService,
     BillingNotConfiguredError,
 } from "../services/billing-service"
+import { rechargeErrorDescription } from "../lib/recharge-error"
+import type { PackagesInfo } from "../types"
 
-const PRESET_AMOUNTS = [20, 40, 100]
+/**
+ * Solo mientras `GET /billing/packages` no haya respondido: el catálogo real de
+ * montos lo define el backend ($10/$25/$50/$100 y mínimo $10, observado por
+ * curl el 2026-09-03) y este diálogo mostraba $20/$40/$100 inventados del
+ * front. El backend valida siempre, así que un fallback desalineado no cobra
+ * mal — solo ofrece atajos distintos.
+ */
+const FALLBACK_AMOUNTS = [20, 40, 100]
 
 /**
  * "Recargar bolsa" flow. Collects an amount and hands off to the hosted payment
@@ -34,6 +43,36 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
     const [open, setOpen] = useState(false)
     const [amount, setAmount] = useState<number>(40)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [packagesInfo, setPackagesInfo] = useState<PackagesInfo | null>(null)
+
+    // Los montos del backend se piden al abrir, una sola vez. Si la llamada
+    // falla o la ruta no está, el diálogo sigue con el fallback: nunca se
+    // bloquea la recarga por no poder listar los atajos.
+    useEffect(() => {
+        if (!open || packagesInfo) return
+        let active = true
+        billingService
+            .getPackages()
+            .then((info) => {
+                if (!active || !info || info.packages.length === 0) return
+                setPackagesInfo(info)
+                // Si la selección era un preset del fallback que el backend no
+                // ofrece, moverla al primer paquete real para no enviar un monto
+                // que el PM no eligió a conciencia.
+                setAmount((prev) =>
+                    info.packages.some((pkg) => pkg.amount === prev) ? prev : info.packages[0].amount,
+                )
+            })
+            .catch(() => {})
+        return () => { active = false }
+    }, [open, packagesInfo])
+
+    const presets = packagesInfo?.packages.map((pkg) => pkg.amount) ?? FALLBACK_AMOUNTS
+    // El mínimo solo se exige localmente cuando el backend lo declaró; sin ese
+    // dato la única validación local es ">0" y el 422 del backend (que ahora se
+    // muestra tal cual) cubre el resto. No se inventa un mínimo propio.
+    const minimum = packagesInfo?.minimumCustom ?? null
+    const belowMinimum = minimum !== null && amount > 0 && amount < minimum
 
     async function handleRecharge() {
         if (!amount || amount <= 0) {
@@ -51,8 +90,11 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                         "El pago aún no está habilitado. Falta conectar el backend de pagos.",
                 })
             } else {
+                // El original al log SIEMPRE: el toast genérico es lo que vuelve
+                // inaccionable el próximo reporte si nadie conservó el detalle.
+                console.error("[RechargeDialog] checkout error:", error)
                 toast.error("No se pudo iniciar la recarga", {
-                    description: "Inténtalo de nuevo en unos minutos.",
+                    description: rechargeErrorDescription(error),
                 })
             }
         } finally {
@@ -83,7 +125,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
 
                 <div className="space-y-4 py-2">
                     <div className="flex gap-2">
-                        {PRESET_AMOUNTS.map((preset) => (
+                        {presets.map((preset) => (
                             <button
                                 key={preset}
                                 type="button"
@@ -109,20 +151,26 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                             </span>
                             <Input
                                 type="number"
-                                min={1}
+                                min={minimum ?? 1}
                                 step={1}
                                 value={amount}
                                 onChange={(e) => setAmount(Number(e.target.value))}
+                                aria-invalid={belowMinimum || undefined}
                                 className="pl-7 font-semibold"
                             />
                         </div>
+                        {minimum !== null && (
+                            <p className={`text-xs ${belowMinimum ? "font-medium text-danger" : "text-slate-400"}`}>
+                                El monto mínimo de recarga es ${minimum} USD.
+                            </p>
+                        )}
                     </div>
                 </div>
 
                 <DialogFooter>
                     <Button
                         onClick={handleRecharge}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || belowMinimum}
                         className="w-full gap-2 bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-white font-bold"
                     >
                         {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}

@@ -62,7 +62,7 @@ function readName(rec: RawUsageRecord): string | null {
 function emptyLineItems(): Record<CostCategory, CostLineItem> {
     const map = {} as Record<CostCategory, CostLineItem>
     for (const { key, label } of COST_CATEGORIES) {
-        map[key] = { category: key, label, amount: 0, count: 0, consumed: false }
+        map[key] = { category: key, label, amount: 0, count: 0, freeCount: 0, consumed: false }
     }
     return map
 }
@@ -82,10 +82,15 @@ function aggregate(reservation: Reservation, records: RawUsageRecord[]): Reserva
         const nodeName = readName(rec) || readSlug(rec)
         if (nodeName) runsByNode.set(nodeName, (runsByNode.get(nodeName) ?? 0) + 1)
 
-        if (!readBillable(rec)) continue
         const category = classifyRecord(readSlug(rec), readName(rec))
         if (!category) continue
         const line = items[category]
+        if (!readBillable(rec)) {
+            // Corrió y salió gratis (firma nativa): se registra para que la celda
+            // diga "Sin cargo" en vez de un "—" que se lee como valor perdido.
+            line.freeCount += 1
+            continue
+        }
         line.amount += readUnitCost(rec)
         line.count += 1
         line.consumed = true

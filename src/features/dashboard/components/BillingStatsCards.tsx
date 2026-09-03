@@ -13,6 +13,8 @@ interface Props {
     balance: AccountBalance | null
     balancePending: boolean
     isLoadingBalance: boolean
+    /** Vuelve a pedir el saldo — reintentar es trabajo del cliente, no del usuario con F5. */
+    onRetryBalance?: () => void
     summary: ConsumptionSummary | null
     isLoadingCosts: boolean
 }
@@ -26,6 +28,7 @@ export function BillingStatsCards({
     balance,
     balancePending,
     isLoadingBalance,
+    onRetryBalance,
     summary,
     isLoadingCosts,
 }: Props) {
@@ -51,6 +54,18 @@ export function BillingStatsCards({
                                 estado está nuestro roadmap. */}
                             <p className="text-xs font-medium text-warning">
                                 Saldo no disponible por ahora
+                                {onRetryBalance && (
+                                    <>
+                                        {" · "}
+                                        <button
+                                            type="button"
+                                            onClick={onRetryBalance}
+                                            className="font-semibold underline underline-offset-2 hover:opacity-80"
+                                        >
+                                            Reintentar
+                                        </button>
+                                    </>
+                                )}
                             </p>
                         </div>
                     ) : (

@@ -22,6 +22,13 @@ export interface CostLineItem {
     amount: number
     /** How many billable records rolled up into this line. */
     count: number
+    /**
+     * Successful runs that the backend marked non-billable (e.g. the native
+     * signature — the only free automation). They carry no amount, but hiding
+     * them behind "—" read as lost money (Didier, 2026-09-03): the cell shows
+     * "Sin cargo" instead.
+     */
+    freeCount: number
     /** True once at least one billable record exists for this category. */
     consumed: boolean
 }
