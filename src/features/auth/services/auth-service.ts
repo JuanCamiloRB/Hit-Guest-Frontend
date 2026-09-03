@@ -93,7 +93,9 @@ class AuthServiceImpl implements AuthService {
                 personTypeId: parseInt(data.person_type_id),
                 name: data.person_type_id === "2" ? data.companyName : data.name,
                 lastname: data.person_type_id === "2" ? undefined : data.lastname,
-                email: data.email,
+                // Same backend contract (`email` string), canonicalized so the
+                // register, verify and resend requests all address one value.
+                email: data.email.trim().toLowerCase(),
                 phone: data.phone,
                 countryId: parseInt(data.country) || data.country, // Just in case it's a UUID, keep fallback
                 state: data.state,

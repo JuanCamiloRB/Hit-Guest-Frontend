@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 export const loginSchema = z.object({
-    email: z.string().email({
+    email: z.string().trim().toLowerCase().email({
         message: "Por favor, introduce un correo electrónico válido.",
     }),
 })
@@ -23,9 +23,11 @@ export const registerSchema = z.object({
     companyName: z.string().optional(),
     name: z.string().min(2, "El nombre es requerido"),
     lastname: z.string().min(2, "El apellido es requerido"),
-    email: z.string().email("Email inválido"),
+    email: z.string().trim().toLowerCase().email("Email inválido"),
     phone: z.string().min(5, "El teléfono es requerido"),
-    country: z.string().min(2, "El país es requerido"),
+    // Catalog ids are strings in the form, and valid backend ids may contain
+    // a single digit (for example "1"). Validate presence, not id length.
+    country: z.string().min(1, "El país es requerido"),
     state: z.string().min(2, "El estado es requerido"),
     city: z.string().min(2, "La ciudad es requerida"),
 }).superRefine((data, ctx) => {

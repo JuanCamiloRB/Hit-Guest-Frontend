@@ -8,9 +8,22 @@ import { authService } from "../services/auth-service"
 import { RegisterFormData, registerSchema } from "../types"
 import { useFormSecurity } from "./use-form-security"
 
+/**
+ * Alta de cuenta. Termina en `/account/register` y ahí se acaba: **el registro
+ * NO emite ningún código**.
+ *
+ * Quien manda el código de 6 dígitos es `POST /auth/login`, y el registro nunca
+ * lo llama. La pantalla pedía un OTP que el backend jamás había enviado: lo
+ * único que llega al correo es el mensaje de bienvenida con su enlace de acceso.
+ * Reenviar tampoco servía —`/auth/resend-otp` necesita un challenge previo que
+ * no existe—, así que el usuario quedaba encerrado esperando un código
+ * imposible, con la cuenta ya creada.
+ *
+ * Por eso este hook no conoce OTP. El código vive donde de verdad se emite: en
+ * el login.
+ */
 export function useRegister() {
     const [isLoading, setIsLoading] = useState(false)
-    const [isAwaitingOtp, setIsAwaitingOtp] = useState(false)
     const [isSuccess, setIsSuccess] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [registeredEmail, setRegisteredEmail] = useState("")
@@ -43,90 +56,28 @@ export function useRegister() {
         try {
             await authService.register(values)
             setRegisteredEmail(values.email)
-            setIsAwaitingOtp(true)
-            toast.success("¡Registro recibido!", {
-                description: "Revisa tu correo y acepta la confirmación para recibir tu código de verificación.",
-            })
-        } catch (err: any) {
-            setError(err.message || "Error al procesar el registro")
-            toast.error("Error", {
-                description: err.message || "Por favor, inténtalo de nuevo.",
-            })
-        } finally {
-            setIsLoading(false)
-        }
-    }
-
-    async function onVerifyOtp(otp: string) {
-        setIsLoading(true)
-        setError(null)
-        try {
-            const user = await authService.verifyOtp(registeredEmail, otp)
             setIsSuccess(true)
-            setIsAwaitingOtp(false)
-            toast.success("¡Cuenta activada!", {
-                description: "Bienvenido a Hit Guest.",
+            toast.success("¡Cuenta creada!", {
+                description: "Te enviamos un correo de bienvenida. Ya puedes iniciar sesión.",
             })
-            // Redirect after a short delay
-            setTimeout(() => {
-                window.location.href = "/dashboard"
-            }, 2000)
-        } catch (err: any) {
-            setError(err.message || "Código inválido")
-            toast.error("Error de verificación", {
-                description: err.message || "El código ingresado no es correcto.",
-            })
-        } finally {
-            setIsLoading(false)
-        }
-    }
-
-    async function onResendOtp() {
-        if (!registeredEmail) return
-        setIsLoading(true)
-        try {
-            await authService.resendOtp(registeredEmail)
-            toast.success("Código reenviado", {
-                description: "Revisa tu bandeja de entrada o la consola del navegador.",
-            })
-        } catch (err: any) {
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Error al procesar el registro"
+            setError(message)
             toast.error("Error", {
-                description: err.message || "No se pudo reenviar el código.",
+                description: message || "Por favor, inténtalo de nuevo.",
             })
         } finally {
             setIsLoading(false)
         }
-    }
-
-    const resetRegistration = () => {
-        setIsAwaitingOtp(false)
-        setIsSuccess(false)
-        setError(null)
-        form.reset({
-            identificationTypeId: "",
-            identificationNumber: "",
-            companyName: "",
-            name: "",
-            lastname: "",
-            email: "",
-            phone: "",
-            country: "",
-            state: "",
-            city: "",
-        })
     }
 
     return {
         form,
         isLoading,
-        isAwaitingOtp,
         isSuccess,
         registeredEmail,
         error,
         onRegister: form.handleSubmit(onRegister),
-        onVerifyOtp,
-        onResendOtp,
-        resetRegistration,
         honeypotProps,
     }
 }

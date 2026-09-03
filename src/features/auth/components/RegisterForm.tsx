@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Mail, User, Building2, Phone, ArrowLeft, CheckCircle2, MapPin, Gift } from "lucide-react"
+import { Loader2, Mail, User, Building2, ArrowLeft, CheckCircle2, MapPin, Gift } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,7 +13,6 @@ import {
     FormMessage,
     FormLabel,
 } from "@/components/ui/form"
-import { Label } from "@/components/ui/label"
 import {
     Select,
     SelectContent,
@@ -36,17 +35,13 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
     const {
         form,
         isLoading,
-        isAwaitingOtp,
         isSuccess,
         registeredEmail,
         onRegister,
-        onVerifyOtp,
-        onResendOtp,
-        resetRegistration,
         honeypotProps,
     } = useRegister()
 
-    const [otpValue, setOtpValue] = React.useState("")
+    const successHeadingRef = React.useRef<HTMLHeadingElement>(null)
     // No backend field for this — the account's own createdAt (set once
     // /register succeeds, which this gate blocks until checked) is the
     // acceptance timestamp, per Ricardo/Didier thread 20260801.
@@ -90,80 +85,53 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
         fetchData()
     }, [])
 
+    React.useEffect(() => {
+        if (isSuccess) successHeadingRef.current?.focus()
+    }, [isSuccess])
+
     if (isSuccess) {
         return (
-            <div className="flex flex-col items-center justify-center space-y-4 text-center animate-in fade-in zoom-in duration-300">
-                <div className="h-12 w-12 rounded-full bg-[var(--color-brand-blue)]/10 flex items-center justify-center border border-[var(--color-brand-blue)]/20">
-                    <CheckCircle2 className="h-6 w-6 text-[var(--color-brand-blue)]" />
-                </div>
-                <div className="space-y-2">
-                    <h3 className="text-xl font-bold">¡Cuenta Activada!</h3>
-                    <p className="text-sm text-muted-foreground">
-                        Tu registro se ha completado con éxito. Redirigiendo al dashboard...
-                    </p>
-                    <p className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-brand-purple)]">
-                        <Gift className="h-4 w-4" />
-                        Tu cuenta inicia con USD 10 de saldo de bienvenida.
-                    </p>
-                </div>
-                <div className="w-full flex justify-center">
-                    <Loader2 className="h-6 w-6 animate-spin text-[var(--color-brand-blue)]" />
-                </div>
-            </div>
-        )
-    }
-
-    if (isAwaitingOtp) {
-        return (
-            <div className="grid gap-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="flex flex-col space-y-2 text-center border-b pb-4">
-                    <h2 className="text-2xl font-semibold tracking-tight">Revisa tu correo</h2>
-                    <p className="text-sm text-muted-foreground">
-                        Enviamos un correo de confirmación a: <br />
-                        <span className="font-medium text-foreground">{registeredEmail}</span>
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                        Haz clic en el botón de confirmación del correo. Después de aceptar recibirás
-                        un código de verificación para ingresarlo aquí.
-                    </p>
-                    <button
-                        onClick={resetRegistration}
-                        className="text-xs text-[var(--color-brand-blue)] hover:underline mt-1"                    >
-                        Cambiar correo / Reiniciar
-                    </button>
-                </div>
-
-                <div className="grid gap-4">
-                    <div className="space-y-2">
-                        <Label>Código de 6 dígitos</Label>
-                        <Input
-                            placeholder="123456"
-                            maxLength={6}
-                            value={otpValue}
-                            onChange={(e) => setOtpValue(e.target.value)}
-                            disabled={isLoading}
-                            className="text-center text-2xl tracking-[0.5em] font-mono h-14"
-                        />
-                    </div>
-                    <Button
-                        disabled={isLoading || otpValue.length !== 6}
-                        onClick={() => onVerifyOtp(otpValue)}
-                        className="bg-[var(--color-brand-blue)] hover:bg-[#4a5be0] text-primary-foreground font-bold shadow-sm h-12"
-                    >
-                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Activar Cuenta e Iniciar Sesión
-                    </Button>
-                    <p className="text-center text-xs text-muted-foreground">
-                        ¿No recibiste el código?{" "}
-                        <button
-                            onClick={onResendOtp}
-                            disabled={isLoading}
-                            className="text-[var(--color-brand-blue)] hover:underline"
+            <div className="grid gap-6 text-center animate-in fade-in zoom-in duration-300">
+                <div className="flex flex-col items-center gap-3">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success-sunk" aria-hidden="true">
+                        <CheckCircle2 className="h-6 w-6 text-success" />
+                    </span>
+                    <div className="space-y-1">
+                        <h2
+                            ref={successHeadingRef}
+                            tabIndex={-1}
+                            className="text-2xl font-semibold tracking-tight text-ink outline-none"
                         >
-                            Reenviar (Mock)
-                        </button>
+                            ¡Bienvenido a HIT Guest!
+                        </h2>
+                        <p className="text-sm leading-relaxed text-ink-2">
+                            Tu cuenta ya está creada. Te enviamos un correo de bienvenida.
+                        </p>
+                    </div>
+                    <div className="w-full rounded-lg border border-rule bg-sunk px-4 py-3 text-left">
+                        <p className="text-xs text-ink-3">Correo de la cuenta</p>
+                        <p className="mt-0.5 break-all text-sm font-semibold text-ink">{registeredEmail}</p>
+                    </div>
+                </div>
+
+                <div className="grid gap-2">
+                    {/* Un enlace, no un botón con `window.location`: el alta no deja
+                        sesión iniciada, así que esto es una navegación normal y el
+                        usuario puede abrirla en otra pestaña si quiere. */}
+                    <Button asChild className="h-12 bg-brand-blue font-bold text-primary-foreground shadow-sm hover:bg-brand-blue/90">
+                        <Link href="/login">Iniciar sesión</Link>
+                    </Button>
+                    {/* El código de acceso lo emite el login, no el registro. Decirlo
+                        acá evita que alguien vuelva a esperar un código del alta. */}
+                    <p className="text-xs leading-relaxed text-ink-3">
+                        Al iniciar sesión te enviaremos un código de 6 dígitos a ese correo.
                     </p>
                 </div>
+
+                <p className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-[var(--color-brand-purple)]">
+                    <Gift className="h-4 w-4" />
+                    Tu cuenta inicia con USD 10 de saldo de bienvenida.
+                </p>
             </div>
         )
     }
