@@ -76,6 +76,32 @@ export function routingForMode(
 }
 
 /**
+ * Las entradas de `by_source` cuya clave NO corresponde a ningún canal del
+ * catálogo (`GET /reservation-sources`).
+ *
+ * `routingForMode` las descarta al hidratar — correcto para el payload (nunca
+ * reenviar un id que el catálogo no respalda) — pero descartarlas EN SILENCIO
+ * producía «lo veo en la tarjeta y no existe donde se edita»: la tarjeta de
+ * Automatizaciones muestra el routing crudo («Canal 1 · …», nunca oculta lo que
+ * el backend tiene) y la pestaña Documentos no dejaba ni rastro (caso real,
+ * 2026-09-03, `by_source["1"]` con el catálogo en 21/22/23). Quien hidrata usa
+ * esto para AVISAR qué quedó fuera en vez de callarlo.
+ */
+export function orphanRoutingEntries(
+    bySource: Record<string, SourceRouting> | undefined,
+    allowedSourceIds: ReadonlySet<number>,
+): Array<{ sourceKey: string; routing: SourceRouting }> {
+    return Object.entries(bySource ?? {})
+        .filter((entry): entry is [string, SourceRouting] => {
+            const [key, routing] = entry
+            if (key === ALL_SOURCES_KEY || !isSourceRouting(routing)) return false
+            const sourceId = Number(key)
+            return !Number.isInteger(sourceId) || sourceId <= 0 || !allowedSourceIds.has(sourceId)
+        })
+        .map(([sourceKey, routing]) => ({ sourceKey, routing }))
+}
+
+/**
  * A property that predates this feature (or one with no automation configured
  * yet) has `parameters: {}` — no `contract_mode`/`by_source` at all. Treat
  * that as "not configured" rather than crashing on missing fields.

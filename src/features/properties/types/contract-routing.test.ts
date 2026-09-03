@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
-import { routingForMode, summarizeContractRouting, type SourceRouting } from "./contract-routing"
+import {
+    orphanRoutingEntries, routingForMode, summarizeContractRouting, type SourceRouting } from "./contract-routing"
 
 const agreement: SourceRouting = {
     contract_type: "agreement_only",
@@ -96,3 +97,34 @@ describe("summarizeContractRouting", () => {
     })
 })
 
+
+describe("orphanRoutingEntries", () => {
+    const catalogo = new Set([21, 22, 23])
+    const routing = { contract_type: "agreement_and_guarantee", provider_slug: "tufirma" } as const
+
+    /**
+     * Caso real (2026-09-03): `by_source["1"]` con el catálogo en 21/22/23. La
+     * tarjeta lo mostraba («Canal 1 · …») y la pestaña Documentos lo filtraba
+     * sin dejar rastro — «lo veo y no puedo tocarlo». La fila descartada tiene
+     * que poder AVISARSE.
+     */
+    it("expone la clave que el catálogo no reconoce, con su routing intacto", () => {
+        expect(orphanRoutingEntries({ "1": routing, "22": routing }, catalogo))
+            .toEqual([{ sourceKey: "1", routing }])
+    })
+
+    it("no marca como huérfano lo que el editor sí puede mostrar", () => {
+        // `all` y los ids del catálogo tienen fila propia en la pantalla.
+        expect(orphanRoutingEntries({ all: routing, "21": routing }, catalogo)).toEqual([])
+        expect(orphanRoutingEntries(undefined, catalogo)).toEqual([])
+    })
+
+    it("descarta la basura que ni siquiera es un routing", () => {
+        // Una clave desconocida con un valor malformado no es una fila que el
+        // PM deba ver — no hay nada legible que mostrarle.
+        expect(orphanRoutingEntries(
+            { "9": { contract_type: "??", provider_slug: 5 } as never },
+            catalogo,
+        )).toEqual([])
+    })
+})

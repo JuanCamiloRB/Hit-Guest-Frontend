@@ -21,6 +21,7 @@ import {
 import { AUTOMATION_STATUS, isSignatureProvider, type Provider, type PropertyAutomation } from "../../types/automation"
 import {
     ALL_SOURCES_KEY,
+    orphanRoutingEntries,
     parseContractRouting,
     routingForMode,
     CONTRACT_TYPE_LABELS,
@@ -70,6 +71,25 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     const loadError = loadFailure?.key === requestKey ? loadFailure.message : null
 
     const [sources, setSources] = useState<ReservationSource[]>([])
+    // Routing guardado bajo ids que el catálogo no reconoce. No se puede editar
+    // acá (el payload nunca los reenvía), pero tampoco se calla: ver
+    // `orphanRoutingEntries`.
+    const [orphanRouting, setOrphanRouting] = useState<Array<{ sourceKey: string; routing: SourceRouting }>>([])
+
+    /**
+     * Recalcula las huérfanas desde una fila que VINO del servidor (la
+     * respuesta de `configure()` o la relectura tras un fallo). Es la única
+     * evidencia disponible de si el guardado las pisó o el backend las mergeó
+     * de vuelta — el token de esa cuenta no siempre existe para verificarlo por
+     * curl, pero cada guardado real lo responde solo: si el aviso desaparece
+     * tras guardar, el servidor reemplazó `parameters`; si reaparece, mergeó.
+     * Sin este recálculo el aviso quedaba congelado en el estado de la carga
+     * inicial y la observación no valía nada.
+     */
+    const syncOrphansFrom = (row: PropertyAutomation | null) => {
+        const allowed = new Set(sources.map((source) => source.id))
+        setOrphanRouting(orphanRoutingEntries(parseContractRouting(row?.parameters)?.by_source, allowed))
+    }
     const [providers, setProviders] = useState<Provider[]>([])
     const [automation, setAutomation] = useState<PropertyAutomation | null>(null)
     const [agreementDocs, setAgreementDocs] = useState<PropertyDocument[]>([])
@@ -150,6 +170,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 const initialRouting = routingForMode(initialMode, parsed?.by_source ?? {}, allowedSourceIds)
                 setMode(initialMode)
                 setBySource(initialRouting)
+                setOrphanRouting(orphanRoutingEntries(parsed?.by_source, allowedSourceIds))
 
                 const initialTexts: Record<string, string> = {}
                 for (const doc of docsRes.items) {
@@ -335,6 +356,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             })
             routingPersisted = true
             setAutomation(result)
+            syncOrphansFrom(result)
 
             // Refresh from the server so the next edit starts from real uuids
             // (created rows) instead of the plan's local guesses.
@@ -358,7 +380,9 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     automationService.list(propertyUuid, { includeProvider: true }),
                 ])
                 setAgreementDocs(refreshedDocs.items)
-                setAutomation(findSignatureAutomation(refreshedAutomations, providers))
+                const reconciled = findSignatureAutomation(refreshedAutomations, providers)
+                setAutomation(reconciled)
+                syncOrphansFrom(reconciled)
 
                 // `configure()` already committed and only the final refresh failed.
                 // The requested routing is live; reporting the whole save as failed
@@ -416,6 +440,31 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 </div>
                 <ContractModeToggle value={mode} onChange={handleModeChange} disabled={saving} />
             </div>
+
+            {orphanRouting.length > 0 && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                    <div className="space-y-1">
+                        <p className="font-semibold">
+                            Hay una configuración guardada para un canal que el catálogo no reconoce
+                        </p>
+                        {orphanRouting.map(({ sourceKey, routing }) => (
+                            <p key={sourceKey}>
+                                Canal {sourceKey} · {CONTRACT_TYPE_LABELS[routing.contract_type]} ·{" "}
+                                {findSignatureProvider(providers, routing.provider_slug)?.name
+                                    ?? routing.provider_slug}
+                            </p>
+                        ))}
+                        <p className="font-normal text-amber-700">
+                            No corresponde a ningún canal de reserva actual, así que no se puede
+                            editar desde aquí. Al guardar, esta pantalla envía únicamente los
+                            canales del catálogo — ese canal desconocido no se incluye. Si este
+                            aviso reaparece después de guardar, esa configuración sigue guardada
+                            en el servidor.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {showsUnsavedInference && (
                 <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
