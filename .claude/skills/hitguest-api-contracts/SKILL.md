@@ -51,6 +51,35 @@ curl -s "$API/providers?country=CO" "${H[@]}" | jq
 Para saber si una ruta existe sin credenciales: **401 = existe**, 404 = no
 existe, 405 = existe con otro método.
 
+### 0b. Alta de cuenta: el registro NO emite ningún OTP
+
+✅ **Verificado con un alta real el 2026-09-02** (correo recibido por el usuario):
+`POST /account/register` (app token) crea la cuenta y envía **solo el correo de
+bienvenida** — «Welcome aboard… Log in to my account». **No manda código.**
+
+El código de 6 dígitos lo emite **`POST /auth/login`**, y el registro nunca lo
+llama. Son dos flujos distintos que comparten el mismo endpoint de verificación:
+
+```
+Alta:   POST /account/register  → correo de bienvenida. Fin.
+Acceso: POST /auth/login {email} → correo con el código
+        POST /auth/verify-otp {email, otp} → sesión
+```
+
+⚠️ **`POST /auth/resend-otp` no sirve para un correo recién registrado.**
+Necesita una sesión OTP previa creada por `/auth/login`, que en el alta no
+existe. Observado (2026-09-01, contra **producción**): tras un
+`/account/register` que respondió **201**, el reenvío para ese mismo correo
+respondió **502**. Pedido para backend: que devuelva un 4xx explicando la causa
+en vez de reventar — un 502 se lee como caída del servicio y hace que el
+frontend reintente algo que nunca puede funcionar.
+
+**Qué se rompe si se asume mal**: el frontend tenía una pantalla de OTP después
+del registro. Pedía un código que el backend jamás había enviado, y «Reenviar»
+llamaba a un endpoint que no podía funcionar. La cuenta quedaba creada y el
+usuario encerrado. Corregido el 2026-09-02: el alta termina en una pantalla de
+bienvenida con enlace a `/login`, que es donde el código sí se emite.
+
 ---
 
 ## 1. Automatizaciones de propiedad
@@ -352,6 +381,35 @@ fila real vía `readExternalIdentifierServerErrors` en ambos formularios. Todo
 lo derivable vive en `lib/external-pms-ids.ts` (19 tests). Ya estaba resuelto:
 select desde `catalogService.getPmsSources()` (categoría 12) y dedupe cliente.
 
+### ❌ `extra.currency` de un Listing NO persiste — el backend la descarta en silencio
+
+✅ **Verificado por curl el 2026-09-03** (cuenta de prueba, propiedad y listing
+creados y borrados en la misma sesión):
+
+```bash
+POST /listings  {"extra":{"currency":"USD","startPrice":150,...}}  → 201
+# extra devuelto: {bedRoom, bathRoom, maxOccupancy, startPrice, amenities} — SIN currency
+PUT  /listings/{uuid}  {"currency":"USD","extra":{"currency":"USD"}}  → 200
+GET  /listings/{uuid}  → extra sin currency, currency top-level ausente
+```
+
+Ni `extra.currency` ni un `currency` top-level sobreviven: el backend tiene una
+whitelist de claves de `extra` (conserva `startPrice`, `maxOccupancy`,
+`bedRoom`, `bathRoom`, agrega `amenities`) y descarta el resto **con 200/201**.
+Mismo patrón que `internal_name` en el extra de Propiedades.
+
+**Qué rompe**: el selector de Moneda del formulario de unidades es una ilusión
+— el PM elige USD, la pantalla lo muestra "guardado" (la rehidratación cae al
+estado local: `apiData.extra?.currency || unitForm.extra.currency`), pero el
+servidor no tiene ninguna moneda. Por eso el prefill de moneda del diálogo de
+Nueva Reserva (que SÍ está bien escrito y desplegado: `handleListingChange` lee
+`extra.currency` del `GET /listings/{uuid}`) nunca encuentra nada y cae al
+default COP. Reporte de Didier del 2026-09-03: "el anuncio fue creado en USD y
+la reserva sale en COP".
+
+**El fix es de backend** (persistir la moneda del listing); en el front no hay
+nada que inventar — cuando la clave llegue, el prefill existente la usa solo.
+
 ### ❌ `internal_name` NO existe a nivel Propiedad — solo Listings
 
 Confirmado por el dueño del backend (2026-08-18): *«El campo `internal_name` solo
@@ -465,6 +523,48 @@ regla **ya no aplica**. El contrato es opt-in.
 
 ⚠️ Identificar la fila de firma por `provider.parameters.signature`, **jamás** por
 `executionOrder === 3`.
+
+### ⚠️ `by_source` con un id que el catálogo no reconoce → fila visible pero ineditable
+
+Caso real (2026-09-03): una automatización de Contrato llegó con
+`parameters.by_source["1"]` (garantía y alquiler · TuFirma). ✅ **Verificado por
+curl el 2026-09-03**: `GET /reservation-sources` NO contiene el id 1. Catálogo
+completo observado: Directo=21 **(order 1)**, Airbnb=22, Booking.com=23,
+Vrbo=24, Despegar=25, Expedia=26, Desconocido=107, KunasPMS=135, Calry=845,
+Agoda=846, Google Calendar=847, Google Ads=848, Hostelworld=849, HotelBeds=850,
+Trip.com=851, TripAdvisor=852. (El front excluye del picker 845 y 107; ⚠️ 135
+KunasPMS y 847 Google Calendar también parecen integraciones técnicas más que
+canales de contrato — decisión de producto pendiente.)
+
+⚠️ Hipótesis con sustento pero sin confirmar: **"Canal 1" sería Directo guardado
+por su `order` (1) en vez de su `id` (21)** — algún escritor confundió los dos
+campos. Confirmable solo por backend (quién escribió esa fila).
+
+Consecuencia en el front:
+
+- La **tarjeta** de Automatizaciones muestra el routing crudo con fallback
+  «Canal 1» (decisión deliberada: nunca ocultar una fila que el backend tiene).
+- La pestaña **Documentos** hidrata filtrando por `allowedSourceIds`
+  (`routingForMode`), así que esa clave **no aparece y no se puede editar**
+  desde la UI. Las dos pantallas son coherentes con sus reglas, pero juntas
+  producen «lo veo y no puedo tocarlo».
+
+Editar SÍ tiene endpoint: `PATCH /property-automations/{uuid}/configure` con el
+`parameters` completo — es el que usa la propia pantalla al guardar
+(`ContractRoutingSection`, secuencia documents→configure). Guardar una config
+válida debería pisar la clave huérfana… **si** configure con `parameters`
+presente hace replace del objeto y no merge profundo. ⚠️ No verificado — es la
+misma familia de dudas que el merge/replace con `parameters` OMITIDO (abierto
+desde 2026-08-21). **El token de esa cuenta no está disponible**, así que la
+verificación quedó instrumentada en el propio front (2026-09-03): la pestaña
+Documentos recalcula el aviso de canal huérfano desde los `parameters` que
+DEVUELVE `configure()` (y desde la relectura tras un fallo). El próximo guardado
+real responde solo: **aviso desaparece = replace · aviso reaparece = merge** —
+en ese caso el copy ya le dice al PM que la config sigue en el servidor.
+
+Pendiente con backend: ¿qué es el id 1 en su catálogo, y quién escribió ese
+routing? Ninguna versión de esta pantalla pudo — el picker solo ofrece ids del
+catálogo.
 
 ### Firma nativa — request/response de `/main/sign` (primera firma real: 2026-08-14)
 
@@ -649,6 +749,30 @@ nullable; si garantizan que siempre viene, la validación runtime queda como
 detector de violaciones de contrato. Precedente de por qué importa:
 `guaranteeAmount` tuvo que redeclararse `string | number | null` cuando se vio lo
 que realmente llegaba.
+
+## 2d-bis. De dónde sale el monto de la garantía (el "USD 200")
+
+⚠️ *Auditado en código el 2026-09-03 (pedido de producto: que el monto sea el
+capturado en el contrato de garantía, no 200).*
+
+- El portal del huésped pinta `{currency} {amount}` con el **`guaranteeAmount`
+  del setup-intent** (`GuaranteeCardForm.tsx:162,475`) — el "USD 200" NO está en
+  el front; llega del backend (y puede llegar como string `"200"`).
+- Por diseño del plan vigente (PLAN_CONTRATOS_POR_SOURCE §5): el texto del
+  anexo de garantía es un **system document global** (`GET
+  /system-documents/slug/damage_consumption_guarantee`) cuyos shortcodes
+  (`guarantee_amount`, `guarantee_mechanism`, `guarantee_release_hours`,
+  `damage_catalog_url`) viven en su `extra` y son `null` hasta que **HitGuest
+  staff** los configure con una herramienta interna que este repo no construye.
+  El PM solo PREVISUALIZA (GuaranteePreview, read-only, con aviso de variables
+  sin resolver).
+- `SourceRouting` = `{contract_type, provider_slug}` — **no existe ningún campo
+  de monto capturable por el PM** en el front ni en el contrato conocido.
+
+⇒ Hacer capturable el monto es un CAMBIO de contrato y de producto (¿por canal
+en `by_source`? ¿por propiedad? ¿global?), no un fix de front. No inventar la
+clave: el precedente de `extra.currency` y `internal_name` demuestra que este
+backend descarta claves no contratadas con 200.
 
 ## 2e. El gate del `verificationToken` — tres causas bajo un mismo 401
 
@@ -960,6 +1084,17 @@ muestra el `digest` como referencia en pantalla.
   tiene otra fila); no se necesita endpoint nuevo para mostrarlo — todo lo que
   la tarjeta enumera sale de ese GET + `/reservation-sources` + `/providers`.
 - `didit`/`textract` sin `applicable_countries` en la respuesta de la API.
+- **Consumo de reservas eliminadas (pedido de producto 2026-09-03):** el
+  cliente podrá eliminar reservas de Operaciones sin que su consumo desaparezca
+  del Tablero de saldos. El tablero HOY se alimenta de `GET /reservations` +
+  `GET /reservations/{uuid}/automation-records` por reserva, así que la
+  eliminación la borra de la contabilidad visible. Falta saber: ¿`DELETE
+  /reservations/{uuid}` es soft-delete recuperable por query (`withTrashed` o
+  similar en el index)? ¿`automation-records` responde para una reserva
+  eliminada (la CANCELADA da 404 en el show, §2g)? ¿O existe/puede existir un
+  endpoint de consumo a nivel CUENTA que embeba el snapshot de la reserva
+  (huésped, unidad, check-in)? Sin una de las tres, el pedido no es
+  implementable solo desde el front.
 - Si `POST /properties` va a respetar el array `automations` o dejar de pedirlo.
 
 El detalle con evidencia está en `docs/BACKEND_NEEDS_PROPERTY_AUTOMATIONS.md`.
