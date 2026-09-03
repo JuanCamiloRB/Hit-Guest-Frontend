@@ -36,12 +36,14 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
             {
                 value: "didit",
                 label: "Verificación avanzada",
+                shortLabel: "avanzada",
                 description: "Reconocimiento facial y verificación de documento en tiempo real. El huésped completa la verificación directamente en el check-in.",
                 parametersSchema: [],
             },
             {
                 value: "textract",
                 label: "Verificación esencial",
+                shortLabel: "esencial",
                 description: "El huésped sube fotos de su documento. La IA extrae y valida los datos automáticamente.",
                 parametersSchema: [],
             },
@@ -64,12 +66,14 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
             {
                 value: "didit",
                 label: "Verificación avanzada",
+                shortLabel: "avanzada",
                 description: "Reconocimiento facial y verificación de documento en tiempo real.",
                 parametersSchema: [],
             },
             {
                 value: "textract",
                 label: "Verificación esencial",
+                shortLabel: "esencial",
                 description: "El huésped sube fotos de su documento. La IA extrae y valida los datos automáticamente.",
                 parametersSchema: [],
             },

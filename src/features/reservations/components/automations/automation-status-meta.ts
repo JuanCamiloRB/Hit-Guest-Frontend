@@ -1,6 +1,6 @@
 import type { StatusTone } from "@/components/ui/status-pill"
 import { AUTOMATION_DEFINITIONS } from "@/features/properties/data/automation-definitions"
-import { canonicalSlug } from "@/features/properties/services/automation-service"
+import { PROVIDER_LABELS_BY_SLUG } from "@/features/properties/lib/provider-labels"
 import type {
     AutomationLiveStatus,
     AutomationStatusItem,
@@ -89,16 +89,9 @@ export const MANUALLY_DISPATCHABLE_SLUGS: ReadonlySet<string> = new Set([
  * "AWS Textract" en Operaciones le hablaba de un proveedor que él nunca vio,
  * con un vocabulario distinto al de la pantalla donde lo configuró.
  */
-const PROVIDER_LABELS_FROM_DEFINITIONS: Record<string, string> = Object.fromEntries(
-    AUTOMATION_DEFINITIONS.flatMap((definition) =>
-        definition.providerOptions.map(
-            // Las definiciones escriben los slugs con guion ("pdf-report") y
-            // `normalizeStatusItem` los canonicaliza a guion bajo, así que sin
-            // esto las claves derivadas no cruzarían con las que llegan del API.
-            (option) => [canonicalSlug(option.value), option.label] as const,
-        ),
-    ),
-)
+// La derivación vive en `properties/lib/provider-labels.ts`: la comparten estas
+// filas, las insignias de propiedad y la ficha de documentos del huésped.
+const PROVIDER_LABELS_FROM_DEFINITIONS = PROVIDER_LABELS_BY_SLUG
 
 /**
  * El SUBTÍTULO de una fila. Debe decir algo que el título no diga ya: la

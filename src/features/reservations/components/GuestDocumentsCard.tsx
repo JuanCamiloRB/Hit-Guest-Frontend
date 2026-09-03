@@ -5,7 +5,6 @@ import {
     reservationsService,
     isVerifiedGuestStatus,
     type ReservationGuest,
-    type ReservationGuestVerificationStatus,
 } from "../services/reservations-service"
 import { SectionCard } from "@/components/ui/section-card"
 import { StatusPill } from "@/components/ui/status-pill"
@@ -22,7 +21,7 @@ import {
 import { AuthenticatedImage } from "./AuthenticatedImage"
 import {
     describeDocumentOrigin,
-    describeIdentityMethod,
+    describeIdentityStatus,
     describeMissingImages,
 } from "./identity-document-meta"
 
@@ -208,7 +207,7 @@ function GuestDocumentRow({
     const hasDocuments = guest.documentImage1 || guest.documentImage2
     const isIdentityVerified = isVerifiedGuestStatus(guest.verificationStatus)
     const verifiedAt = formatVerifiedAt(guest.verifiedAt)
-    const methodMeta = describeIdentityMethod(guest.identityDocument)
+    const identityMeta = describeIdentityStatus(guest.identityDocument, guest.verificationStatus)
 
     return (
         <div className="space-y-3 rounded-xl border border-rule p-4">
@@ -238,22 +237,11 @@ function GuestDocumentRow({
                         </div>
                     </div>
                 </div>
+                {/* Una sola pastilla: el estado de identidad, con el tipo de
+                    verificación como atributo suyo. El estado del check-in NO se
+                    repite acá — vive arriba, en la cabecera de la reserva. */}
                 <div className="flex flex-wrap justify-end gap-1.5">
-                    {/* Cómo superó identidad EN esta reserva; puede diferir de quién
-                        capturó la foto (el recurrente por OTP trae una de Didit). */}
-                    {methodMeta && (
-                        <StatusPill tone={methodMeta.tone}>{methodMeta.label}</StatusPill>
-                    )}
-                    <StatusBadge
-                        completed={isIdentityVerified}
-                        completedLabel="Identidad verificada"
-                        pendingLabel={verificationPendingLabel(guest.verificationStatus)}
-                    />
-                    <StatusBadge
-                        completed={guest.isCheckinCompleted}
-                        completedLabel="Check-in completo"
-                        pendingLabel="Check-in pendiente"
-                    />
+                    <StatusPill tone={identityMeta.tone}>{identityMeta.label}</StatusPill>
                 </div>
             </div>
 
@@ -284,36 +272,6 @@ function GuestDocumentRow({
                 </div>
             )}
         </div>
-    )
-}
-
-function verificationPendingLabel(status: ReservationGuestVerificationStatus): string {
-    if (status === "in_review") return "Identidad en revisión"
-    if (status === "in_progress" || status === "pending") return "Verificación en proceso"
-    if (status === "rejected" || status === "fail" || status === "expired") {
-        return "Verificación con incidencia"
-    }
-    return "Identidad pendiente"
-}
-
-/**
- * Ahora delega en `StatusPill` en lugar de repintar su propio verde/ámbar: es
- * el mismo estado que muestran las automatizaciones justo encima, y con dos
- * paletas distintas se leía como si fueran cosas diferentes.
- */
-function StatusBadge({
-    completed,
-    completedLabel,
-    pendingLabel,
-}: {
-    completed: boolean
-    completedLabel: string
-    pendingLabel: string
-}) {
-    return (
-        <StatusPill tone={completed ? "success" : "warning"}>
-            {completed ? completedLabel : pendingLabel}
-        </StatusPill>
     )
 }
 

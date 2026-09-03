@@ -1,4 +1,5 @@
 import { canonicalSlug } from "../services/automation-service"
+import { IDENTITY_PROVIDER_SLUGS, providerLabel } from "./provider-labels"
 import { CONTRACT_TYPE_LABELS, summarizeContractRouting } from "../types/contract-routing"
 
 /**
@@ -26,21 +27,19 @@ export interface PropertyBadge {
 const ACTIVE_STATUS = 8
 
 /**
- * Etiquetas cortas por slug. Presentación pura (el backend dice QUÉ hay
- * encendido; esto decide cómo nombrarlo en una insignia): las de identidad
- * reusan el naming ya establecido en `automation-definitions.ts`
- * ("Verificación avanzada" = didit, "Verificación esencial" = textract).
+ * Etiquetas cortas por slug. Presentación pura: el backend dice QUÉ hay
+ * encendido y esto decide cómo nombrarlo en una insignia.
+ *
+ * Las de identidad NO se escriben acá: salen de `provider-labels.ts`, que las
+ * deriva de `automation-definitions.ts`. Estaban copiadas a mano y el comentario
+ * decía que "reusaban" ese naming — copiar no es reusar, y es así como una
+ * pantalla se queda con el nombre viejo después de un rename.
  */
 const OPS_LABELS: Record<string, string> = {
     tra_colombia: "TRA",
     sire_colombia: "SIRE",
     ttlock: "TTLock",
     pdf_report: "Reporte PDF",
-}
-
-const IDENTITY_LABELS: Record<string, string> = {
-    didit: "Verificación avanzada",
-    textract: "Verificación esencial",
 }
 
 const SIGNATURE_SLUGS = new Set(["tufirma", "hitguest_signature"])
@@ -78,8 +77,8 @@ export function derivePropertyBadges(rows: PropertyAutomationOverviewRow[] | nul
         const slug = canonicalSlug(row.providerSlug)
         if (!slug) continue
 
-        if (IDENTITY_LABELS[slug]) {
-            push({ key: `identity:${slug}`, label: IDENTITY_LABELS[slug], kind: "identity" })
+        if (IDENTITY_PROVIDER_SLUGS.has(slug)) {
+            push({ key: `identity:${slug}`, label: providerLabel(slug) ?? slug, kind: "identity" })
             continue
         }
 

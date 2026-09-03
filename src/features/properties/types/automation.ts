@@ -303,6 +303,17 @@ export interface ParameterFieldSchema {
 export interface ProviderOption {
   value: string                         // must match provider.parameters.slug
   label: string
+  /**
+   * El label sin el sustantivo, para componerlo dentro de otra frase
+   * ("Identidad verificada · avanzada"). Vive junto al `label` a propósito:
+   * las dos formas del MISMO nombre se renombran a la vez o divergen, que es
+   * exactamente lo que pasó cuando el detalle de reserva se quedó diciendo
+   * "Verificado con Didit" después del rename a "Verificación avanzada".
+   *
+   * Solo lo llenan las opciones cuyo nombre se reusa en otra frase (hoy, las
+   * de identidad). Sin él, quien componga cae al `label` completo.
+   */
+  shortLabel?: string
   description: string
   parametersSchema: ParameterFieldSchema[]
   /**

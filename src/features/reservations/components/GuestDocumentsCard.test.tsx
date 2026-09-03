@@ -42,8 +42,55 @@ beforeEach(() => {
     vi.spyOn(console, "error").mockImplementation(() => {})
 })
 
+describe("GuestDocumentsCard — estado de identidad", () => {
+    it("muestra una sola pastilla, con el tipo de verificación como atributo", async () => {
+        getGuests.mockResolvedValue([makeGuest({
+            documentImage1: "https://api/front",
+            identityDocument: {
+                ...EMPTY_IDENTITY_DOCUMENT,
+                front: "https://api/front",
+                method: "didit",
+                capturedBy: "didit",
+                origin: "esta-estancia",
+                isReported: true,
+            },
+        })])
+
+        render(<GuestDocumentsCard reservationUuid="res-1" />)
+
+        expect(await screen.findByText("Identidad verificada · avanzada")).toBeInTheDocument()
+        expect(screen.queryByText(/didit/i)).not.toBeInTheDocument()
+    })
+
+    /**
+     * El estado del check-in vive en la cabecera de la reserva. Repetirlo por
+     * huésped daba dos pastillas verdes para dos hechos distintos y hacía leer
+     * la ficha como un segundo tablero.
+     */
+    it("no repite el estado del check-in, que ya está en la cabecera", async () => {
+        getGuests.mockResolvedValue([makeGuest({ isCheckinCompleted: true })])
+
+        render(<GuestDocumentsCard reservationUuid="res-1" />)
+        await screen.findByText("Identidad verificada")
+
+        expect(screen.queryByText(/Check-in/i)).not.toBeInTheDocument()
+    })
+
+    it("con la verificación pendiente describe el estado y no inventa un tipo", async () => {
+        getGuests.mockResolvedValue([makeGuest({
+            verificationStatus: "in_review",
+            identityDocument: { ...EMPTY_IDENTITY_DOCUMENT, method: "didit", isReported: true },
+        })])
+
+        render(<GuestDocumentsCard reservationUuid="res-1" />)
+
+        expect(await screen.findByText("Identidad en revisión")).toBeInTheDocument()
+        expect(screen.queryByText(/avanzada/i)).not.toBeInTheDocument()
+    })
+})
+
 describe("GuestDocumentsCard — procedencia del documento", () => {
-    it("muestra el método con el que el huésped superó identidad", async () => {
+    it("nombra el camino del huésped recurrente sin llamarlo verificación documental", async () => {
         getGuests.mockResolvedValue([makeGuest({
             documentImage1: "https://api/front",
             identityDocument: {
@@ -58,7 +105,7 @@ describe("GuestDocumentsCard — procedencia del documento", () => {
 
         render(<GuestDocumentsCard reservationUuid="res-1" />)
 
-        expect(await screen.findByText("Reverificado por código")).toBeInTheDocument()
+        expect(await screen.findByText("Identidad verificada · por código")).toBeInTheDocument()
     })
 
     it("avisa en el modal que la foto es de otra estancia, con quién la capturó", async () => {
@@ -138,7 +185,8 @@ describe("GuestDocumentsCard — estados vacíos", () => {
 
         render(<GuestDocumentsCard reservationUuid="res-1" />)
 
-        expect(await screen.findByText(/conserva la evidencia/i)).toBeInTheDocument()
+        expect(await screen.findByText(/Verificación avanzada: el proveedor conserva la evidencia/i))
+            .toBeInTheDocument()
     })
 
     it("no afirma nada sobre el documento cuando no se pudo preguntar", async () => {

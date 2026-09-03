@@ -1,9 +1,15 @@
 import type { StatusTone } from "@/components/ui/status-pill"
+import { providerLabel, providerShortLabel } from "@/features/properties/lib/provider-labels"
 import {
     hasIdentityImages,
     type GuestIdentityDocument,
     type IdentityCapturedBy,
+    type IdentityMethod,
 } from "../lib/identity-document"
+import {
+    isVerifiedGuestStatus,
+    type ReservationGuestVerificationStatus,
+} from "../services/reservations-service"
 
 /**
  * Cómo se le cuenta al PM de dónde salió el documento que está mirando.
@@ -17,28 +23,91 @@ import {
  * de OTRA estancia, y hoy eso es invisible en la pantalla.
  */
 
-export interface IdentityMethodMeta {
+export interface IdentityStatusMeta {
     label: string
     tone: StatusTone
 }
 
 /**
- * Pastilla del método de verificación.
+ * A qué opción de Propiedades corresponde cada método que manda el portal.
  *
- * `null` = no se muestra pastilla. Sin método conocido, al lado ya hay un
- * `StatusPill` que dice si la identidad está verificada; agregar «Sin
- * verificación registrada» repetiría ese estado con otras palabras.
+ * Escrito como `Record<IdentityMethod, …>` a propósito: si el backend agrega un
+ * método al contrato, TypeScript obliga a decidir acá cómo se llama, en vez de
+ * dejarlo caer en silencio a «sin tipo».
  *
- * El OTP va en `idle` y no en `info` a propósito: es un código al correo que
- * prueba posesión del contacto, no una verificación documental hecha en esta
- * estancia. Pintarlo igual que Didit haría leer «documento verificado» donde no
- * lo hubo.
+ * Los slugs NO cruzan solos: Propiedades usa `textract` y el portal manda
+ * `textract-ocr` (`canonicalSlug` solo cambia guiones por guiones bajos, así que
+ * daría `textract_ocr` y no encontraría nada).
+ *
+ * `otp` no mapea a ninguno, y eso es el contrato, no un hueco: no es un
+ * proveedor que el PM configure, es el camino del huésped recurrente.
  */
-export function describeIdentityMethod(doc: GuestIdentityDocument): IdentityMethodMeta | null {
-    if (doc.method === "didit") return { label: "Verificado con Didit", tone: "info" }
-    if (doc.method === "textract-ocr") return { label: "Verificado con IA de HIT", tone: "info" }
-    if (doc.method === "otp") return { label: "Reverificado por código", tone: "idle" }
-    return null
+const PROVIDER_SLUG_BY_METHOD: Record<IdentityMethod, string | null> = {
+    didit: "didit",
+    "textract-ocr": "textract",
+    otp: null,
+}
+
+/**
+ * El OTP se nombra acá y no en Propiedades porque no es una opción que el PM
+ * pueda elegir: es lo que ocurre cuando el huésped ya se verificó antes.
+ */
+const OTP_TYPE_LABEL = "por código"
+
+/**
+ * El tipo de verificación **en el vocabulario del PM** («avanzada»,
+ * «esencial»), listo para componerse dentro de otra frase.
+ *
+ * Sale de `provider-labels.ts`, que lo deriva de las mismas definiciones que
+ * pintan el selector de la propiedad: acá no se escribe «avanzada» ni
+ * «esencial», así que un rename en Propiedades llega solo.
+ *
+ * `null` = el backend no dijo con qué se verificó (combinación observada en
+ * producción). Sin dato no se compone nada: el estado se muestra a secas.
+ */
+function describeVerificationType(doc: GuestIdentityDocument): string | null {
+    if (!doc.method) return null
+    if (doc.method === "otp") return OTP_TYPE_LABEL
+    return providerShortLabel(PROVIDER_SLUG_BY_METHOD[doc.method])
+}
+
+/**
+ * La ÚNICA pastilla de identidad de la ficha.
+ *
+ * El tipo de verificación es un **atributo** del estado, no una etiqueta
+ * paralela: antes convivían «Verificado con Didit» y «Identidad verificada», dos
+ * pastillas para un mismo hecho, y encima la primera le nombraba al PM un
+ * proveedor que nunca vio.
+ *
+ * Sin verificación superada no se compone ningún tipo: un `method` presente con
+ * la verificación rechazada describe un intento, no un resultado.
+ */
+export function describeIdentityStatus(
+    doc: GuestIdentityDocument,
+    status: ReservationGuestVerificationStatus,
+): IdentityStatusMeta {
+    if (!isVerifiedGuestStatus(status)) {
+        return { label: verificationPendingLabel(status), tone: "warning" }
+    }
+    const type = describeVerificationType(doc)
+    return {
+        label: type ? `Identidad verificada · ${type}` : "Identidad verificada",
+        tone: "success",
+    }
+}
+
+/**
+ * Qué decir mientras la identidad no está superada. Distingue los estados que
+ * el PM puede accionar (una incidencia se atiende; una verificación en curso se
+ * espera) del «todavía no empezó».
+ */
+export function verificationPendingLabel(status: ReservationGuestVerificationStatus): string {
+    if (status === "in_review") return "Identidad en revisión"
+    if (status === "in_progress" || status === "pending") return "Verificación en proceso"
+    if (status === "rejected" || status === "fail" || status === "expired") {
+        return "Verificación con incidencia"
+    }
+    return "Identidad pendiente"
 }
 
 function capturedByLabel(capturedBy: IdentityCapturedBy | null): string | null {
@@ -119,9 +188,16 @@ export function describeMissingImages(
 ): string {
     // El backend respondió y dijo que no hay imágenes: se puede ser específico.
     if (doc.isReported) {
-        const method = describeIdentityMethod(doc)
-        return method
-            ? `${method.label}; el proveedor conserva la evidencia y no expone las imágenes.`
+        // Dos condiciones, y las dos hacen falta:
+        //  - la identidad tiene que estar SUPERADA, porque "el proveedor conserva
+        //    la evidencia" explica un éxito; con la verificación en revisión o
+        //    rechazada, esa frase afirmaría un resultado que todavía no hay;
+        //  - tiene que haber un proveedor, porque el OTP no verifica documento en
+        //    esta reserva y atribuirle evidencia retenida sería inventar el motivo.
+        const provider = isIdentityVerified && doc.method ? PROVIDER_SLUG_BY_METHOD[doc.method] : null
+        const label = provider ? providerLabel(provider) : null
+        return label
+            ? `${label}: el proveedor conserva la evidencia y no expone las imágenes.`
             : "Sin imágenes de documento para esta reserva."
     }
     // No se pudo preguntar: no afirmar nada sobre el documento.
