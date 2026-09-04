@@ -10,6 +10,7 @@ import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { DateField } from "@/features/checkin/components/DateField"
+import { attemptsRemainingNotice, describeVerificationFailure } from "@/features/checkin/components/verification-failure-meta"
 import { CatalogService } from "@/features/auth/services/catalog-service"
 import type { OCRResult, IdentifySessionData } from "@/features/checkin/types/checkin"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
@@ -52,14 +53,6 @@ const DIDIT_ERROR_MESSAGES: Record<string, string> = {
 const KYC_RESTART_MESSAGE =
     "No pudimos abrir la validación de tu documento. Intenta de nuevo — no necesitas repetir el reconocimiento facial."
 
-/**
- * `ocr_rejected`: a diferencia de un rechazo de Didit, el huésped puede
- * reintentar de inmediato con mejores fotos. Mandarlo al anfitrión sería un
- * callejón sin salida.
- */
-const OCR_REJECTED_MESSAGE =
-    "No pudimos leer bien tu documento. Intenta de nuevo con fotos más claras y buena luz."
-
 /** How the guest can recover from a document/selfie verification error. */
 type RetryScope = "selfie" | "documents" | "all" | "none"
 
@@ -100,6 +93,14 @@ export function VerifyScreen({
     const [sessionLoaded, setSessionLoaded] = useState(false)
 
     const [verificationState, setVerificationState] = useState<"idle" | "verifying" | "polling" | "waiting_portal" | "ocr_confirm" | "failed" | "expired" | "stale">("idle")
+    /**
+     * Del contrato 2026-09-02: `canRetry` decide entre fallo reparable y
+     * definitivo, y `attemptsRemaining` avisa cuando el margen aprieta. Default
+     * `true`: los caminos de fallo que no pasan por el reconciliador (didit_error
+     * en la URL, 404, portal caído) conservan su botón de siempre.
+     */
+    const [failureRetryable, setFailureRetryable] = useState(true)
+    const [failureAttemptsRemaining, setFailureAttemptsRemaining] = useState<number | undefined>(undefined)
     const [progress, setProgress] = useState(0)
     const [frontFile, setFrontFile] = useState<File | null>(null)
     const [backFile, setBackFile] = useState<File | null>(null)
@@ -360,14 +361,11 @@ export function VerifyScreen({
             }
             if (outcome.status === "failed") {
                 stopPolling()
-                const msg = outcome.retryable || outcome.failureReason === "ocr_rejected"
-                    ? OCR_REJECTED_MESSAGE
-                    : outcome.failureReason === "expired"
-                        ? "Tu documento está vencido."
-                        : outcome.failureReason === "fail"
-                            ? "La verificación no pudo completarse. Intenta de nuevo."
-                            : "La verificación fue rechazada. Contacta al anfitrión si necesitas ayuda."
+                const retryable = outcome.retryable ?? false
+                const msg = describeVerificationFailure(outcome.failureReason, retryable)
                 setFailureMessage(msg)
+                setFailureRetryable(retryable)
+                setFailureAttemptsRemaining(outcome.attemptsRemaining)
                 setVerificationState("failed")
                 toast.error(msg)
                 return true
@@ -688,6 +686,8 @@ export function VerifyScreen({
 
     const handleRetry = () => {
         setVerificationState("idle")
+        setFailureRetryable(true)
+        setFailureAttemptsRemaining(undefined)
         setProgress(0)
         setFrontFile(null)
         setBackFile(null)
@@ -704,6 +704,8 @@ export function VerifyScreen({
      * the guest back to /identify to request a fresh verification session.
      */
     const handleResetVerification = () => {
+        setFailureRetryable(true)
+        setFailureAttemptsRemaining(undefined)
         pollGenerationRef.current = null
         if (pollingRef.current) clearTimeout(pollingRef.current)
         lastLaunchedUrlRef.current = null
@@ -860,10 +862,19 @@ export function VerifyScreen({
                         2026-09-04, anexo al caso del escaneo con el lente sucio). */}
                     <p className="text-slate-500 text-sm max-w-xs">
                         Puede deberse a una captura del documento poco nítida, con poca luz
-                        o con sombras. Vuelve al inicio e inténtalo de nuevo cuidando la
-                        imagen. Si sigue sin funcionar, contacta al anfitrión.
+                        o con sombras. Puedes continuar la verificación donde quedó —
+                        cuida la nitidez y la luz de la imagen. Si sigue sin funcionar,
+                        contacta al anfitrión.
                     </p>
                 </div>
+                <button
+                    type="button"
+                    onClick={handleResetVerification}
+                    className="flex items-center gap-2 h-12 px-6 bg-brand-purple text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
+                >
+                    <RotateCcw size={18} />
+                    Continuar verificación
+                </button>
                 <Link
                     href={basePath}
                     onClick={() => {
@@ -918,7 +929,11 @@ export function VerifyScreen({
     if (verificationState === "failed") {
         // Non-retryable OCR/face errors (expired, duplicate, number mismatch): no
         // retry button — the guest can't self-recover, so point them to the host.
-        const isHardStop = docErrorType != null && DOC_ERROR_UI[docErrorType]?.retry === "none"
+        // `failureRetryable` es la misma decisión venida del backend (contrato
+        // 2026-09-02, canRetry): un fallo definitivo no puede ofrecer reintento.
+        const isHardStop =
+            (docErrorType != null && DOC_ERROR_UI[docErrorType]?.retry === "none") || !failureRetryable
+        const attemptsNotice = attemptsRemainingNotice(failureAttemptsRemaining)
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
                 <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center border border-red-100">
@@ -929,6 +944,9 @@ export function VerifyScreen({
                     <p className="text-slate-500 text-sm max-w-xs">
                         {failureMessage || "No pudimos verificar tu identidad. Por favor intenta de nuevo con fotos más claras."}
                     </p>
+                    {!isHardStop && attemptsNotice && (
+                        <p className="text-xs font-semibold text-amber-600">{attemptsNotice}</p>
+                    )}
                 </div>
                 {isHardStop ? (
                     <Link
@@ -940,11 +958,15 @@ export function VerifyScreen({
                     </Link>
                 ) : (
                     <button
+                        // Sesión Didit: SIEMPRE via reset → /identify, que emite la
+                        // sesión nueva. La `verificationUrl` de un rechazo apunta a
+                        // la sesión ya resuelta — reabrirla no hace nada (trampa §4
+                        // del contrato 2026-09-02).
                         onClick={verification?.type === "session" ? handleResetVerification : handleRetry}
                         className="flex items-center gap-2 h-12 px-6 bg-brand-purple text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                     >
                         <RotateCcw size={18} />
-                        Intentar de nuevo
+                        Repetir verificación
                     </button>
                 )}
             </div>

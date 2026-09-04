@@ -163,3 +163,69 @@ describe("normalizeVerificationResult — §A traducida a decisiones", () => {
         })
     })
 })
+
+describe("contrato 2026-09-02: in_review y abandoned como fallos reintentables", () => {
+    // Payloads REALES del documento de backend (§3), no escritos de memoria.
+    it("in_review con foto borrosa llega como fallo reparable con su motivo e intentos", () => {
+        const out = normalizeVerificationResult({
+            verification: {
+                status: "in_review",
+                currentStep: "rejected",
+                sessionType: "kyc",
+                isStale: false,
+                canRetry: true,
+                attemptsRemaining: 2,
+                failureReason: "document_image_quality",
+                verificationUrl: "https://verify.didit.me/s/kyc",
+            },
+        })
+        expect(out).toEqual({
+            status: "failed",
+            retryable: true,
+            failureReason: "document_image_quality",
+            attemptsRemaining: 2,
+        })
+    })
+
+    it("abandoned es reintentable sin motivo estructurado (antes se colapsaba en rechazo permanente)", () => {
+        const out = normalizeVerificationResult({
+            verification: {
+                status: "abandoned",
+                currentStep: "rejected",
+                canRetry: true,
+                attemptsRemaining: 2,
+                failureReason: null,
+                verificationUrl: "https://verify.didit.me/s/bio",
+            },
+        })
+        expect(out.status).toBe("failed")
+        expect(out.retryable).toBe(true)
+        // El null del backend NO se pasa como motivo: cae al legacy para que el
+        // copy tenga siempre una llave.
+        expect(out.failureReason).toBe("rejected")
+    })
+
+    it("canRetry: false es fallo definitivo aunque el motivo exista", () => {
+        const out = normalizeVerificationResult({
+            verification: { status: "rejected", currentStep: "rejected", canRetry: false, attemptsRemaining: 0 },
+        })
+        expect(out.retryable).toBe(false)
+        expect(out.attemptsRemaining).toBe(0)
+    })
+
+    it("un backend ANTERIOR (sin canRetry) conserva el comportamiento previo", () => {
+        // Orden de deploy: el doc dice backend primero, pero el front no puede
+        // depender de eso — sin los campos nuevos, rejected sigue siendo terminal
+        // y ocr_rejected sigue siendo reintentable.
+        expect(normalizeVerificationResult({ verification: { currentStep: "rejected", status: "rejected" } }))
+            .toMatchObject({ status: "failed", retryable: false, failureReason: "rejected" })
+        expect(normalizeVerificationResult({ verification: { status: "ocr_rejected" } }))
+            .toMatchObject({ status: "failed", retryable: true, failureReason: "ocr_rejected" })
+    })
+
+    it("pending con los campos nuevos sigue siendo pending: canRetry false no es un fallo", () => {
+        expect(normalizeVerificationResult({
+            verification: { status: "pending", currentStep: "verification", canRetry: false, attemptsRemaining: 3 },
+        })).toEqual({ status: "pending" })
+    })
+})

@@ -205,6 +205,54 @@ Además: `UNSUPPORTED_DOCUMENT_LAYOUT` se lee de `errorType`, `error_type` o
 El proveedor se elige por tipo de huésped de forma independiente: **no existe la
 regla «principal = Didit, secundarios = Textract»** — cualquier combinación vale.
 
+### ⚠️ Contrato 2026-09-02/04: `in_review` y `abandoned` son fallos REINTENTABLES; `/identify` nunca duplica por sí solo
+
+*(Documento de backend del 2026-09-02, commits `0095e87` + `3febcae`, con
+payloads capturados; + respuesta del 2026-09-04 sobre el reinicio en stale.
+Implementado en el front el 2026-09-04 — `verification-result.ts`,
+`verification-failure-meta.ts`, `VerifyScreen`.)*
+
+**Tres campos aditivos** en `verification` (portal, por-huésped y
+`/verify/result`): `canRetry: bool` (discriminador reparable/definitivo),
+`attemptsRemaining: int` (por reserva; máximo configurable en backend — NUNCA
+hardcodear el 3), `failureReason: string|null` (código estable →
+`document_image_quality`, `face_match_not_computed`, `face_match_failed`,
+`document_not_approved`, `manual_review`; el copy es del front).
+
+**Cambios de comportamiento**: `in_review` deja de ser espera — llega
+`currentStep: "rejected"` + `canRetry: true` (antes: spinner infinito hasta
+isStale). `abandoned` (huésped cerró la pestaña) deja de colapsar en `fail`
+permanente: terminal reintentable.
+
+**⚠️ Trampa**: en un rechazo, `verificationUrl` apunta a la sesión MUERTA.
+El reintento SIEMPRE es `POST /identify` (devuelve sesión nueva, `sessionType`
+"biometric" aunque haya fallado la KYC — recaptura la selfie a propósito).
+422 de `/identify` = intentos agotados, `{message}` localizado, mostrar tal
+cual.
+
+**Semántica de `/identify` por estado (la pregunta del botón en stale):**
+
+| Estado al pulsarlo | Qué hace el backend | Costo |
+|---|---|---|
+| `isStale` + pending/in_progress/resubmitted | RESUME idempotente: misma `verification.url`, sin fila nueva, sin cobro. La sesión vieja NO se invalida y puede aprobar después | 0 |
+| `isStale` + `kyc_session_failed` | Crea la KYC que nunca existió; la vieja pasa a `superseded`; sin repetir selfie | 1 sesión |
+| `canRetry: true` (in_review/abandoned/ocr_rejected) | Marca `superseded` (webhooks tardíos ignorados a propósito), crea sesión + AutomationUsageRecord nuevos | 1 intento |
+| `attemptsRemaining: 0` | 422 | — |
+
+⇒ Botón de stale = **«Continuar verificación»** (no «Reiniciar» — la etiqueta
+mentiría: es un resume). `isStale` SIGUE sin significar fallo, y en terminales
+llega `false`.
+
+**Tolerancia al orden de deploy (regla del front)**: `canRetry` ausente
+(backend anterior) cae al comportamiento previo — rejected/fail/expired
+terminales, `ocr_rejected` reintentable. El copy de espera para el `status`
+`in_review` del portal se conserva como salvavidas para backend viejo.
+
+**Lo que hoy NO existe**: descartar una sesión `pending` sana y forzar una
+nueva (enlace de Didit roto → el huésped reabre el mismo enlace hasta el TTL
+de 24 h). Es decisión de negocio pendiente del lado backend.
+
+
 ### `parameters.slug` es lo único que separa una automation de un conector
 
 ⚠️ La tabla `providers` mezcla las dos cosas. Colasistencia, Taxxa, Webpos

@@ -473,6 +473,123 @@ describe("VerifyScreen — contrato síncrono de Textract", () => {
         expect(screen.getByText("Procesando verificación...")).toBeInTheDocument()
     })
 
+    it("stale ofrece continuar la verificación: /identify es un resume idempotente (Caso A, backend 2026-09-04)", async () => {
+        vi.useFakeTimers()
+        mocks.session.verification = {
+            type: "session",
+            sessionType: "biometric",
+            url: "https://verification.didit.me/biometric",
+        }
+        localStorage.setItem("checkin-pending-didit", JSON.stringify({
+            reservationUuid: "reservation",
+            guestUuid: "guest",
+            basePath: "/checkin/reservation",
+            step: "biometric",
+            launchedUrl: "https://verification.didit.me/biometric",
+            startedAt: Date.now(),
+        }))
+        mocks.getPortal.mockResolvedValue({ registeredGuests: [{ uuid: "guest" }] })
+        mocks.checkVerificationResult.mockResolvedValue({ status: "stale" })
+
+        render(
+            <VerifyScreen
+                reservationUuid="reservation"
+                guestUuid="guest"
+                basePath="/checkin/reservation"
+            />,
+        )
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+
+        fireEvent.click(screen.getByRole("button", { name: /Continuar verificación/ }))
+
+        // El reset limpia el estado local y vuelve a /identify, donde el backend
+        // devuelve la MISMA sesión (resume, costo cero) — nunca se relanza la URL local.
+        expect(localStorage.getItem("checkin-pending-didit")).toBeNull()
+        expect(mocks.replace).toHaveBeenCalledWith("/checkin/reservation/identify")
+    })
+
+    it("canRetry:false es fallo definitivo: sin botón de reintento", async () => {
+        vi.useFakeTimers()
+        mocks.session.verification = {
+            type: "session",
+            sessionType: "biometric",
+            url: "https://verification.didit.me/biometric",
+        }
+        localStorage.setItem("checkin-pending-didit", JSON.stringify({
+            reservationUuid: "reservation",
+            guestUuid: "guest",
+            basePath: "/checkin/reservation",
+            step: "biometric",
+            launchedUrl: "https://verification.didit.me/biometric",
+            startedAt: Date.now(),
+        }))
+        mocks.getPortal.mockResolvedValue({ registeredGuests: [{ uuid: "guest" }] })
+        mocks.checkVerificationResult.mockResolvedValue({
+            status: "failed",
+            retryable: false,
+            failureReason: "rejected",
+            attemptsRemaining: 0,
+        })
+
+        render(
+            <VerifyScreen
+                reservationUuid="reservation"
+                guestUuid="guest"
+                basePath="/checkin/reservation"
+            />,
+        )
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+
+        expect(screen.getByText("Verificación no exitosa")).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: /Repetir verificación/ })).not.toBeInTheDocument()
+        expect(screen.getByRole("link", { name: /Volver al inicio/ })).toBeInTheDocument()
+    })
+
+    it("el fallo reparable del contrato nuevo muestra el motivo y los intentos restantes", async () => {
+        vi.useFakeTimers()
+        mocks.session.verification = {
+            type: "session",
+            sessionType: "kyc",
+            url: "https://verification.didit.me/kyc",
+        }
+        localStorage.setItem("checkin-pending-didit", JSON.stringify({
+            reservationUuid: "reservation",
+            guestUuid: "guest",
+            basePath: "/checkin/reservation",
+            step: "kyc",
+            launchedUrl: "https://verification.didit.me/kyc",
+            startedAt: Date.now(),
+        }))
+        mocks.getPortal.mockResolvedValue({ registeredGuests: [{ uuid: "guest" }] })
+        // Payload real §3 del documento de backend: in_review por foto borrosa.
+        mocks.checkVerificationResult.mockResolvedValue({
+            status: "failed",
+            retryable: true,
+            failureReason: "document_image_quality",
+            attemptsRemaining: 2,
+        })
+
+        render(
+            <VerifyScreen
+                reservationUuid="reservation"
+                guestUuid="guest"
+                basePath="/checkin/reservation"
+            />,
+        )
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+
+        expect(screen.getByText(/borrosa o mal iluminada/)).toBeInTheDocument()
+        expect(screen.getByText("Te quedan 2 intentos.")).toBeInTheDocument()
+
+        // El reintento va por /identify (sesión nueva), jamás por la URL muerta.
+        fireEvent.click(screen.getByRole("button", { name: /Repetir verificación/ }))
+        expect(mocks.replace).toHaveBeenCalledWith("/checkin/reservation/identify")
+        expect(mocks.startVerification).not.toHaveBeenCalled()
+    })
+
     it("salir de la espera huérfana borra el marcador que la reanudaba (el loop de stale)", async () => {
         // El bug reportado: stale → "Volver al inicio" → reentrada → el marcador
         // `checkin-pending-didit` reanudaba el sondeo → misma espera → mismo

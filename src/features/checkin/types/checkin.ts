@@ -424,8 +424,20 @@ export interface VerificationResultResponse {
   kycUrl?: string                        // Solo si status === "kyc_required"
   /** Solo con status "failed": el huésped puede reintentar por su cuenta. */
   retryable?: boolean
-  /** Estado terminal original, conservado para presentar recuperación precisa. */
-  failureReason?: "ocr_rejected" | "rejected" | "fail" | "expired"
+  /**
+   * Qué repetir. Contrato 2026-09-02 (in_review reintentable): códigos estables
+   * del backend (`document_image_quality`, `face_match_not_computed`,
+   * `face_match_failed`, `document_not_approved`, `manual_review`) — el copy lo
+   * pone `verification-failure-meta`. Se conservan los legacy (`ocr_rejected`,
+   * `rejected`, `fail`, `expired`) para respuestas del backend anterior.
+   */
+  failureReason?: string
+  /**
+   * Intentos que le quedan al huésped EN ESTA reserva (contrato 2026-09-02).
+   * Nunca hardcodear el máximo: lo define el backend. `undefined` con un
+   * backend que aún no lo emite.
+   */
+  attemptsRemaining?: number
   guestData?: {                          // Solo si status === "verified"
     firstName?: string
     lastName?: string

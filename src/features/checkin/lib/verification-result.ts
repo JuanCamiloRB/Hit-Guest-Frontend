@@ -25,6 +25,14 @@ interface RawVerification {
     is_stale?: boolean
     verificationUrl?: string | null
     verification_url?: string | null
+    // Contrato 2026-09-02 (in_review reintentable) — aditivos: un backend
+    // anterior no los manda y el reconciliador cae al comportamiento previo.
+    canRetry?: boolean
+    can_retry?: boolean
+    attemptsRemaining?: number
+    attempts_remaining?: number
+    failureReason?: string | null
+    failure_reason?: string | null
 }
 
 export function normalizeVerificationResult(raw: unknown): VerificationResultResponse {
@@ -43,6 +51,9 @@ export function normalizeVerificationResult(raw: unknown): VerificationResultRes
     const sessionType = v.sessionType ?? v.session_type
     const verificationUrl = v.verificationUrl ?? v.verification_url
     const isStale = v.isStale ?? v.is_stale ?? false
+    const canRetry = v.canRetry ?? v.can_retry
+    const attemptsRemaining = v.attemptsRemaining ?? v.attempts_remaining
+    const backendFailureReason = v.failureReason ?? v.failure_reason ?? undefined
 
     // El check-in ya terminado gana sobre todo lo demás, igual que en backend
     // (`is_checkin_completed` es la primera rama de `buildGuestVerificationStatus`).
@@ -69,13 +80,28 @@ export function normalizeVerificationResult(raw: unknown): VerificationResultRes
     // `status` se mandaba al huésped de OCR a contactar al anfitrión cuando solo
     // necesitaba repetir la foto.
     if (status === "ocr_rejected") {
-        return { status: "failed", retryable: true, failureReason: "ocr_rejected" }
+        return {
+            status: "failed",
+            retryable: canRetry ?? true,
+            failureReason: backendFailureReason ?? "ocr_rejected",
+            attemptsRemaining,
+        }
     }
     if (currentStep === "rejected" || status === "rejected" || status === "fail" || status === "expired") {
-        const failureReason = status === "fail" || status === "expired" || status === "rejected"
+        // Contrato 2026-09-02: `in_review` y `abandoned` llegan acá con
+        // `currentStep: "rejected"` y `canRetry: true` — dejaron de ser espera y
+        // rechazo permanente respectivamente. `canRetry` decide entre reparable y
+        // definitivo; ausente (backend anterior), se conserva el comportamiento
+        // previo: estos estados eran terminales sin reintento.
+        const legacyReason = status === "fail" || status === "expired" || status === "rejected"
             ? status
             : "rejected"
-        return { status: "failed", retryable: false, failureReason }
+        return {
+            status: "failed",
+            retryable: canRetry ?? false,
+            failureReason: backendFailureReason ?? legacyReason,
+            attemptsRemaining,
+        }
     }
 
     // La creación de la sesión KYC falló. La `verificationUrl` que pueda venir
