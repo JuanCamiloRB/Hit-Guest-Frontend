@@ -3,14 +3,14 @@ import { isSelfRecoverableVerification, type GuestVerificationInfo } from "./che
 import { isDocumentAlreadyVerified } from "../lib/doc-verification"
 
 /**
- * Los 15 estados que el backend puede emitir hoy (§A del documento de endpoints).
- * El front declaraba 10; estos tests fijan los 5 que faltaban y, sobre todo, las
+ * Los 16 estados que el backend puede emitir hoy (§A del documento de endpoints).
+ * El front declaraba 10; estos tests fijan los que faltaban y, sobre todo, las
  * trampas de cada uno.
  */
 const TODOS_LOS_ESTADOS: GuestVerificationInfo["status"][] = [
     "not_started", "pending", "in_progress", "resubmitted", "in_review",
     "approved", "rejected", "fail", "expired", "completed",
-    "contact_challenge_pending", "pass", "kyc_session_failed", "superseded", "ocr_rejected",
+    "contact_challenge_pending", "pass", "kyc_session_failed", "superseded", "ocr_rejected", "abandoned",
 ]
 
 const guest = (
@@ -29,8 +29,8 @@ const guest = (
 })
 
 describe("estados de verificación del backend", () => {
-    it("el tipo cubre los 15 estados que el backend emite", () => {
-        expect(new Set(TODOS_LOS_ESTADOS).size).toBe(15)
+    it("el tipo cubre los 16 estados que el backend emite", () => {
+        expect(new Set(TODOS_LOS_ESTADOS).size).toBe(16)
     })
 
     describe("'pass' — la trampa: aprobado en biometría pero NO verificado", () => {
@@ -53,19 +53,25 @@ describe("estados de verificación del backend", () => {
 
     describe("estados de los que el huésped puede salir solo", () => {
         it("kyc_session_failed y ocr_rejected son recuperables", () => {
-            expect(isSelfRecoverableVerification("kyc_session_failed")).toBe(true)
-            expect(isSelfRecoverableVerification("ocr_rejected")).toBe(true)
+            expect(isSelfRecoverableVerification({ status: "kyc_session_failed" })).toBe(true)
+            expect(isSelfRecoverableVerification({ status: "ocr_rejected" })).toBe(true)
+        })
+
+        it("canRetry manda en los estados que antes eran ambiguos", () => {
+            expect(isSelfRecoverableVerification({ status: "in_review", canRetry: true })).toBe(true)
+            expect(isSelfRecoverableVerification({ status: "abandoned", canRetry: true })).toBe(true)
+            expect(isSelfRecoverableVerification({ status: "ocr_rejected", canRetry: false })).toBe(false)
         })
 
         it("un rechazo real de Didit NO es recuperable por el huésped", () => {
-            for (const status of ["rejected", "fail", "expired"]) {
-                expect(isSelfRecoverableVerification(status)).toBe(false)
+            for (const status of ["rejected", "fail", "expired"] as const) {
+                expect(isSelfRecoverableVerification({ status })).toBe(false)
             }
         })
 
         it("los estados en curso tampoco son 'recuperables' — solo hay que seguir esperando", () => {
-            for (const status of ["pending", "in_progress", "resubmitted", "in_review", "pass"]) {
-                expect(isSelfRecoverableVerification(status)).toBe(false)
+            for (const status of ["pending", "in_progress", "resubmitted", "in_review", "pass"] as const) {
+                expect(isSelfRecoverableVerification({ status })).toBe(false)
             }
         })
     })

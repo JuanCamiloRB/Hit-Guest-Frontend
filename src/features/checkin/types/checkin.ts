@@ -65,6 +65,8 @@ export interface GuestVerificationInfo {
      * Didit el huésped puede reintentar de inmediato subiendo mejores fotos.
      */
     | "ocr_rejected"
+    /** Didit session closed by the guest; retryability is decided by `canRetry`. */
+    | "abandoned"
   currentStep: "verification" | "form" | "rejected" | "completed" | "contact_challenge"
   verifiedAt: string | null         // ISO date when approved/completed, null otherwise
   /** Etapa real de Didit. Cambia de biometric a kyc cuando el backend escala. */
@@ -75,15 +77,24 @@ export interface GuestVerificationInfo {
   isStale: boolean
   /** URL de la sesión Didit actualmente accionable, si existe. */
   verificationUrl: string | null
+  /** El huésped puede iniciar otro intento ahora. Ausente en backends anteriores. */
+  canRetry?: boolean
+  /** Intentos disponibles en esta reserva; el máximo es configuración del backend. */
+  attemptsRemaining?: number
+  /** Código estable de negocio para resolver el copy; nunca se muestra directamente. */
+  failureReason?: string | null
 }
 
 /**
- * Estados desde los que el huésped puede salir por sí mismo reiniciando el flujo
- * en `/identify`, en vez de quedarse esperando o tener que llamar al anfitrión.
- * Ambos son terminales para el sondeo actual pero NO para el check-in.
+ * Decide si el huésped puede salir por sí mismo reiniciando en `/identify`.
+ * `canRetry` es autoritativo en el contrato nuevo; los dos estados históricos
+ * conservan su comportamiento cuando habla un backend anterior.
  */
-export function isSelfRecoverableVerification(status: string): boolean {
-  return status === "kyc_session_failed" || status === "ocr_rejected"
+export function isSelfRecoverableVerification(
+  verification: Pick<GuestVerificationInfo, "status" | "canRetry">,
+): boolean {
+  return verification.canRetry
+    ?? (verification.status === "kyc_session_failed" || verification.status === "ocr_rejected")
 }
 
 /**
