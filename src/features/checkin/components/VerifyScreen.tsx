@@ -11,6 +11,8 @@ import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { DateField } from "@/features/checkin/components/DateField"
 import { attemptsRemainingNotice, describeVerificationFailure } from "@/features/checkin/components/verification-failure-meta"
+import { ReassuranceTicker } from "@/features/checkin/components/ReassuranceTicker"
+import { DIDIT_WAIT_SCRIPT } from "@/features/checkin/lib/reassurance"
 import { CatalogService } from "@/features/auth/services/catalog-service"
 import type { OCRResult, IdentifySessionData } from "@/features/checkin/types/checkin"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
@@ -759,10 +761,13 @@ export function VerifyScreen({
                 <div className="space-y-3 w-full max-w-xs">
                     <h2 className="text-2xl font-bold tracking-tight text-slate-900">{loadingTitle}</h2>
                     {verificationState === "waiting_portal" && portalVerifStatus === "pending" ? (
-                        <p className="text-slate-500 text-sm">
-                            <span className="md:hidden">Estamos confirmando tu verificación. Mantén esta pantalla abierta.</span>
-                            <span className="hidden md:inline">Completa la verificación en la ventana abierta.</span>
-                        </p>
+                        /* Sin señal del portal todavía: la frase avanza con el tiempo
+                           para que la espera no parezca un loop (Didier, 2026-09-06).
+                           Cuando el portal reporta una etapa real, esa manda (abajo). */
+                        <>
+                            <ReassuranceTicker script={DIDIT_WAIT_SCRIPT} className="text-slate-500 text-sm" />
+                            <p className="text-xs text-slate-400">Mantén esta pantalla abierta.</p>
+                        </>
                     ) : (
                         <p className="text-slate-500 text-sm">{loadingSubtitle}</p>
                     )}

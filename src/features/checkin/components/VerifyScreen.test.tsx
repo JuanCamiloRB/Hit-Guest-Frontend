@@ -435,8 +435,11 @@ describe("VerifyScreen — contrato síncrono de Textract", () => {
         expect(mocks.checkVerificationResult).toHaveBeenCalled()
         expect(mocks.startVerification).not.toHaveBeenCalled()
         expect(screen.getByText("Procesando verificación...")).toBeInTheDocument()
-        expect(screen.getByText("Estamos confirmando tu verificación. Mantén esta pantalla abierta.")).toHaveClass("md:hidden")
-        expect(screen.getByText("Completa la verificación en la ventana abierta.")).toHaveClass("hidden", "md:inline")
+        // La espera ya no es un texto congelado: arranca el guion de frases
+        // (tramo 0) y la instrucción de no cerrar queda fija debajo.
+        expect(screen.getByText("Conectando con el sistema de verificación…")).toBeInTheDocument()
+        expect(screen.getByText("Mantén esta pantalla abierta.")).toBeInTheDocument()
+        expect(screen.getByText("Conectando con el sistema de verificación…")).toBeInTheDocument()
     })
 
     it("reanuda el polling al reabrir desde el enlace original", async () => {

@@ -242,7 +242,7 @@ describe("GuaranteeCardForm — el contenedor sobrevive al estado pending", () =
 
         renderForm()
 
-        expect(await screen.findByText(/Confirmando tu tarjeta/i)).toBeInTheDocument()
+        expect(await screen.findByText(/Registrando tu tarjeta/i)).toBeInTheDocument()
         // Si React desmonta este nodo, se lleva el iframe de Stripe con él y el
         // huésped vuelve a un recuadro vacío si el sondeo termina en fallo.
         const container = screen.getByTestId("stripe-card-container")

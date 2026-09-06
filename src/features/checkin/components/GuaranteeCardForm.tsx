@@ -6,6 +6,8 @@ import { Loader2, ShieldCheck, AlertTriangle, CreditCard } from "lucide-react"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { normalizeApiError } from "@/lib/notify-error"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
+import { ReassuranceTicker } from "./ReassuranceTicker"
+import { CARD_WAIT_SCRIPT } from "../lib/reassurance"
 import { GuaranteeInfoCard } from "@/features/checkin/components/GuaranteeInfoCard"
 import {
     describeGuaranteeSetupFailure,
@@ -515,7 +517,10 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                             : <Loader2 size={16} className="animate-spin text-[var(--color-brand-purple)]" />}
                         {pollTimedOut
                             ? "Tu tarjeta sigue sin confirmarse."
-                            : "Confirmando tu tarjeta…"}
+                            : /* La frase avanza con la espera (máx. 60 s de sondeo):
+                                 un texto congelado se lee como cuelgue y provoca los
+                                 clics de pánico (Didier, 2026-09-06). */
+                              <ReassuranceTicker script={CARD_WAIT_SCRIPT} />}
                     </div>
                     {/* Única salida cuando el webhook de Stripe tarda más que la
                         ventana de sondeo: sin esto el estado quedaba en "pending"
