@@ -36,6 +36,10 @@ export interface ReservationOrigin {
 const IMPORT_SOURCE_LABELS: Record<string, string> = {
     calry: "Calry",
     kunas_pms: "Kunas PMS",
+    // Contrato Airbnb iCal 2026-09-04. Genérico a propósito: el feed es
+    // multi-OTA (hoy solo Airbnb está sembrado) y el canal comercial ya se
+    // muestra aparte en `source`.
+    ical: "Calendario iCal",
 }
 
 export function readReservationOrigin(raw: unknown): ReservationOrigin {

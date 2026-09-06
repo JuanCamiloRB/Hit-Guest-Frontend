@@ -30,7 +30,7 @@ export type SecondaryGateResult =
     /** Portal accesible: la política de acceso la decide cada página. */
     | { kind: "ready"; status: SecondaryGateStatus }
     /** Reserva cancelada (29) o eliminada (108) — hay que explicárselo al huésped. */
-    | { kind: "portal_closed"; portalStatus: "cancelled" | "deleted"; message?: string }
+    | { kind: "portal_closed"; portalStatus: "cancelled" | "deleted" | "pending_sync"; message?: string }
     /** No se pudo resolver la reserva (404, red, backend caído). */
     | { kind: "unavailable" }
 
@@ -70,7 +70,14 @@ export const checkinServerService = {
             cache: "no-store",
         })
         const json = await response.json().catch(() => ({}))
-        if (!response.ok) throw new Error(json?.message || "Error loading reservation")
+        if (!response.ok) {
+            // El status viaja en el error: la ruta externa tiene rate limit
+            // (60/min, contrato Airbnb iCal 2026-09-04) y un 429 no es "no
+            // encontrada".
+            const httpError = new Error(json?.message || "Error loading reservation") as Error & { status?: number }
+            httpError.status = response.status
+            throw httpError
+        }
         // Un 200 sin el shape renderizable se lanza como si fuera un fallo de
         // red: cada wrapper ya tiene su catch/fallback (incidente 2026-08-20).
         return assertRenderablePortal(
@@ -102,7 +109,14 @@ export const checkinServerService = {
             cache: "no-store",
         })
         const json = await response.json().catch(() => ({}))
-        if (!response.ok) throw new Error(json?.message || "Error loading reservation")
+        if (!response.ok) {
+            // El status viaja en el error: la ruta externa tiene rate limit
+            // (60/min, contrato Airbnb iCal 2026-09-04) y un 429 no es "no
+            // encontrada".
+            const httpError = new Error(json?.message || "Error loading reservation") as Error & { status?: number }
+            httpError.status = response.status
+            throw httpError
+        }
         // Un 200 sin el shape renderizable se lanza como si fuera un fallo de
         // red: cada wrapper ya tiene su catch/fallback (incidente 2026-08-20).
         return assertRenderablePortal(

@@ -45,7 +45,7 @@ export function resolvePreFormVerificationStep(input: {
     identityVerified: boolean
     resultStatus?: VerificationResultResponse["status"]
     directiveType?: VerificationDirective["type"]
-    portalStatus?: "cancelled" | "deleted"
+    portalStatus?: "cancelled" | "deleted" | "pending_sync"
     /** True only when the backend-issued OTP verification token is present. */
     contactChallengeSatisfied?: boolean
 }): PreFormVerificationStep {

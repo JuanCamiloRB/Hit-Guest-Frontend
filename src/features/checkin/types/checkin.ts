@@ -256,7 +256,7 @@ export interface CheckinPortalResponse {
    * the payload are absent and only `message` is provided. Status 30 (closed)
    * returns a full portal with `reservation.checkinAllowed = false` instead.
    */
-  portalStatus?: "cancelled" | "deleted"
+  portalStatus?: "cancelled" | "deleted" | "pending_sync"
   /** Human-readable explanation shown to the guest when portalStatus is set. */
   message?: string
   reservation: {
@@ -265,6 +265,13 @@ export interface CheckinPortalResponse {
     departureDate: string            // "Y-m-d"
     totalGuestsAllowed: number       // $reservation->total_guests
     checkinAllowed?: boolean         // v4.2: whether check-in is currently allowed
+    /**
+     * Contrato Airbnb iCal (2026-09-04): la reserva llegó sin ocupación y el
+     * huésped PRINCIPAL debe declarar `totalGuests` en su identify. De un solo
+     * uso — tras declararlo el backend lo vuelve `false`. Calry/Kunas/manuales
+     * nunca lo traen.
+     */
+    requiresGuestCountDeclaration?: boolean
     /**
      * Datos del TITULAR registrados al crear la reserva, para precargar su
      * check-in. Opcional: mientras el backend no lo mande, el formulario se
@@ -327,6 +334,13 @@ export interface IdentifyPayload {
   name: string                   // max:120
   lastname: string               // max:60
   isMainGuest: boolean
+  /**
+   * Solo cuando el portal anuncia `requiresGuestCountDeclaration` (Airbnb
+   * iCal): cuántos huéspedes vienen, INCLUYENDO al que declara. Va en el mismo
+   * identify a propósito — un endpoint aparte sería una escritura anónima sobre
+   * el dato que define qué se reporta a TRA/SIRE. Errores: `errors.totalGuests`.
+   */
+  totalGuests?: number
 }
 
 /** Response de POST /api/v1/checkin/{reservationUuid}/identify */
@@ -701,7 +715,7 @@ export interface SecondaryGateStatus {
    * acompañante leían como `notFound()`, mostrando "no encontrada" en vez de
    * decirle al huésped que su reserva fue cancelada.
    */
-  portalStatus?: "cancelled" | "deleted"
+  portalStatus?: "cancelled" | "deleted" | "pending_sync"
   portalMessage?: string
 }
 

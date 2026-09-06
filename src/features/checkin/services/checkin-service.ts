@@ -219,6 +219,7 @@ export class CheckinService {
             identification_type_id: payload.identificationTypeId,
             identification_number: payload.identificationNumber,
             is_main_guest: payload.isMainGuest,
+            ...(payload.totalGuests !== undefined ? { total_guests: payload.totalGuests } : {}),
         };
 
         // Solo `formSchema` se normaliza; el resto del cuerpo ya viene con la

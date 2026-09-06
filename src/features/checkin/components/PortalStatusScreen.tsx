@@ -1,7 +1,7 @@
-import { XCircle, Trash2 } from "lucide-react"
+import { XCircle, Trash2, Clock } from "lucide-react"
 
 interface PortalStatusScreenProps {
-    status: "cancelled" | "deleted"
+    status: "cancelled" | "deleted" | "pending_sync"
     message?: string
 }
 
@@ -22,6 +22,15 @@ const STATUS_CONTENT: Record<
         defaultMessage: "Esta reserva ya no existe.",
         accent: "text-red-500 bg-red-50",
     },
+    // Airbnb iCal (2026-09-04): la reserva existe en Airbnb pero HIT todavía no
+    // la sincronizó. A diferencia de los otros estados, este se resuelve SOLO
+    // (el calendario se lee cada 30 min) — por eso es el único con Reintentar.
+    pending_sync: {
+        icon: Clock,
+        title: "Estamos preparando tu check-in",
+        defaultMessage: "Todavía estamos preparando tu check-in. Inténtalo de nuevo en unos minutos.",
+        accent: "text-blue-500 bg-blue-50",
+    },
 }
 
 export function PortalStatusScreen({ status, message }: PortalStatusScreenProps) {
@@ -37,6 +46,16 @@ export function PortalStatusScreen({ status, message }: PortalStatusScreenProps)
             <p className="text-slate-500 max-w-md leading-relaxed">
                 {message || content.defaultMessage}
             </p>
+            {status === "pending_sync" && (
+                /* <a href=""> recarga la misma URL sin necesitar JS: esta pantalla
+                   se renderiza en el servidor. */
+                <a
+                    href=""
+                    className="mt-6 inline-flex h-12 items-center gap-2 rounded-xl bg-brand-purple px-6 font-semibold text-white transition-all active:scale-[0.98]"
+                >
+                    Reintentar
+                </a>
+            )}
             <p className="text-xs text-slate-400 mt-8">
                 Si crees que esto es un error, contacta a tu anfitrión.
             </p>

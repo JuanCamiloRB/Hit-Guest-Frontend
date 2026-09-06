@@ -3,6 +3,7 @@
 import type { ReactNode } from "react"
 import { Building2, Cloud, Hotel, Network, RadioTower, RefreshCw } from "lucide-react"
 import { KunasIntegrationPanel } from "./KunasIntegrationPanel"
+import { AirbnbIcalPanel } from "./AirbnbIcalPanel"
 
 interface ProviderCardProps {
     name: string
@@ -133,10 +134,10 @@ export function IntegrationsHub() {
                 <div className="grid gap-4 sm:grid-cols-2">
                     <ProviderCard
                         name="Airbnb"
-                        description="Importa tus anuncios y reservas directamente desde Airbnb."
+                        description="Importa tus reservas conectando el calendario iCal de cada anuncio."
                         icon={<AirbnbIcon />}
-                        badge="Próximamente"
-                        badgeClassName="bg-slate-100 text-slate-500"
+                        badge="iCal"
+                        badgeClassName="bg-rose-50 text-rose-600"
                     />
                     <ProviderCard
                         name="Booking.com"
@@ -145,6 +146,14 @@ export function IntegrationsHub() {
                         badge="Próximamente"
                         badgeClassName="bg-slate-100 text-slate-500"
                     />
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-center gap-3">
+                        <AirbnbIcon />
+                        <h4 className="font-bold text-slate-900">Calendarios de Airbnb (iCal)</h4>
+                    </div>
+                    <AirbnbIcalPanel />
                 </div>
             </section>
         </div>

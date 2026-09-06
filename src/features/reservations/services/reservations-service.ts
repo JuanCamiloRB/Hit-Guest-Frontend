@@ -318,6 +318,13 @@ export interface ReservationDetailData {
     communicationsLocale?: CommunicationLocale
     /** Origen técnico (PMS vs manual) — contrato 2026-08-24 §2g. */
     origin: ReservationOrigin
+    /**
+     * Contrato Airbnb iCal 2026-09-04 (`extra.*`): la reserva llegó sin
+     * ocupación (la declara el huésped al iniciar su check-in — informativo) y
+     * sin valor (lo registra el PM — accionable: TRA no corre sin él).
+     */
+    capacityDeclarationRequired: boolean
+    priceUnconfirmed: boolean
     /** Ediciones manuales que el webhook del PMS pisó (extra.overwrittenEdits). */
     overwrittenEdits: OverwrittenEdit[]
     automationStatus: {
@@ -512,6 +519,10 @@ export class ReservationsService {
             // §2g) — antes estas claves llegaban en la respuesta y este mapeo las
             // descartaba en silencio.
             origin: readReservationOrigin(r),
+            capacityDeclarationRequired: r.extra?.capacityDeclarationRequired === true
+                || r.extra?.capacity_declaration_required === true,
+            priceUnconfirmed: r.extra?.priceUnconfirmed === true
+                || r.extra?.price_unconfirmed === true,
             overwrittenEdits: readOverwrittenEdits(r.extra),
             automationStatus: {
                 link: r.listing ? "success" : "pending",

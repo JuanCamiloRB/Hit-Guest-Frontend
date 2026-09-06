@@ -1021,6 +1021,44 @@ tolerante por fila (campo desconocido muestra su clave, fila malformada se
 descarta sin tirar la lista) y el detalle muestra «El PMS revirtió N cambios».
 La lista conserva `origin` en el tipo aunque aún no lo pinte.
 
+## 2f. Integración Airbnb iCal (contrato del 2026-09-04, backend implementado)
+
+⚠️ *Del documento de backend; no reverificado por curl. Lo esencial:*
+
+- **Conectar**: `POST /integrations` de siempre con el provider "Airbnb iCal"
+  (resolver su id por `GET /providers` — NUNCA hardcodear; el doc usa 5320 como
+  ejemplo). `parameters: {}` obligatorio aunque vacío. `statusProviderId: 10`
+  = interruptor maestro que silencia todos los feeds sin borrar config.
+- **Feeds**: CRUD en `/ical/feeds` (+ `POST {uuid}/sync` → **202** encolado, y
+  `GET {uuid}/message-template`). Shape: `{uuid, listingUuid, sourcePmsId:100,
+  icalUrl, statusRecordId (6/7), lastSyncedAt, lastSyncError}`. El POST registra
+  el `externalListingId` como identificador externo del listing y dispara sync
+  inmediato. PATCH solo acepta `icalUrl`/`statusRecordId` (el resto inmutable a
+  propósito). DELETE = soft, NO borra reservas importadas. 422s: icalUrl
+  (https / host / duplicado), externalListingId (no coincide con la URL — la
+  defensa contra importar reservas ajenas), o message solo (integración no
+  conectada). `lastSyncError` distingue "sin reservas" de "feed roto".
+- **Plantilla de mensaje**: `message` va en el communications_locale de la
+  property (NO sigue X-Locale — lo lee el huésped); `instructions` sí siguen
+  X-Locale. No armar la URL del check-in en el front. `[código de confirmación]`
+  se reemplaza con el menú Shortcodes de Airbnb; programar ≥1h después de
+  reservar (HIT lee el calendario cada 30 min).
+- **Portal**: `portalStatus: "pending_sync"` (HTTP 200) en la ruta externa
+  cuando la reserva aún no sincronizó — se resuelve solo en <30 min, merece
+  botón Reintentar. La ruta externa ahora tiene rate limit 60/min → manejar 429.
+- **`requiresGuestCountDeclaration: true`** en `reservation` del portal: el
+  identify del huésped PRINCIPAL debe incluir `totalGuests` (mismo request, no
+  hay endpoint aparte a propósito). Errores en `errors.totalGuests` (faltante /
+  min:1 / "hasta :max"). De un solo uso: tras declarar pasa a false. Reservas de
+  Calry/Kunas/manuales nunca traen el flag.
+- **Reserva importada**: `importSource: "ical"` (tercer valor), `emailGuest:
+  null` es lo normal, `totalGuests: 0` = sin declarar, `extra.
+  capacityDeclarationRequired` (informativo) y `extra.priceUnconfirmed`
+  (accionable: TRA no corre — registro failed con `responsePayload.error:
+  "price_unconfirmed"`, misma forma que insufficient_balance). Se limpia SOLO
+  enviando `totalPrice` por PUT (incluso `0` explícito vale); mandarla en
+  `extra` se descarta. El PM corrige capacidad con el PUT de siempre.
+
 ## 3. Portal de check-in
 
 Rutas públicas (protegidas solo por lo impredecible del UUID), autenticadas con

@@ -224,6 +224,10 @@ export const TRIGGERED_BY_LABELS: Record<string, string> = {
  */
 const ERROR_CODE_LABELS: Record<string, string> = {
     insufficient_balance: "Saldo insuficiente. Recarga tu saldo para ejecutar esta automatización.",
+    // Airbnb iCal (2026-09-04): el feed no trae el valor de la reserva y TRA se
+    // bloquea a propósito — reportar $0 al Ministerio sería información falsa.
+    price_unconfirmed:
+        "Falta registrar el valor de la reserva para reportar a TRA. Regístralo con «Editar reserva» y reintenta.",
 }
 
 /**

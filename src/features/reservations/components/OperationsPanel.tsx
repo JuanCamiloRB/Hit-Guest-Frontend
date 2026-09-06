@@ -400,6 +400,23 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                         {format(new Date(data.origin.syncedAt), "d MMM yyyy, HH:mm", { locale: es })}
                                     </p>
                                 )}
+
+                                {/* Airbnb iCal (2026-09-04): el feed no trae valor ni ocupación.
+                                    El precio es del PM (accionable: TRA no corre sin él); la
+                                    capacidad la declara el huésped (informativo). */}
+                                {data.priceUnconfirmed && (
+                                    <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning">
+                                        <span className="font-semibold">Falta registrar el valor de la reserva.</span>{" "}
+                                        Hasta registrarlo, el reporte a TRA no puede ejecutarse — usa «Editar
+                                        reserva» (un valor de 0 también cuenta como confirmado).
+                                    </p>
+                                )}
+                                {data.capacityDeclarationRequired && (
+                                    <p className="mt-2 rounded-lg bg-sunk px-3 py-2 text-xs text-ink-2">
+                                        Capacidad por confirmar: el huésped principal la declarará al iniciar
+                                        su check-in. No necesitas hacer nada.
+                                    </p>
+                                )}
                             </div>
                         </div>
                     </SectionCard>

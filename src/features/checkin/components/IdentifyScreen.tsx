@@ -119,12 +119,21 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
      * No corre en modo resume (ese ya se precarga desde /form, con más datos)
      * ni para acompañantes (los datos de la reserva son del titular).
      */
+    /**
+     * Contrato Airbnb iCal (2026-09-04): la reserva llegó sin ocupación y el
+     * titular debe declararla en su identify. El flag lo anuncia el portal; el
+     * campo solo existe mientras sea `true` (es de un solo uso).
+     */
+    const [guestCountRequired, setGuestCountRequired] = useState(false)
+    const [guestCount, setGuestCount] = useState("")
+
     useEffect(() => {
         if (isResume || isSecondary || !isMainGuest) return
         let active = true
         checkinService.getPortal(reservationUuid)
             .then(portal => {
                 if (!active) return
+                setGuestCountRequired(portal.reservation?.requiresGuestCountDeclaration === true)
                 const patch = mainGuestPrefillPatch(
                     normalizeMainGuestPrefill(portal.reservation?.mainGuestPrefill),
                     { includeContact: false },
@@ -173,6 +182,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
     }
 
     const isValid =
+        (!guestCountRequired || Number(guestCount) >= 1) &&
         form.name.trim().length >= 2 &&
         form.lastname.trim().length >= 2 &&
         form.nationalityId !== "" &&
@@ -272,6 +282,9 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
             identificationTypeId: Number(form.identificationTypeId),
             identificationNumber: form.identificationNumber.trim(),
             isMainGuest,
+            // Solo cuando el portal lo exige: fuera de Airbnb iCal el identify
+            // es idéntico al de siempre.
+            ...(guestCountRequired ? { totalGuests: Number(guestCount) } : {}),
         }
 
         try {
@@ -495,6 +508,28 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                             />
                             {fieldErrors.identificationNumber && <p className="text-xs text-red-500">{fieldErrors.identificationNumber}</p>}
                         </div>
+                    </div>
+                )}
+
+                {/* Airbnb iCal: el feed no trae ocupación, la declara el titular acá.
+                    "incluyéndote" importa — si se descuenta, la reserva queda corta y
+                    los acompañantes no podrán registrarse. */}
+                {guestCountRequired && isMainGuest && (
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-semibold text-slate-700">
+                            ¿Cuántos huéspedes se hospedarán, incluyéndote?<span className="text-red-400 ml-0.5">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={2}
+                            value={guestCount}
+                            onChange={e => setGuestCount(e.target.value.replace(/\D/g, ""))}
+                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all ${fieldErrors.totalGuests ? "border-red-400" : "border-slate-200"}`}
+                            placeholder="Ej. 2"
+                        />
+                        {fieldErrors.totalGuests && <p className="text-xs text-red-500">{fieldErrors.totalGuests}</p>}
                     </div>
                 )}
 
