@@ -31,7 +31,7 @@ import { ApiError } from "@/types/api"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { usePortfolio } from "@/features/properties/hooks/usePortfolio"
 import { icalFeedService } from "../services/ical-feed-service"
-import { AIRBNB_SOURCE_PMS_ID, extractAirbnbListingId } from "../lib/ical"
+import { AIRBNB_SOURCE_PMS_ID, extractAirbnbListingId, maskIcalUrl } from "../lib/ical"
 import type { IcalFeed, IcalMessageTemplate } from "../types/ical"
 
 const FEED_ACTIVE = 6
@@ -106,10 +106,13 @@ export function AirbnbIcalPanel() {
         }
     }, [])
 
-    /** El sync responde 202 (encolado): se refresca unos segundos después. */
+    /** El sync responde 202 (encolado): se refresca a los 5s y otra vez a los 15s. */
     const scheduleRefresh = useCallback(() => {
         if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
-        refreshTimerRef.current = setTimeout(() => { void loadFeeds() }, 5000)
+        refreshTimerRef.current = setTimeout(() => {
+            void loadFeeds()
+            refreshTimerRef.current = setTimeout(() => { void loadFeeds() }, 10000)
+        }, 5000)
     }, [loadFeeds])
 
     const handleSync = async (feed: IcalFeed) => {
@@ -161,6 +164,8 @@ export function AirbnbIcalPanel() {
         }
     }
 
+    const [editTarget, setEditTarget] = useState<IcalFeed | null>(null)
+
     const openTemplate = async (feed: IcalFeed) => {
         setBusyUuid(feed.uuid)
         try {
@@ -207,7 +212,7 @@ export function AirbnbIcalPanel() {
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="min-w-0">
                                     <p className="text-sm font-semibold text-slate-900">{listingName(feed.listingUuid)}</p>
-                                    <p className="max-w-md truncate text-xs text-slate-400">{feed.icalUrl}</p>
+                                    <p className="max-w-md truncate text-xs text-slate-400">{maskIcalUrl(feed.icalUrl)}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <FeedHealth feed={feed} />
@@ -245,6 +250,14 @@ export function AirbnbIcalPanel() {
                                 <button
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
+                                    onClick={() => setEditTarget(feed)}
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                                >
+                                    Editar URL
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={busyUuid === feed.uuid}
                                     onClick={() => setDeleteTarget(feed)}
                                     className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-600 disabled:opacity-50"
                                 >
@@ -275,6 +288,18 @@ export function AirbnbIcalPanel() {
             />
 
             {template && <TemplateDialog template={template} onClose={() => setTemplate(null)} />}
+
+            {editTarget && (
+                <EditUrlDialog
+                    feed={editTarget}
+                    onClose={() => setEditTarget(null)}
+                    onSaved={(updated) => {
+                        setFeeds((prev) => prev?.map((f) => (f.uuid === updated.uuid ? updated : f)) ?? prev)
+                        setEditTarget(null)
+                        toast.success("URL actualizada", { description: "La próxima sincronización usará el calendario nuevo." })
+                    }}
+                />
+            )}
 
             <Dialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
                 <DialogContent className="sm:max-w-md">
@@ -546,6 +571,67 @@ function TemplateDialog({
                         </p>
                     </div>
                 </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+
+/** El PATCH solo acepta `icalUrl`/`statusRecordId`: rotar la URL es el único edit real. */
+function EditUrlDialog({
+    feed,
+    onClose,
+    onSaved,
+}: {
+    feed: IcalFeed
+    onClose: () => void
+    onSaved: (feed: IcalFeed) => void
+}) {
+    const [url, setUrl] = useState(feed.icalUrl)
+    const [saving, setSaving] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+
+    const save = async () => {
+        setSaving(true)
+        setError(null)
+        try {
+            onSaved(await icalFeedService.update(feed.uuid, { icalUrl: url.trim() }))
+        } catch (raw) {
+            setError(raw instanceof ApiError && raw.message
+                ? raw.message
+                : "No se pudo actualizar la URL. Inténtalo de nuevo.")
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    return (
+        <Dialog open onOpenChange={(next) => { if (!next && !saving) onClose() }}>
+            <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                    <DialogTitle>Editar URL del calendario</DialogTitle>
+                    <DialogDescription>
+                        Útil cuando Airbnb regeneró el enlace. El alojamiento y el canal no se
+                        pueden cambiar: para eso elimina este calendario y crea otro.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-1.5 py-1">
+                    <Label htmlFor="edit-ical-url">URL del calendario (.ics)</Label>
+                    <Input
+                        id="edit-ical-url"
+                        value={url}
+                        onChange={(e) => setUrl(e.target.value)}
+                        aria-invalid={error ? true : undefined}
+                    />
+                    {error && <p className="text-xs text-red-500">{error}</p>}
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>
+                    <Button onClick={() => void save()} disabled={saving || url.trim() === ""}>
+                        {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                        Guardar
+                    </Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     )

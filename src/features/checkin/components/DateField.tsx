@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useId, useRef, useState } from "react"
 import {
     acceptSegmentInput,
     composeDateValue,
@@ -40,32 +40,39 @@ const SEGMENTS = [
  * sea una fecha real), así que ni el payload ni el prefill del OCR cambian.
  */
 export function DateField({ label, required, value, onChange, max, autoCompleteKind }: DateFieldProps) {
-    const [segments, setSegments] = useState<DateSegments>(() => splitDateValue(value))
+    const [draft, setDraft] = useState(() => ({
+        segments: splitDateValue(value),
+        observedValue: value,
+        emittedValue: null as string | null,
+    }))
+    const { segments } = draft
     const dayRef = useRef<HTMLInputElement>(null)
     const monthRef = useRef<HTMLInputElement>(null)
     const yearRef = useRef<HTMLInputElement>(null)
     const refs = { day: dayRef, month: monthRef, year: yearRef }
+    const errorId = useId()
 
     // Rehidrata desde el padre (prefill del OCR que llega tras el montaje) sin
     // pisar lo que el huésped está tipeando: solo cuando el valor externo CAMBIÓ
     // y es una fecha completa distinta de la que estos segmentos ya componen.
     // Reset durante el render (patrón "adjusting state when a prop changes" de
     // React), no en un efecto: sin render intermedio con el valor viejo.
-    const [lastValue, setLastValue] = useState(value)
-    if (value !== lastValue) {
-        setLastValue(value)
-        if (value && value !== composeDateValue(segments)) {
-            const incoming = splitDateValue(value)
-            if (incoming.year) setSegments(incoming)
-        }
+    if (value !== draft.observedValue) {
+        const isOwnChange = value === draft.emittedValue
+        setDraft({
+            segments: isOwnChange ? segments : splitDateValue(value),
+            observedValue: value,
+            emittedValue: null,
+        })
     }
 
     const emit = (next: DateSegments) => {
-        setSegments(next)
         const composed = composeDateValue(next)
         // Una fecha que viola el tope no viaja al formulario: se avisa abajo y
         // el submit queda bloqueado igual que con la fecha incompleta.
-        onChange(max && composed > max ? "" : composed)
+        const emittedValue = max && composed > max ? "" : composed
+        setDraft({ segments: next, observedValue: value, emittedValue })
+        onChange(emittedValue)
     }
 
     const handleInput = (key: keyof DateSegments, raw: string) => {
@@ -102,6 +109,7 @@ export function DateField({ label, required, value, onChange, max, autoCompleteK
                             inputMode="numeric"
                             aria-label={`${label} — ${segLabel}`}
                             aria-invalid={error ? true : undefined}
+                            aria-describedby={error ? errorId : undefined}
                             placeholder={placeholder}
                             autoComplete={autoCompleteKind === "bday" ? bday : "off"}
                             value={segments[key]}
@@ -113,7 +121,7 @@ export function DateField({ label, required, value, onChange, max, autoCompleteK
                 ))}
             </div>
             {error && (
-                <p role="alert" className="text-xs font-medium text-red-600">
+                <p id={errorId} role="alert" className="text-xs font-medium text-red-600">
                     {error}
                 </p>
             )}

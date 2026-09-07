@@ -54,6 +54,21 @@ export function composeDateValue({ day, month, year }: DateSegments): string {
     return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`
 }
 
+/** Fecha ISO local (no UTC): los límites visibles deben seguir el día civil del navegador. */
+export function localDateValue(date: Date = new Date()): string {
+    const year = String(date.getFullYear()).padStart(4, "0")
+    const month = String(date.getMonth() + 1).padStart(2, "0")
+    const day = String(date.getDate()).padStart(2, "0")
+    return `${year}-${month}-${day}`
+}
+
+/** Valida un valor externo, incluido un prefill que el huésped todavía no editó. */
+export function isValidDateValue(value: string, max?: string): boolean {
+    const segments = splitDateValue(value)
+    const composed = composeDateValue(segments)
+    return composed !== "" && composed === value && (!max || composed <= max)
+}
+
 /**
  * Qué contarle al huésped cuando ya llenó los tres segmentos. `null` = nada que
  * decir (fecha válida, o todavía incompleta — un campo a medias no es un error).

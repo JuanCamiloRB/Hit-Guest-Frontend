@@ -512,7 +512,10 @@ export class ReservationsService {
             source: sourceName,
             totalPrice: Number(r.totalPrice || r.total_price || 0),
             currency: r.currency || r.currency_code || "COP",
-            totalGuests: Number(r.totalGuests || r.total_guests || 1),
+            // `0` = capacidad sin declarar (Airbnb iCal) y DEBE sobrevivir: con
+            // `||` se convertía en 1 y el panel afirmaba una ocupación que el
+            // huésped todavía no declaró (P0, auditoría 2026-09-07).
+            totalGuests: Number(r.totalGuests ?? r.total_guests ?? 0),
             externalId: r.externalId || r.external_id || "",
             communicationsLocale: normalizeLocale(listing?.communicationsLocale || listing?.communications_locale),
             // Origen técnico + rastro de conflictos con el PMS (contrato 2026-08-24

@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/popover"
 import { Search, X, CalendarIcon } from "lucide-react"
 import { LoadingState } from "@/components/ui/loading-state"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { format, isValid, isWithinInterval, startOfDay, endOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
@@ -89,24 +89,44 @@ export default function ReservationsList() {
      * se arma desde GET /reservations); mientras backend define cómo conservar
      * esa contabilidad, lo mínimo es que el PM lo sepa ANTES de confirmar.
      */
-    const [deleteConsumption, setDeleteConsumption] = useState<{ forId: string; total: number } | null>(null)
+    const [deleteConsumption, setDeleteConsumption] = useState<
+        | { forId: string; requestToken: object; status: "loading" }
+        | { forId: string; requestToken: object; status: "ready"; total: number }
+        | { forId: string; requestToken: object; status: "error" }
+        | null
+    >(null)
 
-    useEffect(() => {
-        if (!deleteTarget) return
-        let active = true
-        consumptionService
-            .getReservationCosts([deleteTarget])
-            .then(([cost]) => {
-                if (active && cost) setDeleteConsumption({ forId: deleteTarget.id, total: cost.total })
+    const loadDeleteConsumption = useCallback((reservation: Reservation) => {
+        const requestToken = {}
+        setDeleteConsumption({ forId: reservation.id, requestToken, status: "loading" })
+        void consumptionService
+            .getReservationCost(reservation)
+            .then((cost) => {
+                setDeleteConsumption((current) =>
+                    current?.forId === reservation.id && current.requestToken === requestToken
+                        ? { forId: reservation.id, requestToken, status: "ready", total: cost.total }
+                        : current,
+                )
             })
             .catch(() => {
-                // Sin el dato no se bloquea nada: el aviso simplemente no aparece.
+                setDeleteConsumption((current) =>
+                    current?.forId === reservation.id && current.requestToken === requestToken
+                        ? { forId: reservation.id, requestToken, status: "error" }
+                        : current,
+                )
             })
-        return () => { active = false }
-    }, [deleteTarget])
+    }, [])
 
+    const requestDelete = useCallback((reservation: Reservation) => {
+        setDeleteTarget(reservation)
+        loadDeleteConsumption(reservation)
+    }, [loadDeleteConsumption])
+
+    const deleteConsumptionState =
+        deleteTarget && deleteConsumption?.forId === deleteTarget.id ? deleteConsumption : null
     const deleteTargetConsumption =
-        deleteTarget && deleteConsumption?.forId === deleteTarget.id ? deleteConsumption.total : null
+        deleteConsumptionState?.status === "ready" ? deleteConsumptionState.total : null
+    const consumptionResolved = deleteConsumptionState?.status === "ready"
 
     // ── Filters (client-side over the loaded reservations) ──
     const [search, setSearch] = useState("")
@@ -157,7 +177,7 @@ export default function ReservationsList() {
     }
 
     const handleDelete = async () => {
-        if (!deleteTarget) return
+        if (!deleteTarget || deleteConsumptionState?.status !== "ready") return
         setIsDeleting(true)
         try {
             await reservationsService.delete(deleteTarget.id)
@@ -173,8 +193,8 @@ export default function ReservationsList() {
     }
 
     const columns = useMemo(
-        () => getColumns({ onDelete: (reservation) => setDeleteTarget(reservation) }),
-        []
+        () => getColumns({ onDelete: requestDelete }),
+        [requestDelete]
     )
 
     useEffect(() => {
@@ -323,6 +343,16 @@ export default function ReservationsList() {
                         <AlertDialogDescription>
                             Estás a punto de eliminar la reserva de <strong>{deleteTarget?.guestName}</strong>.
                             Esta acción no se puede deshacer.
+                            {deleteConsumptionState?.status === "loading" && (
+                                <span role="status" className="mt-2 block rounded-lg bg-slate-50 px-3 py-2 text-slate-600">
+                                    Verificando el consumo registrado…
+                                </span>
+                            )}
+                            {deleteConsumptionState?.status === "error" && (
+                                <span role="alert" className="mt-2 block rounded-lg bg-red-50 px-3 py-2 text-red-700">
+                                    No pudimos verificar el consumo de esta reserva. Reintenta la consulta antes de eliminarla.
+                                </span>
+                            )}
                             {deleteTargetConsumption !== null && deleteTargetConsumption > 0 && (
                                 <span className="mt-2 block rounded-lg bg-amber-50 px-3 py-2 text-amber-800">
                                     Esta reserva tiene consumo registrado por{" "}
@@ -334,9 +364,19 @@ export default function ReservationsList() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                        {deleteConsumptionState?.status === "error" && deleteTarget && (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={isDeleting}
+                                onClick={() => loadDeleteConsumption(deleteTarget)}
+                            >
+                                Reintentar consulta
+                            </Button>
+                        )}
                         <AlertDialogAction
                             onClick={handleDelete}
-                            disabled={isDeleting}
+                            disabled={isDeleting || !consumptionResolved}
                             className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
                         >
                             {isDeleting ? "Eliminando..." : "Eliminar"}

@@ -62,5 +62,11 @@ export default async function CheckinIdentifyPage({
         return <div className="text-center p-8">Reserva no encontrada</div>
     }
 
-    return <IdentifyScreen reservationUuid={resolvedParams.reference} basePath={basePath} />
+    return (
+        <IdentifyScreen
+            reservationUuid={resolvedParams.reference}
+            basePath={basePath}
+            initialGuestCountRequired={portal.reservation?.requiresGuestCountDeclaration === true}
+        />
+    )
 }

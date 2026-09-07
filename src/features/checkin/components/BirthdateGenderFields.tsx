@@ -2,6 +2,7 @@
 
 import { SearchableSelect } from "./SearchableSelect"
 import { DateField } from "./DateField"
+import { localDateValue } from "../lib/date-field"
 
 interface Props {
     genderOptions: { id: number; label: string }[]
@@ -37,7 +38,7 @@ export function BirthdateGenderFields({
                 required
                 value={dateOfBirth}
                 onChange={onDateOfBirthChange}
-                max={new Date().toISOString().split("T")[0]}
+                max={localDateValue()}
                 autoCompleteKind="bday"
             />
             <div className="space-y-1.5">

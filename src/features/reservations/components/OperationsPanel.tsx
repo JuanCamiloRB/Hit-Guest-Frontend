@@ -49,6 +49,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { COMMUNICATION_LOCALES, LOCALE_LABELS, type CommunicationLocale } from "@/lib/locales"
 import { ReservationDialog } from "./ReservationDialog"
+import { RegisterPriceDialog } from "./RegisterPriceDialog"
 import {
     getReservationStatusMeta,
     isReservationActionable,
@@ -70,6 +71,9 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
     const [recipientEmail, setRecipientEmail] = useState("")
     // "default" => omit locale (use property's configured language).
     const [localeChoice, setLocaleChoice] = useState<"default" | CommunicationLocale>("default")
+    const [priceDialogOpen, setPriceDialogOpen] = useState(false)
+    /** Recarga el detalle tras registrar el valor (el aviso debe irse solo). */
+    const [reloadKey, setReloadKey] = useState(0)
 
     useEffect(() => {
         let mounted = true
@@ -88,7 +92,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
         }
         load()
         return () => { mounted = false }
-    }, [reservationId])
+    }, [reservationId, reloadKey])
 
     // Prefill recipient with the main guest's email and reset the language to the
     // property default each time the dialog opens.
@@ -345,8 +349,10 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                 <DetailCell
                                     icon={Users}
                                     label="Huéspedes"
-                                    value={data.totalGuests}
-                                    hint={data.totalGuests === 1 ? "huésped" : "huéspedes"}
+                                    value={data.capacityDeclarationRequired ? "—" : data.totalGuests}
+                                    hint={data.capacityDeclarationRequired
+                                        ? "por declarar"
+                                        : data.totalGuests === 1 ? "huésped" : "huéspedes"}
                                 />
                             </dl>
 
@@ -358,6 +364,14 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                     </Card>
 
                     {/* Guest Documents */}
+                    <RegisterPriceDialog
+                        reservationUuid={data.uuid}
+                        currency={data.currency}
+                        open={priceDialogOpen}
+                        onClose={() => setPriceDialogOpen(false)}
+                        onSaved={() => setReloadKey((k) => k + 1)}
+                    />
+
                     <GuestDocumentsCard reservationUuid={data.uuid} />
 
                     {/* Property Documents */}
@@ -405,10 +419,16 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     El precio es del PM (accionable: TRA no corre sin él); la
                                     capacidad la declara el huésped (informativo). */}
                                 {data.priceUnconfirmed && (
-                                    <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning">
-                                        <span className="font-semibold">Falta registrar el valor de la reserva.</span>{" "}
-                                        Hasta registrarlo, el reporte a TRA no puede ejecutarse — usa «Editar
-                                        reserva» (un valor de 0 también cuenta como confirmado).
+                                    <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning">
+                                        <span className="font-semibold">Falta registrar el valor de la reserva.</span>
+                                        <span>Hasta registrarlo, el reporte a TRA no puede ejecutarse.</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPriceDialogOpen(true)}
+                                            className="font-semibold underline underline-offset-2 hover:opacity-80"
+                                        >
+                                            Registrar valor
+                                        </button>
                                     </p>
                                 )}
                                 {data.capacityDeclarationRequired && (

@@ -398,7 +398,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             from: fromDate,
                             to: toDate,
                         },
-                        totalGuests: raw.totalGuests || raw.total_guests || 1,
+                        totalGuests: raw.totalGuests ?? raw.total_guests ?? 1,
                         totalPrice: Number(raw.totalPrice || raw.total_price || 0),
                         currency: raw.currency || "COP",
                         sendLinkNow: false,

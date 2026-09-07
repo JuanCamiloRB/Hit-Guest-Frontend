@@ -34,7 +34,15 @@ const STATUS_CONTENT: Record<
 }
 
 export function PortalStatusScreen({ status, message }: PortalStatusScreenProps) {
-    const content = STATUS_CONTENT[status]
+    // `classifyPortalPayload` acepta CUALQUIER portalStatus string a propósito
+    // (nunca ocultar lo que el backend afirma) — así que un estado que esta
+    // pantalla no conoce debe degradar a un contenido genérico, no reventar.
+    const content = STATUS_CONTENT[status] ?? {
+        icon: XCircle,
+        title: "Reserva no disponible",
+        defaultMessage: "Esta reserva no está disponible para el check-in en este momento.",
+        accent: "text-amber-500 bg-amber-50",
+    }
     const Icon = content.icon
 
     return (

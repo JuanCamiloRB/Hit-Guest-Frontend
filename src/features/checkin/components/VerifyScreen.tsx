@@ -10,6 +10,7 @@ import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { DateField } from "@/features/checkin/components/DateField"
+import { isValidDateValue, localDateValue } from "@/features/checkin/lib/date-field"
 import { attemptsRemainingNotice, describeVerificationFailure } from "@/features/checkin/components/verification-failure-meta"
 import { ReassuranceTicker } from "@/features/checkin/components/ReassuranceTicker"
 import { DIDIT_WAIT_SCRIPT } from "@/features/checkin/lib/reassurance"
@@ -664,6 +665,9 @@ export function VerifyScreen({
     }
 
     const handleOcrConfirm = () => {
+        const today = localDateValue()
+        const expirationIsValid = !editOcr.expirationDate || isValidDateValue(editOcr.expirationDate)
+        if (!isValidDateValue(editOcr.dateOfBirth, today) || !expirationIsValid) return
         // Overwrite guest form in localStorage with fresh OCR + prefilledData.
         // We intentionally do NOT merge with stale stored values so the OCR data wins cleanly.
         const prefilledExtras = (ocrResult?.formSchema?.prefilledData ?? {}) as Record<string, unknown>
@@ -826,6 +830,7 @@ export function VerifyScreen({
                             label="Fecha de Nacimiento"
                             value={editOcr.dateOfBirth}
                             onChange={(v) => setEditOcr({ ...editOcr, dateOfBirth: v })}
+                            max={localDateValue()}
                             autoCompleteKind="bday"
                         />
                         {editOcr.expirationDate !== undefined && (
@@ -843,7 +848,14 @@ export function VerifyScreen({
                         <button onClick={handleRetry} className="flex-1 h-14 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-lg transition-all active:scale-[0.98]">
                             Reintentar
                         </button>
-                        <button onClick={handleOcrConfirm} className="flex-[2] flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]">
+                        <button
+                            onClick={handleOcrConfirm}
+                            disabled={
+                                !isValidDateValue(editOcr.dateOfBirth, localDateValue())
+                                || (!!editOcr.expirationDate && !isValidDateValue(editOcr.expirationDate))
+                            }
+                            className="flex-[2] flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
                             <CheckCircle2 size={20} /> Continuar
                         </button>
                     </div>

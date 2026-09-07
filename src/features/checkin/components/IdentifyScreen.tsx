@@ -31,10 +31,18 @@ interface IdentifyScreenProps {
     reservationUuid: string
     basePath: string
     isMainGuest?: boolean
+    /**
+     * Valor inicial de `requiresGuestCountDeclaration`, leído por la página
+     * SERVER que ya tiene el portal. El refetch cliente solo puede confirmarlo o
+     * actualizarlo: si falla, el campo obligatorio no desaparece (P0 de la
+     * auditoría 2026-09-07 — antes un fetch fallido escondía el campo y el 422
+     * de `totalGuests` se anclaba a un input invisible).
+     */
+    initialGuestCountRequired?: boolean
     isSecondary?: boolean
 }
 
-export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, isSecondary = false }: IdentifyScreenProps) {
+export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, isSecondary = false, initialGuestCountRequired = false }: IdentifyScreenProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     // "Continuar registro" resumes an existing guest → /identify?guest_uuid=...
@@ -124,7 +132,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
      * titular debe declararla en su identify. El flag lo anuncia el portal; el
      * campo solo existe mientras sea `true` (es de un solo uso).
      */
-    const [guestCountRequired, setGuestCountRequired] = useState(false)
+    const [guestCountRequired, setGuestCountRequired] = useState(initialGuestCountRequired)
     const [guestCount, setGuestCount] = useState("")
 
     useEffect(() => {
@@ -133,7 +141,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
         checkinService.getPortal(reservationUuid)
             .then(portal => {
                 if (!active) return
-                setGuestCountRequired(portal.reservation?.requiresGuestCountDeclaration === true)
+                if (portal.reservation?.requiresGuestCountDeclaration === true) setGuestCountRequired(true)
                 const patch = mainGuestPrefillPatch(
                     normalizeMainGuestPrefill(portal.reservation?.mainGuestPrefill),
                     { includeContact: false },

@@ -460,6 +460,11 @@ class AutomationService {
         const status: AutomationLiveStatus = raw.status ?? "not_started"
         const payload = raw.responsePayload ?? raw.response_payload ?? null
         const pdfPath = payload?.pdf_path ?? raw.contractPdfPath ?? raw.contract_pdf_path ?? null
+        // Contrato Airbnb iCal (2026-09-04): algunos fallos llegan como
+        // `responsePayload.error` ("price_unconfirmed") con `lastError` vacío.
+        // Se sintetiza al mismo canal para que ERROR_CODE_LABELS los traduzca
+        // sin que cada pantalla aprenda un segundo lugar donde mirar.
+        const payloadError = typeof payload?.error === "string" && payload.error ? payload.error : null
         // Backend action flags (dispatch panel contract). Missing authorization
         // flags never fall back to client heuristics: these actions can bill.
         const pick = <T,>(camel: T | undefined, snake: T | undefined, fallback: T): T =>
@@ -469,7 +474,7 @@ class AutomationService {
             automationName: raw.automationName ?? raw.automation_name ?? "",
             providerSlug: canonicalSlug(raw.providerSlug ?? raw.provider_slug),
             status,
-            lastError: raw.lastError ?? raw.last_error ?? null,
+            lastError: raw.lastError ?? raw.last_error ?? (payloadError ? { message: payloadError } : null),
             lastRunAt: raw.lastRunAt ?? raw.last_run_at ?? null,
             usageRecordId: raw.usageRecordId ?? raw.usage_record_id ?? null,
             contractPdfPath: typeof pdfPath === "string" ? pdfPath : null,
@@ -532,12 +537,18 @@ class AutomationService {
         const rawPayload = raw.responsePayload ?? raw.response_payload
         const responsePayload = rawPayload && typeof rawPayload === "object"
             ? Object.fromEntries(
-                ["pdf_path", "skipped", "reason"]
+                // "error": códigos de negocio del contrato Airbnb iCal
+                // ("price_unconfirmed") — sin él, el historial mostraba un fallo
+                // sin causa.
+                ["pdf_path", "skipped", "reason", "error"]
                     .filter((key) => (rawPayload as Record<string, unknown>)[key] !== undefined)
                     .map((key) => [key, (rawPayload as Record<string, unknown>)[key]]),
             )
             : null
 
+        const payloadBusinessError = responsePayload && typeof responsePayload.error === "string" && responsePayload.error
+            ? String(responsePayload.error)
+            : null
         return {
             id: Number(raw.id),
             status: raw.status,
@@ -548,7 +559,7 @@ class AutomationService {
             guestUuid: raw.guestUuid ?? raw.guest_uuid ?? null,
             billable: raw.billable === true,
             unitCost: raw.unitCost ?? raw.unit_cost ?? null,
-            lastError,
+            lastError: lastError ?? (payloadBusinessError ? { message: payloadBusinessError, httpStatus: null, httpBody: null } : null),
             responsePayload,
             createdAt: raw.createdAt ?? raw.created_at ?? "",
             updatedAt: raw.updatedAt ?? raw.updated_at ?? "",

@@ -21,6 +21,7 @@ import { FormInput } from "@/features/checkin/components/FormInput"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
 import { DocumentTypeNumberFields } from "@/features/checkin/components/DocumentTypeNumberFields"
 import { BirthdateGenderFields } from "@/features/checkin/components/BirthdateGenderFields"
+import { isValidDateValue, localDateValue } from "@/features/checkin/lib/date-field"
 import { DynamicCheckinFields, areDynamicFieldsValid, getProviderUserFields } from "@/features/checkin/components/DynamicCheckinFields"
 import { CollapsibleSection } from "@/features/checkin/components/CollapsibleSection"
 import { mockDocumentTypes, mockGenders } from "@/features/checkin/data/mock-guest-data"
@@ -312,7 +313,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
         String(form.identificationNumber ?? "").trim() !== "" &&
         String(form.name ?? "").trim() !== "" &&
         String(form.lastname ?? "").trim() !== "" &&
-        form.dateOfBirth !== "" &&
+        isValidDateValue(form.dateOfBirth ?? "", localDateValue()) &&
         String(form.email ?? "").trim() !== "" &&
         (docVerified || form.documentImage1 !== null) &&
         (docVerified || isSingleSidedDoc || form.documentImage2 !== null)

@@ -137,7 +137,9 @@ export function PropertiesUnits() {
     const [unitForm, setUnitForm] = useState({ ...defaultUnit })
     const [roomTypes, setRoomTypes] = useState<CatalogOption[]>([])
     const [currencies, setCurrencies] = useState<CatalogOption[]>([])
-    const [amenityOptions, setAmenityOptions] = useState<CatalogOption[]>([])
+    /** `null` = cargando; `[]` puede ser catálogo vacío o fallo (ver flag). */
+    const [amenityOptions, setAmenityOptions] = useState<CatalogOption[] | null>(null)
+    const [amenityCatalogFailed, setAmenityCatalogFailed] = useState(false)
     const [roomTypesLoading, setRoomTypesLoading] = useState(true)
     const [isSavingUnit, setIsSavingUnit] = useState(false)
     const saveLockRef = useRef(false)
@@ -194,15 +196,30 @@ export function PropertiesUnits() {
         // GuaranteePreview): sin él, salir de la propiedad antes de que el
         // catálogo responda escribe estado sobre un componente desmontado.
         let active = true
-        Promise.all([catalogService.getRoomTypes(), catalogService.getCurrencies(), catalogService.getAmenities()])
-            .then(([rooms, curr, amenities]) => {
+        Promise.all([catalogService.getRoomTypes(), catalogService.getCurrencies()])
+            .then(([rooms, curr]) => {
                 if (!active) return
                 setRoomTypes(rooms)
                 if (curr.length > 0) setCurrencies(curr)
-                setAmenityOptions(amenities)
             })
             .finally(() => {
                 if (active) setRoomTypesLoading(false)
+            })
+        return () => { active = false }
+    }, [])
+
+    // Aparte del Promise.all de arriba a propósito: si amenidades falla, el
+    // resto del formulario de unidades sigue funcionando.
+    useEffect(() => {
+        let active = true
+        catalogService.getAmenities()
+            .then((amenities) => { if (active) setAmenityOptions(amenities) })
+            .catch((error) => {
+                console.error("[PropertiesUnits] catálogo de amenidades:", error)
+                if (active) {
+                    setAmenityOptions([])
+                    setAmenityCatalogFailed(true)
+                }
             })
         return () => { active = false }
     }, [])
@@ -941,9 +958,19 @@ export function PropertiesUnits() {
                                                 </div>
 
                                                 {!unitForm.extra.inheritAmenities && (
-                                                    amenityOptions.length === 0 ? (
+                                                    amenityOptions === null ? (
                                                         <div className="flex items-center gap-2 rounded-xl border bg-slate-50 p-4 text-xs text-slate-400">
                                                             <Loader2 className="h-4 w-4 animate-spin" /> Cargando amenidades…
+                                                        </div>
+                                                    ) : amenityCatalogFailed ? (
+                                                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
+                                                            No se pudo cargar el catálogo de amenidades. Cierra y reabre el
+                                                            diálogo para reintentar; la herencia de la propiedad no se ve
+                                                            afectada.
+                                                        </div>
+                                                    ) : amenityOptions.length === 0 ? (
+                                                        <div className="rounded-xl border bg-slate-50 p-4 text-xs text-slate-400">
+                                                            El catálogo de amenidades está vacío.
                                                         </div>
                                                     ) : (
                                                         <div className="grid grid-cols-1 gap-2 rounded-xl border bg-slate-50 p-4 sm:grid-cols-2">

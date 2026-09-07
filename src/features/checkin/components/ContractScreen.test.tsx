@@ -368,6 +368,17 @@ describe("ContractScreen — fases contrato → tarjeta cuando hay garantía", (
         expect(screen.queryByRole("button", { name: "Completar check-in" })).not.toBeInTheDocument()
     })
 
+    it("un error transitorio muestra un solo reintento y elimina el CTA fijo muerto", async () => {
+        mocks.getPortal.mockResolvedValue(portal())
+        mocks.getContractPreview.mockRejectedValue(new Error("network down"))
+
+        render(<ContractScreen reservationUuid="reservation-1" basePath="/checkin/reservation-1" />)
+
+        expect(await screen.findByText("No es posible continuar con la firma")).toBeInTheDocument()
+        expect(screen.getAllByRole("button", { name: "Reintentar" })).toHaveLength(1)
+        expect(screen.queryByRole("button", { name: "Reintentar carga" })).not.toBeInTheDocument()
+    })
+
     it("reingreso ya firmado cae directo en la tarjeta, sin volver a firmar", async () => {
         // El portal reporta la firma: la fase la deriva el backend, no un flag local.
         mocks.getPortal.mockResolvedValue(portal("signed"))

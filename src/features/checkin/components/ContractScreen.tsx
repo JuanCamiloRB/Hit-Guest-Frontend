@@ -849,10 +849,11 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
      * RETIRA en vez de quedarse deshabilitado: el botón más grande y más
      * cercano al pulgar no puede ser uno muerto — el 95% toca ahí y lee
      * «está trabado». Reaparece, ya habilitado, cuando la tarjeta queda
-     * activa. Con error de configuración se conserva: ahí es el único CTA
-     * («Reintentar carga»).
+     * activa. Con error de configuración también se retira: el panel de error
+     * ya contiene su propia acción de reintento y no debe competir con ella.
      */
-    const fixedCtaHidden = !configurationError && showGuaranteePhase && guaranteeStatus !== "active"
+    const fixedCtaHidden = Boolean(configurationError)
+        || (showGuaranteePhase && guaranteeStatus !== "active")
 
     return (
         <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">

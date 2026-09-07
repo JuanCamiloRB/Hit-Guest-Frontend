@@ -10,6 +10,7 @@ import { CatalogService, type IdentificationTypeOption, type CatalogOption, type
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
 import { DocumentTypeNumberFields } from "@/features/checkin/components/DocumentTypeNumberFields"
 import { BirthdateGenderFields } from "@/features/checkin/components/BirthdateGenderFields"
+import { isValidDateValue, localDateValue } from "@/features/checkin/lib/date-field"
 import {
     type GuestFormData,
     type GuestFormSchemaResponse,
@@ -388,7 +389,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
         String(form.identificationNumber ?? "").trim() !== "" &&
         String(form.name ?? "").trim() !== "" &&
         String(form.lastname ?? "").trim() !== "" &&
-        form.dateOfBirth !== "" &&
+        isValidDateValue(form.dateOfBirth, localDateValue()) &&
         String(form.email ?? "").trim() !== "" &&
         (docVerified || form.documentImage1 !== null) &&
         (docVerified || isPassport || form.documentImage2 !== null)

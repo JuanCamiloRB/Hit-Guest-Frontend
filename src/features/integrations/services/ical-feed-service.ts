@@ -14,8 +14,11 @@
  * Todo con el token de sesión del PM (datos de cuenta).
  */
 
-import { apiClient } from "@/lib/api-client"
+import { apiClient, handleSessionExpired } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
+import { useAuthStore } from "@/lib/store/auth-store"
+import { ApiError, type ApiErrorResponse } from "@/types/api"
+import { automationService } from "@/features/properties/services/automation-service"
 import type {
     IcalFeed,
     IcalFeedCreatePayload,
@@ -23,28 +26,46 @@ import type {
     IcalMessageTemplate,
 } from "../types/ical"
 
-interface Paginated<T> {
-    data?: T[]
-    meta?: { current_page?: number; last_page?: number }
-}
-
 function unwrap<T>(res: { data?: T } | T): T {
     return (res as { data?: T })?.data ?? (res as T)
 }
 
 class IcalFeedService {
-    /** Todos los feeds del client — sigue la paginación estándar de Laravel. */
+    /**
+     * Todos los feeds del client, siguiendo la paginación de Laravel.
+     *
+     * Con `fetch` directo, NO con `apiClient`: el cliente compartido desenvuelve
+     * `{ data }` automáticamente y se traga `meta`, así que con él ni se ven los
+     * feeds ni se puede saber cuántas páginas hay. Es exactamente el mismo motivo
+     * por el que `automationService.listProviders()` también usa fetch (P0 de la
+     * auditoría del 2026-09-07).
+     */
     async list(): Promise<IcalFeed[]> {
+        const MAX_PAGES = 20
         const all: IcalFeed[] = []
-        let page = 1
-        let lastPage = 1
-        do {
-            const res = await apiClient.get<Paginated<IcalFeed>>(`${API_BASE}/ical/feeds?page=${page}`)
-            all.push(...(res.data ?? []))
-            lastPage = res.meta?.last_page ?? 1
-            page += 1
-        } while (page <= lastPage)
+        for (let page = 1; page <= MAX_PAGES; page++) {
+            const res = await fetch(`${API_BASE}/ical/feeds?page=${page}`, {
+                headers: { Accept: "application/json", ...this.authHeader() },
+                cache: "no-store",
+            })
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({ message: `HTTP ${res.status}` })) as ApiErrorResponse
+                if (res.status === 401) handleSessionExpired()
+                // Un listado parcial haría ver un feed configurado como borrado:
+                // fallar entero es lo honesto.
+                throw new ApiError(res.status, body)
+            }
+            const json = await res.json()
+            all.push(...(Array.isArray(json?.data) ? json.data : []))
+            const lastPage = Number(json?.meta?.last_page ?? 1)
+            if (page >= lastPage) break
+        }
         return all
+    }
+
+    private authHeader(): Record<string, string> {
+        const token = useAuthStore.getState().user?.token
+        return token ? { Authorization: `Bearer ${token}` } : {}
     }
 
     async create(payload: IcalFeedCreatePayload): Promise<IcalFeed> {
@@ -91,19 +112,13 @@ class IcalFeedService {
     }
 
     private async resolveAirbnbIcalProviderId(): Promise<number> {
-        let page = 1
-        let lastPage = 1
-        do {
-            const res = await apiClient.get<Paginated<{ id: number; name?: string }>>(
-                `${API_BASE}/providers?page=${page}`,
-            )
-            const match = (res.data ?? []).find((provider) =>
-                /airbnb/i.test(provider.name ?? "") && /ical/i.test(provider.name ?? ""),
-            )
-            if (match) return match.id
-            lastPage = res.meta?.last_page ?? 1
-            page += 1
-        } while (page <= lastPage)
+        // Reusa el paginador ya probado del catálogo de providers (fetch directo,
+        // conserva meta) en vez de duplicar la lectura del envelope.
+        const providers = await automationService.listProviders()
+        const match = providers.find((provider) =>
+            /airbnb/i.test(provider.name ?? "") && /ical/i.test(provider.name ?? ""),
+        )
+        if (match) return match.id
         throw new Error(
             "El proveedor \"Airbnb iCal\" no está disponible en el catálogo. Contacta a soporte de HIT Guest.",
         )

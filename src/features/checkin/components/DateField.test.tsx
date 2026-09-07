@@ -15,6 +15,16 @@ function Harness({ initial = "", max }: { initial?: string; max?: string }) {
     )
 }
 
+function ResetHarness() {
+    const [value, setValue] = useState("1983-08-05")
+    return (
+        <>
+            <DateField label="Fecha de nacimiento" value={value} onChange={setValue} />
+            <button type="button" onClick={() => setValue("")}>Reset externo</button>
+        </>
+    )
+}
+
 describe("DateField", () => {
     it("teclear 5 12 1983 compone 1983-12-05 con auto-avance y auto-cero", async () => {
         const user = userEvent.setup()
@@ -69,6 +79,44 @@ describe("DateField", () => {
         // Estamos en Año (vacío): un backspace debe volver a Mes.
         await user.keyboard("{Backspace}")
         expect(screen.getByRole("textbox", { name: /Mes/ })).toHaveFocus()
+    })
+
+    it("un reset externo a vacío limpia los tres segmentos", async () => {
+        const user = userEvent.setup()
+        render(<ResetHarness />)
+
+        await user.click(screen.getByRole("button", { name: "Reset externo" }))
+
+        expect(screen.getByRole("textbox", { name: /Día/ })).toHaveValue("")
+        expect(screen.getByRole("textbox", { name: /Mes/ })).toHaveValue("")
+        expect(screen.getByRole("textbox", { name: /Año/ })).toHaveValue("")
+    })
+
+    it("distingue un borrado interno del reset externo y conserva los otros segmentos", async () => {
+        const user = userEvent.setup()
+        render(<Harness initial="1983-08-05" />)
+
+        await user.clear(screen.getByRole("textbox", { name: /Día/ }))
+
+        expect(screen.getByRole("textbox", { name: /Día/ })).toHaveValue("")
+        expect(screen.getByRole("textbox", { name: /Mes/ })).toHaveValue("08")
+        expect(screen.getByRole("textbox", { name: /Año/ })).toHaveValue("1983")
+        expect(screen.getByTestId("emitted")).toHaveTextContent("")
+    })
+
+    it("asocia el error con cada segmento para lectores de pantalla", async () => {
+        const user = userEvent.setup()
+        render(<Harness />)
+
+        await user.click(screen.getByRole("textbox", { name: /Día/ }))
+        await user.keyboard("30021990")
+
+        const alert = screen.getByRole("alert")
+        const errorId = alert.getAttribute("id")
+        expect(errorId).toBeTruthy()
+        expect(screen.getByRole("textbox", { name: /Día/ })).toHaveAttribute("aria-describedby", errorId)
+        expect(screen.getByRole("textbox", { name: /Mes/ })).toHaveAttribute("aria-describedby", errorId)
+        expect(screen.getByRole("textbox", { name: /Año/ })).toHaveAttribute("aria-describedby", errorId)
     })
 })
 

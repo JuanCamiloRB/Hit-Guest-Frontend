@@ -30,5 +30,11 @@ export default async function CheckinIdentifyByExternalPage({
         return <PortalStatusScreen status={portal.portalStatus} message={portal.message} />
     }
 
-    return <IdentifyScreen reservationUuid={portal.reservation.uuid} basePath={basePath} />
+    return (
+        <IdentifyScreen
+            reservationUuid={portal.reservation.uuid}
+            basePath={basePath}
+            initialGuestCountRequired={portal.reservation.requiresGuestCountDeclaration === true}
+        />
+    )
 }

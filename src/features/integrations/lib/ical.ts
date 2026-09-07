@@ -15,3 +15,12 @@ export function extractAirbnbListingId(url: string): string | null {
 
 /** Airbnb en el catálogo "Source PMS" (cat. 12) — verificado por curl (skill, catálogo source_pms). */
 export const AIRBNB_SOURCE_PMS_ID = 100
+
+/**
+ * La URL del calendario lleva su token (`?s=…`) — ES el secreto del feed, así
+ * que nunca se pinta completa en el DOM: query enmascarada.
+ */
+export function maskIcalUrl(url: string): string {
+    const queryStart = url.indexOf("?")
+    return queryStart === -1 ? url : `${url.slice(0, queryStart)}?•••`
+}

@@ -3,6 +3,8 @@ import {
     acceptSegmentInput,
     composeDateValue,
     dateFieldError,
+    isValidDateValue,
+    localDateValue,
     splitDateValue,
 } from "./date-field"
 
@@ -30,6 +32,21 @@ describe("splitDateValue / composeDateValue", () => {
         // El constructor de Date "arregla" el 30/02 a marzo — acá debe ser inválido.
         expect(composeDateValue({ day: "29", month: "02", year: "2024" })).toBe("2024-02-29")
         expect(composeDateValue({ day: "29", month: "02", year: "2023" })).toBe("")
+    })
+})
+
+describe("validación de valores externos", () => {
+    it("rechaza prefills imposibles, fuera del rango o anteriores a 1900", () => {
+        expect(isValidDateValue("")).toBe(false)
+        expect(isValidDateValue("2023-02-29")).toBe(false)
+        expect(isValidDateValue("1899-12-31")).toBe(false)
+        expect(isValidDateValue("2030-01-01", "2026-09-04")).toBe(false)
+        expect(isValidDateValue("2024-02-29", "2026-09-04")).toBe(true)
+    })
+
+    it("calcula hoy en el calendario local, no convirtiendo a UTC", () => {
+        const localLateNight = new Date(2026, 8, 4, 23, 30)
+        expect(localDateValue(localLateNight)).toBe("2026-09-04")
     })
 })
 

@@ -82,7 +82,7 @@ describe("VerifyScreen — contrato síncrono de Textract", () => {
             extractedData: {
                 name: "Ada",
                 lastname: "Lovelace",
-                dateOfBirth: "1815-12-10",
+                dateOfBirth: "1985-12-10",
             },
             formSchema: { prefilledData: { identificationNumber: "DOC-1" } },
         })
@@ -153,6 +153,38 @@ describe("VerifyScreen — contrato síncrono de Textract", () => {
         expect(JSON.parse(localStorage.getItem("checkin-secondary-form-token") ?? "null"))
             .toMatchObject({ identificationNumber: "DOC-1" })
         expect(localStorage.getItem("checkin-guest-form-reservation")).toBeNull()
+    })
+
+    it("no deja confirmar una fecha de nacimiento futura recibida o editada en OCR", async () => {
+        mocks.uploadDocumentImages.mockResolvedValue({
+            success: true,
+            extractedData: {
+                name: "Ada",
+                lastname: "Lovelace",
+                dateOfBirth: "2999-01-01",
+            },
+            formSchema: { prefilledData: { identificationNumber: "DOC-1" } },
+        })
+        const { container } = render(
+            <VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />,
+        )
+
+        await screen.findByText("Verifica tu Identidad")
+        const documentInputs = container.querySelectorAll<HTMLInputElement>('input[type="file"]')
+        fireEvent.change(documentInputs[0], {
+            target: { files: [new File(["front"], "front.jpg", { type: "image/jpeg" })] },
+        })
+        fireEvent.click(screen.getByRole("button", { name: "Continuar" }))
+        await screen.findByText("Tomar selfie")
+        const selfieInput = container.querySelector<HTMLInputElement>('input[type="file"]')
+        fireEvent.change(selfieInput!, {
+            target: { files: [new File(["selfie"], "selfie.jpg", { type: "image/jpeg" })] },
+        })
+        fireEvent.click(screen.getByRole("button", { name: "Analizar Documento" }))
+
+        await screen.findByText("Confirma tus datos")
+        expect(screen.getByRole("alert")).toHaveTextContent(/futura/)
+        expect(screen.getByRole("button", { name: "Continuar" })).toBeDisabled()
     })
 
     it("no permite avanzar sin reverso cuando el tipo de documento lo exige", async () => {
