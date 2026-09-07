@@ -33,7 +33,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Plus, Trash2, Edit2, Building, BedDouble, Bath, Clock, Settings2, Shield, Zap, Loader2, Info, TriangleAlert } from "lucide-react"
+import { Plus, Trash2, Edit2, Building, BedDouble, Bath, Clock, Settings2, Shield, Zap, Loader2, Info, TriangleAlert, Sparkles } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import { useState, useEffect, useRef } from "react"
 import { Switch } from "@/components/ui/switch"
@@ -63,7 +64,7 @@ import {
     UNIT_LIMITS,
     type UnitFormTab,
 } from "../lib/unit-form-validation"
-import { toListingPayload } from "../lib/listing-payload"
+import { toAmenityIds, toListingPayload } from "../lib/listing-payload"
 import type { ExternalPmsId } from "../types"
 
 const defaultUnit = {
@@ -89,7 +90,7 @@ const defaultUnit = {
         checkIn: "15:00",
         checkOut: "11:00",
         wifiDetails: { network: "", password: "" },
-        amenities: [],
+        amenities: [] as number[],
         cancellationPolicy: "STANDARD",
         inheritAmenities: true,
         inheritWifi: true,
@@ -136,6 +137,7 @@ export function PropertiesUnits() {
     const [unitForm, setUnitForm] = useState({ ...defaultUnit })
     const [roomTypes, setRoomTypes] = useState<CatalogOption[]>([])
     const [currencies, setCurrencies] = useState<CatalogOption[]>([])
+    const [amenityOptions, setAmenityOptions] = useState<CatalogOption[]>([])
     const [roomTypesLoading, setRoomTypesLoading] = useState(true)
     const [isSavingUnit, setIsSavingUnit] = useState(false)
     const saveLockRef = useRef(false)
@@ -192,11 +194,12 @@ export function PropertiesUnits() {
         // GuaranteePreview): sin él, salir de la propiedad antes de que el
         // catálogo responda escribe estado sobre un componente desmontado.
         let active = true
-        Promise.all([catalogService.getRoomTypes(), catalogService.getCurrencies()])
-            .then(([rooms, curr]) => {
+        Promise.all([catalogService.getRoomTypes(), catalogService.getCurrencies(), catalogService.getAmenities()])
+            .then(([rooms, curr, amenities]) => {
                 if (!active) return
                 setRoomTypes(rooms)
                 if (curr.length > 0) setCurrencies(curr)
+                setAmenityOptions(amenities)
             })
             .finally(() => {
                 if (active) setRoomTypesLoading(false)
@@ -250,7 +253,13 @@ export function PropertiesUnits() {
             extra: {
                 ...defaultUnit.extra,
                 ...(raw.extra || {}),
-                inheritAmenities: raw.extra?.amenities === undefined,
+                // Ids SIEMPRE (el GET los devuelve como objetos {id, name} — el
+                // round-trip sin normalizar mandaba esos objetos al PUT, reporte
+                // de backend 2026-09-06). Y la herencia se decide por contenido:
+                // el backend agrega `amenities: []` aunque nunca se configuró,
+                // así que `=== undefined` daba override fantasma en toda unidad.
+                amenities: toAmenityIds(raw.extra?.amenities),
+                inheritAmenities: toAmenityIds(raw.extra?.amenities).length === 0,
                 currency: raw.extra?.currency || "COP",
                 // Ensure wifi nulls become empty strings for controlled inputs
                 wifiDetails: {
@@ -906,6 +915,67 @@ export function PropertiesUnits() {
                                                             />
                                                         </div>
                                                     </div>
+                                                )}
+                                            </div>
+
+                                            {/* La sección que se perdió al migrar al diálogo nuevo (reporte de
+                                                Didier, 2026-09-06): el estado `inheritAmenities` y el payload ya
+                                                la soportaban, pero ninguna UI podía cambiarla — el override era
+                                                imposible. Mismo patrón que Horarios y WiFi. */}
+                                            <div className="space-y-4 pt-4 border-t">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-2">
+                                                        <Sparkles className="h-4 w-4 text-[var(--color-brand-purple)]" />
+                                                        <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">Amenidades</h4>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-[10px] text-muted-foreground uppercase font-bold">Heredar de Propiedad</span>
+                                                        <Switch
+                                                            checked={unitForm.extra.inheritAmenities}
+                                                            onCheckedChange={(checked) => setUnitForm({
+                                                                ...unitForm,
+                                                                extra: { ...unitForm.extra, inheritAmenities: checked },
+                                                            })}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {!unitForm.extra.inheritAmenities && (
+                                                    amenityOptions.length === 0 ? (
+                                                        <div className="flex items-center gap-2 rounded-xl border bg-slate-50 p-4 text-xs text-slate-400">
+                                                            <Loader2 className="h-4 w-4 animate-spin" /> Cargando amenidades…
+                                                        </div>
+                                                    ) : (
+                                                        <div className="grid grid-cols-1 gap-2 rounded-xl border bg-slate-50 p-4 sm:grid-cols-2">
+                                                            {amenityOptions.map((item) => {
+                                                                const id = Number(item.id)
+                                                                const selected = (unitForm.extra.amenities ?? []).includes(id)
+                                                                return (
+                                                                    <label
+                                                                        key={item.id}
+                                                                        className={`flex cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 text-sm transition-colors hover:bg-white ${selected ? "border-primary/20 bg-primary/5" : "border-transparent"}`}
+                                                                    >
+                                                                        <Checkbox
+                                                                            checked={selected}
+                                                                            onCheckedChange={(checked) => {
+                                                                                const current: number[] = unitForm.extra.amenities ?? []
+                                                                                // Siempre ids numéricos: es el shape que el
+                                                                                // backend exige al escribir.
+                                                                                const next = checked
+                                                                                    ? [...current, id]
+                                                                                    : current.filter((v) => v !== id)
+                                                                                setUnitForm({
+                                                                                    ...unitForm,
+                                                                                    extra: { ...unitForm.extra, amenities: next },
+                                                                                })
+                                                                            }}
+                                                                        />
+                                                                        <span className="font-medium text-slate-700">{item.name}</span>
+                                                                    </label>
+                                                                )
+                                                            })}
+                                                        </div>
+                                                    )
                                                 )}
                                             </div>
                                         </TabsContent>

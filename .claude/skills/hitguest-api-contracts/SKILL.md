@@ -458,6 +458,20 @@ la reserva sale en COP".
 **El fix es de backend** (persistir la moneda del listing); en el front no hay
 nada que inventar — cuando la clave llegue, el prefill existente la usa solo.
 
+### ⚠️ `extra.amenities` de Listings: se ESCRIBE con ids, se LEE con objetos
+
+*(Reporte de backend del 2026-09-06, con el PUT real en el log de producción.)*
+
+El backend espera **`amenities: [46, 47, 52]`** (array de IDs) al crear/editar
+un listing, pero el GET los devuelve **enriquecidos**: `[{id: 46, name:
+"WiFi"}, …]`. Round-trip asimétrico: re-enviar lo leído tal cual manda objetos
+y dispara el warning del backend. Además el backend AGREGA `amenities: []` al
+extra aunque nunca se haya mandado (observado en el curl del 2026-09-03 del
+caso currency), así que `raw.extra?.amenities === undefined` NO sirve como
+señal de "el PM nunca configuró amenities propias".
+
+Regla: normalizar a ids en la frontera del payload, siempre.
+
 ### ❌ `internal_name` NO existe a nivel Propiedad — solo Listings
 
 Confirmado por el dueño del backend (2026-08-18): *«El campo `internal_name` solo
