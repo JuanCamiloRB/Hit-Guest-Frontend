@@ -924,6 +924,69 @@ Reglas que quedaron implementadas en `lib/verification-token.ts`:
    borra los dos. La caducidad real la sigue poniendo `expiresAt` (60 min del
    servidor).
 
+### ⚠️ ABIERTO 2026-09-08: `/automation-status` reporta `completed` en la fila de identidad con la verificación RECHAZADA
+
+Caso real (reserva 3195533, Ricardo): la tarjeta «Verificación de Identidad
+(Principal)» mostró **Completado** con la verificación rechazada y el check-in
+sin completar. El front es un ESPEJO demostrable: `normalizeStatusItem` hace
+`status: raw.status ?? "not_started"` (passthrough) y `getStatusMeta` solo
+indexa `STATUS_META[item.status]` — el `completed` viene en el JSON de
+`/automation-status`. Hipótesis (mismo patrón «completed ≠ aprobado» del
+portal): el registro refleja que el JOB corrió bien (lanzó la sesión/procesó el
+webhook), no el RESULTADO de la identidad. Preguntado a backend qué escribe la
+fila de identidad tras un rechazo del proveedor. **No cruzar en el front el
+estado del huésped para "corregir" la tarjeta** — sería la máquina de estados
+paralela que este contrato prohíbe; la fuente por-huésped correcta ya se
+muestra en «Documentos de huéspedes» (misma pantalla).
+
+## 2c-bis. Override del PM sobre la verificación (contrato 2026-09-08, backend en main)
+
+⚠️ *Del documento de backend (commits e20ba92 + 583a965); no reverificado por curl.*
+
+**Tres endpoints** (token del PM):
+- `POST /reservations/{r}/guests/{g}/verification/reset` — sin cuerpo. 200 →
+  `{retiredAttempts, attemptsRemaining: 3}`. Lo ven PM y staff. 422 si el
+  huésped ya completó.
+- `POST .../verification/waiver` — `{reason}` OBLIGATORIO (10–1000 chars, no
+  solo espacios). 201 con `waiver{uuid,status,reason,grantedAt}`. **Solo el
+  DUEÑO de la cuenta** (403 para el resto). 422 codes: `guest_already_completed`,
+  `waiver_guest_already_verified`, `waiver_already_active`,
+  `guest_not_in_reservation` (404).
+- `DELETE .../verification/waiver` — `{reason}` opcional. 403 no-dueño, 404 sin
+  waiver activo, 422 si ya completó (**ocultar la acción, no solo manejar el
+  422**: revocar tras completar reescribiría TRA/SIRE y contratos firmados).
+
+**No hay endpoint "¿soy el dueño?"**: usar `user.isAccountOwner` del GET /user
+(ya está en el auth-store del front).
+
+**Portal — `status: "waived"` nuevo** (los 3 endpoints de verification): llega
+con `currentStep: "form"`, `canRetry: false`, `attemptsRemaining: 0`. Decisión
+de producto: **al huésped no se le dice NADA** — avanza como uno verificado, sin
+cartel (fijado por test del backend que el `reason` nunca viaja al portal).
+`waived` gana a `rejected`; si se revoca, vuelve a `rejected`. ⚠️ QA 3: en
+ningún lugar la UI puede decir "verificado" para un exonerado — ni el portal ni
+el panel (el backend nunca lo dirá).
+
+**Panel — `identityWaiver` SIEMPRE presente** en ReservationGuestResource
+(`GET /reservations/{uuid}/guests`), `null` sin exoneración:
+`{uuid, status, reason, grantedAt, grantedBy, revokedAt}`. **`reason` llega
+`null` para quien no es el dueño** — staff ve QUE hay exoneración, no el texto.
+Es el caso normal, no un error.
+
+**Panel — `identityDocument.imageFailures`** `{front, back}`: distingue
+"documento sin reverso" (`images.back: null` + `imageFailures.back: null`) de
+"reverso PERDIDO" (`imageFailures.back: {flow, reason, at}`) → aviso de
+expediente incompleto, que hoy era un hueco silencioso.
+
+**Árbol de acciones por huésped**: isCompleted → nada · waiver activo → chip
+"Verificación exonerada" + grantedBy/At + reason (solo dueño) + Revocar (solo
+dueño) · pending+isStale → Reiniciar (webhook perdido) · rejected+canRetry:false
+→ Reiniciar + Exonerar (dueño) — EL caso que justifica todo · rejected+canRetry
+→ Reiniciar opcional. La exoneración vive EN LA RESERVA, no en el huésped: no
+cachear por guestUuid. El exonerado sigue obligado a formulario, contrato,
+garantía y OTP. Al exonerar el backend manda correo al dueño (no lo dispara el
+front). pt sin traducciones de interfaz (en/es; correos sí tienen pt).
+
 ## 2d. Verificado ≠ check-in completado (columna CHECK-IN de la lista)
 
 ✅ **Son dos ejes distintos del contrato, y confundirlos ya costó un bug**
