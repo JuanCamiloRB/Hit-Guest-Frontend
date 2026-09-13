@@ -28,9 +28,9 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-violet-50",
         guestType: "main",
         requiresConfig: false,
-        // Structural slot: the backend creates it for every property and rejects
-        // deactivation once active. The PM still chooses the provider and can
-        // activate an initially inactive slot.
+        // Structural slot: the backend seeds it for every property. Contrato
+        // corregido 2026-08-14: el PM puede activarla Y desactivarla; el flag
+        // solo documenta que la fila la crea el backend, no bloquea nada en UI.
         isMandatory: true,
         providerOptions: [
             {

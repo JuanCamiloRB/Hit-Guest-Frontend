@@ -139,8 +139,10 @@ export function AutomationCard({
     const [optimisticProvider, setOptimisticProvider] = useState<string | null>(null)
     // Last value that actually persisted, so a rejected change can be undone.
     // A ref, not state: it must not trigger a render, it only records what to
-    // restore if the next attempt fails.
-    const previousProviderRef = useRef<string | null>(null)
+    // restore if the next attempt fails. Arranca con el provider PERSISTIDO —
+    // con null, un fallo al cambiar un provider activo dejaba el selector vacío
+    // en vez de restaurar el valor real (auditoría 2026-09-14).
+    const previousProviderRef = useRef<string | null>(providerName ?? null)
 
     const effectiveProviderName = optimisticProvider ?? providerName
     const selectedProvider = definition.providerOptions.find(p => normalizeSlug(p.value) === normalizeSlug(effectiveProviderName))
@@ -159,6 +161,13 @@ export function AutomationCard({
         ?? selectedProvider?.providerId
     const requiresProviderToActivate = definition.id === "identity-verification-main"
         || definition.id === "identity-verification-secondary"
+    // Elección hecha sobre una fila apagada: vive solo en memoria hasta que el
+    // toggle la mande junto con statusProviderId=8. Sin este aviso, el PM salía
+    // de la pestaña creyendo que ya guardó y la elección se evaporaba — ese fue
+    // exactamente el reporte "no está guardando el tipo de verificación".
+    const pendingActivation = !isActive
+        && optimisticProvider != null
+        && normalizeSlug(optimisticProvider) !== normalizeSlug(providerName)
 
     // Whether the SELECTED provider actually has config fields to fill. The
     // definition-level `requiresConfig` is coarse; what really matters is the
@@ -253,6 +262,11 @@ export function AutomationCard({
             }
             const result = await automationService.toggle(target.uuid, checked, activationProviderId)
 
+            // El borrador ya viajó dentro del toggle (providerId) y la fila del
+            // backend pasa a ser la fuente; conservar el optimista taparía
+            // cualquier valor que el servidor haya decidido devolver.
+            previousProviderRef.current = effectiveProviderName ?? previousProviderRef.current
+            setOptimisticProvider(null)
             onChanged({
                 ...result,
                 provider: result.provider ?? target.provider,
@@ -284,6 +298,7 @@ export function AutomationCard({
         routingSummary,
         onNavigateToDocuments,
         createInactiveAutomation,
+        effectiveProviderName,
     ])
 
     // ── Change provider ───────────────────────────────────────────────────────
@@ -327,6 +342,9 @@ export function AutomationCard({
         // intermedio. El toggle siguiente enviará juntos statusProviderId=8 +
         // providerId, que es el payload atómico exigido por el backend; si la fila
         // todavía no existe, ese mismo toggle la crea con el proveedor elegido.
+        // El bug reportado el 2026-09-14 no era este diseño sino su SILENCIO: el
+        // PM elegía, no encendía, y la elección se evaporaba sin aviso — abajo el
+        // render lo anuncia (pendingActivation) para que el paso que falta se vea.
         if (!automation?.isActive) {
             previousProviderRef.current = newProvider
             return
@@ -338,6 +356,9 @@ export function AutomationCard({
             })
 
             previousProviderRef.current = newProvider
+            // La fila del backend vuelve a ser la única fuente: sin esto, el valor
+            // optimista enmascaraba cualquier refetch posterior (auditoría 2026-09-14).
+            setOptimisticProvider(null)
             onChanged(result)
         } catch (err) {
             // Siempre sobre una fila existente: este camino nunca crea.
@@ -429,11 +450,6 @@ export function AutomationCard({
                                         <h3 className="text-lg font-bold text-slate-900 leading-none">
                                             {definition.title}
                                         </h3>
-                                        {definition.isMandatory && (
-                                            <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 text-[10px] uppercase tracking-wider font-bold h-5">
-                                                Obligatorio
-                                            </Badge>
-                                        )}
                                         {isActive && (
                                             <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 text-[10px] uppercase tracking-wider font-bold h-5">
                                                 Activo
@@ -448,10 +464,9 @@ export function AutomationCard({
                                         : <Switch
                                             checked={isActive}
                                             onCheckedChange={handleToggle}
-                                            // Mandatory identity rows may arrive inactive and must
-                                            // remain activatable. The backend only forbids turning
-                                            // an active structural slot off.
-                                            disabled={definition.isMandatory && isActive}
+                                            // Contrato corregido 2026-08-14: el PM sí puede activar
+                                            // y desactivar las verificaciones de identidad. Nada
+                                            // se bloquea por isMandatory.
                                             aria-label={definition.title}
                                             className="data-[state=checked]:bg-[var(--color-brand-purple)]"
                                         />
@@ -490,6 +505,12 @@ export function AutomationCard({
                                             ))}
                                         </SelectContent>
                                     </Select>
+                                    {pendingActivation && (
+                                        <p className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
+                                            <AlertCircle size={13} className="shrink-0" />
+                                            Selección pendiente: enciende el interruptor para activarla y guardarla.
+                                        </p>
+                                    )}
                                 </div>
                             )}
 

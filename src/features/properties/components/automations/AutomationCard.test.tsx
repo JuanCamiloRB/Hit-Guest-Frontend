@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, fireEvent, waitFor } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
+
+// Radix Select usa APIs de puntero que jsdom no implementa; sin estos stubs el
+// dropdown nunca se abre en los tests.
+window.HTMLElement.prototype.hasPointerCapture = () => false
+window.HTMLElement.prototype.releasePointerCapture = () => {}
+window.HTMLElement.prototype.scrollIntoView = () => {}
 import { AutomationCard } from "./AutomationCard"
 import { AUTOMATION_DEFINITIONS } from "../../data/automation-definitions"
 import { AUTOMATION_STATUS, type PropertyAutomation, type Provider } from "../../types/automation"
@@ -466,7 +473,12 @@ describe("AutomationCard con fila existente", () => {
 })
 
 describe("AutomationCard — verificación de identidad", () => {
-    it("no ofrece desactivar un slot de identidad activo que el backend protege", () => {
+    it("un slot de identidad ACTIVO sí se puede desactivar (contrato corregido 2026-08-14)", async () => {
+        // El contrato del 2026-08-14 corrigió la versión anterior: el PM puede
+        // activar y desactivar las dos verificaciones. Sin badge «Obligatorio»,
+        // sin switch bloqueado.
+        toggle.mockResolvedValue(makeAutomation({ uuid: "identity-row", providerId: 1000 }))
+
         render(
             <AutomationCard
                 {...baseProps}
@@ -484,10 +496,11 @@ describe("AutomationCard — verificación de identidad", () => {
             />,
         )
 
+        expect(screen.queryByText("Obligatorio")).not.toBeInTheDocument()
         const toggleSwitch = screen.getByRole("switch")
-        expect(toggleSwitch).toBeDisabled()
-        expect(screen.getByText("Obligatorio")).toBeInTheDocument()
-        expect(toggle).not.toHaveBeenCalled()
+        expect(toggleSwitch).not.toBeDisabled()
+        fireEvent.click(toggleSwitch)
+        await waitFor(() => expect(toggle).toHaveBeenCalledWith("identity-row", false, 1000))
     })
 
     it("un slot de identidad INACTIVO sí se puede activar", async () => {
@@ -542,6 +555,131 @@ describe("AutomationCard — verificación de identidad", () => {
         expect(screen.getByRole("switch")).not.toBeDisabled()
         fireEvent.click(screen.getByRole("switch"))
         await waitFor(() => expect(toggle).toHaveBeenCalledWith("legacy-row", false, 1003))
+    })
+})
+
+describe("AutomationCard — selección de proveedor pendiente", () => {
+    /** Fila de identidad principal INACTIVA con didit persistido y textract disponible. */
+    function renderInactiveIdentity() {
+        return render(
+            <AutomationCard
+                {...baseProps}
+                definition={definitionFor("identity-verification-main")}
+                automation={makeAutomation({
+                    uuid: "identity-row",
+                    providerId: 1000,
+                    executionOrder: 1,
+                    guestType: "main_guest",
+                    provider: makeProvider(1000, "didit"),
+                })}
+                providers={[makeProvider(1000, "didit"), makeProvider(1004, "textract")]}
+            />,
+        )
+    }
+
+    async function pickProvider(label: RegExp) {
+        const user = userEvent.setup()
+        await user.click(screen.getByRole("combobox"))
+        await user.click(await screen.findByRole("option", { name: label }))
+        return user
+    }
+
+    it("elegir proveedor en una fila inactiva no persiste, pero lo dice", async () => {
+        renderInactiveIdentity()
+
+        await pickProvider(/Verificación esencial/i)
+
+        // El diseño es intencional: nada viaja al backend hasta el toggle…
+        expect(configure).not.toHaveBeenCalled()
+        // …pero el paso que falta se anuncia, en vez de evaporarse en silencio
+        // (bug reportado 2026-09-14: "no está guardando el tipo de verificación").
+        expect(screen.getByText(/Selección pendiente/i)).toBeInTheDocument()
+    })
+
+    it("el toggle envía la selección pendiente de forma atómica y apaga el aviso", async () => {
+        toggle.mockResolvedValue(makeAutomation({
+            uuid: "identity-row",
+            providerId: 1004,
+            isActive: true,
+            statusProviderId: AUTOMATION_STATUS.ACTIVE,
+        }))
+        renderInactiveIdentity()
+
+        const user = await pickProvider(/Verificación esencial/i)
+        await user.click(screen.getByRole("switch"))
+
+        // La elección viaja DENTRO de la activación (payload atómico del backend).
+        await waitFor(() => expect(toggle).toHaveBeenCalledWith("identity-row", true, 1004))
+        await waitFor(() => expect(screen.queryByText(/Selección pendiente/i)).not.toBeInTheDocument())
+    })
+
+    it("si el backend rechaza el cambio en una fila activa, el selector vuelve al valor persistido", async () => {
+        configure.mockRejectedValue(new Error("boom"))
+
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={definitionFor("identity-verification-main")}
+                automation={makeAutomation({
+                    uuid: "identity-row",
+                    providerId: 1000,
+                    executionOrder: 1,
+                    guestType: "main_guest",
+                    isActive: true,
+                    statusProviderId: AUTOMATION_STATUS.ACTIVE,
+                    provider: makeProvider(1000, "didit"),
+                })}
+                providers={[makeProvider(1000, "didit"), makeProvider(1004, "textract")]}
+            />,
+        )
+
+        await pickProvider(/Verificación esencial/i)
+
+        await waitFor(() => expect(configure).toHaveBeenCalledWith("identity-row", {
+            statusProviderId: AUTOMATION_STATUS.ACTIVE,
+            providerId: 1004,
+        }))
+        // El selector no queda ni en blanco ni mintiendo con la opción rechazada.
+        await waitFor(() => {
+            expect(screen.getByRole("combobox")).toHaveTextContent("Verificación avanzada")
+        })
+    })
+
+    it("un cambio aceptado en fila activa persiste y reconcilia con la respuesta", async () => {
+        const persisted = makeAutomation({
+            uuid: "identity-row",
+            providerId: 1004,
+            isActive: true,
+            statusProviderId: AUTOMATION_STATUS.ACTIVE,
+        })
+        configure.mockResolvedValue(persisted)
+
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={definitionFor("identity-verification-main")}
+                automation={makeAutomation({
+                    uuid: "identity-row",
+                    providerId: 1000,
+                    executionOrder: 1,
+                    guestType: "main_guest",
+                    isActive: true,
+                    statusProviderId: AUTOMATION_STATUS.ACTIVE,
+                    provider: makeProvider(1000, "didit"),
+                })}
+                providers={[makeProvider(1000, "didit"), makeProvider(1004, "textract")]}
+            />,
+        )
+
+        await pickProvider(/Verificación esencial/i)
+
+        await waitFor(() => expect(configure).toHaveBeenCalledWith("identity-row", {
+            statusProviderId: AUTOMATION_STATUS.ACTIVE,
+            providerId: 1004,
+        }))
+        await waitFor(() => expect(baseProps.onChanged).toHaveBeenCalledWith(persisted))
+        // Fila activa: el flujo persistió de una vez, no hay activación pendiente.
+        expect(screen.queryByText(/Selección pendiente/i)).not.toBeInTheDocument()
     })
 })
 
