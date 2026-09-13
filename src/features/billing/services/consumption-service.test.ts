@@ -51,3 +51,11 @@ describe("getReservationCosts — la firma gratuita no desaparece del desglose",
         expect(cost.total).toBeCloseTo(0.75)
     })
 })
+
+describe("getReservationCost — decisiones destructivas", () => {
+    it("propaga el fallo de consulta en vez de confundirlo con costo cero", async () => {
+        vi.mocked(automationService.listUsageRecords).mockRejectedValue(new Error("network down"))
+
+        await expect(consumptionService.getReservationCost(reserva)).rejects.toThrow("network down")
+    })
+})

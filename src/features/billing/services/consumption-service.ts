@@ -121,6 +121,16 @@ export const HISTORY_MONTHS = 6
 
 class ConsumptionService {
     /**
+     * Variante estricta para decisiones destructivas. A diferencia del tablero,
+     * no convierte un fallo de red en costo cero: el llamador debe saber que no
+     * pudo verificar el consumo antes de permitir eliminar la reserva.
+     */
+    async getReservationCost(reservation: Reservation): Promise<ReservationCost> {
+        const records = await automationService.listUsageRecords(reservation.id)
+        return aggregate(reservation, records as unknown as RawUsageRecord[])
+    }
+
+    /**
      * Per-reservation cost breakdown for the given reservations. Fetches usage
      * records for each in parallel; a reservation whose records fail to load
      * simply shows a zeroed breakdown rather than breaking the whole table.
