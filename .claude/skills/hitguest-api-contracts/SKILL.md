@@ -959,7 +959,35 @@ estado del huésped para "corregir" la tarjeta** — sería la máquina de estad
 paralela que este contrato prohíbe; la fuente por-huésped correcta ya se
 muestra en «Documentos de huéspedes» (misma pantalla).
 
-## 2c-bis. Override del PM sobre la verificación (contrato 2026-09-08, revisado 2026-09-15)
+## 2c-bis. Override del PM sobre la verificación (contrato 2026-09-08, revisado 2026-09-15, shapes confirmados 2026-09-16)
+
+✅ **Backend confirmó por escrito los tres puntos el 2026-09-16** (respuesta a
+las preguntas de forma del front), y son los que el frontend ya implementó en
+`1e6fbfc`:
+1. El bloque `verification` por huésped **se agrega** a
+   `GET /reservations/{uuid}/guests`, con **el mismo shape exacto del portal
+   (las 10 claves)**. ⇒ la ficha del PM deja de depender del endpoint del
+   huésped. *(Implementado: `getGuests` es panel-first.)*
+2. Al revocar, **`identityWaiver` vuelve a `null`**: presencia del bloque =
+   exoneración vigente, **sin ramas por `status`**. `revokedAt` **sale del
+   contrato** — nunca se podía llenar porque la consulta filtra por activo.
+   *(Implementado: `IdentityWaiver` no lo declara.)*
+3. La fila de identidad en `completed` **se arregla**: todo cierre de Didit que
+   no verificó (`fail`, `expired`, mismatch de documento, `in_review`,
+   `abandoned`) pasa a `status: "failed"` con **`lastError` _o_
+   `responsePayload.error` = `identity_not_verified`** (las dos formas).
+   *(Implementado: la síntesis genérica de `normalizeStatusItem` ya cubre las
+   dos; fijado por `automation-identity-status.test.ts`.)*
+
+⚠️ **Dos avisos del backend que cambian cómo se lee esa fila:**
+- **La fila de automatización es POR AUTOMATIZACIÓN, no por huésped**: muestra
+  el último registro de *cualquiera* de los huéspedes de la reserva. Para
+  decidir qué botón mostrar se usa el bloque `verification` **del huésped**,
+  nunca esa fila. *(Así está: `resolveGuestVerificationActions` recibe
+  `guest.verificationSignals`.)*
+- **Las reservas cerradas ANTES del deploy conservan su `completed`
+  histórico.** No es un bug del front ni afecta al QA: el bloque `verification`
+  se calcula en vivo y dice la verdad también ahí.
 
 ⚠️ *Del documento de backend (commits e20ba92 + 583a965); no reverificado por curl.
 Revisión 2026-09-15 (incorpora las 3 observaciones del front): (a) §4.3 el
