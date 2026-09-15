@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     getPortal: vi.fn(),
     checkVerificationResult: vi.fn(),
     toastError: vi.fn(),
+    toastSuccess: vi.fn(),
     startVerification: vi.fn(),
     loadSession: vi.fn(),
     saveRaw: vi.fn(),
@@ -33,7 +34,7 @@ vi.mock("next/navigation", () => {
 })
 
 vi.mock("sonner", () => ({
-    toast: { success: vi.fn(), error: mocks.toastError, info: vi.fn() },
+    toast: { success: mocks.toastSuccess, error: mocks.toastError, info: vi.fn() },
 }))
 
 vi.mock("@/features/checkin/services/checkin-service", () => ({
@@ -692,5 +693,59 @@ describe("VerifyScreen — contrato síncrono de Textract", () => {
 
         expect(mocks.checkVerificationResult).toHaveBeenCalled()
         expect(mocks.startVerification).not.toHaveBeenCalled()
+    })
+})
+
+/**
+ * Contrato 2026-09-08, QA 3: a un huésped exonerado por el PM la UI no puede
+ * decirle —en ningún lado— que su identidad se verificó. El backend nunca lo va
+ * a afirmar; el portal tampoco.
+ */
+describe("VerifyScreen — exoneración del PM (waived)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        localStorage.clear()
+        mocks.session.verification = { type: "session", sessionType: "biometric", url: "https://verification.didit.me/s" }
+        mocks.loadSession.mockReturnValue(mocks.session)
+        mocks.getPortal.mockResolvedValue({ registeredGuests: [{ uuid: "guest" }] })
+    })
+
+    it("avanza al formulario SIN el cartel de identidad verificada", async () => {
+        vi.useFakeTimers()
+        mocks.checkVerificationResult.mockResolvedValue({ status: "verified", waived: true })
+
+        render(
+            <VerifyScreen
+                reservationUuid="reservation"
+                guestUuid="guest"
+                basePath="/checkin/reservation"
+                fromCallback
+            />,
+        )
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(1_000) })
+
+        expect(mocks.push).toHaveBeenCalledWith("/checkin/reservation/guest?guest_uuid=guest")
+        expect(mocks.toastSuccess).not.toHaveBeenCalled()
+    })
+
+    it("un verificado DE VERDAD sí recibe su confirmación (el silencio es solo del exonerado)", async () => {
+        vi.useFakeTimers()
+        mocks.checkVerificationResult.mockResolvedValue({ status: "verified" })
+
+        render(
+            <VerifyScreen
+                reservationUuid="reservation"
+                guestUuid="guest"
+                basePath="/checkin/reservation"
+                fromCallback
+            />,
+        )
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(1_000) })
+
+        expect(mocks.toastSuccess).toHaveBeenCalledWith("Identidad verificada exitosamente")
     })
 })

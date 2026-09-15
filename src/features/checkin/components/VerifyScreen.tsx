@@ -343,7 +343,7 @@ export function VerifyScreen({
             }
             if (outcome.status === "verified") {
                 setProgress(100)
-                handleVerificationSuccess()
+                handleVerificationSuccess(outcome.waived === true)
                 return true
             }
             if (outcome.status === "restart_required") {
@@ -438,7 +438,7 @@ export function VerifyScreen({
         pollingRef.current = setTimeout(poll, 0)
     }
 
-    function handleVerificationSuccess() {
+    function handleVerificationSuccess(waived = false) {
         pollGenerationRef.current = null
         if (pollingRef.current) clearTimeout(pollingRef.current)
         try {
@@ -447,7 +447,10 @@ export function VerifyScreen({
                 localStorage.removeItem("checkin-pending-didit")
             }
         } catch {}
-        toast.success("Identidad verificada exitosamente")
+        // Un exonerado avanza igual, pero sin el cartel: su identidad NO se
+        // verificó y afirmarlo mentiría (QA 3 del contrato 2026-09-08). El
+        // contrato pide silencio, no un mensaje alternativo.
+        if (!waived) toast.success("Identidad verificada exitosamente")
         setTimeout(() => router.push(`${basePath}/guest?guest_uuid=${guestUuid}`), 600)
     }
 

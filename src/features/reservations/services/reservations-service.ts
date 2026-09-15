@@ -9,6 +9,12 @@ import {
     type GuestIdentityDocument,
 } from "../lib/identity-document"
 import {
+    readGuestVerificationSignals,
+    readIdentityWaiver,
+    type GuestVerificationSignals,
+    type IdentityWaiver,
+} from "../lib/guest-verification"
+import {
     readOverwrittenEdits,
     readReservationOrigin,
     type OverwrittenEdit,
@@ -184,6 +190,17 @@ export interface ReservationGuest {
      * que la tarjeta no tenga que encadenar opcionales en cada acceso.
      */
     identityDocument: GuestIdentityDocument
+    /**
+     * Exoneración vigente del PM (contrato 2026-09-08/15). `null` = sin
+     * exoneración — y también con backend anterior, que no manda el bloque.
+     */
+    identityWaiver: IdentityWaiver | null
+    /**
+     * Señales de `verification` del panel (§4.3, mismo shape del portal).
+     * `reported: false` con backend anterior: sin ellas no se ofrecen las
+     * acciones de reset/exoneración.
+     */
+    verificationSignals: GuestVerificationSignals
 }
 
 /** Rutas legacy relativas a `/storage/`; las nuevas ya son absolutas. */
@@ -209,12 +226,17 @@ export type ReservationGuestVerificationStatus =
     | "pending"
     | "in_progress"
     | "in_review"
+    | "resubmitted"
     | "approved"
     | "rejected"
+    | "ocr_rejected"
+    | "abandoned"
     | "fail"
     | "expired"
     | "completed"
     | "verified"
+    /** Exonerado por el PM (contrato 2026-09-08). NO cuenta como verificado. */
+    | "waived"
 
 function normalizeGuestVerificationStatus(
     value: unknown,
@@ -227,12 +249,16 @@ function normalizeGuestVerificationStatus(
         "pending",
         "in_progress",
         "in_review",
+        "resubmitted",
         "approved",
         "rejected",
+        "ocr_rejected",
+        "abandoned",
         "fail",
         "expired",
         "completed",
         "verified",
+        "waived",
     ]
 
     if (knownStatuses.includes(normalized as ReservationGuestVerificationStatus)) {
@@ -578,7 +604,26 @@ export class ReservationsService {
     }
 
     async getGuests(reservationUuid: string): Promise<ReservationGuest[]> {
-        // ── First try the checkin portal (authoritative for verification status) ──
+        // ── Panel del PM primero (contrato 2026-09-15, §4.3). Cuando el bloque
+        // `verification` por huésped está presente, este endpoint es
+        // autosuficiente —verificación + exoneración + documentos— y la ficha
+        // DEJA de consultar el portal: es la misma máquina de estados, calculada
+        // por el mismo código del backend, sin dos verdades sobre el huésped.
+        const panelRaws = await this.fetchPanelGuestsRaw(reservationUuid)
+        const panelHasVerification = !!panelRaws?.some(
+            (g) => readGuestVerificationSignals(g).reported,
+        )
+        if (panelRaws && panelRaws.length > 0 && panelHasVerification) {
+            return panelRaws.map((g) => this.mapPanelGuest(g))
+        }
+
+        // ── Backend anterior (sin bloque `verification`): el portal sigue siendo
+        // la autoridad del estado, enriquecido con los documentos del panel.
+        const panelByUuid = new Map<string, unknown>()
+        for (const g of panelRaws ?? []) {
+            const uuid = readGuestUuid(g)
+            if (uuid) panelByUuid.set(uuid, g)
+        }
         try {
             const url = `${API_BASE}/checkin/${reservationUuid}`
             const headers: Record<string, string> = {
@@ -594,14 +639,16 @@ export class ReservationsService {
                     : (portal.registered_guests ?? [])
                 if (guests.length > 0) {
                     // The portal is authoritative for verification status but does NOT
-                    // include document images. Fetch them from /guests and merge by uuid.
-                    const identityMap = await this.fetchGuestIdentityDocuments(reservationUuid)
+                    // include document images. Merge them from the panel rows by uuid.
                     let matched = 0
                     const mapped = guests.map((g: any): ReservationGuest => {
                         const portalVerification = readPortalGuestVerification(g)
                         const isCompleted = portalVerification.isCompleted
                         const uuid = readGuestUuid(g) ?? ""
-                        const fromMap = identityMap.get(uuid)
+                        const panelRaw = panelByUuid.get(uuid)
+                        const fromMap = panelRaw
+                            ? readIdentityDocument(panelRaw, storageBase())
+                            : undefined
                         if (fromMap) matched++
                         // El huésped del portal también se lee: su forma
                         // `documentImage1/2` es el último nivel de precedencia, y así
@@ -624,16 +671,18 @@ export class ReservationsService {
                             identityDocument,
                             verificationStatus: portalVerification.status,
                             verifiedAt,
+                            identityWaiver: readIdentityWaiver(panelRaw),
+                            verificationSignals: readGuestVerificationSignals(panelRaw),
                         }
                     })
-                    // Si el endpoint del PM trajo documentos y NINGUNO cruzó con el
+                    // Si el endpoint del PM trajo huéspedes y NINGUNO cruzó con el
                     // portal, el merge dejó de funcionar: las fotos desaparecen sin
                     // un solo error. Es exactamente el modo de fallo que ocultó este
                     // bug, así que se grita (mismo criterio que `warnIfPaginated`).
-                    if (identityMap.size > 0 && matched === 0) {
+                    if (panelByUuid.size > 0 && matched === 0) {
                         console.error(
                             "[ReservationsService] Ningún huésped del portal cruzó con el mapa de documentos "
-                            + `(${guests.length} del portal, ${identityMap.size} con documento). `
+                            + `(${guests.length} del portal, ${panelByUuid.size} del panel). `
                             + "Los documentos no se mostrarán: los dos endpoints ya no comparten el uuid.",
                         )
                     }
@@ -645,102 +694,133 @@ export class ReservationsService {
         } catch (error) {
             console.warn("[ReservationsService] Portal fetch failed, falling back to reservation guests endpoint:", error)
         }
-        // ── Fallback: reservation guests endpoint (may have local document images) ──
-        const url = `${API_BASE}/reservations/${reservationUuid}/guests`
+        // ── Fallback final: el panel legacy, ya traído arriba ──
+        return (panelRaws ?? []).map((g) => this.mapPanelGuest(g))
+    }
+
+    /**
+     * GET /reservations/{uuid}/guests crudo. `null` = no se pudo preguntar —
+     * distinto de «el backend dice que no hay huéspedes» ([] real).
+     */
+    private async fetchPanelGuestsRaw(reservationUuid: string): Promise<any[] | null> {
         try {
+            const url = `${API_BASE}/reservations/${reservationUuid}/guests`
             const raw: any = await apiClient.get(url)
-            const guests = Array.isArray(raw) ? raw : (raw?.data ?? [])
-
-            return guests.map((g: any): ReservationGuest => {
-                // pivot = guest_reservation relationship data
-                const pivot = g.pivot || {}
-                // v4.6: los datos del huésped van anidados en `guestProfile`. Las
-                // imágenes NO se leen de `guestProfile.extra`: ahí el backend deja
-                // una ruta de almacenamiento interna que no se puede servir. La
-                // precedencia real vive en `lib/identity-document.ts`.
-                const profile = g.guestProfile || g.guest_profile || {}
-                const profileExtra = profile.extra || {}
-                const identityDocument = readIdentityDocument(g, storageBase())
-
-                // Check every possible location the backend may put this flag
-                const isCompleted =
-                    g.isCompleted ??               // v4.6: top-level on the guest entry
-                    g.is_completed ??
-                    pivot.is_checkin_completed ??
-                    pivot.isCheckinCompleted ??
-                    g.isCheckinCompleted ??
-                    g.is_checkin_completed ??
-                    // Some backends return it nested under the guest directly
-                    g.checkinCompleted ??
-                    g.checkin_completed ??
-                    false
-
-                // Verification status: explicit field wins; completed guest always = "verified"
-                const rawVerificationStatus = g.verification?.status
-                    || g.verificationStatus
-                    || g.verification_status
-                    || pivot.verification_status
-                    || pivot.verificationStatus
-                const verificationStatus = normalizeGuestVerificationStatus(
-                    rawVerificationStatus,
-                    isCompleted,
-                    g.verification?.verifiedAt ?? g.verification?.verified_at,
-                )
-
-                return {
-                    uuid: profile.uuid || g.uuid || g.id,
-                    name: profile.name || g.name || "",
-                    lastname: profile.lastname || g.lastname || g.last_name || "",
-                    identificationNumber: profile.identificationNumber || profileExtra.identificationNumber
-                        || g.identificationNumber || g.identification_number
-                        || g.identificationType?.pivot?.value || g.identification_type?.pivot?.value,
-                    identificationType: g.identificationType?.name || g.identification_type?.name || g.identificationTypeName,
-                    isMain: g.isMainGuest ?? g.is_main_guest ?? pivot.is_main_guest ?? pivot.isMainGuest ?? g.isMain ?? g.is_main ?? false,
-                    isCheckinCompleted: isCompleted,
-                    documentImage1: identityDocument.front,
-                    documentImage2: identityDocument.back,
-                    identityDocument,
-                    verificationStatus,
-                    verifiedAt:
-                        g.verification?.verifiedAt
-                        ?? g.verification?.verified_at
-                        ?? null,
-                }
-            })
+            return Array.isArray(raw) ? raw : (raw?.data ?? [])
         } catch (error) {
-            console.error("[ReservationsService] Error fetching guests:", error)
-            return []
+            console.warn("[ReservationsService] fetchPanelGuestsRaw failed:", error)
+            return null
         }
     }
 
     /**
-     * Fetches GET /reservations/{uuid}/guests and returns a map of
-     * guestUuid → documento de identidad. Enriquece la respuesta del portal, que
-     * es autoritativa para el estado de verificación pero no trae imágenes.
-     *
-     * La lectura del contrato vive en `lib/identity-document.ts`: estaba escrita
-     * acá y otra vez en la rama de fallback, y esa duplicación es la razón por la
-     * que la clave `identityDocument` (2026-08-17) no se leía en ninguna de las
-     * dos. Un mapa vacío por error de red deja `isReported: false`, que la UI
-     * distingue de «el backend dice que no hay imágenes».
+     * Mapea UNA fila del endpoint del panel a `ReservationGuest`. Sirve para las
+     * dos épocas del contrato: con el bloque `verification` (2026-09-15) ese
+     * bloque manda; sin él, las heurísticas legacy de siempre.
      */
-    private async fetchGuestIdentityDocuments(
-        reservationUuid: string,
-    ): Promise<Map<string, GuestIdentityDocument>> {
-        const map = new Map<string, GuestIdentityDocument>()
-        try {
-            const url = `${API_BASE}/reservations/${reservationUuid}/guests`
-            const raw: any = await apiClient.get(url)
-            const guests = Array.isArray(raw) ? raw : (raw?.data ?? [])
-            for (const g of guests) {
-                const uuid = readGuestUuid(g)
-                if (!uuid) continue
-                map.set(uuid, readIdentityDocument(g, storageBase()))
-            }
-        } catch (error) {
-            console.warn("[ReservationsService] fetchGuestIdentityDocuments failed:", error)
+    private mapPanelGuest(g: any): ReservationGuest {
+        // pivot = guest_reservation relationship data
+        const pivot = g.pivot || {}
+        // v4.6: los datos del huésped van anidados en `guestProfile`. Las
+        // imágenes NO se leen de `guestProfile.extra`: ahí el backend deja
+        // una ruta de almacenamiento interna que no se puede servir. La
+        // precedencia real vive en `lib/identity-document.ts`.
+        const profile = g.guestProfile || g.guest_profile || {}
+        const profileExtra = profile.extra || {}
+        const identityDocument = readIdentityDocument(g, storageBase())
+
+        // Check every possible location the backend may put this flag
+        const isCompleted =
+            g.isCompleted ??               // v4.6: top-level on the guest entry
+            g.is_completed ??
+            pivot.is_checkin_completed ??
+            pivot.isCheckinCompleted ??
+            g.isCheckinCompleted ??
+            g.is_checkin_completed ??
+            // Some backends return it nested under the guest directly
+            g.checkinCompleted ??
+            g.checkin_completed ??
+            false
+
+        // Verification status: explicit field wins; completed guest always = "verified"
+        const rawVerificationStatus = g.verification?.status
+            || g.verificationStatus
+            || g.verification_status
+            || pivot.verification_status
+            || pivot.verificationStatus
+        const verificationStatus = normalizeGuestVerificationStatus(
+            rawVerificationStatus,
+            isCompleted,
+            g.verification?.verifiedAt ?? g.verification?.verified_at,
+        )
+
+        return {
+            uuid: profile.uuid || g.uuid || g.id,
+            name: profile.name || g.name || "",
+            lastname: profile.lastname || g.lastname || g.last_name || "",
+            identificationNumber: profile.identificationNumber || profileExtra.identificationNumber
+                || g.identificationNumber || g.identification_number
+                || g.identificationType?.pivot?.value || g.identification_type?.pivot?.value,
+            identificationType: g.identificationType?.name || g.identification_type?.name || g.identificationTypeName,
+            isMain: g.isMainGuest ?? g.is_main_guest ?? pivot.is_main_guest ?? pivot.isMainGuest ?? g.isMain ?? g.is_main ?? false,
+            isCheckinCompleted: isCompleted,
+            documentImage1: identityDocument.front,
+            documentImage2: identityDocument.back,
+            identityDocument,
+            verificationStatus,
+            verifiedAt:
+                g.verification?.verifiedAt
+                ?? g.verification?.verified_at
+                ?? null,
+            identityWaiver: readIdentityWaiver(g),
+            verificationSignals: readGuestVerificationSignals(g),
         }
-        return map
+    }
+
+    // ── Override del PM sobre la verificación (contrato 2026-09-08/15) ───────
+    //
+    // Tres endpoints con el token de sesión del PM. Los 422 llegan con `message`
+    // localizado (guest_already_completed, waiver_guest_already_verified,
+    // waiver_already_active…) y se muestran TAL CUAL (patrón api-error-ux del
+    // repo); el 403 de exonerar/revocar es «no es el dueño de la cuenta».
+
+    /**
+     * POST /reservations/{r}/guests/{g}/verification/reset — sin cuerpo.
+     * Bajo riesgo (la ven PM y staff): desatasca y devuelve los intentos; el
+     * huésped repite y TIENE que aprobar de verdad. 422 = ya completó.
+     */
+    async resetGuestVerification(reservationUuid: string, guestUuid: string): Promise<string> {
+        const url = `${API_BASE}/reservations/${reservationUuid}/guests/${guestUuid}/verification/reset`
+        const r = await apiClient.post<{ message?: string }>(url)
+        return r?.message || "La verificación se reinició. El huésped puede volver a intentarlo."
+    }
+
+    /**
+     * POST /reservations/{r}/guests/{g}/verification/waiver — `reason`
+     * OBLIGATORIO (10–1000 chars; `waiverReasonError` lo valida en cliente).
+     * SOLO el dueño de la cuenta (403 para el resto). El huésped avanza SIN
+     * verificar y aun así se reporta a las autoridades con sus datos declarados.
+     */
+    async waiveGuestVerification(
+        reservationUuid: string,
+        guestUuid: string,
+        reason: string,
+    ): Promise<string> {
+        const url = `${API_BASE}/reservations/${reservationUuid}/guests/${guestUuid}/verification/waiver`
+        const r = await apiClient.post<{ message?: string }>(url, { reason: reason.trim() })
+        return r?.message || "La verificación quedó exonerada para este huésped."
+    }
+
+    /**
+     * DELETE /reservations/{r}/guests/{g}/verification/waiver — solo el dueño.
+     * El `reason` del contrato es opcional y esta UI no lo pide. 404 = no hay
+     * exoneración activa; 422 = ya completó (la acción debe estar OCULTA ahí:
+     * revocar tras completar reescribiría TRA/SIRE y contratos firmados).
+     */
+    async revokeGuestVerificationWaiver(reservationUuid: string, guestUuid: string): Promise<string> {
+        const url = `${API_BASE}/reservations/${reservationUuid}/guests/${guestUuid}/verification/waiver`
+        const r = await apiClient.delete<{ message?: string }>(url)
+        return r?.message || "La exoneración fue revocada."
     }
 
     /** In-flight `list()` promise, shared to dedupe concurrent callers. */

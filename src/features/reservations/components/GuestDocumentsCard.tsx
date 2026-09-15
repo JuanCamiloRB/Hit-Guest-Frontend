@@ -22,8 +22,10 @@ import { AuthenticatedImage } from "./AuthenticatedImage"
 import {
     describeDocumentOrigin,
     describeIdentityStatus,
+    describeImageFailures,
     describeMissingImages,
 } from "./identity-document-meta"
+import { GuestVerificationActions } from "./GuestVerificationActions"
 
 interface GuestDocumentsCardProps {
     reservationUuid: string
@@ -46,13 +48,21 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
     const [isRefreshing, setIsRefreshing] = useState(false)
     const [preview, setPreview] = useState<DocumentPreview | null>(null)
 
-    const refreshGuests = useCallback(async () => {
+    /**
+     * Recarga la ficha. Devuelve si pudo hacerlo: quien acaba de mutar el estado
+     * del huésped (reiniciar, exonerar, revocar) necesita distinguir «se aplicó y
+     * ya se ve» de «se aplicó pero la pantalla quedó vieja» — callarlo dejaba al
+     * PM leyendo un estado obsoleto con un toast de éxito encima.
+     */
+    const refreshGuests = useCallback(async (): Promise<boolean> => {
         setIsRefreshing(true)
         try {
             const data = await reservationsService.getGuests(reservationUuid)
             setGuests(data)
+            return true
         } catch (error) {
             console.error("[GuestDocumentsCard] Error:", error)
+            return false
         } finally {
             setIsRefreshing(false)
         }
@@ -141,8 +151,10 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
                     {guests.map((guest, idx) => (
                         <GuestDocumentRow
                             key={guest.uuid || `guest-${idx}`}
+                            reservationUuid={reservationUuid}
                             guest={guest}
                             onPreview={setPreview}
+                            onChanged={refreshGuests}
                         />
                     ))}
                 </div>
@@ -196,11 +208,16 @@ function DocumentOriginNotice({ guest }: { guest: ReservationGuest }) {
 }
 
 function GuestDocumentRow({
+    reservationUuid,
     guest,
     onPreview,
+    onChanged,
 }: {
+    reservationUuid: string
     guest: ReservationGuest
     onPreview: (preview: DocumentPreview) => void
+    /** Recarga la ficha; `false` si no pudo (ver `refreshGuests`). */
+    onChanged: () => Promise<boolean>
 }) {
     const initials = `${guest.name?.[0] || ""}${guest.lastname?.[0] || ""}`.toUpperCase() || "?"
     const fullName = `${guest.name} ${guest.lastname}`.trim() || "Huésped"
@@ -208,6 +225,7 @@ function GuestDocumentRow({
     const isIdentityVerified = isVerifiedGuestStatus(guest.verificationStatus)
     const verifiedAt = formatVerifiedAt(guest.verifiedAt)
     const identityMeta = describeIdentityStatus(guest.identityDocument, guest.verificationStatus)
+    const imageFailuresNotice = describeImageFailures(guest.identityDocument)
 
     return (
         <div className="space-y-3 rounded-xl border border-rule p-4">
@@ -244,6 +262,43 @@ function GuestDocumentRow({
                     <StatusPill tone={identityMeta.tone}>{identityMeta.label}</StatusPill>
                 </div>
             </div>
+
+            {/* Exoneración vigente: quién la autorizó y —solo para el dueño de la
+                cuenta— el motivo. `reason: null` es el caso NORMAL de staff, no un
+                error: ven QUE hay exoneración, no el texto (contrato §4.2). */}
+            {guest.identityWaiver && (
+                <div className="rounded-lg bg-info-sunk px-3 py-2 text-xs text-info space-y-0.5">
+                    <p>
+                        Verificación exonerada
+                        {guest.identityWaiver.grantedBy && ` por ${guest.identityWaiver.grantedBy}`}
+                        {/* grantedAt es ISO con zona (a diferencia de capturedAt), así
+                            que el formateo con hora es correcto acá. */}
+                        {formatVerifiedAt(guest.identityWaiver.grantedAt) && ` el ${formatVerifiedAt(guest.identityWaiver.grantedAt)}`}.
+                        {" "}El huésped continúa su check-in sin verificación de identidad.
+                    </p>
+                    {guest.identityWaiver.reason && (
+                        <p className="italic">Motivo: {guest.identityWaiver.reason}</p>
+                    )}
+                </div>
+            )}
+
+            {/* Expediente incompleto: una imagen que debió guardarse se perdió
+                (contrato §4.4) — sin este aviso nadie sabía que había que pedirle
+                al huésped volver a subir el documento. */}
+            {imageFailuresNotice && (
+                <div className="flex items-start gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning">
+                    <Info size={14} aria-hidden className="mt-px shrink-0" />
+                    <span>{imageFailuresNotice}</span>
+                </div>
+            )}
+
+            {/* Acciones del PM sobre la verificación (contrato §5). El componente
+                decide solo si hay algo que ofrecer y se pinta vacío si no. */}
+            <GuestVerificationActions
+                reservationUuid={reservationUuid}
+                guest={guest}
+                onChanged={onChanged}
+            />
 
             {/* Document images */}
             {hasDocuments ? (

@@ -26,7 +26,7 @@ vi.mock("@/features/properties/services/automation-service", () => ({
     canonicalSlug: (value: string) => value,
 }))
 
-import { reservationsService } from "./reservations-service"
+import { isVerifiedGuestStatus, reservationsService } from "./reservations-service"
 
 const RESERVATION = "res-1"
 const GUEST_UUID = "guest-uuid-1"
@@ -207,5 +207,143 @@ describe("getGuests — rama de fallback (portal caído o vacío)", () => {
 
         expect(guest.documentImage1).toBe("https://api/legacy-front")
         expect(guest.identityDocument.isReported).toBe(false)
+    })
+})
+
+/**
+ * Contrato 2026-09-15 (§4.3): cuando el endpoint del PM trae el bloque
+ * `verification` por huésped, es autosuficiente y la ficha DEJA de consultar el
+ * portal. Es el cambio de ruta principal de esta feature, y lo que estos tests
+ * fijan es justamente lo que el fallback legacy no puede demostrar.
+ */
+describe("getGuests — panel-first cuando el backend trae `verification`", () => {
+    /** Fila del panel con el contrato nuevo completo. */
+    function panelGuest(overrides: Record<string, unknown> = {}) {
+        return {
+            guestProfile: { uuid: GUEST_UUID, name: "Juan Camilo", lastname: "Rodríguez" },
+            isMainGuest: true,
+            isCompleted: false,
+            verification: {
+                status: "rejected",
+                currentStep: "rejected",
+                verifiedAt: null,
+                sessionType: "kyc",
+                isStale: false,
+                canRetry: false,
+                attemptsRemaining: 0,
+                failureReason: "document_unreadable",
+            },
+            identityWaiver: null,
+            identityDocument: {
+                images: { front: "https://api/front", back: null },
+                imageFailures: {
+                    front: null,
+                    back: { flow: "didit", reason: "download failed with HTTP 403", at: "2026-09-08T20:00:00Z" },
+                },
+                method: "didit",
+                capturedBy: "didit",
+                inheritedFromAnotherReservation: false,
+            },
+            ...overrides,
+        }
+    }
+
+    it("NO consulta el portal, y mapea estado, señales e imágenes desde el panel (QA 12)", async () => {
+        const fetchSpy = vi.fn()
+        vi.stubGlobal("fetch", fetchSpy)
+        apiGet.mockResolvedValue({ data: [panelGuest()] })
+
+        const [guest] = await reservationsService.getGuests(RESERVATION)
+
+        // La razón de ser del cambio: una sola fuente, una sola llamada.
+        expect(fetchSpy).not.toHaveBeenCalled()
+        expect(apiGet).toHaveBeenCalledTimes(1)
+        // QA 12: el estado por huésped se lee sin abrir el portal.
+        expect(guest.verificationStatus).toBe("rejected")
+        expect(guest.verificationSignals).toMatchObject({
+            reported: true,
+            status: "rejected",
+            canRetry: false,
+            attemptsRemaining: 0,
+            failureReason: "document_unreadable",
+        })
+        expect(guest.documentImage1).toBe("https://api/front")
+        expect(guest.identityDocument.imageFailures.back).toMatchObject({ flow: "didit" })
+        expect(guest.identityWaiver).toBeNull()
+    })
+
+    it("mapea la exoneración vigente y no la promueve a verificado (QA 3 en el panel)", async () => {
+        vi.stubGlobal("fetch", vi.fn())
+        apiGet.mockResolvedValue({
+            data: [panelGuest({
+                verification: { status: "waived", currentStep: "form", canRetry: false, attemptsRemaining: 0 },
+                identityWaiver: {
+                    uuid: "w-1",
+                    status: "active",
+                    reason: "Documento ilegible; identidad confirmada en persona.",
+                    grantedAt: "2026-09-08T20:14:33.000000Z",
+                    grantedBy: "Ricardo Lombana",
+                },
+            })],
+        })
+
+        const [guest] = await reservationsService.getGuests(RESERVATION)
+
+        expect(guest.verificationStatus).toBe("waived")
+        expect(isVerifiedGuestStatus(guest.verificationStatus)).toBe(false)
+        expect(guest.identityWaiver).toEqual({
+            uuid: "w-1",
+            reason: "Documento ilegible; identidad confirmada en persona.",
+            grantedAt: "2026-09-08T20:14:33.000000Z",
+            grantedBy: "Ricardo Lombana",
+        })
+    })
+
+    it("varios huéspedes conservan cada uno SU estado, sin contagiarse entre filas", async () => {
+        vi.stubGlobal("fetch", vi.fn())
+        apiGet.mockResolvedValue({
+            data: [
+                panelGuest(),
+                panelGuest({
+                    guestProfile: { uuid: "guest-uuid-2", name: "Ana", lastname: "Pérez" },
+                    isMainGuest: false,
+                    isCompleted: true,
+                    verification: { status: "approved", currentStep: "completed", verifiedAt: "2026-09-10T10:00:00Z" },
+                    identityWaiver: null,
+                }),
+                panelGuest({
+                    guestProfile: { uuid: "guest-uuid-3", name: "Luis", lastname: "Gómez" },
+                    isMainGuest: false,
+                    verification: { status: "pending", currentStep: "verification", isStale: true },
+                    identityWaiver: { uuid: "w-3", status: "active", reason: null, grantedAt: null, grantedBy: "Dueño" },
+                }),
+            ],
+        })
+
+        const guests = await reservationsService.getGuests(RESERVATION)
+
+        expect(guests.map(g => g.verificationStatus)).toEqual(["rejected", "approved", "pending"])
+        expect(guests.map(g => g.uuid)).toEqual([GUEST_UUID, "guest-uuid-2", "guest-uuid-3"])
+        expect(guests[0].identityWaiver).toBeNull()
+        expect(guests[1].verifiedAt).toBe("2026-09-10T10:00:00Z")
+        // El waiver de staff llega sin motivo: se conserva la exoneración, no el texto.
+        expect(guests[2].identityWaiver).toMatchObject({ uuid: "w-3", reason: null })
+        expect(guests[2].verificationSignals.isStale).toBe(true)
+    })
+
+    it("un backend SIN el bloque `verification` vuelve al portal (tolerancia al orden de deploy)", async () => {
+        const fetchSpy = vi.fn().mockResolvedValue(portalResponse([portalGuest()]))
+        vi.stubGlobal("fetch", fetchSpy)
+        apiGet.mockResolvedValue({
+            data: [pmGuest({ images: { front: "https://api/front" }, method: "didit" })],
+        })
+
+        const [guest] = await reservationsService.getGuests(RESERVATION)
+
+        expect(fetchSpy).toHaveBeenCalled()
+        expect(guest.verificationStatus).toBe("approved")
+        // Sin señales no se ofrece ninguna acción nueva: los endpoints tampoco existen.
+        expect(guest.verificationSignals.reported).toBe(false)
+        expect(guest.identityWaiver).toBeNull()
     })
 })

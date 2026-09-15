@@ -27,6 +27,25 @@ describe("normalizeVerificationResult — §A traducida a decisiones", () => {
         })
     })
 
+    describe("exoneración del PM (waived, contrato 2026-09-08)", () => {
+        it("avanza como verificado pero con la marca que calla el cartel (QA 3)", () => {
+            // Shape exacto del contrato: currentStep form, canRetry false, 0 intentos.
+            expect(normalizeVerificationResult(portal({
+                status: "waived",
+                currentStep: "form",
+                canRetry: false,
+                attemptsRemaining: 0,
+                isStale: false,
+            }))).toEqual({ status: "verified", waived: true })
+        })
+
+        it("un verificado DE VERDAD no lleva la marca: solo waived la produce", () => {
+            const verified = normalizeVerificationResult(portal({ status: "approved", currentStep: "form" }))
+            expect(verified).toEqual({ status: "verified" })
+            expect("waived" in verified).toBe(false)
+        })
+    })
+
     describe("escalada a KYC — la etapa manda, no 'pass'", () => {
         it("pending con sessionType kyc devuelve la sesión nueva", () => {
             expect(normalizeVerificationResult(portal({

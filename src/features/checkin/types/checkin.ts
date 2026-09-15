@@ -67,6 +67,14 @@ export interface GuestVerificationInfo {
     | "ocr_rejected"
     /** Didit session closed by the guest; retryability is decided by `canRetry`. */
     | "abandoned"
+    /**
+     * Contrato 2026-09-08: el PM exoneró la identidad de este huésped. Llega con
+     * `currentStep: "form"`, `canRetry: false` y `attemptsRemaining: 0`. Decisión
+     * de producto: al huésped NO se le dice nada — avanza como uno verificado,
+     * pero la UI tampoco puede AFIRMAR que se verificó (no lo hizo). Gana a
+     * `rejected`; si el PM revoca, vuelve a `rejected`.
+     */
+    | "waived"
   currentStep: "verification" | "form" | "rejected" | "completed" | "contact_challenge"
   verifiedAt: string | null         // ISO date when approved/completed, null otherwise
   /** Etapa real de Didit. Cambia de biometric a kyc cuando el backend escala. */
@@ -446,6 +454,14 @@ export interface VerificationResultResponse {
    * - `pending`           → aún en proceso, seguir esperando.
    */
   status: "verified" | "kyc_required" | "restart_required" | "contact_challenge" | "failed" | "stale" | "pending"
+  /**
+   * Solo con status "verified": el avance viene de una EXONERACIÓN del PM
+   * (contrato 2026-09-08), no de una verificación real. El huésped sigue igual
+   * que un verificado, pero ninguna pantalla puede mostrar un cartel de
+   * «identidad verificada» — el backend nunca lo va a afirmar y el front
+   * tampoco (QA 3 del contrato).
+   */
+  waived?: boolean
   kycUrl?: string                        // Solo si status === "kyc_required"
   /** Solo con status "failed": el huésped puede reintentar por su cuenta. */
   retryable?: boolean

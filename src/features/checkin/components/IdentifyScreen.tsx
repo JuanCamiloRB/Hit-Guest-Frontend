@@ -235,7 +235,13 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
             // confirmada su identidad.
             const hasOtpToken = getVerificationToken(reservationUuid, match.uuid) !== null
             if (isDocumentAlreadyVerified(match, hasOtpToken)) {
-                toast.info("Tu identidad ya fue verificada. Continuamos con tus datos.")
+                // Al exonerado por el PM (waived) NO se le dice nada: el contrato
+                // pide que el portal «simplemente lo deje continuar», sin cartel.
+                // Decirle «ya fue verificada» afirmaría algo que no pasó, y hasta un
+                // aviso neutro delata que su caso recibió un trato distinto.
+                if (match.verification?.status !== "waived") {
+                    toast.info("Tu identidad ya fue verificada. Continuamos con tus datos.")
+                }
                 router.push(`${basePath}/guest?guest_uuid=${match.uuid}`)
                 return true
             }

@@ -167,6 +167,17 @@ automáticamente el otro slot activo del mismo `guest_type`; y una fila ya cread
 se identifica por `guest_type` + `execution_order <= 2`, mientras que **al
 crear** la señal es el provider (`parameters.verification_type`).
 
+⚠️ **Contradicción abierta con reservas (observado en producción 2026-09-15):**
+apagar identidad ya funciona en el dashboard, pero `POST /reservations` la
+sigue exigiendo. Con la verificación del huésped principal inactiva, el create
+devuelve 422 con el mensaje «La propiedad debe tener una automatización de
+Verificación de Identidad activa y configurada para el huésped principal antes
+de crear una reserva» (llega en `errors` anclado al campo del alojamiento; el
+front lo muestra tal cual, no lo genera). Es decir: el flujo «sin verificación
+de identidad» NO está disponible end-to-end — se puede apagar el slot pero la
+propiedad queda sin poder crear reservas. Preguntado al backend si esa regla se
+relaja (o si el camino oficial es el waiver por reserva del doc de override).
+
 ### Verificación de identidad en el portal — cuatro trampas ya pagadas
 
 ✅ *Verificado en código el 2026-08-14.*
@@ -924,7 +935,16 @@ Reglas que quedaron implementadas en `lib/verification-token.ts`:
    borra los dos. La caducidad real la sigue poniendo `expiresAt` (60 min del
    servidor).
 
-### ⚠️ ABIERTO 2026-09-08: `/automation-status` reporta `completed` en la fila de identidad con la verificación RECHAZADA
+### ✅ RESUELTO 2026-09-15: `/automation-status` reportaba `completed` en la fila de identidad con la verificación RECHAZADA
+
+**Cerrado por el contrato 2026-09-15 (§2c-bis, punto c):** todo desenlace que no
+verificó al huésped cierra ahora la fila en `{status: "failed", lastError:
+"identity_not_verified", canRedispatch: false}`. La hipótesis era correcta:
+`completed` significaba «el registro se cerró». Reservas cerradas ANTES del
+deploy conservan su `completed` histórico (no es bug del front). La fila sigue
+siendo POR AUTOMATIZACIÓN (último registro de cualquier huésped) — los botones
+por huésped se deciden con el bloque `verification` del panel, no con esta fila.
+Lo de abajo se conserva como historia del diagnóstico:
 
 Caso real (reserva 3195533, Ricardo): la tarjeta «Verificación de Identidad
 (Principal)» mostró **Completado** con la verificación rechazada y el check-in
@@ -939,9 +959,23 @@ estado del huésped para "corregir" la tarjeta** — sería la máquina de estad
 paralela que este contrato prohíbe; la fuente por-huésped correcta ya se
 muestra en «Documentos de huéspedes» (misma pantalla).
 
-## 2c-bis. Override del PM sobre la verificación (contrato 2026-09-08, backend en main)
+## 2c-bis. Override del PM sobre la verificación (contrato 2026-09-08, revisado 2026-09-15)
 
-⚠️ *Del documento de backend (commits e20ba92 + 583a965); no reverificado por curl.*
+⚠️ *Del documento de backend (commits e20ba92 + 583a965); no reverificado por curl.
+Revisión 2026-09-15 (incorpora las 3 observaciones del front): (a) §4.3 el
+endpoint del panel `GET /reservations/{uuid}/guests` trae ahora un bloque
+`verification` POR HUÉSPED con el MISMO shape exacto del portal (status,
+currentStep, isStale, canRetry, attemptsRemaining, failureReason…), calculado
+por el mismo código — la ficha del PM se pinta desde ahí y DEJA de consultar el
+portal; (b) §4.2 `identityWaiver.revokedAt` **eliminado y nunca pudo tener
+valor** (la consulta solo devuelve exoneraciones activas; al revocar el bloque
+vuelve a `null` — presencia = vigente, sin ramas por status); (c) §4.5 la fila
+de identidad de `/automation-status` deja de cerrar en `completed` cuando la
+verificación NO aprobó: ahora `{status: "failed", lastError:
+"identity_not_verified", canRedispatch: false}` — cierra el ABIERTO 2026-09-08
+de §2e (reserva 3195533); reservas cerradas antes del deploy conservan su
+`completed` histórico. Requiere en el servidor: `php artisan migrate` +
+`db:seed --class=RolePermissionSeeder`.*
 
 **Tres endpoints** (token del PM):
 - `POST /reservations/{r}/guests/{g}/verification/reset` — sin cuerpo. 200 →
@@ -969,9 +1003,11 @@ el panel (el backend nunca lo dirá).
 
 **Panel — `identityWaiver` SIEMPRE presente** en ReservationGuestResource
 (`GET /reservations/{uuid}/guests`), `null` sin exoneración:
-`{uuid, status, reason, grantedAt, grantedBy, revokedAt}`. **`reason` llega
+`{uuid, status, reason, grantedAt, grantedBy}` (❌ `revokedAt` anunciado en la
+v1 del doc: eliminado 2026-09-15, nunca pudo tener valor). **`reason` llega
 `null` para quien no es el dueño** — staff ve QUE hay exoneración, no el texto.
-Es el caso normal, no un error.
+Es el caso normal, no un error. El `reason` tampoco aparece nunca en el bloque
+`verification` (test del backend lo fija).
 
 **Panel — `identityDocument.imageFailures`** `{front, back}`: distingue
 "documento sin reverso" (`images.back: null` + `imageFailures.back: null`) de

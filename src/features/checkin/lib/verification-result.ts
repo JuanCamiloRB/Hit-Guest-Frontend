@@ -71,6 +71,15 @@ export function normalizeVerificationResult(raw: unknown): VerificationResultRes
         return { status: "contact_challenge" }
     }
 
+    // Exoneración del PM (contrato 2026-09-08): avanza como verificado — misma
+    // directiva, mismo destino — pero con la marca que les permite a las
+    // pantallas callar el cartel de éxito. Va ANTES del chequeo de `form`
+    // porque `waived` llega justamente con `currentStep: "form"` y esa rama lo
+    // convertía en un «verificado» que el backend nunca afirmó.
+    if (status === "waived") {
+        return { status: "verified", waived: true }
+    }
+
     if (currentStep === "form" || status === "approved" || status === "verified") {
         return { status: "verified" }
     }

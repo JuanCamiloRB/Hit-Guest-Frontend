@@ -228,6 +228,12 @@ const ERROR_CODE_LABELS: Record<string, string> = {
     // bloquea a propósito — reportar $0 al Ministerio sería información falsa.
     price_unconfirmed:
         "Falta registrar el valor de la reserva para reportar a TRA. Regístralo con «Editar reserva» y reintenta.",
+    // Contrato 2026-09-15 (§4.5): la fila de identidad cierra en failed cuando el
+    // proveedor NO verificó al huésped (antes mentía con "completed"). No hay
+    // redespacho: la verificación la dispara el huésped desde el portal, y el
+    // estado por huésped vive en «Documentos de huéspedes».
+    identity_not_verified:
+        "La verificación de identidad no fue aprobada. Revisa el estado por huésped en «Documentos de huéspedes».",
 }
 
 /**

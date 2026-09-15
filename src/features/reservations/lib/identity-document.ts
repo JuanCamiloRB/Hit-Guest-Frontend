@@ -36,9 +36,24 @@ export type IdentityMethod = "didit" | "textract-ocr" | "otp"
 /** Qué flujo capturó la imagen que se ve (puede ser de una estancia anterior). */
 export type IdentityCapturedBy = "didit" | "textract-ocr"
 
+/**
+ * Una imagen que DEBIÓ guardarse y se perdió (contrato 2026-09-08, §4.4).
+ * Distingue «este documento no lleva reverso» (pasaporte: `back` null y acá
+ * null) de «el reverso se PERDIÓ» (acá un objeto): sin esta señal el expediente
+ * incompleto era un hueco silencioso y nadie sabía que había que pedirle al
+ * huésped volver a subir el documento.
+ */
+export interface IdentityImageFailure {
+    flow: string | null
+    reason: string | null
+    at: string | null
+}
+
 export interface GuestIdentityDocument {
     front: string | null
     back: string | null
+    /** `null` por cara = nada que reportar; objeto = esa imagen se perdió. */
+    imageFailures: { front: IdentityImageFailure | null; back: IdentityImageFailure | null }
     /** Cómo superó identidad en ESTA reserva. */
     method: IdentityMethod | null
     /** Qué flujo tomó la foto que se está viendo. Difiere de `method` en el recurrente por OTP. */
@@ -71,6 +86,7 @@ const CAPTURED_BY: IdentityCapturedBy[] = ["didit", "textract-ocr"]
 export const EMPTY_IDENTITY_DOCUMENT: GuestIdentityDocument = Object.freeze({
     front: null,
     back: null,
+    imageFailures: Object.freeze({ front: null, back: null }),
     method: null,
     capturedBy: null,
     capturedAt: null,
@@ -174,9 +190,15 @@ export function readIdentityDocument(rawGuest: unknown, storageBase: string): Gu
         }
     }
 
+    const rawFailures = asRecord(identityRecord.imageFailures ?? identityRecord.image_failures)
+
     return {
         front,
         back,
+        imageFailures: {
+            front: readImageFailure(rawFailures.front),
+            back: readImageFailure(rawFailures.back),
+        },
         method: readEnum(identityRecord.method, METHODS),
         capturedBy: readEnum(identityRecord.capturedBy ?? identityRecord.captured_by, CAPTURED_BY),
         capturedAt: readText(identityRecord.capturedAt ?? identityRecord.captured_at),
@@ -185,6 +207,21 @@ export function readIdentityDocument(rawGuest: unknown, storageBase: string): Gu
             ?? identityRecord.inherited_from_another_reservation,
         ),
         isReported: hasIdentityKey,
+    }
+}
+
+/**
+ * Solo un OBJETO cuenta como fallo; `null`, ausencia o basura degradan a
+ * «nada que reportar» — un aviso de expediente incompleto inventado alarmaría
+ * al PM sin base (mismo criterio fail-quiet que `readEnum`).
+ */
+function readImageFailure(raw: unknown): IdentityImageFailure | null {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null
+    const record = raw as Record<string, unknown>
+    return {
+        flow: readText(record.flow),
+        reason: readText(record.reason),
+        at: readText(record.at),
     }
 }
 

@@ -87,6 +87,11 @@ export function describeIdentityStatus(
     status: ReservationGuestVerificationStatus,
 ): IdentityStatusMeta {
     if (!isVerifiedGuestStatus(status)) {
+        // La exoneración es una decisión administrativa, no una incidencia ni
+        // una espera: tono informativo, para que recepción la distinga de ambas.
+        if (status === "waived") {
+            return { label: verificationPendingLabel(status), tone: "info" }
+        }
         return { label: verificationPendingLabel(status), tone: "warning" }
     }
     const type = describeVerificationType(doc)
@@ -102,9 +107,16 @@ export function describeIdentityStatus(
  * espera) del «todavía no empezó».
  */
 export function verificationPendingLabel(status: ReservationGuestVerificationStatus): string {
+    // Exonerado por el PM (contrato 2026-09-08): avanza sin verificar. La
+    // pastilla NUNCA puede decir «verificada» acá — el backend no lo afirma y
+    // el front tampoco (QA 3 del contrato).
+    if (status === "waived") return "Verificación exonerada"
     if (status === "in_review") return "Identidad en revisión"
-    if (status === "in_progress" || status === "pending") return "Verificación en proceso"
-    if (status === "rejected" || status === "fail" || status === "expired") {
+    if (status === "in_progress" || status === "pending" || status === "resubmitted") {
+        return "Verificación en proceso"
+    }
+    if (status === "rejected" || status === "fail" || status === "expired"
+        || status === "ocr_rejected" || status === "abandoned") {
         return "Verificación con incidencia"
     }
     return "Identidad pendiente"
@@ -204,6 +216,24 @@ export function describeMissingImages(
     return isIdentityVerified
         ? "Identidad verificada; imágenes no disponibles"
         : "Documentos aún no disponibles"
+}
+
+/**
+ * Aviso de expediente incompleto (contrato 2026-09-08, §4.4), o `null` si no
+ * hay nada perdido. Solo cuenta una cara SIN imagen y CON fallo registrado:
+ * `back: null` sin fallo es un documento que no lleva reverso (pasaporte) y no
+ * merece alarma. El aviso es lo que permite pedirle al huésped volver a subir
+ * el documento — hoy nadie sabía que faltaba.
+ */
+export function describeImageFailures(doc: GuestIdentityDocument): string | null {
+    const lostSides = [
+        doc.front === null && doc.imageFailures.front ? "frente" : null,
+        doc.back === null && doc.imageFailures.back ? "reverso" : null,
+    ].filter((side): side is string => side !== null)
+    if (lostSides.length === 0) return null
+    const sides = lostSides.join(" y ")
+    return `Expediente incompleto: la imagen del ${sides} del documento no se pudo guardar. `
+        + "Pide al huésped volver a subir su documento."
 }
 
 /** Copy del fallo de UNA imagen. `httpStatus` indefinido = fallo de red. */

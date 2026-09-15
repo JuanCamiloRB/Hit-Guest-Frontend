@@ -62,6 +62,9 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
     const [schema, setSchema] = useState<GuestFormSchemaResponse | null>(null)
     const [isLoadingSchema, setIsLoadingSchema] = useState(true)
     const [docVerified, setDocVerified] = useState(false)
+    // Exoneración del PM (contrato 2026-09-08): el huésped no sube documento,
+    // pero tampoco se le puede afirmar que su identidad quedó verificada.
+    const [docWaived, setDocWaived] = useState(false)
     const [countryOptions, setCountryOptions] = useState<Array<{ id: number; label: string }>>([])
     // Raw countries kept so we can resolve a country id → ISO2 for the identification-types query.
     const [countriesRaw, setCountriesRaw] = useState<CountryOption[]>([])
@@ -133,6 +136,16 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                     const identityVerified = session?.verification.type === "verified_ok"
                         || isDocumentAlreadyVerified(currentGuest, hasOtpToken, activeResult)
                     setDocVerified(identityVerified)
+                    // El exonerado (waived) salta el documento igual que un
+                    // verificado, pero el chip verde no puede decir «verificado».
+                    // Se miran las DOS fuentes: `/verify/result` puede confirmar la
+                    // exoneración mientras el portal falla o va atrasado, y leer solo
+                    // el portal dejaba pasar el chip «Documento ya verificado» sobre
+                    // un huésped que nunca verificó (QA 3).
+                    setDocWaived(
+                        currentGuest?.verification?.status === "waived"
+                        || activeResult?.waived === true,
+                    )
 
                     // A stale/direct navigation must not turn an unfinished Didit
                     // flow into a Textract-looking form. The backend status chooses
@@ -486,7 +499,9 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                     {docVerified && (
                         <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-3 py-2">
                             <CheckCircle2 size={16} className="text-green-600" />
-                            <span className="text-xs font-semibold">Documento ya verificado</span>
+                            <span className="text-xs font-semibold">
+                                {docWaived ? "No necesitas subir tu documento" : "Documento ya verificado"}
+                            </span>
                         </div>
                     )}
                     <SearchableSelect label="País del documento" options={countryOptions} value={form.documentCountryId} onChange={(v) => updateField("documentCountryId", v)} placeholder="Seleccionar país..." required />

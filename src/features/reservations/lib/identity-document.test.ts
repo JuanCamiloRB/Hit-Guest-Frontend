@@ -183,6 +183,43 @@ describe("readIdentityDocument — tolerancia al contrato", () => {
         expect(readIdentityDocument({}, STORAGE).isReported).toBe(false)
     })
 
+    describe("imageFailures (contrato 2026-09-08, §4.4)", () => {
+        it("distingue «no lleva reverso» de «el reverso se PERDIÓ»", () => {
+            // Pasaporte: back null, sin fallo → nada que reportar.
+            const passport = readIdentityDocument({
+                identityDocument: { images: { front: "https://api/front", back: null } },
+            }, STORAGE)
+            expect(passport.imageFailures).toEqual({ front: null, back: null })
+
+            // El caso del contrato: la descarga del reverso falló y quedó registrado.
+            const lostBack = readIdentityDocument({
+                identityDocument: {
+                    images: { front: "https://api/front", back: null },
+                    imageFailures: {
+                        front: null,
+                        back: { flow: "didit", reason: "download failed with HTTP 403", at: "2026-09-08T20:00:00Z" },
+                    },
+                },
+            }, STORAGE)
+            expect(lostBack.imageFailures.front).toBeNull()
+            expect(lostBack.imageFailures.back).toEqual({
+                flow: "didit",
+                reason: "download failed with HTTP 403",
+                at: "2026-09-08T20:00:00Z",
+            })
+        })
+
+        it("basura en la clave degrada a «nada que reportar», no a una alarma inventada", () => {
+            const doc = readIdentityDocument({
+                identityDocument: {
+                    images: { front: "https://api/front" },
+                    imageFailures: { front: "boom", back: ["x"] },
+                },
+            }, STORAGE)
+            expect(doc.imageFailures).toEqual({ front: null, back: null })
+        })
+    })
+
     it("acepta snake_case en la metadata", () => {
         const doc = readIdentityDocument({
             identityDocument: {
