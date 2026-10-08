@@ -7,6 +7,7 @@ import {
     waiverReasonError,
     type GuestVerificationSignals,
     type IdentityWaiver,
+    describeVerificationWait,
 } from "./guest-verification"
 
 /**
@@ -68,6 +69,7 @@ describe("readGuestVerificationSignals", () => {
             canRetry: false,
             attemptsRemaining: 0,
             failureReason: "document_unreadable",
+            startedAt: null,
         })
     })
 
@@ -178,5 +180,27 @@ describe("waiverReasonError — la regla del backend, validada en cliente (QA 5)
         expect(waiverReasonError("            ")).not.toBeNull()
         expect(waiverReasonError("a".repeat(1001))).not.toBeNull()
         expect(waiverReasonError("Documento ilegible; identidad confirmada en persona.")).toBeNull()
+    })
+})
+
+describe("describeVerificationWait — por qué no hay botón mientras se espera", () => {
+    const base = { reported: true, currentStep: "verification", isStale: false, canRetry: null, attemptsRemaining: null, failureReason: null }
+
+    it("una espera en curso explica que el reinicio depende de que el backend la dé por vencida, con la hora de inicio", () => {
+        const text = describeVerificationWait({ ...base, status: "pending", startedAt: "2026-10-09T15:42:00Z" })
+        expect(text).toMatch(/Esperando la respuesta del proveedor desde las \d{2}:\d{2}/)
+        expect(text).toMatch(/Reiniciar verificación/)
+        // El plazo lo pone el backend: acá no se nombra ningún número de minutos.
+        expect(text).not.toMatch(/\d+ minutos/)
+    })
+
+    it("sin hora de inicio no inventa una", () => {
+        expect(describeVerificationWait({ ...base, status: "in_progress", startedAt: null })).toMatch(/^Esperando la respuesta del proveedor\. /)
+    })
+
+    it("no habla cuando ya hay botón (stale), en un estado terminal, o sin bloque del backend", () => {
+        expect(describeVerificationWait({ ...base, status: "pending", isStale: true })).toBeNull()
+        expect(describeVerificationWait({ ...base, status: "approved" })).toBeNull()
+        expect(describeVerificationWait({ ...base, reported: false, status: null })).toBeNull()
     })
 })

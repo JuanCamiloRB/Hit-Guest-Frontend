@@ -17,6 +17,7 @@ import {
 import { notifyError } from "@/lib/notify-error"
 import { useAuthStore } from "@/lib/store/auth-store"
 import {
+    describeVerificationWait,
     resolveGuestVerificationActions,
     waiverReasonError,
 } from "../lib/guest-verification"
@@ -74,7 +75,10 @@ export function GuestVerificationActions({
         isOwner,
     })
 
-    if (!actions.showReset && !actions.showWaive && !actions.showRevoke) return null
+    if (!actions.showReset && !actions.showWaive && !actions.showRevoke) {
+        const waiting = describeVerificationWait(guest.verificationSignals)
+        return waiting ? <p className="text-xs text-slate-500">{waiting}</p> : null
+    }
 
     const reasonProblem = waiverReasonError(reason)
 

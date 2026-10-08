@@ -44,6 +44,8 @@ export interface GuestVerificationSignals {
     canRetry: boolean | null
     attemptsRemaining: number | null
     failureReason: string | null
+    /** ISO-8601 del inicio de la espera (§A.6 del contrato); `null` si no vino. */
+    startedAt?: string | null
 }
 
 export const EMPTY_VERIFICATION_SIGNALS: GuestVerificationSignals = Object.freeze({
@@ -102,6 +104,9 @@ export function readGuestVerificationSignals(rawGuest: unknown): GuestVerificati
         status: readText(verification.status)?.toLowerCase() ?? null,
         currentStep: readText(verification.currentStep ?? verification.current_step)?.toLowerCase() ?? null,
         isStale: (verification.isStale ?? verification.is_stale) === true,
+        startedAt: typeof (verification.startedAt ?? verification.started_at) === "string"
+            ? String(verification.startedAt ?? verification.started_at)
+            : null,
         canRetry: typeof canRetry === "boolean" ? canRetry : null,
         attemptsRemaining: typeof attempts === "number" && Number.isFinite(attempts) ? attempts : null,
         failureReason: readText(verification.failureReason ?? verification.failure_reason),
@@ -194,4 +199,21 @@ export function waiverReasonError(reason: string): string | null {
     if (trimmed.length < 10) return "El motivo debe tener al menos 10 caracteres."
     if (trimmed.length > 1000) return "El motivo no puede superar los 1000 caracteres."
     return null
+}
+
+/**
+ * Por qué NO hay botón mientras una verificación sigue en curso. El chip
+ * «Verificación en proceso» sin ninguna acción se leía como «está colgada y no
+ * hay cómo destrabarla» (reporte 2026-10-09). La regla es del backend: el
+ * reinicio aparece cuando él marca la espera como vencida (`isStale`, por
+ * minutos de espera configurados allá), así que acá no se promete un plazo.
+ */
+export function describeVerificationWait(signals: GuestVerificationSignals): string | null {
+    if (!signals.reported || !signals.status || signals.isStale) return null
+    if (!IN_FLIGHT_STATUSES.has(signals.status)) return null
+    const started = signals.startedAt ? new Date(signals.startedAt) : null
+    const since = started && !Number.isNaN(started.getTime())
+        ? ` desde las ${started.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" })}`
+        : ""
+    return `Esperando la respuesta del proveedor${since}. Si la espera se vence, aquí aparecerá «Reiniciar verificación»; «Actualizar» relee el estado.`
 }
