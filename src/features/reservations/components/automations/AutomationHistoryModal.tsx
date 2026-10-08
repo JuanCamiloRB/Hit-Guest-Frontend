@@ -17,6 +17,7 @@ import type {
     UsageRecordStatus,
 } from "@/features/properties/types/automation"
 import { formatRunDate, errorMessage, TRIGGERED_BY_LABELS } from "./automation-status-meta"
+import { CHANNEL_LABEL } from "@/features/properties/lib/checkin-link-delivery"
 
 interface AutomationHistoryModalProps {
     reservationUuid: string
@@ -130,12 +131,13 @@ function HistoryRow({
     const detail = record.status === "failed"
         ? (errorMessage(record.lastError) || "Error")
         : describePayload(record.responsePayload)
-    const origin = record.triggeredBy
+    const trigger = record.triggeredBy
         ? (TRIGGERED_BY_LABELS[record.triggeredBy] ?? record.triggeredBy)
         : "—"
-    const charge = record.billable
-        ? `Facturable${record.unitCost != null ? ` · ${record.unitCost}` : ""}`
-        : "Sin cargo"
+    // §13.6: WhatsApp y OTA comparten automatización y provider; sin el canal,
+    // un cobro de uno y otro se ven idénticos en el historial.
+    const origin = record.channel ? `${trigger} · ${CHANNEL_LABEL[record.channel]}` : trigger
+    const charge = chargeLabel(record)
 
     return (
         <li className="rounded-xl border border-rule p-3">
@@ -172,14 +174,51 @@ function HistoryRow({
 }
 
 /**
+ * Etiqueta de cobro de una ejecución. Un registro OMITIDO nunca se cobra
+ * (contrato: todos los `skipped` llegan sin cargo), así que `skipped: true`
+ * manda sobre `billable` — sin esto, un `completed + billable + skipped`
+ * mostraba «Facturable» y «No se envió» a la vez. Es la misma regla con la
+ * que el tablero de consumo lo excluye de la suma.
+ *
+ * Un provider facturable con tarifa 0 (WhatsApp mientras Finanzas no la fije,
+ * contrato 2026-09-19 §9) no puede leerse como «0.0000», que parece un error.
+ */
+export function chargeLabel(
+    record: Pick<AutomationUsageRecord, "billable" | "unitCost" | "responsePayload">,
+): string {
+    if (record.responsePayload?.skipped === true || !record.billable) return "Sin cargo"
+    const unitCost = record.unitCost != null ? Number(record.unitCost) : null
+    if (unitCost === 0) return "Facturable · sin costo por ahora"
+    return `Facturable${record.unitCost != null ? ` · ${record.unitCost}` : ""}`
+}
+
+/**
+ * Motivos documentados de una ejecución omitida (`responsePayload.reason` con
+ * `skipped: true`). Un solo mapa cerrado: PDF (§ skill) + envío del link por
+ * WhatsApp (§8) y por la OTA (§13.6). Ninguno se cobra. Un motivo desconocido
+ * cae al texto genérico — nunca se muestra el código crudo.
+ */
+export const SKIPPED_REASON_COPY: Readonly<Record<string, string>> = {
+    no_recipients: "No se envió: no hay destinatarios configurados.",
+    no_whatsapp_phone: "No se envió por WhatsApp: la reserva no tiene un teléfono utilizable.",
+    whatsapp_not_configured: "No se envió por WhatsApp: el canal todavía no está habilitado en HIT.",
+    not_imported_from_pms: "No se publicó en la OTA: la reserva no vino de Kunas ni Calry.",
+    pms_integration_unavailable: "No se publicó en la OTA: la integración con el PMS no está activa.",
+    kunas_messaging_not_configured: "No se publicó en la OTA: la mensajería de Kunas todavía no está habilitada en HIT.",
+    calry_not_configured: "No se publicó en la OTA: la conexión con Calry todavía no está habilitada en HIT.",
+    no_ota_thread: "No se publicó en la OTA: la reserva no tiene conversación en la OTA.",
+    already_posted: "No se volvió a publicar: el mensaje ya estaba en la OTA.",
+}
+
+/**
  * Resumen cerrado para el PM. `responsePayload` es un detalle crudo de soporte:
  * nunca se enumeran claves/valores arbitrarios ni se hace JSON.stringify.
  */
 export function describePayload(payload: Record<string, unknown> | null): string {
     if (!payload || typeof payload !== "object") return "—"
-    if (payload.skipped === true && payload.reason === "no_recipients") {
-        return "No se envió: no hay destinatarios configurados."
+    if (payload.skipped === true) {
+        const reason = typeof payload.reason === "string" ? payload.reason : ""
+        return Object.hasOwn(SKIPPED_REASON_COPY, reason) ? SKIPPED_REASON_COPY[reason] : "La ejecución fue omitida."
     }
-    if (payload.skipped === true) return "La ejecución fue omitida."
     return "—"
 }

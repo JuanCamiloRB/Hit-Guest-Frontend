@@ -8,7 +8,7 @@
  */
 
 import { automationService } from "@/features/properties/services/automation-service"
-import { isSameMonth, startOfMonth, subMonths } from "date-fns"
+import { endOfMonth, isSameMonth, isValid, startOfMonth, subMonths } from "date-fns"
 import type { Reservation } from "@/types"
 import type {
     CostCategory,
@@ -16,10 +16,12 @@ import type {
     ReservationCost,
     ConsumptionAnalytics,
     ConsumptionSummary,
+    LifetimeCostStats,
     MonthlyPoint,
     NodeUsage,
 } from "../types"
 import { COST_CATEGORIES, classifyRecord } from "../lib/pricing"
+import type { DeliveryRecordChannel } from "@/features/properties/types/automation"
 
 /**
  * A usage record as it arrives from the API. Typed as an open record because the
@@ -58,6 +60,21 @@ function readName(rec: RawUsageRecord): string | null {
     return (rec.automationName ?? rec.automation_name ?? null) as string | null
 }
 
+/** Canal del envío del link, ya normalizado por el servicio (`channel`). */
+function readChannel(rec: RawUsageRecord): DeliveryRecordChannel | null {
+    return rec.channel === "whatsapp" || rec.channel === "ota_inbox" ? rec.channel : null
+}
+
+/**
+ * Una ejecución omitida (`responsePayload.skipped`) no se envió y el contrato
+ * dice que no se cobra ninguna (§8, §13.6). Se excluye aunque llegue
+ * `completed` y `billable`: sumarla cobraría un mensaje que no salió.
+ */
+function isSkipped(rec: RawUsageRecord): boolean {
+    const payload = (rec.responsePayload ?? rec.response_payload) as Record<string, unknown> | null | undefined
+    return payload != null && typeof payload === "object" && payload.skipped === true
+}
+
 /** Build the always-present 5 line items, zeroed out. */
 function emptyLineItems(): Record<CostCategory, CostLineItem> {
     const map = {} as Record<CostCategory, CostLineItem>
@@ -78,11 +95,12 @@ function aggregate(reservation: Reservation, records: RawUsageRecord[]): Reserva
         // Charge only successful runs — skip pending/failed retries so a guest with
         // several verification attempts isn't billed for each one.
         if (!isSuccessful(rec)) continue
+        if (isSkipped(rec)) continue
 
         const nodeName = readName(rec) || readSlug(rec)
         if (nodeName) runsByNode.set(nodeName, (runsByNode.get(nodeName) ?? 0) + 1)
 
-        const category = classifyRecord(readSlug(rec), readName(rec))
+        const category = classifyRecord(readSlug(rec), readName(rec), readChannel(rec))
         if (!category) continue
         const line = items[category]
         if (!readBillable(rec)) {
@@ -114,6 +132,50 @@ function aggregate(reservation: Reservation, records: RawUsageRecord[]): Reserva
 /** Successful identity-verification charges on a reservation (one per guest). */
 function verifiedGuestCount(cost: ReservationCost): number {
     return cost.lineItems.find((l) => l.category === "checkin")?.count ?? 0
+}
+
+/**
+ * Reservas procesadas y costo promedio de TODA la cuenta, más hacia dónde se
+ * mueve ese promedio. No depende del mes del tablero: un mes sin reservas no
+ * convierte el promedio de la cuenta en 0.
+ *
+ * Procesada = al menos un cargo facturable (la misma regla que siempre usó la
+ * tarjeta). La tendencia compara el promedio del último mes con reservas
+ * cobradas contra el del mes con reservas cobradas anterior, por fecha de
+ * check-in como el resto del tablero. Los meses posteriores a `today` (reservas
+ * futuras ya verificadas) cuentan en el total pero no en la tendencia: un
+ * «nov vs oct» en octubre se leería como un dato que todavía no existe.
+ */
+export function lifetimeCostStats(costs: readonly ReservationCost[], today: Date = new Date()): LifetimeCostStats {
+    let processedReservations = 0
+    let processedTotal = 0
+    const byMonth = new Map<number, { month: Date; total: number; count: number }>()
+    const lastMonth = endOfMonth(today)
+
+    for (const c of costs) {
+        if (c.total <= 0) continue
+        processedReservations += 1
+        processedTotal += c.total
+
+        if (!isValid(c.checkIn) || c.checkIn > lastMonth) continue
+        const month = startOfMonth(c.checkIn)
+        const bucket = byMonth.get(month.getTime()) ?? { month, total: 0, count: 0 }
+        bucket.total += c.total
+        bucket.count += 1
+        byMonth.set(month.getTime(), bucket)
+    }
+
+    const [latest, baseline] = [...byMonth.values()].sort((a, b) => b.month.getTime() - a.month.getTime())
+    const latestAvg = latest ? latest.total / latest.count : 0
+    const baselineAvg = baseline ? baseline.total / baseline.count : 0
+
+    return {
+        processedReservations,
+        avgPerReservation: processedReservations > 0 ? processedTotal / processedReservations : null,
+        avgTrend: latest && baseline && baselineAvg > 0
+            ? { month: latest.month, baselineMonth: baseline.month, deltaPct: (latestAvg - baselineAvg) / baselineAvg }
+            : null,
+    }
 }
 
 /** Months of history the consumption chart shows, including the current one. */
@@ -154,12 +216,13 @@ class ConsumptionService {
     /**
      * Roll per-reservation costs up into everything the Tablero shows for the
      * month of `refDate`: the KPIs (with the month-over-month delta), the
-     * six-month consumption history and the node execution ranking.
+     * six-month consumption history and the node execution ranking. The
+     * account-wide figures (`summary.lifetime`) ignore `refDate`.
      *
      * Reservations are bucketed by check-in date, the same date the rest of the
      * dashboard uses to say a reservation "happened" in a given month.
      */
-    analyze(costs: ReservationCost[], refDate: Date = new Date()): ConsumptionAnalytics {
+    analyze(costs: ReservationCost[], refDate: Date = new Date(), today: Date = new Date()): ConsumptionAnalytics {
         const prevDate = subMonths(refDate, 1)
 
         // Six empty buckets ending at the reference month, oldest first.
@@ -172,7 +235,6 @@ class ConsumptionService {
         let monthTotal = 0
         let prevMonthTotal = 0
         let grandTotal = 0
-        let billedReservations = 0
         let verifiedGuests = 0
 
         for (const c of costs) {
@@ -185,7 +247,6 @@ class ConsumptionService {
             if (!isSameMonth(c.checkIn, refDate)) continue
 
             monthTotal += c.total
-            if (c.total > 0) billedReservations += 1
             verifiedGuests += verifiedGuestCount(c)
             for (const node of c.nodeRuns) {
                 runsByNode.set(node.name, (runsByNode.get(node.name) ?? 0) + node.runs)
@@ -201,8 +262,7 @@ class ConsumptionService {
             prevMonthTotal,
             // No baseline (first month of activity) → no percentage to show.
             monthDeltaPct: prevMonthTotal > 0 ? (monthTotal - prevMonthTotal) / prevMonthTotal : null,
-            billedReservations,
-            avgPerReservation: billedReservations > 0 ? monthTotal / billedReservations : 0,
+            lifetime: lifetimeCostStats(costs, today),
             verifiedGuests,
             grandTotal,
         }

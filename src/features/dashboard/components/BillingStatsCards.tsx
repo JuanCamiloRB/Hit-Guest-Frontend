@@ -1,11 +1,14 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { Loader2, Wallet, TrendingUp, ReceiptText, Calculator } from "lucide-react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import { Loader2, Wallet, TrendingUp, TrendingDown, ReceiptText, Calculator } from "lucide-react"
 import { RechargeDialog } from "@/features/billing/components/RechargeDialog"
 import {
     formatUsd,
     type AccountBalance,
+    type AvgCostTrend,
     type ConsumptionSummary,
 } from "@/features/billing/types"
 
@@ -23,6 +26,11 @@ interface Props {
  * Billing KPIs for the Tablero: prepaid balance (+ recharge), month consumption,
  * billed reservations and average cost per reservation. Replaces the old
  * operational KPIs (which duplicated the Operaciones page).
+ *
+ * Solo «Consumo del mes» sigue al selector de mes. Reservas procesadas y costo
+ * promedio son de TODA la cuenta (pedido de producto 2026-10-02): un mes sin
+ * reservas los dejaba en 0 y se leían como «no hay nada». Por eso llevan la
+ * leyenda «Todas las reservas procesadas».
  */
 export function BillingStatsCards({
     balance,
@@ -97,7 +105,8 @@ export function BillingStatsCards({
                 accent="border-l-slate-200"
                 label="RESERVAS PROCESADAS"
                 loading={isLoadingCosts}
-                value={summary ? String(summary.billedReservations) : "—"}
+                value={summary ? String(summary.lifetime.processedReservations) : "—"}
+                footer={<p className="text-xs text-muted-foreground">Todas las reservas procesadas</p>}
             />
 
             <KpiCard
@@ -105,7 +114,13 @@ export function BillingStatsCards({
                 accent="border-l-amber-400"
                 label="COSTO PROM. / RESERVA"
                 loading={isLoadingCosts}
-                value={summary ? formatUsd(summary.avgPerReservation) : "—"}
+                value={summary?.lifetime.avgPerReservation != null ? formatUsd(summary.lifetime.avgPerReservation) : "—"}
+                footer={summary && (
+                    <>
+                        <p className="text-xs text-muted-foreground">Todas las reservas procesadas</p>
+                        <AvgTrendLine trend={summary.lifetime.avgTrend} />
+                    </>
+                )}
             />
         </div>
     )
@@ -117,12 +132,15 @@ function KpiCard({
     label,
     value,
     loading,
+    footer,
 }: {
     icon: React.ReactNode
     accent: string
     label: string
     value: string
     loading: boolean
+    /** Línea bajo el valor; no se muestra mientras carga. */
+    footer?: React.ReactNode
 }) {
     return (
         <Card className={`border-l-4 ${accent} shadow-sm`}>
@@ -140,7 +158,46 @@ function KpiCard({
                         value
                     )}
                 </div>
+                {!loading && footer && <div className="mt-1">{footer}</div>}
             </CardContent>
         </Card>
+    )
+}
+
+/** Por debajo de esto (0,05 %) el cambio es ruido de redondeo: «sin cambio». */
+const FLAT_THRESHOLD = 0.0005
+
+const percent = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 })
+
+/**
+ * ¿Cada reserva cuesta más o menos que antes? Subir es la mala noticia para
+ * quien paga, así que sube en rojo y baja en verde. Los dos meses se nombran:
+ * pueden no ser consecutivos.
+ */
+export function AvgTrendLine({ trend }: { trend: AvgCostTrend | null }) {
+    if (!trend) {
+        return <p className="text-xs text-muted-foreground">Sin meses para comparar todavía</p>
+    }
+    const months = `${format(trend.month, "MMM", { locale: es })} vs ${format(trend.baselineMonth, "MMM", { locale: es })}`
+    const title = `Costo promedio por reserva de ${format(trend.month, "MMMM yyyy", { locale: es })} comparado con ${format(trend.baselineMonth, "MMMM yyyy", { locale: es })}`
+
+    if (Math.abs(trend.deltaPct) < FLAT_THRESHOLD) {
+        return (
+            <p className="text-xs text-muted-foreground" title={title}>
+                Sin cambio · {months}
+            </p>
+        )
+    }
+    const rising = trend.deltaPct > 0
+    const Icon = rising ? TrendingUp : TrendingDown
+    return (
+        <p className="flex items-center gap-1 text-xs text-muted-foreground" title={title}>
+            <span className="sr-only">{rising ? "Sube" : "Baja"}</span>
+            <span className={`inline-flex items-center gap-0.5 font-semibold ${rising ? "text-red-600" : "text-emerald-600"}`}>
+                <Icon className="h-3.5 w-3.5" aria-hidden />
+                {rising ? "+" : "−"}{percent.format(Math.abs(trend.deltaPct) * 100)} %
+            </span>
+            <span>{months}</span>
+        </p>
     )
 }

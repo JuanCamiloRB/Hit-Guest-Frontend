@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { bindCatalogProviders, buildAutomationSlots } from "./automation-catalog"
+import { bindCatalogProviders, buildAutomationSlots, isAutomationProvider } from "./automation-catalog"
 import { AUTOMATION_DEFINITIONS } from "../data/automation-definitions"
 import {
     AUTOMATION_STATUS,
@@ -103,6 +103,28 @@ function makeAutomation(overrides: Partial<PropertyAutomation> = {}): PropertyAu
 const idsOf = (slots: { definition: { id: string } }[]) => slots.map((s) => s.definition.id)
 const findSlot = (slots: ReturnType<typeof buildAutomationSlots>, id: string) =>
     slots.find((s) => s.definition.id === id)
+
+describe("isAutomationProvider — automationType en tri-estado (contrato 2026-09-27 §13.2)", () => {
+    const withSlot = (automationType?: string | null): Provider => ({
+        ...makeProvider(900, "algo_nuevo", { enabled: true, slots: [slot({ name: "Algo", order: 70 })] }),
+        ...(automationType !== undefined ? { automationType } : {}),
+    })
+
+    it("un provider con automationType null explícito no es automatización ni genera tarjeta", () => {
+        expect(isAutomationProvider(withSlot(null))).toBe(false)
+        expect(buildAutomationSlots([], [withSlot(null)])).toEqual([])
+    })
+
+    it("sin la clave se conserva: los providers históricos no están verificados", () => {
+        expect(isAutomationProvider(withSlot())).toBe(true)
+        expect(buildAutomationSlots([], [withSlot()])).toHaveLength(1)
+        expect(isAutomationProvider(withSlot("pms_sync"))).toBe(true)
+    })
+
+    it("sin slug sigue siendo un conector, con o sin automationType", () => {
+        expect(isAutomationProvider({ ...withSlot("x"), parameters: { slug: "" } })).toBe(false)
+    })
+})
 
 describe("buildAutomationSlots", () => {
     it("ofrece lo que el backend declara para el país, en el orden que él dice", () => {

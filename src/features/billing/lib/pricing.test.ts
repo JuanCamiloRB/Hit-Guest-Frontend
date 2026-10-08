@@ -20,6 +20,26 @@ describe("classifyRecord", () => {
         expect(classifyRecord("ttlock")).toBe("access")
     })
 
+    it("el envío del link tiene su rubro, y va antes que identidad: su nombre matchea 'check-in'", () => {
+        expect(classifyRecord("whatsapp_checkin_link", "Check-in Link Delivery", "whatsapp")).toBe("whatsapp")
+        expect(classifyRecord("whatsapp-checkin-link", null, "whatsapp")).toBe("whatsapp")
+    })
+
+    it("WhatsApp y OTA comparten slug: el canal decide la columna (§13.6)", () => {
+        expect(classifyRecord("whatsapp_checkin_link", "Check-in Link Delivery", "ota_inbox")).toBe("otaInbox")
+        expect(classifyRecord("ota_inbox_checkin_link")).toBe("otaInbox")
+    })
+
+    it("un registro histórico sin canal queda como WhatsApp (antes del addendum no había otro)", () => {
+        expect(classifyRecord("whatsapp_checkin_link")).toBe("whatsapp")
+        expect(classifyRecord("whatsapp_checkin_link", "Check-in Link Delivery", null)).toBe("whatsapp")
+    })
+
+    it("otro provider de WhatsApp no es el link de check-in", () => {
+        expect(classifyRecord("whatsapp_marketing")).toBeNull()
+        expect(classifyRecord("whatsapp_support", "Soporte por WhatsApp")).toBeNull()
+    })
+
     it("lo que no es un rubro del tablero queda fuera, no adivinado", () => {
         expect(classifyRecord("pdf_report")).toBeNull()
         expect(classifyRecord(null, null)).toBeNull()

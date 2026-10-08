@@ -14,6 +14,12 @@ function doc(overrides: Partial<GuestIdentityDocument> = {}): GuestIdentityDocum
 }
 
 describe("describeIdentityStatus", () => {
+    it("la captura sin verificación nunca dice «verificada» (contrato 2026-09-27, QA 10)", () => {
+        const meta = describeIdentityStatus(doc({ method: "document-capture", capturedBy: "document-capture" }), "document_captured")
+        expect(meta.label).toBe("Fotos del documento · sin verificar")
+        expect(meta.tone).toBe("info")
+    })
+
     it("el tipo de verificación es un atributo del estado, no una etiqueta aparte", () => {
         expect(describeIdentityStatus(doc({ method: "didit" }), "approved"))
             .toEqual({ label: "Identidad verificada · avanzada", tone: "success" })

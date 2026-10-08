@@ -74,24 +74,31 @@ export function useBillingData(): BillingData {
         let mounted = true
         loadBalance()
 
-        setIsLoadingCosts(true)
-        reservationsService
-            .list()
-            .then((reservations) => consumptionService.getReservationCosts(reservations))
-            .then((c) => {
-                if (!mounted) return
-                setCosts(c)
-            })
-            .catch(() => {
-                if (!mounted) return
-                setCosts([])
-            })
-            .finally(() => {
-                if (mounted) setIsLoadingCosts(false)
-            })
+        const loadCosts = () => {
+            setIsLoadingCosts(true)
+            reservationsService
+                .list()
+                .then((reservations) => consumptionService.getReservationCosts(reservations))
+                .then((c) => {
+                    if (!mounted) return
+                    setCosts(c)
+                })
+                .catch((error) => {
+                    // Un fallo no convierte el consumo cargado en cero.
+                    if (mounted) console.error("[useBillingData] costos no disponibles:", error)
+                })
+                .finally(() => {
+                    if (mounted) setIsLoadingCosts(false)
+                })
+        }
+        loadCosts()
 
+        // El botón «Nueva Reserva» vive en el encabezado de este mismo Tablero:
+        // sin esto, la reserva recién creada no aparecía hasta recargar la página.
+        window.addEventListener("reservationCreated", loadCosts)
         return () => {
             mounted = false
+            window.removeEventListener("reservationCreated", loadCosts)
         }
     }, [loadBalance])
 

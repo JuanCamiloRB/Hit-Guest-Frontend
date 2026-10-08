@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { readOverwrittenEdits, readReservationOrigin } from "./reservation-origin"
+import { describeImportedReservationNotice, readOverwrittenEdits, readReservationOrigin } from "./reservation-origin"
 import { readReservationFieldErrors } from "./reservation-edit-errors"
 
 describe("readReservationOrigin — el aviso PMS solo con un true explícito", () => {
@@ -11,6 +11,7 @@ describe("readReservationOrigin — el aviso PMS solo con un true explícito", (
         })).toEqual({
             isImported: true,
             originKnown: true,
+            importSource: "calry",
             importSourceLabel: "Calry",
             syncedAt: "2026-08-24T14:32:07+00:00",
         })
@@ -36,6 +37,26 @@ describe("readReservationOrigin — el aviso PMS solo con un true explícito", (
 
     it("syncedAt null queda null: «no sabemos», nunca «sin sincronizar»", () => {
         expect(readReservationOrigin({ isImported: true, syncedAt: null }).syncedAt).toBeNull()
+    })
+})
+
+describe("describeImportedReservationNotice — el aviso depende de quién importó", () => {
+    it("iCal no es un PMS: solo las fechas vienen del calendario", () => {
+        const notice = describeImportedReservationNotice(readReservationOrigin({ isImported: true, importSource: "ical" }))
+        expect(notice).toContain("calendario iCal")
+        expect(notice).toContain("fechas")
+        expect(notice).not.toMatch(/PMS/)
+    })
+
+    it("Calry y Kunas conservan el aviso de los 6 campos que pisa el webhook", () => {
+        const notice = describeImportedReservationNotice(readReservationOrigin({ isImported: true, importSource: "kunas_pms" }))
+        expect(notice).toContain("desde Kunas PMS")
+        expect(notice).toContain("los gestiona el PMS")
+    })
+
+    it("sin fuente conocida cae al aviso genérico de PMS", () => {
+        const notice = describeImportedReservationNotice(readReservationOrigin({ isImported: true }))
+        expect(notice).toContain("desde el PMS")
     })
 })
 

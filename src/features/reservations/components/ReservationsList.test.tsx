@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Reservation } from "@/types"
 import ReservationsList from "./ReservationsList"
+import { ReservationsNotReadyError } from "../services/reservations-service"
 
 const mocks = vi.hoisted(() => ({
     deleteHandler: null as null | ((reservation: Reservation) => void),
@@ -19,19 +20,23 @@ vi.mock("./columns", () => ({
 
 vi.mock("@/components/shared/data-table", () => ({
     DataTable: ({ data }: { data: Reservation[] }) => (
-        <button type="button" onClick={() => mocks.deleteHandler?.(data[0])}>Solicitar eliminación</button>
+        <>
+            <span data-testid="row-count">{data.length}</span>
+            <button type="button" onClick={() => mocks.deleteHandler?.(data[0])}>Solicitar eliminación</button>
+        </>
     ),
 }))
 
 vi.mock("../services/reservations-service", () => ({
     reservationsService: { list: mocks.list, delete: mocks.remove },
+    ReservationsNotReadyError: class ReservationsNotReadyError extends Error {},
 }))
 
 vi.mock("@/features/billing/services/consumption-service", () => ({
     consumptionService: { getReservationCost: mocks.getReservationCost },
 }))
 
-vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
 vi.mock("@/lib/notify-error", () => ({ notifyError: vi.fn() }))
 
 const reservation = {
@@ -106,5 +111,39 @@ describe("ReservationsList — verificación de consumo antes de eliminar", () =
 
         second.resolve({ total: 0 })
         await waitFor(() => expect(screen.getByRole("button", { name: "Eliminar" })).toBeEnabled())
+    })
+})
+
+describe("ReservationsList — un «todavía no» del backend no deja la tabla en blanco", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        vi.useFakeTimers()
+        mocks.deleteHandler = null
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
+    })
+
+    it("conserva las filas cargadas y reintenta hasta que la lista vuelve", async () => {
+        const second = { ...reservation, id: "reservation-2", guestName: "Grace Hopper" } as Reservation
+        mocks.list
+            .mockResolvedValueOnce([reservation])
+            .mockRejectedValueOnce(new ReservationsNotReadyError("202"))
+            .mockResolvedValueOnce([reservation, second])
+
+        render(<ReservationsList />)
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        expect(screen.getByTestId("row-count")).toHaveTextContent("1")
+
+        // Se crea una reserva: la primera relectura responde 202 (sincronizando).
+        act(() => { window.dispatchEvent(new Event("reservationCreated")) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        expect(screen.getByTestId("row-count")).toHaveTextContent("1")
+
+        // Reintento automático: llega la lista completa.
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_600) })
+        expect(mocks.list).toHaveBeenCalledTimes(3)
+        expect(screen.getByTestId("row-count")).toHaveTextContent("2")
     })
 })

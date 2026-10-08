@@ -41,6 +41,21 @@ import type {
     ProviderSetupSlot,
 } from "../types/automation"
 
+/**
+ * ¿Este provider puede ser una tarjeta de automatización?
+ *
+ * - Sin `parameters.slug` no: es un conector (Colasistencia, Taxxa, Webpos,
+ *   Kunas comparten tabla pero no tienen job del pipeline).
+ * - Con `automationType: null` EXPLÍCITO no: el backend afirma que no es
+ *   automatización (contrato 2026-09-27 §13.2, el provider de OTA).
+ * - Sin la clave `automationType` sí: el backend no lo dice. Los providers
+ *   históricos no están verificados por curl, y filtrar por la ausencia
+ *   escondería todas las tarjetas. Compatibilidad declarada, no cumplimiento.
+ */
+export function isAutomationProvider(provider: Provider): boolean {
+    return !!provider.parameters?.slug && provider.automationType !== null
+}
+
 export interface AutomationSlot {
     /** Clave estable de React: uuid de la fila, o provider+orden si aún no existe. */
     key: string
@@ -149,7 +164,6 @@ function fallbackDefinition(provider: Provider, slot: ProviderSetupSlot): Automa
         bgColor: "bg-slate-50",
         guestType: slot.guest_type === "main_guest" ? "main" : slot.guest_type === "secondary_guest" ? "secondary" : "all",
         requiresConfig: Object.keys(slot.parameters ?? {}).length > 0,
-        isMandatory: false,
         providerOptions: [{
             value: provider.parameters.slug,
             label: provider.name,
@@ -199,7 +213,7 @@ export function buildAutomationSlots(
         // Y desde que el filtro por país dejó de excluir a los providers sin país
         // declarado, tampoco quedan fuera por accidente. Listarlas dejaría al PM
         // "configurando" algo que no se ejecuta nunca.
-        if (!provider.parameters?.slug) continue
+        if (!isAutomationProvider(provider)) continue
         const setup = provider.parameters.default_setup
         if (!setup?.enabled) continue
         for (const slot of setup.slots ?? []) {

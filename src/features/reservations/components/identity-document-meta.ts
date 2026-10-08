@@ -46,6 +46,9 @@ const PROVIDER_SLUG_BY_METHOD: Record<IdentityMethod, string | null> = {
     didit: "didit",
     "textract-ocr": "textract",
     otp: null,
+    // Captura sin verificación (2026-09-27): no hay proveedor porque no hubo
+    // verificación. Nunca se compone un tipo con él.
+    "document-capture": null,
 }
 
 /**
@@ -68,6 +71,7 @@ const OTP_TYPE_LABEL = "por código"
 function describeVerificationType(doc: GuestIdentityDocument): string | null {
     if (!doc.method) return null
     if (doc.method === "otp") return OTP_TYPE_LABEL
+    if (doc.method === "document-capture") return null
     return providerShortLabel(PROVIDER_SLUG_BY_METHOD[doc.method])
 }
 
@@ -89,7 +93,9 @@ export function describeIdentityStatus(
     if (!isVerifiedGuestStatus(status)) {
         // La exoneración es una decisión administrativa, no una incidencia ni
         // una espera: tono informativo, para que recepción la distinga de ambas.
-        if (status === "waived") {
+        // La captura (2026-09-27) tampoco es incidencia ni espera: es el modo
+        // en que esta propiedad opera sin proveedor. Tono informativo.
+        if (status === "waived" || status === "document_captured") {
             return { label: verificationPendingLabel(status), tone: "info" }
         }
         return { label: verificationPendingLabel(status), tone: "warning" }
@@ -111,6 +117,8 @@ export function verificationPendingLabel(status: ReservationGuestVerificationSta
     // pastilla NUNCA puede decir «verificada» acá — el backend no lo afirma y
     // el front tampoco (QA 3 del contrato).
     if (status === "waived") return "Verificación exonerada"
+    // QA 10 del contrato 2026-09-27: las fotos se ven marcadas como sin verificar.
+    if (status === "document_captured") return "Fotos del documento · sin verificar"
     if (status === "in_review") return "Identidad en revisión"
     if (status === "in_progress" || status === "pending" || status === "resubmitted") {
         return "Verificación en proceso"
@@ -125,6 +133,7 @@ export function verificationPendingLabel(status: ReservationGuestVerificationSta
 function capturedByLabel(capturedBy: IdentityCapturedBy | null): string | null {
     if (capturedBy === "didit") return "Didit"
     if (capturedBy === "textract-ocr") return "la IA de HIT"
+    if (capturedBy === "document-capture") return "el propio huésped, sin verificación"
     return null
 }
 

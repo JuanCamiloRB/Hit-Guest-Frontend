@@ -885,8 +885,10 @@ Payload exacto construido por el formulario:
 }
 ```
 
-`statusReservationId = 27` representa Confirmada. La opción visual
-`sendLinkNow` no se incluye actualmente en este payload.
+`statusReservationId = 27` representa Confirmada. La opción `sendLinkNow` no
+viaja en este payload: con la casilla marcada, el front llama
+`POST /reservations/{uuid}/send-checkin-link` justo después del 201
+(implementado 2026-10-08, **pendiente de prueba integrada en producción**).
 
 ### 11.3 Eliminar
 
@@ -1617,7 +1619,7 @@ con `languageCode`, `sessionToken` y field mask
    caer al app token porque son datos multi-tenant.
 3. Listings y reservas duplican temporalmente varias claves camel/snake. El
    backend debería definir una forma canónica antes de retirar compatibilidad.
-4. `sendLinkNow` existe en UI de reserva, pero no se envía al backend.
+4. `sendLinkNow` no viaja al backend: desde 2026-10-08 el front llama `send-checkin-link` tras crear (antes era solo visual y el aviso prometía un envío que no ocurría). **Pendiente**: prueba integrada y descartar que `POST /reservations` también dispare un envío (doble WhatsApp = doble cobro).
 5. Billing tolera explícitamente endpoints ausentes (`404/501`).
 6. Fechas de reserva son valores `YYYY-MM-DD`; no deben parsearse como
    medianoche UTC.

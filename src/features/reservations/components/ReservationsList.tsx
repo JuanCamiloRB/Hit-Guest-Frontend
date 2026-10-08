@@ -28,7 +28,7 @@ import { format, isValid, isWithinInterval, startOfDay, endOfDay } from "date-fn
 import { es } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
-import { reservationsService } from "../services/reservations-service"
+import { ReservationsNotReadyError, reservationsService } from "../services/reservations-service"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 
@@ -75,6 +75,10 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
+
+/** Reintentos ante un «todavía no» (202) de la lista, y la espera entre ellos. */
+const NOT_READY_RETRIES = 3
+const NOT_READY_RETRY_MS = 2500
 export default function ReservationsList() {
     const [reservations, setReservations] = useState<Reservation[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -198,25 +202,41 @@ export default function ReservationsList() {
     )
 
     useEffect(() => {
-        const loadReservations = async () => {
+        let cancelled = false
+        let retryTimer: ReturnType<typeof setTimeout> | null = null
+
+        // Un fallo nunca borra lo ya cargado: `setReservations` solo corre con
+        // datos. Un «todavía no» (202 durante una sincronización) se reintenta
+        // solo, unas pocas veces, sin dejar la tabla en blanco mientras tanto.
+        const loadReservations = async (attempt = 0) => {
             try {
                 const data = await reservationsService.list()
-                setReservations(data)
+                if (!cancelled) setReservations(data)
             } catch (error) {
+                if (cancelled) return
+                if (error instanceof ReservationsNotReadyError && attempt < NOT_READY_RETRIES) {
+                    if (attempt === 0) toast.info("Sincronización en progreso", { description: "Las reservas se actualizarán en unos segundos." })
+                    retryTimer = setTimeout(() => void loadReservations(attempt + 1), NOT_READY_RETRY_MS)
+                    return
+                }
                 console.error("Failed to fetch reservations:", error)
             } finally {
-                setIsLoading(false)
+                if (!cancelled) setIsLoading(false)
             }
         }
-        loadReservations()
+        void loadReservations()
 
         const handleReservationCreated = () => {
             setIsLoading(true)
-            loadReservations()
+            void loadReservations()
         }
 
         window.addEventListener("reservationCreated", handleReservationCreated)
-        return () => window.removeEventListener("reservationCreated", handleReservationCreated)
+        return () => {
+            cancelled = true
+            if (retryTimer) clearTimeout(retryTimer)
+            window.removeEventListener("reservationCreated", handleReservationCreated)
+        }
     }, [])
 
     if (isLoading) {

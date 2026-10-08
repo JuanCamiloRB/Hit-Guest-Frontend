@@ -23,6 +23,13 @@ export function handleSessionExpired() {
 
 interface RequestOptions extends RequestInit {
     skipAuth?: boolean
+    /**
+     * When true, a 202 is thrown as `ApiError(202)` instead of resolved. A 202
+     * means «accepted, not ready» — for a GET whose body must be the data, it is
+     * NOT a success. Observed on GET /reservations in production (2026-10-08):
+     * resolving it turned a non-array body into an empty list and wiped the table.
+     */
+    rejectNotReady?: boolean
     /** When true, a 401 response will NOT clear the session / redirect to login. */
     suppressUnauthorizedRedirect?: boolean
     /**
@@ -100,6 +107,10 @@ export async function request<T>(
             handleSessionExpired()
         }
         throw new ApiError(response.status, data as ApiErrorResponse)
+    }
+    if (response.status === 202 && options?.rejectNotReady) {
+        const body = (data && typeof data === "object" ? data : {}) as Partial<ApiErrorResponse>
+        throw new ApiError(202, { ...body, message: body.message ?? "Respuesta aceptada pero sin datos todavía" })
     }
 
     // Support both { data: T } and direct T responses

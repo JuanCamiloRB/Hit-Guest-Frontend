@@ -8,3 +8,4 @@
 export { AutomationCard } from "./AutomationCard"
 export { AutomationOverrideModal } from "./AutomationOverrideModal"
 export type { ListingMeta } from "./AutomationOverrideModal"
+export { CheckinLinkDeliveryCard } from "./CheckinLinkDeliveryCard"

@@ -23,6 +23,8 @@ export interface ReservationOrigin {
     isImported: boolean
     /** `true` solo si el backend respondió la pregunta (`isImported` booleano). */
     originKnown: boolean
+    /** Slug crudo de la integración (`calry`, `kunas_pms`, `ical`…); `null` si no vino. */
+    importSource: string | null
     /** Etiqueta legible de la integración; `null` si no vino. */
     importSourceLabel: string | null
     /**
@@ -42,6 +44,11 @@ const IMPORT_SOURCE_LABELS: Record<string, string> = {
     ical: "Calendario iCal",
 }
 
+/** Etiqueta legible de un slug de integración; el slug tal cual si no se conoce. */
+export function importSourceLabel(slug: string | null): string | null {
+    return slug ? IMPORT_SOURCE_LABELS[slug] ?? slug : null
+}
+
 export function readReservationOrigin(raw: unknown): ReservationOrigin {
     const record = raw && typeof raw === "object" ? raw as Record<string, unknown> : {}
     const importSource = typeof record.importSource === "string" && record.importSource
@@ -50,18 +57,30 @@ export function readReservationOrigin(raw: unknown): ReservationOrigin {
     return {
         isImported: record.isImported === true,
         originKnown: record.isImported === true || record.isImported === false,
-        importSourceLabel: importSource ? IMPORT_SOURCE_LABELS[importSource] ?? importSource : null,
+        importSource,
+        importSourceLabel: importSourceLabel(importSource),
         syncedAt: typeof record.syncedAt === "string" && record.syncedAt ? record.syncedAt : null,
     }
 }
 
 /**
- * Los 6 campos que el webhook `reservation.updated` puede pisar. Copy única
- * para el aviso del formulario de edición — el resto de campos el PMS nunca
- * los toca (contrato §2g.4).
+ * Aviso del formulario de edición para una reserva importada. Depende de QUIÉN
+ * la importó, porque no todas las integraciones tocan lo mismo:
+ *
+ * - PMS (Calry, Kunas): el webhook `reservation.updated` pisa 6 campos —
+ *   fechas, huéspedes, precio, moneda y canal (contrato §2g.4).
+ * - iCal (Airbnb): no hay PMS. El calendario solo trae fechas y el código de
+ *   la reserva (contrato 2026-09-04); ocupación y valor los declara el
+ *   huésped o los registra el PM, y una sincronización no los toca. Decir
+ *   «PMS» acá era falso (Ricardo, 2026-09-26).
  */
-export const PMS_MANAGED_FIELDS_NOTICE =
-    "Fechas, huéspedes, precio, moneda y canal los gestiona el PMS: una sincronización puede revertir los cambios que hagas aquí."
+export function describeImportedReservationNotice(origin: ReservationOrigin): string {
+    if (origin.importSource === "ical") {
+        return "Reserva importada desde el calendario iCal de Airbnb. Las fechas vienen del calendario y una sincronización puede actualizarlas; huéspedes, valor y moneda se registran aquí y no se sobrescriben."
+    }
+    const from = origin.importSourceLabel ? `desde ${origin.importSourceLabel}` : "desde el PMS"
+    return `Reserva sincronizada ${from}. Fechas, huéspedes, precio, moneda y canal los gestiona el PMS: una sincronización puede revertir los cambios que hagas aquí.`
+}
 
 export interface OverwrittenEdit {
     /** Etiqueta legible del campo; un campo desconocido muestra su clave cruda. */

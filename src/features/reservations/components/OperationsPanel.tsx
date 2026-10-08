@@ -11,7 +11,6 @@ import {
     Send,
     Copy,
     MessageSquare,
-    CreditCard,
     Calendar,
     Home,
     FileText,
@@ -60,6 +59,11 @@ import {
 import { AutomationStatusList } from "./automations"
 import { GuestDocumentsCard } from "./GuestDocumentsCard"
 import { PropertyDocumentsCard } from "./PropertyDocumentsCard"
+import { CheckinLinkDeliveryCard } from "./CheckinLinkDeliveryCard"
+import { useCheckinLinkChannels } from "../hooks/useCheckinLinkChannels"
+import { ReservationPriceCard } from "./ReservationPriceCard"
+import { hasUsablePhone, isOtaApplicable } from "../lib/checkin-link-delivery-status"
+import { describeResendCharges } from "@/features/properties/lib/checkin-link-delivery"
 import Link from "next/link"
 
 export function OperationsPanel({ reservationId }: { reservationId: string }) {
@@ -74,6 +78,26 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
     const [priceDialogOpen, setPriceDialogOpen] = useState(false)
     /** Recarga el detalle tras registrar el valor (el aviso debe irse solo). */
     const [reloadKey, setReloadKey] = useState(0)
+    // Por dónde sale el link de ESTA reserva (propiedad + unidad). Alimenta el
+    // aviso de teléfono faltante y el costo en el diálogo de reenvío.
+    const linkChannels = useCheckinLinkChannels(data?.propertyUuid ?? null, data?.listingUuid ?? null)
+    const resendCharges = data
+        ? describeResendCharges({
+            channels: linkChannels.channels,
+            whatsappUsable: hasUsablePhone(data.phone),
+            otaApplicable: isOtaApplicable(data.origin),
+            unitCosts: linkChannels.unitCosts,
+        })
+        : null
+
+    // `ReservationDialog` emite `reservationCreated` tras guardar (también al
+    // editar). Sin esto, editar desde la ficha —el teléfono, por ejemplo— no
+    // refrescaba nada y el aviso de «sin teléfono» seguía en pantalla.
+    useEffect(() => {
+        const reload = () => setReloadKey((k) => k + 1)
+        window.addEventListener("reservationCreated", reload)
+        return () => window.removeEventListener("reservationCreated", reload)
+    }, [])
 
     useEffect(() => {
         let mounted = true
@@ -104,20 +128,30 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
         setSendDialogOpen(open)
     }
 
-    const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipientEmail.trim())
+    // `email` es OPCIONAL en el reenvío (contrato 2026-09-19 §6): omitido, el
+    // backend usa el correo registrado del huésped y enruta por los canales
+    // configurados. Exigirlo acá bloqueaba reenviar una reserva sin correo
+    // (iCal) que sí sale por WhatsApp o por la OTA. Vacío = válido y se omite;
+    // con texto, tiene que ser un correo bien formado.
+    const trimmedRecipient = recipientEmail.trim()
+    const isValidEmail = trimmedRecipient === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedRecipient)
 
-    // Sends the check-in link email. `email` overrides the recipient; `locale`
+    // Sends the check-in link. `email` overrides the recipient; `locale`
     // omitted ("default") means the backend uses the property's configured language.
     const handleSendCheckinLink = async () => {
         if (isSendingLink || !isValidEmail) return
         setIsSendingLink(true)
         try {
             const message = await reservationsService.sendCheckinLink(reservationId, {
-                email: recipientEmail.trim(),
+                email: trimmedRecipient === "" ? undefined : trimmedRecipient,
                 locale: localeChoice === "default" ? undefined : localeChoice,
             })
             toast.success(message)
             setSendDialogOpen(false)
+            // La tarjeta «Link de check-in» lee `extra.checkinLink*` de la ficha:
+            // sin releer, seguía diciendo «Todavía no se ha enviado» después de
+            // un reenvío exitoso (reportado como «caché del front», 2026-10-08).
+            setReloadKey((k) => k + 1)
         } catch (e) {
             notifyError(e, "No se pudo enviar el link de check-in.")
         } finally {
@@ -198,7 +232,6 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
     // rotulaba TODA reserva como "Reserva Externa", contradiciendo el
     // "Plataforma Direct" que mostraba justo al lado.
     const isExternal = isExternalReservation(data.source)
-    const amount = `$${data.totalPrice.toLocaleString("es-CO")} ${data.currency}`
     const disabledReason = isActionable
         ? undefined
         : `La reserva está ${statusMeta.label.toLowerCase()}: no admite acciones sobre el huésped.`
@@ -364,13 +397,19 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                     </Card>
 
                     {/* Guest Documents */}
-                    <RegisterPriceDialog
-                        reservationUuid={data.uuid}
-                        currency={data.currency}
-                        open={priceDialogOpen}
-                        onClose={() => setPriceDialogOpen(false)}
-                        onSaved={() => setReloadKey((k) => k + 1)}
-                    />
+                    {/* Montado solo mientras está abierto: cada apertura arranca con
+                        el valor vigente sin sincronizar props a estado. */}
+                    {priceDialogOpen && (
+                        <RegisterPriceDialog
+                            reservationUuid={data.uuid}
+                            currency={data.currency}
+                            mode={data.priceUnconfirmed ? "register" : "correct"}
+                            initialValue={data.priceUnconfirmed ? null : data.totalPrice}
+                            open
+                            onClose={() => setPriceDialogOpen(false)}
+                            onSaved={() => setReloadKey((k) => k + 1)}
+                        />
+                    )}
 
                     <GuestDocumentsCard reservationUuid={data.uuid} />
 
@@ -501,11 +540,14 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                             <DialogTitle>Enviar link de check-in</DialogTitle>
                                             <DialogDescription>
                                                 Se enviará al correo indicado. Por defecto, el del huésped principal.
+                                                {/* Cada reenvío por un canal cobrado vuelve a cobrar (§8, §13.8):
+                                                    se dice antes de enviar, solo con configuración resuelta. */}
+                                                {linkChannels.resolved && resendCharges ? ` ${resendCharges}` : null}
                                             </DialogDescription>
                                         </DialogHeader>
                                         <div className="space-y-4 py-2">
                                             <div className="space-y-1.5">
-                                                <Label htmlFor="checkin-link-email">Correo del huésped</Label>
+                                                <Label htmlFor="checkin-link-email">Correo del huésped (opcional)</Label>
                                                 <Input
                                                     id="checkin-link-email"
                                                     type="email"
@@ -513,8 +555,14 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                                     onChange={(e) => setRecipientEmail(e.target.value)}
                                                     placeholder="huesped@correo.com"
                                                 />
-                                                {recipientEmail.trim() !== "" && !isValidEmail && (
-                                                    <p className="text-xs text-destructive">Ingresa un correo válido.</p>
+                                                {trimmedRecipient === "" && (
+                                                    <p className="text-xs text-slate-400">
+                                                        Si lo dejas vacío, se usa el correo registrado del huésped y los
+                                                        demás canales configurados.
+                                                    </p>
+                                                )}
+                                                {!isValidEmail && (
+                                                    <p className="text-xs text-destructive">Ingresa un correo válido o deja el campo vacío.</p>
                                                 )}
                                             </div>
                                             <div className="space-y-1.5">
@@ -588,18 +636,14 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         ReservationDetailData NO trae estado ni método de pago, así
                         que eran literales inventados. Se quedan solo los datos que
                         la API sí devuelve. */}
-                    <SectionCard title="Importe">
-                        <div className="flex items-baseline justify-between gap-3">
-                            <span className="text-2xl font-bold tracking-tight text-ink">{amount}</span>
-                            <span className="shrink-0 text-xs text-ink-3">
-                                {data.nights} {data.nights === 1 ? "noche" : "noches"}
-                            </span>
-                        </div>
-                        <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-3">
-                            <CreditCard size={13} aria-hidden />
-                            Valor total de la reserva
-                        </p>
-                    </SectionCard>
+                    <ReservationPriceCard
+                        totalPrice={data.totalPrice}
+                        currency={data.currency}
+                        nights={data.nights}
+                        priceDeclaredByGuest={data.priceDeclaredByGuest}
+                        guestPriceDeclaration={data.guestPriceDeclaration}
+                        onCorrect={() => setPriceDialogOpen(true)}
+                    />
 
                     {/* Contacto: el panel ya traía email y teléfono y solo los
                         usaba dentro de diálogos, así que el operador no podía
@@ -616,6 +660,15 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             </dl>
                         </SectionCard>
                     )}
+
+                    <CheckinLinkDeliveryCard
+                        reservationUuid={reservationId}
+                        delivery={data.checkinLinkDelivery}
+                        channels={linkChannels.channels}
+                        channelsResolved={linkChannels.resolved}
+                        phone={data.phone}
+                        origin={data.origin}
+                    />
                 </div>
             </div>
         </div>

@@ -124,7 +124,9 @@ const NO_ACTIONS: GuestVerificationActions = Object.freeze({
 })
 
 /** Superó identidad o fue exonerado: no hay nada que desatascar. */
-const SETTLED_STATUSES = new Set(["approved", "verified", "completed", "waived"])
+// `document_captured` (2026-09-27): terminal en su modo — no hay nada que
+// reiniciar ni que exonerar, el huésped ya puede continuar.
+const SETTLED_STATUSES = new Set(["approved", "verified", "completed", "waived", "document_captured"])
 
 /**
  * Estados que describen un intento en curso: con `isStale` son el webhook

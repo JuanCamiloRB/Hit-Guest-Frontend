@@ -1,6 +1,7 @@
 "use client"
 
 import { useForm } from "react-hook-form"
+import { hasUsablePhone } from "../lib/checkin-link-delivery-status"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import {
@@ -65,7 +66,7 @@ import { useEffect, useState, useCallback, useMemo } from "react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import {
-    PMS_MANAGED_FIELDS_NOTICE,
+    describeImportedReservationNotice,
     readReservationOrigin,
     type ReservationOrigin,
 } from "../lib/reservation-origin"
@@ -73,9 +74,8 @@ import { readReservationFieldErrors } from "../lib/reservation-edit-errors"
 import { propertiesService } from "@/features/properties/services/properties-service"
 import { listingsService } from "@/features/properties/services/listings-service"
 import { catalogService } from "@/features/auth/services/catalog-service"
-import { apiClient } from "@/lib/api-client"
-import { API_BASE } from "@/lib/config"
 import { reservationsService } from "@/features/reservations/services/reservations-service"
+import { createReservationWithFollowUp } from "@/features/reservations/lib/create-reservation-followup"
 import { readGuestNameParts } from "@/features/reservations/lib/guest-name"
 
 // ── Zod Schema ──────────────────────────────────────────────
@@ -463,7 +463,9 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                 // a resolver el país por texto más adelante. Se manda junto al
                 // nombre — aditivo, sin romper lo que ya lee `guest_country`.
                 guest_country_id: countries.find((c) => c.name === values.guestCountry)?.id ?? null,
-                guest_phone: values.guestPhone || null,
+                // El campo deja solo el prefijo (`+57`) al vaciarse; eso no es un
+                // teléfono y guardarlo hacía que el panel prometiera WhatsApp.
+                guest_phone: hasUsablePhone(values.guestPhone) ? values.guestPhone : null,
             },
         }
 
@@ -485,12 +487,21 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                     description: "Los cambios han sido guardados.",
                 })
             } else {
-                await apiClient.post(`${API_BASE}/reservations`, payload)
-                toast.success("Reserva creada exitosamente", {
-                    description: values.sendLinkNow
-                        ? `Se enviará el link de check-in a ${values.emailGuest}`
-                        : `Reserva para ${values.guestName} ${values.guestLastname} creada. Link no enviado.`,
+                // Según la documentación del backend, el link solo sale solo al
+                // IMPORTAR (pendiente de verificar contra producción, ver
+                // `create-reservation-followup.ts`); en una manual lo pide el
+                // front si el PM dejó la casilla marcada.
+                const outcome = await createReservationWithFollowUp({
+                    payload,
+                    sendLinkNow: values.sendLinkNow === true,
+                    guestName: `${values.guestName} ${values.guestLastname}`,
+                    email: values.emailGuest,
                 })
+                if (outcome.tone === "success") {
+                    toast.success(outcome.title, { description: outcome.description })
+                } else {
+                    toast.warning(outcome.title, { description: outcome.description, duration: 8000 })
+                }
             }
 
             setOpen(false)
@@ -563,11 +574,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                 {mode === "edit" && editingOrigin?.isImported && (
                     <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                         <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                        <p>
-                            Reserva sincronizada
-                            {editingOrigin.importSourceLabel ? ` desde ${editingOrigin.importSourceLabel}` : " desde el PMS"}.{" "}
-                            {PMS_MANAGED_FIELDS_NOTICE}
-                        </p>
+                        <p>{describeImportedReservationNotice(editingOrigin)}</p>
                     </div>
                 )}
 

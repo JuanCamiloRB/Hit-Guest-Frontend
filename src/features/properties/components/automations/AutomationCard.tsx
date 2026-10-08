@@ -22,6 +22,7 @@ import { notifyError } from "@/lib/notify-error"
 import { cn } from "@/lib/utils"
 import { automationService } from "../../services/automation-service"
 import { isSignatureProvider, AUTOMATION_STATUS, mapGuestTypeToApi } from "../../types/automation"
+import { supportsListingOverride } from "../../data/automation-definitions"
 import { ALL_SOURCES_KEY, CONTRACT_TYPE_LABELS, summarizeContractRouting } from "../../types/contract-routing"
 import type { PropertyAutomation, AutomationDefinition, Provider } from "../../types/automation"
 import type { ReservationSource } from "../../services/reservation-source-service"
@@ -420,9 +421,11 @@ export function AutomationCard({
     const needsConfig = selectedProviderNeedsConfig
         && (missingRequiredParams.length > 0 || !hasOperationalTrigger)
 
+    // Con campos (TRA, SIRE…) o solo de estado (identidad): una unidad puede
+    // apagar la verificación y sus huéspedes pasan a captura de documento.
     const showOverridesPanel = isActive
         && !!automation
-        && !!definition.listingOverrideSchema?.length
+        && supportsListingOverride(definition)
         && listings.length > 0
 
     return (
@@ -464,9 +467,9 @@ export function AutomationCard({
                                         : <Switch
                                             checked={isActive}
                                             onCheckedChange={handleToggle}
-                                            // Contrato corregido 2026-08-14: el PM sí puede activar
-                                            // y desactivar las verificaciones de identidad. Nada
-                                            // se bloquea por isMandatory.
+                                            // Contrato corregido 2026-08-14 y confirmado 2026-09-27:
+                                            // el PM sí puede activar y desactivar las verificaciones
+                                            // de identidad. Nada se bloquea.
                                             aria-label={definition.title}
                                             className="data-[state=checked]:bg-[var(--color-brand-purple)]"
                                         />

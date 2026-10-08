@@ -12,7 +12,7 @@
  */
 
 /** The billable automation buckets we surface on the dashboard. */
-export type CostCategory = "checkin" | "contract" | "tra" | "sire" | "access"
+export type CostCategory = "checkin" | "contract" | "tra" | "sire" | "access" | "whatsapp" | "otaInbox"
 
 /** One line in a reservation's cost breakdown (a single billable category). */
 export interface CostLineItem {
@@ -48,7 +48,7 @@ export interface ReservationCost {
     unitName: string
     propertyName: string
     checkIn: Date
-    /** Ordered line items, one per known category (always the same 5). */
+    /** Ordered line items, one per entry of `COST_CATEGORIES`, always in that order. */
     lineItems: CostLineItem[]
     /** Sum of all line-item amounts, in USD. */
     total: number
@@ -75,14 +75,37 @@ export interface ConsumptionSummary {
     prevMonthTotal: number
     /** Month-over-month change as a fraction (0.1 → +10%); null with no baseline. */
     monthDeltaPct: number | null
-    /** Reservations in the month with at least one billable charge. */
-    billedReservations: number
-    /** Average cost per billed reservation in the month, in USD. */
-    avgPerReservation: number
+    /** Cifras de TODA la cuenta: no dependen del mes elegido en el tablero. */
+    lifetime: LifetimeCostStats
     /** Guests verified in the month (successful identity-verification charges). */
     verifiedGuests: number
     /** Grand total across all loaded reservations, in USD. */
     grandTotal: number
+}
+
+/**
+ * Cómo se mueve el costo promedio por reserva: el último mes con reservas
+ * cobradas contra el mes con reservas cobradas anterior. Los meses se nombran
+ * en pantalla porque pueden no ser consecutivos (un mes sin reservas no es un
+ * promedio de 0, es un mes sin promedio).
+ */
+export interface AvgCostTrend {
+    /** Primer día del mes más reciente con reservas cobradas (nunca uno futuro). */
+    month: Date
+    /** Primer día del mes con reservas cobradas anterior: la base de la comparación. */
+    baselineMonth: Date
+    /** Cambio como fracción (0.1 → +10 %). Positivo = cada reserva cuesta más. */
+    deltaPct: number
+}
+
+/** Reservas procesadas y costo promedio de toda la cuenta. */
+export interface LifetimeCostStats {
+    /** Reservas con al menos un cargo facturable, de cualquier fecha. */
+    processedReservations: number
+    /** Costo promedio por reserva procesada, en USD; `null` sin reservas procesadas. */
+    avgPerReservation: number | null
+    /** `null` hasta que haya dos meses con reservas cobradas para comparar. */
+    avgTrend: AvgCostTrend | null
 }
 
 /** Everything the Tablero renders for a given month. */
@@ -129,6 +152,20 @@ export function formatUsd(amount: number | null | undefined): string {
     const formatted = Number(amount ?? 0).toLocaleString("es-CO", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
+    })
+    return `${formatted} USD`
+}
+
+/**
+ * Formato para TARIFAS unitarias, no para saldos: una tarifa del catálogo
+ * puede tener hasta cuatro decimales (OTA: 0.0625 USD por mensaje) y
+ * redondearla a dos la convierte en «0,06» — un 4 % menos de lo que de verdad
+ * se cobra. Saldos y totales siguen usando `formatUsd`.
+ */
+export function formatUsdRate(amount: number | null | undefined): string {
+    const formatted = Number(amount ?? 0).toLocaleString("es-CO", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
     })
     return `${formatted} USD`
 }

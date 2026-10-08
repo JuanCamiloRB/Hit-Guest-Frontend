@@ -117,11 +117,21 @@ export function ReservationsCalendar() {
 
     useEffect(() => {
         let mounted = true
-        reservationsService.list()
-            .then((data) => { if (mounted) setReservations(data.filter(hasValidStay)) })
-            .catch(() => { if (mounted) setReservations([]) })
-            .finally(() => { if (mounted) setIsLoading(false) })
-        return () => { mounted = false }
+        const load = () => {
+            reservationsService.list()
+                .then((data) => { if (mounted) setReservations(data.filter(hasValidStay)) })
+                // Un fallo (o un 202 de «todavía no») no borra lo ya cargado.
+                .catch((error) => { if (mounted) console.error("[ReservationsCalendar] list() falló:", error) })
+                .finally(() => { if (mounted) setIsLoading(false) })
+        }
+        load()
+        // Misma señal que la lista: una reserva creada desde cualquier pantalla
+        // tiene que aparecer acá sin recargar la página.
+        window.addEventListener("reservationCreated", load)
+        return () => {
+            mounted = false
+            window.removeEventListener("reservationCreated", load)
+        }
     }, [])
 
     // Only offer properties/units actually present in the loaded data.

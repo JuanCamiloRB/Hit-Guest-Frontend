@@ -51,6 +51,23 @@ describe("readIdentityDocument — combinaciones reales de producción", () => {
         expect(hasIdentityImages(doc)).toBe(true)
     })
 
+    it("captura sin verificación (contrato 2026-09-27): method y capturedBy se leen, no caen a null", () => {
+        const doc = readIdentityDocument({
+            identityDocument: {
+                images: { front: "https://api/front", back: null },
+                imageFailures: { front: null, back: null },
+                source: "reservation",
+                method: "document-capture",
+                capturedBy: "document-capture",
+                capturedAt: "2026-09-26 10:00:00",
+                inheritedFromAnotherReservation: false,
+            },
+        }, "https://api")
+        expect(doc.method).toBe("document-capture")
+        expect(doc.capturedBy).toBe("document-capture")
+        expect(hasIdentityImages(doc)).toBe(true)
+    })
+
     it("verificado por Didit en esta reserva, con frente y reverso", () => {
         const doc = readIdentityDocument({
             identityDocument: {

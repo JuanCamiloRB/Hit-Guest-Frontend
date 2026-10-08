@@ -28,10 +28,10 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-violet-50",
         guestType: "main",
         requiresConfig: false,
-        // Structural slot: the backend seeds it for every property. Contrato
-        // corregido 2026-08-14: el PM puede activarla Y desactivarla; el flag
-        // solo documenta que la fila la crea el backend, no bloquea nada en UI.
-        isMandatory: true,
+        // Structural slot: the backend seeds it for every property and the PM
+        // can turn it off — at property level and per listing (contrato
+        // 2026-09-27: sin proveedor, el huésped sube fotos sin verificación).
+        supportsListingStatusOverride: true,
         providerOptions: [
             {
                 value: "didit",
@@ -61,7 +61,7 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-violet-50",
         guestType: "secondary",
         requiresConfig: false,
-        isMandatory: true,
+        supportsListingStatusOverride: true,
         providerOptions: [
             {
                 value: "didit",
@@ -101,7 +101,6 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-blue-50",
         guestType: "main",
         requiresConfig: true,
-        isMandatory: false,
         providerOptions: [
             {
                 value: "tufirma",
@@ -133,7 +132,6 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-amber-50",
         guestType: "all",
         requiresConfig: true,
-        isMandatory: false,
         providerOptions: [
             {
                 value: "ttlock",
@@ -221,7 +219,6 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-teal-50",
         guestType: "all",
         requiresConfig: true,
-        isMandatory: false,
         providerOptions: [
             {
                 value: "pdf-report",
@@ -252,7 +249,6 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-green-50",
         guestType: "all",
         requiresConfig: true,
-        isMandatory: false,
         providerOptions: [
             {
                 value: "tra-colombia",
@@ -306,7 +302,6 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-indigo-50",
         guestType: "all",
         requiresConfig: true,
-        isMandatory: false,
         providerOptions: [
             {
                 value: "sire-colombia",
@@ -377,7 +372,6 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-indigo-50",
         guestType: "all",
         requiresConfig: true,
-        isMandatory: false,
         providerOptions: [
             {
                 value: "sire-colombia",
@@ -511,7 +505,6 @@ export function definitionForAutomation(automation: PropertyAutomation): Automat
             ? "main"
             : automation.guestType === "secondary_guest" ? "secondary" : "all",
         requiresConfig: false,
-        isMandatory: false,
     }
 }
 
@@ -553,7 +546,29 @@ export function getOverrideFieldSchema(slug: string | null | undefined): Paramet
     return base.map((f) => ({ ...f, required: false }))
 }
 
-/** Whether a provider supports listing-level overrides (i.e. has configurable params). */
+/**
+ * Providers que una unidad puede APAGAR aunque no tengan parámetros: los de
+ * las definiciones con `supportsListingStatusOverride`. Derivado, no listado a
+ * mano, para que un proveedor de identidad nuevo entre solo.
+ */
+const STATUS_ONLY_OVERRIDE_SLUGS: ReadonlySet<string> = new Set(
+    AUTOMATION_DEFINITIONS
+        .filter((def) => def.supportsListingStatusOverride)
+        .flatMap((def) => def.providerOptions.map((opt) => normalizeSlug(opt.value))),
+)
+
+/**
+ * Whether a provider supports listing-level overrides: configurable params
+ * (TRA, SIRE, TTLock, PDF) OR a status-only override (identity, contrato
+ * 2026-09-27). Before, identity was excluded and the QA case «Didit en la
+ * property + listing desactivado → captura» no tenía cómo configurarse.
+ */
 export function isOverridableSlug(slug: string | null | undefined): boolean {
-    return (PROVIDER_PARAM_SCHEMAS[normalizeSlug(slug)] ?? []).length > 0
+    const key = normalizeSlug(slug)
+    return (PROVIDER_PARAM_SCHEMAS[key] ?? []).length > 0 || STATUS_ONLY_OVERRIDE_SLUGS.has(key)
+}
+
+/** The same capability, decided from the card's definition. */
+export function supportsListingOverride(definition: AutomationDefinition): boolean {
+    return !!definition.listingOverrideSchema?.length || definition.supportsListingStatusOverride === true
 }

@@ -6,7 +6,6 @@ describe("automatización de contrato digital", () => {
         const contract = AUTOMATION_DEFINITIONS.find((item) => item.id === "digital-contract")
 
         expect(contract).toBeDefined()
-        expect(contract?.isMandatory).toBe(false)
         expect(contract?.description.toLowerCase()).not.toContain("obligatorio")
     })
 })

@@ -1,4 +1,6 @@
-import { apiClient } from "@/lib/api-client"
+import { apiClient, handleSessionExpired } from "@/lib/api-client"
+import { useAuthStore } from "@/lib/store/auth-store"
+import { ApiError, type ApiErrorResponse } from "@/types/api"
 import { API_BASE, CONFIG } from "@/lib/config"
 import { normalizeLocale, type CommunicationLocale } from "@/lib/locales"
 import { parseCalendarDate } from "@/lib/calendar-date"
@@ -20,6 +22,9 @@ import {
     type OverwrittenEdit,
     type ReservationOrigin,
 } from "../lib/reservation-origin"
+import { readCheckinLinkDelivery, type CheckinLinkDeliveryStatus } from "../lib/checkin-link-delivery-status"
+import { readPriceDeclaration, type GuestPriceDeclaration } from "../lib/guest-price-declaration"
+import { readCurrencyCode } from "@/lib/money"
 import { Reservation } from "@/types"
 import { differenceInDays } from "date-fns"
 import { listingsService } from "@/features/properties/services/listings-service"
@@ -46,6 +51,16 @@ const RESERVATION_STATUS_BY_ID: Record<number, Reservation["status"]> = {
     109: "UNKNOWN",
 }
 
+/** Texto plano de un campo que puede llegar como string, objeto de traducciones `{en, es}` o nada. */
+function readText(value: unknown): string {
+    if (typeof value === "string") return value
+    if (value && typeof value === "object") {
+        const v = value as Record<string, unknown>
+        return typeof v.en === "string" ? v.en : typeof v.es === "string" ? v.es : ""
+    }
+    return ""
+}
+
 /** Reads the English name out of the catalog's translations JSON (string or object). */
 function statusNameEn(name: unknown): string {
     if (!name) return ""
@@ -61,8 +76,13 @@ function statusNameEn(name: unknown): string {
     return ""
 }
 
-/** Maps a raw reservation to its HitGuest status — by catalog id, name as fallback. */
-function mapReservationStatus(r: any): Reservation["status"] {
+/**
+ * Maps a raw reservation to its HitGuest status — by catalog id, name as fallback.
+ * Único punto de lectura del estado: el listado tenía su propia copia que hacía
+ * `name.toLowerCase()` a secas, y con el `name` como objeto de traducciones una
+ * sola reserva tumbaba el listado entero (la recién creada «no aparecía»).
+ */
+export function mapReservationStatus(r: any): Reservation["status"] {
     const id = Number(
         r?.statusReservation?.id ?? r?.statusReservationId ?? r?.status_reservation_id
     )
@@ -237,6 +257,8 @@ export type ReservationGuestVerificationStatus =
     | "verified"
     /** Exonerado por el PM (contrato 2026-09-08). NO cuenta como verificado. */
     | "waived"
+    /** Fotos del documento sin verificación (contrato 2026-09-27). NO cuenta como verificado. */
+    | "document_captured"
 
 function normalizeGuestVerificationStatus(
     value: unknown,
@@ -259,6 +281,7 @@ function normalizeGuestVerificationStatus(
         "completed",
         "verified",
         "waived",
+        "document_captured",
     ]
 
     if (knownStatuses.includes(normalized as ReservationGuestVerificationStatus)) {
@@ -335,8 +358,11 @@ export interface ReservationDetailData {
     status: Reservation["status"]
     source: "Airbnb" | "Booking" | "Direct"
     totalPrice: number
-    /** Reservation currency (e.g. "COP", "USD"). Never assume COP — the listing sets it. */
-    currency: string
+    /**
+     * Reservation currency (ISO 4217). `null` = la respuesta no la trajo: es un
+     * incumplimiento de contrato que la ficha muestra, NO un COP implícito.
+     */
+    currency: string | null
     /** Total guest count — the only guest variable the product manages (no adult/child split). */
     totalGuests: number
     externalId: string
@@ -351,8 +377,24 @@ export interface ReservationDetailData {
      */
     capacityDeclarationRequired: boolean
     priceUnconfirmed: boolean
+    /**
+     * Contrato 2026-09-27: el valor vigente lo declaró el huésped principal al
+     * identificarse (Airbnb iCal). Señal de «revisa esto»; baja a `false` cuando
+     * el PM lo corrige. `guestPriceDeclaration` es el historial y se conserva.
+     */
+    priceDeclaredByGuest: boolean
+    guestPriceDeclaration: GuestPriceDeclaration | null
     /** Ediciones manuales que el webhook del PMS pisó (extra.overwrittenEdits). */
     overwrittenEdits: OverwrittenEdit[]
+    /**
+     * Para resolver por dónde sale el link (automatización de la propiedad +
+     * override de la unidad — contrato 2026-09-19 §2). `null` si la respuesta
+     * no trae el vínculo.
+     */
+    propertyUuid: string | null
+    listingUuid: string | null
+    /** Qué pasó con el link de check-in por canal (`extra.*`, contrato 2026-09-19 §6). */
+    checkinLinkDelivery: CheckinLinkDeliveryStatus
     automationStatus: {
         link: "success" | "pending" | "none"
         checkin: "success" | "pending" | "none"
@@ -465,18 +507,16 @@ function readCount(raw: unknown): number | undefined {
     return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : undefined
 }
 
-function warnIfPaginated(response: unknown): void {
-    const meta = (response as { meta?: Record<string, unknown> } | null)?.meta
-    if (!meta) return
 
-    const lastPage = Number(meta.last_page ?? meta.lastPage ?? 0)
-    if (lastPage > 1) {
-        console.error(
-            `[reservations] GET /reservations devolvió ${lastPage} páginas y solo se está leyendo la primera ` +
-                `(${meta.per_page ?? meta.perPage ?? "?"} de ${meta.total ?? "?"} reservas). ` +
-                `El contrato no define paginación para este endpoint — confirmar con backend antes de ` +
-                `confiar en el historial de consumo del Tablero.`,
-        )
+/**
+ * `GET /reservations` respondió «todavía no» (202, observado en producción el
+ * 2026-10-08 mientras corría una sincronización). No es una lista vacía: la
+ * pantalla conserva lo que tenía y vuelve a intentar.
+ */
+export class ReservationsNotReadyError extends Error {
+    constructor(public readonly body: unknown) {
+        super("reservations_not_ready")
+        this.name = "ReservationsNotReadyError"
     }
 }
 
@@ -504,16 +544,19 @@ export class ReservationsService {
         // The reservation API doesn't nest property inside listing — resolve it
         // via the listing detail so the card doesn't show the unit name twice.
         let propertyName: string = property?.name || ""
-        if (!propertyName && listing?.uuid) {
+        let propertyUuid: string | null = property?.uuid || listing?.propertyUuid || listing?.property_uuid || null
+        if ((!propertyName || !propertyUuid) && listing?.uuid) {
             try {
                 const fullListing = await listingsService.getById(listing.uuid)
-                propertyName = fullListing?.property?.name || ""
-                if (!propertyName) {
-                    const propUuid = fullListing?.propertyUuid || fullListing?.property_uuid
-                    if (propUuid) {
-                        const prop: any = await propertiesService.getByUuid(propUuid)
-                        propertyName = prop?.name || (prop as any)?.data?.name || ""
-                    }
+                propertyName = propertyName || fullListing?.property?.name || ""
+                propertyUuid = propertyUuid
+                    || fullListing?.property?.uuid
+                    || fullListing?.propertyUuid
+                    || fullListing?.property_uuid
+                    || null
+                if (!propertyName && propertyUuid) {
+                    const prop: any = await propertiesService.getByUuid(propertyUuid)
+                    propertyName = prop?.name || (prop as any)?.data?.name || ""
                 }
             } catch {
                 // Non-critical — fall back below
@@ -521,6 +564,7 @@ export class ReservationsService {
         }
 
         const status = mapReservationStatus(r)
+        const priceDeclaration = readPriceDeclaration(r)
 
         return {
             uuid: r.uuid || uuid,
@@ -537,7 +581,7 @@ export class ReservationsService {
             status,
             source: sourceName,
             totalPrice: Number(r.totalPrice || r.total_price || 0),
-            currency: r.currency || r.currency_code || "COP",
+            currency: readCurrencyCode(r.currency, r.currency_code),
             // `0` = capacidad sin declarar (Airbnb iCal) y DEBE sobrevivir: con
             // `||` se convertía en 1 y el panel afirmaba una ocupación que el
             // huésped todavía no declaró (P0, auditoría 2026-09-07).
@@ -552,7 +596,12 @@ export class ReservationsService {
                 || r.extra?.capacity_declaration_required === true,
             priceUnconfirmed: r.extra?.priceUnconfirmed === true
                 || r.extra?.price_unconfirmed === true,
+            priceDeclaredByGuest: priceDeclaration.declaredByGuest,
+            guestPriceDeclaration: priceDeclaration.declaration,
             overwrittenEdits: readOverwrittenEdits(r.extra),
+            propertyUuid,
+            listingUuid: listing?.uuid ?? null,
+            checkinLinkDelivery: readCheckinLinkDelivery(r.extra),
             automationStatus: {
                 link: r.listing ? "success" : "pending",
                 checkin: r.isCheckinCompleted ? "success" : "pending",
@@ -678,7 +727,7 @@ export class ReservationsService {
                     // Si el endpoint del PM trajo huéspedes y NINGUNO cruzó con el
                     // portal, el merge dejó de funcionar: las fotos desaparecen sin
                     // un solo error. Es exactamente el modo de fallo que ocultó este
-                    // bug, así que se grita (mismo criterio que `warnIfPaginated`).
+                    // bug, así que se grita (mismo criterio que el de una página de reservas que no se puede leer).
                     if (panelByUuid.size > 0 && matched === 0) {
                         console.error(
                             "[ReservationsService] Ningún huésped del portal cruzó con el mapa de documentos "
@@ -841,34 +890,90 @@ export class ReservationsService {
         return this.listInFlight
     }
 
+    /**
+     * Todas las páginas de `GET /reservations`. `apiClient` desenvuelve `data` y
+     * descarta `meta`, así que el antiguo «aviso si viene paginado» nunca podía
+     * ver `meta.last_page`: si el backend pagina (Laravel: 15 por página por
+     * defecto; en producción se observaron exactamente 15 reservas procesadas,
+     * 2026-10-08) el front se quedaba con la primera página sin enterarse, y el
+     * Tablero con ella. Mismo patrón que `automationService.listProviders`.
+     * Un 202 es «todavía no» (`ReservationsNotReadyError`); un 2xx sin arreglo
+     * es un fallo, nunca «cero reservas».
+     */
+    private async fetchAllReservationPages(): Promise<unknown[]> {
+        const MAX_PAGES = 100
+        const token = useAuthStore.getState().user?.token
+        const all: unknown[] = []
+        for (let page = 1; page <= MAX_PAGES; page++) {
+            const res = await fetch(`${API_BASE}/reservations?page=${page}`, {
+                headers: {
+                    Accept: "application/json",
+                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+                },
+                cache: "no-store",
+            })
+            const json: unknown = await res.json().catch(() => ({}))
+            if (res.status === 202) throw new ReservationsNotReadyError(json)
+            if (!res.ok) {
+                if (res.status === 401) handleSessionExpired()
+                throw new ApiError(res.status, (json ?? { message: `HTTP ${res.status}` }) as ApiErrorResponse)
+            }
+            const body = (json && typeof json === "object" ? json : {}) as { data?: unknown; meta?: Record<string, unknown> }
+            const items = Array.isArray(body.data) ? body.data : Array.isArray(json) ? json : null
+            if (!items) {
+                throw new Error(
+                    `GET /reservations respondió ${res.status} sin arreglo de reservas (claves: ${Object.keys(body).join(", ") || typeof json})`,
+                )
+            }
+            all.push(...items)
+            // Sin `meta` = una sola página. Con `meta`, `last_page` tiene que ser un
+            // entero ≥ 1: un valor raro (`NaN`, 0, texto) no se interpreta como
+            // «sigue pidiendo hasta el tope».
+            const rawLast = body.meta?.last_page ?? body.meta?.lastPage
+            const lastPage = rawLast === undefined ? 1 : Number(rawLast)
+            if (!Number.isInteger(lastPage) || lastPage < 1) {
+                throw new Error(`GET /reservations: meta.last_page inválido (${String(rawLast)})`)
+            }
+            if (page === 1 && lastPage > MAX_PAGES) {
+                // Una lista parcial presentada como completa es peor que un fallo.
+                throw new Error(`GET /reservations: ${lastPage} páginas superan el máximo de ${MAX_PAGES}; no se entrega una lista parcial`)
+            }
+            if (page === 1 && lastPage > 1) {
+                console.info(`[reservations] GET /reservations viene paginado (${lastPage} páginas): se siguen todas.`)
+            }
+            if (page >= lastPage) break
+        }
+        return all
+    }
+
     private async fetchList(): Promise<Reservation[]> {
-        const url = `${API_BASE}/reservations`
 
         try {
             // Independent requests — run together instead of one blocking the other.
-            const [response, lookupResult] = await Promise.all([
-                apiClient.get<any>(url),
+            const [dataArray, lookupResult] = await Promise.all([
+                this.fetchAllReservationPages(),
                 buildListingLookup(),
             ])
             const { map: listingLookup, failedProperties } = lookupResult
-
-            // Extract array from standard { success: true, data: [...] } structure
-            const dataArray = response?.data && Array.isArray(response.data)
-                ? response.data
-                : (Array.isArray(response) ? response : [])
-
-            // Per the contract, GET /reservations returns the full list — it has no
-            // `page`/`per_page` filters and no pagination envelope, unlike /users or
-            // /billing/transactions. If that ever changes we'd silently keep page 1,
-            // and the Tablero's consumption history would under-report old months as
-            // real zeros. Fail loudly instead of quietly lying.
-            warnIfPaginated(response)
 
             // Only fires once per fetchList() call (not once per unmatched reservation)
             // — this is a config/contract signal, not per-row spam.
             let unmatchedListings = 0
 
-            const reservations = dataArray.map((r: any): Reservation => {
+            // Cada fila se mapea aislada: una reserva con una forma inesperada se
+            // descarta (y se dice en consola), en vez de tumbar el lote entero y
+            // dejar la pantalla con la lista anterior.
+            const skipped: string[] = []
+            // Fila cruda por id: el emparejamiento por índice con `dataArray[i]`
+            // se desalineaba en cuanto una fila se descartaba.
+            const rawById = new Map<string, any>()
+            const reservations = dataArray.flatMap((r: any): Reservation[] => {
+                try {
+                    // Sin identificador no hay ficha que abrir ni estado que consultar:
+                    // la fila se descarta (y se avisa) en vez de generar enlaces inválidos.
+                    const rowId = typeof r?.uuid === "string" && r.uuid ? r.uuid : r?.id != null ? String(r.id) : ""
+                    if (!rowId) throw new Error("reserva sin uuid ni id")
+                    rawById.set(rowId, r)
                 const checkIn = parseCalendarDate(r.arrivalDate || r.arrival_date)
                 const checkOut = parseCalendarDate(r.departureDate || r.departure_date)
                 
@@ -876,14 +981,15 @@ export class ReservationsService {
                 // las reservas antiguas traen el nombre entero en guest_name ──
                 const guestName = composeGuestName(r.extra)
                     || r.mainGuest?.name
-                    || r.emailGuest?.split("@")[0]
+                    || (typeof r.emailGuest === "string" ? r.emailGuest.split("@")[0] : "")
                     || "Huésped"
 
                 // ── Source: API returns { source: { id, name, slug } } ──
                 let sourceName: "Airbnb" | "Booking" | "Direct" = "Direct"
-                const srcSlug = r.source?.slug || r.source?.name || ""
-                if (srcSlug.toLowerCase().includes("airbnb")) sourceName = "Airbnb"
-                else if (srcSlug.toLowerCase().includes("booking")) sourceName = "Booking"
+                // `source.name` puede ser un objeto de traducciones, como el del estado.
+                const srcSlug = (readText(r.source?.slug) || readText(r.source?.name)).toLowerCase()
+                if (srcSlug.includes("airbnb")) sourceName = "Airbnb"
+                else if (srcSlug.includes("booking")) sourceName = "Booking"
 
                 // ── Listing / Property ──
                 // GET /reservations does not reliably nest a usable property inside
@@ -911,15 +1017,10 @@ export class ReservationsService {
                 const unitName = resolved?.unitName || listing?.name || "Alojamiento"
                 const unitId = listingUuid || r.listingId?.toString() || r.listing_id?.toString() || ""
 
-                // ── Status mapping from API statusReservation ──
-                let status: Reservation["status"] = "CONFIRMED"
-                const statusSlug = r.statusReservation?.name?.toLowerCase() || ""
-                if (statusSlug.includes("cancelada") || statusSlug.includes("cancel")) status = "CANCELLED"
-                else if (statusSlug.includes("pendiente") || statusSlug.includes("pending")) status = "PENDING"
-                else if (statusSlug.includes("check-in") || statusSlug.includes("checkin")) status = "CHECKED_IN"
+                const status = mapReservationStatus(r)
 
-                return {
-                    id: r.uuid || r.id?.toString(),
+                return [{
+                    id: rowId,
                     guestName,
                     email: r.emailGuest || r.email_guest,
                     phone: r.extra?.guestPhone || r.extra?.guest_phone || undefined,
@@ -949,8 +1050,16 @@ export class ReservationsService {
                     // manda es el fallo más silencioso (nada revienta, el dato
                     // simplemente nunca llega a quien lo necesite).
                     origin: readReservationOrigin(r),
+                }]
+                } catch (error) {
+                    skipped.push(String(r?.uuid ?? r?.id ?? "?"))
+                    console.error("[reservations] fila descartada por forma inesperada:", r?.uuid ?? r?.id, error)
+                    return []
                 }
             })
+            if (skipped.length > 0) {
+                console.error(`[reservations] ${skipped.length} reserva(s) no se pudieron mapear y NO se muestran: ${skipped.join(", ")}`)
+            }
 
             // Dos causas MUY distintas producen el mismo síntoma, y el aviso
             // anterior siempre culpaba a la segunda: mandaba a revisar el
@@ -987,7 +1096,7 @@ export class ReservationsService {
                 const items = result.status === "fulfilled" ? result.value : []
                 // Use the reservation's real check-in flag (same source as the detail view),
                 // falling back to the global CHECKED_IN status for older payloads.
-                const raw = dataArray[i]
+                const raw = rawById.get(reservations[i].id)
                 const checkinCompleted = raw?.isCheckinCompleted ?? raw?.is_checkin_completed
                     ?? (reservations[i].status === "CHECKED_IN")
                 reservations[i].automationStatus = buildTrafficLight(items, checkinCompleted)

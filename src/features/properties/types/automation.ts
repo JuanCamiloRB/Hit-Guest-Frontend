@@ -21,6 +21,24 @@ export type LockType = "unit_entrance" | "building_entrance" | "amenity"
 /** Status of an automation for a given reservation (GET /automation-status) */
 export type AutomationLiveStatus = "not_started" | "pending" | "completed" | "failed"
 
+/**
+ * Tipo de automatización que declara el backend (`automationType`), en
+ * TRI-ESTADO a propósito:
+ *  - `string` → es esa automatización (p. ej. `checkin_link_delivery`).
+ *  - `null`   → el backend afirma que NO es automatización (contrato
+ *               2026-09-27 §13.2: el provider de OTA). Se excluye del catálogo.
+ *  - ausente  → el backend no lo dice (providers históricos sin verificar por
+ *               curl). Se conserva: filtrar por la ausencia escondería todas
+ *               las tarjetas.
+ */
+export type AutomationTypeValue = string | null
+
+/**
+ * Canal por el que salió un cobro del link de check-in (contrato 2026-09-27
+ * §13.6). WhatsApp y OTA comparten `providerSlug` — este es el discriminador.
+ */
+export type DeliveryRecordChannel = "whatsapp" | "ota_inbox"
+
 // ─── Backend API Types ────────────────────────────────────────────────
 
 /** A single automation record from the backend (property_automations table) */
@@ -35,6 +53,8 @@ export interface PropertyAutomation {
   token: string | null
   statusProviderId: AutomationStatus    // 8 = active, 10 = inactive
   deletedAt: string | null
+  /** Ver `AutomationTypeValue`. Ausente = el backend no lo informó. */
+  automationType?: AutomationTypeValue
   // Sideloaded relationships (opt-in: ?includeProvider=true / ?includeProperty=true)
   provider?: Provider | null
   property?: unknown | null
@@ -76,6 +96,8 @@ export interface Provider {
   id: number
   name: string
   description: string | null
+  /** Ver `AutomationTypeValue`. Ausente = el backend no lo informó. */
+  automationType?: AutomationTypeValue
   parameters: {
     /** Vacío en filas Integration que comparten la tabla pero no son automations. */
     slug: string
@@ -196,6 +218,12 @@ export interface AutomationUsageRecord {
    *  (older backends may still send a plain string). */
   lastError: string | AutomationErrorDetail | null
   responsePayload: Record<string, unknown> | null
+  /**
+   * Solo en el envío del link: `whatsapp` u `ota_inbox`, leído de
+   * `responsePayload.channel`. `null` = no vino (registros previos al addendum:
+   * entonces solo existía WhatsApp).
+   */
+  channel: DeliveryRecordChannel | null
   createdAt: string                     // "YYYY-MM-DD HH:mm:ss"
   updatedAt: string
 }
@@ -335,7 +363,13 @@ export interface AutomationDefinition {
   providerOptions: ProviderOption[]
   guestType: "main" | "secondary" | "all"   // UI label; convert via mapGuestTypeToApi()
   requiresConfig: boolean
-  isMandatory: boolean
+  /**
+   * La unidad puede APAGAR esta automatización aunque no tenga parámetros que
+   * sobreescribir (contrato 2026-09-27: identidad desactivada por listing ⇒
+   * sus huéspedes van a captura de documento). Es una capacidad distinta de
+   * `listingOverrideSchema`: tener campos y poder apagarse no son lo mismo.
+   */
+  supportsListingStatusOverride?: boolean
   /**
    * Parameters that a listing can override from the property-level automation.
    * If undefined or empty, this automation cannot be overridden at the listing level.

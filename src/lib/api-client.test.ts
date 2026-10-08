@@ -45,3 +45,28 @@ describe("apiClient auth semantics", () => {
         expect(mocks.clearSession).not.toHaveBeenCalled()
     })
 })
+
+describe("apiClient — un 202 no es un éxito con datos", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.token = "pm-session-token"
+    })
+
+    it("con rejectNotReady, un 202 se rechaza como ApiError(202) con el mensaje del backend", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+            message: "Sincronización en progreso",
+        }), { status: 202, headers: { "Content-Type": "application/json" } })))
+
+        await expect(request("/api/guest/reservations", { rejectNotReady: true }))
+            .rejects.toMatchObject({ status: 202, message: "Sincronización en progreso" })
+        expect(mocks.clearSession).not.toHaveBeenCalled()
+    })
+
+    it("sin la opción, un 202 sigue resolviendo (los POST que encolan dependen de eso)", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+            data: { queued: true },
+        }), { status: 202, headers: { "Content-Type": "application/json" } })))
+
+        await expect(request("/api/guest/ical/feeds/x/sync")).resolves.toEqual({ queued: true })
+    })
+})

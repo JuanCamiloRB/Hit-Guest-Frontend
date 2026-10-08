@@ -30,11 +30,14 @@
  */
 export type IdentityDocumentOrigin = "esta-estancia" | "otra-estancia" | "desconocido"
 
-/** Cómo el huésped superó identidad EN ESTA reserva. */
-export type IdentityMethod = "didit" | "textract-ocr" | "otp"
+/**
+ * Cómo el huésped superó identidad EN ESTA reserva. `document-capture`
+ * (contrato 2026-09-27) NO la superó: subió fotos sin verificación.
+ */
+export type IdentityMethod = "didit" | "textract-ocr" | "otp" | "document-capture"
 
 /** Qué flujo capturó la imagen que se ve (puede ser de una estancia anterior). */
-export type IdentityCapturedBy = "didit" | "textract-ocr"
+export type IdentityCapturedBy = "didit" | "textract-ocr" | "document-capture"
 
 /**
  * Una imagen que DEBIÓ guardarse y se perdió (contrato 2026-09-08, §4.4).
@@ -80,8 +83,8 @@ export interface GuestIdentityDocument {
     isReported: boolean
 }
 
-const METHODS: IdentityMethod[] = ["didit", "textract-ocr", "otp"]
-const CAPTURED_BY: IdentityCapturedBy[] = ["didit", "textract-ocr"]
+const METHODS: IdentityMethod[] = ["didit", "textract-ocr", "otp", "document-capture"]
+const CAPTURED_BY: IdentityCapturedBy[] = ["didit", "textract-ocr", "document-capture"]
 
 export const EMPTY_IDENTITY_DOCUMENT: GuestIdentityDocument = Object.freeze({
     front: null,

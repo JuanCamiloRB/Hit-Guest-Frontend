@@ -35,6 +35,8 @@ import type {
     ListingAutomationOverrideCreatePayload,
     ListingAutomationOverrideUpdatePayload,
     ListingOverrideStatus,
+    AutomationTypeValue,
+    DeliveryRecordChannel,
 } from "../types/automation"
 import { LISTING_OVERRIDE_STATUS } from "../types/automation"
 import {
@@ -74,6 +76,24 @@ export function canonicalSlug(slug: string | null | undefined): string {
  * Devuelve `Provider` de verdad —no un genérico con `as`— para que el tipo no
  * afirme campos que esta función acaba de borrar.
  */
+/**
+ * `automationType` en tri-estado (ver `AutomationTypeValue`). `undefined` solo
+ * cuando NINGUNA fuente trae la clave: una clave presente con un valor que no
+ * es string cuenta como `null` (el backend dijo algo, y no es un tipo).
+ */
+export function readAutomationType(...sources: Array<Record<string, unknown> | null | undefined>): AutomationTypeValue | undefined {
+    for (const source of sources) {
+        if (!source) continue
+        for (const key of ["automationType", "automation_type"]) {
+            if (key in source) {
+                const value = source[key]
+                return typeof value === "string" && value.trim() !== "" ? value : null
+            }
+        }
+    }
+    return undefined
+}
+
 export function sanitizeProvider(raw: unknown): Provider | null {
     if (!raw || typeof raw !== "object") return null
     const p = raw as Record<string, unknown>
@@ -155,10 +175,12 @@ export function sanitizeProvider(raw: unknown): Provider | null {
         parameters.default_setup = { enabled: setup.enabled === true, slots }
     }
 
+    const automationType = readAutomationType(p, params)
     return {
         id,
         name,
         description: typeof p.description === "string" ? p.description : null,
+        ...(automationType !== undefined ? { automationType } : {}),
         order: typeof p.order === "number" && Number.isFinite(p.order) ? p.order : 0,
         statusProviderId: typeof p.statusProviderId === "number"
             ? p.statusProviderId
@@ -182,6 +204,13 @@ export interface AutomationListParams {
 export interface ProviderListParams {
     statusProviderId?: 8 | 10
     includeIntegrations?: boolean
+    /**
+     * `name[has]=…` — búsqueda por nombre (contrato 2026-09-19 §3.1). Sirve para
+     * encontrar un provider que el filtro por país NO devuelve porque llega sin
+     * `applicable_countries` (la misma trampa de didit/textract). El resultado
+     * se identifica SIEMPRE por `parameters.slug`, nunca por el nombre buscado.
+     */
+    nameHas?: string
     /**
      * ISO2 country code (e.g. "CO") — only returns providers applicable to that
      * country (`parameters.applicable_countries` contains it or `"ALL"`).
@@ -209,8 +238,10 @@ class AutomationService {
         // propósito — ningún consumidor del frontend lee su valor (el que SÍ se
         // usa es el del override de listing, que se conserva).
         const provider = sanitizeProvider(raw.provider ?? null)
+        const automationType = readAutomationType(raw)
         return {
             uuid: raw.uuid,
+            ...(automationType !== undefined ? { automationType } : {}),
             propertyUuid: raw.propertyUuid ?? raw.property_uuid ?? "",
             providerId,
             name: raw.name ?? "",
@@ -424,6 +455,7 @@ class AutomationService {
         if (params.statusProviderId)    qs.set("statusProviderId[eq]", String(params.statusProviderId))
         if (params.includeIntegrations) qs.set("includeIntegrations", "true")
         if (params.country)             qs.set("country", params.country)
+        if (params.nameHas)             qs.set("name[has]", params.nameHas)
 
         const all: unknown[] = []
         for (let page = 1; page <= MAX_PAGES; page++) {
@@ -449,6 +481,22 @@ class AutomationService {
             if (page >= lastPage) break
         }
         return all.flatMap((provider) => sanitizeProvider(provider) ?? [])
+    }
+
+    /**
+     * Un provider por su `parameters.slug` — nunca por nombre ni id. Primero en
+     * `candidates` (la lista por país que ya se cargó); si no está, una búsqueda
+     * `name[has]` que sirve solo para encontrarlo (un provider sin
+     * `applicable_countries` no sale en la lista por país). `null` = no existe
+     * o no está activo; un fallo de red se propaga.
+     */
+    async findProviderBySlug(slug: string, nameHint: string, candidates: Provider[] = []): Promise<Provider | null> {
+        const target = canonicalSlug(slug)
+        const matches = (provider: Provider) => canonicalSlug(provider.parameters?.slug) === target
+        const local = candidates.find(matches)
+        if (local) return local
+        const rows = await this.listProviders({ statusProviderId: 8, nameHas: nameHint })
+        return rows.find(matches) ?? null
     }
 
     // ── Reservation Automation Status ────────────────────────────────────────
@@ -546,6 +594,16 @@ class AutomationService {
             )
             : null
 
+        // Contrato 2026-09-27 §13.6: `channel` es lo único que separa un cobro de
+        // WhatsApp de uno de OTA (comparten `providerSlug`). Se conserva SOLO
+        // con un valor conocido y fuera del allowlist genérico, como campo tipado.
+        const rawChannel = rawPayload && typeof rawPayload === "object"
+            ? (rawPayload as Record<string, unknown>).channel
+            : undefined
+        const channel: DeliveryRecordChannel | null = rawChannel === "whatsapp" || rawChannel === "ota_inbox"
+            ? rawChannel
+            : null
+
         const payloadBusinessError = responsePayload && typeof responsePayload.error === "string" && responsePayload.error
             ? String(responsePayload.error)
             : null
@@ -561,6 +619,7 @@ class AutomationService {
             unitCost: raw.unitCost ?? raw.unit_cost ?? null,
             lastError: lastError ?? (payloadBusinessError ? { message: payloadBusinessError, httpStatus: null, httpBody: null } : null),
             responsePayload,
+            channel,
             createdAt: raw.createdAt ?? raw.created_at ?? "",
             updatedAt: raw.updatedAt ?? raw.updated_at ?? "",
         }

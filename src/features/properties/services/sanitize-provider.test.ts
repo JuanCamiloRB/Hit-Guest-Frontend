@@ -109,6 +109,14 @@ describe("sanitizeProvider", () => {
         expect(result?.parameters).not.toHaveProperty("applicable_countries")
     })
 
+    it("conserva automationType en tri-estado: string, null explícito o ausente (§13.2)", () => {
+        const base = { id: 1, name: "x", description: null, order: 0, statusProviderId: 8, parameters: { slug: "s" } }
+        expect(sanitizeProvider({ ...base, automationType: "checkin_link_delivery" })?.automationType).toBe("checkin_link_delivery")
+        expect(sanitizeProvider({ ...base, automation_type: null })?.automationType).toBeNull()
+        expect(sanitizeProvider({ ...base, parameters: { slug: "s", automation_type: null } })?.automationType).toBeNull()
+        expect(sanitizeProvider(base)).not.toHaveProperty("automationType")
+    })
+
     it("tolera null, undefined y un provider sin parameters", () => {
         expect(sanitizeProvider(null)).toBeNull()
         expect(sanitizeProvider(undefined)).toBeNull()

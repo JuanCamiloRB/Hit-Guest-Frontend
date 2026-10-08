@@ -14,10 +14,11 @@ import { Button } from "@/components/ui/button"
 import { automationService, canonicalSlug } from "../services/automation-service"
 import { listingsService } from "../services/listings-service"
 import { reservationSourceService, type ReservationSource } from "../services/reservation-source-service"
-import { bindCatalogProviders, buildAutomationSlots } from "../lib/automation-catalog"
+import { bindCatalogProviders, buildAutomationSlots, isAutomationProvider } from "../lib/automation-catalog"
+import { DELIVERY_PROVIDERS, partitionCheckinLinkDelivery } from "../lib/checkin-link-delivery"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import type { PropertyAutomation, Provider } from "../types/automation"
-import { AutomationCard, type ListingMeta } from "./automations"
+import { AutomationCard, CheckinLinkDeliveryCard, type ListingMeta } from "./automations"
 
 interface CountryCatalogItem {
     id: string | number
@@ -41,12 +42,27 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
     const { watch } = useFormContext()
     const propertyUuid: string = watch("uuid") ?? ""
     const countryId: number | undefined = watch("countryId")
+    // Pista del canal OTA (§13.3): el backend manda `pmsIdentifiers` y el
+    // formulario lo guarda como `externalPmsIds`. Es una PISTA — la integración
+    // puede estar inactiva; el 422 de `configure` es la fuente de verdad.
+    const externalPmsIds: unknown = watch("externalPmsIds")
+    const pmsConnected = Array.isArray(externalPmsIds) && externalPmsIds.length > 0
 
     const [automations, setAutomations] = useState<PropertyAutomation[]>([])
     const [providers, setProviders] = useState<Provider[]>([])
     const [countryProviderSlugs, setCountryProviderSlugs] = useState<string[]>([])
     const [listings, setListings] = useState<ListingMeta[]>([])
     const [sources, setSources] = useState<ReservationSource[]>([])
+    /**
+     * Providers del envío del link, resueltos aparte por slug: pueden llegar sin
+     * `applicable_countries` y quedar fuera de `GET /providers?country=` (la
+     * misma trampa de didit/textract). WhatsApp es el de la fila (sin él no se
+     * puede crear); OTA solo aporta su tarifa (§13.2). `null` = no disponible.
+     */
+    const [deliveryProviders, setDeliveryProviders] = useState<{
+        whatsapp: Provider | null
+        ota_inbox: Provider | null
+    }>({ whatsapp: null, ota_inbox: null })
     const [completedRequestKey, setCompletedRequestKey] = useState("")
     const [loadFailure, setLoadFailure] = useState<{ key: string; message: string } | null>(null)
     const requestKey = `${propertyUuid}:${countryId ?? ""}`
@@ -88,12 +104,24 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             for (const automation of automationRows) {
                 if (automation.provider) providerMap.set(automation.provider.id, automation.provider)
             }
-            // `parameters.slug` es la frontera entre automation e Integration.
-            // Colasistencia, Taxxa, Webpos y Kunas comparten tabla pero no tienen
-            // job del pipeline; no deben llegar a ningún selector de automations.
-            const automationProviders = Array.from(providerMap.values())
-                .filter((provider) => !!provider.parameters?.slug)
+            const allProviders = Array.from(providerMap.values())
+            // Conectores (sin slug) y providers que el backend declara «no
+            // automatización» (`automationType: null`) no llegan a ningún
+            // selector ni tarjeta genérica — ver `isAutomationProvider`.
+            const automationProviders = allProviders.filter(isAutomationProvider)
+            // Los del envío del link se resuelven sobre la lista COMPLETA (el de
+            // OTA no es automatización) y, si no están, por `name[has]`. Un fallo
+            // acá es cosmético: la tarjeta dice que el canal no está disponible.
+            const [whatsapp, otaInbox] = await Promise.all(
+                (["whatsapp", "ota_inbox"] as const).map((channel) =>
+                    automationService
+                        .findProviderBySlug(DELIVERY_PROVIDERS[channel].slug, DELIVERY_PROVIDERS[channel].nameHint, allProviders)
+                        .catch(() => null),
+                ),
+            )
+            if (!active) return
             setProviders(automationProviders)
+            setDeliveryProviders({ whatsapp, ota_inbox: otaInbox })
             setCountryProviderSlugs(providerRows.flatMap((provider) =>
                 provider.parameters?.slug ? [canonicalSlug(provider.parameters.slug)] : [],
             ))
@@ -116,6 +144,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                     setCountryProviderSlugs([])
                     setListings([])
                     setSources([])
+                    setDeliveryProviders({ whatsapp: null, ota_inbox: null })
                     setLoadFailure({
                         key: requestKey,
                         message: error instanceof Error ? error.message : "No se pudieron cargar las automatizaciones.",
@@ -166,9 +195,16 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
      * mediante `/configure`, después de completar credenciales y disparadores.
      * Nombre, orden y campos salen del backend, no de una lista fija acá.
      */
-    const slots = useMemo(
-        () => buildAutomationSlots(automations, providers),
+    // El envío del link tiene tarjeta propia (canales, sin disparadores ni
+    // credenciales): se separa ANTES del catálogo genérico para no pintarlo dos
+    // veces. La fila del backend nunca se oculta — la muestra esa tarjeta.
+    const delivery = useMemo(
+        () => partitionCheckinLinkDelivery(automations, providers),
         [automations, providers],
+    )
+    const slots = useMemo(
+        () => buildAutomationSlots(delivery.rest.automations, delivery.rest.providers),
+        [delivery],
     )
 
     return (
@@ -215,6 +251,19 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                 </div>
             ) : (
                 <div className="grid grid-cols-1 gap-4">
+                    {/* Primera a propósito: es el primer paso del flujo del huésped
+                        (recibe el link → se identifica → firma → reportes). */}
+                    {propertyUuid && !loadError && (
+                        <CheckinLinkDeliveryCard
+                            propertyUuid={propertyUuid}
+                            automation={delivery.automation}
+                            providers={deliveryProviders}
+                            pmsConnected={pmsConnected}
+                            existingAutomations={automations}
+                            listings={listings}
+                            onChanged={(updated) => handleChanged(updated, delivery.automation?.uuid ?? null)}
+                        />
+                    )}
                     {slots.map(({ key, definition: def, automation }) => {
                         const catalogDefinition = bindCatalogProviders(
                             def,
@@ -236,11 +285,13 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                             />
                         )
                     })}
+                    {/* La tarjeta del link se muestra siempre (email es el default sin
+                        fila), así que este vacío habla de las DEMÁS automatizaciones. */}
                     {!loadError && propertyUuid && slots.length === 0 && (
                         <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
                             {countryProviderSlugs.length === 0
-                                ? "No se pudo determinar qué automatizaciones aplican al país de esta propiedad."
-                                : "El backend no devolvió automatizaciones para esta propiedad."}
+                                ? "No se pudo determinar qué otras automatizaciones aplican al país de esta propiedad."
+                                : "No hay otras automatizaciones disponibles para el país de esta propiedad."}
                         </div>
                     )}
                 </div>
