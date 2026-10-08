@@ -1,5 +1,6 @@
 "use client"
 
+import { readPropertyTypeId } from "../lib/property-type"
 import { useCallback, useEffect, useState } from "react"
 import { bffFetch } from "@/lib/bff-client"
 import type { Property, Unit } from "@/types"
@@ -60,21 +61,14 @@ function toProperty(raw: any, index: number): Property {
         timezone: formData.timezone,
         status_record_id: formData.statusRecordId,
         status: isActive ? "ACTIVE" : "INACTIVE",
-        type: String(
-            raw.propertyTypeId ||
-                raw.property_type_id ||
-                formData.propertyTypeId ||
-                extra.propertyTypeId ||
-                extra.type ||
-                "102",
-        ),
+        // "" = sin tipo informado (la tarjeta lo dice); nunca un id inventado.
+        type: String(readPropertyTypeId(raw) ?? ""),
         thumbnailUrl: formData.thumbnailUrl,
         created_at: raw.createdAt,
         updated_at: raw.updatedAt,
         extra: {
             ...extra,
-            propertyTypeId: formData.propertyTypeId,
-            type: extra.type || (formData.propertyTypeId === 101 ? "HOTEL" : "BUILDING"),
+            propertyTypeId: readPropertyTypeId(raw),
             thumbnailUrl: formData.thumbnailUrl,
         },
     } as unknown as Property

@@ -137,7 +137,8 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             latitude: 0,
             longitude: 0,
             statusRecordId: 6,
-            propertyTypeId: 102,
+            // Sin default: el PM elige. 102 no es «Apartamento», es Hotel en el catálogo real.
+            propertyTypeId: 0,
             communicationsLocale: DEFAULT_COMMUNICATION_LOCALE,
             amenities: [],
             wifiNetwork: "",
@@ -487,23 +488,27 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Tipo de Propiedad <span className="text-destructive">*</span></FormLabel>
-                                                <Select onValueChange={(v) => field.onChange(parseInt(v))} value={String(field.value)}>
+                                                <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value ? String(field.value) : ""}>
                                                     <FormControl>
                                                         <SelectTrigger>
                                                             <SelectValue placeholder="Seleccionar tipo de propiedad" />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        {propertyTypes.length > 0 ? (
+                                                        {isLoadingCatalogs ? (
+                                                            <SelectItem value="__loading" disabled>
+                                                                Cargando tipos…
+                                                            </SelectItem>
+                                                        ) : propertyTypes.length > 0 ? (
                                                             propertyTypes.map(t => (
                                                                 <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                                                             ))
                                                         ) : (
-                                                            <>
-                                                                <SelectItem value="102">Apartamento</SelectItem>
-                                                                <SelectItem value="100">Casa</SelectItem>
-                                                                <SelectItem value="101">Hotel</SelectItem>
-                                                            </>
+                                                            // Sin catálogo no hay ids válidos que ofrecer: los que
+                                                            // estaban fijos acá no coincidían con el catálogo real.
+                                                            <SelectItem value="__unavailable" disabled>
+                                                                No se pudo cargar el catálogo de tipos
+                                                            </SelectItem>
                                                         )}
                                                     </SelectContent>
                                                 </Select>

@@ -22,6 +22,14 @@ function loadMap(): Promise<Map<string, string>> {
         inflight = catalogService
             .getPropertyTypes()
             .then((opts: CatalogOption[]) => {
+                // `fetchCatalog` convierte cualquier fallo en `[]` (nunca rechaza),
+                // así que un catálogo vacío ES el fallo: no se guarda, para que el
+                // próximo montaje lo vuelva a pedir. Guardarlo dejaba todas las
+                // tarjetas sin tipo hasta recargar la página.
+                if (opts.length === 0) {
+                    inflight = null
+                    return new Map<string, string>()
+                }
                 cachedMap = new Map(opts.map((o) => [String(o.id), o.name]))
                 return cachedMap
             })

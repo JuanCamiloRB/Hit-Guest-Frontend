@@ -1,3 +1,4 @@
+import { readPropertyTypeId } from "../lib/property-type"
 import { z } from "zod"
 import { normalizeLocale, DEFAULT_COMMUNICATION_LOCALE, type CommunicationLocale } from "@/lib/locales"
 import { normalizeExternalPmsIds, toExternalPmsIdsPayload } from "../lib/external-pms-ids"
@@ -431,7 +432,9 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
         longitude: lng,
         timezone: apiData.timezone || location.timezone || "",
         statusRecordId: apiData.statusRecordId || apiData.status_record_id || apiData.statusRecord?.id || 6,
-        propertyTypeId: Number(apiData.propertyType?.id || apiData.propertyTypeId || apiData.property_type_id || (extra as any).propertyTypeId || (extra as any).type || 102),
+        // Sin tipo informado queda en 0 y la validación pide elegirlo: completarlo
+        // con un id fijo guardaba Hotel en toda propiedad importada (ver `readPropertyTypeId`).
+        propertyTypeId: readPropertyTypeId(apiData) ?? 0,
         thumbnailUrl: extractedThumbnail,
         communicationsLocale: (normalizeLocale((extra as any).communicationsLocale || (extra as any).communications_locale) || DEFAULT_COMMUNICATION_LOCALE) as CommunicationLocale,
         checkIn: extra.checkIn || "",

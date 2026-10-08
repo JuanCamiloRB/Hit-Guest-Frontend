@@ -1,5 +1,6 @@
 "use client"
 
+import { readPropertyTypeId } from "../lib/property-type"
 import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { Property, Unit } from "@/types"
 import { PropertyCard } from "./PropertyCard"
@@ -130,14 +131,13 @@ export function PropertiesList() {
                     timezone: formData.timezone,
                     status_record_id: formData.statusRecordId,
                     status: formData.statusRecordId === 1 || formData.statusRecordId === 6 ? "ACTIVE" : "INACTIVE",
-                    type: String(apiProp.propertyTypeId || apiProp.property_type_id || formData.propertyTypeId || apiProp.extra?.propertyTypeId || apiProp.extra?.type || "102"),
+                    type: String(readPropertyTypeId(apiProp) ?? ""),
                     thumbnailUrl: formData.thumbnailUrl,
                     created_at: apiProp.createdAt,
                     updated_at: apiProp.updatedAt,
                     extra: {
                         ...apiProp.extra,
-                        propertyTypeId: formData.propertyTypeId,
-                        type: apiProp.extra?.type || (formData.propertyTypeId === 101 ? "HOTEL" : "BUILDING"),
+                        propertyTypeId: readPropertyTypeId(apiProp),
                         thumbnailUrl: formData.thumbnailUrl,
                     }
                 } as unknown as Property
@@ -246,14 +246,13 @@ export function PropertiesList() {
                         timezone: formData.timezone,
                         status_record_id: formData.statusRecordId,
                         status: formData.statusRecordId === 1 || formData.statusRecordId === 6 ? "ACTIVE" : "INACTIVE",
-                        type: String(apiProp.propertyTypeId || apiProp.property_type_id || formData.propertyTypeId || apiProp.extra?.propertyTypeId || apiProp.extra?.type || "102"),
+                        type: String(readPropertyTypeId(apiProp) ?? ""),
                         thumbnailUrl: formData.thumbnailUrl,
                         created_at: apiProp.createdAt,
                         updated_at: apiProp.updatedAt,
                         extra: {
                             ...apiProp.extra,
-                            propertyTypeId: formData.propertyTypeId,
-                            type: apiProp.extra?.type || (formData.propertyTypeId === 101 ? "HOTEL" : "BUILDING"),
+                            propertyTypeId: readPropertyTypeId(apiProp),
                             thumbnailUrl: formData.thumbnailUrl,
                         }
                     } as unknown as Property

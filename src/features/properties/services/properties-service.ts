@@ -7,6 +7,7 @@ import {
 } from "../types"
 import { apiClient, handleSessionExpired } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
+import { PROXY_REQUEST_BODY_LIMIT_BYTES, prepareImageForUpload, splitIntoRequestBatches } from "@/lib/image-upload"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { ApiError } from "@/types/api"
 
@@ -160,6 +161,30 @@ class PropertiesService {
      * session token like every other account-scoped call.
      */
     async uploadImages(uuid: string, files: File[]): Promise<PropertyApiResponse> {
+        // El proxy corta cada petición en 4 MB (`src/lib/image-upload.ts`):
+        // diez fotos de 3 MB en un solo multipart recibían un 413 del borde de
+        // Vercel sin pasar por el backend. Se recomprimen para la galería y se
+        // mandan en lotes que quepan; cada respuesta trae la galería completa,
+        // así que vale la última.
+        const prepared = await Promise.all(
+            files.map((file) => prepareImageForUpload(file, { maxDimension: 2000 })),
+        )
+        const tooLarge = prepared.filter((file) => file.size > PROXY_REQUEST_BODY_LIMIT_BYTES)
+        if (tooLarge.length > 0) {
+            throw new ApiError(413, {
+                message: `No se pudo reducir ${tooLarge.map((f) => f.name).join(", ")} por debajo de 4 MB. Usa una foto más liviana.`,
+            })
+        }
+
+        let last: PropertyApiResponse | null = null
+        for (const batch of splitIntoRequestBatches(prepared)) {
+            last = await this.postImagesBatch(uuid, batch)
+        }
+        if (!last) throw new ApiError(422, { message: "No hay fotos para subir." })
+        return last
+    }
+
+    private async postImagesBatch(uuid: string, files: File[]): Promise<PropertyApiResponse> {
         const url = `${API_BASE}/properties/${uuid}/images`
         const formData = new FormData()
         files.forEach((file) => formData.append("images[]", file))

@@ -47,58 +47,25 @@ const BADGE_STYLES: Record<PropertyBadge["kind"], string> = {
 }
 
 /**
- * Best-effort icon. Prefers the resolved catalog label (keyword match) so custom
- * catalog types still get a sensible icon, then falls back to the id/string switch.
+ * Ícono por palabra clave sobre la etiqueta del catálogo (viene en inglés o en
+ * español según el catálogo). No hay switch por id: el que había asumía
+ * 100/101/102 = Casa/Hotel/Apartamento, y en el catálogo real 102 es Hotel.
  */
-const TypeIcon = ({ type, label }: { type?: string | number; label?: string | null }) => {
-    const l = (label || '').toLowerCase()
-    if (l) {
-        if (l.includes('hotel')) return <Hotel className="h-3 w-3" />
-        if (l.includes('resort')) return <Palmtree className="h-3 w-3" />
-        if (l.includes('casa') || l.includes('villa') || l.includes('house')) return <HomeIcon className="h-3 w-3" />
-        if (l.includes('apart') || l.includes('edificio') || l.includes('building')) return <Building className="h-3 w-3" />
-    }
-    const t = String(type || '').toUpperCase()
-    switch (t) {
-        case 'HOTEL':
-        case '101':
-            return <Hotel className="h-3 w-3" />
-        case 'BUILDING':
-        case '102':
-        case 'APARTMENT':
-        case 'APARTAHOTEL':
-            return <Building className="h-3 w-3" />
-        case 'HOUSE':
-        case '100':
-            return <HomeIcon className="h-3 w-3" />
-        case 'RESORT': return <Palmtree className="h-3 w-3" />
-        default: return <Building className="h-3 w-3" />
-    }
-}
-
-const TypeLabel = ({ type }: { type?: string | number }) => {
-    const t = String(type || '').toUpperCase()
-    switch (t) {
-        case 'HOTEL':
-        case '101': return 'Hotel'
-        case 'APARTAHOTEL': return 'Apartahotel'
-        case 'BUILDING':
-        case '102':
-        case 'APARTMENT': return 'Apartamento / Edificio'
-        case 'HOUSE':
-        case '100': return 'Casa / Villa'
-        case 'RESORT': return 'Resort'
-        case 'HOSTAL': return 'Hostal'
-        default: return 'Propiedad'
-    }
+const TypeIcon = ({ label }: { label: string | null }) => {
+    const l = (label || "").toLowerCase()
+    if (l.includes("hotel")) return <Hotel className="h-3 w-3" />
+    if (l.includes("resort")) return <Palmtree className="h-3 w-3" />
+    if (l.includes("casa") || l.includes("villa") || l.includes("house")) return <HomeIcon className="h-3 w-3" />
+    return <Building className="h-3 w-3" />
 }
 
 export function PropertyCard({ property, onStatusChange, activeListings = null, badges = null }: PropertyCardProps) {
     const propertyId = property.uuid || property.id
-    // Prefer the configured catalog label; fall back to the id/string switch while
-    // the catalog loads or for values it doesn't know.
-    const catalogLabel = usePropertyTypeLabel(property.type)
-    const typeLabel = catalogLabel ?? TypeLabel({ type: property.type })
+    // La etiqueta sale SOLO del catálogo `property_type`. Sin tipo informado se
+    // dice; mientras el catálogo carga (o si no carga) no se adivina ninguna.
+    const hasType = property.type != null && String(property.type) !== ""
+    const catalogLabel = usePropertyTypeLabel(hasType ? property.type : null)
+    const typeLabel = hasType ? catalogLabel : "Sin tipo"
     const [isActive, setIsActive] = useState(property.status === "ACTIVE")
     const [isToggling, setIsToggling] = useState(false)
     const [imgError, setImgError] = useState(false)
@@ -153,12 +120,14 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                <div className="absolute top-2 left-2 flex gap-1">
-                    <Badge className="bg-white/90 text-slate-900 border-none shadow-sm backdrop-blur-sm flex gap-1.5 items-center px-2 py-0.5">
-                        <TypeIcon type={property.type} label={typeLabel} />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">{typeLabel}</span>
-                    </Badge>
-                </div>
+                {typeLabel && (
+                    <div className="absolute top-2 left-2 flex gap-1">
+                        <Badge className="bg-white/90 text-slate-900 border-none shadow-sm backdrop-blur-sm flex gap-1.5 items-center px-2 py-0.5">
+                            <TypeIcon label={hasType ? typeLabel : null} />
+                            <span className="text-[10px] font-bold uppercase tracking-wider">{typeLabel}</span>
+                        </Badge>
+                    </div>
+                )}
 
                 <Badge
                     variant={isActive ? "default" : "secondary"}
