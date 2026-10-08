@@ -80,6 +80,14 @@ export function normalizeVerificationResult(raw: unknown): VerificationResultRes
         return { status: "verified", waived: true }
     }
 
+    // Captura sin verificación (contrato 2026-09-27): llega con `currentStep:
+    // "form"` y `verifiedAt: null`. Mismo destino que un verificado, con la
+    // marca que deja a las pantallas callar cualquier «verificado». Va antes
+    // del chequeo de `form` por la misma razón que `waived`.
+    if (status === "document_captured") {
+        return { status: "verified", captured: true }
+    }
+
     if (currentStep === "form" || status === "approved" || status === "verified") {
         return { status: "verified" }
     }

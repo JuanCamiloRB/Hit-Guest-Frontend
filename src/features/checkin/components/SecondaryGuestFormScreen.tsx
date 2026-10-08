@@ -11,7 +11,7 @@ import { useLocalStorage } from "@/features/checkin/hooks/useLocalStorage"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { getVerificationToken } from "@/features/checkin/lib/verification-token"
 import { useVerificationRecovery } from "@/features/checkin/hooks/useVerificationRecovery"
-import { isDocumentAlreadyVerified, resolvePreFormVerificationStep } from "@/features/checkin/lib/doc-verification"
+import { acceptedUploadFallback, isDocumentAlreadyVerified, resolvePreFormVerificationStep } from "@/features/checkin/lib/doc-verification"
 import { isDocumentExpired } from "@/features/checkin/lib/document-expiry"
 import { classifyCompleteFailure } from "@/features/checkin/lib/complete-failure"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
@@ -113,6 +113,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                         : null
                     const identityVerified = session?.verification.type === "verified_ok"
                         || isDocumentAlreadyVerified(currentGuest, hasOtpToken, activeResult)
+                        || acceptedUploadFallback(session?.uploadOutcome, portal != null || activeResult != null) != null
                     setDocVerified(identityVerified)
                     const nextStep = resolvePreFormVerificationStep({
                         identityVerified,
@@ -391,6 +392,12 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                     // resolverlo es el de verificación, no el inicio.
                     router.push(`${basePath}/verify?guest_uuid=${guestUuid}`)
                 }
+            } else if (error.status === 422 && error.errors?.reservation?.some((m) => typeof m === "string" && m.trim() !== "")) {
+                // Cupo agotado al completar (§18): mismo `errors.reservation` que
+                // /identify. Reenviar este formulario no lo resuelve; el inicio
+                // muestra el estado real de la reserva.
+                toast.error(error.errors.reservation.find((m) => typeof m === "string" && m.trim() !== ""))
+                router.push(basePath)
             } else {
                 notifyError(error, "Error al completar el check-in")
             }

@@ -16,6 +16,13 @@ describe("describeVerificationFailure", () => {
         expect(describeVerificationFailure(undefined, true)).not.toMatch(/undefined/)
     })
 
+    it("los rechazos OCR del contrato 2026-10-03 tienen copy propio", () => {
+        expect(describeVerificationFailure("document_number_mismatch", false)).toMatch(/número del documento/)
+        expect(describeVerificationFailure("duplicate_document", false)).toMatch(/ya está registrado/)
+        // Una caída de AWS no gasta intento: el copy no puede sugerir lo contrario.
+        expect(describeVerificationFailure("service_unavailable", true)).toMatch(/no se descontó/)
+    })
+
     it("los motivos legacy conservan su copy de siempre", () => {
         expect(describeVerificationFailure("expired", false)).toBe("Tu documento está vencido.")
         expect(describeVerificationFailure("ocr_rejected", true)).toMatch(/fotos más claras/)

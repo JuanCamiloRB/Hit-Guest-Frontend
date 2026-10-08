@@ -24,6 +24,13 @@ const FAILURE_COPY: Record<string, string> = {
         + "completo en la foto.",
     manual_review:
         "No pudimos completar tu verificación automáticamente. Por favor repite el proceso.",
+    // Rechazos de la subida OCR con el vocabulario de Didit (contrato 2026-10-03).
+    document_number_mismatch:
+        "El número del documento no coincide con el que registraste. Contacta al anfitrión si necesitas ayuda.",
+    duplicate_document:
+        "Este documento ya está registrado para otro huésped de la reserva. Contacta al anfitrión.",
+    service_unavailable:
+        "El servicio de verificación no respondió. Intenta de nuevo en un momento; este intento no se descontó.",
     // Motivos legacy del reconciliador (backend anterior o rechazo de OCR).
     ocr_rejected: "No pudimos leer bien tu documento. Intenta de nuevo con fotos más claras y buena luz.",
     expired: "Tu documento está vencido.",

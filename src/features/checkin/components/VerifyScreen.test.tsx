@@ -71,6 +71,115 @@ vi.mock("@didit-protocol/sdk-web", () => ({
     },
 }))
 
+describe("VerifyScreen — captura de documento sin verificación (contrato 2026-09-27)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        localStorage.clear()
+        mocks.identificationTypes = [{ id: 5, requiresBackImage: false }]
+        mocks.session.verification = { type: "document_capture", requiresBackImage: false }
+        mocks.loadSession.mockReturnValue(mocks.session)
+        mocks.uploadDocumentImages.mockResolvedValue({
+            success: true,
+            extractedData: {},
+            formSchema: { prefilledData: { identificationNumber: "DOC-1" } },
+        })
+    })
+
+    it("sube el frente sin selfie ni confirmación de OCR y pasa directo al formulario", async () => {
+        const { container } = render(
+            <VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />,
+        )
+
+        await screen.findByText("Sube tu documento")
+        expect(screen.queryByText("Verifica tu Identidad")).toBeNull()
+        const inputs = container.querySelectorAll<HTMLInputElement>('input[type="file"]')
+        expect(inputs).toHaveLength(1)
+        fireEvent.change(inputs[0], {
+            target: { files: [new File(["front"], "front.jpg", { type: "image/jpeg" })] },
+        })
+        fireEvent.click(screen.getByRole("button", { name: "Enviar fotos" }))
+
+        await waitFor(() => expect(mocks.uploadDocumentImages).toHaveBeenCalledOnce())
+        const formData = mocks.uploadDocumentImages.mock.calls[0][2] as FormData
+        expect(formData.has("front_image")).toBe(true)
+        expect(formData.has("selfie_image")).toBe(false)
+        expect(screen.queryByText("Tomar selfie")).toBeNull()
+        expect(screen.queryByText("Confirma tus datos")).toBeNull()
+        await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/checkin/reservation/guest?guest_uuid=guest"))
+        expect(JSON.parse(localStorage.getItem("checkin-guest-form-reservation") ?? "null"))
+            .toMatchObject({ identificationNumber: "DOC-1" })
+        expect(mocks.toastSuccess).not.toHaveBeenCalledWith("Identidad verificada exitosamente")
+    })
+
+    it("tras el 200 anota en la sesión que las fotos ya fueron aceptadas", async () => {
+        const { container } = render(
+            <VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />,
+        )
+        await screen.findByText("Sube tu documento")
+        const inputs = container.querySelectorAll<HTMLInputElement>('input[type="file"]')
+        fireEvent.change(inputs[0], { target: { files: [new File(["f"], "front.jpg", { type: "image/jpeg" })] } })
+        fireEvent.click(screen.getByRole("button", { name: "Enviar fotos" }))
+
+        await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/checkin/reservation/guest?guest_uuid=guest"))
+        expect(mocks.saveRaw).toHaveBeenCalledWith(expect.objectContaining({ uploadOutcome: "captured" }))
+    })
+
+    it("el reverso lo decide la directiva del backend, no el catálogo de tipos de documento", async () => {
+        mocks.session.verification = { type: "document_capture", requiresBackImage: true }
+        render(<VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />)
+
+        await screen.findByText("Sube tu documento")
+        expect(await screen.findByText("Foto Reverso")).toBeInTheDocument()
+    })
+
+    it("GUEST_ALREADY_COMPLETED no es un fallo: lleva a la pantalla de éxito", async () => {
+        mocks.uploadDocumentImages.mockRejectedValue(Object.assign(new Error("Ya completado"), {
+            status: 422,
+            errorType: "GUEST_ALREADY_COMPLETED",
+        }))
+        const { container } = render(
+            <VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />,
+        )
+
+        await screen.findByText("Sube tu documento")
+        const inputs = container.querySelectorAll<HTMLInputElement>('input[type="file"]')
+        fireEvent.change(inputs[0], { target: { files: [new File(["f"], "front.jpg", { type: "image/jpeg" })] } })
+        fireEvent.click(screen.getByRole("button", { name: "Enviar fotos" }))
+
+        await waitFor(() => expect(mocks.push).toHaveBeenCalledWith(
+            "/checkin/reservation/success?guest_uuid=guest&entry=completion_already_recorded",
+        ))
+        expect(mocks.toastError).not.toHaveBeenCalled()
+        expect(screen.queryByText(/no fue exitosa/i)).toBeNull()
+    })
+
+    it("DOCUMENT_NOT_DETECTED limpia solo el lado señalado en failedFields", async () => {
+        mocks.session.verification = { type: "document_capture", requiresBackImage: true }
+        mocks.uploadDocumentImages.mockRejectedValue(Object.assign(new Error("No document"), {
+            status: 422,
+            errorType: "DOCUMENT_NOT_DETECTED",
+            // El servicio (mockeado acá) ya normaliza los lados a la forma interna.
+            failedFields: [{ field: "back", reason: null }],
+        }))
+        const { container } = render(
+            <VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />,
+        )
+
+        await screen.findByText("Sube tu documento")
+        const inputs = container.querySelectorAll<HTMLInputElement>('input[type="file"]')
+        expect(inputs).toHaveLength(2)
+        fireEvent.change(inputs[0], { target: { files: [new File(["f"], "front.jpg", { type: "image/jpeg" })] } })
+        fireEvent.change(inputs[1], { target: { files: [new File(["b"], "back.jpg", { type: "image/jpeg" })] } })
+        fireEvent.click(screen.getByRole("button", { name: "Enviar fotos" }))
+
+        await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+        expect(screen.getByText("front.jpg")).toBeInTheDocument()
+        expect(screen.queryByText("back.jpg")).toBeNull()
+        expect(screen.getByText(/en la foto del reverso/)).toBeInTheDocument()
+        expect(mocks.push).not.toHaveBeenCalled()
+    })
+})
+
 describe("VerifyScreen — contrato síncrono de Textract", () => {
     beforeEach(() => {
         vi.clearAllMocks()
@@ -148,6 +257,7 @@ describe("VerifyScreen — contrato síncrono de Textract", () => {
         await screen.findByText("Confirma tus datos")
         await waitFor(() => expect(mocks.uploadDocumentImages).toHaveBeenCalledOnce())
         expect(mocks.getPortal).not.toHaveBeenCalled()
+        expect(mocks.saveRaw).toHaveBeenCalledWith(expect.objectContaining({ uploadOutcome: "verified" }))
         expect(screen.getByDisplayValue("DOC-1")).toBeInTheDocument()
 
         fireEvent.click(screen.getByRole("button", { name: "Continuar" }))
@@ -747,5 +857,274 @@ describe("VerifyScreen — exoneración del PM (waived)", () => {
         await act(async () => { await vi.advanceTimersByTimeAsync(1_000) })
 
         expect(mocks.toastSuccess).toHaveBeenCalledWith("Identidad verificada exitosamente")
+    })
+})
+
+describe("VerifyScreen — tope de intentos en la subida OCR (contrato 2026-10-03)", () => {
+    beforeEach(() => {
+        // El bloque de exoneración deja temporizadores falsos activos.
+        vi.useRealTimers()
+        vi.clearAllMocks()
+        localStorage.clear()
+        mocks.identificationTypes = [{ id: 5, requiresBackImage: false }]
+        mocks.session.verification = { type: "document_upload" }
+        mocks.loadSession.mockReturnValue(mocks.session)
+    })
+
+    async function uploadWithSelfie() {
+        const { container } = render(
+            <VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />,
+        )
+        await screen.findByText("Verifica tu Identidad")
+        const documentInputs = container.querySelectorAll<HTMLInputElement>('input[type="file"]')
+        fireEvent.change(documentInputs[0], {
+            target: { files: [new File(["front"], "front.jpg", { type: "image/jpeg" })] },
+        })
+        fireEvent.click(screen.getByRole("button", { name: "Continuar" }))
+        await screen.findByText("Tomar selfie")
+        const selfieInput = container.querySelector<HTMLInputElement>('input[type="file"]')!
+        fireEvent.change(selfieInput, {
+            target: { files: [new File(["selfie"], "selfie.jpg", { type: "image/jpeg" })] },
+        })
+        fireEvent.click(screen.getByRole("button", { name: "Analizar Documento" }))
+    }
+
+    function rejection(errorType: string, message: string, verification: Record<string, unknown>) {
+        return Object.assign(new Error(message), { status: 422, errorType, verification })
+    }
+
+    it("VERIFICATION_ATTEMPTS_EXHAUSTED es definitivo y muestra el mensaje del backend", async () => {
+        mocks.uploadDocumentImages.mockRejectedValue(rejection(
+            "VERIFICATION_ATTEMPTS_EXHAUSTED",
+            "Agotaste los intentos de verificación para esta reserva.",
+            { canRetry: false, attemptsRemaining: 0 },
+        ))
+        await uploadWithSelfie()
+
+        expect(await screen.findByText("Verificación no exitosa")).toBeInTheDocument()
+        expect(screen.getByText("Agotaste los intentos de verificación para esta reserva.")).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: /Repetir verificación/ })).not.toBeInTheDocument()
+        expect(screen.getByRole("link", { name: /Volver al inicio/ })).toBeInTheDocument()
+    })
+
+    it("la última foto borrosa con canRetry:false no ofrece otra toma condenada al 422", async () => {
+        mocks.uploadDocumentImages.mockRejectedValue(rejection(
+            "LOW_QUALITY_IMAGE",
+            "La imagen del documento es de baja calidad.",
+            { canRetry: false, attemptsRemaining: 0, failureReason: "document_image_quality" },
+        ))
+        await uploadWithSelfie()
+
+        expect(await screen.findByText("Verificación no exitosa")).toBeInTheDocument()
+        expect(screen.getByText(/Ya no quedan intentos de verificación/)).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: /Repetir verificación/ })).not.toBeInTheDocument()
+    })
+
+    it("un rechazo reparable avisa cuántos intentos quedan y deja reintentar", async () => {
+        mocks.uploadDocumentImages.mockRejectedValue(rejection(
+            "LOW_QUALITY_IMAGE",
+            "La imagen del documento es de baja calidad.",
+            { canRetry: true, attemptsRemaining: 1, failureReason: "document_image_quality" },
+        ))
+        await uploadWithSelfie()
+
+        await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(
+            "La imagen del documento es de baja calidad.",
+            { description: "Te queda 1 intento." },
+        ))
+        expect(screen.queryByText("Verificación no exitosa")).toBeNull()
+        expect(screen.getByText("Verifica tu Identidad")).toBeInTheDocument()
+    })
+
+    it("un motivo ya definitivo no se atribuye al tope de intentos", async () => {
+        mocks.uploadDocumentImages.mockRejectedValue(rejection(
+            "DUPLICATE_DOCUMENT",
+            "Este documento ya está registrado para otro huésped.",
+            { canRetry: false, attemptsRemaining: 2, failureReason: "duplicate_document" },
+        ))
+        await uploadWithSelfie()
+
+        expect(await screen.findByText("Verificación no exitosa")).toBeInTheDocument()
+        expect(screen.queryByText(/Ya no quedan intentos/)).toBeNull()
+    })
+
+    it("canRetry:true reabre un motivo que la tabla local daba por definitivo", async () => {
+        mocks.uploadDocumentImages.mockRejectedValue(rejection(
+            "DUPLICATE_DOCUMENT",
+            "Este documento ya está registrado para otro huésped.",
+            { canRetry: true, attemptsRemaining: 2, failureReason: "duplicate_document" },
+        ))
+        await uploadWithSelfie()
+
+        await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+        expect(screen.queryByText("Verificación no exitosa")).toBeNull()
+        expect(screen.getByText("Verifica tu Identidad")).toBeInTheDocument()
+    })
+
+    it("un 413 del borde (fotos demasiado pesadas) explica qué hacer y conserva las fotos", async () => {
+        // Shape real del 413 de Vercel: sin errorType ni message en la raíz, y
+        // ninguna llamada llega al backend (reporte de producción 2026-10-08).
+        mocks.uploadDocumentImages.mockRejectedValue(Object.assign(new Error("Error en la solicitud"), { status: 413 }))
+        await uploadWithSelfie()
+
+        await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(expect.stringMatching(/pesan demasiado/)))
+        expect(screen.queryByText("Verificación no exitosa")).toBeNull()
+        expect(screen.getByText("front.jpg")).toBeInTheDocument()
+        expect(screen.queryByText(/Error en la solicitud/)).toBeNull()
+    })
+
+    it("en captura de documento el bloque verification no cierra el reintento", async () => {
+        mocks.session.verification = { type: "document_capture", requiresBackImage: false }
+        mocks.uploadDocumentImages.mockRejectedValue(Object.assign(new Error("No document"), {
+            status: 422,
+            errorType: "DOCUMENT_NOT_DETECTED",
+            failedFields: [{ field: "front", reason: null }],
+            verification: { canRetry: false, attemptsRemaining: 0 },
+        }))
+        const { container } = render(
+            <VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />,
+        )
+        await screen.findByText("Sube tu documento")
+        const inputs = container.querySelectorAll<HTMLInputElement>('input[type="file"]')
+        fireEvent.change(inputs[0], { target: { files: [new File(["f"], "front.jpg", { type: "image/jpeg" })] } })
+        fireEvent.click(screen.getByRole("button", { name: "Enviar fotos" }))
+
+        await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
+        expect(screen.queryByText("Verificación no exitosa")).toBeNull()
+        expect(screen.getByText("Sube tu documento")).toBeInTheDocument()
+    })
+})
+
+describe("VerifyScreen — KYC directo (contrato 2026-10-08)", () => {
+    const KYC_URL = "https://verification.didit.me/kyc-direct"
+
+    beforeEach(() => {
+        vi.useRealTimers()
+        vi.clearAllMocks()
+        localStorage.clear()
+        mocks.identificationTypes = [{ id: 5, requiresBackImage: false }]
+        mocks.session.verification = { type: "session", sessionType: "kyc", url: KYC_URL }
+        mocks.loadSession.mockReturnValue(mocks.session)
+        mocks.getPortal.mockResolvedValue({ registeredGuests: [{ uuid: "guest" }] })
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
+    })
+
+    function pendingMarker(step: "biometric" | "kyc", url: string) {
+        localStorage.setItem("checkin-pending-didit", JSON.stringify({
+            reservationUuid: "reservation", guestUuid: "guest", basePath: "/checkin/reservation",
+            step, launchedUrl: url, startedAt: Date.now(),
+        }))
+    }
+
+    it("un huésped nuevo entra directo a KYC: copy de documento + selfie en un solo proceso, y abre ESA url una sola vez", async () => {
+        render(<VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />)
+
+        expect(await screen.findByText(/fotografía tu documento por ambos lados/)).toBeInTheDocument()
+        expect(screen.queryByText(/Solo toma un minuto/)).toBeNull()
+        fireEvent.click(screen.getByRole("button", { name: "Iniciar Verificación de Documento" }))
+        await act(async () => { await Promise.resolve(); await Promise.resolve() })
+
+        expect(mocks.startVerification).toHaveBeenCalledTimes(1)
+        expect(mocks.startVerification).toHaveBeenCalledWith({ url: KYC_URL })
+        expect(JSON.parse(localStorage.getItem("checkin-pending-didit") ?? "null")).toMatchObject({ step: "kyc", launchedUrl: KYC_URL })
+        expect(mocks.saveRaw).toHaveBeenCalledWith(expect.objectContaining({
+            verification: { type: "session", sessionType: "kyc", url: KYC_URL },
+        }))
+    })
+
+    it("un rechazo DEFINITIVO que llega por el callback se reconcilia con el backend: sin reintento y con el motivo real", async () => {
+        vi.useFakeTimers()
+        pendingMarker("kyc", KYC_URL)
+        mocks.checkVerificationResult.mockResolvedValue({
+            status: "failed", retryable: false, failureReason: "document_not_approved", attemptsRemaining: 0,
+        })
+
+        render(<VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" diditError="declined" />)
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+
+        expect(mocks.checkVerificationResult).toHaveBeenCalled()
+        expect(screen.getByText("Verificación no exitosa")).toBeInTheDocument()
+        expect(screen.getByText(/No pudimos validar tu documento/)).toBeInTheDocument()
+        // Antes: «Tu verificación fue rechazada. Puedes intentarlo de nuevo.» — mentira con canRetry:false.
+        expect(screen.queryByText(/Puedes intentarlo de nuevo/)).toBeNull()
+        expect(screen.queryByRole("button", { name: /Repetir verificación/ })).not.toBeInTheDocument()
+        expect(mocks.startVerification).not.toHaveBeenCalled()
+    })
+
+    it("un rechazo REPARABLE por el callback conserva canRetry, failureReason e intentos restantes", async () => {
+        vi.useFakeTimers()
+        pendingMarker("kyc", KYC_URL)
+        mocks.checkVerificationResult.mockResolvedValue({
+            status: "failed", retryable: true, failureReason: "document_image_quality", attemptsRemaining: 1,
+        })
+
+        render(<VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" diditError="declined" />)
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+
+        expect(screen.getByText(/borrosa|luz/)).toBeInTheDocument()
+        expect(screen.getByText("Te queda 1 intento.")).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: /Repetir verificación/ })).toBeInTheDocument()
+    })
+
+    it("mientras el backend no confirma, muestra lo que dijo Didit como pista y no reabre la sesión consumida", async () => {
+        vi.useFakeTimers()
+        pendingMarker("kyc", KYC_URL)
+        mocks.checkVerificationResult.mockResolvedValue({ status: "pending", verificationUrl: KYC_URL })
+
+        render(<VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" diditError="abandoned" />)
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+
+        expect(screen.getByRole("status")).toHaveTextContent(/Didit reportó: La verificación quedó sin completar/)
+        // La pista describe; no promete reintento antes de conocer `canRetry`.
+        expect(screen.getByRole("status")).not.toHaveTextContent(/intent|retom/i)
+        expect(mocks.checkVerificationResult).toHaveBeenCalled()
+        expect(mocks.startVerification).not.toHaveBeenCalled()
+        expect(screen.queryByText("Verificación no exitosa")).toBeNull()
+    })
+
+    it("sin sesión ni marcador local (otro navegador), un fallo del callback IGUAL se reconcilia con el backend", async () => {
+        vi.useFakeTimers()
+        mocks.loadSession.mockReturnValue(null)
+        mocks.checkVerificationResult.mockResolvedValue({
+            status: "failed", retryable: true, failureReason: "document_image_quality", attemptsRemaining: 2,
+        })
+
+        render(<VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" diditError="Declined" />)
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+
+        expect(mocks.checkVerificationResult).toHaveBeenCalled()
+        expect(screen.getByText(/borrosa|luz/)).toBeInTheDocument()
+        expect(screen.getByText("Te quedan 2 intentos.")).toBeInTheDocument()
+        // Sin directiva local, reintentar vuelve a /identify (resume idempotente), no a una pantalla vacía.
+        fireEvent.click(screen.getByRole("button", { name: /Repetir verificación/ }))
+        expect(mocks.replace).toHaveBeenCalledWith("/checkin/reservation/identify")
+    })
+
+    it("sin sesión local, un rechazo definitivo tampoco promete reintento", async () => {
+        vi.useFakeTimers()
+        mocks.loadSession.mockReturnValue(null)
+        mocks.checkVerificationResult.mockResolvedValue({ status: "failed", retryable: false, failureReason: "document_not_approved", attemptsRemaining: 0 })
+
+        render(<VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" diditError="Declined" />)
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        await act(async () => { await vi.advanceTimersByTimeAsync(2_000) })
+
+        expect(screen.getByText("Verificación no exitosa")).toBeInTheDocument()
+        expect(screen.queryByRole("button", { name: /Repetir verificación/ })).not.toBeInTheDocument()
+        expect(screen.queryByText(/Didit no aprobó la verificación\.$/)).toBeNull()
+    })
+
+    it("un huésped que Didit ya aprobó sigue entrando por biometría", async () => {
+        mocks.session.verification = { type: "session", sessionType: "biometric", url: "https://verification.didit.me/bio" }
+        render(<VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />)
+        expect(await screen.findByRole("button", { name: "Iniciar Verificación Facial" })).toBeInTheDocument()
+        expect(screen.getByText(/Solo toma un minuto/)).toBeInTheDocument()
     })
 })

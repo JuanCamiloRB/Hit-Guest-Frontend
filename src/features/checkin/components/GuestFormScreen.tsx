@@ -26,7 +26,14 @@ import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { getVerificationToken } from "@/features/checkin/lib/verification-token"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { useVerificationRecovery } from "@/features/checkin/hooks/useVerificationRecovery"
-import { isDocumentAlreadyVerified, resolvePreFormVerificationStep } from "@/features/checkin/lib/doc-verification"
+import { acceptedUploadFallback, documentNotice, isDocumentAlreadyVerified, resolvePreFormVerificationStep, type DocumentNotice } from "@/features/checkin/lib/doc-verification"
+
+/** Copy del bloque de documento cuando no se piden fotos; ver `documentNotice`. */
+const DOCUMENT_NOTICE_COPY: Record<DocumentNotice, string> = {
+    verified: "Documento ya verificado",
+    waived: "No necesitas subir tu documento",
+    captured: "Fotos del documento recibidas",
+}
 import { isDocumentExpired } from "@/features/checkin/lib/document-expiry"
 import { FormInput } from "@/features/checkin/components/FormInput"
 import { DynamicCheckinFields, areDynamicFieldsValid, getProviderUserFields } from "@/features/checkin/components/DynamicCheckinFields"
@@ -64,7 +71,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
     const [docVerified, setDocVerified] = useState(false)
     // Exoneración del PM (contrato 2026-09-08): el huésped no sube documento,
     // pero tampoco se le puede afirmar que su identidad quedó verificada.
-    const [docWaived, setDocWaived] = useState(false)
+    const [docNotice, setDocNotice] = useState<DocumentNotice>("verified")
     const [countryOptions, setCountryOptions] = useState<Array<{ id: number; label: string }>>([])
     // Raw countries kept so we can resolve a country id → ISO2 for the identification-types query.
     const [countriesRaw, setCountriesRaw] = useState<CountryOption[]>([])
@@ -133,8 +140,13 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                     const activeResult = verificationResult.status === "fulfilled"
                         ? verificationResult.value
                         : null
+                    const uploadFallback = acceptedUploadFallback(
+                        session?.uploadOutcome,
+                        portal != null || activeResult != null,
+                    )
                     const identityVerified = session?.verification.type === "verified_ok"
                         || isDocumentAlreadyVerified(currentGuest, hasOtpToken, activeResult)
+                        || uploadFallback != null
                     setDocVerified(identityVerified)
                     // El exonerado (waived) salta el documento igual que un
                     // verificado, pero el chip verde no puede decir «verificado».
@@ -142,10 +154,9 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                     // exoneración mientras el portal falla o va atrasado, y leer solo
                     // el portal dejaba pasar el chip «Documento ya verificado» sobre
                     // un huésped que nunca verificó (QA 3).
-                    setDocWaived(
-                        currentGuest?.verification?.status === "waived"
-                        || activeResult?.waived === true,
-                    )
+                    // Sin ninguna fuente, el desenlace anotado decide el chip: una
+                    // captura nunca puede caer al «verificado» por defecto.
+                    setDocNotice(uploadFallback ?? documentNotice(currentGuest, activeResult))
 
                     // A stale/direct navigation must not turn an unfinished Didit
                     // flow into a Textract-looking form. The backend status chooses
@@ -500,7 +511,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                         <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-3 py-2">
                             <CheckCircle2 size={16} className="text-green-600" />
                             <span className="text-xs font-semibold">
-                                {docWaived ? "No necesitas subir tu documento" : "Documento ya verificado"}
+                                {DOCUMENT_NOTICE_COPY[docNotice]}
                             </span>
                         </div>
                     )}

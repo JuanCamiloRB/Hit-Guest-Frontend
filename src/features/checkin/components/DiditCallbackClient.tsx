@@ -18,7 +18,7 @@ interface DiditCallbackClientProps {
     guestUuid?: string
 }
 
-type CallbackState = "redirecting" | "failed" | "no_context" | "secondary_context_missing"
+type CallbackState = "redirecting" | "no_context" | "secondary_context_missing"
 
 interface PendingDiditContext {
     reservationUuid: string
@@ -96,28 +96,26 @@ export function DiditCallbackClient({
 
     useEffect(() => {
         let alive = true
-        // Terminal failures: show error then send back to retry. Everything else
-        // (Approved / In Review / In Progress) forwards to the verify screen, which
-        // polls the portal — the source of truth for the final outcome.
+        // Lo que Didit dice en el redirect es una PISTA; el veredicto (incluido si
+        // se puede reintentar) lo da el backend en `/verify/result`. Por eso un
+        // estado de fallo también va DIRECTO al reconciliador, con la pista en
+        // `didit_error`: antes esta pantalla sentenciaba «serás redirigido para
+        // intentar de nuevo» dos segundos antes de conocer `canRetry`.
         const FAILURE_STATUSES = ["declined", "expired", "abandoned", "failed", "rejected"]
         const isFailure = FAILURE_STATUSES.includes(status.toLowerCase())
 
         const routeTo = (ctx: ResolvedContext) => {
             // Without a guestUuid we can't deep-link to /verify, so we resume on the
             // welcome screen which re-fetches the portal and routes the guest correctly.
-            if (!isFailure) {
-                router.replace(
-                    ctx.guestUuid
-                        ? `${ctx.basePath}/verify?guest_uuid=${ctx.guestUuid}&from_didit_callback=1`
-                        : ctx.basePath,
-                )
+            if (!ctx.guestUuid) {
+                router.replace(ctx.basePath)
                 return
             }
-            setState("failed")
-            const failHref = ctx.guestUuid
-                ? `${ctx.basePath}/verify?guest_uuid=${ctx.guestUuid}&didit_error=${encodeURIComponent(status)}`
-                : ctx.basePath
-            setTimeout(() => router.replace(failHref), 2000)
+            router.replace(
+                isFailure
+                    ? `${ctx.basePath}/verify?guest_uuid=${ctx.guestUuid}&didit_error=${encodeURIComponent(status)}`
+                    : `${ctx.basePath}/verify?guest_uuid=${ctx.guestUuid}&from_didit_callback=1`,
+            )
         }
 
         /**
@@ -205,20 +203,6 @@ export function DiditCallbackClient({
                         </h2>
                         <p className="text-slate-500 text-sm">
                             Redirigiendo de vuelta al check-in...
-                        </p>
-                    </>
-                )}
-
-                {state === "failed" && (
-                    <>
-                        <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-5">
-                            <XCircle className="w-8 h-8 text-red-500" />
-                        </div>
-                        <h2 className="text-xl font-semibold text-slate-800 mb-2">
-                            Verificación no completada
-                        </h2>
-                        <p className="text-slate-500 text-sm">
-                            La verificación no fue aprobada. Serás redirigido para intentar de nuevo.
                         </p>
                     </>
                 )}

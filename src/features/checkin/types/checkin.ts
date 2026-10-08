@@ -75,6 +75,14 @@ export interface GuestVerificationInfo {
      * `rejected`; si el PM revoca, vuelve a `rejected`.
      */
     | "waived"
+    /**
+     * Contrato 2026-09-27: el tipo de huésped NO tiene proveedor de identidad y
+     * subió fotos de su documento (frente y reverso si aplica). Llega con
+     * `currentStep: "form"` y `verifiedAt: null`: NO es una verificación y
+     * ninguna pantalla puede llamarla así. En este modo no aparecen `pending`,
+     * `rejected` ni `fail`: el historial de otras estadías se ignora.
+     */
+    | "document_captured"
   currentStep: "verification" | "form" | "rejected" | "completed" | "contact_challenge"
   verifiedAt: string | null         // ISO date when approved/completed, null otherwise
   /** Etapa real de Didit. Cambia de biometric a kyc cuando el backend escala. */
@@ -281,6 +289,16 @@ export interface CheckinPortalResponse {
      */
     requiresGuestCountDeclaration?: boolean
     /**
+     * Contrato 2026-09-27: reserva de Airbnb iCal SIN valor registrado y sin
+     * huéspedes identificados. El PRINCIPAL declara `totalPrice` en su
+     * identify. Independiente de `requiresGuestCountDeclaration`: cada campo
+     * se muestra por su propio flag. De un solo uso; si el PM registra el valor
+     * antes, llega `false`.
+     */
+    requiresPriceDeclaration?: boolean
+    /** ISO 4217 de la reserva. El huésped declara el valor EN ESTA moneda. */
+    currency?: string
+    /**
      * Datos del TITULAR registrados al crear la reserva, para precargar su
      * check-in. Opcional: mientras el backend no lo mande, el formulario se
      * comporta igual que hoy. Ver `lib/main-guest-prefill.ts`.
@@ -349,6 +367,13 @@ export interface IdentifyPayload {
    * el dato que define qué se reporta a TRA/SIRE. Errores: `errors.totalGuests`.
    */
   totalGuests?: number
+  /**
+   * Solo cuando el portal anuncia `requiresPriceDeclaration` (contrato
+   * 2026-09-27): valor total de la reserva en `reservation.currency`, como
+   * NÚMERO con punto decimal y máximo 2 decimales (`850000.5`), nunca texto
+   * formateado. Errores: `errors.totalPrice`.
+   */
+  totalPrice?: number
 }
 
 /** Response de POST /api/v1/checkin/{reservationUuid}/identify */
@@ -370,6 +395,13 @@ export interface IdentifyResponse {
 export type VerificationDirective =
   | { type: "session"; sessionType: "biometric" | "kyc"; url: string }
   | { type: "document_upload" }             // Textract → mostrar upload UI
+  /**
+   * Contrato 2026-09-27: sin proveedor de identidad para este tipo de huésped.
+   * Fotos del documento SIN selfie, mismo endpoint de subida que el OCR; el
+   * backend recorta y guarda, no verifica. `requiresBackImage` lo decide él
+   * (pasaporte → `false`), no el catálogo de tipos de documento.
+   */
+  | { type: "document_capture"; requiresBackImage: boolean }
   | { type: "verified_ok" }                 // Ya verificado → saltar a form
   | ContactChallengeDirective               // Huésped recurrente: probar posesión del email (OTP plan 20260731)
 
@@ -462,6 +494,13 @@ export interface VerificationResultResponse {
    * tampoco (QA 3 del contrato).
    */
   waived?: boolean
+  /**
+   * Solo con status "verified": el avance viene de una CAPTURA de documento sin
+   * verificación (contrato 2026-09-27, `status: "document_captured"`). Mismo
+   * destino que un verificado, misma regla que `waived`: nadie puede mostrar
+   * un «identidad verificada».
+   */
+  captured?: boolean
   kycUrl?: string                        // Solo si status === "kyc_required"
   /** Solo con status "failed": el huésped puede reintentar por su cuenta. */
   retryable?: boolean
@@ -531,6 +570,13 @@ export interface IdentifySessionData {
   timestamp: number
   /** ID of the identification type chosen by the guest (cat_id=2), used by VerifyScreen to know if back image is required */
   identificationTypeId?: number
+  /**
+   * El backend respondió 200 a la subida del documento de este huésped en este
+   * navegador: `verified` (OCR aprobado) o `captured` (fotos guardadas, sin
+   * verificar). Solo es respaldo cuando el portal y `/verify/result` no
+   * responden — ver `acceptedUploadFallback`.
+   */
+  uploadOutcome?: "verified" | "captured"
 }
 
 // ─── GET /form/{guestUuid} response (G-NEW-4) — aligned with backend v4.1 ────

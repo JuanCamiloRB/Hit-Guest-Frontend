@@ -328,8 +328,13 @@ export const mockIdentifyResponse = (payload: IdentifyPayload): IdentifyResponse
   else if (payload.identificationNumber === "111") {
     verificationType = { type: 'session', sessionType: 'biometric', url: 'https://verify.didit.me/u/JxXnsWmXTy-VGB9-9qI1RA' };
   }
-  // Caso 4: Guest nuevo en Didit — biometría pasa → pero no tiene docs → necesita KYC
+  // Caso 4: Guest nuevo en Didit — KYC DIRECTO (contrato 2026-10-08): documento
+  // + una selfie en una sola sesión; ya no pasa por biometría.
   else if (payload.identificationNumber === "112") {
+    verificationType = { type: 'session', sessionType: 'kyc', url: 'https://verify.didit.me/u/Eq_r_SjHTm-9ScZ_9jyDGQ' };
+  }
+  // Caso 5: Guest conocido cuya selfie no alcanza — biometría → escalación a KYC
+  else if (payload.identificationNumber === "113") {
     verificationType = { type: 'session', sessionType: 'biometric', url: 'https://verify.didit.me/u/JxXnsWmXTy-VGB9-9qI1RA' };
   }
 
@@ -382,10 +387,11 @@ export const mockCompleteResponse = (isMain: boolean): CompleteGuestResponse => 
  *
  * Triggers:
  *   - identificationNumber "111" (stored in verificationTrigger param) → verified (guest existed, docs valid)
- *   - identificationNumber "112" → kyc_required (guest new to Didit, needs full KYC)
+ *   - identificationNumber "112" → verified (guest nuevo: KYC directo, una sola sesión — contrato 2026-10-08)
+ *   - identificationNumber "113" → kyc_required (guest conocido cuya selfie no alcanza: escalación biometric→kyc)
  */
 export const mockVerificationResult = (trigger: string): VerificationResultResponse => {
-  if (trigger === '112') {
+  if (trigger === '113') {
     return {
       status: 'kyc_required',
       kycUrl: 'https://verify.didit.me/u/Eq_r_SjHTm-9ScZ_9jyDGQ',

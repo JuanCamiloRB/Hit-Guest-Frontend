@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, waitFor } from "@testing-library/react"
+import { render, screen, waitFor } from "@testing-library/react"
 import { DiditCallbackClient } from "./DiditCallbackClient"
 
 const replace = vi.fn()
@@ -70,6 +70,22 @@ describe("DiditCallbackClient — context resolution", () => {
         await waitFor(() => expect(replace).toHaveBeenCalledWith(
             `/checkin/${RESERVATION_IN_URL}/verify?guest_uuid=${GUEST}&from_didit_callback=1`,
         ))
+    })
+
+    it("un estado de fallo va DIRECTO al reconciliador con la pista, sin esperar ni prometer reintento", async () => {
+        render(
+            <DiditCallbackClient
+                verificationSessionId="sess-1"
+                status="Declined"
+                reservationUuid={RESERVATION_IN_URL}
+                guestUuid={GUEST}
+            />,
+        )
+
+        await waitFor(() => expect(replace).toHaveBeenCalledWith(
+            `/checkin/${RESERVATION_IN_URL}/verify?guest_uuid=${GUEST}&didit_error=Declined`,
+        ))
+        expect(screen.queryByText(/intentar de nuevo/i)).toBeNull()
     })
 
     it("keeps the stored basePath when it belongs to the SAME reservation (secondary-guest link)", () => {
@@ -206,11 +222,12 @@ describe("DiditCallbackClient — context resolution", () => {
                 guestUuid: GUEST,
             })
 
-            const { findByText } = render(
-                <DiditCallbackClient verificationSessionId="sess-abc" status="Declined" />,
-            )
+            render(<DiditCallbackClient verificationSessionId="sess-abc" status="Declined" />)
 
-            expect(await findByText("Verificación no completada")).toBeInTheDocument()
+            // El fallo no se sentencia acá: viaja como pista al reconciliador.
+            await waitFor(() => expect(replace).toHaveBeenCalledWith(
+                `/checkin/${RESERVATION_IN_URL}/verify?guest_uuid=${GUEST}&didit_error=Declined`,
+            ))
         })
     })
 })

@@ -30,7 +30,7 @@ describe("DocumentUpload", () => {
     vi.unstubAllGlobals()
   })
 
-  it("no inicia ni confirma la captura antes de terminar de leer el archivo", () => {
+  it("no inicia ni confirma la captura antes de terminar de leer el archivo", async () => {
     const onChange = vi.fn()
     const { container } = render(
       <DocumentUpload label="Documento" value={null} onChange={onChange} />,
@@ -38,7 +38,12 @@ describe("DocumentUpload", () => {
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
     const file = new File(["documento"], "documento.png", { type: "image/png" })
 
-    fireEvent.change(input, { target: { files: [file] } })
+    // La foto se recomprime antes de leerla (tope del proxy, `image-upload.ts`):
+    // el lector aparece un microtask después del cambio, no en el mismo tick.
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } })
+    })
+    expect(ControlledFileReader.latest).not.toBeNull()
 
     expect(screen.queryByText("Procesando documento...")).not.toBeInTheDocument()
     act(() => vi.advanceTimersByTime(2_000))

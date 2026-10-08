@@ -19,10 +19,17 @@ import { ReadOnlyField } from "@/features/checkin/components/ReadOnlyField"
 import { CatalogService } from "@/features/auth/services/catalog-service"
 import type { IdentifyPayload, IdentifySessionData } from "@/features/checkin/types/checkin"
 import { getVerificationToken } from "@/features/checkin/lib/verification-token"
-import { isDocumentAlreadyVerified } from "@/features/checkin/lib/doc-verification"
+import { documentNotice, isDocumentAlreadyVerified } from "@/features/checkin/lib/doc-verification"
 import { asCheckinError, type CheckinApiError } from "@/features/checkin/lib/checkin-error"
 import { buildCompletedCheckinHref } from "@/features/checkin/lib/success-entry"
 import { findRecoverableGuest } from "@/features/checkin/lib/identify-recovery"
+import {
+    declaredPriceError,
+    describeCurrency,
+    formatDeclaredPrice,
+    parseDeclaredPrice,
+} from "@/features/checkin/lib/declared-price"
+import { readCurrencyCode } from "@/lib/money"
 
 /** Guest-facing terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
 const GUEST_TERMS_URL = "https://hitguest.com/terminos-servicio1/"
@@ -39,10 +46,26 @@ interface IdentifyScreenProps {
      * de `totalGuests` se anclaba a un input invisible).
      */
     initialGuestCountRequired?: boolean
+    /**
+     * Mismo motivo que `initialGuestCountRequired`, para el valor de la reserva
+     * (contrato 2026-09-27): el server ya tiene el portal; el refetch cliente
+     * solo confirma. La moneda viaja junto al flag porque el campo no puede
+     * mostrarse sin ella.
+     */
+    initialPriceDeclaration?: { required: boolean; currency: string | null }
     isSecondary?: boolean
 }
 
-export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, isSecondary = false, initialGuestCountRequired = false }: IdentifyScreenProps) {
+const NO_PRICE_DECLARATION = { required: false, currency: null } as const
+
+export function IdentifyScreen({
+    reservationUuid,
+    basePath,
+    isMainGuest = true,
+    isSecondary = false,
+    initialGuestCountRequired = false,
+    initialPriceDeclaration = NO_PRICE_DECLARATION,
+}: IdentifyScreenProps) {
     const router = useRouter()
     const searchParams = useSearchParams()
     // "Continuar registro" resumes an existing guest → /identify?guest_uuid=...
@@ -134,6 +157,21 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
      */
     const [guestCountRequired, setGuestCountRequired] = useState(initialGuestCountRequired)
     const [guestCount, setGuestCount] = useState("")
+    // Valor de la reserva (contrato 2026-09-27). Flag y moneda son del backend;
+    // lo escrito se traduce con `parseDeclaredPrice` y se muestra cómo se leyó.
+    const [priceRequired, setPriceRequired] = useState(initialPriceDeclaration.required)
+    const [priceCurrency, setPriceCurrency] = useState<string | null>(initialPriceDeclaration.currency)
+    const [priceInput, setPriceInput] = useState("")
+    const declaredPrice = parseDeclaredPrice(priceInput, priceCurrency)
+    // Las dos declaraciones son SOLO del titular (contrato §1.2). Se derivan una
+    // vez y las usan render, validación y payload: un secundario que recibiera
+    // los flags en `true` quedaba bloqueado por campos que nunca veía.
+    const mustDeclareGuestCount = isMainGuest && guestCountRequired
+    const mustDeclarePrice = isMainGuest && priceRequired
+    // El valor es un dato regulatorio: sin la moneda de la reserva no se puede
+    // declarar. Un flag en `true` sin `currency` es un incumplimiento de
+    // contrato, y se bloquea el envío diciéndolo, no se manda un número mudo.
+    const priceCurrencyMissing = mustDeclarePrice && !priceCurrency
 
     useEffect(() => {
         if (isResume || isSecondary || !isMainGuest) return
@@ -141,7 +179,15 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
         checkinService.getPortal(reservationUuid)
             .then(portal => {
                 if (!active) return
-                if (portal.reservation?.requiresGuestCountDeclaration === true) setGuestCountRequired(true)
+                // La respuesta viva es la autoridad en los DOS sentidos: si el PM
+                // registró el valor entre el render del servidor y este refetch,
+                // `false` tiene que retirar el campo. Solo un fetch FALLIDO conserva
+                // lo que trajo el servidor (P0 de la auditoría 2026-09-07).
+                setGuestCountRequired(portal.reservation?.requiresGuestCountDeclaration === true)
+                setPriceRequired(portal.reservation?.requiresPriceDeclaration === true)
+                // También la moneda: una respuesta viva sin moneda no puede
+                // conservar en silencio la que trajo el servidor.
+                setPriceCurrency(readCurrencyCode(portal.reservation?.currency))
                 const patch = mainGuestPrefillPatch(
                     normalizeMainGuestPrefill(portal.reservation?.mainGuestPrefill),
                     { includeContact: false },
@@ -190,7 +236,8 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
     }
 
     const isValid =
-        (!guestCountRequired || Number(guestCount) >= 1) &&
+        (!mustDeclareGuestCount || Number(guestCount) >= 1) &&
+        (!mustDeclarePrice || (declaredPrice != null && priceCurrency != null)) &&
         form.name.trim().length >= 2 &&
         form.lastname.trim().length >= 2 &&
         form.nationalityId !== "" &&
@@ -235,12 +282,14 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
             // confirmada su identidad.
             const hasOtpToken = getVerificationToken(reservationUuid, match.uuid) !== null
             if (isDocumentAlreadyVerified(match, hasOtpToken)) {
-                // Al exonerado por el PM (waived) NO se le dice nada: el contrato
-                // pide que el portal «simplemente lo deje continuar», sin cartel.
-                // Decirle «ya fue verificada» afirmaría algo que no pasó, y hasta un
-                // aviso neutro delata que su caso recibió un trato distinto.
-                if (match.verification?.status !== "waived") {
+                // El motivo decide el aviso (misma regla que el chip del formulario):
+                // verificado → se dice; capturado → solo subió fotos, no se afirma
+                // verificación; exonerado → nada, el contrato pide silencio.
+                const notice = documentNotice(match)
+                if (notice === "verified") {
                     toast.info("Tu identidad ya fue verificada. Continuamos con tus datos.")
+                } else if (notice === "captured") {
+                    toast.info("Ya recibimos las fotos de tu documento. Continuamos con tus datos.")
                 }
                 router.push(`${basePath}/guest?guest_uuid=${match.uuid}`)
                 return true
@@ -269,6 +318,9 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                         url: verif.verificationUrl,
                     },
                     formSchema: { requiredFields: [], optionalFields: [], prefilledData: {} },
+                    // Corre dentro de un handler (tras el submit), no en el render:
+                    // la marca de tiempo de la sesión reanudada es legítima acá.
+                    // eslint-disable-next-line react-hooks/purity
                     timestamp: Date.now(),
                     identificationTypeId: Number(payload.identificationTypeId) || undefined,
                 }
@@ -298,7 +350,9 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
             isMainGuest,
             // Solo cuando el portal lo exige: fuera de Airbnb iCal el identify
             // es idéntico al de siempre.
-            ...(guestCountRequired ? { totalGuests: Number(guestCount) } : {}),
+            ...(mustDeclareGuestCount ? { totalGuests: Number(guestCount) } : {}),
+            // Número con punto decimal, nunca el texto escrito (§1.2).
+            ...(mustDeclarePrice && declaredPrice != null ? { totalPrice: declaredPrice } : {}),
         }
 
         try {
@@ -337,6 +391,9 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                     break
                 case "session":
                 case "document_upload":
+                // Contrato 2026-09-27: captura sin verificación. Misma pantalla de
+                // subida; VerifyScreen decide por el `type` qué pedir.
+                case "document_capture":
                     router.push(`${basePath}/verify?guest_uuid=${response.guest.uuid}`)
                     break
                 case "contact_challenge":
@@ -380,8 +437,16 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 setFieldErrors({ identificationNumber: "Este número de documento ya está registrado en esta reserva." })
                 toast.error("Este documento ya está asociado a un huésped en esta reserva")
             } else if (e.status === 422) {
-                // Check if it's specifically a max_guests error or a validation error
-                if (e.message.toLowerCase().includes("maximum") || e.message.toLowerCase().includes("máximo")) {
+                // Cupo agotado (o reserva inexistente): el contrato del portal §7 lo
+                // manda SIEMPRE en `errors.reservation`, venga del Form Request o
+                // de la transacción. Se decide por la clave, no por el texto: el
+                // mensaje está traducido y, si no decía «maximum»/«máximo», caía
+                // como error de campo sobre un campo que el formulario no tiene.
+                const reservationError = e.errors?.reservation?.find((m) => typeof m === "string" && m.trim() !== "")
+                if (reservationError) {
+                    toast.error(reservationError)
+                    router.push(basePath)
+                } else if (e.message.toLowerCase().includes("maximum") || e.message.toLowerCase().includes("máximo")) {
                     router.push(`${basePath}?error=max_guests`)
                 } else if (e.errors && typeof e.errors === 'object') {
                     // Field-level validation errors
@@ -398,7 +463,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 setFieldErrors(e.errors)
                 toast.error("Por favor revisa los campos marcados")
             } else {
-                notifyError(e, "Error al verificar identidad")
+                notifyError(e, "No pudimos continuar con tu identificación")
             }
         } finally {
             setIsSubmitting(false)
@@ -419,11 +484,15 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
             </div>
 
             <div className="space-y-2">
+                {/* Neutral a propósito: antes de este envío no se sabe si la
+                    propiedad verifica identidad o solo registra las fotos del
+                    documento (contrato 2026-09-27, captura sin verificación).
+                    Prometer «verificar» le mentía al huésped del segundo caso. */}
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
-                    Verificación de Identidad
+                    Identificación
                 </h1>
                 <p className="text-slate-500 text-sm">
-                    Necesitamos verificar tu documento para continuar con el registro.
+                    Necesitamos registrar tu documento para continuar con el registro.
                 </p>
             </div>
 
@@ -528,7 +597,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                 {/* Airbnb iCal: el feed no trae ocupación, la declara el titular acá.
                     "incluyéndote" importa — si se descuenta, la reserva queda corta y
                     los acompañantes no podrán registrarse. */}
-                {guestCountRequired && isMainGuest && (
+                {mustDeclareGuestCount && (
                     <div className="space-y-1.5">
                         <label className="text-sm font-semibold text-slate-700">
                             ¿Cuántos huéspedes se hospedarán, incluyéndote?<span className="text-red-400 ml-0.5">*</span>
@@ -544,6 +613,44 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                             placeholder="Ej. 2"
                         />
                         {fieldErrors.totalGuests && <p className="text-xs text-red-500">{fieldErrors.totalGuests}</p>}
+                    </div>
+                )}
+
+                {/* Valor total (contrato 2026-09-27): solo el principal y solo con el
+                    flag. La moneda se nombra SIEMPRE: sin ella, un huésped extranjero
+                    escribe dólares y se reportan como pesos. */}
+                {priceCurrencyMissing && (
+                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+                        Tu reserva pide el valor total, pero no informa en qué moneda. No podemos
+                        recibirlo así: contacta al anfitrión para que lo registre.
+                    </div>
+                )}
+                {mustDeclarePrice && priceCurrency && (
+                    <div className="space-y-1.5">
+                        <label htmlFor="identify-total-price" className="text-sm font-semibold text-slate-700">
+                            Valor total de tu reserva{priceCurrency ? ` (${priceCurrency})` : ""}<span className="text-red-400 ml-0.5">*</span>
+                        </label>
+                        <p className="text-xs text-slate-500">
+                            Ingresa el valor total de tu estadía
+                            {describeCurrency(priceCurrency) ? ` en ${describeCurrency(priceCurrency)}` : ""}.
+                            Lo encuentras en el detalle de tu viaje en Airbnb.
+                        </p>
+                        <input
+                            id="identify-total-price"
+                            type="text"
+                            inputMode="decimal"
+                            value={priceInput}
+                            onChange={e => setPriceInput(e.target.value)}
+                            aria-invalid={priceInput.trim() !== "" && declaredPrice == null ? true : undefined}
+                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all ${fieldErrors.totalPrice || (priceInput.trim() !== "" && declaredPrice == null) ? "border-red-400" : "border-slate-200"}`}
+                            placeholder="Ej. 850.000"
+                        />
+                        {priceInput.trim() !== "" && (
+                            declaredPrice != null
+                                ? <p className="text-xs text-slate-500">Vas a declarar: <span className="font-semibold text-slate-700">{formatDeclaredPrice(declaredPrice, priceCurrency)}</span></p>
+                                : <p className="text-xs text-red-500">{declaredPriceError(priceInput, priceCurrency)}</p>
+                        )}
+                        {fieldErrors.totalPrice && <p className="text-xs text-red-500">{fieldErrors.totalPrice}</p>}
                     </div>
                 )}
 
@@ -597,7 +704,7 @@ export function IdentifyScreen({ reservationUuid, basePath, isMainGuest = true, 
                         {isSubmitting ? (
                             <><Loader2 className="animate-spin" size={20} /> Verificando...</>
                         ) : (
-                            isLoadingCatalogs ? "Cargando..." : "Verificar Identidad"
+                            isLoadingCatalogs ? "Cargando..." : "Continuar"
                         )}
                     </button>
                 </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { isDocumentAlreadyVerified, resolvePreFormVerificationStep } from "./doc-verification"
+import { documentNotice, isDocumentAlreadyVerified, resolvePreFormVerificationStep, acceptedUploadFallback } from "./doc-verification"
 import type { GuestVerificationInfo, RegisteredGuest } from "../types/checkin"
 
 type Guest = Pick<RegisteredGuest, "isCompleted" | "verification">
@@ -19,6 +19,25 @@ const verification = (
     isStale: false,
     verificationUrl: null,
     ...over,
+})
+
+describe("documentNotice (contrato 2026-09-27)", () => {
+    const withStatus = (status: string) => ({
+        isCompleted: false,
+        verification: { status, currentStep: "form" } as unknown as RegisteredGuest["verification"],
+    })
+
+    it("distingue verificado, exonerado y capturado, por cualquiera de las dos fuentes", () => {
+        expect(documentNotice(withStatus("approved"), { status: "verified" } as never)).toBe("verified")
+        expect(documentNotice(withStatus("waived"), null)).toBe("waived")
+        expect(documentNotice(withStatus("approved"), { waived: true })).toBe("waived")
+        expect(documentNotice(withStatus("document_captured"), null)).toBe("captured")
+        expect(documentNotice(withStatus("not_started"), { captured: true })).toBe("captured")
+    })
+
+    it("la captura omite las fotos del formulario: ya están en la reserva", () => {
+        expect(isDocumentAlreadyVerified(withStatus("document_captured"), false)).toBe(true)
+    })
 })
 
 describe("isDocumentAlreadyVerified", () => {
@@ -157,5 +176,20 @@ describe("resolvePreFormVerificationStep", () => {
             resultStatus: "contact_challenge",
             contactChallengeSatisfied: true,
         })).toBe("form")
+    })
+})
+
+describe("acceptedUploadFallback — subida aceptada y backend sin responder", () => {
+    it("sin ninguna fuente del backend, el 200 anotado evita repetir las fotos", () => {
+        expect(acceptedUploadFallback("captured", false)).toBe("captured")
+        expect(acceptedUploadFallback("verified", false)).toBe("verified")
+    })
+
+    it("una observación real del backend siempre gana (p. ej. un reset del PM)", () => {
+        expect(acceptedUploadFallback("verified", true)).toBeNull()
+    })
+
+    it("sin subida anotada no inventa nada", () => {
+        expect(acceptedUploadFallback(undefined, false)).toBeNull()
     })
 })

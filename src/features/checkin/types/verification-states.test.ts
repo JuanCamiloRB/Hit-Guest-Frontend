@@ -3,7 +3,8 @@ import { isSelfRecoverableVerification, type GuestVerificationInfo } from "./che
 import { isDocumentAlreadyVerified } from "../lib/doc-verification"
 
 /**
- * Los 16 estados que el backend puede emitir hoy (§A del documento de endpoints).
+ * Los 18 estados que el backend puede emitir hoy (§A del documento de endpoints
+ * + `waived` 2026-09-08 + `document_captured` 2026-09-27).
  * El front declaraba 10; estos tests fijan los que faltaban y, sobre todo, las
  * trampas de cada uno.
  */
@@ -11,6 +12,7 @@ const TODOS_LOS_ESTADOS: GuestVerificationInfo["status"][] = [
     "not_started", "pending", "in_progress", "resubmitted", "in_review",
     "approved", "rejected", "fail", "expired", "completed",
     "contact_challenge_pending", "pass", "kyc_session_failed", "superseded", "ocr_rejected", "abandoned",
+    "waived", "document_captured",
 ]
 
 const guest = (
@@ -29,8 +31,15 @@ const guest = (
 })
 
 describe("estados de verificación del backend", () => {
-    it("el tipo cubre los 16 estados que el backend emite", () => {
-        expect(new Set(TODOS_LOS_ESTADOS).size).toBe(16)
+    it("el tipo cubre los 18 estados que el backend emite", () => {
+        expect(new Set(TODOS_LOS_ESTADOS).size).toBe(18)
+    })
+
+    it("la captura sin verificación exime de las fotos pero nunca se promociona a verificada", () => {
+        expect(isDocumentAlreadyVerified(
+            guest({ status: "document_captured", currentStep: "form", verifiedAt: null }),
+            false,
+        )).toBe(true)
     })
 
     describe("'pass' — la trampa: aprobado en biometría pero NO verificado", () => {

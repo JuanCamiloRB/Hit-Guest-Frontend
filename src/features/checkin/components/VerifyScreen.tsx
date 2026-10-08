@@ -12,10 +12,13 @@ import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { DateField } from "@/features/checkin/components/DateField"
 import { isValidDateValue, localDateValue } from "@/features/checkin/lib/date-field"
 import { attemptsRemainingNotice, describeVerificationFailure } from "@/features/checkin/components/verification-failure-meta"
+import { exceedsProxyLimit, prepareImageForUpload } from "@/lib/image-upload"
 import { ReassuranceTicker } from "@/features/checkin/components/ReassuranceTicker"
 import { DIDIT_WAIT_SCRIPT } from "@/features/checkin/lib/reassurance"
 import { CatalogService } from "@/features/auth/services/catalog-service"
 import type { OCRResult, IdentifySessionData } from "@/features/checkin/types/checkin"
+import { describeUndetectedSides, readFailedSides } from "@/features/checkin/lib/document-capture"
+import { buildCompletedCheckinHref } from "@/features/checkin/lib/success-entry"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { diditCompletionAction } from "@/features/checkin/lib/didit-completion"
 import type { VerificationResult } from "@didit-protocol/sdk-web"
@@ -38,12 +41,17 @@ interface VerifyScreenProps {
 }
 
 /** Terminal Didit session statuses → what the guest is actually told. */
+/**
+ * Lo que Didit dijo en el redirect, en palabras del huésped. SOLO describe:
+ * si se puede reintentar lo dice el backend (`canRetry`) cuando se reconcilia,
+ * así que acá no se promete ningún «intenta de nuevo».
+ */
 const DIDIT_ERROR_MESSAGES: Record<string, string> = {
-    declined: "Tu verificación fue rechazada. Puedes intentarlo de nuevo.",
-    rejected: "Tu verificación fue rechazada. Puedes intentarlo de nuevo.",
-    expired: "La verificación expiró. Inicia una nueva para continuar.",
-    abandoned: "No completaste la verificación. Puedes retomarla cuando quieras.",
-    failed: "La verificación no pudo completarse. Intenta de nuevo.",
+    declined: "Didit no aprobó la verificación.",
+    rejected: "Didit no aprobó la verificación.",
+    expired: "La sesión de verificación venció.",
+    abandoned: "La verificación quedó sin completar.",
+    failed: "La verificación no pudo completarse.",
 }
 
 /**
@@ -65,6 +73,9 @@ type RetryScope = "selfie" | "documents" | "all" | "none"
  * document-quality failures reset the document photos; hard stops offer no retry.
  * `message` is a fallback — the backend's localized message is preferred when present.
  */
+const PHOTOS_TOO_LARGE_MESSAGE =
+    "Las fotos pesan demasiado para enviarlas. Vuelve a tomarlas con la cámara del teléfono, sin usar el modo de máxima resolución."
+
 const DOC_ERROR_UI: Record<string, { retry: RetryScope; message: string }> = {
     FACE_MISMATCH:              { retry: "selfie",    message: "Tu selfie no coincide con el documento. Tómate otra foto." },
     NO_FACE_DETECTED:           { retry: "selfie",    message: "No detectamos un rostro. Asegúrate de tener buena iluminación y que tu cara esté centrada." },
@@ -76,6 +87,15 @@ const DOC_ERROR_UI: Record<string, { retry: RetryScope; message: string }> = {
     EXPIRED_DOCUMENT:           { retry: "none",      message: "El documento está vencido. No es posible continuar el registro." },
     DOCUMENT_NUMBER_MISMATCH:   { retry: "none",      message: "El número del documento no coincide con el registrado. Contacta al anfitrión." },
     UNSUPPORTED_DOCUMENT_LAYOUT:{ retry: "documents", message: "Este formato de documento no es compatible con la validación automática. Usa tu pasaporte para continuar." },
+    // Contrato 2026-09-27 (captura sin verificación). El mensaje real se compone
+    // con el lado señalado en `failedFields`; este es el respaldo.
+    DOCUMENT_NOT_DETECTED:      { retry: "documents", message: "No detectamos un documento en la foto. Toma otra con el documento completo y bien iluminado." },
+    // Contrato 2026-10-03: el tope de intentos también rige la subida OCR. El
+    // backend manda el mismo mensaje que /identify; este es el respaldo.
+    VERIFICATION_ATTEMPTS_EXHAUSTED: { retry: "none", message: "Ya usaste todos los intentos de verificación. Contacta al anfitrión para continuar." },
+    // GUEST_ALREADY_COMPLETED no está acá a propósito: no es un fallo sino la
+    // confirmación de que el check-in ya terminó. `handleUploadError` lo
+    // intercepta y lleva a la pantalla de éxito, como hace la identificación.
 }
 
 export function VerifyScreen({
@@ -117,12 +137,21 @@ export function VerifyScreen({
     const [ocrResult, setOcrResult] = useState<OCRResult | null>(null)
     // Stores the active Didit session step for copy/UX purposes
     const [diditStep, setDiditStep] = useState<"biometric" | "kyc">("biometric")
+    /**
+     * Lo que Didit dijo en el redirect (`?didit_error=`). Es una PISTA, no el
+     * veredicto: el backend decide con el webhook, y `/verify/result` trae
+     * `canRetry`, `failureReason` y `attemptsRemaining`. Se muestra mientras
+     * se confirma y desaparece con el resultado real.
+     */
+    const [diditHint, setDiditHint] = useState<string | null>(null)
     // Current portal verification.status — used to display contextual message while polling
     const [portalVerifStatus, setPortalVerifStatus] = useState<string>("")
     // Identification number used in IdentifyScreen, stored via localStorage to drive mock routing
     const [identTrigger, setIdentTrigger] = useState<string>("")
     // Whether the selected document type requires a back image (false = single-sided like passport)
-    const [requiresBackImage, setRequiresBackImage] = useState<boolean>(true)
+    // Del catálogo de tipos de documento: aplica al flujo OCR. En captura manda
+    // la directiva del backend (ver `requiresBackImage` derivado más abajo).
+    const [catalogRequiresBackImage, setCatalogRequiresBackImage] = useState<boolean>(true)
     // Backend-provided (localized) reason the verification failed — shown on the failed screen.
     const [failureMessage, setFailureMessage] = useState<string | null>(null)
 
@@ -144,6 +173,15 @@ export function VerifyScreen({
     const lastLaunchedUrlRef = useRef<string | null>(null)
 
     const verification = session?.verification ?? null
+    // Contrato 2026-09-27: captura de documento SIN verificación. Comparte la
+    // subida con el flujo de IA propia (mismo endpoint, mismos archivos) pero no
+    // pide selfie, no confirma datos extraídos (llegan vacíos) y su
+    // `requiresBackImage` lo manda el backend en la directiva, no el catálogo.
+    const isCaptureMode = verification?.type === "document_capture"
+    const isDocumentFlow = verification?.type === "document_upload" || isCaptureMode
+    const requiresBackImage = verification?.type === "document_capture"
+        ? verification.requiresBackImage
+        : catalogRequiresBackImage
 
     // Copy config per Didit step
     const diditCopy = {
@@ -152,9 +190,12 @@ export function VerifyScreen({
             description: "Completa un reconocimiento facial rápido. Si ya estás en Didit con documentos válidos, no necesitas subir nada más.",
             button: "Iniciar Verificación Facial",
         },
+        // Contrato 2026-10-08: el huésped que Didit nunca verificó entra DIRECTO a
+        // KYC (documento + una selfie con liveness, en una sola sesión). Ya no es
+        // «el paso adicional» después del facial.
         kyc: {
             title: "Verifica tu Documento",
-            description: "Toma una foto de tu documento de identidad y una selfie para completar tu verificación.",
+            description: "Verifica tu identidad en un solo proceso: fotografía tu documento por ambos lados (cuando aplique) y toma una selfie para confirmar que eres el titular.",
             button: "Iniciar Verificación de Documento",
         },
     } as const
@@ -172,7 +213,7 @@ export function VerifyScreen({
                 (sessionData?.formSchema?.prefilledData?.identificationTypeId as number | undefined)
             if (typeId) {
                 const match = types.find(t => t.id === Number(typeId))
-                if (match) setRequiresBackImage(match.requiresBackImage)
+                if (match) setCatalogRequiresBackImage(match.requiresBackImage)
             }
         }).catch(() => {
             // Fallback: keep requiresBackImage=true (show both fields by default)
@@ -254,16 +295,20 @@ export function VerifyScreen({
                 lastLaunchedUrlRef.current = verification.url
             }
         }
-        // A terminal Didit status wins over polling: the session is over, there is
-        // nothing left for the portal to confirm. Show the guest WHY it stopped —
-        // the callback has been appending `?didit_error=` all along and nothing
-        // read it, so a declined session looked identical to a fresh screen.
+        // Lo que Didit dijo en el redirect (`?didit_error=`) es una PISTA, no el
+        // veredicto: el backend decide con el webhook y `/verify/result` trae
+        // `canRetry`, `failureReason` y `attemptsRemaining`. Se reconcilia
+        // SIEMPRE, también sin sesión ni marcador local (otro navegador, modo
+        // privado, contexto vencido): el sondeo solo necesita los ids de la ruta.
+        // Antes, en ese caso, se sentenciaba el fallo con un texto fijo.
         if (diditError) {
-            setFailureMessage(
-                DIDIT_ERROR_MESSAGES[diditError.toLowerCase()]
-                ?? "La verificación no pudo completarse. Intenta de nuevo.",
+            setDiditHint(
+                DIDIT_ERROR_MESSAGES[diditError.toLowerCase()] ?? "La verificación no pudo completarse.",
             )
-            setVerificationState("failed")
+            if (!lastLaunchedUrlRef.current && verification?.type === "session") {
+                lastLaunchedUrlRef.current = verification.url
+            }
+            startPortalPolling()
         } else if (shouldResumePolling) {
             // Redirected back from Didit or reopened after launching it — reconcile
             // immediately against the backend-owned verification state.
@@ -343,7 +388,7 @@ export function VerifyScreen({
             }
             if (outcome.status === "verified") {
                 setProgress(100)
-                handleVerificationSuccess(outcome.waived === true)
+                handleVerificationSuccess(outcome.waived === true || outcome.captured === true)
                 return true
             }
             if (outcome.status === "restart_required") {
@@ -438,7 +483,8 @@ export function VerifyScreen({
         pollingRef.current = setTimeout(poll, 0)
     }
 
-    function handleVerificationSuccess(waived = false) {
+    /** `silent`: exonerado o capturado — avanza igual, sin cartel de «verificada». */
+    function handleVerificationSuccess(silent = false) {
         pollGenerationRef.current = null
         if (pollingRef.current) clearTimeout(pollingRef.current)
         try {
@@ -450,7 +496,7 @@ export function VerifyScreen({
         // Un exonerado avanza igual, pero sin el cartel: su identidad NO se
         // verificó y afirmarlo mentiría (QA 3 del contrato 2026-09-08). El
         // contrato pide silencio, no un mensaje alternativo.
-        if (!waived) toast.success("Identidad verificada exitosamente")
+        if (!silent) toast.success("Identidad verificada exitosamente")
         setTimeout(() => router.push(`${basePath}/guest?guest_uuid=${guestUuid}`), 600)
     }
 
@@ -534,8 +580,8 @@ export function VerifyScreen({
     const MAX_FILE_SIZE_MB = 10
     const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
-    /** Documents captured — validate their size, then advance to the selfie step. */
-    const goToSelfie = () => {
+    /** Documents captured — validate their size, then advance (selfie, or send in capture mode). */
+    const handleDocumentsContinue = () => {
         if (!frontFile) {
             toast.error("La foto frontal del documento es obligatoria")
             return
@@ -554,6 +600,10 @@ export function VerifyScreen({
         }
         setFailureMessage(null)
         setDocErrorType(null)
+        if (isCaptureMode) {
+            void handleDocumentUpload()
+            return
+        }
         setCaptureStep("selfie")
     }
 
@@ -566,37 +616,87 @@ export function VerifyScreen({
         const e = asCheckinError(raw)
         // `errorType` is the OCR contract; some validation responses expose the
         // same discriminator as `code`. Accept both while backend versions roll.
-        const errorType = e.errorType ?? (e.code && DOC_ERROR_UI[e.code] ? e.code : undefined)
+        const errorType = e.errorType
+            ?? (e.code && (DOC_ERROR_UI[e.code] || e.code === "GUEST_ALREADY_COMPLETED") ? e.code : undefined)
+        // Contrato 2026-09-27 §2.2: el huésped ya completó su check-in. Mostrarlo
+        // como «verificación no exitosa» contradecía el hecho; es la misma
+        // recuperación idempotente que /identify ya hace con `isCheckinCompleted`.
+        if (errorType === "GUEST_ALREADY_COMPLETED") {
+            toast.info("Este check-in ya estaba completado")
+            router.push(buildCompletedCheckinHref(basePath, guestUuid, "completion_already_recorded"))
+            return
+        }
+        // Un 413 lo emite el borde de Vercel antes del proxy y del backend: no
+        // trae `errorType`, su cuerpo no tiene `message` y nadie lo loguea. Sin
+        // esta rama el huésped veía un «Error en la solicitud» sin salida.
+        if (e.status === 413) {
+            setDocErrorType(null)
+            setFailureMessage(PHOTOS_TOO_LARGE_MESSAGE)
+            setVerificationState("idle")
+            setCaptureStep("documents")
+            toast.error(PHOTOS_TOO_LARGE_MESSAGE)
+            return
+        }
         const ui = errorType ? DOC_ERROR_UI[errorType] : undefined
+        // Contrato 2026-09-27: `failedFields` señala el LADO sin documento.
+        const failedSides = readFailedSides(e.failedFields)
         // This new validation exists specifically to tell the guest to switch to
         // a passport. A generic backend 422 message must not erase that recovery.
-        const message = errorType === "UNSUPPORTED_DOCUMENT_LAYOUT"
+        const baseMessage = errorType === "UNSUPPORTED_DOCUMENT_LAYOUT"
             ? ui!.message
-            : e.message || ui?.message || "No pudimos verificar tu identidad. Intenta de nuevo con fotos más claras."
+            : errorType === "DOCUMENT_NOT_DETECTED"
+                ? describeUndetectedSides(failedSides)
+                : e.message || ui?.message || "No pudimos verificar tu identidad. Intenta de nuevo con fotos más claras."
+        // Contrato 2026-10-03: cada 422 de la subida OCR dice si queda reintento.
+        // `canRetry: false` es definitivo aunque el motivo sea reparable (la
+        // última foto borrosa agota el tope): ofrecer otra toma solo llevaría a
+        // VERIFICATION_ATTEMPTS_EXHAUSTED. La captura no es verificación ni tiene
+        // tope, así que ahí ese bloque no decide nada.
+        const uploadVerification = isCaptureMode ? undefined : e.verification
+        const retryClosed = uploadVerification?.canRetry === false
+        // Un motivo reparable con el reintento cerrado solo puede ser el tope.
+        // Uno ya definitivo (duplicado, vencido) no se atribuye a los intentos.
+        const closedByCap = retryClosed && ui?.retry !== "none"
+        const message = closedByCap
+            ? `${baseMessage} Ya no quedan intentos de verificación; contacta al anfitrión para continuar.`
+            : baseMessage
         setDocErrorType(errorType ?? null)
         setFailureMessage(message)
 
-        const scope: RetryScope = ui?.retry ?? "all"
+        // §17 (2026-10-03): «el frontend decide entre reintentar y soporte con
+        // `verification.canRetry`». Manda en los DOS sentidos: un motivo que
+        // la tabla local da por definitivo (duplicado, vencido, número
+        // distinto) se reintenta con otras fotos si el backend lo permite. Sin
+        // el bloque (backend anterior) decide la tabla local.
+        const scope: RetryScope = retryClosed
+            ? "none"
+            : uploadVerification?.canRetry === true && ui?.retry === "none"
+                ? "documents"
+                : ui?.retry ?? "all"
         if (scope === "none") {
+            if (retryClosed) setFailureRetryable(false)
             // Hard stop — no retry; the failed screen shows a contact-support message.
             setVerificationState("failed")
             return
         }
         // Retryable: stay in the capture view (idle) so cached files survive.
-        if (scope === "selfie") {
+        // En captura no existe el paso de selfie: toda recuperación vuelve a las fotos.
+        if (scope === "selfie" && !isCaptureMode) {
             setSelfieFile(null)
             setCaptureStep("selfie")
         } else if (scope === "documents") {
-            setFrontFile(null)
-            setBackFile(null)
+            // Solo el lado señalado; sin señal (contrato OCR), los dos.
+            if (failedSides.length === 0 || failedSides.includes("front")) setFrontFile(null)
+            if (failedSides.length === 0 || failedSides.includes("back")) setBackFile(null)
             setSelfieFile(null)
             setCaptureStep("documents")
         } else {
             // "all" (e.g. SERVICE_UNAVAILABLE) — keep every file, let them resubmit.
-            setCaptureStep("selfie")
+            setCaptureStep(isCaptureMode ? "documents" : "selfie")
         }
         setVerificationState("idle")
-        toast.error(message)
+        const attemptsNotice = attemptsRemainingNotice(uploadVerification?.attemptsRemaining)
+        toast.error(message, attemptsNotice ? { description: attemptsNotice } : undefined)
     }
 
     const handleDocumentUpload = async () => {
@@ -612,7 +712,7 @@ export function VerifyScreen({
             setCaptureStep("documents")
             return
         }
-        if (!selfieFile) {
+        if (!isCaptureMode && !selfieFile) {
             toast.error("La selfie es obligatoria")
             return
         }
@@ -624,7 +724,7 @@ export function VerifyScreen({
             toast.error(`La foto del reverso no puede superar ${MAX_FILE_SIZE_MB}MB`)
             return
         }
-        if (selfieFile.size > MAX_FILE_SIZE_BYTES) {
+        if (selfieFile && selfieFile.size > MAX_FILE_SIZE_BYTES) {
             toast.error(`La selfie no puede superar ${MAX_FILE_SIZE_MB}MB`)
             return
         }
@@ -632,13 +732,51 @@ export function VerifyScreen({
         setDocErrorType(null)
         setVerificationState("verifying")
         try {
+            // Las fotos se recomprimen acá: el proxy corta la petición en 4 MB y
+            // tres fotos de teléfono lo superan sin que ningún log lo registre
+            // (ver `src/lib/image-upload.ts`). Las originales se conservan en
+            // memoria por si hay que reintentar.
+            const [front, back, selfie] = await Promise.all([
+                prepareImageForUpload(frontFile),
+                backFile ? prepareImageForUpload(backFile) : null,
+                !isCaptureMode && selfieFile ? prepareImageForUpload(selfieFile) : null,
+            ])
+            if (exceedsProxyLimit([front, back, selfie])) {
+                setVerificationState("idle")
+                setCaptureStep("documents")
+                toast.error(PHOTOS_TOO_LARGE_MESSAGE)
+                return
+            }
+
             const formData = new FormData()
-            formData.append("front_image", frontFile) // snake_case — multipart has no auto-conversion
-            if (backFile) formData.append("back_image", backFile) // snake_case — multipart has no auto-conversion
-            formData.append("selfie_image", selfieFile) // NEW (v4.7): face comparison vs. document photo
+            formData.append("front_image", front) // snake_case — multipart has no auto-conversion
+            if (back) formData.append("back_image", back) // snake_case — multipart has no auto-conversion
+            // Captura (2026-09-27): sin selfie — si llegara, el backend la ignora.
+            if (selfie) formData.append("selfie_image", selfie) // v4.7: face comparison vs. document photo
 
             const ocr = await checkinService.uploadDocumentImages(reservationUuid, guestUuid, formData)
 
+            if (isCaptureMode) {
+                // §2.2: nada leyó el documento (`extractedData` vacío), así que no
+                // hay datos que confirmar y la pantalla de OCR mentiría (y bloquea
+                // sin fecha de nacimiento). Se guarda lo que el huésped ya declaró
+                // como base del formulario —sin pisar un borrador suyo— y se avanza.
+                try {
+                    if (!localStorage.getItem(formStorageKey)) {
+                        localStorage.setItem(formStorageKey, JSON.stringify(ocr.formSchema?.prefilledData ?? {}))
+                    }
+                } catch {}
+                // La directiva de la sesión sigue diciendo `document_capture`: se
+                // anota que el backend ya aceptó las fotos (ver `acceptedUploadFallback`).
+                if (session) saveRaw({ ...session, uploadOutcome: "captured" })
+                toast.success("Fotos del documento recibidas")
+                router.push(`${basePath}/guest?guest_uuid=${guestUuid}`)
+                return
+            }
+
+            // El 200 ya es la aprobación persistida (ver abajo); se anota para el
+            // formulario por si después no responde ninguna fuente del backend.
+            if (session) saveRaw({ ...session, uploadOutcome: "verified" })
             setOcrResult(ocr)
             // Backend may split data across extractedData and formSchema.prefilledData
             // Aunque el contrato declara `extractedData`, una respuesta 2xx sin
@@ -744,11 +882,11 @@ export function VerifyScreen({
     // ── Loading states (verifying, polling, waiting_portal) ──
     if (verificationState === "verifying" || verificationState === "polling" || verificationState === "waiting_portal") {
         const loadingTitle =
-            verificationState === "verifying" ? "Analizando documento..." :
+            verificationState === "verifying" ? (isCaptureMode ? "Guardando tus fotos..." : "Analizando documento...") :
             verificationState === "waiting_portal" ? "Procesando verificación..." :
             diditStep === "biometric" ? "Procesando verificación facial..." : "Procesando verificación de documento..."
         const loadingSubtitle =
-            verificationState === "verifying" ? "Extrayendo datos con Inteligencia Artificial..." :
+            verificationState === "verifying" ? (isCaptureMode ? "Recortando el documento para guardarlo con tu reserva..." : "Extrayendo datos con Inteligencia Artificial...") :
             verificationState === "waiting_portal" && portalVerifStatus !== "pending" ? (portalStatusMessages[portalVerifStatus] || "El servidor está confirmando tu identidad con Didit...") :
             diditStep === "biometric" ? "Completando reconocimiento facial con Didit..." : "Completando verificación de documento con Didit..."
         return (
@@ -777,6 +915,11 @@ export function VerifyScreen({
                         </>
                     ) : (
                         <p className="text-slate-500 text-sm">{loadingSubtitle}</p>
+                    )}
+                    {(verificationState === "polling" || verificationState === "waiting_portal") && diditHint && (
+                        <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800" role="status">
+                            Didit reportó: {diditHint} Estamos confirmando el resultado con el servidor.
+                        </p>
                     )}
                     {verificationState === "polling" && (
                         <>
@@ -919,8 +1062,9 @@ export function VerifyScreen({
     }
 
     // ── Expired session state ──
-    // The Didit session backing the URL expired (created >7 days ago). Resetting
-    // re-runs /identify so the backend can hand back a fresh session URL.
+    // The Didit session backing the URL expired (the link lasts 24 h; the backend
+    // reports `expiresAt` at creation + 23 h). Resetting re-runs /identify so the
+    // backend can hand back a fresh session URL.
     if (verificationState === "expired") {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
@@ -982,7 +1126,9 @@ export function VerifyScreen({
                         // sesión nueva. La `verificationUrl` de un rechazo apunta a
                         // la sesión ya resuelta — reabrirla no hace nada (trampa §4
                         // del contrato 2026-09-02).
-                        onClick={verification?.type === "session" ? handleResetVerification : handleRetry}
+                        // Sin sesión local (retorno desde otro navegador) tampoco hay
+                        // directiva que repetir acá: /identify la vuelve a emitir.
+                        onClick={verification?.type === "session" || !verification ? handleResetVerification : handleRetry}
                         className="flex items-center gap-2 h-12 px-6 bg-brand-purple text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                     >
                         <RotateCcw size={18} />
@@ -1023,12 +1169,18 @@ export function VerifyScreen({
 
             <div className="space-y-2">
                 <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
-                    Verifica tu Identidad
+                    {isCaptureMode ? "Sube tu documento" : "Verifica tu Identidad"}
                 </h1>
                 <p className="text-slate-500 text-sm">
                     {verification.type === "session"
-                        ? "Completa la verificación de identidad directamente aquí con Didit. Solo toma un minuto."
-                        : "Sube una foto de tu documento y una selfie para verificar tu identidad."}
+                        ? (verification.sessionType === "kyc"
+                            ? "Completa la verificación con Didit en un solo proceso: tu documento y una selfie."
+                            : "Completa la verificación de identidad directamente aquí con Didit. Solo toma un minuto.")
+                        : isCaptureMode
+                            ? (requiresBackImage
+                                ? "Toma una foto del frente y del reverso de tu documento. Queda guardado con tu reserva."
+                                : "Toma una foto del frente de tu documento. Queda guardado con tu reserva.")
+                            : "Sube una foto de tu documento y una selfie para verificar tu identidad."}
                 </p>
             </div>
 
@@ -1036,7 +1188,7 @@ export function VerifyScreen({
                 cámara. Un escaneo con el lente sucio o poca luz no falla con un
                 error — se queda a medias y deja al huésped esperando. Prevenirlo
                 es más barato que recuperarlo. Aplica a los dos flujos con cámara. */}
-            {(verification.type === "session" || verification.type === "document_upload") && (
+            {(verification.type === "session" || isDocumentFlow) && (
                 <div className="flex items-start gap-2.5 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
                     <Camera size={16} className="mt-0.5 shrink-0 text-amber-500" aria-hidden />
                     <p className="text-sm text-amber-800">
@@ -1073,8 +1225,9 @@ export function VerifyScreen({
                 )
             })()}
 
-            {/* document_upload: two steps — documents first, selfie last (G3 + v4.7 face) */}
-            {verification.type === "document_upload" && (
+            {/* document_upload: two steps — documents first, selfie last (G3 + v4.7 face).
+                document_capture: solo el primero; el botón envía directo. */}
+            {isDocumentFlow && (
                 <div className="space-y-4">
                     {/* A retryable error keeps us in the capture view; show why inline. */}
                     {failureMessage && (
@@ -1227,11 +1380,11 @@ export function VerifyScreen({
                         </button>
                     ) : captureStep === "documents" ? (
                         <button
-                            onClick={goToSelfie}
+                            onClick={handleDocumentsContinue}
                             disabled={!frontFile || (requiresBackImage && !backFile)}
                             className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
-                            Continuar
+                            {isCaptureMode ? "Enviar fotos" : "Continuar"}
                         </button>
                     ) : (
                         <button

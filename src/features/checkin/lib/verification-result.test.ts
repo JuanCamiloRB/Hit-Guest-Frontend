@@ -5,6 +5,14 @@ import { normalizeVerificationResult } from "./verification-result"
 const portal = (verification: Record<string, unknown>) => ({ verification })
 
 describe("normalizeVerificationResult — §A traducida a decisiones", () => {
+    describe("captura de documento sin verificación (contrato 2026-09-27)", () => {
+        it("avanza como verificado pero marcado como captura, nunca como identidad verificada", () => {
+            expect(normalizeVerificationResult({
+                verification: { status: "document_captured", currentStep: "form", verifiedAt: null },
+            })).toEqual({ status: "verified", captured: true })
+        })
+    })
+
     describe("verificado", () => {
         it("acepta currentStep 'form'", () => {
             expect(normalizeVerificationResult(portal({ status: "approved", currentStep: "form" })))

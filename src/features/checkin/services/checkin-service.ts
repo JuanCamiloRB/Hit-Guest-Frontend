@@ -31,7 +31,7 @@ import {
 import { getVerificationToken, touchVerificationToken } from "../lib/verification-token"
 import { normalizeVerificationResult } from "../lib/verification-result"
 import { assertRenderablePortal } from "../lib/portal-payload"
-import type { CheckinApiError, CheckinFailedField } from "../lib/checkin-error"
+import { normalizeFailedFields, readUploadVerification, type CheckinApiError } from "../lib/checkin-error"
 
 const USE_MOCK = false;
 const POLLING_REQUEST_TIMEOUT_MS = 20_000
@@ -42,6 +42,19 @@ const POLLING_REQUEST_TIMEOUT_MS = 20_000
  * polling state machine gets another turn; this does not declare verification
  * failed and does not replace the backend's timeout.
  */
+/**
+ * `requiresBackImage` de la directiva `document_capture` (contrato 2026-09-27).
+ * El contrato lo declara siempre presente; si faltara, se piden las dos caras
+ * (fail-closed hacia un expediente completo) y se deja rastro en consola: es
+ * una violación de contrato, no una decisión del huésped.
+ */
+function readRequiresBackImage(raw: { requiresBackImage?: unknown; requires_back_image?: unknown }): boolean {
+    const value = raw.requiresBackImage ?? raw.requires_back_image
+    if (typeof value === "boolean") return value
+    console.warn("[checkinService] document_capture sin requiresBackImage; se piden ambas caras.", raw)
+    return true
+}
+
 async function fetchPollingRead(url: string, init: RequestInit): Promise<Response> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), POLLING_REQUEST_TIMEOUT_MS)
@@ -220,6 +233,7 @@ export class CheckinService {
             identification_number: payload.identificationNumber,
             is_main_guest: payload.isMainGuest,
             ...(payload.totalGuests !== undefined ? { total_guests: payload.totalGuests } : {}),
+            ...(payload.totalPrice !== undefined ? { total_price: payload.totalPrice } : {}),
         };
 
         // Solo `formSchema` se normaliza; el resto del cuerpo ya viene con la
@@ -233,6 +247,10 @@ export class CheckinService {
                     sessionType?: "biometric" | "kyc"
                     session_type?: "biometric" | "kyc"
                     subtype?: "biometric" | "kyc"
+                } | {
+                    type: "document_capture"
+                    requiresBackImage?: boolean
+                    requires_back_image?: boolean
                 }
                 formSchema?: RawPayload
             }
@@ -248,7 +266,12 @@ export class CheckinService {
                     ?? raw.verification.subtype
                     ?? "biometric",
             }
-            : raw.verification
+            : raw.verification.type === "document_capture"
+                ? {
+                    type: "document_capture" as const,
+                    requiresBackImage: readRequiresBackImage(raw.verification),
+                }
+                : raw.verification
         return {
             guest: raw.guest,
             reservationGuest: raw.reservationGuest,
@@ -435,9 +458,12 @@ export class CheckinService {
 
     /**
      * POST /api/v1/checkin/{reservationUuid}/secondary/{guestUuid}/documents (G-NEW-3)
-     * Uploads document images for OCR (Textract) + a selfie for face comparison (Rekognition, v4.7).
-     * FormData keys: "front_image", "back_image" (conditional), "selfie_image" (required)
-     * — snake_case, since multipart/form-data has no auto-conversion.
+     * Same endpoint for two modes (also for the MAIN guest — the route name is historical):
+     *  - document_upload  (OCR + face match): "front_image", "back_image" (conditional),
+     *    "selfie_image" (required).
+     *  - document_capture (contrato 2026-09-27, sin verificación): "front_image",
+     *    "back_image" (if `requiresBackImage`); "selfie_image" is ignored by the backend.
+     * Keys are snake_case, since multipart/form-data has no auto-conversion.
      */
     async uploadDocumentImages(
         reservationUuid: string,
@@ -735,14 +761,18 @@ export class CheckinService {
         // { errorType, failedFields:[{field, reason, confidence}], message }
         const errorType = payload.errorType ?? payload.error_type ?? nested.errorType ?? nested.error_type
         if (typeof errorType === "string") error.errorType = errorType
-        const failedFields = payload.failedFields ?? payload.failed_fields ?? nested.failedFields ?? nested.failed_fields
-        if (Array.isArray(failedFields)) {
-            error.failedFields = failedFields as CheckinFailedField[]
-        }
+        // Strings (captura 2026-09-27) u objetos (OCR): una sola forma interna.
+        const failedFields = normalizeFailedFields(
+            payload.failedFields ?? payload.failed_fields ?? nested.failedFields ?? nested.failed_fields,
+        )
+        if (failedFields.length > 0) error.failedFields = failedFields
         // Contact-challenge OTP errors (backend plan 20260731): { code, message,
         // attemptsRemaining? } (422) or { code, message, retryAfter? } (429).
         if (typeof payload.code === "string") error.code = payload.code
         if (typeof payload.attemptsRemaining === "number") error.attemptsRemaining = payload.attemptsRemaining
+        // Subida OCR (§17, 2026-10-03): todo 422 trae el estado de la verificación.
+        const verification = readUploadVerification(payload.verification ?? nested.verification)
+        if (verification) error.verification = verification
         if (typeof payload.retryAfter === "number") {
             error.retryAfter = payload.retryAfter
         } else {

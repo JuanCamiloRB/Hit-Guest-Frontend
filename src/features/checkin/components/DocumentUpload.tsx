@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Camera, CheckCircle2, ScanLine, RotateCcw } from "lucide-react"
+import { prepareImageForUpload } from "@/lib/image-upload"
 
 interface DocumentUploadProps {
   label: string
@@ -93,18 +94,23 @@ export function DocumentUpload({
               onChange={(e) => {
                 const file = e.target.files?.[0]
                 if (file) {
-                  const reader = new FileReader()
-                  reader.onload = (event) => {
-                    if (event.target?.result) {
-                      setTempBase64(event.target.result as string)
-                      // La animación empieza solo cuando la imagen ya está en
-                      // memoria. Antes arrancaba primero y el efecto capturaba
-                      // `tempBase64 = null`: con una lectura lenta podía mostrar
-                      // "Documento capturado" sin entregar nada al formulario.
-                      startScan()
+                  // Esta foto viaja en base64 dentro del JSON de «completar», por
+                  // el mismo proxy de 4 MB que corta la subida de documentos; en
+                  // base64 pesa un tercio más. Se recomprime antes de leerla.
+                  void prepareImageForUpload(file).then((prepared) => {
+                    const reader = new FileReader()
+                    reader.onload = (event) => {
+                      if (event.target?.result) {
+                        setTempBase64(event.target.result as string)
+                        // La animación empieza solo cuando la imagen ya está en
+                        // memoria. Antes arrancaba primero y el efecto capturaba
+                        // `tempBase64 = null`: con una lectura lenta podía mostrar
+                        // "Documento capturado" sin entregar nada al formulario.
+                        startScan()
+                      }
                     }
-                  }
-                  reader.readAsDataURL(file)
+                    reader.readAsDataURL(prepared)
+                  })
                 }
               }}
             />

@@ -58,6 +58,25 @@ export function resolvePreFormVerificationStep(input: {
     return input.directiveType ? "verify" : "identify"
 }
 
+/**
+ * Respaldo tras una subida de documento aceptada (200 de §17, OCR o captura).
+ * La sesión de `/identify` sigue diciendo `document_upload`/`document_capture`
+ * después del 200; si en el formulario fallan A LA VEZ el portal y
+ * `/verify/result`, sin esto el guard devolvía al huésped a `/verify` a repetir
+ * unas fotos que ya están en la reserva (y que ya no están en memoria).
+ *
+ * Solo cuenta cuando NINGUNA fuente del backend respondió: una observación real
+ * siempre gana (un reset del PM después del 200 tiene que volver a pedir la
+ * verificación). Mismo criterio que el token del OTP: lo emitió el backend, y
+ * `/form`, `/sign` y `/complete` lo siguen validando server-side.
+ */
+export function acceptedUploadFallback(
+    uploadOutcome: "verified" | "captured" | undefined,
+    backendObserved: boolean,
+): "verified" | "captured" | null {
+    return !backendObserved && uploadOutcome ? uploadOutcome : null
+}
+
 export function isDocumentAlreadyVerified(
     guest: VerifiableGuest | undefined,
     hasContactChallengeToken: boolean,
@@ -83,6 +102,29 @@ export function isDocumentAlreadyVerified(
     return guest.isCompleted === true
         || status === "approved"
         || status === "completed"
+        // Captura sin verificación (contrato 2026-09-27): las fotos ya están en
+        // la reserva, el formulario no las vuelve a pedir.
+        || status === "document_captured"
         || currentStep === "form"
         || currentStep === "completed"
+}
+
+/**
+ * Qué le dice el formulario al huésped en el bloque de documento cuando NO va a
+ * pedirle fotos. Tres motivos distintos y ninguno puede usar el copy del otro:
+ * el verificado sí verificó; el exonerado no, y el contrato pide no decírselo
+ * (el copy es neutro); el capturado solo subió fotos y tampoco verificó.
+ *
+ * Se miran las DOS fuentes (portal y `/verify/result`) por el mismo motivo que
+ * `isDocumentAlreadyVerified`: cualquiera puede ir atrasada o caída.
+ */
+export type DocumentNotice = "verified" | "waived" | "captured"
+
+export function documentNotice(
+    guest: VerifiableGuest | undefined,
+    verificationResult?: Pick<VerificationResultResponse, "waived" | "captured"> | null,
+): DocumentNotice {
+    if (guest?.verification?.status === "waived" || verificationResult?.waived === true) return "waived"
+    if (guest?.verification?.status === "document_captured" || verificationResult?.captured === true) return "captured"
+    return "verified"
 }
