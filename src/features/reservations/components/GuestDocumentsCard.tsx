@@ -133,7 +133,7 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
                         <FileText size={20} aria-hidden />
                     </div>
                     <p className="text-sm text-ink-3">
-                        Aún no hay huéspedes registrados. Aparecerán aquí cuando completen el check-in.
+                        Aún no hay huéspedes registrados. Aparecerán aquí en cuanto se identifiquen con el link de check-in, aunque no lo hayan completado.
                     </p>
                 </div>
             </SectionCard>
