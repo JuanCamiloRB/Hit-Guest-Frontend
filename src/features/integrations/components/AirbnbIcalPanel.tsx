@@ -558,16 +558,32 @@ function TemplateDialog({
                         <Copy className="h-3.5 w-3.5" /> Copiar mensaje
                     </Button>
 
+                    {/* Los pasos son copy del front, no el `instructions` del backend:
+                        ese texto decía «Menú > Mensajes > Mensajes programados», y en el
+                        Airbnb actual no existe esa ruta (Didier, 2026-09-22). Quien ve la
+                        interfaz de Airbnb es quien puede mantener los pasos al día. */}
                     <div className="space-y-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-                        <p>{template.data.instructions}</p>
+                        <p>
+                            En Airbnb ve a <strong>Mensajes</strong>, abre la configuración (ícono de
+                            engranaje) y entra a <strong>Administra tus respuestas rápidas</strong> →{" "}
+                            <strong>Crear</strong>. Pega el texto de arriba. Luego, en{" "}
+                            <strong>Hora personalizada</strong>, elige el evento{" "}
+                            <strong>Reservación confirmada</strong> y guarda.
+                        </p>
                         <p className="font-semibold text-amber-700">
                             ⚠️ «[código de confirmación]» no es texto literal: reemplázalo con el menú
                             Shortcodes del editor de Airbnb, o el link no funcionará para nadie.
                         </p>
-                        <p className="font-semibold text-amber-700">
-                            ⚠️ Programa el mensaje al menos 1 hora después de la reserva: leemos el
-                            calendario cada 30 minutos y un mensaje inmediato llegaría antes que la
-                            reserva.
+                        {/* Enviar «inmediatamente después» es válido: el link no depende de la
+                            sincronización. Si el huésped lo abre antes de que leamos el
+                            calendario, el portal responde `pending_sync` y muestra una pantalla
+                            de espera con Reintentar (PortalStatusScreen). El aviso anterior
+                            pedía «al menos 1 hora después» y prohibía algo que funciona. */}
+                        <p>
+                            Puedes programarlo para <strong>inmediatamente después</strong> de la reserva.
+                            Leemos el calendario de Airbnb cada 30 minutos: si el huésped abre el link
+                            antes, verá «Estamos preparando tu check-in» con un botón Reintentar y podrá
+                            entrar en cuanto la reserva sincronice.
                         </p>
                     </div>
                 </div>

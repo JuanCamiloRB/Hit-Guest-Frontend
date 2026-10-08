@@ -131,14 +131,32 @@ export function IntegrationsHub() {
                     </div>
                 </div>
 
+                {/* Una sola tarjeta de Airbnb, con los calendarios adentro. Antes había
+                    una `ProviderCard` decorativa (sin acción) y debajo el panel real con el
+                    mismo nombre: el PM veía «dos Airbnb» y no sabía cuál usar (2026-09-22). */}
+                <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-50">
+                                <AirbnbIcon />
+                            </span>
+                            <div>
+                                <h4 className="font-bold text-slate-900">Airbnb</h4>
+                                <p className="mt-0.5 text-sm text-slate-500">
+                                    Importa tus reservas conectando el calendario iCal de cada anuncio.
+                                </p>
+                            </div>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-rose-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-rose-600">
+                            iCal
+                        </span>
+                    </div>
+                    <div className="mt-5 border-t border-slate-100 pt-5">
+                        <AirbnbIcalPanel />
+                    </div>
+                </article>
+
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <ProviderCard
-                        name="Airbnb"
-                        description="Importa tus reservas conectando el calendario iCal de cada anuncio."
-                        icon={<AirbnbIcon />}
-                        badge="iCal"
-                        badgeClassName="bg-rose-50 text-rose-600"
-                    />
                     <ProviderCard
                         name="Booking.com"
                         description="Importa tus alojamientos y reservas directamente desde Booking.com."
@@ -146,14 +164,6 @@ export function IntegrationsHub() {
                         badge="Próximamente"
                         badgeClassName="bg-slate-100 text-slate-500"
                     />
-                </div>
-
-                <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div className="mb-4 flex items-center gap-3">
-                        <AirbnbIcon />
-                        <h4 className="font-bold text-slate-900">Calendarios de Airbnb (iCal)</h4>
-                    </div>
-                    <AirbnbIcalPanel />
                 </div>
             </section>
         </div>
