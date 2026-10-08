@@ -216,6 +216,215 @@ Además: `UNSUPPORTED_DOCUMENT_LAYOUT` se lee de `errorType`, `error_type` o
 El proveedor se elige por tipo de huésped de forma independiente: **no existe la
 regla «principal = Didit, secundarios = Textract»** — cualquier combinación vale.
 
+### ⚠️ Verificación de identidad OPCIONAL + captura de documento — contrato 2026-09-27 (implementado en front 2026-09-28; NO reverificado por curl)
+
+*(Doc de backend `20260926_frontend-captura-documento-sin-verificacion.md`,
+commits `515076b` + `a9e02d3`, 2772 tests. Sin migración. **Despliegue
+coordinado**: `/identify` devuelve un `type` nuevo que el portal viejo manda al
+`default` de error.)*
+
+**Cierra la contradicción abierta de §1 («obligatoria ¿en qué sentido?»)**:
+el PM SÍ puede apagar los dos slots de identidad (`configure` con
+`statusProviderId: 10` → **200**, antes 422) y también por listing
+(`statusRecordId: 7` → 201/200). `POST /reservations` y el PUT que mueve de
+listing **dejan de dar 422** por falta de identidad (claves eliminadas:
+`missing_identity_main/secondary`, `mandatory_automation_disabled_for_listing`,
+`cannot_deactivate_mandatory`, `cannot_disable_mandatory`; el front nunca las
+mapeó). Sigue vigente `cannot_disable_unconfigured` (no se desactiva por listing
+una automation sin proveedor).
+
+**Portal.** Sin proveedor para su tipo de huésped, `/identify` responde
+`verification: { type: "document_capture", requiresBackImage: bool }` — antes
+era el 422 «not configured», que ahora solo queda para `verification_type`
+desconocido. Recurrente verificado con email → sigue `contact_challenge`; sin
+email → `document_capture`. Subida por el MISMO endpoint del OCR
+(`POST /checkin/{r}/secondary/{g}/documents`, también para el principal):
+`front_image` obligatorio, `back_image` si `requiresBackImage`, `selfie_image`
+se ignora. 200 = misma forma que OCR con **`extractedData: {}`** (nada lee el
+documento; `formSchema.prefilledData` trae lo declarado). 422 con
+`{success:false, errorType, message, failedFields}`: `DOCUMENT_NOT_DETECTED`
+(**`failedFields: ["front"|"back"]` como strings**, distinto del OCR que manda
+objetos), `DUPLICATE_DOCUMENT`, `SERVICE_UNAVAILABLE` (también fallo de
+guardado), `GUEST_ALREADY_COMPLETED`. Si el recorte falla, se guarda la foto
+original (no se rechaza); +2–3 s por el recorte. Re-subir permitido hasta
+completar. `verification.status` nuevo **`document_captured`** con
+`currentStep: "form"`, `verifiedAt: null`, `isStale/canRetry: false`; en este
+modo NO aparecen `pending/rejected/fail` (historial de otras estadías ignorado).
+`/complete`, `/main/sign` y `/guarantee/setup-intent` sin fotos → 403/422
+`identity_not_verified` como hoy; con fotos avanzan. **La captura no se cobra.**
+
+**Panel.** `identityDocument.method` y `capturedBy` pueden valer
+**`document-capture`**; `verification.status` puede valer `document_captured`.
+Etiqueta obligatoria «sin verificar», visualmente distinta de didit/textract.
+
+**Cómo quedó en el front (2026-09-28):** `VerificationDirective` +=
+`document_capture`; `checkinService.identify` normaliza `requiresBackImage`
+(camel/snake; ausente ⇒ `true` + warn); `VerifyScreen` en modo captura no pide
+selfie, toma `requiresBackImage` de la directiva (no del catálogo), envía
+directo desde el paso de fotos, salta la pantalla de confirmación de OCR (con
+`extractedData` vacío bloqueaba por fecha de nacimiento) y limpia solo el lado
+señalado en `failedFields` (`lib/document-capture.ts`); `verification-result`
+devuelve `{status:"verified", captured:true}` (mismo patrón que `waived`) y
+`doc-verification.documentNotice` decide el chip del formulario
+(«Fotos del documento recibidas», nunca «verificado»); panel: enums, etiqueta
+«Fotos del documento · sin verificar» (tono info), `SETTLED_STATUSES`.
+Revisión 2026-09-30: `GUEST_ALREADY_COMPLETED` en la subida NO es un fallo:
+`VerifyScreen` lo intercepta y lleva a `/success?entry=completion_already_recorded`
+(misma recuperación idempotente que `/identify` con `isCheckinCompleted`).
+Revisión 2026-09-28: identidad se puede apagar POR LISTING desde la tarjeta
+(`supportsListingStatusOverride` en la definición, separado de tener campos —
+antes el panel de overrides solo salía con `listingOverrideSchema`);
+`failedFields` se normaliza en `buildHttpError` a `{field, reason|null}`
+(`normalizeFailedFields`), única forma interna; `isMandatory` eliminado del
+modelo; `npm run typecheck` / `npm run verify` como gate.
+
+### ⚠️ iCal — valor total declarado por el huésped principal — contrato 2026-09-27 (implementado front 2026-09-29; NO reverificado por curl)
+
+*(Doc `20260927_precio-total-declarado-main-guest-ical.md`, commits `0fdd8ce` +
+`83d4d06`. **Despliegue coordinado**: con el backend nuevo, un portal que no
+envíe `totalPrice` recibe 422 y el titular de Airbnb sin valor NO puede iniciar
+check-in.)* Reemplaza §5.2 del plan iCal del 2026-09-04: el valor lo declara el
+huésped, no el PM; TRA se desbloquea con ese valor; el PM lo corrige después.
+
+**Portal** (`GET /checkin/{uuid}` y ruta externa) → `reservation` +=
+`requiresPriceDeclaration: bool` (solo iCal sin valor y sin huéspedes
+identificados; **independiente** de `requiresGuestCountDeclaration`) y
+`currency: ISO4217` (siempre presente; el huésped declara EN ESA moneda —
+nombrarla en el copy, nunca fijar «COP»). `POST /identify` del PRINCIPAL +=
+`totalPrice`: **número JSON con punto decimal, > 0, máx. 2 decimales**, nunca
+texto formateado (`"1.50"` como texto se lee 1,5). 422 estándar
+`errors.totalPrice` («Indícanos el valor total…» si falta; validación
+traducida si es inválido); si faltan ambos, UN 422 con `totalGuests` y
+`totalPrice`. De un solo uso: después llega `false` y el campo se ignora.
+Secundarios, Calry, Kunas y manuales: sin cambio.
+
+**Panel** `GET /reservations/{uuid}` += `priceDeclaredByGuest: bool` (badge
+«Valor declarado por el huésped» + corregir; baja a `false` al corregir) y
+`extra.guestPriceDeclaration {amount (string decimal), currency, guestUuid,
+declaredAt (ISO con zona)}` — auditoría, se conserva, **NUNCA se reenvía en el
+PUT** (clave reservada, se descarta). Corregir = `PUT {totalPrice}` de siempre.
+⚠️ Si TRA ya se envió, la corrección NO actualiza el reporte (no hay reenvío).
+Fuera de alcance: conversión de moneda, reenviar TRA, editar desde el portal.
+
+**Cómo quedó en el front:** `lib/declared-price.ts` (`parseDeclaredPrice`:
+ambos separadores → el último es decimal; uno solo → decimal si va una vez con
+1–2 dígitos, miles si agrupa de a 3, si no inválido — nunca se adivina; preview
+«Vas a declarar: $ 850.000,5» con `Intl` es-CO y la moneda de la reserva);
+`IdentifyScreen` recibe `initialPriceDeclaration {required, currency}` desde
+las dos páginas de servidor (mismo patrón que `initialGuestCountRequired`) y
+manda `totalPrice` numérico; `reservations/lib/guest-price-declaration.ts`
+(`readPriceDeclaration`, flag solo con `true` explícito); detalle con badge,
+«Corregir valor» (mismo `RegisterPriceDialog` en modo `correct`, precargado) e
+historial; el diálogo consulta `/automation-status` al abrir y avisa si TRA ya
+se envió con éxito. **Corregido 2026-09-30**: la fuente es el HISTORIAL
+`GET /reservations/{uuid}/automation-records` (`classifyRecord === "tra"` +
+`status: "completed"`), NO `/automation-status`, que solo lista automatizaciones
+ACTIVAS y ocultaba una TRA desactivada después de reportar.
+**El flujo del PM «Falta registrar el valor» (`extra.priceUnconfirmed`) SIGUE
+VIGENTE por contrato** (§2.1 del doc: «no cambia, simplemente va a aparecer
+mucho menos»; §0: «si el PM registra el valor antes de que el huésped se
+identifique, gana el PM»). No es un legado a retirar.
+Revisión 2026-09-29: el parser valida una GRAMÁTICA antes de limpiar (solo
+símbolo/código de moneda alrededor de `[\d.,]+`; «85O000», «1e3», «(500)» y el
+menos Unicode se rechazan, no se convierten en otro monto); la comprobación de
+TRA es un estado `loading|sent|not_sent|unknown` (en corrección no se guarda
+hasta saber, y «no se pudo comprobar» nunca se muestra como «no enviado»);
+`currency` del detalle es `string | null` sin fallback a COP y todo monto se
+pinta con `src/lib/money.ts` (`formatMoney`, Intl es-CO: EUR sale como «EUR
+1.200,00», nunca «$»); el refetch del portal reemplaza los flags en los dos
+sentidos; el diálogo del PM valida máximo dos decimales; tests de componente
+para IdentifyScreen (QA 1–3, 7, 8), RegisterPriceDialog y ReservationPriceCard.
+Revisión 2026-09-30: `parseDeclaredPrice(raw, currency)` recibe la moneda de la
+reserva — UN solo código explícito y debe coincidir («USD 500» o «USD 500 COP»
+en COP = inválido; `€`/`£`/`US$` se comparan, `$` es ambiguo y lo resuelve el
+preview); flag `requiresPriceDeclaration` sin `currency` = incumplimiento de
+contrato: el portal bloquea el envío con un aviso y el refetch vivo también
+reemplaza la moneda (solo un fetch fallido conserva la del servidor).
+Revisión 2026-09-30 (3): `totalGuests`/`totalPrice` se exigen y se envían
+SOLO si `isMainGuest && flag` (`mustDeclareGuestCount`/`mustDeclarePrice`): un
+secundario con flags en `true` no queda bloqueado por campos que no ve.
+Revisión 2026-09-30 (2): el parser recoge TODOS los indicadores de moneda
+(símbolo inequívoco + código) y cada uno debe coincidir («€500 COP» en COP es
+inválido; «€500 EUR» en EUR vale; `$` no cuenta); `analyzeDeclaredPrice`
+devuelve razón discriminada (`empty|invalid_format|duplicate_currency|
+currency_mismatch|out_of_range`) y el mensaje se decide con ella.
+`npm run verify` = typecheck + `lint:gate` + tests. **Revisión 2026-10-05**:
+`lint:gate` (`scripts/lint-changed.mjs --no-regressions`) exige cero errores en
+los archivos NUEVOS y que cada archivo MODIFICADO no tenga más errores que en el
+merge-base con `@{upstream}` (o `LINT_BASE`) — conteo por archivo con la API de
+ESLint, la base lintada con `lintText` sobre `git show base:path`. Antes
+`verify` corría `lint:new` (solo nuevos) y dejaba pasar errores nuevos en
+archivos existentes. Probado con un `any` temporal: `reservations-service.ts
+17 → 18` falla el gate. `lint:changed` (todo en cero) sigue informativo: falla
+por la deuda previa (66 errores en los modificados de esta rama).
+
+
+### Reanudación y respaldo local del portal (auditoría 2026-10-05)
+
+- **`/identify?guest_uuid=` reanuda en las DOS rutas** (por UUID y externa
+  `/{source}/{listing}/{externalId}`) con `lib/identify-resume.ts`
+  (`resolveIdentifyResume`): `verification` → `/verify`, `contact_challenge` →
+  `/contact-challenge`, el resto → `/guest`. La externa no leía `guest_uuid` y
+  devolvía al formulario inicial a un huésped con OTP pendiente.
+- **Subida aceptada (200 de §17)**: `VerifyScreen` anota
+  `uploadOutcome: "verified" | "captured"` en la sesión de identify. Los dos
+  formularios lo usan SOLO si el portal y `/verify/result` fallan a la vez
+  (`acceptedUploadFallback`): sin eso la directiva `document_upload/capture`
+  mandaba a repetir fotos que ya están en la reserva. Una observación real del
+  backend siempre gana (un reset del PM vuelve a pedir verificación), y el chip
+  de una captura nunca cae al «verificado» por defecto.
+- Copy de `IdentifyScreen` neutral («Identificación», «registrar tu
+  documento», «Continuar»): antes de la directiva no se sabe si habrá
+  verificación o solo captura.
+- **Cupo agotado en `/identify` (§7)**: llega SIEMPRE como 422
+  `{message, errors: {reservation: [...]}}` (las dos capas, mismo shape desde
+  2026-08-12). El front lo detectaba por el TEXTO («maximum»/«máximo»); un
+  mensaje traducido sin esa palabra caía como error de campo sobre un campo
+  inexistente («revisa los campos marcados» sin nada marcado). Ahora decide por
+  la clave `errors.reservation`: toast con el mensaje del backend y vuelta al
+  hub. El match por texto queda solo como respaldo de backend viejo.
+
+### ⚠️ Didit: KYC directo para el huésped que Didit nunca verificó — contrato 2026-10-08 (backend DESPLEGADO; front implementado 2026-10-09, sin desplegar; NO verificado por curl)
+
+*(Doc «Frontend — Didit: KYC directo», plan backend
+`20261008_reduccion-tiempos-verificacion-didit.md`.)* **No cambia ningún
+payload, endpoint ni estado.** Cambia QUÉ valor de `sessionType` recibe el
+huésped nuevo en `POST /identify`:
+
+| Huésped | `verification` de `/identify` | Polling |
+|---|---|---|
+| Didit NUNCA lo aprobó (nuevo, creado por el PM, intento fallido previo, verificado solo por OCR) | `{type:"session", url, sessionType:"kyc"}` (**antes `"biometric"`**) | `pending/in_progress` → `approved` o rechazo (`rejected` + `canRetry` + `failureReason`). **Ya no hay escalación biometric→kyc** |
+| Didit YA lo aprobó antes | `sessionType:"biometric"`, igual que hoy, incluida la escalación a KYC si la selfie no alcanza | igual |
+
+La sesión KYC **incluye liveness**: documento (frente y reverso) + UNA selfie,
+en una sola sesión (antes: dos sesiones, ~3 min, dos esperas). `expiresAt` pasa
+a creación **+ 23 h** (antes 24 h); el enlace de Didit sigue valiendo 24 h.
+
+**Lo que el front ya hace bien** (verificado en código 2026-10-09): el tipo
+admite `"biometric" | "kyc"`, `identify()` normaliza `sessionType`/`session_type`,
+`IdentifyScreen` guarda la sesión y navega a `/verify` sin mirar el valor,
+`VerifyScreen` toma `diditStep` de `verification.sessionType` (también al
+reanudar desde `checkin-pending-didit`), lanza esa URL una sola vez y el
+polling sigue siendo `/verify/result`. **Cómo quedó en el front (2026-10-09):** el `?didit_error=` del callback es
+una PISTA, no el veredicto: el callback redirige DE INMEDIATO al reconciliador
+(sin la espera de 2 s ni el «serás redirigido para intentar de nuevo»), las
+pistas solo DESCRIBEN lo que dijo Didit (sin prometer reintento), `/verify`
+arranca la reconciliación con `/verify/result` SIEMPRE que llega `didit_error`,
+también sin sesión ni marcador local (otro navegador, modo privado, contexto
+vencido — el sondeo solo necesita los ids de la ruta; muestra «Didit reportó:
+… confirmando con el servidor» mientras tanto) y el resultado final trae
+`canRetry`, `failureReason` y `attemptsRemaining` — antes un rechazo definitivo
+se ofrecía como reintentable con un texto fijo, y sin sesión local ni siquiera
+se consultaba al backend. Sin directiva local, «Repetir» vuelve a `/identify`
+(resume idempotente), no a una pantalla sin sesión. Copy de `kyc`:
+documento por ambos lados + una selfie en un solo proceso (el biométrico no
+cambia). Mocks: 112 = KYC directo, 113 = escalación biometric→kyc del huésped
+conocido. Comentario de sesión vencida corregido (24 h / `expiresAt` +23 h).
+No se calcula ningún vencimiento local nuevo: tras el TTL local de 2 h,
+`/identify` es un resume idempotente (contrato 2026-09-04), sin cobro.
+⚠️ Pendiente en producción: huésped nuevo → una sola sesión KYC con documento
+y una selfie; huésped aprobado antes → biométrico; rechazo reparable y
+definitivo vía callback; que no se cree una segunda sesión al nuevo.
 ### ⚠️ Contrato 2026-09-02/04: `in_review` y `abandoned` son fallos REINTENTABLES; `/identify` nunca duplica por sí solo
 
 *(Documento de backend del 2026-09-02, commits `0095e87` + `3febcae`, con
@@ -263,6 +472,63 @@ terminales, `ocr_rejected` reintentable. El copy de espera para el `status`
 nueva (enlace de Didit roto → el huésped reabre el mismo enlace hasta el TTL
 de 24 h). Es decisión de negocio pendiente del lado backend.
 
+
+### ⚠️ Tope de intentos en la subida OCR (Textract) — contrato 2026-10-03 (implementado en front 2026-10-05; NO verificado por curl)
+
+*(Actualización del documento de referencia del portal, plan de backend
+`20261003_intentos-verificacion-textract-indicadores.md`. El documento llegó
+cortado a mitad de §16, así que el detalle de §17 sale del resumen de cambios
+del encabezado, no de la sección completa.)*
+
+- `checkin.verification.max_attempts` rige también `POST
+  /checkin/{r}/secondary/{g}/documents` (§17): sin intentos responde **422
+  `errorType: "VERIFICATION_ATTEMPTS_EXHAUSTED"`** con el mismo `message` que el
+  422 de `/identify`, ANTES de llamar a AWS.
+- **Todas** las respuestas de §17 (422 y 200) traen el objeto `verification`
+  (mismo shape que el portal: `canRetry`, `attemptsRemaining`, `failureReason`…).
+- `failureReason` de OCR usa el vocabulario de Didit + tres códigos nuevos:
+  `document_number_mismatch`, `duplicate_document`, `service_unavailable`.
+- `SERVICE_UNAVAILABLE` (caída de AWS) **no gasta intento**.
+- `in_review`/`abandoned` reemplazados por un reintento quedan retirados
+  (`extra.retired_at`) y siguen contando contra el tope; solo el reset del PM
+  devuelve intentos. Una aprobación se cobra exactamente una vez.
+
+**Cómo quedó en el front:** `buildHttpError` conserva el bloque como
+`error.verification` (`readUploadVerification`, camel/snake, solo tipos
+correctos). En `VerifyScreen`: `VERIFICATION_ATTEMPTS_EXHAUSTED` es definitivo
+(mensaje del backend, sin «Repetir»); `canRetry: false` cierra el reintento aunque
+el motivo sea reparable (la última foto borrosa agota el tope) y solo en ese
+caso se agrega «ya no quedan intentos» — un motivo ya definitivo (duplicado)
+no se atribuye al tope; un rechazo reparable avisa «Te queda N intento(s)»
+(≤ 2). En **captura** (`document_capture`) el bloque se ignora: no es
+verificación ni tiene tope. `verification-failure-meta` tiene copy para los
+tres códigos nuevos (`service_unavailable` dice que el intento no se descontó).
+⚠️ Confirmar por curl: forma exacta del bloque en el 422 (¿raíz o dentro de
+`data`?; el lector acepta las dos) y si la captura también lo trae.
+
+**Revisión 2026-10-05 con el documento COMPLETO** (`~/Downloads/20260806_referencia-endpoints-checkin-estados 2.md`,
+1261 líneas, 2026-10-04; por chat llegaba truncado en §16):
+- §17 dice textual: «el frontend decide entre reintentar y soporte con
+  `verification.canRetry`». Ahora manda en los DOS sentidos: `canRetry: true`
+  reabre un motivo que la tabla local daba por definitivo
+  (`DUPLICATE_DOCUMENT`, `EXPIRED_DOCUMENT`, `DOCUMENT_NUMBER_MISMATCH`) como
+  reintento de fotos; sin el bloque decide la tabla local.
+- Mapeo `errorType → failureReason` (§17): LOW_QUALITY/CRITICAL_FIELD/
+  NUMBER_UNREADABLE → `document_image_quality`; UNSUPPORTED_LAYOUT/EXPIRED →
+  `document_not_approved`; NO_FACE → `face_match_not_computed`; FACE_MISMATCH →
+  `face_match_failed`; NUMBER_MISMATCH/DUPLICATE/SERVICE_UNAVAILABLE → los tres
+  nuevos. El doc pide el copy desde `failureReason`; el front muestra el
+  `message` del backend (localizado y más específico: EXPIRED trae la fecha) y
+  conserva los textos propios de UNSUPPORTED_LAYOUT («usa tu pasaporte») y
+  DOCUMENT_NOT_DETECTED (lado señalado). Decisión consciente.
+- §18 también devuelve el cupo agotado como 422 `errors.reservation`:
+  `SecondaryGuestFormScreen` lo muestra y vuelve al hub (antes se quedaba en un
+  formulario que no podía enviar).
+- Tiempo de §17 ~10–20 s (recorte con Bedrock): el `fetch` de la subida no
+  tiene timeout propio, así que no corta verificaciones que el backend completa.
+- Desde 2026-10-03 el reintento OCR «va por `POST /identify`» (devuelve
+  `document_upload`); el front re-sube directo, que §17 acepta (el paso 0
+  revisa el tope igual).
 
 ### `parameters.slug` es lo único que separa una automation de un conector
 
@@ -395,6 +661,161 @@ pendiente: pinear/validar orden también en el store.
 ✅ La respuesta incluye ahora **`providerSlug` en cada automation**, para
 identificar el provider sin resolver ids ni depender del objeto sideloaded.
 
+### ⚠️ Envío del link de check-in por email + WhatsApp — contrato del 2026-09-19 (implementado en front el 2026-09-22; NO reverificado por curl)
+
+*(Documento de backend, commit `bea1323`, 2661 tests. Requiere `migrate` +
+`db:seed --class=ProviderSeeder`. No envía ningún WhatsApp hasta que HIT cargue
+credenciales de Meta; mientras tanto el envío se salta con
+`responsePayload.reason: "whatsapp_not_configured"` y el email sale igual.)*
+
+**Modelo**: provider global `parameters.slug: "whatsapp_checkin_link"`
+(`automationType: "checkin_link_delivery"`, `billing: {billable: true,
+unit_cost: 0, scope: "per_execution"}`) → `PropertyAutomation` con
+`parameters.channels: ["email"|"whatsapp"]` (8 activa / 10 inactiva) →
+`ListingAutomationOverride` opcional cuyo `channels` REEMPLAZA entero el de la
+propiedad (`statusRecordId: 6` aplica; otro valor = apagada en ese listing).
+Tabla de verdad: sin automatización, inactiva, override inactivo o `channels`
+vacío ⇒ `["email"]`. **El backend nunca resuelve a lista vacía.**
+
+**Endpoints**: `GET /providers?name[has]=WhatsApp` (identificar por slug, NUNCA
+por nombre ni por id) · `GET /properties/{uuid}/automations` · **`POST
+/property-automations` (paso 1, inactiva y `parameters: {}`) → `PATCH
+/property-automations/{uuid}/configure {statusProviderId: 8, parameters:
+{channels}}` (paso 2)** — el POST no valida `channels`, solo configure ·
+`GET /listings/{uuid}/automation-overrides`, `POST|PUT|DELETE
+/listing-automation-overrides[/{uuid}]` · `POST /reservations/{uuid}/send-checkin-link`
+(sin cambio de contrato; ahora enruta por los dos canales y **cada reenvío por
+WhatsApp cobra**). 422 de configure: `parameters.channels` (ninguno) o
+`parameters.channels.{i}` (valor desconocido); solo valida al ACTIVAR.
+Permiso: `automation.configure`, solo dueño de la propiedad; `property_staff` no.
+
+**Estado del envío en `GET /reservations/{uuid}` → `extra`** (camelCase al leer):
+`checkinLinkSentAt/To`, `mailDeliveryStatus` (`delivered|failed|complained`) +
+`mailDeliveryReason`; `checkinLinkWhatsappSentAt/To` (E.164),
+`checkinLinkWhatsappMessageId` (**wamid, no mostrar**), `whatsappDeliveryStatus`
+(`sent|delivered|read|failed`, se PISA por reserva: histórico en
+`automation-records` con `providerSlug: whatsapp_checkin_link`),
+`whatsappDeliveryStatusAt/Reason`, `guestPhone`. Un `failed` se reembolsa solo.
+Sin teléfono usable: no envía WhatsApp, no cobra, manda email igual y avisa a
+soporte (`skipped.reason: no_whatsapp_phone`). **Teléfono se ESCRIBE
+`extra.guest_phone` (snake) y se LEE `extra.guestPhone` (camel)** — el front ya
+lo hace así en `ReservationDialog.tsx:466/393`.
+
+**⚠️ Contradicciones con lo verificado en este skill — resolver por curl ANTES de construir:**
+
+1. **`POST /property-automations` respondía 403 `admin:create` al PM** (§1,
+   verificado). El doc asume que el PM crea la fila con ese endpoint. Si el
+   commit no otorgó ese permiso, el paso 1 no funciona y no hay flujo. Es el
+   mismo bloqueo abierto de §5.
+2. El doc muestra el body del POST en **snake_case** (`property_uuid`,
+   `provider_id`, `status_provider_id`); el repo manda **camelCase**
+   (`PropertyAutomationCreatePayload`). Confirmar cuál acepta.
+3. El body del doc **omite `executionOrder`**. Regla vigente de este skill: en
+   ese endpoint SIEMPRE enviar `executionOrder ≥ 3` (orden null/≤2 = identidad
+   para el backend). El doc muestra `executionOrder: 7` en la fila creada, sin
+   decir quién lo asignó. ¿El provider trae `default_setup.slots[].order`?
+4. Si el provider llega **sin `applicable_countries`**, `GET /providers?country=`
+   no lo devuelve (misma trampa de didit/textract, §1) y el catálogo no puede
+   ofrecerlo. Confirmar con `jq '.data[] | select(.parameters.slug=="whatsapp_checkin_link")'`.
+5. El tablero de consumo (`billing/lib/pricing.ts` → `classifyRecord`) no tenía
+   categoría para este slug: sus registros facturables quedaban FUERA de
+   «Consumo por reserva» en silencio. ✅ Corregido 2026-09-22: columna
+   «WhatsApp» (`checkinLink`), clasificada ANTES que identidad porque el nombre
+   «Check-in Link Delivery» matchea la regex de verificación.
+
+**⚠️ Addendum 2026-09-27 — tercer canal `ota_inbox` (implementado en front 2026-10-01, NO verificado por curl).**
+Mismo `checkin_link_delivery`; `channels` admite `email | whatsapp | ota_inbox`.
+Publica el link en el chat de la OTA vía el PMS de origen (Kunas o Calry).
+Precio de OTRO provider: `ota_inbox_checkin_link` (`GET /providers?name[has]=OTA Inbox`),
+`billing.unit_cost: 0.0625` — cobra desde el día uno. Ese provider **no es
+automatización** (sin `automationType`): no debe aparecer como tarjeta.
+422 en `parameters.channels` si la propiedad no está conectada a Kunas/Calry
+(pista en UI: `pmsIdentifiers` no vacío; el 422 manda). **Los overrides de
+listing ahora validan `channels`** con los mismos 422. Detalle de reserva:
+`extra.checkinLinkOtaSentAt`, `checkinLinkOtaVia` (`kunas_pms|calry`),
+`checkinLinkOtaMessageId` (NO mostrar); **sin estado de entrega** — solo
+«Enviado». Solo aplica a reservas con `importSource` Kunas/Calry; en manual/iCal
+cae a email en silencio. ⚠️ **Cambia el histórico de cobros**: un cobro de OTA
+también llega con `providerSlug: "whatsapp_checkin_link"` — distinguir por
+`responsePayload.channel` (`whatsapp | ota_inbox`), NO por slug. `skipped`
+nuevos (ninguno cobra): `not_imported_from_pms`, `pms_integration_unavailable`,
+`kunas_messaging_not_configured`, `calry_not_configured`, `no_ota_thread`,
+`already_posted`. ⚠️ **Email de respaldo tardío**: si un canal cobrado falla
+3 veces tras despacharse y email no estaba marcado, el backend lo manda igual —
+`checkinLinkSentAt` puede aparecer con `channels` sin email («Email (respaldo)»).
+
+**Cómo quedó el addendum en el front (2026-10-01):**
+- Frontera: `normalizeUsageRecord` expone `channel: "whatsapp" | "ota_inbox" | null`
+  como campo tipado (el allowlist genérico de `responsePayload` lo descartaba —
+  sin esto todo caía en WhatsApp). `sanitizeProvider` y la fila conservan
+  `automationType` en TRI-ESTADO: string · `null` explícito (no es
+  automatización) · clave ausente (el backend no lo dice).
+- Catálogo: `isAutomationProvider` = slug presente y `automationType !== null`.
+  Sin la clave se CONSERVA (providers históricos sin verificar: filtrar por la
+  ausencia escondería todo) — compatibilidad declarada, no cumplimiento.
+  Además la partición saca por slug los providers de WhatsApp y OTA.
+- Fila detectada por `automationType === "checkin_link_delivery"`, con el slug
+  como respaldo. Providers resueltos con `automationService.findProviderBySlug`.
+- Pista PMS: el formulario guarda `pmsIdentifiers` como `externalPmsIds`
+  (`watch("externalPmsIds")`). Casilla OTA: oculta sin pista ni valor guardado;
+  visible con pista; si está guardada sin pista, visible, marcada, con aviso y
+  removible. 422 de `parameters.channels(.N)` anclado junto a las casillas
+  (tarjeta y cada unidad).
+- Overrides: «heredar» (borra) o «configurar distinto» con casillas; email fijo.
+- Tablero: columnas «WhatsApp» y «Mensaje OTA» por `channel`; sin `channel` =
+  WhatsApp; cualquier `skipped: true` suma cero aunque llegue completed+billable.
+- Historial: canal por registro y mapa cerrado de 9 motivos `skipped`.
+- Reserva: fila OTA «Enviado» + vía, sin estado; «Email (respaldo)» solo con
+  configuración resuelta (es la actual, no la del envío); aviso de OTA no
+  aplicable con `originKnown` + `importSource` fuera de Kunas/Calry; reenvío
+  con `describeResendCharges` (canales aplicables, certeza por tarifa).
+- Auditoría externa 2026-10-01 (5 ajustes): el diálogo de reenvío deja el
+  email OPCIONAL (vacío = se omite del body y el backend usa el correo
+  registrado — exigirlo bloqueaba reenviar solo por WhatsApp/OTA en reservas
+  iCal sin correo); tarifas unitarias con `formatUsdRate` (hasta 4 decimales:
+  0.0625 ya no se mostraba 0,06, un 4 % menos); en el historial `skipped: true`
+  manda sobre `billable` (`chargeLabel` → «Sin cargo», misma regla del
+  tablero); con origen DESCONOCIDO (`otaApplicable: null`) el reenvío anuncia
+  la OTA condicionada («solo si la reserva lo permite; si sale, cuesta…»), sin
+  afirmar envío ni cobro; y en el override por unidad volver a «configurar
+  distinto» restaura los canales persistidos y la casilla OTA también es
+  visible por lo GUARDADO (pasar el borrador por «heredar» la ocultaba y
+  guardar borraba la OTA sin tocarla).
+- Curls nuevos: `automationType` en providers históricos y en
+  `ota_inbox_checkin_link`; `channel` en registros de WhatsApp; forma de los
+  `skipped` (status/billable); reembolso de WhatsApp fallido (¿el registro pasa
+  a failed?).
+
+**Cómo quedó en el front (2026-09-22):**
+- Tarjeta propia `CheckinLinkDeliveryCard` en la pestaña Automatizaciones (no
+  una `AutomationCard` genérica: aquella exige disparadores y modal de
+  credenciales). La fila se separa del catálogo genérico con
+  `partitionCheckinLinkDelivery` (`lib/checkin-link-delivery.ts`), que también
+  tiene la tabla de verdad `resolveEffectiveChannels` — la ÚNICA forma válida
+  de responder «¿por dónde sale el link?» (el backend no expone los canales
+  efectivos, gap #4).
+- **Decisión de producto tomada en el front (pregunta 2 de §12): email SIEMPRE
+  marcado, WhatsApp es el extra.** Elimina el estado «cero canales» y no
+  promete «solo WhatsApp», que con Airbnb sin teléfono cae a email en silencio.
+- Creación en dos pasos con `automationService.create` (camelCase, como el
+  resto del repo, `executionOrder` ≥ 3 siempre) → `configure` con
+  `{statusProviderId: 8, parameters: {channels}}`. Un 403 en el POST se avisa
+  con copy propio: «tu cuenta no puede crear esta automatización todavía».
+- Provider: primero en `GET /providers?country=`; si no está, segunda búsqueda
+  `listProviders({ nameHas: "WhatsApp" })` (`name[has]`), identificado por slug.
+- Override por unidad dentro de la misma tarjeta (`CheckinLinkDeliveryOverrides`):
+  heredar (borra el override) · email+WhatsApp · solo email (override ACTIVO con
+  `channels: ["email"]`; un override inactivo se lee igual que «solo email»).
+- Detalle de reserva: `ReservationDetailData` ganó `propertyUuid`,
+  `listingUuid` y `checkinLinkDelivery` (lector `lib/checkin-link-delivery-status.ts`,
+  nunca lee el wamid); `useCheckinLinkChannels` resuelve los canales de ESA
+  reserva y alimenta el aviso «sin teléfono» (con botón que abre el diálogo de
+  edición existente; la ficha se recarga por el evento `reservationCreated`) y
+  el aviso de costo en el diálogo de reenvío.
+- Pendiente a propósito: contador «N de M reservas sin teléfono» (pregunta 1 de
+  §12, pantalla nueva) y ocultar el control a `property_staff` (el rol por
+  usuario todavía no llega en `GET /user`; el 403 se muestra con su mensaje).
+
 ### ⚠️ Identificadores externos de PMS (`external_identifiers`) — contrato reescrito por backend el 2026-08-23
 
 *(del handoff de backend del 2026-08-24; ⚠️ no reverificado por curl — pero los
@@ -439,6 +860,47 @@ ausente → `null`); y los 422 `externalIdentifiers.N.campo` se atribuyen a la
 fila real vía `readExternalIdentifierServerErrors` en ambos formularios. Todo
 lo derivable vive en `lib/external-pms-ids.ts` (19 tests). Ya estaba resuelto:
 select desde `catalogService.getPmsSources()` (categoría 12) y dedupe cliente.
+
+### ✅ Catálogo `property_type` — los ids NO son 100/101/102 = Casa/Hotel/Apartamento
+
+✅ **Verificado por curl el 2026-10-06** (app token, endpoint público):
+
+```bash
+curl -s "$API/catalogs?status[eq]=ACT&catalogCategoryName[eq]=property_type" -H "Authorization: Bearer $APP_TOKEN"
+# sin X-Locale: 102 Hotel · 103 Apartment · 104 Condominium · 105 Studio · 106 House
+# con X-Locale: es (lo que manda CatalogService): Hotel · Apartamento · Condominio · Estudio · Casa
+```
+Sin `uuid` en las filas (claves: `id, name, name_translations, order,
+parameters, status, catalogCategoryId`), así que el `String(item.uuid || item.id)`
+de `fetchCatalog` usa el id y el cruce con `propertyTypeId` funciona.
+❌ Corregido el 2026-10-06: acá se dijo que los nombres llegaban en inglés; eso
+pasaba solo con el curl sin `X-Locale`. La app los recibe en español.
+
+❌ El front asumía 100 = Casa, 101 = Hotel, 102 = Apartamento (switch en
+`PropertyCard`, opciones de respaldo del formulario, `extra.type` derivado de
+`=== 101`) y **completaba un tipo ausente con `102`**. Como 102 es Hotel, toda
+propiedad sin tipo salía «HOTEL» — el reporte del 2026-10-06 sobre las
+importadas de Kunas — y al editarla el PUT guardaba Hotel.
+
+**Corregido 2026-10-06:** `lib/property-type.ts` (`readPropertyTypeId`:
+`propertyType.id` → `propertyTypeId` → `property_type_id` →
+`extra.propertyTypeId`, entero > 0, si no `null`; ignora el `extra.type` de
+texto). Sin tipo: la tarjeta dice «Sin tipo», el formulario queda vacío y la
+validación obliga a elegir (nunca se guarda un tipo inventado). La etiqueta sale
+SOLO del catálogo; mientras carga no se muestra ninguna.
+
+⚠️ **Sin verificar (falta token de PM): qué `propertyTypeId` trae una propiedad
+importada de Kunas.** Si llega `null`, el arreglo del front resuelve el reporte
+(dirá «Sin tipo»). Si el import la crea con 102, el front muestra la verdad del
+dato y el arreglo es de backend (mapear el tipo de Kunas o dejarlo nulo):
+`curl -s "$API/properties" "${H[@]}" | jq '.data[] | {name, propertyTypeId, propertyType, pmsIdentifiers}'`
+
+Auditoría 2026-10-06: `fetchCatalog` nunca rechaza (un fallo devuelve `[]`),
+así que `usePropertyTypeLabel` trata un catálogo vacío como fallo y NO lo guarda
+(antes quedaba vacío toda la sesión). El selector del formulario muestra
+«Cargando tipos…» mientras `isLoadingCatalogs`, y «No se pudo cargar…» solo con
+la carga terminada y vacía. **El incidente de Kunas sigue abierto** hasta ver el
+payload real con el curl de arriba.
 
 ### ❌ `extra.currency` de un Listing NO persiste — el backend la descarta en silencio
 
@@ -666,6 +1128,11 @@ catálogo.
   se capturó en el salto interno que genera el PDF, no en la firma del huésped.
   Para valor probatorio (Ley 527) el UA/IP deben ser los del dispositivo al
   firmar; revisar también si la IP registrada es la del huésped.
+  ❌ **Corregido 2026-10-08:** lo de «sin proxy» es FALSO hoy. `API_BASE` en el
+  navegador es `/api/guest` (`src/lib/config.ts`): TODO el tráfico del portal y
+  del dashboard pasa por `src/app/api/guest/[...path]/route.ts` en Vercel, que
+  es quien pone el app token. El UA `node` y la IP de Vercel que ve el backend
+  son de ese proxy, no del salto que genera el PDF. Ver §3, «Tope de 4 MB».
 
 ---
 
@@ -1162,6 +1629,38 @@ tolerante por fila (campo desconocido muestra su clave, fila malformada se
 descarta sin tirar la lista) y el detalle muestra «El PMS revirtió N cambios».
 La lista conserva `origin` en el tipo aunque aún no lo pinte.
 
+## 2e-bis. Reserva manual: el link de check-in NO sale solo — lo pide el front
+
+⚠️ *`docs/API_DOCUMENTATION.md` («Envío automático: al importar una reserva de
+la propiedad»); no reverificado por curl. Reporte de Ricardo 2026-10-08: «este
+link le debió llegar al correo del guest».*
+
+- **Según la documentación** (⚠️ no verificado contra producción), el backend
+  envía el link por sí solo **solo al importar** (PMS, iCal), y `POST
+  /reservations` no tiene flag de envío. Es una HIPÓTESIS documental hasta que
+  pase la prueba de doble envío de abajo. El repo lo documentaba desde mayo («`sendLinkNow` existe en UI
+  pero no se envía») y el diálogo igual anunciaba «Se enviará el link».
+- **Implementado 2026-10-08 — ⚠️ PENDIENTE de prueba integrada:** con la
+  casilla marcada, el front llama `POST /reservations/{uuid}/send-checkin-link`
+  (§3.6 del contrato WhatsApp, sin body: el backend usa el correo del huésped y
+  enruta por los canales configurados) con el uuid de la respuesta del POST.
+  ⚠️ Trampa que ya costó una versión rota: `apiClient` DESENVUELVE `data`, así
+  que el `{data: {reservation: {uuid}}}` documentado llega al código como
+  `{reservation: {uuid}}` — probar siempre contra la forma que entrega el
+  cliente, no contra el JSON crudo. Si el envío falla, la reserva queda creada y
+  el aviso dice POR QUÉ no salió (mensaje del backend) en vez de prometer nada.
+- ⚠️ **Antes de desplegar: descartar el doble envío.** Que el doc solo hable de
+  envío automático «al importar» no demuestra que `POST /reservations` no
+  dispare otro proceso, y un segundo WhatsApp es un segundo cobro. Prueba con
+  token de PM: crear una manual con la casilla APAGADA, esperar 2 min y leer
+  `GET /reservations/{uuid}` → `extra.checkinLinkSentAt` debe seguir `null` y
+  `GET /reservations/{uuid}/automation-records` sin registro del link; luego
+  crear una con la casilla ENCENDIDA → exactamente UN registro del link.
+- La ficha de la reserva se relee tras un reenvío exitoso: antes seguía
+  diciendo «Todavía no se ha enviado» (lo que se reportó como «caché del front»).
+- ⚠️ Pendiente: confirmar por curl que el 201 trae `data.reservation.uuid`; si
+  no lo trae, el aviso manda a reenviar desde la ficha (no inventa nada).
+
 ## 2f. Integración Airbnb iCal (contrato del 2026-09-04, backend implementado)
 
 ⚠️ *Del documento de backend; no reverificado por curl. Lo esencial:*
@@ -1182,8 +1681,16 @@ La lista conserva `origin` en el tipo aunque aún no lo pinte.
 - **Plantilla de mensaje**: `message` va en el communications_locale de la
   property (NO sigue X-Locale — lo lee el huésped); `instructions` sí siguen
   X-Locale. No armar la URL del check-in en el front. `[código de confirmación]`
-  se reemplaza con el menú Shortcodes de Airbnb; programar ≥1h después de
-  reservar (HIT lee el calendario cada 30 min).
+  se reemplaza con el menú Shortcodes de Airbnb. ❌ «programar ≥1h después de
+  reservar» era una recomendación del doc que el front convirtió en aviso
+  prohibitivo; **corregido 2026-09-22**: «inmediatamente después» funciona,
+  porque el link no depende del sync y el portal responde `pending_sync` +
+  Reintentar mientras tanto. ⚠️ El front YA NO pinta `instructions` del backend
+  (decía «Menú > Mensajes > Mensajes programados», ruta que no existe en el
+  Airbnb actual): los pasos son copy propio en `AirbnbIcalPanel.tsx`
+  (Mensajes → engranaje → Administra tus respuestas rápidas → Crear → Hora
+  personalizada · Reservación confirmada). Pedido a backend: corregir o retirar
+  `instructions`.
 - **Portal**: `portalStatus: "pending_sync"` (HTTP 200) en la ruta externa
   cuando la reserva aún no sincronizó — se resuelve solo en <30 min, merece
   botón Reintentar. La ruta externa ahora tiene rate limit 60/min → manejar 429.
@@ -1192,6 +1699,14 @@ La lista conserva `origin` en el tipo aunque aún no lo pinte.
   hay endpoint aparte a propósito). Errores en `errors.totalGuests` (faltante /
   min:1 / "hasta :max"). De un solo uso: tras declarar pasa a false. Reservas de
   Calry/Kunas/manuales nunca traen el flag.
+- **`checkinLinkWhatsappTo` vs `…SentTo` (2026-09-30)**: el doc escribe
+  `checkinLinkWhatsappTo` pero el de email es `checkinLinkSentTo`; sin curl, el
+  lector acepta las dos formas (y snake_case). Confirmar cuál llega.
+- **Aviso de edición (2026-09-30, pedido de Ricardo 09-26)**: una reserva iCal
+  NO es de PMS. El aviso ámbar del diálogo de edición se decide por
+  `importSource` (`describeImportedReservationNotice`): en `ical` dice que solo
+  las fechas vienen del calendario y que huéspedes, valor y moneda se registran
+  en HIT; en Calry/Kunas conserva el aviso de los 6 campos del webhook (§2g.4).
 - **Reserva importada**: `importSource: "ical"` (tercer valor), `emailGuest:
   null` es lo normal, `totalGuests: 0` = sin declarar, `extra.
   capacityDeclarationRequired` (informativo) y `extra.priceUnconfirmed`
@@ -1235,6 +1750,41 @@ Toda la máquina de estados de `verification` se resuelve con
 `lib/verification-result.ts` (`normalizeVerificationResult`). **Es el único
 criterio válido de "verificado"** — hubo cuatro criterios distintos conviviendo y
 provocaba esperas de 3 minutos sobre huéspedes ya completos.
+
+### ✅ Todo lo que sale del navegador pasa por el proxy `/api/guest` — y Vercel lo corta en 4 MB
+
+✅ **Medido contra producción el 2026-10-08** (`app.hitguest.com`), reporte de
+Ricardo: la subida de documentos (§17) fallaba con «Error en la solicitud» y el
+backend **no registraba ninguna llamada**.
+
+```bash
+# cuerpo multipart de N MB contra el proxy (sin token: el proxy pone el app token)
+curl -s -o /dev/null -w "%{http_code}\n" -X POST \
+  "https://app.hitguest.com/api/guest/checkin/<r>/secondary/<g>/documents" \
+  -F "front_image=@probe.bin;type=image/jpeg;filename=front.jpg"
+# 0,2 · 1 · 2 · 3 · 3,5 · 4,0 MB → 422 del backend (llegó)
+# 4,3 · 4,6 · 6 MB            → 413 {"error":{"code":"413","message":"Request Entity Too Large"}}
+```
+
+- El 413 lo emite el **borde de Vercel** antes de ejecutar la función: ni el
+  proxy ni el backend lo ven, y su cuerpo trae el mensaje en `error.message`,
+  no en `message` — por eso `buildHttpError` caía al genérico.
+- La documentación de Vercel dice 4,5 MB; el tope efectivo es **4 MB** por
+  petición (`PROXY_REQUEST_BODY_LIMIT_BYTES`, `src/lib/image-upload.ts`).
+- Aplica a TODA subida del navegador: §17 (tres fotos), las fotos en base64 que
+  el formulario del huésped mete en el JSON de `/complete` (base64 pesa 33 %
+  más), la galería de propiedades (`POST /properties/{uuid}/images`, hasta 10
+  archivos en UNA petición) y el logo (ya limitado a 2 MB).
+- **Cómo quedó en el front (2026-10-08):** `prepareImageForUpload` recomprime
+  en el navegador (JPEG, lado mayor 1800 px, objetivo ≤ 1 MB; orientación EXIF
+  la aplica el propio navegador al decodificar) y, si no puede, manda el
+  original; el total se compara contra el tope ANTES de enviar; un 413 muestra
+  «Las fotos pesan demasiado…» y conserva las fotos; la galería se recomprime
+  (2000 px) y se envía en lotes que quepan. El límite de 10 MB por foto que
+  tenía `VerifyScreen` era ficción: nunca pasaba de 4 MB en total.
+- ⚠️ Sin verificar: que Textract/Rekognition acepten igual una foto de 1800 px
+  (debería: AnalyzeID trabaja bien desde ~1000 px). Si sube el rechazo por
+  `LOW_QUALITY_IMAGE` tras el deploy, subir `UPLOAD_IMAGE_MAX_DIMENSION`.
 
 ### Payload del portal observado en reserva completada (✅ 2026-08-21)
 
@@ -1323,6 +1873,48 @@ muestra el `digest` como referencia en pantalla.
   (huésped, unidad, check-in)? Sin una de las tres, el pedido no es
   implementable solo desde el front.
 - Si `POST /properties` va a respetar el array `automations` o dejar de pedirlo.
+- **⚠️ `GET /reservations` ¿pagina? (auditoría externa 2026-10-08).** Este
+  skill y el código afirmaban «devuelve la lista completa, sin paginación»
+  (❌ nunca verificado por curl). En producción se observó UNA carga seguida de
+  exactamente **15** consultas de automatización — el `per_page` por defecto
+  de Laravel. Y el «aviso si viene paginado» del front era código muerto:
+  `apiClient` desenvuelve `data` y descarta `meta`, así que jamás vio
+  `meta.last_page` (el repo ya lo sabía: `listProviders` y
+  `propertyDocumentService.list` leen `meta` con un `fetch` crudo por eso).
+  **Corregido 2026-10-08**: `fetchAllReservationPages` sigue `?page=N` hasta
+  `meta.last_page` con el token de sesión (si no pagina, una sola llamada);
+  `source.name` y `emailGuest` se leen con tolerancia (el `name` puede ser
+  `{en, es}` como el del estado); cada fila se mapea aislada y una mal formada
+  se descarta con `console.error` en vez de tumbar el lote. Confirmar con
+  token de PM: `curl -s "$API/reservations?page=1" "${H[@]}" | jq '{n: (.data|length), meta}'`.
+- **⚠️ `GET /reservations` respondió 202 en producción (observado por auditoría
+  externa el 2026-10-08, 07:30, dos segundos después de un 200 de la misma
+  lista; cuerpo NO capturado).** Ningún contrato documenta un 202 en ese
+  endpoint (solo en `POST /integrations` de Kunas = «sincronización iniciada en
+  background» y en `POST /ical/feeds/{uuid}/sync`). Hipótesis: el backend
+  devuelve 202 mientras corre una sincronización. Lo que SÍ es del front: el
+  cliente aceptaba cualquier 2xx y `fetchList` convertía un cuerpo sin arreglo
+  en `[]` — la tabla pasaba de «una reserva» a «No hay resultados» sin error.
+  Corregido 2026-10-08: un 2xx cuyo cuerpo no trae el arreglo ya no es «cero
+  reservas», es un fallo (la pantalla conserva lo que tenía); un 202 se trata
+  como «todavía no» y se reintenta solo. **Pedir a backend el cuerpo exacto del
+  202 y en qué condiciones lo emite** — la prueba del auditor (Preserve log en
+  Network, guardar ambos cuerpos) es la correcta.
+
+- **Reservas manuales «que no se muestran» (Ricardo, 2026-10-08).** DOS causas
+  del lado del front, ambas corregidas: (a) el botón «Nueva Reserva» del
+  encabezado del Tablero y el calendario NO escuchaban `reservationCreated`
+  (solo la lista); (b) **el listado hacía `statusReservation.name.toLowerCase()`
+  a secas** mientras el detalle ya usaba `mapReservationStatus` (id del catálogo
+  primero; `name` como objeto `{en, es}` o JSON serializado). Con el `name` como
+  objeto, UNA reserva lanzaba un TypeError dentro del `map`, `list()` rechazaba y
+  `ReservationsList` conservaba la lista anterior solo con un `console.error`:
+  exactamente «se crea pero no aparece». Ahora hay un único normalizador
+  (auditoría externa 2026-10-08). Si después de recargar tampoco aparece, es
+  `GET /reservations` (¿filtra por fecha o estado? ¿empezó a paginar?
+  `warnIfPaginated` lo gritaría en consola).
+  Confirmar con token de PM:
+  `curl -s "$API/reservations" "${H[@]}" | jq '{total: (.data|length), meta, ultimas: [.data[-3:][] | {externalId, arrivalDate, statusReservationId: .statusReservation.id, createdAt}]}'`
 
 El detalle con evidencia está en `docs/BACKEND_NEEDS_PROPERTY_AUTOMATIONS.md`.
 
