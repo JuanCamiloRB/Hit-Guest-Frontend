@@ -1916,6 +1916,19 @@ muestra el `digest` como referencia en pantalla.
   Confirmar con token de PM:
   `curl -s "$API/reservations" "${H[@]}" | jq '{total: (.data|length), meta, ultimas: [.data[-3:][] | {externalId, arrivalDate, statusReservationId: .statusReservation.id, createdAt}]}'`
 
+- **Superusuario e ingreso a cuentas de clientes (pedido de producto
+  2026-10-09).** NO existe ningún contrato: `GET /user` no dice quién es
+  superusuario, `GET /users` y `GET /clients/{uuid}` son solo de la propia
+  cuenta, y `RICARDO_API_CONTRACTS.md` §3.3 registra que `SUPER_ADMIN` NO debe
+  recibir scope global. Lo pedido (sin inventar nada en el front):
+  `isSuperAdmin` en `GET /user`; `GET /admin/clients` y
+  `/admin/clients/{uuid}/users`; `POST /admin/impersonate` que emite un token
+  APARTE y de corta duración sin tocar el del superusuario; `GET /user` con ese
+  token trae `impersonation {actorUuid, mode, expiresAt}`; solo lectura por
+  defecto y auditoría del actor real. Detalle y payloads en
+  `docs/BACKEND_NEEDS_IMPERSONATION.md`. Hasta que exista, el front NO
+  construye nada que llame a esos endpoints.
+
 El detalle con evidencia está en `docs/BACKEND_NEEDS_PROPERTY_AUTOMATIONS.md`.
 
 ---

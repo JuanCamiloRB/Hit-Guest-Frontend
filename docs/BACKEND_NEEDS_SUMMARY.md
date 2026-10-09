@@ -19,6 +19,12 @@
 
 ## Bloqueante activo
 
+- ⚠️ **Superusuario e ingreso a cuentas de clientes** (pedido de producto
+  2026-10-09). No existe contrato: ver `BACKEND_NEEDS_IMPERSONATION.md`
+  (`isSuperAdmin` en `GET /user`, `GET /admin/clients`,
+  `POST /admin/impersonate` con token aparte, `GET /user` con `impersonation`,
+  solo lectura y auditoría). El mock del front ya está aprobado.
+
 - ⚠️ **Origen de la reserva — `PUT /reservations/{uuid}`** (abierto 2026-08-19).
   Ningún endpoint expone si una reserva entró por sincronización o la creó el PM
   a mano: `source` es el canal comercial, y `source_pms` solo existe a nivel
