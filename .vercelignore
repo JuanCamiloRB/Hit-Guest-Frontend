@@ -1,0 +1,4 @@
+# Despliegues por CLI: los secretos viven en las variables del proyecto en Vercel,
+# nunca en el código subido.
+.env*
+!.env.example
