@@ -72,6 +72,8 @@ export interface RoleDefinition {
     permissions: Permission[]
 }
 
+import type { ImpersonationInfo } from "@/features/admin/lib/session-access"
+
 export interface User {
     id: string
     clientId: string // New: Links user to a Client
@@ -94,6 +96,18 @@ export interface User {
     isAccountOwner?: boolean
     /** Client (CLIENTE) uuid — same as clientId; kept explicit for clarity in owner flows. */
     clientUuid?: string
+    /** Nombre del cliente (`client_name` de GET /user); se usa en el banner de suplantación. */
+    clientName?: string
+    /**
+     * Capacidades del plano de superusuario (`capabilities` de GET /user).
+     * ⚠️ Contrato pedido, aún no emitido: ausente = sin acceso
+     * (`docs/BACKEND_NEEDS_IMPERSONATION.md`).
+     */
+    capabilities?: string[]
+    /** Roles como arreglo (`roles` de GET /user, contrato pedido). */
+    roles?: string[]
+    /** Presente solo cuando la sesión es un token suplantado (§3 del pedido). */
+    impersonation?: ImpersonationInfo | null
     permissions?: {
         reservations?: string[]
         properties?: string[]

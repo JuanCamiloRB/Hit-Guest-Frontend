@@ -330,16 +330,32 @@ cada pantalla del front para filtrar y rotular por cliente, y es justo el tipo
 de cambio que produce fugas entre cuentas. Con suplantación por token cada
 respuesta viene de una sola cuenta.
 
-## Lo que el front construye en cuanto esto exista
+## Lo que el front ya tiene construido (2026-10-09)
 
-Diseñado y aprobado en mock: sesión con dos capas (actor y suplantado) en el
-`auth-store`; el cliente HTTP usa el token suplantado mientras esté activo y un
-401 en ese modo sale de la suplantación en vez de cerrar la sesión; banner fijo
-con cliente, usuario, modo y vencimiento, y botón «Volver a mi cuenta»;
-invalidación de cachés y peticiones en vuelo por cliente al entrar y salir;
-pantallas de directorio y de cuenta del cliente; controles de escritura
-desactivados en solo lectura. **No se construye nada que llame a estos
-endpoints hasta que existan.**
+Implementado y probado, **oculto hasta que la sesión traiga las capacidades**:
+hoy ninguna sesión las trae, así que en producción no se ve ni se llama nada.
+
+- Sesión de dos capas en el `auth-store` (`actor` = superusuario intacto,
+  `user` = sesión con la que se llama al backend), persistida para sobrevivir a
+  una recarga; anidar está bloqueado también en el cliente.
+- Un 401 dentro de una cuenta ajena **sale de ella** y vuelve al directorio;
+  nunca cierra la sesión del superusuario. «Cerrar sesión» dentro de una cuenta
+  ajena devuelve a la propia.
+- Salir revoca con el **token del actor** (`DELETE /admin/impersonations/{id}`)
+  después de restaurar su sesión; si la revocación falla, se vuelve igual.
+- Aislamiento: navegación completa al entrar y al salir, que reinicia todas las
+  cachés de la cuenta anterior.
+- Banner fijo en todo el dashboard (cliente, usuario, modo, vencimiento, volver).
+- Pantallas `/dashboard/admin/clients` (búsqueda y paginación) y
+  `/dashboard/admin/clients/{uuid}` (datos de la cuenta y usuarios con el icono
+  de entrar), detrás de `admin.clients.read`.
+- Diálogo de entrada con motivo obligatorio (10–500) y modo con escritura solo
+  con `admin.impersonate.full`; cada código de §2.5 con su propio mensaje.
+- `403 IMPERSONATION_READ_ONLY` se muestra como «modo solo lectura».
+
+Todo lo que depende de la forma exacta de las respuestas vive en
+`src/features/admin/lib/admin-readers.ts` y `session-access.ts`: si el contrato
+final difiere, es el único lugar a ajustar.
 
 ## Orden de entrega
 

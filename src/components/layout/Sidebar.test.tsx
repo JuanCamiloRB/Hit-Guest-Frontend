@@ -9,13 +9,16 @@ vi.mock("next/navigation", () => ({
     usePathname: () => mockPathname.current,
 }))
 
+const mockImpersonating = vi.hoisted(() => ({ current: false }))
+
 vi.mock("@/features/auth/hooks/use-auth", () => ({
-    useAuth: () => ({ user: mockUser.current, logout: vi.fn() }),
+    useAuth: () => ({ user: mockUser.current, logout: vi.fn(), isImpersonating: mockImpersonating.current }),
 }))
 
 beforeEach(() => {
     mockUser.current = { firstName: "Juan Camilo Rodriguez", isAccountOwner: true }
     mockPathname.current = "/dashboard"
+    mockImpersonating.current = false
 })
 
 describe("Sidebar", () => {
@@ -101,5 +104,27 @@ describe("Sidebar", () => {
         expect(
             within(screen.getByRole("navigation", { name: "Sistema" })).getByRole("link"),
         ).toHaveTextContent("Configuración")
+    })
+})
+
+describe("Sidebar — plano de superusuario", () => {
+    it("sin la capacidad explícita no existe la entrada «Clientes»", () => {
+        render(<Sidebar />)
+        expect(screen.queryByRole("link", { name: /Clientes/ })).toBeNull()
+    })
+
+    it("con la capacidad aparece «Clientes» marcada SUPER", () => {
+        mockUser.current = { firstName: "Soporte", capabilities: ["admin.clients.read"] }
+        render(<Sidebar />)
+        const link = screen.getByRole("link", { name: /Clientes/ })
+        expect(link).toHaveAttribute("href", "/dashboard/admin/clients")
+        expect(link).toHaveTextContent("SUPER")
+    })
+
+    it("dentro de una cuenta ajena la entrada se oculta aunque el actor tenga la capacidad", () => {
+        mockUser.current = { firstName: "Didier", capabilities: ["admin.clients.read"] }
+        mockImpersonating.current = true
+        render(<Sidebar />)
+        expect(screen.queryByRole("link", { name: /Clientes/ })).toBeNull()
     })
 })

@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useHasHydrated } from "@/hooks/useHasHydrated"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import { useTranslation } from "@/hooks/useTranslation"
 import {
@@ -40,14 +41,11 @@ const LANGUAGE_OPTIONS: { code: Language; label: string }[] = [
 ]
 
 export function Header() {
-    const { user, logout } = useAuth()
+    const { user, logout, isImpersonating } = useAuth()
     const { language, setLanguage } = useLanguageStore()
     const { t } = useTranslation()
-    const [isMounted, setIsMounted] = React.useState(false)
+    const isMounted = useHasHydrated()
 
-    React.useEffect(() => {
-        setIsMounted(true)
-    }, [])
 
     return (
         <header className="sticky top-0 z-30 flex h-14 sm:h-20 w-full items-center justify-between border-b bg-white/80 backdrop-blur-md px-3 sm:px-6 md:px-10 shadow-sm transition-all duration-300">
@@ -147,7 +145,7 @@ export function Header() {
                                 onClick={logout}
                             >
                                 <LogOut className="mr-2 h-4 w-4" />
-                                <span>{t('header.logout')}</span>
+                                <span>{isImpersonating ? "Volver a mi cuenta" : t('header.logout')}</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

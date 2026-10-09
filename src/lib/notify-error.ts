@@ -61,6 +61,16 @@ export function normalizeApiError(error: unknown, fallback = DEFAULT_FALLBACK): 
     let message: string =
         typeof e.message === "string" && e.message.trim() ? e.message : fallback
 
+    // Dentro de una cuenta ajena en solo lectura, el backend rechaza toda
+    // escritura con este código (docs/BACKEND_NEEDS_IMPERSONATION.md §2.3).
+    if (status === 403 && e.code === "IMPERSONATION_READ_ONLY") {
+        return {
+            message: "Estás viendo esta cuenta en modo solo lectura: no se pueden hacer cambios.",
+            status,
+            details: [],
+        }
+    }
+
     // 403 = recurso de otra cuenta (policy). Laravel's default text is English
     // ("This action is unauthorized.") — replace it; keep any localized message.
     if (status === 403 && /unauthorized|forbidden|this action|do not have permission/i.test(message)) {

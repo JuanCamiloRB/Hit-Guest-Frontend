@@ -14,6 +14,8 @@ export interface ApiErrorResponse {
     /** OCR / document-verification failures (e.g. CRITICAL_FIELD_ERROR). */
     errorType?: string
     failedFields?: OcrFailedField[]
+    /** Código estable del error, cuando el backend lo manda (`IMPERSONATION_READ_ONLY`…). */
+    code?: string
 }
 
 export class ApiError extends Error {
@@ -22,6 +24,7 @@ export class ApiError extends Error {
     public errors?: (string | Record<string, string[]>)[] | Record<string, string[]>
     public errorType?: string
     public failedFields?: OcrFailedField[]
+    public code?: string
 
     constructor(status: number, data: ApiErrorResponse) {
         super(data.message)
@@ -30,5 +33,6 @@ export class ApiError extends Error {
         this.errors = data.errors
         this.errorType = data.errorType
         this.failedFields = data.failedFields
+        this.code = typeof data.code === "string" ? data.code : undefined
     }
 }

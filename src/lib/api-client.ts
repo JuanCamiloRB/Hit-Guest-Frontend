@@ -10,6 +10,16 @@ import { useLanguageStore } from "@/store/useLanguageStore"
  */
 export function handleSessionExpired() {
     const state = useAuthStore.getState()
+    // Dentro de la cuenta de otro usuario, un 401 es el token SUPLANTADO
+    // (venció o se revocó), no la sesión del superusuario: se sale de la
+    // cuenta ajena y se vuelve al directorio, nunca se cierra la sesión propia.
+    if (state.actor) {
+        state.endImpersonation()
+        if (typeof window !== "undefined") {
+            window.location.href = "/dashboard/admin/clients?impersonation=ended"
+        }
+        return
+    }
     const hadSession = !!state.user?.token
     state.clearSession()
 

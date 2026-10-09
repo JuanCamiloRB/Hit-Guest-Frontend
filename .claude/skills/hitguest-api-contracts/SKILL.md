@@ -1934,8 +1934,13 @@ muestra el `digest` como referencia en pantalla.
   observado jul 2026, `BACKEND_NEEDS_SUMMARY.md`): hay que quitarlo antes, o el
   actor se salta la suplantación. Permisos efectivos = los del objetivo ∩ modo
   ∩ allowlist − prohibiciones; nunca más que el usuario suplantado. Detalle y payloads en
-  `docs/BACKEND_NEEDS_IMPERSONATION.md`. Hasta que exista, el front NO
-  construye nada que llame a esos endpoints.
+  `docs/BACKEND_NEEDS_IMPERSONATION.md`. **Front construido 2026-10-09 y
+  OCULTO** detrás de `capabilities` (`src/features/admin/`): sesión de dos capas
+  en el `auth-store` (`actor`), 401 dentro de una cuenta ajena = salir de ella
+  (nunca cerrar la del superusuario), revocación con el token del actor,
+  navegación completa al entrar/salir, banner, directorio y cuenta del cliente,
+  diálogo con motivo. Lectores en `admin-readers.ts`/`session-access.ts`: único
+  punto a ajustar cuando llegue el contrato real.
 
 El detalle con evidencia está en `docs/BACKEND_NEEDS_PROPERTY_AUTOMATIONS.md`.
 

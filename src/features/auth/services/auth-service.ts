@@ -1,3 +1,4 @@
+import { readCapabilities, readImpersonation, readRoles } from "@/features/admin/lib/session-access"
 import { AuthService, ClientAccount, ClientProfile, RegisterFormData, UpdateProfilePayload, User } from "../types"
 import { apiClient, handleSessionExpired } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
@@ -266,7 +267,7 @@ class AuthServiceImpl implements AuthService {
  * updateProfile so profile fields are hydrated the same way in both paths.
  * `country` is normalised to its id (string) to match the catalog-keyed Select.
  */
-function mapUserResponse(
+export function mapUserResponse(
     userResponse: any,
     token: string | undefined,
     fallbackEmail?: string,
@@ -301,6 +302,10 @@ function mapUserResponse(
         isPrincipal: userResponse?.isPrincipal ?? true,
         isAccountOwner: userResponse?.isAccountOwner ?? undefined,
         clientUuid,
+        clientName: userResponse?.clientName ?? userResponse?.client_name ?? undefined,
+        capabilities: readCapabilities(userResponse),
+        roles: readRoles(userResponse),
+        impersonation: readImpersonation(userResponse),
     }
 }
 

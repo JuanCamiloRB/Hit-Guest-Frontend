@@ -2,14 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
     clearSession: vi.fn(),
+    endImpersonation: vi.fn(),
     token: "pm-session-token" as string | null,
+    actor: null as { token: string } | null,
 }))
 
 vi.mock("@/lib/store/auth-store", () => ({
     useAuthStore: {
         getState: () => ({
             user: mocks.token ? { token: mocks.token } : null,
+            actor: mocks.actor,
             clearSession: mocks.clearSession,
+            endImpersonation: mocks.endImpersonation,
         }),
     },
 }))
@@ -68,5 +72,25 @@ describe("apiClient — un 202 no es un éxito con datos", () => {
         }), { status: 202, headers: { "Content-Type": "application/json" } })))
 
         await expect(request("/api/guest/ical/feeds/x/sync")).resolves.toEqual({ queued: true })
+    })
+})
+
+describe("apiClient — 401 dentro de la cuenta de otro usuario", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.token = "t-suplantado"
+        mocks.actor = { token: "t-superusuario" }
+        window.history.pushState({}, "", "/dashboard")
+    })
+
+    it("sale de la cuenta ajena y NUNCA cierra la sesión del superusuario", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+            message: "Unauthenticated.",
+        }), { status: 401, headers: { "Content-Type": "application/json" } })))
+
+        await expect(request("/api/guest/reservations")).rejects.toMatchObject({ status: 401 })
+        expect(mocks.endImpersonation).toHaveBeenCalledOnce()
+        expect(mocks.clearSession).not.toHaveBeenCalled()
+        mocks.actor = null
     })
 })

@@ -14,6 +14,7 @@ import {
     Home,
     MoreVertical,
     LogOut,
+    Building2,
     type LucideIcon,
 } from "lucide-react"
 import {
@@ -25,9 +26,10 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useState } from "react"
-import * as React from "react"
 import Image from "next/image"
 import { useAuth } from "@/features/auth/hooks/use-auth"
+import { useHasHydrated } from "@/hooks/useHasHydrated"
+import { ADMIN_CAPABILITIES, hasCapability } from "@/features/admin/lib/session-access"
 import { Avatar as UiAvatar, AvatarFallback } from "@/components/ui/avatar"
 
 interface NavEntry {
@@ -35,6 +37,8 @@ interface NavEntry {
     icon: LucideIcon
     href: string
     active: boolean
+    /** Marca corta junto a la etiqueta (p. ej. «SUPER» en el plano de superusuario). */
+    badge?: string
 }
 
 /**
@@ -71,36 +75,25 @@ function NavItem({ item }: { item: NavEntry }) {
                         item.active ? "text-white" : "text-white/60 group-hover:text-white",
                     )}
                 />
-                {item.label}
+                <span className="flex-1">{item.label}</span>
+                {item.badge && (
+                    <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-brand-purple">
+                        {item.badge}
+                    </span>
+                )}
             </Link>
         </li>
     )
 }
 
-/**
- * `true` solo después de hidratar. El usuario vive en un store de cliente, así
- * que el servidor no lo conoce y pintarlo en el primer render rompería la
- * hidratación.
- *
- * Antes esto era `useState(false)` + `useEffect(() => setIsMounted(true))`, que
- * es un setState dentro de un efecto — un render en cascada, y lo que marcaba
- * `react-hooks/set-state-in-effect`. `useSyncExternalStore` dice exactamente lo
- * mismo con las dos instantáneas que React ya tiene previstas: `false` en el
- * servidor, `true` en el cliente.
- */
-const neverResubscribe = () => () => {}
-function useHasHydrated(): boolean {
-    return React.useSyncExternalStore(
-        neverResubscribe,
-        () => true,
-        () => false,
-    )
-}
-
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname()
-    const { user, logout } = useAuth()
+    const { user, logout, isImpersonating } = useAuth()
     const isMounted = useHasHydrated()
+    // Solo con la capacidad explícita (contrato pedido) y FUERA de una cuenta
+    // ajena: el token suplantado no tiene acceso al plano /admin.
+    const canSeeClients = isMounted && !isImpersonating
+        && hasCapability(user, ADMIN_CAPABILITIES.clientsRead)
 
     const mainMenu: NavEntry[] = [
         {
@@ -124,6 +117,15 @@ export function Sidebar({ className }: { className?: string }) {
     ]
 
     const systemMenu: NavEntry[] = [
+        ...(canSeeClients
+            ? [{
+                label: "Clientes",
+                icon: Building2,
+                href: "/dashboard/admin/clients",
+                active: pathname.startsWith("/dashboard/admin"),
+                badge: "SUPER",
+            }]
+            : []),
         {
             label: "Configuración",
             icon: Settings,
@@ -258,7 +260,7 @@ export function Sidebar({ className }: { className?: string }) {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer" onClick={logout}>
                             <LogOut className="mr-2 h-4 w-4" />
-                            <span>Cerrar Sesión</span>
+                            <span>{isImpersonating ? "Volver a mi cuenta" : "Cerrar Sesión"}</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
