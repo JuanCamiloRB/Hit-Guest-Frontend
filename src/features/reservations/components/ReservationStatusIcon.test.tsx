@@ -13,6 +13,11 @@ describe("ReservationStatusIcon — el «?» solo cuando de verdad no se sabe", 
         expect(screen.getByLabelText("En espera · sin automatizaciones")).toBeInTheDocument()
     })
 
+    it("un id que no conocemos y sin nombre se identifica por su id", () => {
+        render(<ReservationStatusIcon status="UNKNOWN" statusId={861} />)
+        expect(screen.getByLabelText("Estado no reconocido (ID 861) · sin automatizaciones")).toBeInTheDocument()
+    })
+
     it("sin nombre del backend sigue diciendo Desconocido", () => {
         render(<ReservationStatusIcon status="UNKNOWN" />)
         expect(screen.getByLabelText("Desconocido · sin automatizaciones")).toBeInTheDocument()

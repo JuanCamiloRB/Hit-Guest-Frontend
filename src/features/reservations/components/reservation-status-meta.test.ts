@@ -7,6 +7,7 @@ import {
     isExternalReservation,
     formatGuestName,
     guestInitials,
+    unmappedStatusLabel,
 } from "./reservation-status-meta"
 
 const ALL_STATUSES: Reservation["status"][] = [
@@ -157,5 +158,33 @@ describe("getReservationStatusMeta — estados nuevos y respaldo con el nombre d
         expect(getReservationStatusMeta("UNKNOWN").label).toBe("Sin estado")
         // El nombre del backend no pisa un estado que sí se conoce.
         expect(getReservationStatusMeta("CONFIRMED", "Otra cosa").label).toBe("Confirmada")
+    })
+})
+
+describe("Abandonada e Incompleta no admiten acciones sobre el huésped", () => {
+    it("el portal solo admite check-in con 27 y 28: no se ofrece enviar el link", () => {
+        expect(isReservationActionable("ABANDONED")).toBe(false)
+        expect(isReservationActionable("INCOMPLETE")).toBe(false)
+    })
+})
+
+describe("unmappedStatusLabel — los tres casos que antes se veían iguales", () => {
+    it("con nombre del backend, se usa el nombre", () => {
+        expect(unmappedStatusLabel("UNKNOWN", "En espera", 861)).toBe("En espera")
+    })
+
+    it("con un id que no conocemos y sin nombre, se nombra el id", () => {
+        expect(unmappedStatusLabel("UNKNOWN", null, 861)).toBe("Estado no reconocido (ID 861)")
+        expect(getReservationStatusMeta("UNKNOWN", null, 861).label).toBe("Estado no reconocido (ID 861)")
+    })
+
+    it("109 es «Desconocido» de verdad y sin estado queda la etiqueta por defecto", () => {
+        expect(unmappedStatusLabel("UNKNOWN", null, 109)).toBeNull()
+        expect(unmappedStatusLabel("UNKNOWN", null, null)).toBeNull()
+        expect(getReservationStatusMeta("UNKNOWN", null, null).label).toBe("Sin estado")
+    })
+
+    it("un estado mapeado nunca se renombra", () => {
+        expect(unmappedStatusLabel("ABANDONED", "Otra", 859)).toBeNull()
     })
 })

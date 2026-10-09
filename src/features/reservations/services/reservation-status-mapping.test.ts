@@ -26,7 +26,7 @@ vi.mock("@/features/properties/services/automation-service", async (importOrigin
 }))
 
 import { ApiError } from "@/types/api"
-import { ReservationsNotReadyError, mapReservationStatus, readReservationStatusLabel, reservationsService } from "./reservations-service"
+import { ReservationsNotReadyError, mapReservationStatus, readReservationStatusId, readReservationStatusLabel, reservationsService } from "./reservations-service"
 
 const TRANSLATED = { en: "Cancelled", es: "Cancelada" }
 
@@ -177,5 +177,14 @@ describe("estados 859 y 860 del catálogo (verificado 2026-10-09)", () => {
         expect(readReservationStatusLabel({ statusReservation: { name: JSON.stringify({ en: "On hold", es: "En espera" }) } })).toBe("En espera")
         expect(readReservationStatusLabel({ statusReservation: { name: "En espera" } })).toBe("En espera")
         expect(readReservationStatusLabel({})).toBeNull()
+    })
+})
+
+describe("readReservationStatusId — el id crudo, para distinguir ausente de no reconocido", () => {
+    it("lee el id anidado o plano, y descarta lo que no es entero", () => {
+        expect(readReservationStatusId({ statusReservation: { id: 859 } })).toBe(859)
+        expect(readReservationStatusId({ status_reservation_id: "860" })).toBe(860)
+        expect(readReservationStatusId({ statusReservation: { id: "x" } })).toBeNull()
+        expect(readReservationStatusId({})).toBeNull()
     })
 })

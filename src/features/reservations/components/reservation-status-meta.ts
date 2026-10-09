@@ -27,9 +27,7 @@ export const RESERVATION_STATUS_META: Record<Reservation["status"], ReservationS
     CLOSED: { label: "Finalizada", tone: "idle" },
     DELETED: { label: "Eliminada", tone: "danger" },
     UNKNOWN: { label: "Sin estado", tone: "warning" },
-    // Catálogo verificado 2026-10-09 (859/860). Se dejan fuera de los
-    // terminales a propósito: el backend no dice qué los dispara, y bloquear el
-    // reenvío del link sería decidir por él (si no aplica, responde 422).
+    // Catálogo verificado 2026-10-09 (859/860).
     ABANDONED: { label: "Abandonada", tone: "warning" },
     INCOMPLETE: { label: "Incompleta", tone: "warning" },
     // Estados del flujo de check-in que el mismo union admite (los que pinta
@@ -51,9 +49,29 @@ export const RESERVATION_STATUS_META: Record<Reservation["status"], ReservationS
 export function getReservationStatusMeta(
     status: Reservation["status"],
     backendLabel?: string | null,
+    statusId?: number | null,
 ): ReservationStatusMeta {
     const meta = RESERVATION_STATUS_META[status] ?? RESERVATION_STATUS_META.UNKNOWN
-    return status === "UNKNOWN" && backendLabel ? { ...meta, label: backendLabel } : meta
+    const label = unmappedStatusLabel(status, backendLabel, statusId)
+    return label ? { ...meta, label } : meta
+}
+
+/**
+ * Etiqueta para un estado que el front no pudo mapear. Distingue los tres
+ * casos que antes se veían iguales: el backend nombra el estado (se usa su
+ * nombre); trae un id que no conocemos y sin nombre («Estado no reconocido
+ * (ID 861)»); o no trae estado (`null`: queda la etiqueta por defecto). El 109
+ * es «Desconocido» de verdad en el catálogo, no un id sin reconocer.
+ */
+export function unmappedStatusLabel(
+    status: Reservation["status"],
+    backendLabel?: string | null,
+    statusId?: number | null,
+): string | null {
+    if (status !== "UNKNOWN") return null
+    if (backendLabel) return backendLabel
+    if (statusId != null && statusId !== 109) return `Estado no reconocido (ID ${statusId})`
+    return null
 }
 
 /**
@@ -70,6 +88,13 @@ const TERMINAL_STATUSES: ReadonlySet<Reservation["status"]> = new Set([
     "CLOSED",
     "DELETED",
     "CHECKED_OUT",
+    // No sabemos si son terminales (el backend no lo documenta), pero sí que el
+    // portal solo admite check-in con 27 y 28 (`checkinAllowed`, referencia de
+    // endpoints del portal §1): un link enviado acá lleva a «check-in no
+    // disponible», y por WhatsApp se cobra igual. Bloquear es lo seguro hasta
+    // que el backend diga si pueden retomarse.
+    "ABANDONED",
+    "INCOMPLETE",
 ])
 
 export function isReservationActionable(status: Reservation["status"]): boolean {

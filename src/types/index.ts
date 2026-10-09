@@ -101,6 +101,8 @@ export interface Reservation {
      * muestra su nombre real en vez de un «Desconocido» genérico.
      */
     statusLabel?: string | null
+    /** Id crudo del catálogo `status_reservation`; `null` si el backend no lo mandó. */
+    statusId?: number | null
     source: "Airbnb" | "Booking" | "Direct"
     totalPrice: number
     automationStatus?: AutomationStatus

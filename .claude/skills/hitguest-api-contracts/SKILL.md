@@ -885,9 +885,18 @@ los excluye (hoy solo 27 y 28 habilitan automatizaciones).
 `INCOMPLETE` («Incompleta»), con icono propio, por id y por nombre. Para
 cualquier estado futuro que el front no mapee, la lista y el panel muestran el
 NOMBRE que manda el backend (`readReservationStatusLabel`, español de
-`statusReservation.name` en objeto, JSON o texto) en vez de «Desconocido». No
-se marcan como terminales (no se bloquea el reenvío del link): si no aplica, el
-backend responde 422. La lista se relee al volver a la pestaña, como mucho una
+`statusReservation.name` en objeto, JSON o texto) en vez de «Desconocido»;
+sin nombre pero con id desconocido, «Estado no reconocido (ID N)»; sin estado,
+la etiqueta por defecto (el 109 es «Desconocido» de verdad). **Revisión tras
+auditoría:** 859 y 860 SÍ bloquean las acciones sobre el huésped (enviar o
+copiar el link, escribirle): no sabemos si son terminales, pero el portal solo
+admite check-in con 27 y 28 (`checkinAllowed`), y un WhatsApp enviado acá se
+cobra para llevar a «check-in no disponible». ⚠️ Sin confirmar: que las filas
+reportadas («Test Kunas», «Test User») tengan 859/860 — es la causa más
+probable; falta verlo en `GET /reservations`. Preguntas abiertas a backend: qué
+proceso y condición temporal asigna cada uno, si Abandonada es terminal, si
+Incompleta puede retomarse, si permiten reenviar el link y si activan
+automatizaciones. La lista se relee al volver a la pestaña, como mucho una
 vez por minuto (cada carga pide además el estado de automatizaciones de cada
 reserva).
 

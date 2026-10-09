@@ -3,6 +3,7 @@
 import { CheckCircle2, XCircle, Clock, Archive, Trash2, HelpCircle, CircleSlash, CircleDashed } from "lucide-react"
 import type { Reservation } from "@/types"
 import { cn } from "@/lib/utils"
+import { unmappedStatusLabel } from "./reservation-status-meta"
 
 /**
  * Compact reservation-status indicator for the list. This is HitGuest's own internal
@@ -31,14 +32,17 @@ const AUTOMATION_ENABLED = new Set(["CONFIRMED", "IN_PROGRESS"])
 export function ReservationStatusIcon({
     status,
     backendLabel,
+    statusId,
 }: {
     status: Reservation["status"]
     /** Nombre del backend; se muestra cuando el estado no se pudo mapear. */
     backendLabel?: string | null
+    /** Id crudo del catálogo; identifica un estado sin nombre que no conocemos. */
+    statusId?: number | null
 }) {
     const meta = STATUS_META[status] ?? STATUS_META.UNKNOWN
     const { Icon } = meta
-    const label = status === "UNKNOWN" && backendLabel ? backendLabel : meta.label
+    const label = unmappedStatusLabel(status, backendLabel, statusId) ?? meta.label
     const title = AUTOMATION_ENABLED.has(status)
         ? `${label} · automatizaciones activas`
         : `${label} · sin automatizaciones`

@@ -79,6 +79,15 @@ function statusNameEn(name: unknown): string {
     return ""
 }
 
+/** Id crudo del estado de la reserva; `null` si no vino un número. */
+export function readReservationStatusId(r: unknown): number | null {
+    if (!r || typeof r !== "object") return null
+    const raw = r as { statusReservation?: { id?: unknown }; statusReservationId?: unknown; status_reservation_id?: unknown }
+    const value = raw.statusReservation?.id ?? raw.statusReservationId ?? raw.status_reservation_id
+    const id = typeof value === "string" && value.trim() !== "" ? Number(value) : value
+    return typeof id === "number" && Number.isInteger(id) ? id : null
+}
+
 /**
  * Nombre del estado en español, tal como lo manda el catálogo (objeto de
  * traducciones, JSON serializado o texto). `null` si no vino.
@@ -386,6 +395,7 @@ export interface ReservationDetailData {
     status: Reservation["status"]
     /** Nombre del estado según el backend; respaldo para estados que el front no mapea. */
     statusLabel?: string | null
+    statusId?: number | null
     source: "Airbnb" | "Booking" | "Direct"
     totalPrice: number
     /**
@@ -610,6 +620,7 @@ export class ReservationsService {
             nights: differenceInDays(checkOut, checkIn) || 1,
             status,
             statusLabel: readReservationStatusLabel(r),
+            statusId: readReservationStatusId(r),
             source: sourceName,
             totalPrice: Number(r.totalPrice || r.total_price || 0),
             currency: readCurrencyCode(r.currency, r.currency_code),
@@ -1064,6 +1075,7 @@ export class ReservationsService {
                     nights: differenceInDays(checkOut, checkIn) || 1,
                     status,
             statusLabel: readReservationStatusLabel(r),
+            statusId: readReservationStatusId(r),
                     source: sourceName,
                     totalPrice: Number(r.totalPrice || r.total_price || 0),
                     totalGuests: readCount(r.totalGuests ?? r.total_guests),

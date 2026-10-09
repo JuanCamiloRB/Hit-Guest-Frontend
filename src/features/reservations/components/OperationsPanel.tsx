@@ -225,7 +225,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
         )
     }
 
-    const statusMeta = getReservationStatusMeta(data.status, data.statusLabel)
+    const statusMeta = getReservationStatusMeta(data.status, data.statusLabel, data.statusId)
     const guestName = formatGuestName(data.guestName)
     const isActionable = isReservationActionable(data.status)
     // Un canal que no es Direct llega por channel manager / OTA; el panel antes
