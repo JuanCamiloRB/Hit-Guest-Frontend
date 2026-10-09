@@ -161,7 +161,7 @@ Authorization: Bearer {token del superusuario}
   - solo endpoints de la cuenta (propiedades, reservas, billing, etc.);
   - **ningún** endpoint `/admin/*`: ni directorio, ni crear otra suplantación
     (anidamiento prohibido), ni leer clientes;
-  - `isSuperAdmin`/`capabilities` administrativas ausentes en `GET /user`.
+  - `roles`/`capabilities` administrativas ausentes en `GET /user`.
   Que el payload diga «no es superusuario» no basta: el backend tiene que
   recortar las abilities del token.
 - **Ligado al actor.** Si el superusuario cierra sesión, pierde el rol, es
@@ -193,11 +193,13 @@ Authorization: Bearer {token del superusuario}
   otro administrador responde **404** (no se revela que existe).
 - Una revocación global (por ejemplo, para cerrar todas las sesiones ante un
   incidente) solo con una capacidad separada, `admin.impersonations.revoke_any`,
-  si alguna vez se necesita. Así el actor puede
-revocar una sesión activa o vencida sin depender del token suplantado, y un
-token vencido no necesita «cerrarse»: el backend responde 401 y el front lo
-descarta localmente. No pedimos un `DELETE` con el token suplantado: un
-middleware normal lo rechazaría con 401 antes de llegar al controlador.
+  si alguna vez se necesita.
+
+Así el actor puede revocar una sesión activa o vencida sin depender del token
+suplantado, y un token vencido no necesita «cerrarse»: el backend responde 401 y
+el front lo descarta localmente. No pedimos un `DELETE` con el token
+suplantado: un middleware normal lo rechazaría con 401 antes de llegar al
+controlador.
 
 Opcional: `GET /admin/impersonations?active=1` para ver y revocar las propias.
 
