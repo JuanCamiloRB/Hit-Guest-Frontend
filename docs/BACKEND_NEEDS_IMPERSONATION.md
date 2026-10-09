@@ -6,13 +6,15 @@
 > Mock aprobado por el equipo (directorio de clientes, cuenta del cliente con
 > sus usuarios, y el dashboard «dentro de la cuenta» con banner fijo y botón
 > para volver). Contrastado con `RICARDO_API_CONTRACTS.md` y con lo que hoy
-> responde `guest.hit.tools`. Revisado el 2026-10-09 tras auditoría externa:
-> esta versión cierra los huecos de autorización y ciclo de vida de la primera.
+> responde `guest.hit.tools`. Revisado dos veces el 2026-10-09 tras auditoría
+> externa: cierra los huecos de autorización y ciclo de vida, el alcance global
+> actual de `SUPER_ADMIN` y el cálculo de permisos efectivos.
 
 ## Resumen
 
 | # | Pedido | Sin esto | Prioridad |
 |---|---|---|---|
+| 0 | **Prerrequisito bloqueante:** quitar el alcance global que hoy tiene `SUPER_ADMIN` en properties, listings y reservations | El actor podría saltarse la suplantación y leer todas las cuentas con su propio token | Bloqueante |
 | 1 | La sesión dice si es de superusuario y con qué capacidades | El front no puede mostrar nada: inferirlo por correo o cuenta sería inventar | Alta |
 | 2 | **Modelo de suplantación completo desde el primer deploy**: token aparte, id, actor, sujeto, motivo, modo, abilities recortadas, vencimiento, revocación por el actor, sin anidamiento, auditoría | Un token con acceso completo «para abrirlo después» es una brecha | Alta |
 | 3 | `GET /user` con el token suplantado declara la suplantación | Al recargar la página el front no sabría que está dentro de otra cuenta | Alta |
@@ -37,12 +39,29 @@ antes de construir.
   desde julio: `roles` en `UserResource`).
 - `GET /users` lista los usuarios **del propio cliente**; `GET /clients/{uuid}`
   lee **la propia cuenta**. Para otro cliente: 403.
-- Todo endpoint de datos (propiedades, reservas, billing, automatizaciones)
-  acota por el token de sesión. **No pedimos «scope global»**: con un token del
-  usuario suplantado, cada respuesta del backend queda acotada a un solo
-  cliente. (El front, por su parte, es responsable de invalidar sus cachés y
-  peticiones en vuelo al cambiar de contexto; hoy varias no están segmentadas
-  por cliente.)
+- Los endpoints de datos acotan por el token de sesión **para los usuarios
+  normales**. **No para `SUPER_ADMIN`**: ver el prerrequisito de abajo. **No
+  pedimos «scope global»**: con un token del usuario suplantado, cada respuesta
+  del backend queda acotada a un solo cliente. (El front, por su parte, es
+  responsable de invalidar sus cachés y peticiones en vuelo al cambiar de
+  contexto; hoy varias no están segmentadas por cliente.)
+- El rol `super_admin` ya existe en el backend (la transferencia de
+  titularidad lo acepta, `RICARDO_SOURCE_PLANS_2026-07-23.md`).
+
+## 0. Prerrequisito bloqueante — quitar el alcance global de `SUPER_ADMIN`
+
+Registrado en `BACKEND_NEEDS_SUMMARY.md` (julio 2026, 🔴 pendiente): logueado
+como Root (`SUPER_ADMIN`), `GET /properties` devuelve propiedades de **todas**
+las cuentas, porque `withinScope()` le da alcance global a ese rol. La decisión
+de producto ya tomada es que ese rol vea solo lo suyo en properties, listings y
+reservations.
+
+**Esto tiene que estar corregido antes de habilitar la suplantación.** Si no, el
+modelo entero es decorativo: un superusuario podría omitir el token suplantado
+y consultar datos de todos los clientes con su token administrativo, sin motivo,
+sin auditoría y sin solo lectura. La única puerta a los datos de otra cuenta
+debe ser `POST /admin/impersonations`; el directorio (`/admin/clients`) expone
+solo metadatos de cuenta, nunca propiedades, reservas ni huéspedes.
 
 ## 1. Quién es superusuario y qué puede — `GET /user` y `verify-otp`
 
@@ -121,6 +140,23 @@ Authorization: Bearer {token del superusuario}
   toca** el token del superusuario: el front conserva las dos sesiones y
   «Volver a mi cuenta» es dejar de usar el suplantado. Esa es la pieza que
   cumple «la sesión del superusuario no puede cerrarse».
+- **Permisos efectivos, definidos así:**
+
+  ```
+  permisos efectivos =
+      permisos actuales del usuario objetivo
+    ∩ permisos que permite el modo (read_only ⇒ solo lecturas)
+    ∩ allowlist de suplantación (solo endpoints de la cuenta)
+    − prohibiciones permanentes (§2.3)
+  ```
+
+  El superusuario **nunca** obtiene más que el usuario suplantado, tampoco en
+  `full`: un `property_staff` suplantado no ve billing ni recursos que ese
+  usuario no ve hoy. Es lo que hace que «ver lo que ve el usuario» sea literal.
+- **Se reevalúa durante la vida del token.** Si el usuario objetivo es
+  desactivado, cambia de rol o su cliente es suspendido en esos 60 minutos, el
+  token se revoca o sus permisos se recalculan en cada petición (preferible lo
+  segundo: el mismo cálculo de arriba, con los permisos actuales).
 - **Abilities recortadas, no heredadas del actor.** Con ese token:
   - solo endpoints de la cuenta (propiedades, reservas, billing, etc.);
   - **ningún** endpoint `/admin/*`: ni directorio, ni crear otra suplantación
@@ -151,7 +187,13 @@ Authorization: Bearer {token del superusuario}
 DELETE /admin/impersonations/{impersonationUuid}
 Authorization: Bearer {token del superusuario}
 ```
-→ **204**, idempotente (también si ya venció o ya se cerró). Así el actor puede
+→ **204**, idempotente (también si ya venció o ya se cerró).
+
+- Cada actor **solo revoca sus propias** suplantaciones. Un id inexistente o de
+  otro administrador responde **404** (no se revela que existe).
+- Una revocación global (por ejemplo, para cerrar todas las sesiones ante un
+  incidente) solo con una capacidad separada, `admin.impersonations.revoke_any`,
+  si alguna vez se necesita. Así el actor puede
 revocar una sesión activa o vencida sin depender del token suplantado, y un
 token vencido no necesita «cerrarse»: el backend responde 401 y el front lo
 descarta localmente. No pedimos un `DELETE` con el token suplantado: un
@@ -173,6 +215,22 @@ Opcional: `GET /admin/impersonations?active=1` para ver y revocar las propias.
 | El token del actor ya es suplantado | `409 NESTED_IMPERSONATION_FORBIDDEN` |
 | `mode` desconocido | `422 INVALID_IMPERSONATION_MODE` |
 | `reason` fuera de 10–500 | `422` estándar en `reason` |
+
+### 2.6 Auditoría: la sesión y cada escritura
+
+Se registra la **sesión** (inicio con motivo, IP, user agent, modo,
+vencimiento, cierre o revocación) y **cada escritura** hecha con el token
+suplantado, con al menos:
+
+- `impersonationId`, actor, sujeto y cliente;
+- endpoint, acción y recurso afectado;
+- resultado, fecha e IP;
+- los **intentos rechazados** por las restricciones de suplantación
+  (`IMPERSONATION_READ_ONLY`, prohibiciones permanentes).
+
+No hace falta registrar las lecturas: sesión completa más escrituras es
+suficiente y evita volumen sin valor. En `read_only` el registro de escrituras
+solo contendrá intentos rechazados, que es justo lo que interesa ver.
 
 ## 3. Que el token suplantado se reconozca a sí mismo — `GET /user`
 
@@ -285,6 +343,8 @@ endpoints hasta que existan.**
 
 ## Orden de entrega
 
+0. **Bloqueante:** corregir el alcance global de `SUPER_ADMIN` en properties,
+   listings y reservations (§0). Sin esto no se habilita nada de lo demás.
 1. Decisión del PO registrada (puede entrar; en qué modo) y actualización de
    `RICARDO_API_CONTRACTS.md` §3.3.
 2. `roles` y `capabilities` en la sesión (#1).

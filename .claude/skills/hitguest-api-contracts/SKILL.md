@@ -1929,7 +1929,11 @@ muestra el `digest` como referencia en pantalla.
   `GET /user` con ese token trae `impersonation {id, actorUuid, mode,
   expiresAt}`; solo lectura por políticas (no solo por método) y `full` solo
   con `admin.impersonate.full`; auditoría con motivo obligatorio. Todo el
-  modelo en el mismo deploy, nunca «auditoría después». Detalle y payloads en
+  modelo en el mismo deploy, nunca «auditoría después». **Bloqueante previo:**
+  hoy `SUPER_ADMIN` recibe propiedades de TODAS las cuentas (`withinScope()`,
+  observado jul 2026, `BACKEND_NEEDS_SUMMARY.md`): hay que quitarlo antes, o el
+  actor se salta la suplantación. Permisos efectivos = los del objetivo ∩ modo
+  ∩ allowlist − prohibiciones; nunca más que el usuario suplantado. Detalle y payloads en
   `docs/BACKEND_NEEDS_IMPERSONATION.md`. Hasta que exista, el front NO
   construye nada que llame a esos endpoints.
 

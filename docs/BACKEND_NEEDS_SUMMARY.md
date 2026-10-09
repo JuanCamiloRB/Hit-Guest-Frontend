@@ -52,7 +52,7 @@
   - uuid inexistente → **404**
   - uuid válido pero de otra cuenta → **403** *(antes daba 401 por el bug del Handler — ya corregido)*
 - **Impacto en el front (ya cubierto):** el logout automático solo se dispara con **401**; un **403** muestra "No tienes permiso para acceder a este recurso" sin cerrar sesión. Todas las llamadas por-cuenta usan solo el token de sesión del usuario (sin fallback al app token compartido).
-- 🔴 **Pendiente backend — SUPER_ADMIN también debe ver solo lo suyo.** Detectado (jul 2026): logueado como Root (SUPER_ADMIN), `GET /properties` devuelve propiedades de TODAS las cuentas — `withinScope()` le da scope global a ese rol. **Decisión de producto: incluso el super admin solo ve sus propias properties/listings/reservations** en estos endpoints. Ajustar las policies/`index()` para que el rol SUPER_ADMIN no amplíe el scope en properties, listings ni reservations. El front no requiere cambios (ya manda solo el token de sesión; verificado en BFF y apiClient).
+- 🔴 **Pendiente backend — SUPER_ADMIN también debe ver solo lo suyo.** Detectado (jul 2026): logueado como Root (SUPER_ADMIN), `GET /properties` devuelve propiedades de TODAS las cuentas — `withinScope()` le da scope global a ese rol. **Decisión de producto: incluso el super admin solo ve sus propias properties/listings/reservations** en estos endpoints. Ajustar las policies/`index()` para que el rol SUPER_ADMIN no amplíe el scope en properties, listings ni reservations. El front no requiere cambios (ya manda solo el token de sesión; verificado en BFF y apiClient). **Ahora es bloqueante también para la suplantación** (`BACKEND_NEEDS_IMPERSONATION.md` §0): con este alcance global el actor podría saltarse el token suplantado.
 
 ---
 
