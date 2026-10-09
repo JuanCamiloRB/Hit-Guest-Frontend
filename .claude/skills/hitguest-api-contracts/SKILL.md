@@ -861,6 +861,26 @@ fila real vía `readExternalIdentifierServerErrors` en ambos formularios. Todo
 lo derivable vive en `lib/external-pms-ids.ts` (19 tests). Ya estaba resuelto:
 select desde `catalogService.getPmsSources()` (categoría 12) y dedupe cliente.
 
+### ✅ Catálogo `status_reservation` (categoría 7) — hay DOS estados que el front no mapea
+
+✅ **Verificado por curl el 2026-10-09** (app token, endpoint público):
+
+```bash
+curl -s "$API/catalogs?catalogCategoryId[eq]=7" -H "X-Locale: es" -H "Authorization: Bearer $APP_TOKEN"
+# 27 Confirmada · 28 En Progreso · 29 Cancelada · 30 Finalizada · 108 Eliminada
+# 109 Desconocido · 859 Abandonada · 860 Incompleta
+```
+
+❌ `RESERVATION_STATUS_BY_ID` (`reservations-service.ts`) solo conoce 27, 28, 29,
+30, 108 y 109. **859 y 860 caen al respaldo `UNKNOWN`** y la lista los pinta con
+el «?» de «Desconocido» — el reporte de Ricardo del 2026-10-09 («en varias vi
+desconocido»). Antes de unificar el normalizador (commit `8443b8d`), el listado
+ponía `CONFIRMED` por defecto a todo lo que no reconocía: estas reservas salían
+como Confirmadas, que era peor (mentía). Ningún documento del backend describe
+859/860 ni qué los dispara (¿un job que marca reservas sin check-in tras la
+llegada?). ⚠️ Pendiente: confirmar con backend el significado y si `checkinAllowed`
+los excluye (hoy solo 27 y 28 habilitan automatizaciones).
+
 ### ✅ Catálogo `property_type` — los ids NO son 100/101/102 = Casa/Hotel/Apartamento
 
 ✅ **Verificado por curl el 2026-10-06** (app token, endpoint público):
