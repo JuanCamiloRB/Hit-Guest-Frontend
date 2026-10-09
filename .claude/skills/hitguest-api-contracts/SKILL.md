@@ -1921,11 +1921,15 @@ muestra el `digest` como referencia en pantalla.
   superusuario, `GET /users` y `GET /clients/{uuid}` son solo de la propia
   cuenta, y `RICARDO_API_CONTRACTS.md` §3.3 registra que `SUPER_ADMIN` NO debe
   recibir scope global. Lo pedido (sin inventar nada en el front):
-  `isSuperAdmin` en `GET /user`; `GET /admin/clients` y
-  `/admin/clients/{uuid}/users`; `POST /admin/impersonate` que emite un token
-  APARTE y de corta duración sin tocar el del superusuario; `GET /user` con ese
-  token trae `impersonation {actorUuid, mode, expiresAt}`; solo lectura por
-  defecto y auditoría del actor real. Detalle y payloads en
+  `roles` + `capabilities` en `GET /user`; `GET /admin/clients`, su detalle y
+  `/admin/clients/{uuid}/users` (paginados, 403 sin capacidad); `POST
+  /admin/impersonations {userUuid, mode, reason}` que emite un token APARTE,
+  corto, con abilities RECORTADAS (nada de `/admin/*`, sin anidamiento), ligado
+  al actor y revocable por el actor con `DELETE /admin/impersonations/{id}`;
+  `GET /user` con ese token trae `impersonation {id, actorUuid, mode,
+  expiresAt}`; solo lectura por políticas (no solo por método) y `full` solo
+  con `admin.impersonate.full`; auditoría con motivo obligatorio. Todo el
+  modelo en el mismo deploy, nunca «auditoría después». Detalle y payloads en
   `docs/BACKEND_NEEDS_IMPERSONATION.md`. Hasta que exista, el front NO
   construye nada que llame a esos endpoints.
 

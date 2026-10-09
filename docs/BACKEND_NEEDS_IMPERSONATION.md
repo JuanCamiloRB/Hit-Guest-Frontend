@@ -3,31 +3,32 @@
 > Pedido de producto del 2026-10-09: que un superusuario de HitGuest vea todas
 > las cuentas (clientes, usuarios, propiedades) y pueda **entrar a la cuenta de
 > cualquier usuario sin código ni contraseña**, conservando su propia sesión.
-> Mock aprobado por el equipo: tres pantallas (directorio de clientes, cuenta
-> del cliente con sus usuarios, y el dashboard «dentro de la cuenta» con banner
-> fijo y botón para volver). Contrastado con `RICARDO_API_CONTRACTS.md` y con
-> lo que hoy responde `guest.hit.tools`.
+> Mock aprobado por el equipo (directorio de clientes, cuenta del cliente con
+> sus usuarios, y el dashboard «dentro de la cuenta» con banner fijo y botón
+> para volver). Contrastado con `RICARDO_API_CONTRACTS.md` y con lo que hoy
+> responde `guest.hit.tools`. Revisado el 2026-10-09 tras auditoría externa:
+> esta versión cierra los huecos de autorización y ciclo de vida de la primera.
 
 ## Resumen
 
 | # | Pedido | Sin esto | Prioridad |
 |---|---|---|---|
-| 1 | `GET /user` dice si la sesión es de superusuario | El front no puede mostrar nada: inferirlo por correo o cuenta sería inventar | Alta |
-| 2 | Directorio de clientes y de sus usuarios (solo superusuario) | No hay lista que recorrer | Alta |
-| 3 | Emitir un **token aparte** para actuar como un usuario, sin invalidar el del superusuario | Es la pieza que conserva la sesión propia | Alta |
-| 4 | `GET /user` con ese token declara que es una suplantación | Al recargar la página el front no sabría que está dentro de otra cuenta | Alta |
-| 5 | Auditoría del actor real y modo solo lectura | Un soporte podría enviar, cobrar o borrar sin rastro | Alta (producto) |
+| 1 | La sesión dice si es de superusuario y con qué capacidades | El front no puede mostrar nada: inferirlo por correo o cuenta sería inventar | Alta |
+| 2 | **Modelo de suplantación completo desde el primer deploy**: token aparte, id, actor, sujeto, motivo, modo, abilities recortadas, vencimiento, revocación por el actor, sin anidamiento, auditoría | Un token con acceso completo «para abrirlo después» es una brecha | Alta |
+| 3 | `GET /user` con el token suplantado declara la suplantación | Al recargar la página el front no sabría que está dentro de otra cuenta | Alta |
+| 4 | Directorio de clientes, detalle del cliente y sus usuarios (solo superusuario) | No hay lista que recorrer | Alta |
+| 5 | Modo con escritura (`full`) solo con una capacidad aparte y aprobación de producto | Cualquier superusuario podría pedir escritura | Media |
 
 ## Antes de nada: una decisión de producto registrada va en contra
 
 `RICARDO_API_CONTRACTS.md` §3.3 (`SUPER_ADMIN`, estado `PENDIENTE`): *«incluso
 `SUPER_ADMIN` debe ver únicamente sus propias propiedades, listings y reservas
 en estos endpoints. No debe recibir scope global»*. Este pedido **no la
-contradice si se hace por suplantación**: los endpoints de datos siguen
-acotando por el token de sesión, y el superusuario ve una cuenta a la vez con un
-token emitido para ese usuario. Lo que sí hay que acordar con el PO es que el
-superusuario pueda **entrar** a las cuentas. Pedimos que esa decisión quede
-registrada antes de construir.
+contradice**: los endpoints de datos siguen acotando por el token de sesión, y
+el superusuario ve **una cuenta a la vez** con un token emitido para ese
+usuario. Lo que sí hay que registrar con el PO es que el superusuario pueda
+**entrar** a las cuentas, y en qué modo. Pedimos que esa decisión quede escrita
+antes de construir.
 
 ## Lo que ya existe y se reutiliza
 
@@ -38,12 +39,14 @@ registrada antes de construir.
   lee **la propia cuenta**. Para otro cliente: 403.
 - Todo endpoint de datos (propiedades, reservas, billing, automatizaciones)
   acota por el token de sesión. **No pedimos «scope global»**: con un token del
-  usuario suplantado, cada pantalla del front muestra una sola cuenta sin tocar
-  nada, y no hay forma de mezclar datos de dos clientes.
+  usuario suplantado, cada respuesta del backend queda acotada a un solo
+  cliente. (El front, por su parte, es responsable de invalidar sus cachés y
+  peticiones en vuelo al cambiar de contexto; hoy varias no están segmentadas
+  por cliente.)
 
-## 1. Quién es superusuario — `GET /user` y `verify-otp`
+## 1. Quién es superusuario y qué puede — `GET /user` y `verify-otp`
 
-Campo nuevo, booleano, en el mismo objeto `user` de ambos endpoints:
+En el mismo objeto `user` de ambos endpoints:
 
 ```json
 {
@@ -52,118 +55,126 @@ Campo nuevo, booleano, en el mismo objeto `user` de ambos endpoints:
   "client_uuid": "…",
   "client_name": "HitGuest",
   "isAccountOwner": true,
-  "isSuperAdmin": true
+  "roles": ["super_admin"],
+  "capabilities": ["admin.clients.read", "admin.impersonate.read_only"]
 }
 ```
 
-- `false` o ausente = usuario normal. El front muestra el menú «Clientes» solo
-  con `true` explícito.
-- Quién es superusuario se define en el backend (tabla/rol); el front nunca lo
-  deduce de un dominio de correo.
-- Si prefieren `roles: ["super_admin"]` (lo que ya estaba pendiente para los
-  roles de equipo), sirve igual; lo importante es que sea un valor explícito.
+- `roles` como **arreglo**, también para los usuarios de equipo
+  (`["property_manager"]`, `["property_staff"]`): una sola forma, no `role` en
+  unos sitios y `roles` en otros. Si el front necesita una etiqueta principal,
+  la deriva del arreglo.
+- `capabilities` es lo que decide la UI: el menú «Clientes» solo con
+  `admin.clients.read`; el botón de entrar solo con
+  `admin.impersonate.read_only`; la opción de escritura solo con
+  `admin.impersonate.full`. Quién tiene qué se define en el backend; el front
+  nunca lo deduce de un dominio de correo.
 
-## 2. Directorio de clientes y usuarios — solo superusuario
+## 2. Suplantación — el modelo completo, no por fases
+
+### 2.1 Iniciar
 
 ```
-GET /admin/clients?search={texto}&page={n}
-Authorization: Bearer {token de superusuario}
-```
-
-```json
+POST /admin/impersonations
+Authorization: Bearer {token del superusuario}
 {
-  "data": [
-    {
-      "uuid": "client-uuid",
-      "name": "Pullman Miami SAS",
-      "ownerEmail": "owner@example.com",
-      "status": "active",
-      "propertiesCount": 8,
-      "usersCount": 3,
-      "balance": { "amount": 6.49, "currency": "USD" },
-      "createdAt": "2026-07-01T10:00:00Z"
-    }
-  ],
-  "meta": { "current_page": 1, "last_page": 2, "per_page": 15, "total": 8 }
-}
-```
-
-```
-GET /admin/clients/{clientUuid}
-GET /admin/clients/{clientUuid}/users
-```
-
-```json
-{
-  "data": [
-    {
-      "uuid": "user-uuid",
-      "name": "Didier Van den Hove",
-      "email": "didier@example.com",
-      "isAccountOwner": true,
-      "role": "property_manager",
-      "lastLoginAt": "2026-10-09T13:12:00Z"
-    }
-  ]
-}
-```
-
-- Para cualquier token que no sea de superusuario: **403**, nunca una lista
-  vacía (una lista vacía se leería como «no hay clientes»).
-- `search` busca por nombre del cliente, nombre y correo del dueño.
-- Los contadores pueden omitirse en una primera versión; el front los muestra
-  solo si vienen.
-
-## 3. Entrar como un usuario — token aparte, el del superusuario intacto
-
-```
-POST /admin/impersonate
-Authorization: Bearer {token de superusuario}
-{ "userUuid": "user-uuid", "mode": "read_only" }
-```
-
-```json
-{
-  "token": "token-de-suplantación",
-  "expiresAt": "2026-10-09T16:04:00Z",
+  "userUuid": "user-uuid",
   "mode": "read_only",
-  "user": {
-    "uuid": "user-uuid",
-    "email": "didier@example.com",
-    "client_uuid": "client-uuid",
-    "client_name": "Pullman Miami SAS",
-    "name": "Didier Van den Hove",
-    "locale": "es",
-    "isAccountOwner": true,
-    "isSuperAdmin": false
+  "reason": "Ticket HG-1234: revisión solicitada por el cliente"
+}
+```
+
+```json
+{
+  "data": {
+    "id": "impersonation-uuid",
+    "token": "token-de-suplantación",
+    "mode": "read_only",
+    "startedAt": "2026-10-09T15:04:00Z",
+    "expiresAt": "2026-10-09T16:04:00Z",
+    "user": {
+      "uuid": "user-uuid",
+      "email": "didier@example.com",
+      "client_uuid": "client-uuid",
+      "client_name": "Pullman Miami SAS",
+      "name": "Didier Van den Hove",
+      "locale": "es",
+      "isAccountOwner": true,
+      "roles": ["property_manager"]
+    }
   }
 }
 ```
 
-Semántica, que es lo que importa:
+- `reason` **obligatorio**, 10–500 caracteres. Se guarda con actor, sujeto,
+  cliente, modo, fecha, IP, user agent, vencimiento y cierre: sin motivo la
+  auditoría no sirve.
+- `mode`: `"read_only"` por defecto; `"full"` solo si el actor tiene
+  `admin.impersonate.full`. La aprobación del PO no reemplaza el control por
+  usuario.
+- `user` tiene **la forma de `GET /user`** del usuario suplantado, para
+  hidratarlo con el mismo código de siempre.
 
-- Es un token **nuevo y de corta duración** (proponemos 60 min). **No invalida,
-  no rota ni toca** el token del superusuario. Así el front guarda las dos
-  sesiones y «Volver a mi cuenta» es simplemente dejar de usar el token
-  suplantado. Esta es la pieza que cumple «la sesión del superusuario no puede
-  cerrarse».
-- `user` tiene **exactamente la forma de `GET /user`** del usuario suplantado,
-  para que el front lo hidrate con el mismo código de siempre.
-- `mode`: `"read_only"` (por defecto) o `"full"`. En solo lectura, toda
-  escritura (`POST`/`PUT`/`PATCH`/`DELETE` fuera de `/admin/*`) responde
-  **403** con `{"code": "IMPERSONATION_READ_ONLY", "message": "…"}`. El front
-  desactiva los botones, pero el que manda es el backend.
-- Errores: 403 si el token no es de superusuario; 404 si el usuario no existe;
-  422 `{"code": "CANNOT_IMPERSONATE_SUPER_ADMIN"}` si el objetivo es otro
-  superusuario.
+### 2.2 Qué es el token suplantado
+
+- **Nuevo y de corta duración** (proponemos 60 min). **No invalida, no rota ni
+  toca** el token del superusuario: el front conserva las dos sesiones y
+  «Volver a mi cuenta» es dejar de usar el suplantado. Esa es la pieza que
+  cumple «la sesión del superusuario no puede cerrarse».
+- **Abilities recortadas, no heredadas del actor.** Con ese token:
+  - solo endpoints de la cuenta (propiedades, reservas, billing, etc.);
+  - **ningún** endpoint `/admin/*`: ni directorio, ni crear otra suplantación
+    (anidamiento prohibido), ni leer clientes;
+  - `isSuperAdmin`/`capabilities` administrativas ausentes en `GET /user`.
+  Que el payload diga «no es superusuario» no basta: el backend tiene que
+  recortar las abilities del token.
+- **Ligado al actor.** Si el superusuario cierra sesión, pierde el rol, es
+  desactivado o su sesión se revoca, **sus suplantaciones activas se revocan**.
+  Conservar la sesión administrativa no significa que la suplantación deba
+  sobrevivir a la pérdida de autorización del actor.
+
+### 2.3 Solo lectura: por abilities y políticas, no solo por método HTTP
+
+- En `read_only`, cualquier operación **con efecto** responde
+  `403 {"code": "IMPERSONATION_READ_ONLY", "message": "…"}`, decidido por la
+  política del endpoint. El método HTTP sirve como defensa adicional (bloquear
+  `POST/PUT/PATCH/DELETE` fuera de lectura), no como única regla: hay `POST`
+  que solo consultan o renderizan, y podría haber `GET` con efectos.
+- **Bloqueado siempre, incluso en `full`**: transferir titularidad, eliminar
+  la cuenta, cambiar el correo del dueño.
+- El front desactiva los controles de escritura en solo lectura, pero el que
+  manda es el backend.
+
+### 2.4 Cerrar y revocar — con el token del actor
 
 ```
-DELETE /admin/impersonate
-Authorization: Bearer {token de suplantación}
+DELETE /admin/impersonations/{impersonationUuid}
+Authorization: Bearer {token del superusuario}
 ```
-→ 204. Revoca ese token. Si ya venció, también 204 (idempotente).
+→ **204**, idempotente (también si ya venció o ya se cerró). Así el actor puede
+revocar una sesión activa o vencida sin depender del token suplantado, y un
+token vencido no necesita «cerrarse»: el backend responde 401 y el front lo
+descarta localmente. No pedimos un `DELETE` con el token suplantado: un
+middleware normal lo rechazaría con 401 antes de llegar al controlador.
 
-## 4. Que el token suplantado se reconozca a sí mismo — `GET /user`
+Opcional: `GET /admin/impersonations?active=1` para ver y revocar las propias.
+
+### 2.5 Errores al iniciar
+
+| Caso | Respuesta |
+|---|---|
+| Token sin `admin.impersonate.read_only` | `403 IMPERSONATION_FORBIDDEN` |
+| Pide `full` sin `admin.impersonate.full` | `403 IMPERSONATION_FULL_FORBIDDEN` |
+| Usuario inexistente | `404` |
+| Usuario inactivo o eliminado | `409 TARGET_USER_INACTIVE` |
+| Cliente suspendido | `409 TARGET_CLIENT_INACTIVE` |
+| El objetivo es otro superusuario | `422 CANNOT_IMPERSONATE_SUPER_ADMIN` |
+| El actor se suplanta a sí mismo | `409 CANNOT_IMPERSONATE_SELF` |
+| El token del actor ya es suplantado | `409 NESTED_IMPERSONATION_FORBIDDEN` |
+| `mode` desconocido | `422 INVALID_IMPERSONATION_MODE` |
+| `reason` fuera de 10–500 | `422` estándar en `reason` |
+
+## 3. Que el token suplantado se reconozca a sí mismo — `GET /user`
 
 Con el token de suplantación, `GET /user` devuelve el usuario suplantado **más**:
 
@@ -171,6 +182,7 @@ Con el token de suplantación, `GET /user` devuelve el usuario suplantado **más
 {
   "…": "campos normales del usuario suplantado",
   "impersonation": {
+    "id": "impersonation-uuid",
     "actorUuid": "superusuario-uuid",
     "actorEmail": "soporte@hitguest.com",
     "mode": "read_only",
@@ -180,51 +192,107 @@ Con el token de suplantación, `GET /user` devuelve el usuario suplantado **más
 }
 ```
 
-Es lo que permite reconstruir el banner («estás dentro de la cuenta de X como
-Y, vence a las HH:MM») al recargar la página, sin que el front guarde nada
-inventado. Sin suplantación la clave no viene (o es `null`).
+Permite reconstruir el banner («estás dentro de la cuenta de X como Y, vence a
+las HH:MM») al recargar, sin que el front guarde nada inventado. Sin
+suplantación la clave no viene o es `null`. **Al vencer**: los endpoints
+responden el 401 de siempre; el front, mientras suplanta, lo trata como «salir
+de la cuenta ajena», nunca como «cerrar sesión».
 
-**Al vencer el token**: los endpoints responden el **401** de siempre. El front,
-mientras esté suplantando, trata ese 401 como «salir de la cuenta ajena» y no
-como «cerrar sesión», así la sesión del superusuario sobrevive.
+## 4. Directorio — solo superusuario
 
-## 5. Auditoría y permisos (decisión de producto)
+```
+GET /admin/clients?search={texto}&page={n}
+```
+```json
+{
+  "data": [
+    {
+      "uuid": "client-uuid",
+      "name": "Pullman Miami SAS",
+      "status": "active",
+      "owner": { "uuid": "owner-uuid", "name": "Didier", "email": "didier@example.com" },
+      "balance": { "amount": 6.49, "currency": "USD" },
+      "counts": { "users": 3, "properties": 8 },
+      "createdAt": "2026-07-01T10:00:00Z"
+    }
+  ],
+  "meta": { "current_page": 1, "last_page": 2, "per_page": 15, "total": 8 }
+}
+```
 
-- Toda escritura hecha con un token suplantado queda registrada con el **actor
-  real** (`actorUuid`) además del usuario suplantado. Los logs de API, los
-  `AutomationUsageRecord` y cualquier correo que se dispare deberían poder
-  decir quién actuó de verdad.
-- Pedimos **solo lectura por defecto**. Entrar a mirar una cuenta de soporte no
-  debería poder enviar un WhatsApp cobrado, recargar saldo, transferir la
-  titularidad o eliminar reservas por accidente. `mode: "full"` queda como
-  opción explícita al entrar, si el PO la aprueba.
-- Acciones que recomendamos **bloquear siempre** aunque el modo sea `full`:
-  transferir titularidad, eliminar la cuenta, cambiar el correo del dueño.
+```
+GET /admin/clients/{clientUuid}
+```
+```json
+{
+  "data": {
+    "uuid": "client-uuid",
+    "name": "Pullman Miami SAS",
+    "email": "cuenta@example.com",
+    "status": "active",
+    "balance": { "amount": 6.49, "currency": "USD" },
+    "owner": { "uuid": "owner-uuid", "name": "Didier", "email": "didier@example.com" },
+    "counts": { "users": 3, "properties": 8, "listings": 15, "reservations": 320 },
+    "createdAt": "2026-07-01T10:00:00Z"
+  }
+}
+```
+
+```
+GET /admin/clients/{clientUuid}/users?page={n}
+```
+```json
+{
+  "data": [
+    {
+      "uuid": "user-uuid",
+      "name": "Didier Van den Hove",
+      "email": "didier@example.com",
+      "isAccountOwner": true,
+      "roles": ["property_manager"],
+      "status": "active",
+      "lastLoginAt": "2026-10-09T13:12:00Z"
+    }
+  ],
+  "meta": { "current_page": 1, "last_page": 1, "per_page": 15, "total": 3 }
+}
+```
+
+- Sin `admin.clients.read`: **403**, nunca una lista vacía (se leería como «no
+  hay clientes»).
+- `search` busca por nombre del cliente y por nombre y correo del dueño.
+- Los `counts` pueden omitirse en una primera versión; el front los muestra
+  solo si vienen.
 
 ## Lo que NO pedimos, y por qué
 
 Un «scope global» que haga que `GET /properties`, `GET /reservations`, billing,
 etc. devuelvan datos de todos los clientes. Obligaría a tocar cada endpoint y
 cada pantalla del front para filtrar y rotular por cliente, y es justo el tipo
-de cambio que produce fugas entre cuentas. Con suplantación por token no hay
-nada que filtrar.
+de cambio que produce fugas entre cuentas. Con suplantación por token cada
+respuesta viene de una sola cuenta.
 
 ## Lo que el front construye en cuanto esto exista
 
-Ya está diseñado y no depende de la forma exacta de los payloads más allá de lo
-descrito: sesión con dos capas (actor y suplantado) en el `auth-store`; el
-cliente HTTP usa el token suplantado mientras esté activo y un 401 en ese modo
-sale de la suplantación en vez de cerrar la sesión; banner fijo con cliente,
-usuario, modo y vencimiento, y botón «Volver a mi cuenta»; limpieza de las
-cachés por cliente al entrar y salir; pantallas de directorio de clientes y de
-cuenta del cliente; controles de escritura desactivados en solo lectura.
+Diseñado y aprobado en mock: sesión con dos capas (actor y suplantado) en el
+`auth-store`; el cliente HTTP usa el token suplantado mientras esté activo y un
+401 en ese modo sale de la suplantación en vez de cerrar la sesión; banner fijo
+con cliente, usuario, modo y vencimiento, y botón «Volver a mi cuenta»;
+invalidación de cachés y peticiones en vuelo por cliente al entrar y salir;
+pantallas de directorio y de cuenta del cliente; controles de escritura
+desactivados en solo lectura. **No se construye nada que llame a estos
+endpoints hasta que existan.**
 
-## Orden sugerido
+## Orden de entrega
 
-1. Decisión del PO (registrar que el superusuario puede entrar a las cuentas).
-2. `isSuperAdmin` en `GET /user` (#1): con esto el front ya puede ocultar o
-   mostrar el menú.
-3. `POST /admin/impersonate` + `GET /user` con `impersonation` (#3 y #4): con
-   esto ya funciona entrar y volver, aunque el directorio sea provisional.
-4. Directorio (#2).
-5. Auditoría y solo lectura (#5), antes de abrirlo a más personas que el equipo.
+1. Decisión del PO registrada (puede entrar; en qué modo) y actualización de
+   `RICARDO_API_CONTRACTS.md` §3.3.
+2. `roles` y `capabilities` en la sesión (#1).
+3. **Modelo de suplantación completo** (#2): token temporal con id, actor,
+   sujeto y cliente, motivo, abilities recortadas, solo lectura por políticas,
+   vencimiento, revocación por el actor, sin anidamiento, auditoría. Todo en el
+   mismo deploy.
+4. `GET /user` con el bloque `impersonation` (#3).
+5. Directorio paginado de clientes y detalle (#4).
+6. Usuarios del cliente, paginados (#4).
+7. Modo `full` solo si producto lo aprueba y con `admin.impersonate.full` (#5).

@@ -21,9 +21,11 @@
 
 - ⚠️ **Superusuario e ingreso a cuentas de clientes** (pedido de producto
   2026-10-09). No existe contrato: ver `BACKEND_NEEDS_IMPERSONATION.md`
-  (`isSuperAdmin` en `GET /user`, `GET /admin/clients`,
-  `POST /admin/impersonate` con token aparte, `GET /user` con `impersonation`,
-  solo lectura y auditoría). El mock del front ya está aprobado.
+  (`roles`/`capabilities` en `GET /user`, directorio `/admin/clients`,
+  `POST /admin/impersonations` con token aparte de abilities recortadas y
+  revocable por el actor, `GET /user` con `impersonation`, solo lectura por
+  políticas, motivo obligatorio y auditoría — todo en un mismo deploy). El
+  mock del front ya está aprobado.
 
 - ⚠️ **Origen de la reserva — `PUT /reservations/{uuid}`** (abierto 2026-08-19).
   Ningún endpoint expone si una reserva entró por sincronización o la creó el PM
