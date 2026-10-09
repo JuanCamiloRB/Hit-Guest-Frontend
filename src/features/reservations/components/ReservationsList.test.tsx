@@ -147,3 +147,33 @@ describe("ReservationsList — un «todavía no» del backend no deja la tabla e
         expect(screen.getByTestId("row-count")).toHaveTextContent("2")
     })
 })
+
+describe("ReservationsList — recarga al volver a la pestaña, con límite", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        vi.useFakeTimers()
+        mocks.list.mockResolvedValue([reservation])
+    })
+
+    afterEach(() => {
+        vi.useRealTimers()
+    })
+
+    function returnToTab() {
+        Object.defineProperty(document, "visibilityState", { configurable: true, get: () => "visible" })
+        document.dispatchEvent(new Event("visibilitychange"))
+    }
+
+    it("no relee si la última carga fue hace menos de un minuto; sí después", async () => {
+        render(<ReservationsList />)
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        expect(mocks.list).toHaveBeenCalledTimes(1)
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(10_000); returnToTab() })
+        expect(mocks.list).toHaveBeenCalledTimes(1)
+
+        await act(async () => { await vi.advanceTimersByTimeAsync(60_000); returnToTab() })
+        await act(async () => { await vi.advanceTimersByTimeAsync(0) })
+        expect(mocks.list).toHaveBeenCalledTimes(2)
+    })
+})

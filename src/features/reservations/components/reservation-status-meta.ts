@@ -27,6 +27,11 @@ export const RESERVATION_STATUS_META: Record<Reservation["status"], ReservationS
     CLOSED: { label: "Finalizada", tone: "idle" },
     DELETED: { label: "Eliminada", tone: "danger" },
     UNKNOWN: { label: "Sin estado", tone: "warning" },
+    // Catálogo verificado 2026-10-09 (859/860). Se dejan fuera de los
+    // terminales a propósito: el backend no dice qué los dispara, y bloquear el
+    // reenvío del link sería decidir por él (si no aplica, responde 422).
+    ABANDONED: { label: "Abandonada", tone: "warning" },
+    INCOMPLETE: { label: "Incompleta", tone: "warning" },
     // Estados del flujo de check-in que el mismo union admite (los que pinta
     // StatusBadge). Van aquí para que el tipo esté cubierto y para que, si
     // alguno llega al panel, se lea igual que en el resto de la app.
@@ -38,8 +43,17 @@ export const RESERVATION_STATUS_META: Record<Reservation["status"], ReservationS
     NO_STARTED: { label: "No iniciado", tone: "idle" },
 }
 
-export function getReservationStatusMeta(status: Reservation["status"]): ReservationStatusMeta {
-    return RESERVATION_STATUS_META[status] ?? RESERVATION_STATUS_META.UNKNOWN
+/**
+ * `backendLabel`: el nombre que mandó el backend. Solo se usa cuando el estado
+ * no se pudo mapear (`UNKNOWN`): un estado nuevo del catálogo se muestra con su
+ * nombre real, nunca como un «Sin estado» genérico.
+ */
+export function getReservationStatusMeta(
+    status: Reservation["status"],
+    backendLabel?: string | null,
+): ReservationStatusMeta {
+    const meta = RESERVATION_STATUS_META[status] ?? RESERVATION_STATUS_META.UNKNOWN
+    return status === "UNKNOWN" && backendLabel ? { ...meta, label: backendLabel } : meta
 }
 
 /**

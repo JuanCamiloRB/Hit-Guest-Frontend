@@ -881,6 +881,16 @@ como Confirmadas, que era peor (mentía). Ningún documento del backend describe
 llegada?). ⚠️ Pendiente: confirmar con backend el significado y si `checkinAllowed`
 los excluye (hoy solo 27 y 28 habilitan automatizaciones).
 
+**Corregido en front 2026-10-09:** 859 → `ABANDONED` («Abandonada») y 860 →
+`INCOMPLETE` («Incompleta»), con icono propio, por id y por nombre. Para
+cualquier estado futuro que el front no mapee, la lista y el panel muestran el
+NOMBRE que manda el backend (`readReservationStatusLabel`, español de
+`statusReservation.name` en objeto, JSON o texto) en vez de «Desconocido». No
+se marcan como terminales (no se bloquea el reenvío del link): si no aplica, el
+backend responde 422. La lista se relee al volver a la pestaña, como mucho una
+vez por minuto (cada carga pide además el estado de automatizaciones de cada
+reserva).
+
 ### ✅ Catálogo `property_type` — los ids NO son 100/101/102 = Casa/Hotel/Apartamento
 
 ✅ **Verificado por curl el 2026-10-06** (app token, endpoint público):

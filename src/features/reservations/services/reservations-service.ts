@@ -49,6 +49,9 @@ const RESERVATION_STATUS_BY_ID: Record<number, Reservation["status"]> = {
     30: "CLOSED",
     108: "DELETED",
     109: "UNKNOWN",
+    // Verificado por curl 2026-10-09; ningún documento del backend dice qué los dispara.
+    859: "ABANDONED",
+    860: "INCOMPLETE",
 }
 
 /** Texto plano de un campo que puede llegar como string, objeto de traducciones `{en, es}` o nada. */
@@ -77,6 +80,29 @@ function statusNameEn(name: unknown): string {
 }
 
 /**
+ * Nombre del estado en español, tal como lo manda el catálogo (objeto de
+ * traducciones, JSON serializado o texto). `null` si no vino.
+ */
+export function readReservationStatusLabel(r: unknown): string | null {
+    const statusReservation = r && typeof r === "object"
+        ? (r as { statusReservation?: unknown }).statusReservation
+        : undefined
+    const name: unknown = statusReservation && typeof statusReservation === "object"
+        ? (statusReservation as { name?: unknown }).name
+        : undefined
+    let value: unknown = name
+    if (typeof name === "string") {
+        try { value = JSON.parse(name) } catch { value = name }
+    }
+    if (value && typeof value === "object") {
+        const v = value as Record<string, unknown>
+        const label = typeof v.es === "string" ? v.es : typeof v.en === "string" ? v.en : null
+        return label && label.trim() ? label : null
+    }
+    return typeof value === "string" && value.trim() ? value : null
+}
+
+/**
  * Maps a raw reservation to its HitGuest status — by catalog id, name as fallback.
  * Único punto de lectura del estado: el listado tenía su propia copia que hacía
  * `name.toLowerCase()` a secas, y con el `name` como objeto de traducciones una
@@ -93,6 +119,8 @@ export function mapReservationStatus(r: any): Reservation["status"] {
     if (name.includes("progress") || name.includes("progreso")) return "IN_PROGRESS"
     if (name.includes("closed") || name.includes("finalizada")) return "CLOSED"
     if (name.includes("deleted") || name.includes("eliminada")) return "DELETED"
+    if (name.includes("abandon")) return "ABANDONED"
+    if (name.includes("incomplet")) return "INCOMPLETE"
     if (name.includes("unknow") || name.includes("desconocido")) return "UNKNOWN"
     if (name.includes("confirm")) return "CONFIRMED"
     return "UNKNOWN"
@@ -356,6 +384,8 @@ export interface ReservationDetailData {
     checkOut: Date
     nights: number
     status: Reservation["status"]
+    /** Nombre del estado según el backend; respaldo para estados que el front no mapea. */
+    statusLabel?: string | null
     source: "Airbnb" | "Booking" | "Direct"
     totalPrice: number
     /**
@@ -579,6 +609,7 @@ export class ReservationsService {
             checkOut,
             nights: differenceInDays(checkOut, checkIn) || 1,
             status,
+            statusLabel: readReservationStatusLabel(r),
             source: sourceName,
             totalPrice: Number(r.totalPrice || r.total_price || 0),
             currency: readCurrencyCode(r.currency, r.currency_code),
@@ -1032,6 +1063,7 @@ export class ReservationsService {
                     checkOut,
                     nights: differenceInDays(checkOut, checkIn) || 1,
                     status,
+            statusLabel: readReservationStatusLabel(r),
                     source: sourceName,
                     totalPrice: Number(r.totalPrice || r.total_price || 0),
                     totalGuests: readCount(r.totalGuests ?? r.total_guests),

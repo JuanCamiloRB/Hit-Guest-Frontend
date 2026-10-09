@@ -145,3 +145,17 @@ describe("guestInitials", () => {
         expect(guestInitials("   ")).toBe("?")
     })
 })
+
+describe("getReservationStatusMeta — estados nuevos y respaldo con el nombre del backend", () => {
+    it("Abandonada e Incompleta tienen etiqueta propia", () => {
+        expect(getReservationStatusMeta("ABANDONED").label).toBe("Abandonada")
+        expect(getReservationStatusMeta("INCOMPLETE").label).toBe("Incompleta")
+    })
+
+    it("un estado no mapeado muestra el nombre que mandó el backend, no «Sin estado»", () => {
+        expect(getReservationStatusMeta("UNKNOWN", "En espera").label).toBe("En espera")
+        expect(getReservationStatusMeta("UNKNOWN").label).toBe("Sin estado")
+        // El nombre del backend no pisa un estado que sí se conoce.
+        expect(getReservationStatusMeta("CONFIRMED", "Otra cosa").label).toBe("Confirmada")
+    })
+})

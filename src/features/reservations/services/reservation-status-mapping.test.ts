@@ -26,7 +26,7 @@ vi.mock("@/features/properties/services/automation-service", async (importOrigin
 }))
 
 import { ApiError } from "@/types/api"
-import { ReservationsNotReadyError, mapReservationStatus, reservationsService } from "./reservations-service"
+import { ReservationsNotReadyError, mapReservationStatus, readReservationStatusLabel, reservationsService } from "./reservations-service"
 
 const TRANSLATED = { en: "Cancelled", es: "Cancelada" }
 
@@ -161,5 +161,21 @@ describe("reservationsService.list — bordes de la paginación y de las filas",
         vi.stubGlobal("fetch", fetchMock)
         await expect(reservationsService.list()).rejects.toThrow(/superan el máximo/)
         expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
+})
+
+describe("estados 859 y 860 del catálogo (verificado 2026-10-09)", () => {
+    it("Abandonada e Incompleta tienen estado propio, por id y por nombre", () => {
+        expect(mapReservationStatus({ statusReservation: { id: 859 } })).toBe("ABANDONED")
+        expect(mapReservationStatus({ statusReservationId: 860 })).toBe("INCOMPLETE")
+        expect(mapReservationStatus({ statusReservation: { name: { en: "Abandoned", es: "Abandonada" } } })).toBe("ABANDONED")
+        expect(mapReservationStatus({ statusReservation: { name: "Incompleta" } })).toBe("INCOMPLETE")
+    })
+
+    it("el nombre del backend se lee en español en sus tres formas, para estados que el front no conozca", () => {
+        expect(readReservationStatusLabel({ statusReservation: { name: { en: "On hold", es: "En espera" } } })).toBe("En espera")
+        expect(readReservationStatusLabel({ statusReservation: { name: JSON.stringify({ en: "On hold", es: "En espera" }) } })).toBe("En espera")
+        expect(readReservationStatusLabel({ statusReservation: { name: "En espera" } })).toBe("En espera")
+        expect(readReservationStatusLabel({})).toBeNull()
     })
 })

@@ -40,7 +40,9 @@ export const STATUS_ORDER: Record<Reservation["status"], number> = {
     CLOSED: 8,
     CANCELLED: 9,
     DELETED: 10,
-    UNKNOWN: 11,
+    ABANDONED: 11,
+    INCOMPLETE: 12,
+    UNKNOWN: 13,
 }
 
 /**

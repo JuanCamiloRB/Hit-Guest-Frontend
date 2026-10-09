@@ -154,7 +154,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         sortingFn: sortByStatus,
         cell: ({ row }) => (
             <div className="flex">
-                <ReservationStatusIcon status={row.original.status} />
+                <ReservationStatusIcon status={row.original.status} backendLabel={row.original.statusLabel} />
             </div>
         ),
     },

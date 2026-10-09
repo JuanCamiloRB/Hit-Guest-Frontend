@@ -1,6 +1,6 @@
 "use client"
 
-import { CheckCircle2, XCircle, Clock, Archive, Trash2, HelpCircle } from "lucide-react"
+import { CheckCircle2, XCircle, Clock, Archive, Trash2, HelpCircle, CircleSlash, CircleDashed } from "lucide-react"
 import type { Reservation } from "@/types"
 import { cn } from "@/lib/utils"
 
@@ -22,16 +22,26 @@ const STATUS_META: Record<
     CLOSED: { Icon: Archive, className: "text-slate-400", label: "Finalizada" },
     DELETED: { Icon: Trash2, className: "text-slate-400", label: "Eliminada" },
     UNKNOWN: { Icon: HelpCircle, className: "text-slate-300", label: "Desconocido" },
+    ABANDONED: { Icon: CircleSlash, className: "text-amber-500", label: "Abandonada" },
+    INCOMPLETE: { Icon: CircleDashed, className: "text-amber-500", label: "Incompleta" },
 }
 
 const AUTOMATION_ENABLED = new Set(["CONFIRMED", "IN_PROGRESS"])
 
-export function ReservationStatusIcon({ status }: { status: Reservation["status"] }) {
+export function ReservationStatusIcon({
+    status,
+    backendLabel,
+}: {
+    status: Reservation["status"]
+    /** Nombre del backend; se muestra cuando el estado no se pudo mapear. */
+    backendLabel?: string | null
+}) {
     const meta = STATUS_META[status] ?? STATUS_META.UNKNOWN
     const { Icon } = meta
+    const label = status === "UNKNOWN" && backendLabel ? backendLabel : meta.label
     const title = AUTOMATION_ENABLED.has(status)
-        ? `${meta.label} · automatizaciones activas`
-        : `${meta.label} · sin automatizaciones`
+        ? `${label} · automatizaciones activas`
+        : `${label} · sin automatizaciones`
 
     return (
         <span title={title} aria-label={title} className="inline-flex items-center justify-center">

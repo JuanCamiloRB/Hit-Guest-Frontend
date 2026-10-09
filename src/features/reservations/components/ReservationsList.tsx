@@ -46,6 +46,8 @@ const STATUS_LABELS: Record<Reservation["status"], string> = {
     CLOSED: "Finalizada",
     DELETED: "Eliminada",
     UNKNOWN: "Desconocido",
+    ABANDONED: "Abandonada",
+    INCOMPLETE: "Incompleta",
     PENDING: "Pendiente",
     CHECKED_IN: "Check-in",
     CHECKED_OUT: "Check-out",
@@ -63,6 +65,8 @@ const CORE_STATUSES: Reservation["status"][] = [
     "CLOSED",
     "DELETED",
     "UNKNOWN",
+    "ABANDONED",
+    "INCOMPLETE",
 ]
 import {
     AlertDialog,
@@ -79,6 +83,13 @@ import {
 /** Reintentos ante un «todavía no» (202) de la lista, y la espera entre ellos. */
 const NOT_READY_RETRIES = 3
 const NOT_READY_RETRY_MS = 2500
+/**
+ * Al volver a la pestaña se relee la lista (un huésped puede terminar su
+ * check-in desde su celular mientras el PM tiene esto abierto), pero no más de
+ * una vez cada minuto: cada carga pide además el estado de automatizaciones de
+ * CADA reserva.
+ */
+const REFRESH_ON_FOCUS_MIN_MS = 60_000
 export default function ReservationsList() {
     const [reservations, setReservations] = useState<Reservation[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -208,7 +219,9 @@ export default function ReservationsList() {
         // Un fallo nunca borra lo ya cargado: `setReservations` solo corre con
         // datos. Un «todavía no» (202 durante una sincronización) se reintenta
         // solo, unas pocas veces, sin dejar la tabla en blanco mientras tanto.
+        let lastLoadAt = Date.now()
         const loadReservations = async (attempt = 0) => {
+            lastLoadAt = Date.now()
             try {
                 const data = await reservationsService.list()
                 if (!cancelled) setReservations(data)
@@ -231,11 +244,20 @@ export default function ReservationsList() {
             void loadReservations()
         }
 
+        // Sin esqueleto: se refresca en silencio sobre lo que ya se ve.
+        const handleVisibility = () => {
+            if (document.visibilityState === "visible" && Date.now() - lastLoadAt >= REFRESH_ON_FOCUS_MIN_MS) {
+                void loadReservations()
+            }
+        }
+
         window.addEventListener("reservationCreated", handleReservationCreated)
+        document.addEventListener("visibilitychange", handleVisibility)
         return () => {
             cancelled = true
             if (retryTimer) clearTimeout(retryTimer)
             window.removeEventListener("reservationCreated", handleReservationCreated)
+            document.removeEventListener("visibilitychange", handleVisibility)
         }
     }, [])
 

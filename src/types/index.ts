@@ -94,7 +94,13 @@ export interface Reservation {
      * Only CONFIRMED (27) and IN_PROGRESS (28) enable the reservation's automations.
      * The remaining members are legacy operational values kept for older consumers.
      */
-    status: "CONFIRMED" | "IN_PROGRESS" | "CANCELLED" | "CLOSED" | "DELETED" | "UNKNOWN" | "PENDING" | "CHECKED_IN" | "CHECKED_OUT" | "LINK_SENT" | "PENDING_CONTRACT" | "NO_STARTED"
+    status: "CONFIRMED" | "IN_PROGRESS" | "CANCELLED" | "CLOSED" | "DELETED" | "UNKNOWN" | "ABANDONED" | "INCOMPLETE" | "PENDING" | "CHECKED_IN" | "CHECKED_OUT" | "LINK_SENT" | "PENDING_CONTRACT" | "NO_STARTED"
+    /**
+     * Nombre del estado tal como lo manda el backend (en español). Es el
+     * respaldo para un estado del catálogo que el front todavía no mapea: se
+     * muestra su nombre real en vez de un «Desconocido» genérico.
+     */
+    statusLabel?: string | null
     source: "Airbnb" | "Booking" | "Direct"
     totalPrice: number
     automationStatus?: AutomationStatus
