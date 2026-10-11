@@ -71,7 +71,15 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
     }>({ whatsapp: null, ota_inbox: null })
     const [completedRequestKey, setCompletedRequestKey] = useState("")
     const [loadFailure, setLoadFailure] = useState<{ key: string; message: string } | null>(null)
-    const requestKey = `${propertyUuid}:${countryId ?? ""}`
+    /**
+     * Clave de la carga en la que falló el catálogo sin filtrar de proveedores de
+     * identidad. El resto de la pestaña sigue usable, pero el selector de
+     * Avanzada/Esencial puede quedar con una sola opción: hay que decirlo y
+     * ofrecer reintentar, no dejar al PM frente a un selector incompleto.
+     */
+    const [identityCatalogFailedKey, setIdentityCatalogFailedKey] = useState<string | null>(null)
+    const [reloadCount, setReloadCount] = useState(0)
+    const requestKey = `${propertyUuid}:${countryId ?? ""}:${reloadCount}`
     const loading = !!propertyUuid && completedRequestKey !== requestKey
     const loadError = loadFailure?.key === requestKey ? loadFailure.message : null
 
@@ -103,12 +111,14 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
 
             // Avanzada y Esencial no traen país y el filtro las omite: se buscan
             // en el catálogo sin filtrar, solo si falta alguna. Si esa consulta
-            // falla, el selector queda como antes; no se bloquea la pestaña.
+            // falla, la pestaña sigue cargando y se avisa con opción de reintentar.
+            let identityCatalogFailed = false
             const providerRows = missingIdentityProviders(countryProviderRows)
                 ? withIdentityProviders(
                     countryProviderRows,
                     await automationService.listProviders({ statusProviderId: 8 }).catch((error) => {
-                        console.warn("[PropertiesAutomation] no se pudieron cargar los proveedores de identidad:", error)
+                        console.error("[PropertiesAutomation] no se pudieron cargar los proveedores de identidad:", error)
+                        identityCatalogFailed = true
                         return [] as Provider[]
                     }),
                 )
@@ -116,6 +126,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
 
             if (!active) return
             setLoadFailure(null)
+            setIdentityCatalogFailedKey(identityCatalogFailed ? requestKey : null)
             setAutomations([...automationRows].sort((a, b) => a.executionOrder - b.executionOrder))
             // Preserve a currently configured provider even if it was deactivated
             // after configuration; otherwise its selector would appear blank.
@@ -164,6 +175,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                     setListings([])
                     setSources([])
                     setDeliveryProviders({ whatsapp: null, ota_inbox: null })
+                    setIdentityCatalogFailedKey(null)
                     setLoadFailure({
                         key: requestKey,
                         message: error instanceof Error ? error.message : "No se pudieron cargar las automatizaciones.",
@@ -174,6 +186,8 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
 
         return () => { active = false }
     }, [propertyUuid, countryId, requestKey])
+
+    const identityCatalogFailed = identityCatalogFailedKey === requestKey
 
     const handleChanged = useCallback((updated: PropertyAutomation | null, automationUuid: string | null) => {
         setAutomations(prev => {
@@ -260,6 +274,18 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                 <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
                     <AlertCircle size={18} className="text-red-500 shrink-0" />
                     <p className="text-sm text-red-700">{loadError}</p>
+                </div>
+            )}
+
+            {!loading && !loadError && identityCatalogFailed && (
+                <div role="alert" className="flex flex-wrap items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
+                    <AlertCircle size={18} className="text-amber-500 shrink-0" />
+                    <p className="flex-1 text-sm text-amber-700">
+                        No pudimos cargar todos los proveedores de identidad. Reintenta antes de cambiar el nivel de verificación.
+                    </p>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setReloadCount((n) => n + 1)}>
+                        Reintentar
+                    </Button>
                 </div>
             )}
 
