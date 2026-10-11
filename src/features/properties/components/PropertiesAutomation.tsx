@@ -14,7 +14,13 @@ import { Button } from "@/components/ui/button"
 import { automationService, canonicalSlug } from "../services/automation-service"
 import { listingsService } from "../services/listings-service"
 import { reservationSourceService, type ReservationSource } from "../services/reservation-source-service"
-import { bindCatalogProviders, buildAutomationSlots, isAutomationProvider } from "../lib/automation-catalog"
+import {
+    bindCatalogProviders,
+    buildAutomationSlots,
+    isAutomationProvider,
+    missingIdentityProviders,
+    withIdentityProviders,
+} from "../lib/automation-catalog"
 import { DELIVERY_PROVIDERS, partitionCheckinLinkDelivery } from "../lib/checkin-link-delivery"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import type { PropertyAutomation, Provider } from "../types/automation"
@@ -84,7 +90,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                 throw new Error("No se pudo resolver el país de la propiedad.")
             }
 
-            const [automationRows, providerRows, listingRows, sourceRows] = await Promise.all([
+            const [automationRows, countryProviderRows, listingRows, sourceRows] = await Promise.all([
                 automationService.list(propertyUuid, { includeProvider: true }),
                 automationService.listProviders({ statusProviderId: 8, country: countryIso2 }),
                 listingsService.listByProperty(propertyUuid),
@@ -94,6 +100,19 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                 // se oculta el routing por no tener el catálogo.
                 reservationSourceService.list().catch(() => [] as ReservationSource[]),
             ])
+
+            // Avanzada y Esencial no traen país y el filtro las omite: se buscan
+            // en el catálogo sin filtrar, solo si falta alguna. Si esa consulta
+            // falla, el selector queda como antes; no se bloquea la pestaña.
+            const providerRows = missingIdentityProviders(countryProviderRows)
+                ? withIdentityProviders(
+                    countryProviderRows,
+                    await automationService.listProviders({ statusProviderId: 8 }).catch((error) => {
+                        console.warn("[PropertiesAutomation] no se pudieron cargar los proveedores de identidad:", error)
+                        return [] as Provider[]
+                    }),
+                )
+                : countryProviderRows
 
             if (!active) return
             setLoadFailure(null)

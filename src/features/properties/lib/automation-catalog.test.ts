@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest"
-import { bindCatalogProviders, buildAutomationSlots, isAutomationProvider } from "./automation-catalog"
+import {
+    bindCatalogProviders,
+    buildAutomationSlots,
+    isAutomationProvider,
+    missingIdentityProviders,
+    withIdentityProviders,
+} from "./automation-catalog"
 import { AUTOMATION_DEFINITIONS } from "../data/automation-definitions"
 import {
     AUTOMATION_STATUS,
@@ -296,5 +302,50 @@ describe("bindCatalogProviders", () => {
         const result = bindCatalogProviders(identity, automation, [textract], ["didit"])
 
         expect(result.providerOptions).toContainEqual(expect.objectContaining({ value: "textract", providerId: 845 }))
+    })
+})
+
+/**
+ * Reporte de Didier (2026-10-12): con «Avanzada» guardada no se podía pasar a
+ * «Esencial». `?country=` no devuelve didit ni textract (llegan sin
+ * `applicable_countries`), y el selector solo conservaba el proveedor guardado.
+ */
+describe("withIdentityProviders — Avanzada y Esencial no dependen del país", () => {
+    const identity = AUTOMATION_DEFINITIONS.find((item) => item.id === "identity-verification-main")!
+    const didit = makeProvider(1000, "didit", { enabled: false })
+    const textract = makeProvider(1004, "textract", { enabled: false })
+    const diditSaved = makeAutomation({
+        guestType: "main_guest",
+        providerId: 1000,
+        providerName: "didit",
+        provider: didit,
+        statusProviderId: AUTOMATION_STATUS.ACTIVE,
+        isActive: true,
+    })
+
+    it("reproduce el bug: sin el catálogo completo solo queda la opción guardada", () => {
+        const result = bindCatalogProviders(identity, diditSaved, [...CO_PROVIDERS, didit], CO_PROVIDERS.map((p) => p.parameters.slug))
+        expect(result.providerOptions.map((option) => option.value)).toEqual(["didit"])
+    })
+
+    it("con Avanzada guardada, la Esencial vuelve a ofrecerse con su id real", () => {
+        const rows = withIdentityProviders(CO_PROVIDERS, [...CO_PROVIDERS, didit, textract])
+        const result = bindCatalogProviders(identity, diditSaved, rows, rows.map((p) => p.parameters.slug))
+        expect(result.providerOptions.map((option) => [option.value, option.providerId])).toEqual([
+            ["didit", 1000],
+            ["textract", 1004],
+        ])
+    })
+
+    it("solo agrega didit y textract, sin duplicar", () => {
+        const ajeno = makeProvider(9, "otro_pais", { enabled: true }, ["PA"])
+        const rows = withIdentityProviders([...CO_PROVIDERS, didit], [didit, textract, ajeno])
+        expect(rows.map((p) => p.parameters.slug)).toEqual([...CO_PROVIDERS.map((p) => p.parameters.slug), "didit", "textract"])
+    })
+
+    it("solo hace falta buscar cuando el país omite alguno de los dos", () => {
+        expect(missingIdentityProviders(CO_PROVIDERS)).toBe(true)
+        expect(missingIdentityProviders([...CO_PROVIDERS, didit])).toBe(true)
+        expect(missingIdentityProviders([...CO_PROVIDERS, didit, textract])).toBe(false)
     })
 })

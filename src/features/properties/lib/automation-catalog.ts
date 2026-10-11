@@ -56,6 +56,35 @@ export function isAutomationProvider(provider: Provider): boolean {
     return !!provider.parameters?.slug && provider.automationType !== null
 }
 
+/** Proveedores de identidad: Avanzada = didit, Esencial = textract. */
+const IDENTITY_PROVIDER_SLUGS: ReadonlySet<string> = new Set(["didit", "textract"].map(canonicalSlug))
+
+/** ¿Falta en la lista del país alguno de los proveedores de identidad? */
+export function missingIdentityProviders(countryRows: Provider[]): boolean {
+    const present = new Set(countryRows.map((provider) => canonicalSlug(provider.parameters?.slug)))
+    return [...IDENTITY_PROVIDER_SLUGS].some((slug) => !present.has(slug))
+}
+
+/**
+ * Suma a la lista del país los proveedores de identidad que el filtro omitió.
+ *
+ * didit y textract llegan sin `applicable_countries`, y `GET /providers?country=`
+ * no los devuelve (skill de contratos §1). Las dos filas de identidad existen en
+ * TODA propiedad, así que sus proveedores no dependen del país. Sin esto, el
+ * selector solo conservaba el proveedor ya guardado y quedaba con una sola
+ * opción: la tarjeta mostraba «Proveedor: Verificación avanzada» como texto y
+ * no había forma de pasar a la esencial (reporte de Didier, 2026-10-12).
+ *
+ * Solo agrega didit y textract, sin duplicar por id. Nada más sale del filtro
+ * del país.
+ */
+export function withIdentityProviders(countryRows: Provider[], unfilteredRows: Provider[]): Provider[] {
+    const seen = new Set(countryRows.map((provider) => provider.id))
+    const extra = unfilteredRows.filter((provider) =>
+        IDENTITY_PROVIDER_SLUGS.has(canonicalSlug(provider.parameters?.slug)) && !seen.has(provider.id))
+    return [...countryRows, ...extra]
+}
+
 export interface AutomationSlot {
     /** Clave estable de React: uuid de la fila, o provider+orden si aún no existe. */
     key: string
