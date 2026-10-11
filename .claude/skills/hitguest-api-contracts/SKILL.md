@@ -151,9 +151,18 @@ Los providers 3-6 tienen `parameters.slug` en `null`.
   tarjeta mostraba el proveedor como texto, sin selector. **Corregido en front:**
   si al país le falta didit o textract, `PropertiesAutomation` los toma de
   `GET /providers?statusProviderId[eq]=8` sin país (`withIdentityProviders`,
-  solo esos dos slugs). ⚠️ Si tras el deploy sigue sin aparecer la Esencial, la
-  causa es otra: textract inactivo en el backend (status ≠ 8). No se pudo
-  confirmar por curl: el proxy exige token de PM.
+  solo esos dos slugs). Si esa consulta falla, la pestaña sigue y muestra un
+  aviso con «Reintentar» (fijado por `PropertiesAutomation.test.tsx`).
+  **Estado: implementado y verificado por pruebas; PENDIENTE de prueba con
+  sesión de PM y deploy** (el proxy respondió «Authentication required»).
+  ⚠️ Si tras el deploy sigue sin aparecer la Esencial, textract inactivo
+  (status ≠ 8) es UNA causa posible, no la única: también un 403 o error en la
+  consulta global (debería verse el aviso), una respuesta malformada, un slug
+  distinto de `textract`, el tope de 20 páginas de `listProviders` o un contrato
+  distinto en producción. Revisar la respuesta autenticada:
+  `curl -s "$API/providers?statusProviderId[eq]=8" "${H[@]}" | jq '.data[] | {id, slug: .parameters.slug, status: .statusProviderId}'`
+  Prueba con PM: Avanzada activa → aparece Esencial → cambiar → recargar → sigue
+  Esencial y `providerId` = el de textract → repetir Esencial → Avanzada.
 - ✅ `GET /providers` **pagina** (15 por defecto). Hoy entran justo en la primera
   página; con un provider más, una UI que lea solo `data` empieza a perderlos.
   `automationService.listProviders()` ya sigue la paginación leyendo
