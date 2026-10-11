@@ -1195,7 +1195,9 @@ export function PropertiesUnits() {
                                                                             ? schema.filter(f => params[f.key] != null && params[f.key] !== "").map(f => f.key).join(", ") || "Parámetros sobreescritos"
                                                                             : isInactive
                                                                                 ? "La automatización se omite para esta unidad."
-                                                                                : "Hereda la configuración de la propiedad."}
+                                                                                : hasOverride
+                                                                                    ? "Override activo sin parámetros propios."
+                                                                                    : "Hereda la configuración de la propiedad."}
                                                                     </p>
                                                                 </div>
                                                                 <Button
@@ -1256,6 +1258,14 @@ export function PropertiesUnits() {
                             draftMode={!(unitForm as any).uuid}
                             onSaved={(saved) => {
                                 setListingOverrides(prev => ({ ...prev, [editingOverrideAutomation.uuid]: saved }))
+                                setEditingOverrideAutomation(null)
+                            }}
+                            onInheritRestored={() => {
+                                setListingOverrides(prev => {
+                                    const next = { ...prev }
+                                    delete next[editingOverrideAutomation.uuid]
+                                    return next
+                                })
                                 setEditingOverrideAutomation(null)
                             }}
                         />

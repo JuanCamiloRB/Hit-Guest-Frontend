@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { getErrorMessage } from "@/lib/notify-error"
 import { automationService } from "../../services/automation-service"
 import { getOverrideFieldSchema, isOverridableSlug } from "../../data/automation-definitions"
 import {
@@ -57,6 +58,11 @@ interface Props {
      */
     draftMode?: boolean
     onSaved: (override: ListingAutomationOverride) => void
+    /**
+     * La unidad vuelve a heredar de la propiedad: se borró su override (o, en
+     * borrador, se descartó). El llamador debe quitarlo de su estado.
+     */
+    onInheritRestored: () => void
 }
 
 /** Resolve the provider slug for a property automation. */
@@ -82,6 +88,7 @@ export function AutomationOverrideModal({
     lockedPropertyAutomationUuid,
     draftMode = false,
     onSaved,
+    onInheritRestored,
 }: Props) {
     const isEdit = !!override
     const [saving, setSaving] = useState(false)
@@ -169,6 +176,16 @@ export function AutomationOverrideModal({
             const parameters = buildParameters()
             let saved: ListingAutomationOverride
 
+            // Una unidad SIN override ya hereda. Guardarla activa y sin parámetros
+            // creaba una fila explícita que la lista mostraba como «Hereda de la
+            // propiedad» sin serlo, y no había forma de borrarla. Sin cambios no
+            // se crea nada.
+            if (!isEdit && isActive && parameters == null) {
+                toast.info("Sin cambios: la unidad sigue heredando de la propiedad.")
+                onClose()
+                return
+            }
+
             if (draftMode) {
                 // No API call — synthesize an override the caller will persist later.
                 saved = {
@@ -216,6 +233,24 @@ export function AutomationOverrideModal({
         } catch (err: any) {
             const msg = err?.data?.message || err?.message || "Error al guardar el override"
             toast.error(msg)
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    /** Borra el override y la unidad vuelve a heredar. En borrador no hay nada que borrar en el servidor. */
+    const handleRestoreInheritance = async () => {
+        if (!override) return
+        setSaving(true)
+        try {
+            if (!draftMode && override.uuid) {
+                await automationService.deleteListingOverride(override.uuid)
+            }
+            toast.success("La unidad vuelve a heredar de la propiedad")
+            onInheritRestored()
+            onClose()
+        } catch (err) {
+            toast.error(getErrorMessage(err, "No se pudo quitar el override"))
         } finally {
             setSaving(false)
         }
@@ -283,9 +318,11 @@ export function AutomationOverrideModal({
                                 {isActive ? "Activa en esta unidad" : "Desactivada para esta unidad"}
                             </Label>
                             <p className="text-[11px] text-slate-500">
-                                {isActive
-                                    ? "El override aplica y la automatización se ejecuta para esta unidad."
-                                    : "La automatización se omite para reservas de esta unidad."}
+                                {!isActive
+                                    ? "La automatización se omite para reservas de esta unidad."
+                                    : isEdit
+                                        ? "Esta unidad tiene un override propio: aplica con los parámetros de abajo."
+                                        : "Hoy hereda de la propiedad. Apágala para omitirla en esta unidad."}
                             </p>
                         </div>
                         <Switch
@@ -335,6 +372,17 @@ export function AutomationOverrideModal({
                 </div>
 
                 <DialogFooter className="gap-2">
+                    {isEdit && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={() => void handleRestoreInheritance()}
+                            disabled={saving}
+                            className="sm:mr-auto text-slate-600"
+                        >
+                            Volver a heredar
+                        </Button>
+                    )}
                     <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>
                     <Button
                         onClick={handleSave}

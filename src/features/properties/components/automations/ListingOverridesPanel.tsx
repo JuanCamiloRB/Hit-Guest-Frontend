@@ -228,6 +228,11 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                         )
                                                     })}
                                                 </div>
+                                            ) : hasOverride ? (
+                                                // Una fila activa sin parámetros NO es herencia: existe un
+                                                // override y su estado manda (contrato de overrides). Se
+                                                // quita con «Volver a heredar» en el modal.
+                                                <span className="text-[10px] text-slate-500">Override activo sin parámetros propios</span>
                                             ) : (
                                                 <span className="text-[10px] text-slate-400">Hereda de la propiedad</span>
                                             )}
@@ -257,6 +262,10 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                     lockedPropertyAutomationUuid={automation.uuid}
                     onSaved={saved => {
                         setEntries(prev => ({ ...prev, [editingListing.uuid]: { state: "loaded", override: saved } }))
+                        setEditingListing(null)
+                    }}
+                    onInheritRestored={() => {
+                        setEntries(prev => ({ ...prev, [editingListing.uuid]: { state: "loaded", override: null } }))
                         setEditingListing(null)
                     }}
                 />

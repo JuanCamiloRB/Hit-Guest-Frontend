@@ -10,7 +10,12 @@ vi.mock("../../services/automation-service", async (importOriginal) => {
     return { ...actual, automationService: { listListingOverrides: mocks.listListingOverrides } }
 })
 vi.mock("./AutomationOverrideModal", () => ({
-    AutomationOverrideModal: () => <div data-testid="override-modal" />,
+    // El modal tiene sus propios tests; acá solo se expone su salida de «heredar».
+    AutomationOverrideModal: ({ onInheritRestored }: { onInheritRestored: () => void }) => (
+        <div data-testid="override-modal">
+            <button type="button" onClick={onInheritRestored}>simular volver a heredar</button>
+        </div>
+    ),
 }))
 
 const automation: PropertyAutomation = {
@@ -81,5 +86,39 @@ describe("ListingOverridesPanel — caída parcial al cargar overrides", () => {
         await waitFor(() => expect(row).toBeEnabled())
         fireEvent.click(row)
         expect(screen.getByTestId("override-modal")).toBeInTheDocument()
+    })
+})
+
+describe("ListingOverridesPanel — un override activo no se presenta como herencia", () => {
+    const activeOverride: ListingAutomationOverride = { ...disabledOverride, statusRecordId: 6, isActive: true }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.listListingOverrides.mockImplementation((listingUuid: string) =>
+            Promise.resolve(listingUuid === "unit-1" ? [activeOverride] : []))
+    })
+
+    it("distingue el override activo sin parámetros de la unidad que hereda", async () => {
+        render(<ListingOverridesPanel automation={automation} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+
+        expect(await screen.findByText("Override activo sin parámetros propios")).toBeInTheDocument()
+        // Solo la unidad 2, que no tiene fila, hereda.
+        expect(screen.getAllByText("Hereda de la propiedad")).toHaveLength(1)
+        expect(screen.getByText("1 configurada")).toBeInTheDocument()
+    })
+
+    it("al volver a heredar, la fila pasa a «Hereda de la propiedad»", async () => {
+        render(<ListingOverridesPanel automation={automation} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+        const row = await screen.findByRole("button", { name: /Unidad 1/ })
+        await waitFor(() => expect(row).toBeEnabled())
+        fireEvent.click(row)
+
+        fireEvent.click(screen.getByRole("button", { name: "simular volver a heredar" }))
+
+        await waitFor(() => expect(screen.getAllByText("Hereda de la propiedad")).toHaveLength(2))
+        expect(screen.queryByText("Override activo sin parámetros propios")).toBeNull()
+        expect(screen.getByText("Todas heredan de la propiedad")).toBeInTheDocument()
     })
 })
