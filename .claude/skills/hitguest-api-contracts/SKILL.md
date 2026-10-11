@@ -145,6 +145,15 @@ Los providers 3-6 tienen `parameters.slug` en `null`.
   Hasta que se confirme lo contrario, el catálogo no puede ofrecer un slot de
   identidad faltante. Repetir con:
   `curl -s "$API/providers?country=CO" "${H[@]}" | jq -r '.data[].parameters.slug'`
+  **Consecuencia real (reporte de Didier, 2026-10-12):** con «Avanzada» guardada
+  no se podía pasar a «Esencial». `bindCatalogProviders` solo ofrece las
+  opciones que devuelve `?country=` más la ya guardada, así que quedaba UNA y la
+  tarjeta mostraba el proveedor como texto, sin selector. **Corregido en front:**
+  si al país le falta didit o textract, `PropertiesAutomation` los toma de
+  `GET /providers?statusProviderId[eq]=8` sin país (`withIdentityProviders`,
+  solo esos dos slugs). ⚠️ Si tras el deploy sigue sin aparecer la Esencial, la
+  causa es otra: textract inactivo en el backend (status ≠ 8). No se pudo
+  confirmar por curl: el proxy exige token de PM.
 - ✅ `GET /providers` **pagina** (15 por defecto). Hoy entran justo en la primera
   página; con un provider más, una UI que lea solo `data` empieza a perderlos.
   `automationService.listProviders()` ya sigue la paginación leyendo
@@ -212,6 +221,21 @@ Además: `UNSUPPORTED_DOCUMENT_LAYOUT` se lee de `errorType`, `error_type` o
 > el **backend es la autoridad** sobre cuándo continuar, escalar, aprobar,
 > rechazar o dar la espera por obsoleta. No montar una máquina de estados
 > paralela en React.
+
+### ⚠️ El nivel de identidad (Avanzada = Didit / Esencial = Textract) NO se cambia por unidad
+
+*(Revisado 2026-10-12 contra `docs/API_DOCUMENTATION.md` §overrides y los tipos
+de `listing-automation-overrides`; pregunta de producto: «¿dónde cambio de
+Avanzada a Esencial para una unidad?».)* El override de listing solo tiene
+`statusRecordId` (6 aplica / 7 apagada), `parameters` (delta que se mezcla
+sobre la base) y `token`. **No tiene `providerId`**, y el proveedor vive en la
+fila de la PROPIEDAD (`providerId` vía `configure`). El doc dice textual que
+para didit/textract «el override típico sería solo… desactivar la
+verificación en un listing específico». ⇒ Hoy el nivel es por propiedad y sus
+unidades lo heredan; por unidad solo se apaga. Elegirlo por unidad es un
+cambio de contrato de backend (p. ej. `providerId` en el override, validado
+contra `verification_type`). No inventarlo con una clave en `parameters`: el
+resolver no la leería y el PM vería un nivel que no se aplica.
 
 El proveedor se elige por tipo de huésped de forma independiente: **no existe la
 regla «principal = Didit, secundarios = Textract»** — cualquier combinación vale.
