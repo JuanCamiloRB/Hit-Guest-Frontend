@@ -105,6 +105,12 @@ Front listo según el contrato de logo (`POST`/`DELETE /clients/{uuid}/logo`, mu
 
 ## Mejoras menores (no bloqueantes)
 
+- **Nivel de identidad por unidad (Avanzada/Esencial)** — pedido 2026-10-12.
+  El override de unidad no acepta `providerId`, así que el nivel es por
+  propiedad. Contrato propuesto (herencia con `null`, validación, provider
+  efectivo en los GET y en identify/estado/facturación) en
+  [`BACKEND_NEEDS_IDENTITY_PROVIDER_PER_LISTING.md`](./BACKEND_NEEDS_IDENTITY_PROVIDER_PER_LISTING.md).
+
 - 🟡 **Crédito de bienvenida USD 10 en el registro.** Cada nuevo registro de usuario debe abrir la cuenta con **USD 10 de saldo**. Esto es 100% backend: acreditar el saldo al crear/activar la cuenta, de modo que `GET /billing/balance` devuelva `10.00` para una cuenta nueva (idealmente también como transacción visible en `GET /billing/transactions`, tipo "Crédito de bienvenida"). El front ya lo comunica en el formulario de registro y en la pantalla de activación; si el monto llegara a cambiar, avisar para actualizar el texto.
 
 - ✅ **`communicationsLocale` en el detalle de la reserva** — Resuelto. El backend ya lo expone en `GET /reservations/{uuid}` dentro de `listing.communicationsLocale`. El front lo lee y el menú "Enviar Link de Check-in" muestra el idioma default de la propiedad (ej. "Idioma de la propiedad · Español").

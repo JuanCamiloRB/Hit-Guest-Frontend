@@ -244,7 +244,22 @@ verificación en un listing específico». ⇒ Hoy el nivel es por propiedad y s
 unidades lo heredan; por unidad solo se apaga. Elegirlo por unidad es un
 cambio de contrato de backend (p. ej. `providerId` en el override, validado
 contra `verification_type`). No inventarlo con una clave en `parameters`: el
-resolver no la leería y el PM vería un nivel que no se aplica.
+resolver no la leería y el PM vería un nivel que no se aplica. Contrato
+completo pedido (herencia con `null`, 422, provider efectivo en los GET, en
+`/identify`, estado y facturación) en `docs/BACKEND_NEEDS_IDENTITY_PROVIDER_PER_LISTING.md`.
+
+**Heredar ≠ override activo (corregido en front 2026-10-12, auditoría externa).**
+Tres estados reales: sin override = hereda; override 6 = existe y su estado
+manda («statusProviderId del override tiene prioridad», doc de overrides);
+override 7 = apagada en la unidad. El modal creaba un override 6 vacío al
+guardar una unidad que heredaba, la lista lo pintaba «Hereda de la propiedad»
+y no había cómo borrarlo. Ahora: sin cambios no se crea nada; un 6 sin
+parámetros se pinta «Override activo sin parámetros propios»; «Volver a
+heredar» hace `DELETE /listing-automation-overrides/{uuid}` (en borrador solo
+se descarta). ⚠️ Sin verificar: si un override 6 puede ejecutar una
+automatización APAGADA en la propiedad — el doc dice que el estado del
+override tiene prioridad, pero en los gates del despachador (§1) «automation
+activa» va antes que «override del listing».
 
 El proveedor se elige por tipo de huésped de forma independiente: **no existe la
 regla «principal = Didit, secundarios = Textract»** — cualquier combinación vale.
