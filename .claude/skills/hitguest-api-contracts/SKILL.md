@@ -617,6 +617,29 @@ automation activa · trigger coincide · override del listing · `requires_check
 Después el job aplica un **gate de saldo** (hoy inocuo: todos los costos están
 en 0).
 
+### ⚠️ TRA/SIRE solo por alojamiento (sin credenciales de propiedad) — NO soportado hoy (análisis 2026-10-13)
+
+Pedido de producto (Didier): edificios con varios dueños donde el RNT/TRA y el
+login de SIRE existen solo por apartamento. Lo que hay:
+- ⚠️ El doc de overrides SÍ prevé credenciales por listing («multi-RNT en un
+  mismo hotel»: `token`+`rnt` de TRA y las 4 claves de SIRE en
+  `parameters` del override; efectivos = `{...base, ...override}`).
+- Pero el override cuelga de una `PropertyAutomation` ACTIVA: en los gates
+  del despachador «automation activa» (3) va antes que «override» (5), y el
+  front solo ofrece overrides de filas activas (tarjeta y pestaña AUTOM. de la
+  unidad). Activar TRA en la propiedad exige `token`+`rnt` (el front no deja
+  activar sin ellos; ⚠️ sin verificar por curl que `configure` dé 422).
+- ⇒ No se puede «solo por alojamiento» sin inventar credenciales de
+  propiedad (que correrían en las unidades sin override). Requiere backend:
+  activar sin credenciales en modo «por alojamiento», validar las claves en
+  el override y registrar un motivo explícito cuando a una unidad le faltan
+  (hoy sería un salto silencioso o un fallo por credencial vacía).
+- Preguntas a confirmar con token de PM: (1) `configure` de TRA activa sin
+  `token`/`rnt` → ¿422?; (2) fila de propiedad en 10 + override 6 con
+  credenciales → ¿corre en ese listing? (el doc dice que el estado del
+  override tiene prioridad; la lista de gates dice que no); (3) ¿el override
+  valida `token`/`rnt`?
+
 ### Detalles por automation que cambian la UI
 
 | Automation | Qué hay que saber |
