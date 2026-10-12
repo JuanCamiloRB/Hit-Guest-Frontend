@@ -213,6 +213,25 @@ describe("buildAutomationSlots", () => {
         expect(slots[0].automation).toBe(existing)
     })
 
+    it("identidad conserva Avanzada y Esencial aunque el catálogo solo confirme la actual", () => {
+        const didit = makeProvider(1000, "didit", { enabled: false }, [])
+        const existing = makeAutomation({
+            providerId: 1000,
+            providerName: "didit",
+            provider: didit,
+            guestType: "main_guest",
+            executionOrder: 1,
+        })
+        const definition = AUTOMATION_DEFINITIONS.find((item) => item.id === "identity-verification-main")!
+
+        const bound = bindCatalogProviders(definition, existing, [didit], ["didit"])
+
+        expect(bound.providerOptions.map(({ value, providerId }) => ({ value, providerId }))).toEqual([
+            { value: "didit", providerId: 1000 },
+            { value: "textract", providerId: 1004 },
+        ])
+    })
+
     it("no duplica una definición que ya tiene fila en el backend", () => {
         const existing = makeAutomation({
             uuid: "tra-row",
@@ -270,7 +289,7 @@ describe("buildAutomationSlots", () => {
 describe("bindCatalogProviders", () => {
     const identity = AUTOMATION_DEFINITIONS.find((item) => item.id === "identity-verification-main")!
 
-    it("resuelve IDs desde el catálogo y no desde constantes del frontend", () => {
+    it("prefiere los IDs reales del catálogo sobre el fallback contractual", () => {
         const didit = makeProvider(701, "didit", { enabled: false })
         const textract = makeProvider(845, "textract", { enabled: false })
 
@@ -282,12 +301,15 @@ describe("bindCatalogProviders", () => {
         ])
     })
 
-    it("no ofrece una opción que el endpoint del país no devolvió", () => {
+    it("identidad no pierde una opción cuando el endpoint del país la omite", () => {
         const didit = makeProvider(701, "didit", { enabled: false })
 
         const result = bindCatalogProviders(identity, null, [didit], ["didit"])
 
-        expect(result.providerOptions.map((option) => option.value)).toEqual(["didit"])
+        expect(result.providerOptions.map((option) => [option.value, option.providerId])).toEqual([
+            ["didit", 701],
+            ["textract", 1004],
+        ])
     })
 
     it("conserva el provider configurado aunque ya no esté activo en el catálogo", () => {
@@ -323,9 +345,12 @@ describe("withIdentityProviders — Avanzada y Esencial no dependen del país", 
         isActive: true,
     })
 
-    it("reproduce el bug: sin el catálogo completo solo queda la opción guardada", () => {
+    it("sin el catálogo completo mantiene ambas opciones con el fallback contractual", () => {
         const result = bindCatalogProviders(identity, diditSaved, [...CO_PROVIDERS, didit], CO_PROVIDERS.map((p) => p.parameters.slug))
-        expect(result.providerOptions.map((option) => option.value)).toEqual(["didit"])
+        expect(result.providerOptions.map((option) => [option.value, option.providerId])).toEqual([
+            ["didit", 1000],
+            ["textract", 1004],
+        ])
     })
 
     it("con Avanzada guardada, la Esencial vuelve a ofrecerse con su id real", () => {

@@ -94,10 +94,11 @@ export interface AutomationSlot {
 }
 
 /**
- * Vincula opciones de presentación con los providers reales del país. Los IDs
- * no son constantes públicas: siempre salen de `GET /providers?country=`. Una
+ * Vincula opciones de presentación con los providers reales del país. Una
  * opción actualmente configurada se conserva aunque el provider luego quede
- * inactivo, para que el selector no pierda el valor guardado.
+ * inactivo, para que el selector no pierda el valor guardado. Las opciones con
+ * un `providerId` contractual también se conservan: identidad tiene ids estables
+ * y no puede desaparecer del selector porque el catálogo por país la omita.
  */
 export function bindCatalogProviders(
     definition: AutomationDefinition,
@@ -119,9 +120,10 @@ export function bindCatalogProviders(
         ...definition,
         providerOptions: definition.providerOptions.flatMap((option) => {
             const slug = canonicalSlug(option.value)
-            if (!available.has(slug) && slug !== currentSlug) return []
+            if (!available.has(slug) && slug !== currentSlug && option.providerId == null) return []
             const providerId = providerBySlug.get(slug)?.id
                 ?? (slug === currentSlug ? automation?.providerId ?? undefined : undefined)
+                ?? option.providerId
             return providerId == null ? [] : [{ ...option, providerId }]
         }),
     }

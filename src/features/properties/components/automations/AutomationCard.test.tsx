@@ -681,6 +681,39 @@ describe("AutomationCard — selección de proveedor pendiente", () => {
         // Fila activa: el flujo persistió de una vez, no hay activación pendiente.
         expect(screen.queryByText(/Selección pendiente/i)).not.toBeInTheDocument()
     })
+
+    it("también permite volver de Esencial a Avanzada usando el id contractual", async () => {
+        configure.mockResolvedValue(makeAutomation({
+            uuid: "identity-row",
+            providerId: 1000,
+            isActive: true,
+            statusProviderId: AUTOMATION_STATUS.ACTIVE,
+        }))
+
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={definitionFor("identity-verification-main")}
+                automation={makeAutomation({
+                    uuid: "identity-row",
+                    providerId: 1004,
+                    executionOrder: 1,
+                    guestType: "main_guest",
+                    isActive: true,
+                    statusProviderId: AUTOMATION_STATUS.ACTIVE,
+                    provider: makeProvider(1004, "textract"),
+                })}
+                providers={[makeProvider(1004, "textract")]}
+            />,
+        )
+
+        await pickProvider(/Verificación avanzada/i)
+
+        await waitFor(() => expect(configure).toHaveBeenCalledWith("identity-row", {
+            statusProviderId: AUTOMATION_STATUS.ACTIVE,
+            providerId: 1000,
+        }))
+    })
 })
 
 describe("AutomationCard — protección SIRE", () => {
