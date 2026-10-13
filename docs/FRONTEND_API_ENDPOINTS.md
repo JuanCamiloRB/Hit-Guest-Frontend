@@ -99,6 +99,13 @@ Los estados tratados expresamente son:
 | POST                    | `/clients/{clientUuid}/transfer-ownership`                              | SESSION       | Transferir titularidad                   |
 | GET, POST               | `/users`                                                                | SESSION       | Listar/crear usuarios                    |
 | DELETE                  | `/users/{userUuid}`                                                     | SESSION       | Eliminar usuario                         |
+| GET                     | `/support/clients?search=&page=`                                        | SESSION agente | Consola de soporte: buscar clientes ⚠️ rama `feat/acceso-soporte-cuentas` |
+| GET                     | `/support/clients/{clientUuid}/users`                                   | SESSION agente | Usuarios del cliente                     |
+| POST                    | `/support/sessions`                                                     | SESSION agente | Abrir sesión de soporte (`{userUuid, reason}`) |
+| GET                     | `/support/sessions/current`                                             | SOPORTE       | Datos del banner tras recargar           |
+| POST                    | `/support/sessions/current/end`                                         | SOPORTE       | Salir del modo soporte                   |
+| GET, POST               | `/support/agents`                                                       | SESSION super_admin | Listar / dar de alta agentes        |
+| DELETE                  | `/support/agents/{userUuid}`                                            | SESSION super_admin | Revocar agente                      |
 | GET                     | `/catalogs`                                                             | APP           | Catálogos filtrados                      |
 | GET                     | `/catalogs/identification-types`                                        | APP           | Tipos de documento por país              |
 | GET                     | `/catalogs/category/currencies`                                         | APP           | Monedas                                  |

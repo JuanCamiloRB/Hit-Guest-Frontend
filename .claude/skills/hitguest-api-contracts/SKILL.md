@@ -2026,33 +2026,74 @@ muestra el `digest` como referencia en pantalla.
   Confirmar con token de PM:
   `curl -s "$API/reservations" "${H[@]}" | jq '{total: (.data|length), meta, ultimas: [.data[-3:][] | {externalId, arrivalDate, statusReservationId: .statusReservation.id, createdAt}]}'`
 
-- **Superusuario e ingreso a cuentas de clientes (pedido de producto
-  2026-10-09).** NO existe ningún contrato: `GET /user` no dice quién es
-  superusuario, `GET /users` y `GET /clients/{uuid}` son solo de la propia
-  cuenta, y `RICARDO_API_CONTRACTS.md` §3.3 registra que `SUPER_ADMIN` NO debe
-  recibir scope global. Lo pedido (sin inventar nada en el front):
-  `roles` + `capabilities` en `GET /user`; `GET /admin/clients`, su detalle y
-  `/admin/clients/{uuid}/users` (paginados, 403 sin capacidad); `POST
-  /admin/impersonations {userUuid, mode, reason}` que emite un token APARTE,
-  corto, con abilities RECORTADAS (nada de `/admin/*`, sin anidamiento), ligado
-  al actor y revocable por el actor con `DELETE /admin/impersonations/{id}`;
-  `GET /user` con ese token trae `impersonation {id, actorUuid, mode,
-  expiresAt}`; solo lectura por políticas (no solo por método) y `full` solo
-  con `admin.impersonate.full`; auditoría con motivo obligatorio. Todo el
-  modelo en el mismo deploy, nunca «auditoría después». **Bloqueante previo:**
-  hoy `SUPER_ADMIN` recibe propiedades de TODAS las cuentas (`withinScope()`,
-  observado jul 2026, `BACKEND_NEEDS_SUMMARY.md`): hay que quitarlo antes, o el
-  actor se salta la suplantación. Permisos efectivos = los del objetivo ∩ modo
-  ∩ allowlist − prohibiciones; nunca más que el usuario suplantado. Detalle y payloads en
-  `docs/BACKEND_NEEDS_IMPERSONATION.md`. **Front construido 2026-10-09 y
-  OCULTO** detrás de `capabilities` (`src/features/admin/`): sesión de dos capas
-  en el `auth-store` (`actor`), 401 dentro de una cuenta ajena = salir de ella
-  (nunca cerrar la del superusuario), revocación con el token del actor,
-  navegación completa al entrar/salir, banner, directorio y cuenta del cliente,
-  diálogo con motivo. Lectores en `admin-readers.ts`/`session-access.ts`: único
-  punto a ajustar cuando llegue el contrato real.
+- **Superusuario e ingreso a cuentas de clientes** — ❌ el modelo PEDIDO
+  (`/admin/*`, `capabilities`, modo `read_only`/`full`, revocar con el token
+  del actor) NO es el que construyó el backend. Reemplazado por el contrato de
+  soporte de abajo (§5b). `docs/BACKEND_NEEDS_IMPERSONATION.md` queda como
+  historia del pedido.
 
 El detalle con evidencia está en `docs/BACKEND_NEEDS_PROPERTY_AUTOMATIONS.md`.
+
+## 5b. ⚠️ Acceso de soporte a cuentas de clientes («Entrar como») — contrato 2026-10-10
+
+*(Doc de backend «Frontend — Acceso del equipo de soporte a cuentas de
+clientes», rama `feat/acceso-soporte-cuentas`, plan
+`20261010_acceso-soporte-cuentas-clientes.md`. Payloads capturados contra la
+rama. **NO desplegado ni verificado por curl contra `guest.hit.tools`.**)*
+
+**Quién ve qué** — dos booleanos nuevos en `UserResource` (`data.user` de
+`POST /auth/verify-otp` y cualquier listado de usuarios):
+`canAccessSupportConsole` (`support_agent` y `super_admin`) y
+`canManageSupportAgents` (solo `super_admin`). Agente puro =
+`canAccessSupportConsole && !canManageSupportAgents`: NO es PM, su usuario vive
+en la cuenta interna de HIT (los listados normales le dan datos de esa cuenta y
+las acciones 403) ⇒ su inicio es la consola y se le oculta el menú normal fuera
+del modo soporte.
+
+**Endpoints** (`/api/v1`, Bearer):
+
+| Ruta | Token | Respuesta |
+|---|---|---|
+| `GET /support/clients?search=&page=` | agente | paginado de 15 (`data`, `links`, `meta`); fila `{uuid, name, email, identificationNumber, usersCount}`. `search` cubre nombre, apellido, email, identificación y nombre/email de sus usuarios |
+| `GET /support/clients/{uuid}/users` | agente | `data[]` `{uuid, name, email, role, isAccountOwner, verified, canOpenSession}`, dueño primero, solo activos |
+| `POST /support/sessions {userUuid, reason}` | agente | 201 `data {token, session, user}`; máx 10/min (429) |
+| `GET /support/sessions/current` | soporte | `data` = forma de `session` |
+| `POST /support/sessions/current/end` | soporte | 200 `{message}`. `POST /auth/logout` con el token de soporte equivale |
+| `GET /support/agents?page=` | super_admin | paginado; `{uuid, name, email, createdAt, activeSession}` |
+| `POST /support/agents {name, email}` | super_admin | 201; si el email ya está en la cuenta interna, solo asigna el rol |
+| `DELETE /support/agents/{userUuid}` | super_admin | quita el rol y cierra su sesión abierta |
+
+`session` = `{uuid, clientUuid, clientName, userUuid, userName, userEmail,
+reason, status, idleTimeoutMinutes, startedAt, lastActivityAt, expiresAt,
+endedAt, endReason}` (ISO 8601 con offset). `user` = UserResource del
+objetivo (con los dos flags en `false`).
+
+**Reglas que rompen cosas si se ignoran:**
+- Permisos COMPLETOS del usuario objetivo: no hay modo solo lectura. Todo queda
+  a nombre de ese usuario; el backend guarda aparte agente + cada request
+  (no se muestra en el panel).
+- Se cierra tras `idleTimeoutMinutes` (60) SIN actividad; cada request renueva.
+  Sin tope total. No fijar 60 en el código.
+- Token de soporte en **`sessionStorage`** (muere con la pestaña); el del
+  agente NO se toca. Una sesión de soporte por agente: abrir otra cierra la
+  anterior (esa pestaña empieza a recibir 401).
+- 401 en modo soporte (cualquier endpoint): NO logout global; volver a la
+  sesión del agente sin llamar a `end` y avisar «La sesión de soporte se
+  cerró». Agente revocado con sesión abierta: 401 `SUPPORT_SESSION_ENDED`.
+- Al recargar: `GET /support/sessions/current`; 200 reconstruye el banner, 401
+  vuelve a la consola. `current`/`end` con token que no es de soporte: 404
+  `SUPPORT_SESSION_NOT_FOUND` ⇒ salir del modo soporte localmente.
+- Idioma: en modo soporte `POST /language` cambia la preferencia DEL CLIENTE.
+  El front no llama a ese endpoint (✅ verificado en código 2026-10-14): manda
+  `X-Locale` en cada request desde `useLanguageStore`.
+- Errores al abrir: 422 `errors.reason` (motivo < 10) · 422 `errors.userUuid`
+  (refrescar la lista) · 403 `SUPPORT_TARGET_NOT_ALLOWED` (mostrar `message`) ·
+  403 genérico si no es agente · 429. Agentes: 422 `errors.name|email` (incluye
+  «pertenece a una cuenta de cliente») · 422
+  `SUPPORT_INTERNAL_CLIENT_NOT_CONFIGURED` (mostrar `message`: config del
+  backend) · 404 `SUPPORT_AGENT_NOT_FOUND`.
+- `canOpenSession: false` (email sin verificar o personal de HIT) ⇒ usuario
+  deshabilitado con tooltip.
 
 ---
 

@@ -19,13 +19,11 @@
 
 ## Bloqueante activo
 
-- ⚠️ **Superusuario e ingreso a cuentas de clientes** (pedido de producto
-  2026-10-09). No existe contrato: ver `BACKEND_NEEDS_IMPERSONATION.md`
-  (`roles`/`capabilities` en `GET /user`, directorio `/admin/clients`,
-  `POST /admin/impersonations` con token aparte de abilities recortadas y
-  revocable por el actor, `GET /user` con `impersonation`, solo lectura por
-  políticas, motivo obligatorio y auditoría — todo en un mismo deploy). El
-  mock del front ya está aprobado.
+- ✅ **Acceso de soporte a cuentas de clientes** — contrato recibido el
+  2026-10-10 (rama `feat/acceso-soporte-cuentas`, `/support/*`) e implementado
+  en el front el 2026-10-14, oculto hasta que `UserResource` emita
+  `canAccessSupportConsole`. Pendiente: desplegar la rama y probar con un
+  agente real. Detalle en el skill de contratos §5b.
 
 - ⚠️ **Origen de la reserva — `PUT /reservations/{uuid}`** (abierto 2026-08-19).
   Ningún endpoint expone si una reserva entró por sincronización o la creó el PM

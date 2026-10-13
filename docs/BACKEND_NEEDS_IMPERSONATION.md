@@ -1,5 +1,16 @@
 # Lo que necesitamos del Backend — Superusuario e ingreso a cuentas de clientes
 
+> **Estado 2026-10-14: respondido con otro modelo.** El backend construyó el
+> «Acceso del equipo de soporte» (rama `feat/acceso-soporte-cuentas`, doc del
+> 2026-10-10): endpoints `/support/*`, flags `canAccessSupportConsole` y
+> `canManageSupportAgents`, token de soporte en `sessionStorage`, cierre tras
+> 60 min de inactividad. Diferencias con este pedido: **no hay modo solo
+> lectura** (la sesión tiene todos los permisos del usuario) y las acciones
+> quedan **a nombre del usuario del cliente** (el backend guarda aparte agente y
+> requests). El front ya está implementado contra ese contrato
+> (`src/features/support/`). El contrato vigente está en el skill de contratos
+> §5b; lo de abajo queda como historia del pedido.
+
 > Pedido de producto del 2026-10-09: que un superusuario de HitGuest vea todas
 > las cuentas (clientes, usuarios, propiedades) y pueda **entrar a la cuenta de
 > cualquier usuario sin código ni contraseña**, conservando su propia sesión.
