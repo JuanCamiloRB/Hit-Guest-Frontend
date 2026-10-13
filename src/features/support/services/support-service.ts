@@ -10,7 +10,7 @@
  * `data` y descarta `meta` (mismo motivo que `automationService.listProviders`).
  */
 
-import { apiClient, handleSessionExpired } from "@/lib/api-client"
+import { apiClient, handleSessionExpired, localeHeaders } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { ApiError, type ApiErrorResponse } from "@/types/api"
@@ -32,7 +32,11 @@ import {
 async function getPage<T>(url: string, read: (raw: unknown) => T | null): Promise<Page<T>> {
     const token = useAuthStore.getState().user?.token
     const res = await fetch(url, {
-        headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        headers: {
+            Accept: "application/json",
+            ...localeHeaders(),
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         cache: "no-store",
     })
     const json: unknown = await res.json().catch(() => ({}))

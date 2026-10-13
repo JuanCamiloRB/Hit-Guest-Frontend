@@ -299,7 +299,14 @@ export function mapUserResponse(
         city: userResponse?.city || "",
         country,
         role: userResponse?.role || "PRINCIPAL",
-        isPrincipal: userResponse?.isPrincipal ?? true,
+        // `isPrincipal` = dueño de la cuenta, la misma definición que usa
+        // `userService` al listar. Sin la clave vieja se toma `isAccountOwner`
+        // (lo trae UserResource); antes un ausente valía `true` y cualquier
+        // usuario secundario —también en modo soporte— veía Usuarios,
+        // Integraciones y Facturación como si fuera el dueño.
+        isPrincipal: typeof userResponse?.isPrincipal === "boolean"
+            ? userResponse.isPrincipal
+            : userResponse?.isAccountOwner === true,
         isAccountOwner: userResponse?.isAccountOwner ?? undefined,
         clientUuid,
         clientName: userResponse?.clientName ?? userResponse?.client_name ?? undefined,

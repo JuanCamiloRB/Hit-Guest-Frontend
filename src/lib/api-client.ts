@@ -32,6 +32,16 @@ export function handleSessionExpired() {
     }
 }
 
+/**
+ * Idioma de la interfaz para el backend (mensajes de error, nombres de
+ * catálogo). Lo usan también los `fetch` directos de listas paginadas, que no
+ * pasan por `request`: sin esto sus errores llegaban en otro idioma.
+ */
+export function localeHeaders(): Record<string, string> {
+    const locale = useLanguageStore.getState().language || "es"
+    return { "Accept-Language": locale, "X-Locale": locale, "X-App-Locale": locale }
+}
+
 interface RequestOptions extends RequestInit {
     skipAuth?: boolean
     /**
@@ -70,14 +80,10 @@ export async function request<T>(
 
     // Reflect the PM's selected UI language so the backend returns error
     // messages in the same locale (es | en | pt). Falls back to "es".
-    const locale = useLanguageStore.getState().language || "es"
-
     const headers: Record<string, string> = {
         "Content-Type": "application/json",
         "Accept": "application/json",
-        "Accept-Language": locale,
-        "X-Locale": locale,
-        "X-App-Locale": locale,
+        ...localeHeaders(),
         ...customHeaders,
     }
 

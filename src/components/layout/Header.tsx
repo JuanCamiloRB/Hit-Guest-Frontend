@@ -24,6 +24,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Logo } from "@/components/ui/Logo"
 import { BalanceWidget } from "@/features/billing/components/BalanceWidget"
+import { useIsSupportAgentOnly } from "@/features/support/hooks/useIsSupportAgentOnly"
+import { SUPPORT_HOME } from "@/features/support/lib/support-session"
 import {
     DEFAULT_LANGUAGE,
     isAvailableLanguage,
@@ -45,14 +47,16 @@ export function Header() {
     const { language, setLanguage } = useLanguageStore()
     const { t } = useTranslation()
     const isMounted = useHasHydrated()
-
+    // El agente puro no tiene panel de cuenta: ni saldo, ni perfil, ni usuarios
+    // (son los de la cuenta interna de HIT). Su inicio es la consola.
+    const agentOnly = useIsSupportAgentOnly()
 
     return (
         <header className="sticky top-0 z-30 flex h-14 sm:h-20 w-full items-center justify-between border-b bg-white/80 backdrop-blur-md px-3 sm:px-6 md:px-10 shadow-sm transition-all duration-300">
             <div className="flex items-center gap-6">
                 <div className="flex items-center gap-4">
                     <MobileSidebar />
-                    <Link href="/dashboard" className="hidden md:block transition-transform hover:scale-[1.02] active:scale-[0.98]">
+                    <Link href={agentOnly ? SUPPORT_HOME : "/dashboard"} className="hidden md:block transition-transform hover:scale-[1.02] active:scale-[0.98]">
                         {/* HIT GUEST: ícono + wordmark, menor que el HIT del
                             sidebar (pedido 2026-08-27). */}
                         <Logo variant="full" />
@@ -63,7 +67,7 @@ export function Header() {
             <div className="flex flex-1 items-center justify-end gap-2 sm:gap-4 md:gap-8">
                 <div className="flex items-center gap-1.5 sm:gap-2 md:gap-4">
                     {/* Prepaid balance chip → billing */}
-                    <BalanceWidget />
+                    {!agentOnly && <BalanceWidget />}
 
                     {/* Language Switcher.
                         El fallback de SSR decía "EN" sobre una interfaz entera en
@@ -127,19 +131,23 @@ export function Header() {
                                 </div>
                             </DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem asChild>
-                                <Link href="/dashboard/settings?tab=profile" className="cursor-pointer">
-                                    <CircleUserRound className="mr-2 h-4 w-4" />
-                                    <span>{t('header.myProfile')}</span>
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/dashboard/settings?tab=team" className="cursor-pointer">
-                                    <Users className="mr-2 h-4 w-4" />
-                                    <span>{t('header.users')}</span>
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
+                            {!agentOnly && (
+                                <>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/dashboard/settings?tab=profile" className="cursor-pointer">
+                                            <CircleUserRound className="mr-2 h-4 w-4" />
+                                            <span>{t('header.myProfile')}</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem asChild>
+                                        <Link href="/dashboard/settings?tab=team" className="cursor-pointer">
+                                            <Users className="mr-2 h-4 w-4" />
+                                            <span>{t('header.users')}</span>
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                </>
+                            )}
                             <DropdownMenuItem
                                 className="text-destructive focus:text-destructive cursor-pointer"
                                 onClick={logout}

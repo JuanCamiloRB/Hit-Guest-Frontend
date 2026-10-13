@@ -30,7 +30,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useHasHydrated } from "@/hooks/useHasHydrated"
-import { isSupportAgentOnly } from "@/features/support/lib/support-access"
+import { useIsSupportAgentOnly } from "@/features/support/hooks/useIsSupportAgentOnly"
 import { Avatar as UiAvatar, AvatarFallback } from "@/components/ui/avatar"
 
 interface NavEntry {
@@ -98,7 +98,7 @@ export function Sidebar({ className }: { className?: string }) {
     const canSeeAgents = outsideSupport && user?.canManageSupportAgents === true
     // Un agente puro no es PM: el panel normal le muestra la cuenta interna de
     // HIT y toda acción le da 403. Fuera del modo soporte solo ve la consola.
-    const showAccountMenu = !(outsideSupport && isSupportAgentOnly(user))
+    const showAccountMenu = !useIsSupportAgentOnly()
 
     const accountMenu: NavEntry[] = [
         {
