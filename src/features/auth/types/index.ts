@@ -72,7 +72,7 @@ export interface RoleDefinition {
     permissions: Permission[]
 }
 
-import type { ImpersonationInfo } from "@/features/admin/lib/session-access"
+import type { SupportSession } from "@/features/support/lib/support-readers"
 
 export interface User {
     id: string
@@ -96,18 +96,17 @@ export interface User {
     isAccountOwner?: boolean
     /** Client (CLIENTE) uuid — same as clientId; kept explicit for clarity in owner flows. */
     clientUuid?: string
-    /** Nombre del cliente (`client_name` de GET /user); se usa en el banner de suplantación. */
+    /** Nombre del cliente (`clientName` de UserResource). */
     clientName?: string
     /**
-     * Capacidades del plano de superusuario (`capabilities` de GET /user).
-     * ⚠️ Contrato pedido, aún no emitido: ausente = sin acceso
-     * (`docs/BACKEND_NEEDS_IMPERSONATION.md`).
+     * Consola de soporte (`support_agent` y `super_admin`). Contrato 2026-10-10,
+     * skill §5b: solo un `true` explícito habilita.
      */
-    capabilities?: string[]
-    /** Roles como arreglo (`roles` de GET /user, contrato pedido). */
-    roles?: string[]
-    /** Presente solo cuando la sesión es un token suplantado (§3 del pedido). */
-    impersonation?: ImpersonationInfo | null
+    canAccessSupportConsole?: boolean
+    /** Administración de agentes de soporte (solo `super_admin`). */
+    canManageSupportAgents?: boolean
+    /** Presente solo en la sesión de soporte: los datos del banner. */
+    supportSession?: SupportSession | null
     permissions?: {
         reservations?: string[]
         properties?: string[]

@@ -14,7 +14,8 @@ import {
     Home,
     MoreVertical,
     LogOut,
-    Building2,
+    Headset,
+    UserCog,
     type LucideIcon,
 } from "lucide-react"
 import {
@@ -29,7 +30,7 @@ import { useState } from "react"
 import Image from "next/image"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useHasHydrated } from "@/hooks/useHasHydrated"
-import { ADMIN_CAPABILITIES, hasCapability } from "@/features/admin/lib/session-access"
+import { isSupportAgentOnly } from "@/features/support/lib/support-access"
 import { Avatar as UiAvatar, AvatarFallback } from "@/components/ui/avatar"
 
 interface NavEntry {
@@ -37,7 +38,7 @@ interface NavEntry {
     icon: LucideIcon
     href: string
     active: boolean
-    /** Marca corta junto a la etiqueta (p. ej. «SUPER» en el plano de superusuario). */
+    /** Marca corta junto a la etiqueta (p. ej. «HIT» en las pantallas de soporte). */
     badge?: string
 }
 
@@ -88,14 +89,18 @@ function NavItem({ item }: { item: NavEntry }) {
 
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname()
-    const { user, logout, isImpersonating } = useAuth()
+    const { user, logout, isInSupportSession } = useAuth()
     const isMounted = useHasHydrated()
-    // Solo con la capacidad explícita (contrato pedido) y FUERA de una cuenta
-    // ajena: el token suplantado no tiene acceso al plano /admin.
-    const canSeeClients = isMounted && !isImpersonating
-        && hasCapability(user, ADMIN_CAPABILITIES.clientsRead)
+    // Solo con el flag explícito (contrato §5b) y FUERA del modo soporte: el
+    // token de soporte es el del usuario del cliente.
+    const outsideSupport = isMounted && !isInSupportSession
+    const canSeeConsole = outsideSupport && user?.canAccessSupportConsole === true
+    const canSeeAgents = outsideSupport && user?.canManageSupportAgents === true
+    // Un agente puro no es PM: el panel normal le muestra la cuenta interna de
+    // HIT y toda acción le da 403. Fuera del modo soporte solo ve la consola.
+    const showAccountMenu = !(outsideSupport && isSupportAgentOnly(user))
 
-    const mainMenu: NavEntry[] = [
+    const accountMenu: NavEntry[] = [
         {
             label: "Tablero",
             icon: LayoutGrid,
@@ -116,22 +121,35 @@ export function Sidebar({ className }: { className?: string }) {
         },
     ]
 
+    const mainMenu: NavEntry[] = showAccountMenu ? accountMenu : []
+
     const systemMenu: NavEntry[] = [
-        ...(canSeeClients
+        ...(canSeeConsole
             ? [{
-                label: "Clientes",
-                icon: Building2,
-                href: "/dashboard/admin/clients",
-                active: pathname.startsWith("/dashboard/admin"),
-                badge: "SUPER",
+                label: "Consola de soporte",
+                icon: Headset,
+                href: "/dashboard/support",
+                active: pathname === "/dashboard/support",
+                badge: "HIT",
             }]
             : []),
-        {
-            label: "Configuración",
-            icon: Settings,
-            href: "/dashboard/settings",
-            active: pathname.startsWith("/dashboard/settings"),
-        },
+        ...(canSeeAgents
+            ? [{
+                label: "Agentes de soporte",
+                icon: UserCog,
+                href: "/dashboard/support/agents",
+                active: pathname.startsWith("/dashboard/support/agents"),
+                badge: "HIT",
+            }]
+            : []),
+        ...(showAccountMenu
+            ? [{
+                label: "Configuración",
+                icon: Settings,
+                href: "/dashboard/settings",
+                active: pathname.startsWith("/dashboard/settings"),
+            }]
+            : []),
     ]
 
     // `firstName` trae el nombre completo (el User de la API no tiene lastName).
@@ -173,13 +191,15 @@ export function Sidebar({ className }: { className?: string }) {
                     entradas, decir que el menú principal es el menú principal no
                     orienta a nadie. El nombre del grupo queda en aria-label, que
                     es donde sí hace falta. */}
-                <nav aria-label="Navegación principal">
-                    <ul className="space-y-1">
-                        {mainMenu.map((item) => (
-                            <NavItem key={item.href} item={item} />
-                        ))}
-                    </ul>
-                </nav>
+                {mainMenu.length > 0 && (
+                    <nav aria-label="Navegación principal">
+                        <ul className="space-y-1">
+                            {mainMenu.map((item) => (
+                                <NavItem key={item.href} item={item} />
+                            ))}
+                        </ul>
+                    </nav>
+                )}
 
                 <nav aria-label="Sistema" className="space-y-2">
                     {/* Las dos pastillas moradas eran el problema: el morado es el
@@ -260,7 +280,7 @@ export function Sidebar({ className }: { className?: string }) {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer" onClick={logout}>
                             <LogOut className="mr-2 h-4 w-4" />
-                            <span>{isImpersonating ? "Volver a mi cuenta" : "Cerrar Sesión"}</span>
+                            <span>{isInSupportSession ? "Salir del modo soporte" : "Cerrar Sesión"}</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

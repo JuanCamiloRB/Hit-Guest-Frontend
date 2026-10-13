@@ -10,6 +10,8 @@ import { useAuthStore } from "@/lib/store/auth-store"
 
 import { useRouter } from "next/navigation"
 import { useFormSecurity } from "./use-form-security"
+import { isSupportAgentOnly } from "@/features/support/lib/support-access"
+import { SUPPORT_HOME } from "@/features/support/lib/support-session"
 
 export function useLogin() {
     const router = useRouter()
@@ -100,7 +102,8 @@ export function useLogin() {
             toast.success("¡Bienvenido de nuevo!", {
                 description: `Sesión iniciada correctamente`,
             })
-            router.push("/dashboard")
+            // Un agente de soporte no es PM: su inicio es la consola (contrato §5b).
+            router.push(isSupportAgentOnly(user) ? SUPPORT_HOME : "/dashboard")
         } catch (err: any) {
             setError(err.message || "Error al verificar el código")
 

@@ -14,7 +14,7 @@ export interface ApiErrorResponse {
     /** OCR / document-verification failures (e.g. CRITICAL_FIELD_ERROR). */
     errorType?: string
     failedFields?: OcrFailedField[]
-    /** Código estable del error, cuando el backend lo manda (`IMPERSONATION_READ_ONLY`…). */
+    /** Código estable del error, cuando el backend lo manda (`SUPPORT_TARGET_NOT_ALLOWED`…). */
     code?: string
 }
 

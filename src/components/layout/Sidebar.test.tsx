@@ -9,16 +9,16 @@ vi.mock("next/navigation", () => ({
     usePathname: () => mockPathname.current,
 }))
 
-const mockImpersonating = vi.hoisted(() => ({ current: false }))
+const mockInSupport = vi.hoisted(() => ({ current: false }))
 
 vi.mock("@/features/auth/hooks/use-auth", () => ({
-    useAuth: () => ({ user: mockUser.current, logout: vi.fn(), isImpersonating: mockImpersonating.current }),
+    useAuth: () => ({ user: mockUser.current, logout: vi.fn(), isInSupportSession: mockInSupport.current }),
 }))
 
 beforeEach(() => {
     mockUser.current = { firstName: "Juan Camilo Rodriguez", isAccountOwner: true }
     mockPathname.current = "/dashboard"
-    mockImpersonating.current = false
+    mockInSupport.current = false
 })
 
 describe("Sidebar", () => {
@@ -107,24 +107,36 @@ describe("Sidebar", () => {
     })
 })
 
-describe("Sidebar — plano de superusuario", () => {
-    it("sin la capacidad explícita no existe la entrada «Clientes»", () => {
+describe("Sidebar — consola de soporte (contrato §5b)", () => {
+    it("sin los flags no existe ninguna entrada de soporte", () => {
         render(<Sidebar />)
-        expect(screen.queryByRole("link", { name: /Clientes/ })).toBeNull()
+        expect(screen.queryByRole("link", { name: /Consola de soporte/ })).toBeNull()
+        expect(screen.queryByRole("link", { name: /Agentes de soporte/ })).toBeNull()
     })
 
-    it("con la capacidad aparece «Clientes» marcada SUPER", () => {
-        mockUser.current = { firstName: "Soporte", capabilities: ["admin.clients.read"] }
+    it("agente: solo la consola, sin el menú normal del panel", () => {
+        mockUser.current = { firstName: "Laura", canAccessSupportConsole: true, canManageSupportAgents: false }
         render(<Sidebar />)
-        const link = screen.getByRole("link", { name: /Clientes/ })
-        expect(link).toHaveAttribute("href", "/dashboard/admin/clients")
-        expect(link).toHaveTextContent("SUPER")
+        expect(screen.getByRole("link", { name: /Consola de soporte/ })).toHaveAttribute("href", "/dashboard/support")
+        expect(screen.queryByRole("link", { name: /Agentes de soporte/ })).toBeNull()
+        expect(screen.queryByRole("link", { name: "Tablero" })).toBeNull()
+        expect(screen.queryByRole("link", { name: "Configuración" })).toBeNull()
     })
 
-    it("dentro de una cuenta ajena la entrada se oculta aunque el actor tenga la capacidad", () => {
-        mockUser.current = { firstName: "Didier", capabilities: ["admin.clients.read"] }
-        mockImpersonating.current = true
+    it("super_admin: consola y agentes, y conserva el menú normal", () => {
+        mockUser.current = { firstName: "Root", canAccessSupportConsole: true, canManageSupportAgents: true }
         render(<Sidebar />)
-        expect(screen.queryByRole("link", { name: /Clientes/ })).toBeNull()
+        expect(screen.getByRole("link", { name: /Consola de soporte/ })).toBeInTheDocument()
+        expect(screen.getByRole("link", { name: /Agentes de soporte/ })).toHaveAttribute("href", "/dashboard/support/agents")
+        expect(screen.getByRole("link", { name: "Tablero" })).toBeInTheDocument()
+    })
+
+    it("en modo soporte se ve el panel del cliente, sin entradas de soporte", () => {
+        // El usuario activo es el del cliente: sus flags vienen en false.
+        mockUser.current = { firstName: "Ana", canAccessSupportConsole: false, canManageSupportAgents: false }
+        mockInSupport.current = true
+        render(<Sidebar />)
+        expect(screen.queryByRole("link", { name: /Consola de soporte/ })).toBeNull()
+        expect(screen.getByRole("link", { name: "Tablero" })).toBeInTheDocument()
     })
 })

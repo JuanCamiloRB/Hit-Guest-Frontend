@@ -10,13 +10,14 @@ import { useLanguageStore } from "@/store/useLanguageStore"
  */
 export function handleSessionExpired() {
     const state = useAuthStore.getState()
-    // Dentro de la cuenta de otro usuario, un 401 es el token SUPLANTADO
-    // (venció o se revocó), no la sesión del superusuario: se sale de la
-    // cuenta ajena y se vuelve al directorio, nunca se cierra la sesión propia.
+    // En modo soporte, un 401 es el token DE SOPORTE (venció por inactividad,
+    // se reemplazó o se revocó al agente), no la sesión del agente: se vuelve a
+    // la consola sin el logout global (contrato §5b). La ruta es la de
+    // `SUPPORT_ENDED_URL`; no se importa para no acoplar el cliente HTTP a la UI.
     if (state.actor) {
-        state.endImpersonation()
+        state.endSupportSession()
         if (typeof window !== "undefined") {
-            window.location.href = "/dashboard/admin/clients?impersonation=ended"
+            window.location.href = "/dashboard/support?session=ended"
         }
         return
     }

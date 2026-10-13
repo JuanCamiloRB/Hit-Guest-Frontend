@@ -1,18 +1,18 @@
 "use client"
 
 import { useAuthStore } from "@/lib/store/auth-store"
-import { exitImpersonatedAccount } from "@/features/admin/lib/impersonation-session"
+import { exitSupportSession } from "@/features/support/lib/support-session"
 import { authService } from "../services/auth-service"
 
 export function useAuth() {
     const { user, actor, isAuthenticated, isLoading, error, clearSession } = useAuthStore()
-    const isImpersonating = actor !== null
+    const isInSupportSession = actor !== null
 
     const logout = async () => {
-        // Dentro de la cuenta de otro usuario, «cerrar sesión» devuelve al
-        // superusuario a la suya: su sesión no se cierra desde una cuenta ajena.
-        if (isImpersonating) {
-            await exitImpersonatedAccount()
+        // En modo soporte, «cerrar sesión» sale de la sesión de soporte y
+        // devuelve al agente a la consola: su propia sesión no se cierra.
+        if (isInSupportSession) {
+            await exitSupportSession()
             return
         }
         try {
@@ -27,9 +27,9 @@ export function useAuth() {
 
     return {
         user,
-        /** La sesión propia del superusuario mientras está dentro de otra cuenta. */
+        /** La sesión propia del agente mientras está en modo soporte. */
         actor,
-        isImpersonating,
+        isInSupportSession,
         isAuthenticated,
         isLoading,
         error,

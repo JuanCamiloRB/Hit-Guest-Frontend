@@ -41,7 +41,7 @@ const LANGUAGE_OPTIONS: { code: Language; label: string }[] = [
 ]
 
 export function Header() {
-    const { user, logout, isImpersonating } = useAuth()
+    const { user, logout, isInSupportSession } = useAuth()
     const { language, setLanguage } = useLanguageStore()
     const { t } = useTranslation()
     const isMounted = useHasHydrated()
@@ -145,7 +145,7 @@ export function Header() {
                                 onClick={logout}
                             >
                                 <LogOut className="mr-2 h-4 w-4" />
-                                <span>{isImpersonating ? "Volver a mi cuenta" : t('header.logout')}</span>
+                                <span>{isInSupportSession ? "Salir del modo soporte" : t('header.logout')}</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>

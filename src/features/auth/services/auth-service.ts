@@ -1,4 +1,4 @@
-import { readCapabilities, readImpersonation, readRoles } from "@/features/admin/lib/session-access"
+import { readSupportFlags } from "@/features/support/lib/support-access"
 import { AuthService, ClientAccount, ClientProfile, RegisterFormData, UpdateProfilePayload, User } from "../types"
 import { apiClient, handleSessionExpired } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
@@ -303,9 +303,7 @@ export function mapUserResponse(
         isAccountOwner: userResponse?.isAccountOwner ?? undefined,
         clientUuid,
         clientName: userResponse?.clientName ?? userResponse?.client_name ?? undefined,
-        capabilities: readCapabilities(userResponse),
-        roles: readRoles(userResponse),
-        impersonation: readImpersonation(userResponse),
+        ...readSupportFlags(userResponse),
     }
 }
 

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
     clearSession: vi.fn(),
-    endImpersonation: vi.fn(),
+    endSupportSession: vi.fn(),
     token: "pm-session-token" as string | null,
     actor: null as { token: string } | null,
 }))
@@ -13,7 +13,7 @@ vi.mock("@/lib/store/auth-store", () => ({
             user: mocks.token ? { token: mocks.token } : null,
             actor: mocks.actor,
             clearSession: mocks.clearSession,
-            endImpersonation: mocks.endImpersonation,
+            endSupportSession: mocks.endSupportSession,
         }),
     },
 }))
@@ -75,22 +75,36 @@ describe("apiClient — un 202 no es un éxito con datos", () => {
     })
 })
 
-describe("apiClient — 401 dentro de la cuenta de otro usuario", () => {
+describe("apiClient — 401 en modo soporte (contrato §5b)", () => {
     beforeEach(() => {
         vi.clearAllMocks()
-        mocks.token = "t-suplantado"
-        mocks.actor = { token: "t-superusuario" }
+        mocks.token = "t-soporte"
+        mocks.actor = { token: "t-agente" }
         window.history.pushState({}, "", "/dashboard")
     })
 
-    it("sale de la cuenta ajena y NUNCA cierra la sesión del superusuario", async () => {
-        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
-            message: "Unauthenticated.",
-        }), { status: 401, headers: { "Content-Type": "application/json" } })))
+    it.each([
+        ["sesión cerrada", { message: "Unauthenticated." }],
+        ["agente revocado", { message: "The support session has ended.", code: "SUPPORT_SESSION_ENDED" }],
+    ])("%s: vuelve a la sesión del agente y NUNCA hace el logout global", async (_case, body) => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify(body), {
+            status: 401, headers: { "Content-Type": "application/json" },
+        })))
 
         await expect(request("/api/guest/reservations")).rejects.toMatchObject({ status: 401 })
-        expect(mocks.endImpersonation).toHaveBeenCalledOnce()
+        expect(mocks.endSupportSession).toHaveBeenCalledOnce()
         expect(mocks.clearSession).not.toHaveBeenCalled()
+    })
+
+    it("fuera del modo soporte, un 401 sí cierra la sesión", async () => {
         mocks.actor = null
+        mocks.token = "t-agente"
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: "Unauthenticated." }), {
+            status: 401, headers: { "Content-Type": "application/json" },
+        })))
+
+        await expect(request("/api/guest/reservations")).rejects.toMatchObject({ status: 401 })
+        expect(mocks.clearSession).toHaveBeenCalledOnce()
+        expect(mocks.endSupportSession).not.toHaveBeenCalled()
     })
 })
