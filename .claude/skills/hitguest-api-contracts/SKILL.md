@@ -2095,6 +2095,18 @@ objetivo (con los dos flags en `false`).
 - `canOpenSession: false` (email sin verificar o personal de HIT) ⇒ usuario
   deshabilitado con tooltip.
 
+**Cómo quedó en el front (2026-10-14, revisado tras auditoría):**
+`src/features/support/`. El agente puro (`useIsSupportAgentOnly`, única
+fuente) no ve el panel normal: guard de rutas en el layout que lo devuelve a
+`/dashboard/support` sin montar la página, y sin saldo, «Mi perfil» ni
+«Usuarios» en el encabezado. `isPrincipal` (pestañas Usuarios, Integraciones y
+Facturación) ya no vale `true` por defecto: sin la clave vieja sale de
+`isAccountOwner`, la misma definición que usa `userService`. Esto cambia
+también el login normal de un usuario secundario: deja de ver esas tres
+pestañas (⚠️ no hay contrato de qué puede un no-dueño en ellas; un ausente ya
+no se trata como dueño). Las listas paginadas de soporte mandan `X-Locale`
+(`localeHeaders()` de `api-client`).
+
 ---
 
 ## Mantenimiento — obligatorio, no opcional
