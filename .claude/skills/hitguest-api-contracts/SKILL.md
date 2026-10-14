@@ -1905,9 +1905,15 @@ canal hay varios `Agreement`. El de la reserva lo elige
 `ContractSignatureResolver` y es el único que acepta `/main/sign` (referencia
 §13: «`document_uuid` coincide EXACTO con el que el resolver eligió»). Se lee
 de `contract/preview` → `agreement.uuid` (§5) o de `contract.documentUuid` si
-el portal lo trae. **Front (2026-10-14):** `selectReservationDocuments` deja
-solo ese `Agreement` y conserva los de otro tipo; sin contrato elegido no
-oculta nada (solo dedupe por `uuid`), y se filtra antes de pedir el `render`.
+el portal lo trae. **Front (2026-10-14, corregido tras auditoría):**
+`selectReservationDocuments` distingue TRES resultados que no se colapsan:
+`selected` (solo ese `Agreement`), `none` (sin contrato digital o
+`guarantee_only` con `agreement: null` → ningún `Agreement`) y `unknown`
+(`contract/preview` falla, p. ej. 422 «Check-in is not available» en una
+reserva cerrada → ningún `Agreement`: mostrarlos fue el bug). Con
+`signedContractUrl` no se lista la copia sin firma (la firmada va aparte) ni
+se consulta el preview. Contrato = `type: "Agreement"` o `isContract: true`.
+Los documentos de otro tipo se muestran siempre; se filtra antes del `render`.
 
 ### ✅ `portalStatus: "abandoned"` existe (curl 2026-10-14)
 
