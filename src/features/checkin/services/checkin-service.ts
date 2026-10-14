@@ -31,6 +31,7 @@ import {
 import { getVerificationToken, touchVerificationToken } from "../lib/verification-token"
 import { normalizeVerificationResult } from "../lib/verification-result"
 import { assertRenderablePortal } from "../lib/portal-payload"
+import { selectReservationDocuments } from "../lib/reservation-documents"
 import { normalizeFailedFields, readUploadVerification, type CheckinApiError } from "../lib/checkin-error"
 
 const USE_MOCK = false;
@@ -577,8 +578,12 @@ export class CheckinService {
         renderedHtml: string
     }>> {
         const resolved = portal ?? await this.getPortal(reservationUuid)
-        const docList = resolved.documents ?? []
-        if (docList.length === 0) return []
+        const all = resolved.documents ?? []
+        if (all.length === 0) return []
+        // `documents[]` trae documentos de la PROPIEDAD: se deja solo el contrato
+        // que el backend eligió para esta reserva (ver `selectReservationDocuments`).
+        // Se filtra ANTES de renderizar, para no pedir el HTML de los demás.
+        const docList = selectReservationDocuments(all, await this.resolveContractDocumentUuid(reservationUuid, resolved))
 
         const rendered = await Promise.allSettled(
             docList.map(async (doc) => {
@@ -592,6 +597,29 @@ export class CheckinService {
                 r.status === "fulfilled"
             )
             .map(r => r.value)
+    }
+
+    /**
+     * El contrato que el backend eligió para esta reserva. Primero lo que diga el
+     * portal (`contract.documentUuid`, si el backend lo manda); si no, el
+     * `agreement.uuid` de `contract/preview` (§5), el mismo que exige `/main/sign`.
+     * Sin contrato (`signingProvider: null`) no se consulta nada. Un fallo da
+     * `null`: la lista se muestra sin filtrar, nunca vacía por un error.
+     */
+    private async resolveContractDocumentUuid(
+        reservationUuid: string,
+        portal: CheckinPortalResponse,
+    ): Promise<string | null> {
+        const contract = portal.contract
+        const fromPortal = contract?.documentUuid ?? contract?.document_uuid ?? null
+        if (fromPortal) return fromPortal
+        if (!contract?.signingProvider) return null
+        try {
+            const preview = await this.getContractPreview(reservationUuid)
+            return preview.agreement?.uuid ?? null
+        } catch {
+            return null
+        }
     }
 
     // ── Property Documents (guest view) ──
