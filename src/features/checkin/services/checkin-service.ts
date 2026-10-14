@@ -31,7 +31,7 @@ import {
 import { getVerificationToken, touchVerificationToken } from "../lib/verification-token"
 import { normalizeVerificationResult } from "../lib/verification-result"
 import { assertRenderablePortal } from "../lib/portal-payload"
-import { selectReservationDocuments } from "../lib/reservation-documents"
+import { selectReservationDocuments, type ContractDocumentResolution } from "../lib/reservation-documents"
 import { normalizeFailedFields, readUploadVerification, type CheckinApiError } from "../lib/checkin-error"
 
 const USE_MOCK = false;
@@ -583,7 +583,14 @@ export class CheckinService {
         // `documents[]` trae documentos de la PROPIEDAD: se deja solo el contrato
         // que el backend eligió para esta reserva (ver `selectReservationDocuments`).
         // Se filtra ANTES de renderizar, para no pedir el HTML de los demás.
-        const docList = selectReservationDocuments(all, await this.resolveContractDocumentUuid(reservationUuid, resolved))
+        const signedContractAvailable = !!resolved.contract?.signedContractUrl
+        const docList = selectReservationDocuments(
+            all,
+            // Con el contrato firmado disponible no se lista ninguna copia sin
+            // firma: no hace falta preguntar cuál es.
+            signedContractAvailable ? { kind: "none" } : await this.resolveContractDocument(reservationUuid, resolved),
+            { signedContractAvailable },
+        )
 
         const rendered = await Promise.allSettled(
             docList.map(async (doc) => {
@@ -600,25 +607,27 @@ export class CheckinService {
     }
 
     /**
-     * El contrato que el backend eligió para esta reserva. Primero lo que diga el
-     * portal (`contract.documentUuid`, si el backend lo manda); si no, el
-     * `agreement.uuid` de `contract/preview` (§5), el mismo que exige `/main/sign`.
-     * Sin contrato (`signingProvider: null`) no se consulta nada. Un fallo da
-     * `null`: la lista se muestra sin filtrar, nunca vacía por un error.
+     * El contrato que el backend eligió para esta reserva, en tres resultados
+     * que no se mezclan (ver `ContractDocumentResolution`):
+     * - el portal lo dice (`contract.documentUuid`) o `contract/preview` (§5)
+     *   trae `agreement.uuid` → `selected`;
+     * - sin contrato digital (`signingProvider: null`) o `agreement: null`
+     *   (`guarantee_only`) → `none`;
+     * - `contract/preview` falla (422 en una reserva ya cerrada, red) → `unknown`.
      */
-    private async resolveContractDocumentUuid(
+    private async resolveContractDocument(
         reservationUuid: string,
         portal: CheckinPortalResponse,
-    ): Promise<string | null> {
+    ): Promise<ContractDocumentResolution> {
         const contract = portal.contract
         const fromPortal = contract?.documentUuid ?? contract?.document_uuid ?? null
-        if (fromPortal) return fromPortal
-        if (!contract?.signingProvider) return null
+        if (fromPortal) return { kind: "selected", uuid: fromPortal }
+        if (!contract?.signingProvider) return { kind: "none" }
         try {
             const preview = await this.getContractPreview(reservationUuid)
-            return preview.agreement?.uuid ?? null
+            return preview.agreement?.uuid ? { kind: "selected", uuid: preview.agreement.uuid } : { kind: "none" }
         } catch {
-            return null
+            return { kind: "unknown" }
         }
     }
 
