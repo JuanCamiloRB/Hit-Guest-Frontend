@@ -1896,6 +1896,27 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST \
   (debería: AnalyzeID trabaja bien desde ~1000 px). Si sube el rechazo por
   `LOW_QUALITY_IMAGE` tras el deploy, subir `UPLOAD_IMAGE_MAX_DIMENSION`.
 
+### `documents[]` del portal = documentos de la PROPIEDAD, no de la reserva (2026-10-14)
+
+⚠️ Reporte con captura: la pantalla de éxito mostraba cuatro «Contrato»
+iguales. `GET /checkin/{uuid}` lista los documentos ACTIVOS de la propiedad
+(`Agreement | Rules | Instructions | Privacy Policy`); con un contrato por
+canal hay varios `Agreement`. El de la reserva lo elige
+`ContractSignatureResolver` y es el único que acepta `/main/sign` (referencia
+§13: «`document_uuid` coincide EXACTO con el que el resolver eligió»). Se lee
+de `contract/preview` → `agreement.uuid` (§5) o de `contract.documentUuid` si
+el portal lo trae. **Front (2026-10-14):** `selectReservationDocuments` deja
+solo ese `Agreement` y conserva los de otro tipo; sin contrato elegido no
+oculta nada (solo dedupe por `uuid`), y se filtra antes de pedir el `render`.
+
+### ✅ `portalStatus: "abandoned"` existe (curl 2026-10-14)
+
+`GET /checkin/01a117e4-…` de una reserva en estado 859 (Abandonada) responde
+`200 {portalStatus: "abandoned", message}`. Ningún documento lo lista (solo
+`cancelled`, `deleted`, `pending_sync`). El front no se rompe:
+`PortalStatusScreen` degrada a «Reserva no disponible» con el `message` del
+backend. ⚠️ Preguntar por `incomplete` (860) y si hay más.
+
 ### Payload del portal observado en reserva completada (✅ 2026-08-21)
 
 `GET /checkin/01a015e0-…` (reserva MANUAL-QK3ZSY, completada el día anterior):
