@@ -54,14 +54,17 @@ export function ClientUsersDrawer({
         onClose()
     }
 
+    /** Cierre protegido: Esc, clic fuera y la X pasan por acá; con motivo escrito, se confirma. */
+    const requestClose = () => {
+        if (busy) return
+        if (dirty) setConfirmDiscard(true)
+        else close()
+    }
+
     return (
         <Sheet
             open={client !== null}
-            onOpenChange={(open) => {
-                if (open || busy) return
-                if (dirty) setConfirmDiscard(true)
-                else close()
-            }}
+            onOpenChange={(open) => { if (!open) requestClose() }}
         >
             {/* Escritorio clamp(520px, 42vw, 680px); tablet 80vw; móvil, pantalla completa. */}
             <SheetContent
@@ -85,6 +88,7 @@ export function ClientUsersDrawer({
                         onDirtyChange={setDirty}
                         confirmDiscard={confirmDiscard}
                         onKeepEditing={() => setConfirmDiscard(false)}
+                        onRequestClose={requestClose}
                         onClose={close}
                     />
                 )}
@@ -100,6 +104,7 @@ function DrawerBody({
     onDirtyChange,
     confirmDiscard,
     onKeepEditing,
+    onRequestClose,
     onClose,
 }: {
     client: SupportClient
@@ -109,6 +114,9 @@ function DrawerBody({
     /** El agente intentó cerrar (Esc o clic fuera) con un motivo escrito. */
     confirmDiscard: boolean
     onKeepEditing: () => void
+    /** Cierre protegido (la X): confirma si hay un motivo escrito. */
+    onRequestClose: () => void
+    /** Cierre directo: «Cancelar» y «Descartar y cerrar». */
     onClose: () => void
 }) {
     const [state, setState] = useState<UsersState>({ kind: "loading" })
@@ -118,24 +126,36 @@ function DrawerBody({
     const [touched, setTouched] = useState(false)
     const [error, setError] = useState<{ field: "reason" | null; message: string } | null>(null)
 
+    // Tras un 422 `userUuid` (el usuario ya no existe) no se elige a nadie solo:
+    // el motivo era para OTRA persona y una acción sensible exige elegir de nuevo.
+    const [autoSelect, setAutoSelect] = useState(true)
+
     useEffect(() => {
         let active = true
         supportService.listClientUsers(client.uuid)
             .then((items) => {
                 if (!active) return
                 setState({ kind: "ready", items })
-                setSelectedUuid((current) => current ?? defaultSupportUser(items))
+                if (autoSelect) setSelectedUuid((current) => current ?? defaultSupportUser(items))
             })
             .catch((err) => {
                 if (active) setState({ kind: "error", message: getErrorMessage(err, "No se pudieron cargar los usuarios.") })
             })
         return () => { active = false }
-    }, [client.uuid, reloadKey])
+    }, [client.uuid, reloadKey, autoSelect])
 
     const reload = () => {
         setState({ kind: "loading" })
         setSelectedUuid(null)
         setReloadKey((k) => k + 1)
+    }
+
+    /** El usuario elegido ya no existe: se descartan elección y motivo, y se elige a mano. */
+    const reloadAfterUserGone = () => {
+        setReason("")
+        setTouched(false)
+        setAutoSelect(false)
+        reload()
     }
 
     useEffect(() => { onDirtyChange(reason.trim() !== "") }, [reason, onDirtyChange])
@@ -157,9 +177,12 @@ function DrawerBody({
             enterSupportSession(started)
         } catch (raw) {
             const described = describeStartError(raw)
-            setError({ field: described.field, message: described.message })
+            setError({
+                field: described.field,
+                message: described.userGone ? `${described.message} Vuelve a elegir el usuario.` : described.message,
+            })
             onBusyChange(false)
-            if (described.userGone) reload()
+            if (described.userGone) reloadAfterUserGone()
         }
     }
 
@@ -173,7 +196,7 @@ function DrawerBody({
                             .filter(Boolean).join(" · ") || "Cliente"}
                     </SheetDescription>
                 </div>
-                <Button variant="ghost" size="icon-lg" onClick={onClose} disabled={busy} aria-label="Cerrar">
+                <Button variant="ghost" size="icon-lg" onClick={onRequestClose} disabled={busy} aria-label="Cerrar">
                     <X size={18} aria-hidden />
                 </Button>
             </header>
@@ -300,13 +323,21 @@ function DrawerBody({
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                            <div className="flex min-w-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                                 <Button type="button" variant="outline" className="h-11" onClick={onClose} disabled={busy}>
                                     Cancelar
                                 </Button>
-                                <Button type="submit" className="h-11" disabled={busy || !selectedUser}>
-                                    {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : <LogIn className="mr-1.5 h-4 w-4" aria-hidden />}
-                                    {selectedUser ? `Entrar como ${selectedUser.name}` : "Elige un usuario"}
+                                {/* Un nombre largo se corta con «…» dentro del botón (que no
+                                    parte líneas); el nombre completo queda en aria-label y title. */}
+                                <Button
+                                    type="submit"
+                                    className="h-11 min-w-0 max-w-full"
+                                    disabled={busy || !selectedUser}
+                                    aria-label={selectedUser ? `Entrar como ${selectedUser.name}` : undefined}
+                                    title={selectedUser ? `Entrar como ${selectedUser.name}` : undefined}
+                                >
+                                    {busy ? <Loader2 className="mr-1.5 h-4 w-4 shrink-0 animate-spin" aria-hidden /> : <LogIn className="mr-1.5 h-4 w-4 shrink-0" aria-hidden />}
+                                    <span className="truncate">{selectedUser ? `Entrar como ${selectedUser.name}` : "Elige un usuario"}</span>
                                 </Button>
                             </div>
                         )}

@@ -122,11 +122,36 @@ describe("ClientUsersDrawer — todo el flujo en un solo panel (contrato §4)", 
         expect(await screen.findByText(/Describe why you need to access/)).toHaveAttribute("id", "support-reason-help")
     })
 
-    it("422 en errors.userUuid avisa y vuelve a cargar los usuarios", async () => {
+    it("422 en errors.userUuid: recarga, limpia el motivo y NO elige a otro usuario solo", async () => {
+        mocks.listClientUsers.mockResolvedValueOnce([ANA]).mockResolvedValueOnce([BETO])
         mocks.start.mockRejectedValue(new ApiError(422, { message: "x", errors: { userUuid: ["The selected user is invalid."] } }))
         renderDrawer()
         await writeReasonAndEnter(/Entrar como Ana Pérez/)
+
         await waitFor(() => expect(mocks.listClientUsers).toHaveBeenCalledTimes(2))
+        // Beto es el único habilitado, pero el motivo era para Ana: se elige a mano.
+        expect(await screen.findByRole("radio", { name: /Beto Staff/ })).not.toBeChecked()
+        expect(screen.getByRole("button", { name: "Elige un usuario" })).toBeDisabled()
+        expect(screen.getByRole("alert")).toHaveTextContent("Vuelve a elegir el usuario")
+        fireEvent.click(screen.getByRole("radio", { name: /Beto Staff/ }))
+        expect(screen.getByLabelText("Motivo del acceso")).toHaveValue("")
+    })
+
+    it("la X con un motivo escrito también pide confirmar", async () => {
+        const { onClose } = renderDrawer()
+        fireEvent.change(await screen.findByLabelText("Motivo del acceso"), { target: { value: REASON } })
+        fireEvent.click(screen.getByRole("button", { name: "Cerrar" }))
+        expect(onClose).not.toHaveBeenCalled()
+        expect(screen.getByRole("alert")).toHaveTextContent("Ya escribiste un motivo")
+    })
+
+    it("un nombre largo se corta dentro del botón, completo en su nombre accesible", async () => {
+        const LONG = { ...ANA, name: "María Fernanda de los Ángeles Rodríguez Betancourt de la Torre" }
+        mocks.listClientUsers.mockResolvedValue([LONG])
+        renderDrawer()
+        const cta = await screen.findByRole("button", { name: `Entrar como ${LONG.name}` })
+        expect(cta).toHaveAttribute("title", `Entrar como ${LONG.name}`)
+        expect(cta.querySelector("span.truncate")).toHaveTextContent(`Entrar como ${LONG.name}`)
     })
 
     it("403 SUPPORT_TARGET_NOT_ALLOWED y 429 muestran su mensaje", async () => {
