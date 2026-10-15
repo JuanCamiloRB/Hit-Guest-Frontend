@@ -29,13 +29,64 @@ const BLOCKED_USER_HINT = "No disponible: no ha verificado su correo o es person
  * el mismo panel (contrato §4). No abre un segundo diálogo: un modal sobre otro
  * confunde y rompe el foco del teclado. En móvil ocupa la pantalla completa.
  */
-export function ClientUsersDrawer({ client, onClose }: { client: SupportClient | null; onClose: () => void }) {
+export function ClientUsersDrawer({
+    client,
+    onClose,
+    returnFocusTo,
+}: {
+    client: SupportClient | null
+    onClose: () => void
+    /**
+     * El botón que abrió el panel. Radix solo devuelve el foco a un `Trigger`
+     * propio; acá el panel se abre desde la tabla, así que se devuelve a mano.
+     */
+    returnFocusTo?: () => HTMLElement | null
+}) {
     const [busy, setBusy] = useState(false)
+    // Motivo escrito y sin enviar: Esc o un clic fuera no lo descartan en
+    // silencio; se confirma DENTRO del panel (nunca un segundo diálogo).
+    const [dirty, setDirty] = useState(false)
+    const [confirmDiscard, setConfirmDiscard] = useState(false)
+
+    const close = () => {
+        setDirty(false)
+        setConfirmDiscard(false)
+        onClose()
+    }
+
     return (
-        <Sheet open={client !== null} onOpenChange={(open) => { if (!open && !busy) onClose() }}>
-            <SheetContent side="right" showCloseButton={false} className="w-full gap-0 p-0 sm:max-w-[600px]">
+        <Sheet
+            open={client !== null}
+            onOpenChange={(open) => {
+                if (open || busy) return
+                if (dirty) setConfirmDiscard(true)
+                else close()
+            }}
+        >
+            {/* Escritorio clamp(520px, 42vw, 680px); tablet 80vw; móvil, pantalla completa. */}
+            <SheetContent
+                side="right"
+                showCloseButton={false}
+                className="w-full gap-0 p-0 sm:w-[80vw] sm:max-w-none lg:w-[clamp(520px,42vw,680px)]"
+                onCloseAutoFocus={(event) => {
+                    const target = returnFocusTo?.()
+                    if (target) {
+                        event.preventDefault()
+                        target.focus()
+                    }
+                }}
+            >
                 {client && (
-                    <DrawerBody key={client.uuid} client={client} busy={busy} onBusyChange={setBusy} onClose={onClose} />
+                    <DrawerBody
+                        key={client.uuid}
+                        client={client}
+                        busy={busy}
+                        onBusyChange={setBusy}
+                        onDirtyChange={setDirty}
+                        confirmDiscard={confirmDiscard}
+                        onKeepEditing={() => setConfirmDiscard(false)}
+                        onClose={close}
+                    />
                 )}
             </SheetContent>
         </Sheet>
@@ -46,11 +97,18 @@ function DrawerBody({
     client,
     busy,
     onBusyChange,
+    onDirtyChange,
+    confirmDiscard,
+    onKeepEditing,
     onClose,
 }: {
     client: SupportClient
     busy: boolean
     onBusyChange: (busy: boolean) => void
+    onDirtyChange: (dirty: boolean) => void
+    /** El agente intentó cerrar (Esc o clic fuera) con un motivo escrito. */
+    confirmDiscard: boolean
+    onKeepEditing: () => void
     onClose: () => void
 }) {
     const [state, setState] = useState<UsersState>({ kind: "loading" })
@@ -80,6 +138,8 @@ function DrawerBody({
         setReloadKey((k) => k + 1)
     }
 
+    useEffect(() => { onDirtyChange(reason.trim() !== "") }, [reason, onDirtyChange])
+
     const users = state.kind === "ready" ? state.items : []
     const selectedUser = users.find((u) => u.uuid === selectedUuid && u.canOpenSession) ?? null
     const localProblem = supportReasonError(reason)
@@ -107,7 +167,7 @@ function DrawerBody({
         <div className="flex h-full flex-col">
             <header className="flex items-start gap-3 border-b border-slate-100 px-6 py-5">
                 <div className="min-w-0 flex-1">
-                    <SheetTitle className="text-lg font-bold text-slate-900">{client.name}</SheetTitle>
+                    <SheetTitle className="truncate text-lg font-bold text-slate-900" title={client.name}>{client.name}</SheetTitle>
                     <SheetDescription className="mt-0.5 text-[13px] text-slate-600">
                         {[client.email, client.identificationNumber ? `ID ${client.identificationNumber}` : null]
                             .filter(Boolean).join(" · ") || "Cliente"}
@@ -175,7 +235,7 @@ function DrawerBody({
                                         />
                                         <span className="min-w-0 flex-1">
                                             <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
-                                                <span className="truncate">{u.name}</span>
+                                                <span className="truncate" title={u.name}>{u.name}</span>
                                                 {u.isAccountOwner && <StatusPill tone="info">Dueño</StatusPill>}
                                             </span>
                                             <span className="block truncate text-[13px] text-slate-600">
@@ -194,26 +254,36 @@ function DrawerBody({
 
                 {state.kind === "ready" && users.length > 0 && (
                     <div className="space-y-3 border-t border-slate-100 bg-white px-6 py-5">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="support-reason">Motivo</Label>
-                            <Textarea
-                                id="support-reason"
-                                value={reason}
-                                onChange={(e) => {
-                                    setReason(e.target.value)
-                                    if (error?.field === "reason") setError(null)
-                                }}
-                                onBlur={() => setTouched(true)}
-                                placeholder="Ticket 77: revisar contrato"
-                                rows={3}
-                                disabled={busy}
-                                aria-invalid={reasonMessage ? true : undefined}
-                                aria-describedby="support-reason-help"
-                            />
-                            <p id="support-reason-help" className={reasonMessage ? "text-xs text-red-600" : "text-xs text-slate-500"}>
-                                {reasonMessage ?? "Queda registrado en la sesión de soporte."}
-                            </p>
-                        </div>
+                        {selectedUser ? (
+                            <>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="support-reason">Motivo del acceso</Label>
+                                    <Textarea
+                                        id="support-reason"
+                                        value={reason}
+                                        onChange={(e) => {
+                                            setReason(e.target.value)
+                                            if (error?.field === "reason") setError(null)
+                                        }}
+                                        onBlur={() => setTouched(true)}
+                                        placeholder="Ticket 77: revisar contrato"
+                                        rows={3}
+                                        disabled={busy}
+                                        aria-invalid={reasonMessage ? true : undefined}
+                                        aria-describedby="support-reason-help"
+                                    />
+                                    <p id="support-reason-help" className={reasonMessage ? "text-xs text-red-600" : "text-xs text-slate-500"}>
+                                        {reasonMessage ?? "Queda registrado en la sesión de soporte."}
+                                    </p>
+                                </div>
+                                <p className="text-[13px] text-slate-700">
+                                    Entrarás como <strong>{selectedUser.name}</strong> en <strong>{client.name}</strong>.
+                                    Las acciones quedarán registradas a su nombre.
+                                </p>
+                            </>
+                        ) : (
+                            <p className="text-[13px] text-slate-600">Elige el usuario como el que quieres entrar.</p>
+                        )}
 
                         {error?.field === null && (
                             <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -221,10 +291,25 @@ function DrawerBody({
                             </p>
                         )}
 
-                        <Button type="submit" className="h-11 w-full" disabled={busy || !selectedUser}>
-                            {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : <LogIn className="mr-1.5 h-4 w-4" aria-hidden />}
-                            {selectedUser ? `Entrar como ${selectedUser.name}` : "Elige un usuario"}
-                        </Button>
+                        {confirmDiscard ? (
+                            <div role="alert" className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+                                <p>Ya escribiste un motivo. ¿Cerrar sin entrar y descartarlo?</p>
+                                <div className="flex flex-wrap justify-end gap-2">
+                                    <Button type="button" variant="outline" size="sm" onClick={onKeepEditing}>Seguir aquí</Button>
+                                    <Button type="button" variant="destructive" size="sm" onClick={onClose}>Descartar y cerrar</Button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                <Button type="button" variant="outline" className="h-11" onClick={onClose} disabled={busy}>
+                                    Cancelar
+                                </Button>
+                                <Button type="submit" className="h-11" disabled={busy || !selectedUser}>
+                                    {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> : <LogIn className="mr-1.5 h-4 w-4" aria-hidden />}
+                                    {selectedUser ? `Entrar como ${selectedUser.name}` : "Elige un usuario"}
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 )}
             </form>

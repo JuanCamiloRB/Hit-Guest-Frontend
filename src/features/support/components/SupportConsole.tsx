@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Building2, RefreshCw, Search } from "lucide-react"
 import { toast } from "sonner"
@@ -44,6 +44,12 @@ export function SupportConsole() {
     const [reloadKey, setReloadKey] = useState(0)
     const [clients, setClients] = useState<ClientsState>({ kind: "loading" })
     const [opened, setOpened] = useState<SupportClient | null>(null)
+    // El botón «Ver usuarios» que abrió el panel: recibe el foco al cerrarlo.
+    const openerRef = useRef<HTMLElement | null>(null)
+    const open = (client: SupportClient, opener: HTMLElement) => {
+        openerRef.current = opener
+        setOpened(client)
+    }
 
     // El 401 de una sesión de soporte cerrada trae de vuelta acá (api-client).
     useEffect(() => {
@@ -131,15 +137,16 @@ export function SupportConsole() {
 
                 {clients.kind === "ready" && clients.items.length > 0 && (
                     <>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm">
+                        {/* Desde md, tabla; en pantallas angostas, tarjetas (sin scroll horizontal). */}
+                        <div className="hidden md:block">
+                            <table className="w-full table-fixed text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
-                                        <th scope="col" className="px-5 py-3 font-semibold">Cliente</th>
-                                        <th scope="col" className="hidden px-5 py-3 font-semibold md:table-cell">Correo</th>
-                                        <th scope="col" className="hidden px-5 py-3 font-semibold lg:table-cell">Identificación</th>
-                                        <th scope="col" className="px-5 py-3 font-semibold">Usuarios</th>
-                                        <th scope="col" className="px-5 py-3"><span className="sr-only">Acción</span></th>
+                                        <th scope="col" className="w-[34%] px-5 py-3 font-semibold">Cliente</th>
+                                        <th scope="col" className="px-5 py-3 font-semibold">Correo</th>
+                                        <th scope="col" className="hidden w-[14%] px-5 py-3 font-semibold lg:table-cell">Identificación</th>
+                                        <th scope="col" className="w-[13%] px-5 py-3 font-semibold">Usuarios</th>
+                                        <th scope="col" className="w-[15%] px-5 py-3"><span className="sr-only">Acción</span></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -148,12 +155,17 @@ export function SupportConsole() {
                                             key={client.uuid}
                                             client={client}
                                             opened={opened?.uuid === client.uuid}
-                                            onOpen={() => setOpened(client)}
+                                            onOpen={(opener) => open(client, opener)}
                                         />
                                     ))}
                                 </tbody>
                             </table>
                         </div>
+                        <ul className="divide-y divide-slate-100 md:hidden">
+                            {clients.items.map((client) => (
+                                <ClientCard key={client.uuid} client={client} onOpen={(opener) => open(client, opener)} />
+                            ))}
+                        </ul>
                         {clients.meta.lastPage > 1 && (
                             <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-xs text-slate-600">
                                 <span>Página {clients.meta.currentPage} de {clients.meta.lastPage}</span>
@@ -171,63 +183,73 @@ export function SupportConsole() {
                 )}
             </SectionCard>
 
-            <ClientUsersDrawer client={opened} onClose={() => setOpened(null)} />
+            <ClientUsersDrawer client={opened} onClose={() => setOpened(null)} returnFocusTo={() => openerRef.current} />
         </div>
     )
 }
 
+/** Botón de la acción; un cliente sin usuarios no tiene a quién abrir y no la ofrece. */
+function OpenUsersButton({ client, onOpen, className }: { client: SupportClient; onOpen: (opener: HTMLElement) => void; className?: string }) {
+    if (client.usersCount === 0) return null
+    return (
+        <Button variant="outline" size="sm" onClick={(event) => onOpen(event.currentTarget)} aria-label={`Ver usuarios de ${client.name}`} className={className}>
+            Ver usuarios
+        </Button>
+    )
+}
+
+function UsersCountPill({ count }: { count: number | null }) {
+    if (count == null) return <>—</>
+    return <StatusPill tone={count === 0 ? "idle" : "info"}>{usersCountLabel(count)}</StatusPill>
+}
+
 /**
- * Fila de cliente. Toda la fila abre el panel (atajo con el mouse); el control
- * accesible es «Ver usuarios». Un cliente sin usuarios no tiene a quién abrir:
- * se atenúa y no ofrece la acción.
+ * Fila de cliente. Una sola acción explícita («Ver usuarios»): la fila entera
+ * clicable duplicaba la interacción y complicaba el teclado y los lectores de
+ * pantalla. Un cliente sin usuarios sigue legible, solo sin la acción.
  */
-function ClientRow({ client, opened, onOpen }: { client: SupportClient; opened: boolean; onOpen: () => void }) {
+function ClientRow({ client, opened, onOpen }: { client: SupportClient; opened: boolean; onOpen: (opener: HTMLElement) => void }) {
     const empty = client.usersCount === 0
     return (
-        <tr
-            onClick={empty ? undefined : onOpen}
-            className={cn(
-                "border-b border-slate-100 last:border-b-0 transition-colors",
-                empty ? "text-slate-500" : "cursor-pointer hover:bg-slate-50",
-                opened && "bg-brand-purple/5",
-            )}
-        >
+        <tr className={cn("border-b border-slate-100 last:border-b-0", opened && "bg-brand-purple/5")}>
             <td className="px-5 py-3.5">
-                <div className="flex items-center gap-3">
+                <div className="flex min-w-0 items-center gap-3">
                     <span
                         aria-hidden
                         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-600"
                     >
                         {initialsOf(client.name)}
                     </span>
-                    <div className="min-w-0">
-                        <p className={cn("max-w-[22rem] truncate font-semibold", empty ? "text-slate-500" : "text-slate-900")}>
-                            {client.name}
-                        </p>
-                        {/* En pantallas angostas el correo va bajo el nombre. */}
-                        {client.email && <p className="truncate text-[13px] text-slate-600 md:hidden">{client.email}</p>}
-                    </div>
+                    {/* Truncado solo a la vista: el texto completo sigue en el DOM. */}
+                    <p className={cn("truncate font-semibold", empty ? "text-slate-600" : "text-slate-900")} title={client.name}>
+                        {client.name}
+                    </p>
                 </div>
             </td>
-            <td className="hidden px-5 py-3.5 text-slate-700 md:table-cell">{client.email ?? "—"}</td>
+            <td className="truncate px-5 py-3.5 text-slate-700" title={client.email ?? undefined}>{client.email ?? "—"}</td>
             <td className="hidden px-5 py-3.5 tabular-nums text-slate-700 lg:table-cell">{client.identificationNumber ?? "—"}</td>
-            <td className="px-5 py-3.5">
-                {client.usersCount != null
-                    ? <StatusPill tone={empty ? "idle" : "info"}>{usersCountLabel(client.usersCount)}</StatusPill>
-                    : "—"}
-            </td>
-            <td className="px-5 py-3.5 text-right">
-                {!empty && (
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(event) => { event.stopPropagation(); onOpen() }}
-                        aria-label={`Ver usuarios de ${client.name}`}
-                    >
-                        Ver usuarios
-                    </Button>
-                )}
-            </td>
+            <td className="px-5 py-3.5"><UsersCountPill count={client.usersCount} /></td>
+            <td className="px-5 py-3.5 text-right"><OpenUsersButton client={client} onOpen={onOpen} /></td>
         </tr>
+    )
+}
+
+/** La misma información en pantallas angostas, como tarjeta. */
+function ClientCard({ client, onOpen }: { client: SupportClient; onOpen: (opener: HTMLElement) => void }) {
+    const empty = client.usersCount === 0
+    return (
+        <li className="space-y-2 px-5 py-4">
+            <div className="min-w-0">
+                <p className={cn("truncate font-semibold", empty ? "text-slate-600" : "text-slate-900")} title={client.name}>
+                    {client.name}
+                </p>
+                {client.email && <p className="truncate text-[13px] text-slate-600">{client.email}</p>}
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-slate-600">
+                    {client.identificationNumber && <span className="tabular-nums">ID {client.identificationNumber}</span>}
+                    <UsersCountPill count={client.usersCount} />
+                </p>
+            </div>
+            <OpenUsersButton client={client} onOpen={onOpen} className="h-10 w-full" />
+        </li>
     )
 }

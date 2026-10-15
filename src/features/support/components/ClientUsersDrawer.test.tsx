@@ -23,7 +23,7 @@ function renderDrawer(onClose = vi.fn()) {
 }
 
 async function writeReasonAndEnter(name: RegExp) {
-    fireEvent.change(await screen.findByLabelText("Motivo"), { target: { value: REASON } })
+    fireEvent.change(await screen.findByLabelText("Motivo del acceso"), { target: { value: REASON } })
     fireEvent.click(screen.getByRole("button", { name }))
 }
 
@@ -39,7 +39,7 @@ describe("ClientUsersDrawer — todo el flujo en un solo panel (contrato §4)", 
         expect(dialog).toHaveTextContent("Casa Rentals252a2")
         expect(dialog).toHaveTextContent("contacto@casa.test · ID 900123456")
         expect(dialog).toHaveTextContent("Entrarás con los mismos permisos del usuario")
-        expect(await screen.findByText("Ana Pérez")).toBeInTheDocument()
+        expect(await screen.findByRole("radio", { name: /Ana Pérez/ })).toBeInTheDocument()
     })
 
     it("con un solo usuario habilitado ya viene elegido, y el bloqueado no se puede elegir", async () => {
@@ -49,12 +49,52 @@ describe("ClientUsersDrawer — todo el flujo en un solo panel (contrato §4)", 
         expect(screen.getByRole("button", { name: "Entrar como Ana Pérez" })).toBeEnabled()
     })
 
-    it("con varios habilitados pide elegir antes de entrar", async () => {
+    it("con varios habilitados pide elegir, y el motivo aparece después de elegir", async () => {
         mocks.listClientUsers.mockResolvedValue([ANA, BETO])
         renderDrawer()
         expect(await screen.findByRole("button", { name: "Elige un usuario" })).toBeDisabled()
+        expect(screen.queryByLabelText("Motivo del acceso")).toBeNull()
         fireEvent.click(screen.getByRole("radio", { name: /Beto Staff/ }))
+        expect(screen.getByLabelText("Motivo del acceso")).toBeInTheDocument()
         expect(screen.getByRole("button", { name: "Entrar como Beto Staff" })).toBeEnabled()
+    })
+
+    it("antes de confirmar resume como quién y en qué cuenta se entra", async () => {
+        renderDrawer()
+        await screen.findByRole("radio", { name: /Ana Pérez/ })
+        expect(screen.getByText(/Las acciones quedarán registradas a su nombre/).textContent)
+            .toMatch(/Entrarás como Ana Pérez en Casa Rentals252a2/)
+    })
+
+    it("Cancelar cierra sin preguntar", async () => {
+        const { onClose } = renderDrawer()
+        fireEvent.click(await screen.findByRole("button", { name: "Cancelar" }))
+        expect(onClose).toHaveBeenCalled()
+    })
+
+    it("Esc sin motivo escrito cierra; con motivo, pide confirmar dentro del panel", async () => {
+        const { onClose } = renderDrawer()
+        await screen.findByRole("radio", { name: /Ana Pérez/ })
+        fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" })
+        expect(onClose).toHaveBeenCalledOnce()
+    })
+
+    it("con un motivo escrito, Esc no lo descarta en silencio", async () => {
+        const { onClose } = renderDrawer()
+        fireEvent.change(await screen.findByLabelText("Motivo del acceso"), { target: { value: REASON } })
+        fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" })
+
+        expect(onClose).not.toHaveBeenCalled()
+        expect(screen.getByRole("alert")).toHaveTextContent("Ya escribiste un motivo")
+        expect(screen.getAllByRole("dialog")).toHaveLength(1)
+
+        fireEvent.click(screen.getByRole("button", { name: "Seguir aquí" }))
+        expect(screen.queryByText(/Ya escribiste un motivo/)).toBeNull()
+        expect(screen.getByLabelText("Motivo del acceso")).toHaveValue(REASON)
+
+        fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" })
+        fireEvent.click(screen.getByRole("button", { name: "Descartar y cerrar" }))
+        expect(onClose).toHaveBeenCalledOnce()
     })
 
     it("con motivo válido abre la sesión como el usuario elegido, sin un segundo diálogo", async () => {
@@ -69,7 +109,7 @@ describe("ClientUsersDrawer — todo el flujo en un solo panel (contrato §4)", 
 
     it("sin motivo válido no llama al backend", async () => {
         renderDrawer()
-        fireEvent.change(await screen.findByLabelText("Motivo"), { target: { value: "corto" } })
+        fireEvent.change(await screen.findByLabelText("Motivo del acceso"), { target: { value: "corto" } })
         fireEvent.click(screen.getByRole("button", { name: /Entrar como Ana Pérez/ }))
         expect(mocks.start).not.toHaveBeenCalled()
         expect(screen.getByText(/al menos 10/)).toBeInTheDocument()
@@ -104,7 +144,7 @@ describe("ClientUsersDrawer — todo el flujo en un solo panel (contrato §4)", 
         mocks.listClientUsers.mockRejectedValueOnce(new Error("network")).mockResolvedValueOnce([ANA])
         renderDrawer()
         fireEvent.click(await screen.findByRole("button", { name: /Reintentar/ }))
-        expect(await screen.findByText("Ana Pérez")).toBeInTheDocument()
+        expect(await screen.findByRole("radio", { name: /Ana Pérez/ })).toBeInTheDocument()
     })
 
     it("se cierra con el botón visible", async () => {
