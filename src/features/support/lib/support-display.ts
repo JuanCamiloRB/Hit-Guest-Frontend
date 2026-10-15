@@ -1,9 +1,11 @@
+/** Iniciales de un nombre. Ignora piezas sin letras: «HiTGuest -» daba «H-». */
 export function initialsOf(name: string): string {
     return name
         .split(/\s+/)
-        .filter(Boolean)
+        .filter((part) => /\p{L}/u.test(part))
         .slice(0, 2)
-        .map((part) => part[0])
+        // La primera LETRA, no el primer carácter: «(Juan» daba «(».
+        .map((part) => part.match(/\p{L}/u)?.[0] ?? "")
         .join("")
         .toUpperCase() || "?"
 }

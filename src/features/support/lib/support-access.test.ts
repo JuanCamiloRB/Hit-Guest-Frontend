@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { isSupportAgentOnly, readSupportFlags } from "./support-access"
+import { initialsOf } from "./support-display"
 
 describe("readSupportFlags — solo un true explícito habilita", () => {
     it("lee los dos booleanos del contrato", () => {
@@ -24,5 +25,15 @@ describe("isSupportAgentOnly", () => {
         expect(isSupportAgentOnly({ canAccessSupportConsole: true, canManageSupportAgents: true })).toBe(false)
         expect(isSupportAgentOnly({ canAccessSupportConsole: false })).toBe(false)
         expect(isSupportAgentOnly(null)).toBe(false)
+    })
+})
+
+
+describe("initialsOf", () => {
+    it("toma la primera letra de las dos primeras palabras con letras", () => {
+        expect(initialsOf("Casa Rentals252a2")).toBe("CR")
+        expect(initialsOf("HiTGuest -")).toBe("H")
+        expect(initialsOf("(Juan) Pérez")).toBe("JP")
+        expect(initialsOf("  ")).toBe("?")
     })
 })

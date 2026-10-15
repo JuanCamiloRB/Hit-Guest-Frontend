@@ -37,7 +37,7 @@ describe("SupportConsole — buscar cliente, elegir usuario, entrar (contrato §
 
         await waitFor(() => expect(mocks.listClients).toHaveBeenLastCalledWith({ search: "Rentals", page: 1 }))
         const row = await screen.findByRole("button", { name: /Casa Rentals252a2/ })
-        expect(row).toHaveTextContent("contacto@casa.test · 900123456")
+        expect(row).toHaveTextContent("contacto@casa.test · ID 900123456")
         expect(row).toHaveTextContent("3 usuarios")
     })
 
@@ -63,5 +63,51 @@ describe("SupportConsole — buscar cliente, elegir usuario, entrar (contrato §
         mocks.params = new URLSearchParams("session=ended")
         render(<SupportConsole />)
         expect(mocks.toastInfo).toHaveBeenCalledWith("La sesión de soporte se cerró", expect.anything())
+    })
+})
+
+describe("SupportConsole — auditoría visual 2026-10-16", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.params = new URLSearchParams()
+        mocks.listClients.mockResolvedValue({
+            items: [CLIENT, { uuid: "c-hit", name: "HiTGuest -", email: "it@hitguest.com", identificationNumber: "100200300-4", usersCount: 0 }],
+            meta: { currentPage: 1, lastPage: 1, total: 2 },
+        })
+        mocks.listClientUsers.mockResolvedValue(USERS)
+    })
+
+    it("antes de elegir, el panel de usuarios orienta en vez de quedar vacío", async () => {
+        render(<SupportConsole />)
+        expect(await screen.findByText("Selecciona un cliente")).toBeInTheDocument()
+        expect(screen.getByText(/mismos permisos/)).toBeInTheDocument()
+    })
+
+    it("dice cuántos clientes hay y marca al que no tiene usuarios", async () => {
+        render(<SupportConsole />)
+        expect(await screen.findByText("2 clientes")).toBeInTheDocument()
+        const hit = screen.getByRole("button", { name: /HiTGuest/ })
+        expect(hit).toHaveTextContent("Sin usuarios")
+        // Las iniciales ya no toman el guion: «HiTGuest -» → «H».
+        expect(within(hit).getByText("H")).toBeInTheDocument()
+    })
+
+    it("el cliente elegido queda marcado y, en móvil, sus usuarios reemplazan la lista", async () => {
+        render(<SupportConsole />)
+        const row = await screen.findByRole("button", { name: /Casa Rentals252a2/ })
+        fireEvent.click(row)
+
+        expect(row).toHaveAttribute("aria-pressed", "true")
+        expect(row.className).toContain("border-brand-purple")
+        // La lista se oculta por debajo de lg y aparece «Volver a clientes».
+        expect(row.closest("ul")!.parentElement!.closest("div.hidden")).not.toBeNull()
+        fireEvent.click(await screen.findByRole("button", { name: /Volver a clientes/ }))
+        expect(screen.getByText("Selecciona un cliente")).toBeInTheDocument()
+    })
+
+    it("al ver los usuarios, avisa de los permisos antes de entrar", async () => {
+        render(<SupportConsole />)
+        fireEvent.click(await screen.findByRole("button", { name: /Casa Rentals252a2/ }))
+        expect(await screen.findByText(/Entrarás con los mismos permisos del usuario/)).toBeInTheDocument()
     })
 })
