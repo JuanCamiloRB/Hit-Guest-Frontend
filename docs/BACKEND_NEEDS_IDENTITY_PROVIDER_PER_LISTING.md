@@ -57,21 +57,14 @@ Se extienden los endpoints actuales. No hacen falta endpoints nuevos.
 - Solo se acepta en overrides de una automatización de identidad, `main_guest` o `secondary_guest`. Para cualquier otra automatización, 422.
 - Con `statusRecordId: 7`, `providerId` no tiene efecto. Preferimos un 422 si llegan juntos, para que no quede guardado un nivel que nadie ve.
 
-### Lectura: `GET /listings/{uuid}/automation-overrides?includePropertyAutomation=1` y `GET /listing-automation-overrides/{uuid}`
+### Lectura
 
-Agregar a cada override:
-
-```json
-{
-  "providerId": 1004,
-  "effectiveProviderId": 1004,
-  "effectiveProviderSlug": "textract"
-}
-```
-
-- `providerId` es lo guardado en el override, `null` si hereda.
-- `effective*` es lo que de verdad se usa en la unidad. El front lo pinta en
-  la lista sin repetir la regla de herencia.
+> ❌ Lo que proponíamos acá (`effectiveProviderId` / `effectiveProviderSlug`) NO
+> es lo que construyó el backend. **Usar solo los campos definitivos**:
+> `providerId` (lo elegido; `null` = hereda), `effectiveProvider {id, name,
+> slug, verificationType}` (lo que ejecuta; `null` = nada) y `providerSource`
+> (`"listing"` | `"property"` | `null`). Detalle en el skill de contratos,
+> «Proveedor de identidad POR UNIDAD».
 
 ### Dónde debe regir el provider efectivo
 

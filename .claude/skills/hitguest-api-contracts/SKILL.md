@@ -280,6 +280,25 @@ Reemplaza la regla de abajo («no se cambia por unidad»), que queda como histor
   ¿se valida contra el estado guardado (422 «sobre un override desactivado») o
   contra el nuevo? Confirmar antes de pasar Desactivar → Avanzada en un paso.
 
+**Cómo quedó en el front (2026-10-17, tras auditoría):**
+- `lib/identity-providers.ts`: Avanzada/Esencial por `verification_type`
+  (slug solo de respaldo) sobre el catálogo COMPLETO. ❌ Retirados los ids fijos
+  1000/1004 de `automation-definitions` (commit 01b15bb): con ids por ambiente,
+  un id supuesto asignaría otro proveedor. Causa probable del «solo queda la
+  guardada» de la propiedad: el filtro `isAutomationProvider` descartaba los
+  proveedores de identidad; `bindCatalogProviders` ahora recibe un
+  `identityCatalog` resuelto antes de ese filtro.
+- `lib/identity-listing-override.ts`: `readIdentityOverrideState` (tabla §3),
+  `planIdentityOverrideWrite` (Desactivado → proveedor = DELETE + POST, nunca
+  6 + `providerId` sobre un 7; nunca `providerId` con 7), resúmenes y borrador.
+- `useIdentityProviderCatalog`: una carga compartida, sin cachear fallos, con
+  Reintentar; sin catálogo, Avanzada/Esencial deshabilitadas.
+- `IdentityOverrideSelector` dentro de `AutomationOverrideModal` (los dos puntos
+  de entrada); 422 `provider_id` bajo el selector; 422
+  `property_automation_uuid` → relee los overrides de la unidad y hace PATCH.
+- Los slots de identidad se muestran con la propiedad apagada (tarjeta y
+  pestaña AUTOM.); borradores guardan `providerId` y lo envían solo con 6.
+
 ### ❌ (Reemplazado 2026-10-14) El nivel de identidad NO se cambia por unidad
 
 *(Revisado 2026-10-12 contra `docs/API_DOCUMENTATION.md` §overrides y los tipos
