@@ -29,6 +29,7 @@ import type { ReservationSource } from "../../services/reservation-source-servic
 import { ApiError } from "@/types/api"
 import { ConfigModal } from "./ConfigModal"
 import { ListingOverridesPanel } from "./ListingOverridesPanel"
+import { isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
 import type { ListingMeta } from "./AutomationOverrideModal"
 
 const BACKEND_PENDING_MSG = "El backend aún no tiene este endpoint implementado. Contacta al equipo de desarrollo."
@@ -423,7 +424,10 @@ export function AutomationCard({
 
     // Con campos (TRA, SIRE…) o solo de estado (identidad): una unidad puede
     // apagar la verificación y sus huéspedes pasan a captura de documento.
-    const showOverridesPanel = isActive
+    // Identidad se muestra también con la propiedad apagada: la unidad ve
+    // «Hereda (sin verificación)» y puede seguir desactivada o heredando
+    // (contrato 2026-10-14). El resto, solo activas.
+    const showOverridesPanel = (isActive || isIdentityPropertyAutomation(automation))
         && !!automation
         && supportsListingOverride(definition)
         && listings.length > 0

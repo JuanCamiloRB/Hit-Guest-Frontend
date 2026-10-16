@@ -413,6 +413,20 @@ export interface ListingOverridePropertyAutomation {
   provider?: Provider | null
 }
 
+/**
+ * Lo que la unidad EJECUTA de verdad (contrato 2026-10-14). `null` = nada:
+ * override desactivado o propiedad con la verificación apagada.
+ */
+export interface OverrideEffectiveProvider {
+  id: number
+  name: string | null
+  slug: string | null
+  verificationType: string | null
+}
+
+/** De dónde sale el proveedor efectivo: elección propia, heredado, o ninguno. */
+export type OverrideProviderSource = "listing" | "property" | null
+
 export interface ListingAutomationOverride {
   uuid: string
   listingUuid: string
@@ -420,6 +434,14 @@ export interface ListingAutomationOverride {
   parameters: Record<string, unknown> | null   // delta merged over the automation's base parameters
   token: string | null                          // replaces automation token; null = use automation token
   statusRecordId: ListingOverrideStatus         // 6 = active, 7 = inactive
+  /** Proveedor que ELIGIÓ la unidad (identidad). `null` = no eligió: hereda. */
+  providerId?: number | null
+  effectiveProvider?: OverrideEffectiveProvider | null
+  /**
+   * `undefined` = backend anterior al contrato (no lo manda); `null` = la
+   * unidad no ejecuta nada. Nunca se confunden.
+   */
+  providerSource?: OverrideProviderSource
   deletedAt: string | null
   propertyAutomation?: ListingOverridePropertyAutomation | null
   // Derived helper — set by service normalize(), never sent to API.
@@ -433,6 +455,8 @@ export interface ListingAutomationOverrideCreatePayload {
   statusRecordId: ListingOverrideStatus
   parameters?: Record<string, unknown> | null
   token?: string | null
+  /** Solo identidad y solo con `statusRecordId: 6` (con 7 el backend responde 422). */
+  providerId?: number | null
 }
 
 /** PATCH /api/v1/listing-automation-overrides/{uuid} — all fields optional. */
@@ -440,6 +464,8 @@ export interface ListingAutomationOverrideUpdatePayload {
   statusRecordId?: ListingOverrideStatus
   parameters?: Record<string, unknown> | null
   token?: string | null
+  /** `null` = volver a heredar el proveedor de la propiedad. */
+  providerId?: number | null
 }
 
 /** Effective parameters for display: base automation params merged with the override delta. */

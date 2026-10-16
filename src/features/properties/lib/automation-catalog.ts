@@ -33,6 +33,13 @@
 
 import { AUTOMATION_DEFINITIONS, definitionForAutomation } from "../data/automation-definitions"
 import { canonicalSlug } from "../services/automation-service"
+import {
+    EMPTY_IDENTITY_CATALOG,
+    identityLevelOfProvider,
+    identityLevelOfSlug,
+    resolveIdentityProviders,
+    type IdentityProviderCatalog,
+} from "./identity-providers"
 import type {
     AutomationDefinition,
     ParameterFieldSchema,
@@ -57,12 +64,10 @@ export function isAutomationProvider(provider: Provider): boolean {
 }
 
 /** Proveedores de identidad: Avanzada = didit, Esencial = textract. */
-const IDENTITY_PROVIDER_SLUGS: ReadonlySet<string> = new Set(["didit", "textract"].map(canonicalSlug))
-
-/** ¿Falta en la lista del país alguno de los proveedores de identidad? */
+/** ¿Falta en la lista del país alguno de los dos niveles de identidad? */
 export function missingIdentityProviders(countryRows: Provider[]): boolean {
-    const present = new Set(countryRows.map((provider) => canonicalSlug(provider.parameters?.slug)))
-    return [...IDENTITY_PROVIDER_SLUGS].some((slug) => !present.has(slug))
+    const catalog = resolveIdentityProviders(countryRows)
+    return !catalog.advanced || !catalog.essential
 }
 
 /**
@@ -81,7 +86,7 @@ export function missingIdentityProviders(countryRows: Provider[]): boolean {
 export function withIdentityProviders(countryRows: Provider[], unfilteredRows: Provider[]): Provider[] {
     const seen = new Set(countryRows.map((provider) => provider.id))
     const extra = unfilteredRows.filter((provider) =>
-        IDENTITY_PROVIDER_SLUGS.has(canonicalSlug(provider.parameters?.slug)) && !seen.has(provider.id))
+        identityLevelOfProvider(provider) != null && !seen.has(provider.id))
     return [...countryRows, ...extra]
 }
 
@@ -96,15 +101,19 @@ export interface AutomationSlot {
 /**
  * Vincula opciones de presentación con los providers reales del país. Una
  * opción actualmente configurada se conserva aunque el provider luego quede
- * inactivo, para que el selector no pierda el valor guardado. Las opciones con
- * un `providerId` contractual también se conservan: identidad tiene ids estables
- * y no puede desaparecer del selector porque el catálogo por país la omita.
+ * inactivo, para que el selector no pierda el valor guardado.
+ *
+ * Identidad no depende del país ni de ids fijos (contrato 2026-10-14: los ids
+ * cambian entre ambientes): Avanzada y Esencial salen de `identityCatalog`,
+ * resuelto por `verification_type` sobre el catálogo completo. Sin catálogo,
+ * solo queda el proveedor guardado; nunca se ofrece un id supuesto.
  */
 export function bindCatalogProviders(
     definition: AutomationDefinition,
     automation: PropertyAutomation | null,
     providers: Provider[],
     countryProviderSlugs: string[],
+    identityCatalog: IdentityProviderCatalog = EMPTY_IDENTITY_CATALOG,
 ): AutomationDefinition {
     const available = new Set(countryProviderSlugs.map(canonicalSlug))
     const currentSlug = canonicalSlug(
@@ -115,15 +124,20 @@ export function bindCatalogProviders(
             ? [[canonicalSlug(provider.parameters.slug), provider] as const]
             : []),
     )
+    const isIdentity = definition.id === "identity-verification-main" || definition.id === "identity-verification-secondary"
 
     return {
         ...definition,
         providerOptions: definition.providerOptions.flatMap((option) => {
             const slug = canonicalSlug(option.value)
-            if (!available.has(slug) && slug !== currentSlug && option.providerId == null) return []
-            const providerId = providerBySlug.get(slug)?.id
-                ?? (slug === currentSlug ? automation?.providerId ?? undefined : undefined)
-                ?? option.providerId
+            const current = slug === currentSlug ? automation?.providerId ?? undefined : undefined
+            if (isIdentity) {
+                const level = identityLevelOfSlug(option.value)
+                const providerId = (level ? identityCatalog[level]?.id : undefined) ?? current
+                return providerId == null ? [] : [{ ...option, providerId }]
+            }
+            if (!available.has(slug) && slug !== currentSlug) return []
+            const providerId = providerBySlug.get(slug)?.id ?? current
             return providerId == null ? [] : [{ ...option, providerId }]
         }),
     }

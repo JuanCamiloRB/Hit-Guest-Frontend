@@ -31,6 +31,20 @@ import {
     type PropertyAutomation,
 } from "../../types/automation"
 import { ParameterField } from "./ParameterField"
+import { IdentityOverrideSelector } from "./IdentityOverrideSelector"
+import { ApiError } from "@/types/api"
+import { useIdentityProviderCatalog } from "../../hooks/useIdentityProviderCatalog"
+import {
+    IdentityProviderUnavailableError,
+    draftIdentityOverride,
+    inheritDescription,
+    isIdentityPropertyAutomation,
+    planIdentityOverrideWrite,
+    propertySlotCanBeOverridden,
+    readIdentityOverrideState,
+    type IdentityChoice,
+    type OverrideOperation,
+} from "../../lib/identity-listing-override"
 
 /** Minimal listing info needed to identify and label a unit. */
 export interface ListingMeta {
@@ -68,6 +82,34 @@ interface Props {
 /** Resolve the provider slug for a property automation. */
 function slugOf(pa: PropertyAutomation | undefined | null): string {
     return pa?.provider?.parameters?.slug ?? pa?.providerName ?? ""
+}
+
+/** Primer mensaje del backend para alguno de los nombres de campo de un 422. */
+function fieldError(error: unknown, ...fields: string[]): string | null {
+    if (!(error instanceof ApiError) || error.status !== 422) return null
+    const errors = error.errors
+    if (!errors || Array.isArray(errors)) return null
+    for (const field of fields) {
+        const messages = errors[field]
+        if (Array.isArray(messages) && typeof messages[0] === "string") return messages[0]
+    }
+    return null
+}
+
+/** Ejecuta las llamadas en orden. Devuelve el override final, o `null` si terminó borrado (hereda). */
+async function runOverrideOperations(ops: OverrideOperation[]): Promise<ListingAutomationOverride | null> {
+    let result: ListingAutomationOverride | null = null
+    for (const op of ops) {
+        if (op.kind === "delete") {
+            await automationService.deleteListingOverride(op.uuid)
+            result = null
+        } else if (op.kind === "create") {
+            result = await automationService.createListingOverride(op.payload)
+        } else {
+            result = await automationService.updateListingOverride(op.uuid, op.payload)
+        }
+    }
+    return result
 }
 
 function isEmptyValue(v: unknown): boolean {
@@ -118,6 +160,13 @@ export function AutomationOverrideModal({
     const fieldSchema = useMemo(() => getOverrideFieldSchema(slug), [slug])
     const schemaKeys = useMemo(() => fieldSchema.map(f => f.key), [fieldSchema])
 
+    // Identidad (contrato 2026-10-14): Heredar · Avanzada · Esencial · Desactivar
+    // en vez del interruptor y los parámetros.
+    const isIdentity = isIdentityPropertyAutomation(activePa ?? override?.propertyAutomation ?? null)
+    const catalog = useIdentityProviderCatalog(open && isIdentity)
+    const [identityChoice, setIdentityChoice] = useState<IdentityChoice>("inherit")
+    const [identityError, setIdentityError] = useState<string | null>(null)
+
     const basePa = override?.propertyAutomation
     const baseParams = (basePa?.parameters ?? activePa?.parameters ?? {}) as Record<string, unknown>
 
@@ -137,6 +186,8 @@ export function AutomationOverrideModal({
         setIsActive(override ? override.isActive : true)
         // Seed the known provider fields from the saved override parameters.
         setSchemaValues((override?.parameters as Record<string, unknown>) ?? {})
+        setIdentityChoice(readIdentityOverrideState(override, catalog.catalog).choice)
+        setIdentityError(null)
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, override])
 
@@ -165,7 +216,74 @@ export function AutomationOverrideModal({
         return Object.keys(out).length === 0 ? null : out
     }
 
+    /**
+     * Guarda la elección de identidad con las llamadas que arma
+     * `planIdentityOverrideWrite`. Un 422 en `property_automation_uuid` (otro
+     * override creado mientras tanto) se resuelve releyendo los overrides de la
+     * unidad y actualizando el existente, una sola vez.
+     */
+    const saveIdentity = async () => {
+        const target = { listingUuid, propertyAutomationUuid: selectedPaUuid }
+        setIdentityError(null)
+        if (draftMode) {
+            const draft = draftIdentityOverride({ ...target, choice: identityChoice, catalog: catalog.catalog })
+            if (!draft) {
+                onInheritRestored()
+            } else {
+                onSaved({
+                    ...draft,
+                    propertyAutomation: activePa
+                        ? { uuid: activePa.uuid, name: activePa.name, parameters: activePa.parameters ?? null, provider: activePa.provider ?? null }
+                        : override?.propertyAutomation ?? null,
+                })
+            }
+            onClose()
+            return
+        }
+
+        const plan = (current: ListingAutomationOverride | null) =>
+            planIdentityOverrideWrite({ ...target, current, choice: identityChoice, catalog: catalog.catalog })
+
+        const ops = plan(override ?? null)
+        if (ops.length === 0) {
+            toast.info("Sin cambios en esta unidad.")
+            onClose()
+            return
+        }
+
+        let saved: ListingAutomationOverride | null
+        try {
+            saved = await runOverrideOperations(ops)
+        } catch (error) {
+            if (!fieldError(error, "property_automation_uuid", "propertyAutomationUuid")) throw error
+            const existing = (await automationService.listListingOverrides(listingUuid))
+                .find((o) => o.propertyAutomationUuid === selectedPaUuid) ?? null
+            saved = await runOverrideOperations(plan(existing))
+        }
+
+        toast.success("Verificación de la unidad guardada")
+        if (saved) onSaved(saved)
+        else onInheritRestored()
+        onClose()
+    }
+
     const handleSave = async () => {
+        if (isIdentity) {
+            setSaving(true)
+            try {
+                await saveIdentity()
+            } catch (error) {
+                if (error instanceof IdentityProviderUnavailableError) setIdentityError(error.message)
+                else {
+                    const providerProblem = fieldError(error, "provider_id", "providerId")
+                    if (providerProblem) setIdentityError(providerProblem)
+                    else toast.error(getErrorMessage(error, "No se pudo guardar la verificación de la unidad."))
+                }
+            } finally {
+                setSaving(false)
+            }
+            return
+        }
         if (!isEdit && !selectedPaUuid) {
             toast.error("Selecciona una automatización")
             return
@@ -308,7 +426,20 @@ export function AutomationOverrideModal({
                         </div>
                     )}
 
+                    {isIdentity && (
+                        <IdentityOverrideSelector
+                            value={identityChoice}
+                            onChange={(choice) => { setIdentityChoice(choice); setIdentityError(null) }}
+                            inheritDescription={inheritDescription(activePa ?? null)}
+                            canOverrideLevel={propertySlotCanBeOverridden(activePa ?? null)}
+                            catalog={catalog}
+                            error={identityError}
+                            disabled={saving}
+                        />
+                    )}
+
                     {/* Status toggle */}
+                    {!isIdentity && (
                     <div className={cn(
                         "flex items-center justify-between p-3 rounded-xl border transition-colors",
                         isActive ? "bg-slate-50 border-slate-200" : "bg-red-50 border-red-200"
@@ -331,9 +462,10 @@ export function AutomationOverrideModal({
                             className="data-[state=checked]:bg-[var(--color-brand-purple)]"
                         />
                     </div>
+                    )}
 
                     {/* Provider-specific fields — identical to the property config, all optional */}
-                    {(isEdit || selectedPaUuid) && fieldSchema.length > 0 && (
+                    {!isIdentity && (isEdit || selectedPaUuid) && fieldSchema.length > 0 && (
                         <div className="space-y-4">
                             <div className="flex items-center gap-2">
                                 <div className="h-px flex-1 bg-slate-200" />
@@ -372,7 +504,8 @@ export function AutomationOverrideModal({
                 </div>
 
                 <DialogFooter className="gap-2">
-                    {isEdit && (
+                    {/* En identidad, «Heredar» es una de las opciones del selector. */}
+                    {isEdit && !isIdentity && (
                         <Button
                             type="button"
                             variant="ghost"

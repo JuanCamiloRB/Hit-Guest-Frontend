@@ -6,6 +6,7 @@ import {
     missingIdentityProviders,
     withIdentityProviders,
 } from "./automation-catalog"
+import { resolveIdentityProviders } from "./identity-providers"
 import { AUTOMATION_DEFINITIONS } from "../data/automation-definitions"
 import {
     AUTOMATION_STATUS,
@@ -213,7 +214,7 @@ describe("buildAutomationSlots", () => {
         expect(slots[0].automation).toBe(existing)
     })
 
-    it("identidad conserva Avanzada y Esencial aunque el catálogo solo confirme la actual", () => {
+    it("identidad sin catálogo de identidad conserva solo la opción guardada: nunca un id supuesto", () => {
         const didit = makeProvider(1000, "didit", { enabled: false }, [])
         const existing = makeAutomation({
             providerId: 1000,
@@ -225,10 +226,16 @@ describe("buildAutomationSlots", () => {
         const definition = AUTOMATION_DEFINITIONS.find((item) => item.id === "identity-verification-main")!
 
         const bound = bindCatalogProviders(definition, existing, [didit], ["didit"])
-
         expect(bound.providerOptions.map(({ value, providerId }) => ({ value, providerId }))).toEqual([
             { value: "didit", providerId: 1000 },
-            { value: "textract", providerId: 1004 },
+        ])
+
+        // Con el catálogo, las dos opciones con SUS ids.
+        const textract = makeProvider(777, "textract", { enabled: false }, [])
+        const withCatalog = bindCatalogProviders(definition, existing, [didit], ["didit"], resolveIdentityProviders([didit, textract]))
+        expect(withCatalog.providerOptions.map(({ value, providerId }) => ({ value, providerId }))).toEqual([
+            { value: "didit", providerId: 1000 },
+            { value: "textract", providerId: 777 },
         ])
     })
 
@@ -289,11 +296,11 @@ describe("buildAutomationSlots", () => {
 describe("bindCatalogProviders", () => {
     const identity = AUTOMATION_DEFINITIONS.find((item) => item.id === "identity-verification-main")!
 
-    it("prefiere los IDs reales del catálogo sobre el fallback contractual", () => {
+    it("toma los ids de identidad del catálogo de identidad, no de constantes", () => {
         const didit = makeProvider(701, "didit", { enabled: false })
         const textract = makeProvider(845, "textract", { enabled: false })
 
-        const result = bindCatalogProviders(identity, null, [didit, textract], ["didit", "textract"])
+        const result = bindCatalogProviders(identity, null, [], [], resolveIdentityProviders([didit, textract]))
 
         expect(result.providerOptions.map((option) => [option.value, option.providerId])).toEqual([
             ["didit", 701],
@@ -301,15 +308,22 @@ describe("bindCatalogProviders", () => {
         ])
     })
 
-    it("identidad no pierde una opción cuando el endpoint del país la omite", () => {
+    it("identidad no depende del endpoint del país", () => {
         const didit = makeProvider(701, "didit", { enabled: false })
+        const textract = makeProvider(845, "textract", { enabled: false })
 
-        const result = bindCatalogProviders(identity, null, [didit], ["didit"])
+        const result = bindCatalogProviders(identity, null, [didit], ["didit"], resolveIdentityProviders([didit, textract]))
 
         expect(result.providerOptions.map((option) => [option.value, option.providerId])).toEqual([
             ["didit", 701],
-            ["textract", 1004],
+            ["textract", 845],
         ])
+    })
+
+    it("reconoce el nivel por verification_type aunque el slug sea otro", () => {
+        const essential = { ...makeProvider(900, "hit_essential_v2", { enabled: false }), parameters: { slug: "hit_essential_v2", verification_type: "document_upload" } }
+        const result = bindCatalogProviders(identity, null, [], [], resolveIdentityProviders([essential as never]))
+        expect(result.providerOptions.map((option) => [option.value, option.providerId])).toEqual([["textract", 900]])
     })
 
     it("conserva el provider configurado aunque ya no esté activo en el catálogo", () => {
@@ -345,17 +359,14 @@ describe("withIdentityProviders — Avanzada y Esencial no dependen del país", 
         isActive: true,
     })
 
-    it("sin el catálogo completo mantiene ambas opciones con el fallback contractual", () => {
+    it("reproduce el bug: sin el catálogo de identidad solo queda la opción guardada", () => {
         const result = bindCatalogProviders(identity, diditSaved, [...CO_PROVIDERS, didit], CO_PROVIDERS.map((p) => p.parameters.slug))
-        expect(result.providerOptions.map((option) => [option.value, option.providerId])).toEqual([
-            ["didit", 1000],
-            ["textract", 1004],
-        ])
+        expect(result.providerOptions.map((option) => [option.value, option.providerId])).toEqual([["didit", 1000]])
     })
 
-    it("con Avanzada guardada, la Esencial vuelve a ofrecerse con su id real", () => {
+    it("con Avanzada guardada, la Esencial vuelve a ofrecerse con su id del catálogo", () => {
         const rows = withIdentityProviders(CO_PROVIDERS, [...CO_PROVIDERS, didit, textract])
-        const result = bindCatalogProviders(identity, diditSaved, rows, rows.map((p) => p.parameters.slug))
+        const result = bindCatalogProviders(identity, diditSaved, rows, rows.map((p) => p.parameters.slug), resolveIdentityProviders(rows))
         expect(result.providerOptions.map((option) => [option.value, option.providerId])).toEqual([
             ["didit", 1000],
             ["textract", 1004],

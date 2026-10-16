@@ -9,6 +9,8 @@ import { automationService } from "../../services/automation-service"
 import { getOverrideFieldSchema } from "../../data/automation-definitions"
 import type { PropertyAutomation, ListingAutomationOverride } from "../../types/automation"
 import { AutomationOverrideModal, type ListingMeta } from "./AutomationOverrideModal"
+import { useIdentityProviderCatalog } from "../../hooks/useIdentityProviderCatalog"
+import { identityOverrideSummary, isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
 
 /**
  * Estado de carga por unidad. «Falló» se distingue de «no cargado» a propósito:
@@ -36,6 +38,11 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
 
     const slug = automation.provider?.parameters?.slug ?? automation.providerName ?? ""
     const fieldSchema = getOverrideFieldSchema(slug)
+    // Identidad se resume con la regla compartida (contrato 2026-10-14), no
+    // mirando parámetros ni token: un override activo sin parámetros puede
+    // heredar o tener su propio nivel.
+    const isIdentity = isIdentityPropertyAutomation(automation)
+    const identityCatalog = useIdentityProviderCatalog(isIdentity)
 
     const loadListings = useCallback(async (targets: ListingMeta[]) => {
         if (targets.length === 0) return
@@ -77,7 +84,10 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
         const entry = entries[listing.uuid]
         return entry?.state === "loaded" ? [entry] : []
     })
-    const overrideCount = loadedEntries.filter((entry) => entry.override != null).length
+    // En identidad, un override que hereda no cuenta como «configurada».
+    const overrideCount = loadedEntries.filter((entry) => entry.override != null && (
+        !isIdentity || identityOverrideSummary(entry.override, automation, identityCatalog.catalog).tone !== "inherit"
+    )).length
     const failedCount = listings.filter((listing) => entries[listing.uuid]?.state === "failed").length
     const allLoaded = loadedEntries.length === listings.length
     const loading = loadingUuids.size > 0
@@ -133,11 +143,15 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                 const isFailed = entry?.state === "failed" && !isLoading
                                 const override = isLoaded ? entry.override : null
                                 const hasOverride = override != null
-                                const isDisabledHere = hasOverride && !override.isActive
+                                const identity = isIdentity && isLoaded
+                                    ? identityOverrideSummary(override, automation, identityCatalog.catalog)
+                                    : null
+                                const isDisabledHere = identity ? identity.tone === "disabled" : hasOverride && !override.isActive
                                 const params = hasOverride ? (override.parameters ?? {}) : {}
-                                const hasParams = hasOverride && override.isActive &&
+                                const hasParams = identity ? identity.tone === "custom" : hasOverride && override.isActive &&
                                     Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
-                                const hasToken = hasOverride && override.token != null
+                                // El token de un override de identidad no aplica (el contrato lo manda null).
+                                const hasToken = !isIdentity && hasOverride && override.token != null
 
                                 if (isFailed) {
                                     return (
@@ -204,6 +218,15 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
 
                                             {!isLoaded ? (
                                                 <span className="text-[10px] text-slate-400">Cargando...</span>
+                                            ) : identity ? (
+                                                <span className={cn(
+                                                    "text-[10px] font-medium",
+                                                    identity.tone === "disabled" ? "text-red-500"
+                                                        : identity.tone === "custom" ? "text-primary"
+                                                            : "text-slate-400",
+                                                )}>
+                                                    {identity.label}
+                                                </span>
                                             ) : isDisabledHere ? (
                                                 <div className="flex items-center gap-1 mt-0.5">
                                                     <Ban size={10} className="text-red-400" />

@@ -32,6 +32,8 @@ import type {
     AutomationStatusItem,
     AutomationLiveStatus,
     ListingAutomationOverride,
+    OverrideEffectiveProvider,
+    OverrideProviderSource,
     ListingAutomationOverrideCreatePayload,
     ListingAutomationOverrideUpdatePayload,
     ListingOverrideStatus,
@@ -222,6 +224,42 @@ export interface ProviderListParams {
 }
 
 // ── Service ──────────────────────────────────────────────────────────────────
+
+function readOptionalNumber(value: unknown): number | null {
+    return typeof value === "number" && Number.isFinite(value) ? value : null
+}
+
+/** `effectiveProvider` del override; uno sin id numérico no es utilizable. */
+function readEffectiveProvider(raw: unknown): OverrideEffectiveProvider | null {
+    if (!raw || typeof raw !== "object") return null
+    const r = raw as Record<string, unknown>
+    const id = readOptionalNumber(r.id)
+    if (id == null) return null
+    const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value : null)
+    return {
+        id,
+        name: text(r.name),
+        slug: text(r.slug),
+        verificationType: text(r.verificationType ?? r.verification_type),
+    }
+}
+
+/**
+ * `providerSource`: `undefined` si el backend no lo manda (anterior al contrato),
+ * `null` si lo manda nulo (la unidad no ejecuta nada). Un valor desconocido se
+ * trata como ausente: no se afirma un origen que no se entiende.
+ */
+function readProviderSource(r: Record<string, unknown>): OverrideProviderSource | undefined {
+    for (const key of ["providerSource", "provider_source"]) {
+        if (key in r) {
+            const value = r[key]
+            if (value === null) return null
+            if (value === "listing" || value === "property") return value
+            return undefined
+        }
+    }
+    return undefined
+}
 
 class AutomationService {
 
@@ -721,6 +759,7 @@ class AutomationService {
 
     /** Normalizes a raw API override item into ListingAutomationOverride. */
     private normalizeOverride(r: any, listingUuid?: string): ListingAutomationOverride {
+        const providerSource = readProviderSource(r)
         const statusRecordId: ListingOverrideStatus =
             (r.statusRecordId ?? r.status_record_id ?? LISTING_OVERRIDE_STATUS.ACTIVE) as ListingOverrideStatus
         const rawPa = r.propertyAutomation ?? r.property_automation ?? null
@@ -749,6 +788,10 @@ class AutomationService {
                 }
                 : null,
             isActive: statusRecordId === LISTING_OVERRIDE_STATUS.ACTIVE,
+            // Contrato 2026-10-14: elección, efectivo y origen del proveedor.
+            providerId: readOptionalNumber(r.providerId ?? r.provider_id),
+            effectiveProvider: readEffectiveProvider(r.effectiveProvider ?? r.effective_provider),
+            ...(providerSource !== undefined ? { providerSource } : {}),
         }
     }
 

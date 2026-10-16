@@ -35,10 +35,6 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         providerOptions: [
             {
                 value: "didit",
-                // IDs contractuales del catálogo (RICARDO_SOURCE_PLANS §8.1).
-                // Son un fallback: si GET /providers?country= omite identidad,
-                // el PM debe seguir pudiendo cambiar el nivel de verificación.
-                providerId: 1000,
                 label: "Verificación avanzada",
                 shortLabel: "avanzada",
                 description: "Reconocimiento facial y verificación de documento en tiempo real. El huésped completa la verificación directamente en el check-in.",
@@ -46,7 +42,6 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
             },
             {
                 value: "textract",
-                providerId: 1004,
                 label: "Verificación esencial",
                 shortLabel: "esencial",
                 description: "El huésped sube fotos de su documento. La IA extrae y valida los datos automáticamente.",
@@ -70,7 +65,6 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         providerOptions: [
             {
                 value: "didit",
-                providerId: 1000,
                 label: "Verificación avanzada",
                 shortLabel: "avanzada",
                 description: "Reconocimiento facial y verificación de documento en tiempo real.",
@@ -78,7 +72,6 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
             },
             {
                 value: "textract",
-                providerId: 1004,
                 label: "Verificación esencial",
                 shortLabel: "esencial",
                 description: "El huésped sube fotos de su documento. La IA extrae y valida los datos automáticamente.",

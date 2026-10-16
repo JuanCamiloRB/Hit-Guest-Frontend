@@ -41,13 +41,13 @@ function makeAutomation(overrides: Partial<PropertyAutomation>): PropertyAutomat
 }
 
 describe("definitionForAutomation", () => {
-    it("conserva los IDs contractuales de identidad como respaldo del catálogo por país", () => {
+    // Contrato 2026-10-14: los ids de proveedor cambian entre ambientes. Las
+    // definiciones son presentación; el id sale siempre del catálogo.
+    it("no fija IDs de providers de identidad: los resuelve el catálogo", () => {
         for (const definitionId of ["identity-verification-main", "identity-verification-secondary"]) {
             const options = AUTOMATION_DEFINITIONS.find((item) => item.id === definitionId)?.providerOptions
-            expect(options).toEqual(expect.arrayContaining([
-                expect.objectContaining({ value: "didit", providerId: 1000 }),
-                expect.objectContaining({ value: "textract", providerId: 1004 }),
-            ]))
+            expect(options?.map((option) => option.value)).toEqual(["didit", "textract"])
+            expect(options?.every((option) => option.providerId === undefined)).toBe(true)
         }
     })
 

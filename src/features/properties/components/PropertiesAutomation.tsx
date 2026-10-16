@@ -24,6 +24,7 @@ import {
 import { DELIVERY_PROVIDERS, partitionCheckinLinkDelivery } from "../lib/checkin-link-delivery"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import type { PropertyAutomation, Provider } from "../types/automation"
+import { EMPTY_IDENTITY_CATALOG, resolveIdentityProviders, type IdentityProviderCatalog } from "../lib/identity-providers"
 import { AutomationCard, CheckinLinkDeliveryCard, type ListingMeta } from "./automations"
 
 interface CountryCatalogItem {
@@ -57,6 +58,12 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
     const [automations, setAutomations] = useState<PropertyAutomation[]>([])
     const [providers, setProviders] = useState<Provider[]>([])
     const [countryProviderSlugs, setCountryProviderSlugs] = useState<string[]>([])
+    /**
+     * Avanzada y Esencial, resueltas por `verification_type` sobre el catálogo
+     * COMPLETO (sin el filtro de «es automatización», que descartaba proveedores
+     * de identidad y dejaba solo el guardado). Única fuente de sus ids.
+     */
+    const [identityCatalog, setIdentityCatalog] = useState<IdentityProviderCatalog>(EMPTY_IDENTITY_CATALOG)
     const [listings, setListings] = useState<ListingMeta[]>([])
     const [sources, setSources] = useState<ReservationSource[]>([])
     /**
@@ -151,6 +158,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             )
             if (!active) return
             setProviders(automationProviders)
+            setIdentityCatalog(resolveIdentityProviders(allProviders))
             setDeliveryProviders({ whatsapp, ota_inbox: otaInbox })
             setCountryProviderSlugs(providerRows.flatMap((provider) =>
                 provider.parameters?.slug ? [canonicalSlug(provider.parameters.slug)] : [],
@@ -171,6 +179,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                 if (active) {
                     setAutomations([])
                     setProviders([])
+                    setIdentityCatalog(EMPTY_IDENTITY_CATALOG)
                     setCountryProviderSlugs([])
                     setListings([])
                     setSources([])
@@ -315,6 +324,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                             automation,
                             providers,
                             countryProviderSlugs,
+                            identityCatalog,
                         )
                         return (
                             <AutomationCard

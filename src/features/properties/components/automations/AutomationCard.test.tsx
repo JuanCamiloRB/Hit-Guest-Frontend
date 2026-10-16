@@ -8,6 +8,8 @@ window.HTMLElement.prototype.hasPointerCapture = () => false
 window.HTMLElement.prototype.releasePointerCapture = () => {}
 window.HTMLElement.prototype.scrollIntoView = () => {}
 import { AutomationCard } from "./AutomationCard"
+import { bindCatalogProviders } from "../../lib/automation-catalog"
+import { resolveIdentityProviders } from "../../lib/identity-providers"
 import { AUTOMATION_DEFINITIONS } from "../../data/automation-definitions"
 import { AUTOMATION_STATUS, type PropertyAutomation, type Provider } from "../../types/automation"
 
@@ -682,28 +684,38 @@ describe("AutomationCard — selección de proveedor pendiente", () => {
         expect(screen.queryByText(/Selección pendiente/i)).not.toBeInTheDocument()
     })
 
-    it("también permite volver de Esencial a Avanzada usando el id contractual", async () => {
+    it("también permite volver de Esencial a Avanzada con el id del CATÁLOGO, no uno fijo", async () => {
         configure.mockResolvedValue(makeAutomation({
             uuid: "identity-row",
-            providerId: 1000,
+            providerId: 501,
             isActive: true,
             statusProviderId: AUTOMATION_STATUS.ACTIVE,
         }))
+        const textract = makeProvider(502, "textract")
+        const automation = makeAutomation({
+            uuid: "identity-row",
+            providerId: 502,
+            executionOrder: 1,
+            guestType: "main_guest",
+            isActive: true,
+            statusProviderId: AUTOMATION_STATUS.ACTIVE,
+            provider: textract,
+        })
+        // Como lo arma PropertiesAutomation: ids desde el catálogo de identidad.
+        const definition = bindCatalogProviders(
+            definitionFor("identity-verification-main"),
+            automation,
+            [textract],
+            ["textract"],
+            resolveIdentityProviders([makeProvider(501, "didit"), textract]),
+        )
 
         render(
             <AutomationCard
                 {...baseProps}
-                definition={definitionFor("identity-verification-main")}
-                automation={makeAutomation({
-                    uuid: "identity-row",
-                    providerId: 1004,
-                    executionOrder: 1,
-                    guestType: "main_guest",
-                    isActive: true,
-                    statusProviderId: AUTOMATION_STATUS.ACTIVE,
-                    provider: makeProvider(1004, "textract"),
-                })}
-                providers={[makeProvider(1004, "textract")]}
+                definition={definition}
+                automation={automation}
+                providers={[textract]}
             />,
         )
 
@@ -711,7 +723,7 @@ describe("AutomationCard — selección de proveedor pendiente", () => {
 
         await waitFor(() => expect(configure).toHaveBeenCalledWith("identity-row", {
             statusProviderId: AUTOMATION_STATUS.ACTIVE,
-            providerId: 1000,
+            providerId: 501,
         }))
     })
 })

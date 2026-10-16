@@ -48,6 +48,8 @@ import { automationService } from "../services/automation-service"
 import { getOverrideFieldSchema } from "../data/automation-definitions"
 import { type PropertyAutomation, type ListingAutomationOverride } from "../types/automation"
 import { AutomationOverrideModal } from "./automations/AutomationOverrideModal"
+import { useIdentityProviderCatalog } from "../hooks/useIdentityProviderCatalog"
+import { identityOverrideSummary, isIdentityPropertyAutomation } from "../lib/identity-listing-override"
 import { Badge } from "@/components/ui/badge"
 import { ExternalPmsIdsField } from "./ExternalPmsIdsField"
 import {
@@ -115,8 +117,25 @@ function FieldError({ message }: { message?: string }) {
 }
 
 /** A draft override is worth persisting only if it changes something vs. inheriting. */
-function isMeaningfulOverride(o: ListingAutomationOverride): boolean {
+/**
+ * POST de un override borrador después de crear la unidad. `providerId` solo
+ * viaja con 6: junto a 7 el backend responde 422 (contrato 2026-10-14).
+ */
+export function draftOverrideCreatePayload(d: ListingAutomationOverride, listingUuid: string) {
+    return {
+        listingUuid,
+        propertyAutomationUuid: d.propertyAutomationUuid,
+        statusRecordId: d.statusRecordId,
+        parameters: d.parameters,
+        ...(d.token ? { token: d.token } : {}),
+        ...(d.providerId != null && d.isActive ? { providerId: d.providerId } : {}),
+    }
+}
+
+export function isMeaningfulOverride(o: ListingAutomationOverride): boolean {
     if (!o.isActive) return true
+    // Identidad: un nivel propio (Avanzada/Esencial) es configuración real.
+    if (o.providerId != null) return true
     if (o.token) return true
     const params = o.parameters ?? {}
     return Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
@@ -147,6 +166,8 @@ export function PropertiesUnits() {
     // ── Automations overrides state ──────────────────────────────────────────
     // Active property-level automations of the parent property
     const [propertyAutomations, setPropertyAutomations] = useState<PropertyAutomation[]>([])
+    // Avanzada/Esencial para el resumen de identidad; solo se pide si hay slots de identidad.
+    const identityCatalog = useIdentityProviderCatalog(propertyAutomations.some(isIdentityPropertyAutomation))
     // Current listing's overrides map: automationUuid → override (uuid="" = unsaved draft)
     const [listingOverrides, setListingOverrides] = useState<Record<string, ListingAutomationOverride>>({})
     const [overridesLoading, setOverridesLoading] = useState(false)
@@ -241,7 +262,7 @@ export function PropertiesUnits() {
         if (propertyUuid) {
             setOverridesLoading(true)
             automationService.listGlobal({ propertyUuid })
-                .then(automations => setPropertyAutomations(automations.filter(a => a.isActive)))
+                .then(automations => setPropertyAutomations(automations.filter(a => a.isActive || isIdentityPropertyAutomation(a))))
                 .catch(() => setPropertyAutomations([]))
                 .finally(() => setOverridesLoading(false))
         }
@@ -303,7 +324,7 @@ export function PropertiesUnits() {
                 automationService.listGlobal({ propertyUuid }),
                 automationService.listListingOverrides(raw.uuid),
             ]).then(([automations, overrides]) => {
-                setPropertyAutomations(automations.filter(a => a.isActive))
+                setPropertyAutomations(automations.filter(a => a.isActive || isIdentityPropertyAutomation(a)))
 
                 // Build overrides map keyed by property automation uuid
                 const map: Record<string, ListingAutomationOverride> = {}
@@ -440,13 +461,7 @@ export function PropertiesUnits() {
                         const failed: string[] = []
                         for (const d of drafts) {
                             try {
-                                await automationService.createListingOverride({
-                                    listingUuid: newListingUuid,
-                                    propertyAutomationUuid: d.propertyAutomationUuid,
-                                    statusRecordId: d.statusRecordId,
-                                    parameters: d.parameters,
-                                    ...(d.token ? { token: d.token } : {}),
-                                })
+                                await automationService.createListingOverride(draftOverrideCreatePayload(d, newListingUuid))
                             } catch {
                                 failed.push(d.propertyAutomation?.name ?? d.propertyAutomationUuid)
                             }
@@ -1154,11 +1169,15 @@ export function PropertiesUnits() {
                                                         const schema = getOverrideFieldSchema(slug)
                                                         const override = listingOverrides[automation.uuid]
                                                         const hasOverride = !!override
-                                                        const isInactive = hasOverride && !override.isActive
+                                                        // Identidad: la regla compartida con la tarjeta (contrato 2026-10-14).
+                                                        const identity = isIdentityPropertyAutomation(automation)
+                                                            ? identityOverrideSummary(override ?? null, automation, identityCatalog.catalog)
+                                                            : null
+                                                        const isInactive = identity ? identity.tone === "disabled" : hasOverride && !override.isActive
                                                         const params = override?.parameters ?? {}
-                                                        const hasParams = hasOverride && override.isActive &&
+                                                        const hasParams = !identity && hasOverride && override.isActive &&
                                                             Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
-                                                        const hasToken = hasOverride && override.token != null
+                                                        const hasToken = !identity && hasOverride && override.token != null
 
                                                         return (
                                                             <div key={automation.uuid} className={cn(
@@ -1191,7 +1210,9 @@ export function PropertiesUnits() {
                                                                         )}
                                                                     </div>
                                                                     <p className="text-[11px] text-slate-500">
-                                                                        {hasParams
+                                                                        {identity
+                                                                            ? identity.label
+                                                                            : hasParams
                                                                             ? schema.filter(f => params[f.key] != null && params[f.key] !== "").map(f => f.key).join(", ") || "Parámetros sobreescritos"
                                                                             : isInactive
                                                                                 ? "La automatización se omite para esta unidad."
