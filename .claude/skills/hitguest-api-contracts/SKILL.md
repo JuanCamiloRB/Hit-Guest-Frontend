@@ -231,7 +231,56 @@ Además: `UNSUPPORTED_DOCUMENT_LAYOUT` se lee de `errorType`, `error_type` o
 > rechazar o dar la espera por obsoleta. No montar una máquina de estados
 > paralela en React.
 
-### ⚠️ El nivel de identidad (Avanzada = Didit / Esencial = Textract) NO se cambia por unidad
+### ⚠️ Proveedor de identidad POR UNIDAD — contrato 2026-10-14 (backend en `main`, commit `663eeb5`/`cc3e3ae`; front SIN implementar; NO verificado por curl)
+
+*(Doc «Frontend — Proveedor de verificación de identidad por unidad», plan
+`20261014_proveedor-identidad-por-listing.md`. Aditivo, sin migración.)*
+Reemplaza la regla de abajo («no se cambia por unidad»), que queda como historia.
+
+- **Selector por unidad y por tipo de huésped**: Heredar · Avanzada · Esencial ·
+  Desactivar. Solo se puede CAMBIAR el proveedor de un slot que la propiedad
+  tiene ACTIVO; con el slot apagado o sin proveedor, la unidad solo hereda
+  (enviar `providerId` igual → 422).
+- **Escritura** (endpoints de siempre): Avanzada/Esencial = `POST
+  /listing-automation-overrides {listingUuid, propertyAutomationUuid,
+  statusRecordId: 6, providerId}` o `PATCH {providerId}`. Heredar = `DELETE` (o
+  `PATCH {providerId: null}`). Desactivar = `statusRecordId: 7` (el backend
+  OLVIDA el `providerId`; reactivar con 6 = vuelve a heredar). El proveedor
+  viaja SOLO como `providerId`; dentro de `parameters` se descarta.
+- **Slot de identidad**: en `GET /properties/{p}/automations`, la fila con
+  `automationType: "identity_verification"` + `guestType`. Su `uuid` es el
+  `propertyAutomationUuid`.
+- **`providerId`** desde `GET /providers` (ids cambian por ambiente, nunca
+  hardcodear). Etiqueta por `parameters.verification_type`: `session` =
+  Avanzada, `document_upload` = Esencial. `GET /providers` ahora devuelve el
+  catálogo en UNA página (hasta 100); forma `data/meta/links` igual.
+- **Lectura** (toda respuesta de override): `providerId` (lo elegido, `null` =
+  hereda), `effectiveProvider {id, name, slug, verificationType}` (lo que
+  ejecuta; `null` = nada) y `providerSource` (`"listing"` | `"property"` |
+  `null`). Pintar: sin override → Heredar; 6 + `property` → Heredar; 6 +
+  `listing` → Avanzada/Esencial por `effectiveProvider.verificationType`; 7 +
+  `null` → Desactivar; 6 + `null` → Heredar (propiedad apagada).
+  `propertyAutomation` trae anidado su `provider`. `token` de un override de
+  identidad viene `null` (adiós badge «TOKEN»).
+- **422**: `provider_id` (con 7 o sobre override desactivado; slot no es de
+  identidad o la propiedad lo tiene apagado; proveedor no es de identidad o no
+  aplica al país) · `property_automation_uuid` (ya existe override para esa
+  unidad y slot → `PATCH` del existente). Mensajes traducidos: mostrar tal cual.
+- **DELETE y volver a crear**: antes 500 (índice único con la fila borrada);
+  ahora el `POST` REVIVE la fila (mismo `uuid`) y responde 201. Borrar revoca
+  el token interno; restaurar o recrear emite uno nuevo si hace falta.
+- **Panel de la reserva**: `automation-status` ya NO lista las automatizaciones
+  desactivadas para la unidad, y la identidad muestra en `providerSlug` el
+  proveedor DE LA UNIDAD. `automation-records.providerSlug` = el proveedor que
+  realmente se cobró. `dispatch`/`redispatch`/`resend-pdf` de una
+  automatización desactivada para la unidad → **422** «Esta automatización está
+  desactivada para el alojamiento de esta reserva» (antes 202 sin efecto). El
+  front ya muestra el `message` de esos 422 (`useAutomationStatus`).
+- ⚠️ Abierto: un `PATCH {statusRecordId: 6, providerId}` sobre un override en 7
+  ¿se valida contra el estado guardado (422 «sobre un override desactivado») o
+  contra el nuevo? Confirmar antes de pasar Desactivar → Avanzada en un paso.
+
+### ❌ (Reemplazado 2026-10-14) El nivel de identidad NO se cambia por unidad
 
 *(Revisado 2026-10-12 contra `docs/API_DOCUMENTATION.md` §overrides y los tipos
 de `listing-automation-overrides`; pregunta de producto: «¿dónde cambio de

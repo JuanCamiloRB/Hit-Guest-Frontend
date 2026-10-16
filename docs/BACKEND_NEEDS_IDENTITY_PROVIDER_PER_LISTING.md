@@ -1,6 +1,11 @@
 # Nivel de verificación de identidad por unidad (Avanzada / Esencial)
 
-**Fecha:** 2026-10-12 · **Origen:** pregunta de producto (Didier) · **Estado:** pedido, no bloqueante
+**Fecha:** 2026-10-12 · **Origen:** pregunta de producto (Didier) · **Estado:** ✅ respondido por backend el 2026-10-14 (en `main`); front pendiente
+
+> El contrato que construyó el backend cubre lo pedido con diferencias de nombre:
+> `effectiveProvider {id, name, slug, verificationType}` + `providerSource` en
+> vez de `effectiveProviderId/Slug`, y Desactivar borra la elección. Detalle en
+> el skill de contratos, «Proveedor de identidad POR UNIDAD».
 
 ## Qué se pide
 
