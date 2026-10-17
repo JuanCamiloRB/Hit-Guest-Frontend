@@ -1218,6 +1218,24 @@ texto de producto. Renombrar el `id` rompería
 (`reservations-service.ts`), así que **tolera los dos nombres** — el rename del
 front no lo rompe, y tampoco lo rompería que el backend renombre su lado.
 
+### ⚠️ `by_source` vuelve con claves 0, 1, 2 (reporte de Didier, 2026-10-18; SIN confirmar)
+
+Captura de producción: el aviso de «canal que el catálogo no reconoce» lista
+«Canal 0 · Canal 1 · Canal 2», todos Contrato de alquiler · HitGuest Signature,
+y lo configurado por canal no aparece al volver a Documentos. El front SOLO
+escribe `by_source` como objeto con claves = id del canal (`"21"`, `"22"`…;
+`ContractRoutingSection` → `configure`); ningún camino del front lo manda como
+lista. Claves 0..n-1 = una lista JSON reindexada ⇒ hipótesis: el backend
+reindexa al persistir (`array_values`/`->values()` o equivalente).
+**Consecuencia si se confirma**: `routingForMode` descarta esas claves, la
+pantalla queda sin canales y, peor, el resolver no encuentra el canal de la
+reserva (`missing_source_entry`) ⇒ esas reservas NO generan contrato. Mismo
+patrón que el `by_source["1"]` del 2026-09-03.
+Confirmar con token de PM: el body del `PATCH /property-automations/{uuid}/configure`
+(Network) contra `parameters.by_source` de su respuesta y de
+`GET /properties/{uuid}/automations`. No reasignar en el front qué índice es
+qué canal: sería inventar el dato.
+
 ### Quién firma
 
 ✅ **Una sola fuente de verdad: `parameters.by_source[canal].provider_slug`**,
