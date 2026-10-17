@@ -263,7 +263,17 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     const routingPersistedInAutomation = parseContractRouting(automation?.parameters) !== null
     const showsUnsavedInference = !routingPersistedInAutomation && agreementDocs.length > 0
 
+    /**
+     * Configuración guardada bajo claves que no son canales (p. ej. «0, 1, 2»,
+     * skill de contratos 2026-10-18): se perdió la relación con el canal
+     * original. Editar y guardar desde acá reemplazaría ese routing con lo que
+     * el PM crea que corresponde — asignar un contrato al canal equivocado.
+     * Hasta que soporte lo corrija, la edición queda bloqueada.
+     */
+    const routingBlocked = orphanRouting.length > 0
+
     const handleSave = async () => {
+        if (routingBlocked) return
         if (Object.keys(desired.by_source).length === 0) {
             setSaveError("Configura al menos un canal antes de guardar.")
             return
@@ -438,30 +448,33 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                         <p className="text-sm text-slate-500">Qué se firma y con quién, por canal de reserva.</p>
                     </div>
                 </div>
-                <ContractModeToggle value={mode} onChange={handleModeChange} disabled={saving} />
+                <ContractModeToggle value={mode} onChange={handleModeChange} disabled={saving || routingBlocked} />
             </div>
 
-            {orphanRouting.length > 0 && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            {routingBlocked && (
+                <div role="alert" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
                     <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                    <div className="space-y-1">
-                        <p className="font-semibold">
-                            Hay una configuración guardada para un canal que el catálogo no reconoce
+                    <div className="space-y-1.5">
+                        <p className="font-semibold">No pudimos identificar los canales de la configuración guardada.</p>
+                        <p>
+                            Para evitar asignar un contrato al canal equivocado, la edición está bloqueada
+                            temporalmente. Contacta a soporte para corregir la configuración.
                         </p>
-                        {orphanRouting.map(({ sourceKey, routing }) => (
-                            <p key={sourceKey}>
-                                Canal {sourceKey} · {CONTRACT_TYPE_LABELS[routing.contract_type]} ·{" "}
-                                {findSignatureProvider(providers, routing.provider_slug)?.name
-                                    ?? routing.provider_slug}
+                        <details className="text-xs text-amber-800">
+                            <summary className="cursor-pointer font-medium">Información técnica</summary>
+                            <ul className="mt-1 space-y-0.5">
+                                {orphanRouting.map(({ sourceKey, routing }) => (
+                                    <li key={sourceKey}>
+                                        Clave guardada «{sourceKey}» · {CONTRACT_TYPE_LABELS[routing.contract_type]} ·{" "}
+                                        {findSignatureProvider(providers, routing.provider_slug)?.name ?? routing.provider_slug}
+                                    </li>
+                                ))}
+                            </ul>
+                            <p className="mt-1">
+                                Ninguna de estas claves es el id de un canal del catálogo de canales de reserva
+                                (`by_source` de la automatización de Contrato).
                             </p>
-                        ))}
-                        <p className="font-normal text-amber-700">
-                            No corresponde a ningún canal de reserva actual, así que no se puede
-                            editar desde aquí. Al guardar, esta pantalla envía únicamente los
-                            canales del catálogo — ese canal desconocido no se incluye. Si este
-                            aviso reaparece después de guardar, esa configuración sigue guardada
-                            en el servidor.
-                        </p>
+                        </details>
                     </div>
                 </div>
             )}
@@ -496,6 +509,9 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 </div>
             )}
 
+            {/* `inert`: bloquea también el editor de texto (contenteditable), que un
+                `fieldset disabled` no alcanza. */}
+            <div inert={routingBlocked || undefined} aria-disabled={routingBlocked || undefined} className={routingBlocked ? "space-y-5 opacity-60" : "space-y-5"}>
             {mode === "all_sources" ? (
                 <SourceRoutingRow
                     sourceLabel="Todos los canales"
@@ -554,7 +570,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 </div>
             )}
 
-            {mode === "per_source" && availableToAdd.length > 0 && (
+            {mode === "per_source" && availableToAdd.length > 0 && !routingBlocked && (
                 <div className="flex items-start gap-2.5 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
                     <AlertTriangle size={16} className="shrink-0 mt-0.5" />
                     <div>
@@ -567,6 +583,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 </div>
             )}
 
+            </div>
+
             {saveError && (
                 <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                     <AlertCircle size={14} className="shrink-0" /> {saveError}
@@ -577,7 +595,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 <Button
                     type="button"
                     onClick={handleSave}
-                    disabled={saving}
+                    disabled={saving || routingBlocked}
                     className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold"
                 >
                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
