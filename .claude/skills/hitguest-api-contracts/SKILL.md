@@ -1235,6 +1235,13 @@ Confirmar con token de PM: el body del `PATCH /property-automations/{uuid}/confi
 (Network) contra `parameters.by_source` de su respuesta y de
 `GET /properties/{uuid}/automations`. No reasignar en el front qué índice es
 qué canal: sería inventar el dato.
+**Front (2026-10-18, tras auditoría):** con claves que no son canales,
+`ContractRoutingSection` muestra «No pudimos identificar los canales de la
+configuración guardada…» (detalle plegado en «Información técnica») y BLOQUEA
+editar y guardar (`inert` en el área de edición, que también alcanza el editor
+TipTap; botón deshabilitado): guardar reemplazaría ese routing y podría poner
+un contrato en el canal equivocado. Responsable sin probar: comparar en Network
+el body del PATCH `configure`, su respuesta y el GET posterior.
 
 ### Quién firma
 
