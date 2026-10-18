@@ -4,7 +4,7 @@ import { useEffect, type ReactNode } from "react"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import Link from "next/link"
-import { Clock, CreditCard, IdCard, Key, ShieldCheck, Calendar, Users, CheckCircle2, Circle, Lock, UserCircle, ArrowRight, Share2, Mail } from "lucide-react"
+import { Clock, CreditCard, IdCard, Key, ShieldCheck, Calendar, Users, CheckCircle2, Lock, UserCircle, ArrowRight, Share2, Mail } from "lucide-react"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 import { isMainGuestCompleted } from "@/features/checkin/types/checkin"
 import { resolveContractSigningState } from "@/features/checkin/lib/contract-signing"
@@ -22,8 +22,6 @@ const BADGE_BASE = "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[
 const BADGE_MAIN = `${BADGE_BASE} bg-brand-purple/10 text-brand-purple`
 const BADGE_DONE = `${BADGE_BASE} bg-green-50 text-green-600`
 const BADGE_PENDING = `${BADGE_BASE} bg-slate-100 text-slate-500`
-const BADGE_LOCKED = `${BADGE_BASE} bg-amber-50 text-amber-600 ring-1 ring-inset ring-amber-100`
-const BADGE_LOCKED_MUTED = `${BADGE_BASE} bg-slate-100 font-medium text-slate-400`
 
 /**
  * Fixed bottom action bar.
@@ -179,10 +177,12 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
     const isFullyCompleted = progress.isFullyCompleted
 
     // ── Guest list logic ──────────────────────────────────────────────────────
-    // registeredGuests: guests known to the backend (have name from PMS or /identify)
-    // anonymousSlots: remaining slots that don't have a name yet
-    const anonymousSlotsCount = Math.max(0, res.totalGuestsAllowed - registeredGuests.length)
+    // El titular SIEMPRE ocupa un cupo, esté registrado o no. Antes se restaban
+    // solo los registrados: sin titular todavía, una reserva de 2 mostraba
+    // «Titular + Huésped 1 + Huésped 2» (reporte de Didier, 2026-10-19).
     const knownNonMainGuests = registeredGuests.filter(g => !g.isMain)
+    const companionsTotal = Math.max(0, res.totalGuestsAllowed - 1)
+    const anonymousSlotsCount = Math.max(0, companionsTotal - knownNonMainGuests.length)
 
     // Single most important next action, surfaced as a big fixed CTA so guests on
     // autopilot can't miss it (the inline row links are easy to overlook). The main
@@ -219,10 +219,11 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
             const nextKnown = knownNonMainGuests.find(g => !isGuestDone(g))
             if (nextKnown) {
                 primaryCtaHref = getContinueLink(nextKnown)
-                primaryCtaLabel = "Registrar siguiente huésped"
+                primaryCtaLabel = "Registrar acompañante"
             } else if (anonymousSlotsCount > 0) {
-                primaryCtaHref = `${basePath}/s/new-${registeredGuests.length + 1}/identify`
-                primaryCtaLabel = "Registrar siguiente huésped"
+                // Mismo índice que la fila del primer acompañante sin registrar.
+                primaryCtaHref = `${basePath}/s/new-${knownNonMainGuests.length + 2}/identify`
+                primaryCtaLabel = "Registrar acompañante"
             }
         }
     }
@@ -322,6 +323,28 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     </div>
                 )}
 
+                {/* Antes de que el titular termine, solo lo que cambia lo que tiene
+                    que hacer: quién va primero y, si aplica, que falta su firma.
+                    Sin lista de personas, círculos ni candados — parecían una
+                    selección obligatoria y la gente los tocaba en vez de avanzar. */}
+                {!mainCompleted && companionsTotal > 0 && (
+                    <p className="text-sm text-slate-600">
+                        Primero te registras tú. Después podrás registrar{" "}
+                        {companionsTotal === 1 ? "a tu acompañante" : `a tus ${companionsTotal} acompañantes`}.
+                    </p>
+                )}
+                {mainAwaitingExternalSignature && (
+                    <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 p-3">
+                        <Mail size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-800 leading-relaxed">
+                            <span className="font-semibold">Falta firmar</span>: tu registro está guardado.
+                            Te enviamos el contrato por correo para firmarlo.
+                        </p>
+                    </div>
+                )}
+
+                {mainCompleted && (
+                <>
                 {/* Progress bar */}
                 <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
@@ -340,69 +363,39 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     </div>
                 </div>
 
-                {/* Guest list — known guests + anonymous slots */}
+                {/* Lista: solo con el titular terminado, que es cuando sirve. Sin
+                    círculos (parecían una selección): check verde o la persona. */}
                 <div className="space-y-2 pt-1">
                     <h2 id="guest-list-heading" className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Huéspedes de la reserva</h2>
 
                     <ul aria-labelledby="guest-list-heading" className="space-y-2">
-                    {/* Main guest (always shown with name if known from PMS) */}
-                    {mainGuest ? (
+                    {mainGuest && (
                         <GuestRow
-                            icon={isGuestDone(mainGuest)
-                                ? <CheckCircle2 size={16} className="text-green-500" />
-                                : <Circle size={16} className="text-slate-300" />
-                            }
-                            name={`${mainGuest.name} ${mainGuest.lastname}`.trim() || "Titular de la reserva"}
+                            icon={<CheckCircle2 size={16} className="text-green-500" />}
+                            name={`${mainGuest.name} ${mainGuest.lastname}`.trim() || "Titular"}
                             badges={
                                 <>
-                                    <span className={BADGE_MAIN}>Principal</span>
-                                    {isGuestDone(mainGuest)
-                                        ? <span className={BADGE_DONE}>Completado</span>
-                                        : mainAwaitingExternalSignature
-                                            // "Pendiente" a secas hacía pensar que
-                                            // faltaba llenar algo acá.
-                                            ? <span className={BADGE_LOCKED}><Mail size={11} />Falta firmar</span>
-                                            : <span className={BADGE_PENDING}>Pendiente</span>
-                                    }
-                                </>
-                            }
-                        />
-                    ) : (
-                        /* No main guest in registeredGuests yet — the fixed CTA starts the flow */
-                        <GuestRow
-                            icon={<Circle size={16} className="text-slate-300" />}
-                            name="Titular de la reserva"
-                            badges={
-                                <>
-                                    <span className={BADGE_MAIN}>Principal</span>
-                                    <span className={BADGE_PENDING}>Pendiente</span>
+                                    <span className={BADGE_MAIN}>Titular</span>
+                                    <span className={BADGE_DONE}>Completado</span>
                                 </>
                             }
                         />
                     )}
 
-                    {/* Secondary guests that already completed /identify (have real names) */}
+                    {/* Acompañantes que ya se identificaron (tienen nombre) */}
                     {knownNonMainGuests.map(g => (
                         <GuestRow
                             key={g.uuid}
                             icon={isGuestDone(g)
                                 ? <CheckCircle2 size={16} className="text-green-500" />
-                                : <Circle size={16} className="text-slate-300" />
+                                : <UserCircle size={16} className="text-slate-300" />
                             }
                             name={`${g.name} ${g.lastname}`.trim()}
-                            badges={
-                                isGuestDone(g) ? (
-                                    <span className={BADGE_DONE}>Completado</span>
-                                ) : mainCompleted ? (
-                                    <span className={BADGE_PENDING}>Pendiente</span>
-                                ) : (
-                                    <span className={BADGE_LOCKED}>
-                                        <Lock size={11} />
-                                        Esperando al titular
-                                    </span>
-                                )
+                            badges={isGuestDone(g)
+                                ? <span className={BADGE_DONE}>Completado</span>
+                                : <span className={BADGE_PENDING}>Pendiente</span>
                             }
-                            actions={!isGuestDone(g) && mainCompleted && checkinOpen ? (
+                            actions={!isGuestDone(g) && checkinOpen ? (
                                 <GuestRowActions
                                     href={getContinueLink(g)}
                                     shareLabel={`Enviar link a ${g.name}`}
@@ -413,28 +406,24 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                         />
                     ))}
 
-                    {/* Anonymous slots — guests we don't know yet */}
+                    {/* Acompañantes que todavía no se registraron */}
                     {Array.from({ length: anonymousSlotsCount }, (_, i) => {
-                        const slotNumber = registeredGuests.length + i + 1
+                        const companionNumber = knownNonMainGuests.length + i + 1
+                        // Índice de la ruta de alta: titular + acompañantes conocidos + este.
+                        const slotNumber = 1 + companionNumber
+                        const label = `Acompañante ${companionNumber}`
                         return (
                             <GuestRow
                                 key={`anon-${i}`}
                                 icon={<UserCircle size={16} className="text-slate-300" />}
-                                name={`Huésped ${slotNumber}`}
-                                nameClassName="italic text-slate-400"
-                                badges={mainCompleted ? (
-                                    <span className={BADGE_PENDING}>Sin registrar</span>
-                                ) : (
-                                    <span className={BADGE_LOCKED_MUTED}>
-                                        <Lock size={11} />
-                                        Esperando al titular
-                                    </span>
-                                )}
-                                actions={mainCompleted && checkinOpen ? (
+                                name={label}
+                                nameClassName="italic text-slate-500"
+                                badges={<span className={BADGE_PENDING}>Sin registrar</span>}
+                                actions={checkinOpen ? (
                                     <GuestRowActions
                                         href={`${basePath}/s/new-${slotNumber}/identify`}
-                                        shareLabel={`Enviar link al huésped ${slotNumber}`}
-                                        onShare={() => handleShareLink(`Huésped ${slotNumber}`)}
+                                        shareLabel={`Enviar link al ${label.toLowerCase()}`}
+                                        onShare={() => handleShareLink(label)}
                                         emphasis="soft"
                                     />
                                 ) : undefined}
@@ -469,6 +458,8 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                         </div>
                     )}
                 </div>
+                </>
+                )}
             </div>
 
             {mainCompleted && (

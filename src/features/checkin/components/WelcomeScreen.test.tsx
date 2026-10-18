@@ -54,7 +54,8 @@ describe("WelcomeScreen guest list", () => {
     })
 
     it("renders the full long name in a single text node (no truncation, no per-word wrapping)", () => {
-        render(<WelcomeScreen portal={makePortal([mainGuest])} basePath="/checkin/res-uuid" />)
+        // La lista aparece con el titular terminado (antes no hay lista).
+        render(<WelcomeScreen portal={makePortal([{ ...mainGuest, isCompleted: true }])} basePath="/checkin/res-uuid" />)
 
         const name = screen.getByText(`${LONG_NAME} ${LONG_LASTNAME}`)
         expect(name).toBeInTheDocument()
@@ -73,30 +74,41 @@ describe("WelcomeScreen guest list", () => {
         expect(ctas[0]).toHaveAttribute("href", "/checkin/res-uuid/identify?guest_uuid=main-uuid")
     })
 
-    it("shows the main guest state as a badge instead of a button", () => {
+    // Reporte de Didier (2026-10-19): todos tocaban el círculo de «Titular de la
+    // reserva» creyendo que había que elegir a alguien, y nadie entendía
+    // «Esperando al titular». Antes de terminar el titular no hay lista.
+    it("antes de que el titular termine: sin lista, sin estados, sin candados, solo el botón", () => {
         render(<WelcomeScreen portal={makePortal([mainGuest])} basePath="/checkin/res-uuid" />)
 
-        expect(screen.getByText("Principal")).toBeInTheDocument()
-        expect(screen.getByText("Pendiente")).toBeInTheDocument()
+        expect(screen.queryByRole("list", { name: "Huéspedes de la reserva" })).toBeNull()
+        expect(screen.queryByText("Principal")).toBeNull()
+        expect(screen.queryByText("Pendiente")).toBeNull()
+        expect(screen.queryByText(/Esperando al titular/)).toBeNull()
+        expect(screen.queryByText(/completados/)).toBeNull()
+        expect(screen.getByText(/Primero te registras tú\. Después podrás registrar a tu acompañante\./)).toBeInTheDocument()
     })
 
-    it("locks secondary guests behind the main guest with a badge, not an action", () => {
-        const secondary: RegisteredGuest = {
-            uuid: "sec-uuid",
-            name: "Ana",
-            lastname: "García",
-            isMain: false,
-            isCompleted: false,
-        }
-        render(<WelcomeScreen portal={makePortal([mainGuest, secondary])} basePath="/checkin/res-uuid" />)
+    it("regresión: una reserva de 2 sin titular registrado no inventa un tercer huésped", () => {
+        render(<WelcomeScreen portal={makePortal([], 2)} basePath="/checkin/res-uuid" />)
 
-        expect(screen.getByText("Esperando al titular")).toBeInTheDocument()
-        expect(screen.queryByRole("link", { name: /Registrar/i })).not.toBeInTheDocument()
+        expect(screen.queryByText(/Huésped 2|Acompañante 2/)).toBeNull()
+        expect(screen.getByRole("link", { name: /Comenzar mi registro/i })).toHaveAttribute("href", "/checkin/res-uuid/identify")
+    })
+
+    it("con el titular terminado, una reserva de 3 lista titular + 2 acompañantes (no 4)", () => {
+        render(<WelcomeScreen portal={makePortal([{ ...mainGuest, isCompleted: true }], 3)} basePath="/checkin/res-uuid" />)
+
+        const list = screen.getByRole("list", { name: "Huéspedes de la reserva" })
+        expect(within(list).getAllByRole("listitem")).toHaveLength(3)
+        expect(within(list).getByText("Acompañante 1")).toBeInTheDocument()
+        expect(within(list).getByText("Acompañante 2")).toBeInTheDocument()
+        // La ruta de alta del primer acompañante conserva el índice de siempre.
+        expect(screen.getByRole("link", { name: /Registrar acompañante/i })).toHaveAttribute("href", "/checkin/res-uuid/s/new-2/identify")
     })
 
     it("renders the guest list as a named list — one item per guest and per empty slot", () => {
-        // 1 known guest + 1 anonymous slot for a 2-guest reservation.
-        render(<WelcomeScreen portal={makePortal([mainGuest], 2)} basePath="/checkin/res-uuid" />)
+        // Titular terminado + 1 acompañante sin registrar en una reserva de 2.
+        render(<WelcomeScreen portal={makePortal([{ ...mainGuest, isCompleted: true }], 2)} basePath="/checkin/res-uuid" />)
 
         // Scoped by accessible name: the "requisitos" box is also a <ul>, so an
         // unscoped listitem query would count its bullets too.
