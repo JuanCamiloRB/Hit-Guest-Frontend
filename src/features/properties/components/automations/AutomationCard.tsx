@@ -31,6 +31,7 @@ import { ConfigModal } from "./ConfigModal"
 import { ListingOverridesPanel } from "./ListingOverridesPanel"
 import { isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
 import type { ListingMeta } from "./AutomationOverrideModal"
+import { ReservationSourceIdentity } from "../contracts/ReservationSourceIdentity"
 
 const BACKEND_PENDING_MSG = "El backend aún no tiene este endpoint implementado. Contacta al equipo de desarrollo."
 
@@ -538,23 +539,34 @@ export function AutomationCard({
                                         {routingSummary ? "Contrato configurado" : "Sin configurar"}
                                     </Label>
                                     {routingSummary ? (
-                                        /* Se enumera canal · qué se firma · quién firma, porque
-                                           "N canales configurados" no le decía al PM qué tiene
-                                           activo. El nombre del canal es cosmético: sin catálogo
-                                           se muestra el id crudo, nunca se oculta la fila. */
-                                        <div className="space-y-0.5">
-                                            {routingSummary.channels.map((channel) => (
-                                                <p key={channel.sourceKey} className="text-sm text-slate-600">
-                                                    {[
-                                                        channel.sourceKey === ALL_SOURCES_KEY
-                                                            ? "Todos los canales"
-                                                            : sources?.find((s) => String(s.id) === channel.sourceKey)?.name
-                                                                ?? `Canal ${channel.sourceKey}`,
-                                                        CONTRACT_TYPE_LABELS[channel.contractType],
-                                                        signatureProviderLabel(channel.providerSlug),
-                                                    ].filter(Boolean).join(" · ")}
-                                                </p>
-                                            ))}
+                                        <div className="space-y-2">
+                                            {routingSummary.channels.map((channel) => {
+                                                const source = channel.sourceKey === ALL_SOURCES_KEY
+                                                    ? null
+                                                    : sources?.find((item) => String(item.id) === channel.sourceKey)
+                                                const sourceMissing = channel.sourceKey !== ALL_SOURCES_KEY && !source
+                                                return (
+                                                    <div key={channel.sourceKey} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5">
+                                                        <div className="min-w-0">
+                                                            <ReservationSourceIdentity
+                                                                source={source}
+                                                                fallbackName={channel.sourceKey === ALL_SOURCES_KEY ? "Todos los canales" : "Canal no identificado"}
+                                                                compact
+                                                            />
+                                                            <p className="mt-1 pl-11 text-xs text-slate-600">
+                                                                {[CONTRACT_TYPE_LABELS[channel.contractType], signatureProviderLabel(channel.providerSlug)]
+                                                                    .filter(Boolean)
+                                                                    .join(" · ")}
+                                                            </p>
+                                                        </div>
+                                                        {sourceMissing && (
+                                                            <span className="shrink-0 text-[10px] font-medium text-amber-700">
+                                                                ID guardado: {channel.sourceKey}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )
+                                            })}
                                         </div>
                                     ) : isActive ? (
                                         /* Estado que esta UI no puede producir (el toggle exige

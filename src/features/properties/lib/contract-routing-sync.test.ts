@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { detectMode, findLockstepGaps, planDocumentSync } from "./contract-routing-sync"
+import { detectMode, findLockstepGaps, isSaveConfirmed, planDocumentSync } from "./contract-routing-sync"
 import type { PropertyDocument } from "../types/document"
 import type { ContractRoutingParameters } from "../types/contract-routing"
 
@@ -169,5 +169,29 @@ describe("findLockstepGaps", () => {
             by_source: { all: { contract_type: "guarantee_only", provider_slug: "tufirma" } },
         }
         expect(findLockstepGaps(desired, {})).toEqual([])
+    })
+})
+
+describe("isSaveConfirmed — confirmación tras guardar (reporte 2026-10-18)", () => {
+    const agreement = { contract_type: "agreement_only" as const, provider_slug: "hitguest_signature" }
+    const guarantee = { contract_type: "guarantee_only" as const, provider_slug: "hitguest_signature" }
+    const sent = { contract_mode: "per_source" as const, by_source: { "21": agreement, "22": guarantee } }
+
+    it("lo mismo que se envió, con documento para el canal que lo necesita, confirma", () => {
+        expect(isSaveConfirmed(sent, { contract_mode: "per_source", by_source: { "22": guarantee, "21": agreement } }, new Set(["21"]))).toBe(true)
+    })
+
+    it("un canal solo-garantía no necesita documento", () => {
+        expect(isSaveConfirmed(sent, sent, new Set(["21"]))).toBe(true)
+    })
+
+    it("claves reindexadas (0/1) o routing distinto NO confirman", () => {
+        expect(isSaveConfirmed(sent, { contract_mode: "per_source", by_source: {} }, new Set(["21"]))).toBe(false)
+        expect(isSaveConfirmed(sent, { contract_mode: "per_source", by_source: { "21": guarantee, "22": guarantee } }, new Set(["21"]))).toBe(false)
+        expect(isSaveConfirmed(sent, { contract_mode: "all_sources", by_source: sent.by_source }, new Set(["21"]))).toBe(false)
+    })
+
+    it("falta el documento de un canal que lo necesita: no confirma", () => {
+        expect(isSaveConfirmed(sent, sent, new Set())).toBe(false)
     })
 })

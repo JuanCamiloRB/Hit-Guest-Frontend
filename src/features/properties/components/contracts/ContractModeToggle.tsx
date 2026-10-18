@@ -17,34 +17,46 @@ interface Props {
  */
 export function ContractModeToggle({ value, onChange, disabled }: Props) {
     return (
-        <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+        <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Cómo aplicar los contratos">
             <button
                 type="button"
                 disabled={disabled}
-                aria-pressed={value === "all_sources"}
+                role="radio"
+                aria-checked={value === "all_sources"}
                 onClick={() => onChange("all_sources")}
                 className={cn(
-                    "rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                    "rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                     value === "all_sources"
-                        ? "bg-white text-[var(--color-brand-purple)] shadow-sm"
-                        : "text-slate-500 hover:text-slate-700",
+                        ? "border-[var(--color-brand-purple)] bg-[var(--color-brand-purple)]/5 ring-1 ring-[var(--color-brand-purple)]/20"
+                        : "border-slate-200 bg-white hover:border-slate-300",
                 )}
             >
-                Un contrato para todos los canales
+                <span className={cn("block text-sm font-bold", value === "all_sources" ? "text-[var(--color-brand-purple)]" : "text-slate-800")}>
+                    Un mismo contrato para todos
+                </span>
+                <span className="mt-1 block text-xs font-medium leading-relaxed text-slate-500">
+                    Todos los huéspedes firman el mismo documento, sin importar de dónde llegue la reserva.
+                </span>
             </button>
             <button
                 type="button"
                 disabled={disabled}
-                aria-pressed={value === "per_source"}
+                role="radio"
+                aria-checked={value === "per_source"}
                 onClick={() => onChange("per_source")}
                 className={cn(
-                    "rounded-lg px-3.5 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+                    "rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                     value === "per_source"
-                        ? "bg-white text-[var(--color-brand-purple)] shadow-sm"
-                        : "text-slate-500 hover:text-slate-700",
+                        ? "border-[var(--color-brand-purple)] bg-[var(--color-brand-purple)]/5 ring-1 ring-[var(--color-brand-purple)]/20"
+                        : "border-slate-200 bg-white hover:border-slate-300",
                 )}
             >
-                Un contrato distinto por canal
+                <span className={cn("block text-sm font-bold", value === "per_source" ? "text-[var(--color-brand-purple)]" : "text-slate-800")}>
+                    Un contrato para cada canal
+                </span>
+                <span className="mt-1 block text-xs font-medium leading-relaxed text-slate-500">
+                    Configura por separado Airbnb, Booking.com, reservas directas y los demás canales.
+                </span>
             </button>
         </div>
     )

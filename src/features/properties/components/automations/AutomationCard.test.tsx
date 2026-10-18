@@ -258,9 +258,8 @@ describe("AutomationCard — Contrato", () => {
             />,
         )
 
-        expect(
-            screen.getByText("Todos los canales · Contrato de alquiler · TuFirma Digital"),
-        ).toBeInTheDocument()
+        expect(screen.getByText("Todos los canales")).toBeInTheDocument()
+        expect(screen.getByText("Contrato de alquiler · TuFirma Digital")).toBeInTheDocument()
     })
 
     const perSourceContract = () => makeAutomation({
@@ -294,11 +293,13 @@ describe("AutomationCard — Contrato", () => {
             />,
         )
 
-        expect(screen.getByText("Airbnb · Contrato de alquiler · hitguest_signature")).toBeInTheDocument()
-        expect(screen.getByText("Booking.com · Contrato de garantía · TuFirma Digital")).toBeInTheDocument()
+        expect(screen.getByText("Airbnb")).toBeInTheDocument()
+        expect(screen.getByText("Contrato de alquiler · hitguest_signature")).toBeInTheDocument()
+        expect(screen.getByText("Booking.com")).toBeInTheDocument()
+        expect(screen.getByText("Contrato de garantía · TuFirma Digital")).toBeInTheDocument()
     })
 
-    it("sin catálogo de canales muestra el id crudo en vez de ocultar el routing", () => {
+    it("sin catálogo conserva el id como detalle técnico sin presentarlo como nombre del canal", () => {
         render(
             <AutomationCard
                 {...baseProps}
@@ -308,8 +309,9 @@ describe("AutomationCard — Contrato", () => {
             />,
         )
 
-        expect(screen.getByText(/Canal 22 · Contrato de alquiler/)).toBeInTheDocument()
-        expect(screen.getByText(/Canal 23 · Contrato de garantía/)).toBeInTheDocument()
+        expect(screen.getAllByText("Canal no identificado")).toHaveLength(2)
+        expect(screen.getByText("ID guardado: 22")).toBeInTheDocument()
+        expect(screen.getByText("ID guardado: 23")).toBeInTheDocument()
     })
 
     it("activa sin routing: lo dice con sus consecuencias, no un 'sin configurar' neutro", () => {

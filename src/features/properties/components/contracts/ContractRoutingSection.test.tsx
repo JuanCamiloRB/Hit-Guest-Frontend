@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen, waitFor, within } from "@testing-library/react"
+import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { FormProvider, useForm } from "react-hook-form"
 import type { ReactNode } from "react"
@@ -93,7 +93,22 @@ describe("ContractRoutingSection — configuración guardada con claves que no s
 
         expect(await screen.findByText("Directo")).toBeInTheDocument()
         expect(screen.queryByText(/No pudimos identificar los canales/)).toBeNull()
-        await waitFor(() => expect(screen.getByRole("button", { name: "Guardar contrato y firma" })).toBeEnabled())
+        expect(screen.getByText("La configuración está guardada.")).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Guardar contrato y firma" })).toBeDisabled()
         expect(document.querySelector("[inert]")).toBeNull()
+    })
+
+    it("muestra también los canales sin contrato y marca el primer cambio sin guardar", async () => {
+        mocks.automations = [signatureRow({ 21: ROUTE })]
+        render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
+
+        expect(await screen.findByText("Airbnb")).toBeInTheDocument()
+        expect(screen.getByText("Las reservas de este canal no firman contrato.")).toBeInTheDocument()
+
+        await userEvent.setup().click(screen.getByRole("button", { name: /Configurar/ }))
+
+        expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument()
+        expect(screen.getByText("Tienes cambios sin guardar.")).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Guardar contrato y firma" })).toBeEnabled()
     })
 })

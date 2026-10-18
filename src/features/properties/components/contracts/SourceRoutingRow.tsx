@@ -1,9 +1,8 @@
 "use client"
 
-import { AlertCircle, X } from "lucide-react"
+import { AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { DocumentEditor } from "../documents/DocumentEditor"
 import { GuaranteePreview } from "./GuaranteePreview"
@@ -21,8 +20,6 @@ import { providerSupportsContractType, type Provider } from "../../types/automat
 const CONTRACT_TYPES = Object.keys(CONTRACT_TYPE_LABELS) as ContractType[]
 
 interface Props {
-    /** Display name for this channel — the source name, or "Todos los canales". */
-    sourceLabel: string
     routing: SourceRouting
     onChange: (routing: SourceRouting) => void
     /** Active providers with signature capability (parameters.signature present). */
@@ -32,8 +29,6 @@ interface Props {
     shortcodes: string[]
     /** True when this channel needs agreement text but has none typed yet. */
     hasTextGap: boolean
-    /** Only present in per_source mode, to drop this channel from by_source. */
-    onRemove?: () => void
 }
 
 /**
@@ -44,7 +39,6 @@ interface Props {
  * decides which, this component doesn't know about modes.
  */
 export function SourceRoutingRow({
-    sourceLabel,
     routing,
     onChange,
     providers,
@@ -52,7 +46,6 @@ export function SourceRoutingRow({
     onTextChange,
     shortcodes,
     hasTextGap,
-    onRemove,
 }: Props) {
     const needsAgreement = requiresAgreementDocument(routing.contract_type)
     const needsGuarantee = requiresGuaranteeText(routing.contract_type)
@@ -74,23 +67,7 @@ export function SourceRoutingRow({
     }
 
     return (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-4">
-            <div className="flex items-center justify-between gap-3">
-                <h4 className="text-sm font-bold text-slate-800">{sourceLabel}</h4>
-                {onRemove && (
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={onRemove}
-                        aria-label={`Quitar ${sourceLabel}`}
-                        className="text-slate-400 hover:text-red-500"
-                    >
-                        <X size={14} />
-                    </Button>
-                )}
-            </div>
-
+        <div className="space-y-5">
             {/* contract_type */}
             <div className="space-y-1.5">
                 <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Qué se firma</Label>

@@ -151,3 +151,26 @@ export function findLockstepGaps(
         .map(([key]) => key)
         .filter((key) => !texts[key]?.trim())
 }
+
+/**
+ * ¿Lo que el servidor devolvió después de guardar es lo que se envió?
+ *
+ * Se confirma lo que el bug de las claves 0/1/2 rompe: modo y routing por canal
+ * EXACTOS (orden de claves aparte), y un documento de contrato para cada canal
+ * que lo necesita. El TEXTO no se compara carácter a carácter: el backend puede
+ * normalizar el HTML al guardar, y un canal solo-garantía no tiene documento;
+ * compararlos daba un falso «devolvió algo distinto» tras un guardado correcto.
+ */
+export function isSaveConfirmed(
+    sent: ContractRoutingParameters,
+    confirmed: ContractRoutingParameters,
+    documentChannelKeys: ReadonlySet<string>,
+): boolean {
+    const sorted = (routing: ContractRoutingParameters["by_source"]) =>
+        JSON.stringify(Object.entries(routing).sort(([a], [b]) => a.localeCompare(b)))
+    if (sent.contract_mode !== confirmed.contract_mode) return false
+    if (sorted(sent.by_source) !== sorted(confirmed.by_source)) return false
+    return Object.entries(confirmed.by_source)
+        .filter(([, routing]) => requiresAgreementDocument(routing.contract_type))
+        .every(([key]) => documentChannelKeys.has(key))
+}

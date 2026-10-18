@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react"
 import { useFormContext } from "react-hook-form"
-import { AlertCircle, AlertTriangle, FileSignature, Loader2, Plus } from "lucide-react"
+import { AlertCircle, AlertTriangle, CheckCircle2, FileSignature, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { propertyDocumentService } from "../../services/property-document-service"
 import { reservationSourceService, type ReservationSource } from "../../services/reservation-source-service"
 import { automationService } from "../../services/automation-service"
@@ -25,12 +24,12 @@ import {
     parseContractRouting,
     routingForMode,
     CONTRACT_TYPE_LABELS,
-    CONTRACT_TYPE_OWNERS,
+    requiresAgreementDocument,
     type ContractMode,
     type ContractRoutingParameters,
     type SourceRouting,
 } from "../../types/contract-routing"
-import { detectMode, findLockstepGaps, planDocumentSync } from "../../lib/contract-routing-sync"
+import { detectMode, findLockstepGaps, isSaveConfirmed, planDocumentSync } from "../../lib/contract-routing-sync"
 import {
     buildSignatureAutomationCreatePayload,
     findSignatureAutomation,
@@ -38,10 +37,37 @@ import {
 } from "../../lib/signature-automation"
 import { ContractModeToggle } from "./ContractModeToggle"
 import { SourceRoutingRow } from "./SourceRoutingRow"
+import { ContractChannelCard, type ContractChannelStatus } from "./ContractChannelCard"
 
 const DEFAULT_ROUTING: SourceRouting = {
     contract_type: "agreement_only",
     provider_slug: "",
+}
+
+function comparableRouting(routing: Record<string, SourceRouting>): Record<string, SourceRouting> {
+    return Object.fromEntries(Object.entries(routing).sort(([left], [right]) => left.localeCompare(right)))
+}
+
+function draftFingerprint(
+    mode: ContractMode,
+    routing: Record<string, SourceRouting>,
+    texts: Record<string, string>,
+): string {
+    const normalizedRouting = comparableRouting(routingForMode(mode, routing))
+    return JSON.stringify({
+        mode,
+        routing: normalizedRouting,
+        texts: Object.fromEntries(Object.keys(normalizedRouting).map((key) => [key, texts[key] ?? ""])),
+    })
+}
+
+function textsByDocumentChannel(documents: PropertyDocument[]): Record<string, string> {
+    const result: Record<string, string> = {}
+    for (const document of documents) {
+        const channelId = documentChannelId(document)
+        result[channelId == null ? ALL_SOURCES_KEY : String(channelId)] = document.content ?? ""
+    }
+    return result
 }
 
 
@@ -76,20 +102,6 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     // `orphanRoutingEntries`.
     const [orphanRouting, setOrphanRouting] = useState<Array<{ sourceKey: string; routing: SourceRouting }>>([])
 
-    /**
-     * Recalcula las huérfanas desde una fila que VINO del servidor (la
-     * respuesta de `configure()` o la relectura tras un fallo). Es la única
-     * evidencia disponible de si el guardado las pisó o el backend las mergeó
-     * de vuelta — el token de esa cuenta no siempre existe para verificarlo por
-     * curl, pero cada guardado real lo responde solo: si el aviso desaparece
-     * tras guardar, el servidor reemplazó `parameters`; si reaparece, mergeó.
-     * Sin este recálculo el aviso quedaba congelado en el estado de la carga
-     * inicial y la observación no valía nada.
-     */
-    const syncOrphansFrom = (row: PropertyAutomation | null) => {
-        const allowed = new Set(sources.map((source) => source.id))
-        setOrphanRouting(orphanRoutingEntries(parseContractRouting(row?.parameters)?.by_source, allowed))
-    }
     const [providers, setProviders] = useState<Provider[]>([])
     const [automation, setAutomation] = useState<PropertyAutomation | null>(null)
     const [agreementDocs, setAgreementDocs] = useState<PropertyDocument[]>([])
@@ -98,6 +110,10 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     const [mode, setMode] = useState<ContractMode>("all_sources")
     const [bySource, setBySource] = useState<Record<string, SourceRouting>>({})
     const [texts, setTexts] = useState<Record<string, string>>({})
+    const [persistedMode, setPersistedMode] = useState<ContractMode>("all_sources")
+    const [persistedBySource, setPersistedBySource] = useState<Record<string, SourceRouting>>({})
+    const [persistedTexts, setPersistedTexts] = useState<Record<string, string>>({})
+    const [expandedChannel, setExpandedChannel] = useState<string | null>(null)
 
     const [saving, setSaving] = useState(false)
     const [saveError, setSaveError] = useState<string | null>(null)
@@ -170,15 +186,14 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 const initialRouting = routingForMode(initialMode, parsed?.by_source ?? {}, allowedSourceIds)
                 setMode(initialMode)
                 setBySource(initialRouting)
+                setPersistedMode(initialMode)
+                setPersistedBySource(initialRouting)
                 setOrphanRouting(orphanRoutingEntries(parsed?.by_source, allowedSourceIds))
 
-                const initialTexts: Record<string, string> = {}
-                for (const doc of docsRes.items) {
-                    const channelId = documentChannelId(doc)
-                    const key = channelId == null ? ALL_SOURCES_KEY : String(channelId)
-                    initialTexts[key] = doc.content ?? ""
-                }
+                const initialTexts = textsByDocumentChannel(docsRes.items)
                 setTexts(initialTexts)
+                setPersistedTexts(initialTexts)
+                setExpandedChannel(null)
             })
             .catch((err) => {
                 console.error("[ContractRoutingSection] load error:", err)
@@ -214,21 +229,18 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             delete rest[ALL_SOURCES_KEY]
             setBySource(rest)
         }
+        setExpandedChannel(null)
         setSaveError(null)
     }
 
     // ── Per-channel edits (per_source mode) ─────────────────────────────────
-
-    const configuredSourceIds = Object.keys(bySource)
-        .filter((k) => k !== ALL_SOURCES_KEY)
-        .map(Number)
-    const availableToAdd = sources.filter((s) => !configuredSourceIds.includes(s.id))
 
     const addChannel = (sourceId: number) => {
         setBySource((prev) => ({
             ...prev,
             [String(sourceId)]: DEFAULT_ROUTING,
         }))
+        setExpandedChannel(String(sourceId))
         setSaveError(null)
     }
     const removeChannel = (key: string) => {
@@ -242,6 +254,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             delete rest[key]
             return rest
         })
+        setExpandedChannel((current) => current === key ? null : current)
         setSaveError(null)
     }
 
@@ -271,6 +284,74 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
      * Hasta que soporte lo corrija, la edición queda bloqueada.
      */
     const routingBlocked = orphanRouting.length > 0
+    const currentFingerprint = draftFingerprint(mode, desired.by_source, texts)
+    const persistedFingerprint = draftFingerprint(persistedMode, persistedBySource, persistedTexts)
+    const hasUnsavedChanges = currentFingerprint !== persistedFingerprint || showsUnsavedInference
+
+    const channelIsDirty = (key: string): boolean => {
+        if (mode !== persistedMode) return true
+        return JSON.stringify(bySource[key] ?? null) !== JSON.stringify(persistedBySource[key] ?? null)
+            || (texts[key] ?? "") !== (persistedTexts[key] ?? "")
+    }
+
+    const channelStatus = (key: string, routing: SourceRouting | undefined): ContractChannelStatus => {
+        if (channelIsDirty(key)) return "dirty"
+        if (!routing) return "unconfigured"
+        if (!routing.provider_slug || (requiresAgreementDocument(routing.contract_type) && !texts[key]?.trim())) return "incomplete"
+        return "configured"
+    }
+
+    const channelSummary = (routing: SourceRouting | undefined, key: string): string => {
+        if (!routing) {
+            return persistedBySource[key]
+                ? "Esta configuración se quitará cuando guardes los cambios."
+                : "Las reservas de este canal no firman contrato."
+        }
+        if (!routing.provider_slug) return "Completa la configuración y elige quién firma."
+        const provider = findSignatureProvider(providers, routing.provider_slug)
+        return `${CONTRACT_TYPE_LABELS[routing.contract_type]} · Firma: ${provider?.name ?? routing.provider_slug}`
+    }
+
+    /**
+     * Rehidrata exclusivamente con lo que confirmó el servidor. El toast de éxito
+     * depende de esta comparación: un `by_source` reindexado como 0/1/2 nunca se
+     * anuncia como guardado aunque el PATCH haya respondido 200.
+     */
+    const applyConfirmedState = (row: PropertyAutomation | null, documents: PropertyDocument[]): boolean => {
+        const allowedSourceIds = new Set(sources.map((source) => source.id))
+        const parsed = parseContractRouting(row?.parameters)
+        const confirmedOrphans = orphanRoutingEntries(parsed?.by_source, allowedSourceIds)
+        const confirmedMode = parsed?.contract_mode ?? detectMode(documents) ?? "all_sources"
+        const confirmedRouting = routingForMode(confirmedMode, parsed?.by_source ?? {}, allowedSourceIds)
+        const confirmedTexts = textsByDocumentChannel(documents)
+
+        setAutomation(row)
+        setAgreementDocs(documents)
+        setOrphanRouting(confirmedOrphans)
+        setMode(confirmedMode)
+        setBySource(confirmedRouting)
+        setTexts(confirmedTexts)
+        setPersistedMode(confirmedMode)
+        setPersistedBySource(confirmedRouting)
+        setPersistedTexts(confirmedTexts)
+        setExpandedChannel(null)
+
+        if (!parsed || confirmedOrphans.length > 0) {
+            setSaveError("El servidor no devolvió una configuración de canales válida. No se confirmó el guardado.")
+            return false
+        }
+
+        const confirmedOk = isSaveConfirmed(
+            { contract_mode: mode, by_source: routingForMode(mode, desired.by_source) },
+            { contract_mode: confirmedMode, by_source: confirmedRouting },
+            new Set(Object.keys(confirmedTexts)),
+        )
+        if (!confirmedOk) {
+            setSaveError("El servidor devolvió una configuración diferente a la enviada. Recarga antes de intentar nuevamente.")
+            return false
+        }
+        return true
+    }
 
     const handleSave = async () => {
         if (routingBlocked) return
@@ -357,7 +438,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             // crea con el proveedor seleccionado; no necesita intervención de HIT.
             // `provider_id` de la fila satisface el contrato de creación, mientras
             // que el routing efectivo por canal vive en by_source.provider_slug.
-            const result = await automationService.configure(target.uuid, {
+            await automationService.configure(target.uuid, {
                 statusProviderId: AUTOMATION_STATUS.ACTIVE,
                 // Mantiene una sola fila estructural aunque el routing seleccione
                 // TuFirma para uno o más canales.
@@ -365,18 +446,19 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 parameters: routingParameters,
             })
             routingPersisted = true
-            setAutomation(result)
-            syncOrphansFrom(result)
 
-            // Refresh from the server so the next edit starts from real uuids
-            // (created rows) instead of the plan's local guesses.
-            const refreshed = await propertyDocumentService.list(propertyUuid, {
-                propertyDocumentTypeId: AGREEMENT_DOCUMENT_TYPE_ID,
-                perPage: 100,
-            })
-            setAgreementDocs(refreshed.items)
-
-            toast.success("Contrato y firma guardados")
+            // Un GET nuevo, no solo la respuesta del PATCH: este es exactamente el
+            // estado que verá el PM la próxima vez que abra Documentos.
+            const [refreshedDocs, confirmedAutomation] = await Promise.all([
+                propertyDocumentService.list(propertyUuid, {
+                    propertyDocumentTypeId: AGREEMENT_DOCUMENT_TYPE_ID,
+                    perPage: 100,
+                }),
+                automationService.show(target.uuid, { includeProvider: true }),
+            ])
+            if (applyConfirmedState(confirmedAutomation, refreshedDocs.items)) {
+                toast.success("Contrato y firma guardados")
+            }
         } catch (err) {
             // Every write above is an independent request. Always reconcile after
             // a failure so a retry plans from server truth instead of stale UUIDs
@@ -391,20 +473,18 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 ])
                 setAgreementDocs(refreshedDocs.items)
                 const reconciled = findSignatureAutomation(refreshedAutomations, providers)
-                setAutomation(reconciled)
-                syncOrphansFrom(reconciled)
+                const confirmed = applyConfirmedState(reconciled, refreshedDocs.items)
 
-                // `configure()` already committed and only the final refresh failed.
-                // The requested routing is live; reporting the whole save as failed
-                // would invite a destructive duplicate retry.
-                if (routingPersisted) {
+                if (routingPersisted && confirmed) {
                     toast.success("Contrato y firma guardados")
                     return
                 }
             } catch (reconcileError) {
                 console.error("[ContractRoutingSection] reconciliation error:", reconcileError)
             }
-            if (err instanceof ApiError && err.status === 422) {
+            if (routingPersisted) {
+                setSaveError("El servidor recibió el guardado, pero no pudimos confirmar cómo quedó. Recarga la página antes de volver a intentarlo.")
+            } else if (err instanceof ApiError && err.status === 422) {
                 const errors = err.errors
                 const first = Array.isArray(errors)
                     ? errors.flatMap((e) => (typeof e === "string" ? [e] : Object.values(e).flat()))[0]
@@ -437,18 +517,17 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     }
 
     return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-5">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                    <div className="p-2 bg-[var(--color-brand-purple)]/10 rounded-lg">
-                        <FileSignature className="h-5 w-5 text-[var(--color-brand-purple)]" />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-slate-900">Contrato y firma</h3>
-                        <p className="text-sm text-slate-500">Qué se firma y con quién, por canal de reserva.</p>
-                    </div>
+        <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+            <div className="flex items-start gap-3">
+                <div className="rounded-xl bg-[var(--color-brand-purple)]/10 p-2.5">
+                    <FileSignature className="h-6 w-6 text-[var(--color-brand-purple)]" />
                 </div>
-                <ContractModeToggle value={mode} onChange={handleModeChange} disabled={saving || routingBlocked} />
+                <div>
+                    <h3 className="text-xl font-bold text-slate-900">Contratos por canal</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-slate-500">
+                        Define qué documento reciben y cómo firman los huéspedes según el origen de la reserva.
+                    </p>
+                </div>
             </div>
 
             {routingBlocked && (
@@ -490,99 +569,88 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 </div>
             )}
 
-            {Object.keys(desired.by_source).length > 0 && (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border border-purple-100 bg-purple-50 px-3 py-2 text-sm text-slate-700">
-                    <span className="font-semibold text-[var(--color-brand-purple)]">
-                        {routingPersistedInAutomation ? "Configuración activa:" : "Configuración sin guardar:"}
-                    </span>
-                    <span>
-                        {mode === "all_sources"
-                            ? "Un contrato para todos los canales"
-                            : "Un contrato distinto por canal"}
-                    </span>
-                    {mode === "all_sources" && desired.by_source[ALL_SOURCES_KEY] && (
-                        <span className="text-slate-500">
-                            · {CONTRACT_TYPE_LABELS[desired.by_source[ALL_SOURCES_KEY].contract_type]} (
-                            {CONTRACT_TYPE_OWNERS[desired.by_source[ALL_SOURCES_KEY].contract_type]})
-                        </span>
-                    )}
+            <section className="space-y-2" aria-labelledby="contract-mode-heading">
+                <div>
+                    <h4 id="contract-mode-heading" className="text-sm font-bold text-slate-800">¿Cómo quieres aplicar tus contratos?</h4>
+                    <p className="mt-0.5 text-xs text-slate-500">Puedes usar una sola configuración o personalizarla para cada canal.</p>
                 </div>
-            )}
+                <ContractModeToggle value={mode} onChange={handleModeChange} disabled={saving || routingBlocked} />
+            </section>
 
             {/* `inert`: bloquea también el editor de texto (contenteditable), que un
                 `fieldset disabled` no alcanza. */}
-            <div inert={routingBlocked || undefined} aria-disabled={routingBlocked || undefined} className={routingBlocked ? "space-y-5 opacity-60" : "space-y-5"}>
+            <div inert={routingBlocked || undefined} aria-disabled={routingBlocked || undefined} className={routingBlocked ? "space-y-4 opacity-60" : "space-y-4"}>
             {mode === "all_sources" ? (
-                <SourceRoutingRow
-                    sourceLabel="Todos los canales"
-                    routing={bySource[ALL_SOURCES_KEY] ?? DEFAULT_ROUTING}
-                    onChange={(r) => {
-                        setBySource({ [ALL_SOURCES_KEY]: r })
+                <ContractChannelCard
+                    fallbackName="Todos los canales"
+                    status={channelStatus(ALL_SOURCES_KEY, bySource[ALL_SOURCES_KEY])}
+                    summary={channelSummary(bySource[ALL_SOURCES_KEY], ALL_SOURCES_KEY)}
+                    expanded={expandedChannel === ALL_SOURCES_KEY}
+                    onToggle={() => {
+                        if (!bySource[ALL_SOURCES_KEY]) setBySource({ [ALL_SOURCES_KEY]: DEFAULT_ROUTING })
+                        setExpandedChannel((current) => current === ALL_SOURCES_KEY ? null : ALL_SOURCES_KEY)
                         setSaveError(null)
                     }}
-                    providers={providers}
-                    text={texts[ALL_SOURCES_KEY] ?? ""}
-                    onTextChange={(t) => {
-                        setTexts((prev) => ({ ...prev, [ALL_SOURCES_KEY]: t }))
-                        setSaveError(null)
-                    }}
-                    shortcodes={shortcodes}
-                    hasTextGap={gaps.includes(ALL_SOURCES_KEY)}
-                />
-            ) : (
-                <div className="space-y-3">
-                    {Object.entries(bySource).map(([key, routing]) => (
+                >
+                    {bySource[ALL_SOURCES_KEY] && (
                         <SourceRoutingRow
-                            key={key}
-                            sourceLabel={sources.find((s) => s.id === Number(key))?.name ?? `Canal ${key}`}
-                            routing={routing}
-                            onChange={(r) => {
-                                setBySource((prev) => ({ ...prev, [key]: r }))
+                            routing={bySource[ALL_SOURCES_KEY]}
+                            onChange={(routing) => {
+                                setBySource({ [ALL_SOURCES_KEY]: routing })
                                 setSaveError(null)
                             }}
                             providers={providers}
-                            text={texts[key] ?? ""}
-                            onTextChange={(t) => {
-                                setTexts((prev) => ({ ...prev, [key]: t }))
+                            text={texts[ALL_SOURCES_KEY] ?? ""}
+                            onTextChange={(text) => {
+                                setTexts((previous) => ({ ...previous, [ALL_SOURCES_KEY]: text }))
                                 setSaveError(null)
                             }}
                             shortcodes={shortcodes}
-                            hasTextGap={gaps.includes(key)}
-                            onRemove={() => removeChannel(key)}
+                            hasTextGap={gaps.includes(ALL_SOURCES_KEY)}
                         />
-                    ))}
-
-                    {availableToAdd.length > 0 && (
-                        <Select onValueChange={(v) => addChannel(Number(v))}>
-                            <SelectTrigger className="w-full sm:w-64 bg-slate-50 border-dashed border-slate-300 text-slate-500">
-                                <Plus size={14} className="mr-1" />
-                                <SelectValue placeholder="Agregar canal" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {availableToAdd.map((s) => (
-                                    <SelectItem key={s.id} value={String(s.id)}>
-                                        {s.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
                     )}
+                </ContractChannelCard>
+            ) : (
+                <div className="space-y-3" aria-label="Configuración por canal">
+                    {sources.map((source) => {
+                        const key = String(source.id)
+                        const routing = bySource[key]
+                        return (
+                            <ContractChannelCard
+                                key={key}
+                                source={source}
+                                status={channelStatus(key, routing)}
+                                summary={channelSummary(routing, key)}
+                                expanded={expandedChannel === key}
+                                onToggle={() => {
+                                    if (!routing) addChannel(source.id)
+                                    else setExpandedChannel((current) => current === key ? null : key)
+                                    setSaveError(null)
+                                }}
+                                onRemove={routing ? () => removeChannel(key) : undefined}
+                            >
+                                {routing && (
+                                    <SourceRoutingRow
+                                        routing={routing}
+                                        onChange={(next) => {
+                                            setBySource((previous) => ({ ...previous, [key]: next }))
+                                            setSaveError(null)
+                                        }}
+                                        providers={providers}
+                                        text={texts[key] ?? ""}
+                                        onTextChange={(text) => {
+                                            setTexts((previous) => ({ ...previous, [key]: text }))
+                                            setSaveError(null)
+                                        }}
+                                        shortcodes={shortcodes}
+                                        hasTextGap={gaps.includes(key)}
+                                    />
+                                )}
+                            </ContractChannelCard>
+                        )
+                    })}
                 </div>
             )}
-
-            {mode === "per_source" && availableToAdd.length > 0 && !routingBlocked && (
-                <div className="flex items-start gap-2.5 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-                    <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-                    <div>
-                        <p className="font-semibold">Canales sin contrato configurado</p>
-                        <p className="mt-0.5">
-                            Las reservas de {availableToAdd.map((s) => s.name).join(", ")} no podrán firmar contrato. Si
-                            es intencional, puedes ignorar este aviso.
-                        </p>
-                    </div>
-                </div>
-            )}
-
             </div>
 
             {saveError && (
@@ -591,11 +659,20 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 </p>
             )}
 
-            <div className="flex justify-end">
+            <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-2 text-sm">
+                    {routingBlocked ? (
+                        <><AlertTriangle className="h-4 w-4 text-amber-600" /><span className="font-semibold text-amber-800">Edición bloqueada hasta corregir los canales no identificados.</span></>
+                    ) : hasUnsavedChanges ? (
+                        <><AlertCircle className="h-4 w-4 text-amber-600" /><span className="font-semibold text-amber-800">Tienes cambios sin guardar.</span></>
+                    ) : (
+                        <><CheckCircle2 className="h-4 w-4 text-emerald-600" /><span className="font-semibold text-emerald-700">La configuración está guardada.</span></>
+                    )}
+                </div>
                 <Button
                     type="button"
                     onClick={handleSave}
-                    disabled={saving || routingBlocked}
+                    disabled={saving || routingBlocked || !hasUnsavedChanges}
                     className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold"
                 >
                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
