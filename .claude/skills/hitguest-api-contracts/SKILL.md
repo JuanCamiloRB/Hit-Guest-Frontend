@@ -1765,6 +1765,47 @@ cachear por guestUuid. El exonerado sigue obligado a formulario, contrato,
 garantía y OTP. Al exonerar el backend manda correo al dueño (no lo dispara el
 front). pt sin traducciones de interfaz (en/es; correos sí tienen pt).
 
+## 2c-ter. ⚠️ Subida de documentos por el PM para un huésped exonerado — contrato 2026-10-15 (backend en `main`; front SIN implementar; NO verificado por curl)
+
+*(Doc «Frontend — Subida de documentos por el PM para un huésped exonerado»,
+plan `20261015_subida-documentos-huesped-exonerado.md`. Aditivo, sin migración.)*
+
+- `POST /reservations/{r}/guests/{g}/verification/waiver/documents`,
+  `multipart/form-data`: `front_image` (obligatoria) y `back_image` (la exige
+  el tipo de documento: cédula sí, pasaporte no; el panel no lo sabe de
+  antemano → 422 en `errors.backImage`). jpg/jpeg/png, máx 10 MB c/u.
+  SÍNCRONO y lento (IA de recorte y orientación): estado «procesando» y sin
+  doble envío.
+- 200 `{message, processing: {front: {outcome: "cropped"|"original", rotation:
+  0|90|180|270}, back: …|null}, guest: <fila de GET /reservations/{r}/guests>}`
+  → reemplazar la fila del huésped sin recargar. `original` sigue siendo válido.
+- Errores: 403 (no puede editar la reserva) · 404 (huésped ya no está) · 422
+  `errors.frontImage|backImage` · 422 `{message}` sin exoneración activa
+  (refrescar) · 422 `{success:false, errorType}` con `DOCUMENT_NOT_DETECTED`
+  (+`failedFields: ["front"|"back"]`), `DUPLICATE_DOCUMENT`,
+  `SERVICE_UNAVAILABLE` (las fotos anteriores siguen intactas). Mensajes
+  traducidos.
+- Botón: solo con `identityWaiver` no nulo, antes y después de `isCompleted`;
+  `property_manager` y `property_staff`, no `read_only`; NO requiere ser dueño.
+  Volver a subir REEMPLAZA; no hay borrar.
+- `identityDocument.method` += **`pm-upload`** («Subido por el PM — sin
+  verificar», nunca verificado) y clave nueva `identityDocument.uploadedBy`
+  (nombre o `null`, siempre presente). `images.front/back` como siempre: no
+  armar rutas a mano.
+- `DELETE …/verification/waiver` ahora BORRA las fotos subidas por el PM: el
+  diálogo de revocar debe avisarlo.
+- El PDF de reporte ya enviado no se regenera solo: sugerir `POST
+  …/property-automations/{a}/resend-pdf` (429 de 5 min; solo reserva completa).
+- Una imagen con las dos caras se queda con UNA (el recorte); sin PDF.
+- Portal: sin cambio de contrato, pero `DOCUMENT_NOT_DETECTED` en captura ahora
+  SÍ se dispara (antes la IA aceptaba cualquier foto). El front ya lo maneja
+  (`lib/document-capture.ts`, `VerifyScreen`); probarlo en real.
+- ⚠️ Choque con el proxy: el contrato permite 10 MB por foto, pero el proxy
+  `/api/guest` corta en 4 MB por PETICIÓN (§3). Reusar `prepareImageForUpload`
+  + `exceedsProxyLimit` de `src/lib/image-upload.ts`, como §17 y la galería.
+- ⚠️ El rol por usuario (`read_only`) no llega en la sesión: el front no puede
+  ocultar el botón por rol con certeza; el 403 decide y se muestra su mensaje.
+
 ## 2d. Verificado ≠ check-in completado (columna CHECK-IN de la lista)
 
 ✅ **Son dos ejes distintos del contrato, y confundirlos ya costó un bug**
