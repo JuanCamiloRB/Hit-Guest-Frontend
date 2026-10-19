@@ -1243,6 +1243,50 @@ TipTap; botón deshabilitado): guardar reemplazaría ese routing y podría poner
 un contrato en el canal equivocado. Responsable sin probar: comparar en Network
 el body del PATCH `configure`, su respuesta y el GET posterior.
 
+### ⚠️ Reintento del contrato TuFirma, proveedor del slot y «formulario enviado» — contrato 2026-10-15 (backend en `main`, merge `9bff3f1`; front SIN implementar; NO verificado por curl)
+
+*(Doc «Plan Frontend: reintento del contrato TuFirma…», plan backend
+`20261015_contrato-tufirma-reintento-bloqueado.md`. Sin endpoints nuevos.)*
+Caso real: reserva 106, contrato TuFirma falló al crearse (503) y nunca se pudo
+reintentar — con TuFirma el check-in del principal solo se completa al firmar.
+
+- `GET /reservations/{r}/automation-status`, fila de firma: `providerSlug` =
+  proveedor que FIRMA la reserva según `by_source` (antes el del slot);
+  `redispatchRequiresCheckin` admite **`"main_guest_submitted"`** (TuFirma);
+  `canRedispatch: true` en cuanto el principal ENVIÓ el formulario aunque
+  `mainGuestCheckinCompleted` siga en `false`. Botones SOLO por
+  `canDispatch`/`canRedispatch`; nunca recalcular el gate.
+- `POST …/automation-records/{id}/redispatch` y `…/property-automations/{a}/dispatch`:
+  mismo request/response (202; 422 `automation.requires_checkin_completed`
+  igual para `main_guest` y `main_guest_submitted`).
+- `PATCH …/configure` y el PATCH genérico: si `by_source` manda TODOS los
+  canales al MISMO proveedor, el backend iguala `providerId` a ese proveedor;
+  un `providerId` distinto se IGNORA (200 + log). Ruteo mixto: no cambia.
+  ⇒ cambiar el proveedor solo por `by_source`; leer `providerId`,
+  `providerSlug` y `provider` de la respuesta. Cambiar de proveedor revoca y
+  reemite el `token`.
+- Tras el deploy, `automations:sync-signature-provider` cambia `providerId`
+  de slots existentes (p. ej. la automation 168: 1005 → 1002). Identificar el
+  slot por **`automationType === "digital_signature"`** o
+  `provider.parameters.signature`; nunca por slug, id ni `executionOrder`.
+- `GET /reservations/{r}/guests` → `reservationSpecificData.formSubmittedAt`
+  (ISO UTC con microsegundos; solo desde el deploy). Es estado del sistema, no
+  respuesta del formulario. `GET /reservations/{r}` →
+  `extra.digitalContract.requestedAt` (solo lectura; NUNCA reenviar
+  `extra.digitalContract` en un PUT — el backend no la protege).
+- `automation-records`: hasta 6 intentos fallidos por contrato (min 0, 1, 2,
+  10, 20, 30), mismo `triggeredBy`.
+- Orden de deploy: código → `db:seed --class=ProviderSeeder` (TuFirma pasa a
+  `main_guest_submitted`) → `automations:sync-signature-provider`. Reservas con
+  formulario enviado ANTES del deploy no tienen `formSubmittedAt` y siguen con
+  `canRedispatch: false` (la 106 la recupera soporte).
+- Estado del front al recibirlo (2026-10-19): el panel solo muestra botones
+  manuales para `MANUALLY_DISPATCHABLE_SLUGS` (TRA, SIRE, PDF) — sin agregar
+  `tufirma`, el reintento no aparece. `ContractRoutingSection` envía siempre
+  `providerId` de `hitguest_signature` en `configure` (se ignoraría con un solo
+  proveedor). El PUT de la reserva arma `extra` campo a campo: no reenvía
+  `digitalContract`. `reservationSpecificData` no se pinta de forma genérica.
+
 ### Quién firma
 
 ✅ **Una sola fuente de verdad: `parameters.by_source[canal].provider_slug`**,
