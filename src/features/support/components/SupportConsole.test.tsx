@@ -1,4 +1,9 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+import { configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react"
+
+// La tabla + el panel lateral (Radix) tardan más de 1 s en montar cuando corre
+// la suite completa en paralelo: con el límite por defecto, una prueba fallaba
+// por tiempo y pasaba sola (auditoría 2026-10-20). No es lógica: es margen.
+configure({ asyncUtilTimeout: 4000 })
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
