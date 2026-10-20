@@ -16,16 +16,21 @@ import {
     Loader2,
     Image as ImageIcon,
     RefreshCw,
+    Upload,
     X,
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { AuthenticatedImage } from "./AuthenticatedImage"
 import {
     describeDocumentOrigin,
     describeIdentityStatus,
     describeImageFailures,
     describeMissingImages,
+    describePmUpload,
 } from "./identity-document-meta"
 import { GuestVerificationActions } from "./GuestVerificationActions"
+import { WaivedDocumentUploadDialog } from "./WaivedDocumentUploadDialog"
+import { canUploadWaivedDocuments } from "../lib/waiver-document-upload"
 
 interface GuestDocumentsCardProps {
     reservationUuid: string
@@ -54,6 +59,14 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
      * ya se ve» de «se aplicó pero la pantalla quedó vieja» — callarlo dejaba al
      * PM leyendo un estado obsoleto con un toast de éxito encima.
      */
+    /**
+     * Reemplaza UNA fila con la que devolvió el backend tras subir fotos
+     * (contrato 2026-10-15): no hace falta recargar toda la ficha.
+     */
+    const replaceGuest = useCallback((updated: ReservationGuest) => {
+        setGuests((current) => current.map((guest) => (guest.uuid === updated.uuid ? updated : guest)))
+    }, [])
+
     const refreshGuests = useCallback(async (): Promise<boolean> => {
         setIsRefreshing(true)
         try {
@@ -155,6 +168,7 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
                             guest={guest}
                             onPreview={setPreview}
                             onChanged={refreshGuests}
+                            onGuestReplaced={replaceGuest}
                         />
                     ))}
                 </div>
@@ -212,13 +226,18 @@ function GuestDocumentRow({
     guest,
     onPreview,
     onChanged,
+    onGuestReplaced,
 }: {
     reservationUuid: string
     guest: ReservationGuest
     onPreview: (preview: DocumentPreview) => void
     /** Recarga la ficha; `false` si no pudo (ver `refreshGuests`). */
     onChanged: () => Promise<boolean>
+    /** Reemplaza esta fila con la que devolvió el backend. */
+    onGuestReplaced: (guest: ReservationGuest) => void
 }) {
+    const [uploadOpen, setUploadOpen] = useState(false)
+    const pmUploadNotice = describePmUpload(guest.identityDocument)
     const initials = `${guest.name?.[0] || ""}${guest.lastname?.[0] || ""}`.toUpperCase() || "?"
     const fullName = `${guest.name} ${guest.lastname}`.trim() || "Huésped"
     const hasDocuments = guest.documentImage1 || guest.documentImage2
@@ -279,7 +298,31 @@ function GuestDocumentRow({
                     {guest.identityWaiver.reason && (
                         <p className="italic">Motivo: {guest.identityWaiver.reason}</p>
                     )}
+                    {pmUploadNotice && <p>{pmUploadNotice}</p>}
                 </div>
+            )}
+
+            {/* Fotos del documento de un exonerado (contrato 2026-10-15): antes y
+                después de completar, sin exigir ser dueño. El rol de solo lectura
+                no llega en la sesión — si no puede, el 403 lo dice. */}
+            {canUploadWaivedDocuments(guest) && (
+                <>
+                    <Button type="button" variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
+                        <Upload size={14} className="mr-1.5" aria-hidden />
+                        {hasDocuments ? "Reemplazar fotos del documento" : "Subir fotos del documento"}
+                    </Button>
+                    <WaivedDocumentUploadDialog
+                        open={uploadOpen}
+                        onOpenChange={setUploadOpen}
+                        reservationUuid={reservationUuid}
+                        guest={guest}
+                        onUploaded={(updated) => {
+                            if (updated) onGuestReplaced(updated)
+                            else void onChanged()
+                        }}
+                        onStale={() => void onChanged()}
+                    />
+                </>
             )}
 
             {/* Expediente incompleto: una imagen que debió guardarse se perdió

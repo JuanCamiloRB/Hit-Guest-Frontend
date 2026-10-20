@@ -34,7 +34,7 @@ export type IdentityDocumentOrigin = "esta-estancia" | "otra-estancia" | "descon
  * Cómo el huésped superó identidad EN ESTA reserva. `document-capture`
  * (contrato 2026-09-27) NO la superó: subió fotos sin verificación.
  */
-export type IdentityMethod = "didit" | "textract-ocr" | "otp" | "document-capture"
+export type IdentityMethod = "didit" | "textract-ocr" | "otp" | "document-capture" | "pm-upload"
 
 /** Qué flujo capturó la imagen que se ve (puede ser de una estancia anterior). */
 export type IdentityCapturedBy = "didit" | "textract-ocr" | "document-capture"
@@ -69,6 +69,8 @@ export interface GuestIdentityDocument {
      * correcta. Se muestra solo la fecha (ver `formatCapturedAt`).
      */
     capturedAt: string | null
+    /** Quién subió las fotos desde el panel (`pm-upload`); `null` si no aplica o no se sabe. */
+    uploadedBy: string | null
     origin: IdentityDocumentOrigin
     /**
      * `true` solo si el backend devolvió el objeto `identityDocument` para este
@@ -83,7 +85,9 @@ export interface GuestIdentityDocument {
     isReported: boolean
 }
 
-const METHODS: IdentityMethod[] = ["didit", "textract-ocr", "otp", "document-capture"]
+// `pm-upload` (contrato 2026-10-15): fotos que subió el PM para un huésped
+// exonerado. NUNCA es una verificación.
+const METHODS: IdentityMethod[] = ["didit", "textract-ocr", "otp", "document-capture", "pm-upload"]
 const CAPTURED_BY: IdentityCapturedBy[] = ["didit", "textract-ocr", "document-capture"]
 
 export const EMPTY_IDENTITY_DOCUMENT: GuestIdentityDocument = Object.freeze({
@@ -93,6 +97,7 @@ export const EMPTY_IDENTITY_DOCUMENT: GuestIdentityDocument = Object.freeze({
     method: null,
     capturedBy: null,
     capturedAt: null,
+    uploadedBy: null,
     origin: "desconocido",
     isReported: false,
 })
@@ -205,6 +210,7 @@ export function readIdentityDocument(rawGuest: unknown, storageBase: string): Gu
         method: readEnum(identityRecord.method, METHODS),
         capturedBy: readEnum(identityRecord.capturedBy ?? identityRecord.captured_by, CAPTURED_BY),
         capturedAt: readText(identityRecord.capturedAt ?? identityRecord.captured_at),
+        uploadedBy: readText(identityRecord.uploadedBy ?? identityRecord.uploaded_by),
         origin: readIdentityOrigin(
             identityRecord.inheritedFromAnotherReservation
             ?? identityRecord.inherited_from_another_reservation,

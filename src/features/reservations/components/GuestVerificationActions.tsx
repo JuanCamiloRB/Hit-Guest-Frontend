@@ -259,7 +259,8 @@ export function GuestVerificationActions({
                         <DialogTitle>Revocar la exoneración</DialogTitle>
                         <DialogDescription>
                             {fullName} volverá a quedar bloqueado hasta pasar la verificación de
-                            identidad.
+                            identidad. También se eliminarán las fotos del documento subidas para
+                            este huésped.
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>

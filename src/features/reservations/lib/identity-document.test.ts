@@ -295,3 +295,27 @@ describe("mergeIdentityDocuments", () => {
         expect(mergeIdentityDocuments(undefined, undefined)).toEqual(EMPTY_IDENTITY_DOCUMENT)
     })
 })
+
+describe("readIdentityDocument — fotos subidas por el PM (contrato 2026-10-15)", () => {
+    it("lee el método pm-upload y quién las subió", () => {
+        const doc = readIdentityDocument({
+            identityDocument: {
+                images: { front: "https://api/front", back: "https://api/back" },
+                source: "reservation",
+                method: "pm-upload",
+                capturedBy: null,
+                capturedAt: "2026-10-15 13:42:01",
+                uploadedBy: "Laura Gómez",
+                inheritedFromAnotherReservation: false,
+            },
+        }, STORAGE)
+        expect(doc.method).toBe("pm-upload")
+        expect(doc.uploadedBy).toBe("Laura Gómez")
+        expect(doc.front).toBe("https://api/front")
+    })
+
+    it("uploadedBy null o ausente queda en null", () => {
+        expect(readIdentityDocument({ identityDocument: { images: {}, uploadedBy: null } }, STORAGE).uploadedBy).toBeNull()
+        expect(readIdentityDocument({ identityDocument: { images: {} } }, STORAGE).uploadedBy).toBeNull()
+    })
+})

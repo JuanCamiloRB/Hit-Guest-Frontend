@@ -1,4 +1,5 @@
-import { apiClient, handleSessionExpired } from "@/lib/api-client"
+import { apiClient, handleSessionExpired, localeHeaders } from "@/lib/api-client"
+import { exceedsProxyLimit, prepareImageForUpload } from "@/lib/image-upload"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { ApiError, type ApiErrorResponse } from "@/types/api"
 import { API_BASE, CONFIG } from "@/lib/config"
@@ -692,6 +693,61 @@ export class ReservationsService {
         // Surface it as an error toast instead.
         const r: any = await apiClient.post(url, body, { suppressUnauthorizedRedirect: true })
         return r?.message || r?.data?.message || "Link de check-in enviado"
+    }
+
+    /**
+     * POST /reservations/{r}/guests/{g}/verification/waiver/documents
+     * (contrato 2026-10-15): el PM sube las fotos de un huésped exonerado.
+     *
+     * `fetch` directo con `FormData` — `apiClient` serializa a JSON. Las fotos se
+     * recomprimen antes: el proxy de Vercel corta la PETICIÓN completa en 4,5 MB
+     * (oficial) y en la práctica ~4 MB, aunque el backend acepte 10 MB por foto.
+     * Devuelve la fila del huésped que manda el backend, ya normalizada.
+     */
+    async uploadWaivedGuestDocuments(
+        reservationUuid: string,
+        guestUuid: string,
+        images: { front: File; back: File | null },
+    ): Promise<{ guest: ReservationGuest | null; message: string }> {
+        const [front, back] = await Promise.all([
+            prepareImageForUpload(images.front),
+            images.back ? prepareImageForUpload(images.back) : Promise.resolve(null),
+        ])
+        if (exceedsProxyLimit([front, back])) {
+            throw new ApiError(413, {
+                message: "Las fotos pesan demasiado incluso comprimidas. Usa fotos más livianas, por ejemplo un pantallazo de cada cara.",
+            })
+        }
+        const formData = new FormData()
+        formData.append("front_image", front)
+        if (back) formData.append("back_image", back)
+
+        const token = useAuthStore.getState().user?.token
+        const url = `${API_BASE}/reservations/${encodeURIComponent(reservationUuid)}/guests/${encodeURIComponent(guestUuid)}/verification/waiver/documents`
+        const res = await fetch(url, {
+            method: "POST",
+            headers: {
+                Accept: "application/json",
+                ...localeHeaders(),
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: formData,
+        })
+        const json: unknown = await res.json().catch(() => ({}))
+        const body = json && typeof json === "object" ? (json as Record<string, unknown>) : {}
+        if (!res.ok) {
+            if (res.status === 401) handleSessionExpired()
+            // El cuerpo del error es del backend: ApiError conserva `errors`,
+            // `errorType` y `failedFields` tal cual para `describeWaiverUploadError`.
+            const errorBody = { ...body, message: typeof body.message === "string" ? body.message : `HTTP ${res.status}` }
+            throw new ApiError(res.status, errorBody as unknown as ApiErrorResponse)
+        }
+        const data = body.data && typeof body.data === "object" ? (body.data as Record<string, unknown>) : {}
+        const rawGuest = body.guest ?? data.guest
+        return {
+            guest: rawGuest && typeof rawGuest === "object" ? this.mapPanelGuest(rawGuest) : null,
+            message: typeof body.message === "string" ? body.message : "Se guardaron las fotos del documento del huésped.",
+        }
     }
 
     async getGuests(reservationUuid: string): Promise<ReservationGuest[]> {

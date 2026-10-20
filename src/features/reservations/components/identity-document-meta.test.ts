@@ -7,6 +7,7 @@ import {
     describeImageError,
     describeMissingImages,
     formatCapturedAt,
+    describePmUpload,
 } from "./identity-document-meta"
 
 function doc(overrides: Partial<GuestIdentityDocument> = {}): GuestIdentityDocument {
@@ -205,5 +206,26 @@ describe("describeImageError", () => {
         expect(describeImageError(403).short).toBe("Sin permiso")
         expect(describeImageError(500).short).toBe("No se pudo cargar")
         expect(describeImageError().short).toBe("No se pudo cargar")
+    })
+})
+
+describe("fotos subidas por el PM — nunca se leen como verificadas", () => {
+    const pmDoc: GuestIdentityDocument = {
+        ...EMPTY_IDENTITY_DOCUMENT,
+        front: "https://api/front",
+        method: "pm-upload",
+        capturedAt: "2026-10-15 13:42:01",
+        uploadedBy: "Laura Gómez",
+        isReported: true,
+    }
+
+    it("dice quién las subió, cuándo y que no verifican", () => {
+        expect(describePmUpload(pmDoc)).toBe(`Fotos del documento subidas por Laura Gómez el ${formatCapturedAt("2026-10-15 13:42:01")} · sin verificar.`)
+        expect(describePmUpload({ ...pmDoc, uploadedBy: null })).toMatch(/subidas desde el panel .* sin verificar/)
+        expect(describePmUpload({ ...pmDoc, method: "document-capture" })).toBeNull()
+    })
+
+    it("el huésped exonerado con fotos del PM sigue figurando como exonerado", () => {
+        expect(describeIdentityStatus(pmDoc, "waived").label).toBe("Verificación exonerada")
     })
 })

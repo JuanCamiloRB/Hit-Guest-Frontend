@@ -49,6 +49,9 @@ const PROVIDER_SLUG_BY_METHOD: Record<IdentityMethod, string | null> = {
     // Captura sin verificación (2026-09-27): no hay proveedor porque no hubo
     // verificación. Nunca se compone un tipo con él.
     "document-capture": null,
+    // Subida por el PM para un huésped exonerado (2026-10-15): tampoco hubo
+    // verificación, así que no hay tipo que componer.
+    "pm-upload": null,
 }
 
 /**
@@ -71,7 +74,7 @@ const OTP_TYPE_LABEL = "por código"
 function describeVerificationType(doc: GuestIdentityDocument): string | null {
     if (!doc.method) return null
     if (doc.method === "otp") return OTP_TYPE_LABEL
-    if (doc.method === "document-capture") return null
+    if (doc.method === "document-capture" || doc.method === "pm-upload") return null
     return providerShortLabel(PROVIDER_SLUG_BY_METHOD[doc.method])
 }
 
@@ -153,6 +156,18 @@ export function formatCapturedAt(value: string | null): string | null {
     const date = new Date(year, month - 1, day)
     if (Number.isNaN(date.getTime())) return null
     return new Intl.DateTimeFormat("es-CO", { dateStyle: "medium" }).format(date)
+}
+
+/**
+ * Quién subió las fotos desde el panel (contrato 2026-10-15, `pm-upload`), o
+ * `null` si no las subió el PM. Siempre dice «sin verificar»: subir fotos no
+ * verifica nada, el huésped sigue exonerado.
+ */
+export function describePmUpload(doc: GuestIdentityDocument): string | null {
+    if (doc.method !== "pm-upload") return null
+    const fecha = formatCapturedAt(doc.capturedAt)
+    const quien = doc.uploadedBy ? ` por ${doc.uploadedBy}` : " desde el panel"
+    return `Fotos del documento subidas${quien}${fecha ? ` el ${fecha}` : ""} · sin verificar.`
 }
 
 /**
