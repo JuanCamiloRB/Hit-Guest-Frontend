@@ -80,3 +80,45 @@ describe("WaivedDocumentUploadDialog", () => {
         expect(handlers.onStale).toHaveBeenCalled()
     })
 })
+
+describe("WaivedDocumentUploadDialog — auditoría 2026-10-20", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        globalThis.URL.createObjectURL = vi.fn(() => "blob:preview")
+        globalThis.URL.revokeObjectURL = vi.fn()
+    })
+
+    it("el reverso opcional se puede quitar sin perder el frente, y libera su vista previa", () => {
+        renderDialog()
+        pick(/^Frente/, jpg())
+        pick(/^Reverso/, jpg("b.jpg"))
+        expect(screen.getByAltText("Vista previa: Reverso")).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole("button", { name: /Quitar/ }))
+
+        expect(screen.queryByAltText("Vista previa: Reverso")).toBeNull()
+        expect(screen.getByAltText("Vista previa: Frente")).toBeInTheDocument()
+        expect(URL.revokeObjectURL).toHaveBeenCalledTimes(1)
+    })
+
+    it("la vista previa se crea al elegir, no al renderizar", () => {
+        renderDialog()
+        expect(URL.createObjectURL).not.toHaveBeenCalled()
+        pick(/^Frente/, jpg())
+        expect(URL.createObjectURL).toHaveBeenCalledTimes(1)
+    })
+
+    it("es un formulario: enviar con Enter sube las fotos", async () => {
+        mocks.upload.mockResolvedValue({ guest: { uuid: "g-1" }, message: "ok" })
+        renderDialog()
+        pick(/^Frente/, jpg())
+        fireEvent.submit(screen.getByRole("button", { name: "Subir fotos" }).closest("form")!)
+        await waitFor(() => expect(mocks.upload).toHaveBeenCalledTimes(1))
+    })
+
+    it("el error bajo un campo se anuncia (role=alert)", async () => {
+        renderDialog()
+        fireEvent.click(screen.getByRole("button", { name: "Subir fotos" }))
+        expect(await screen.findByRole("alert")).toHaveTextContent("Sube la foto del frente del documento.")
+    })
+})

@@ -54,7 +54,7 @@ export function describeWaiverUploadError(error: unknown): WaiverUploadErrorView
     if (error.status !== 422) return { ...NONE, form: message }
 
     if (error.errorType === "DOCUMENT_NOT_DETECTED") {
-        const sides = failedSides((error as { failedFields?: unknown }).failedFields)
+        const sides = failedSides(error.failedFields)
         if (sides.length === 0) return { ...NONE, form: message }
         return { ...NONE, front: sides.includes("front") ? message : null, back: sides.includes("back") ? message : null }
     }

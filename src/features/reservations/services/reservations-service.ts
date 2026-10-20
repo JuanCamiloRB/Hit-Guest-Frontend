@@ -1,7 +1,7 @@
 import { apiClient, handleSessionExpired, localeHeaders } from "@/lib/api-client"
 import { exceedsProxyLimit, prepareImageForUpload } from "@/lib/image-upload"
 import { useAuthStore } from "@/lib/store/auth-store"
-import { ApiError, type ApiErrorResponse } from "@/types/api"
+import { ApiError, toApiErrorResponse, type ApiErrorResponse } from "@/types/api"
 import { API_BASE, CONFIG } from "@/lib/config"
 import { normalizeLocale, type CommunicationLocale } from "@/lib/locales"
 import { parseCalendarDate } from "@/lib/calendar-date"
@@ -737,10 +737,9 @@ export class ReservationsService {
         const body = json && typeof json === "object" ? (json as Record<string, unknown>) : {}
         if (!res.ok) {
             if (res.status === 401) handleSessionExpired()
-            // El cuerpo del error es del backend: ApiError conserva `errors`,
-            // `errorType` y `failedFields` tal cual para `describeWaiverUploadError`.
-            const errorBody = { ...body, message: typeof body.message === "string" ? body.message : `HTTP ${res.status}` }
-            throw new ApiError(res.status, errorBody as unknown as ApiErrorResponse)
+            // ApiError conserva `errors`, `errorType` y `failedFields` (validados)
+            // para `describeWaiverUploadError`.
+            throw new ApiError(res.status, toApiErrorResponse(body, `HTTP ${res.status}`))
         }
         const data = body.data && typeof body.data === "object" ? (body.data as Record<string, unknown>) : {}
         const rawGuest = body.guest ?? data.guest
