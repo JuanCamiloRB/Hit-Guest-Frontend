@@ -1806,6 +1806,21 @@ plan `20261015_subida-documentos-huesped-exonerado.md`. Aditivo, sin migración.
 - ⚠️ El rol por usuario (`read_only`) no llega en la sesión: el front no puede
   ocultar el botón por rol con certeza; el 403 decide y se muestra su mensaje.
 
+**Cómo quedó en el front (2026-10-20, tras auditoría):**
+`reservationsService.uploadWaivedGuestDocuments` (`fetch` + `FormData`, sin
+`Content-Type` propio, token + `localeHeaders`, 401 → `handleSessionExpired`;
+recomprime con `prepareImageForUpload` y corta con `exceedsProxyLimit` — límite
+oficial de Vercel 4,5 MB por petición, el repo usa 4 MB). La fila `guest` se
+normaliza con `mapPanelGuest` y la tarjeta la REEMPLAZA (`replaceGuest`).
+`lib/waiver-document-upload.ts`: `canUploadWaivedDocuments` (solo
+`identityWaiver`) y `describeWaiverUploadError` (por estado, `errorType` y
+claves de `errors` en camel/snake; 422 con solo `message` y 404 → refrescar).
+`WaivedDocumentUploadDialog` aislado (frente obligatorio, reverso opcional,
+vista previa, «Procesando…», sin doble envío, aviso del PDF).
+`identityDocument.method` += `pm-upload` y `uploadedBy`; `describePmUpload` →
+«Fotos del documento subidas por X el F · sin verificar». La pastilla sigue
+«Verificación exonerada». Revocar avisa que se borran las fotos.
+
 ## 2d. Verificado ≠ check-in completado (columna CHECK-IN de la lista)
 
 ✅ **Son dos ejes distintos del contrato, y confundirlos ya costó un bug**
