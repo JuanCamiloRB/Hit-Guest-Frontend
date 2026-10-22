@@ -7,7 +7,7 @@
  *
  * These texts are NOT editable from the PM Panel — only HitGuest staff
  * (super_admin / M2M admin:*) can edit them, via a separate internal tool
- * (see docs/PLAN_CONTRATOS_POR_SOURCE.md §5, not built here). The PM Panel
+ * (contract plan §5, not built here). The PM Panel
  * only previews this text while configuring contract_type.
  */
 

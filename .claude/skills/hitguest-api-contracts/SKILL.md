@@ -21,6 +21,12 @@ conveniente.
 > El protocolo está al final, en *Mantenimiento*, y es obligatorio: es lo único
 > que impide volver a investigar lo mismo dentro de dos semanas.
 
+> **`docs/` ya no existe (borrado 2026-10-21).** Las copias de la documentación
+> del backend (`API_DOCUMENTATION.md`, `RICARDO_API_CONTRACTS.md`,
+> `FRONTEND_API_ENDPOINTS.md`), los planes y los `BACKEND_NEEDS_*.md` siguen en
+> el historial: `git show b3b0df9:docs/<archivo>.md`. Lo que seguía vigente
+> quedó en este skill; los pedidos al backend aún abiertos, en §5.
+
 ---
 
 ## 0. Cómo comprobar cualquier cosa de acá
@@ -301,7 +307,7 @@ Reemplaza la regla de abajo («no se cambia por unidad»), que queda como histor
 
 ### ❌ (Reemplazado 2026-10-14) El nivel de identidad NO se cambia por unidad
 
-*(Revisado 2026-10-12 contra `docs/API_DOCUMENTATION.md` §overrides y los tipos
+*(Revisado 2026-10-12 contra `API_DOCUMENTATION.md` §overrides y los tipos
 de `listing-automation-overrides`; pregunta de producto: «¿dónde cambio de
 Avanzada a Esencial para una unidad?».)* El override de listing solo tiene
 `statusRecordId` (6 aplica / 7 apagada), `parameters` (delta que se mezcla
@@ -314,7 +320,8 @@ cambio de contrato de backend (p. ej. `providerId` en el override, validado
 contra `verification_type`). No inventarlo con una clave en `parameters`: el
 resolver no la leería y el PM vería un nivel que no se aplica. Contrato
 completo pedido (herencia con `null`, 422, provider efectivo en los GET, en
-`/identify`, estado y facturación) en `docs/BACKEND_NEEDS_IDENTITY_PROVIDER_PER_LISTING.md`.
+`/identify`, estado y facturación); lo que construyó el backend es la sección
+de arriba.
 
 **Heredar ≠ override activo (corregido en front 2026-10-12, auditoría externa).**
 Tres estados reales: sin override = hereda; override 6 = existe y su estado
@@ -1184,7 +1191,7 @@ Identificar por `providerSlug` / `providerId`. Ya se eliminó por esto el
 
 ### Se llama «Contrato», NO «Firma Digital»
 
-✅ **Regla de producto, respaldada por la spec del backend** (`docs/RICARDO_API_CONTRACTS.md`
+✅ **Regla de producto, respaldada por la spec del backend** (`RICARDO_API_CONTRACTS.md`
 §8.1.5): *«"Firma Digital" deja de ser un nodo independiente: la firma es
 atributo del contrato»*. La automatización agrupa **el contrato completo** —qué
 documento se envía, por qué canal y quién lo firma—, así que nombrarla por uno
@@ -1545,7 +1552,7 @@ capturado en el contrato de garantía, no 200).*
 - El portal del huésped pinta `{currency} {amount}` con el **`guaranteeAmount`
   del setup-intent** (`GuaranteeCardForm.tsx:162,475`) — el "USD 200" NO está en
   el front; llega del backend (y puede llegar como string `"200"`).
-- Por diseño del plan vigente (PLAN_CONTRATOS_POR_SOURCE §5): el texto del
+- Por diseño (plan de contratos por canal, 2026-08): el texto del
   anexo de garantía es un **system document global** (`GET
   /system-documents/slug/damage_consumption_guarantee`) cuyos shortcodes
   (`guarantee_amount`, `guarantee_mechanism`, `guarantee_release_hours`,
@@ -1879,7 +1886,7 @@ huésped se consulta en el detalle de la reserva (§2b).
 
 `GET|PUT|PATCH /reservations/{uuid}`, `GET|POST /reservations`:
 
-1. **Origen a nivel reserva (🆕, responde nuestro BACKEND_NEEDS_RESERVATION_ORIGIN):**
+1. **Origen a nivel reserva (🆕, responde nuestro pedido del 2026-08-19):**
    `isImported: bool` (la creó una integración), `importSource: "calry"|"kunas_pms"|null`,
    `syncedAt: ISO|null`. Los dos primeros son retroactivos; **`syncedAt` es
    forward-only**: `null` = «no sabemos», NUNCA pintarlo como «sin sincronizar»
@@ -1934,7 +1941,7 @@ La lista conserva `origin` en el tipo aunque aún no lo pinte.
 
 ## 2e-bis. Reserva manual: el link de check-in NO sale solo — lo pide el front
 
-⚠️ *`docs/API_DOCUMENTATION.md` («Envío automático: al importar una reserva de
+⚠️ *`API_DOCUMENTATION.md` («Envío automático: al importar una reserva de
 la propiedad»); no reverificado por curl. Reporte de Ricardo 2026-10-08: «este
 link le debió llegar al correo del guest».*
 
@@ -2249,10 +2256,40 @@ muestra el `digest` como referencia en pantalla.
 - **Superusuario e ingreso a cuentas de clientes** — ❌ el modelo PEDIDO
   (`/admin/*`, `capabilities`, modo `read_only`/`full`, revocar con el token
   del actor) NO es el que construyó el backend. Reemplazado por el contrato de
-  soporte de abajo (§5b). `docs/BACKEND_NEEDS_IMPERSONATION.md` queda como
-  historia del pedido.
+  soporte de abajo (§5b). El pedido original queda en el historial de git
+  (`BACKEND_NEEDS_IMPERSONATION.md`).
 
-El detalle con evidencia está en `docs/BACKEND_NEEDS_PROPERTY_AUTOMATIONS.md`.
+### Pedidos al backend sin respuesta (antes en `docs/BACKEND_NEEDS_*.md`)
+
+Solo lo que sigue abierto; lo ya respondido está en su sección. Ninguno tiene
+un curl que lo cierre: si aparece la respuesta, se registra acá y se borra la
+línea.
+
+- **SUPER_ADMIN ve todas las cuentas** (jul 2026). `GET /properties` como Root
+  devolvía propiedades de todos los clientes: `withinScope()` le da alcance
+  global. Producto decidió que en properties, listings y reservations cada rol
+  ve solo lo suyo. El front ya manda solo el token de sesión.
+  Regla de aislamiento confirmada por backend: uuid inexistente → 404, uuid de
+  otra cuenta → 403 (nunca 401).
+- **El rol no viaja en `UserResource`.** Por eso Usuarios no muestra el rol por
+  fila (solo el badge de dueño, con `isAccountOwner`). Pedido: `roles: [...]`.
+  Tampoco hay invitación por correo: `POST /users` crea con contraseña.
+- **Crédito de bienvenida de USD 10.** El registro y la activación ya lo
+  anuncian; acreditarlo es del backend (`GET /billing/balance` = `10.00` en una
+  cuenta nueva). Si el monto cambia, hay que cambiar esos textos.
+- **`after_automation` exige `predecessor_automation_id` entero, que no se
+  expone** (la API trabaja con UUID). El front conserva cadenas existentes pero
+  no deja crear una nueva. Pedido: aceptar `predecessor_automation_uuid`.
+- **Filas de prueba sin señal estable** (`TuFirma Test`, `tufirmaZ`). No filtrar
+  por nombre; pedido: `is_test`/`environment` o un estado propio.
+- **Proveedor de identidad por unidad, preguntas que el contrato no contestó:**
+  si la propiedad cambia de proveedor, ¿las unidades con override conservan el
+  suyo? (propusimos que sí); una verificación empezada, ¿sigue con su proveedor
+  si se cambia el override a mitad de camino? (propusimos que sí: se fija al
+  crear la sesión).
+- **`guest_filter` de SIRE y sanitizar `provider.parameters`**: ver
+  «Detalles por automation» y «El `provider` sideloaded trae credenciales».
+- **200 incompleto del setup-intent de la garantía**: ver §2c.
 
 ## 5b. ⚠️ Acceso de soporte a cuentas de clientes («Entrar como») — contrato 2026-10-10
 
@@ -2370,7 +2407,7 @@ porque conserva los errores, no porque los oculte.
 |---|---|
 | El contrato en sí | **Este skill** |
 | El hallazgo y su porqué | Memoria (`mem_save` + archivo en `memory/`) |
-| Un pedido al backend | `docs/BACKEND_NEEDS_*.md`, con la evidencia observada |
+| Un pedido al backend | §5 de este skill (una línea con la evidencia); el texto para enviarlo va en el chat, no en un archivo del repo |
 | Un patrón de código que se deriva | `hitguest-standards` |
 
 ### Verificar antes de citar

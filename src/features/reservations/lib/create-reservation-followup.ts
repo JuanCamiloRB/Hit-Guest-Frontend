@@ -1,7 +1,7 @@
 /**
  * Qué pasa justo después de crear una reserva manual.
  *
- * SEGÚN LA DOCUMENTACIÓN del backend (`docs/API_DOCUMENTATION.md`, «Envío
+ * SEGÚN LA DOCUMENTACIÓN del backend (`API_DOCUMENTATION.md`, «Envío
  * automático») el link de check-in sale solo al importar una reserva (PMS o
  * iCal); ⚠️ no está verificado contra producción que `POST /reservations` no
  * dispare además un envío propio — ver la prueba de doble envío en el skill

@@ -8,7 +8,8 @@
  * cinco pestañas.
  *
  * Los límites NO están inventados: salen de la tabla de `listings` en
- * `docs/API_DOCUMENTATION.md` (líneas 2165-2178). Se declaran como constantes
+ * `API_DOCUMENTATION.md` del backend (líneas 2165-2178; ya no está en el repo:
+ * `git show b3b0df9:docs/API_DOCUMENTATION.md`). Se declaran como constantes
  * exportadas para que el `maxLength` del input y la validación no puedan
  * separarse — que es exactamente cómo se cuelan estos errores.
  *
@@ -26,7 +27,7 @@ export interface UnitFieldError {
     tab: UnitFormTab
 }
 
-// ── Límites del backend (docs/API_DOCUMENTATION.md, tabla `listings`) ────────
+// ── Límites del backend (API_DOCUMENTATION.md, tabla `listings`) ─────────────
 export const UNIT_LIMITS = {
     /** `name`: máx 120 caracteres. */
     name: 120,

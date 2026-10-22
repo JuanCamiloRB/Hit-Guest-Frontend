@@ -24,7 +24,7 @@ Este repo tiene un historial real de bugs por inventar en vez de verificar:
 ids `14/15/16` cuando los reales eran `21/22/23` — enrutaba datos al canal
 equivocado en silencio.
 
-- Si hay un archivo de plan (`.claude/plans/*.md`, `docs/*.md`, o texto pegado
+- Si hay un archivo de plan (`.claude/plans/*.md`, o texto pegado
   por el usuario), leerlo completo antes de escribir una línea.
 - **No confiar en nombres, slugs o rutas — verificar el contenido real.**
   Precedente reciente: se asumió que `hitguest.com/terminos-condiciones/` era
@@ -76,6 +76,12 @@ copiarlo, no reinventarlo:
   hardcodeado. Si un mockup HTML trae sus propios hex, primero comparar contra
   `globals.css` — si coinciden (como pasó con el mockup de garantía), es señal
   de que el diseño ya fue pensado para este sistema de tokens.
+- **Manual de marca HIT** (lo que importa en pantalla): navy `#222755`, purple
+  `#9D4CF2`, blue `#5467FA`, off-white `#F9FBFA` (los tokens de arriba).
+  Gabarito Bold para logotipo y títulos (`font-sans`); Poppins para el cuerpo
+  (`font-secondary`, la que aplica `<body>`). El logo no se deforma, rota ni
+  lleva sombra o contorno; mínimo digital 35 px el ícono y 56 px el logotipo
+  (`components/ui/Logo.tsx`).
 - **Patrones de componente repetidos**: el checkbox de aceptación con link
   (`ContractScreen` → `IdentifyScreen`/`RegisterForm`) se copió tal cual
   (misma estructura `<label>`/`<input type="checkbox">`/`peer-checked`) en vez
@@ -206,12 +212,18 @@ aplican, corregir esta sección (Regla 7):
   ruta propia, nunca a Google directo, así que la key nunca llega al bundle
   del navegador. Cualquier integración nueva con una API key de terceros sigue
   este mismo patrón: BFF route + env var sin `NEXT_PUBLIC_`.
-- **Contraste que hay que entender, no copiar a ciegas**: `NEXT_PUBLIC_APP_API_TOKEN`
-  (en `src/lib/config.ts`) SÍ está expuesto a propósito — es el "app token"
-  compartido y de bajo privilegio del portal de huésped (checkin), no un
-  secreto de cuenta. Antes de marcar un `NEXT_PUBLIC_*` como problema, verificar
-  si es de este tipo (documentado como público a propósito) o si es un secreto
-  real mal puesto ahí.
+- **El app token del portal ya no es público** (corregido 2026-10-21: esta
+  regla decía que `NEXT_PUBLIC_APP_API_TOKEN` vivía en `src/lib/config.ts`
+  expuesto a propósito; ya no está ahí). Hoy es `APP_API_TOKEN`, sin prefijo,
+  y solo lo leen código de servidor: el proxy `src/app/api/guest/[...path]`,
+  `api/checkin/{catalogs,countries}`, `checkin-server-service.ts` y
+  `lib/server-api.ts`. Esos cinco conservan `NEXT_PUBLIC_APP_API_TOKEN` como
+  respaldo legado; no agregar ese nombre en código cliente.
+- **Variables de entorno** (fuente: `.env.example`): navegador =
+  `NEXT_PUBLIC_API_URL_GUEST`, `NEXT_PUBLIC_API_URL_HIT` (la base termina en
+  `/api/v1`, sin `/auth`: si no, sale `/auth/auth/login`) y
+  `NEXT_PUBLIC_ENABLE_MOCKS`; servidor = `APP_API_TOKEN`, y opcionales
+  `GEOCODING_PROVIDER` + `GOOGLE_MAPS_API_KEY` o `NOMINATIM_BASE_URL`.
 - **Stripe**: el `publishableKey` se toma **siempre de la respuesta del backend**
   (`GuaranteeSetupIntent.publishableKey`), nunca hardcodeado ni en env — así
   el backend puede cambiar de cuenta test/live sin release de frontend. La

@@ -21,7 +21,7 @@
  * formulario. Es exactamente el caso que se reportó: OTP correcto → fotos.
  *
  * Esto NO es "confiar en una bandera de localStorage" (lo que prohíbe
- * `docs/CHECKIN_VIDEO_AUDIT_2026-07-29.md`): el token es una credencial opaca
+ * la auditoría del video de check-in del 2026-07-29): el token es una credencial opaca
  * que solo emite el backend al verificar el código, y no es la frontera de
  * seguridad. Falsificarlo no sirve de nada — `/form`, `/sign`,
  * `/guarantee/setup-intent` y ambos `/complete` lo validan server-side y

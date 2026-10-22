@@ -44,7 +44,7 @@ código suelto. Rompió `vitest.config.mts` de forma intermitente y confusa
 ## Paso 0 — Contrato del backend, nunca inventado
 
 Igual que `hitguest-add-feature`: si hay un archivo de plan
-(`.claude/plans/*.md`, `docs/*.md`), leerlo completo antes de escribir un solo
+(`.claude/plans/*.md`), leerlo completo antes de escribir un solo
 test. Los tests documentan un contrato — si el contrato real no se conoce,
 el test estaría documentando una suposición, no un hecho.
 

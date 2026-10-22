@@ -86,7 +86,7 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         id: "digital-contract",
         // "Contrato", no "Firma Digital": la firma dejó de ser un nodo suelto y
         // es un atributo del contrato de cada canal (spec de Ricardo,
-        // `docs/RICARDO_API_CONTRACTS.md` §8.1.5). El nombre viejo hacía leer la
+        // `RICARDO_API_CONTRACTS.md` §8.1.5). El nombre viejo hacía leer la
         // tarjeta como si configurara quién firma, cuando eso se decide en la
         // pestaña Documentos.
         //

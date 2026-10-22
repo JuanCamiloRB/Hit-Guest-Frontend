@@ -34,7 +34,7 @@ el contrato real (ver `catalog-service.ts` → `getReservationSources()`: un
 fallback que devolvía ids `14/15/16` cuando los reales son `21/22/23` — enrutaba
 datos al canal equivocado en silencio). La regla no negociable de este skill:
 
-- Si el usuario menciona un archivo de plan (`.claude/plans/*.md`, `docs/*.md`),
+- Si el usuario menciona un archivo de plan (`.claude/plans/*.md`),
   **leerlo completo** con la herramienta Read antes de escribir una sola línea.
   Esos documentos son el contrato — endpoints, payloads, tablas de errores 422.
 - Si no hay archivo, preguntar por el endpoint, el payload exacto y la forma de

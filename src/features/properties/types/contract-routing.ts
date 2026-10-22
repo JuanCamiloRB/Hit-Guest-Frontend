@@ -8,7 +8,7 @@
  * is just the contract TEXT. The two must stay in "lockstep" — see
  * `contract-routing-sync.ts` — but they are different resources with
  * different endpoints, and conflating them was the previous implementation's
- * mistake (see docs/PLAN_CONTRATOS_POR_SOURCE.md §0).
+ * mistake (contract plan §0, `git show b3b0df9:docs/PLAN_CONTRATOS_POR_SOURCE.md`).
  */
 
 /** Whether the property uses one contract text for every channel, or one per channel. */

@@ -96,7 +96,7 @@ describe("isExternalReservation", () => {
      *
      * El backend NO expone el origen de una reserva: `source` es el canal, y
      * `source_pms` (100 Airbnb / 101 Booking / 134 KunasPMS) solo existe a nivel
-     * Listing, en `externalPmsIds[]` — ver `BACKEND_NEEDS_RESERVATION_ORIGIN.md`.
+     * Listing, en `externalPmsIds[]` — pedido al backend del 2026-08-19.
      *
      * Hasta que exista ese campo, nada puede deducir de acá que una reserva fue
      * importada, ni bloquear su edición.
