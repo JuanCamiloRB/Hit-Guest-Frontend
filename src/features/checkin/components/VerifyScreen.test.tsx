@@ -1128,3 +1128,33 @@ describe("VerifyScreen — KYC directo (contrato 2026-10-08)", () => {
         expect(screen.getByText(/Solo toma un minuto/)).toBeInTheDocument()
     })
 })
+
+/**
+ * Pedido de Ricardo (2026-10-21): las gafas son un motivo común de rechazo del
+ * face match. Se recomienda quitarlas ANTES de la selfie, y solo donde hay una.
+ */
+describe("VerifyScreen — recomendación de no usar gafas en la selfie", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        localStorage.clear()
+        mocks.identificationTypes = [{ id: 5, requiresBackImage: false }]
+        mocks.loadSession.mockReturnValue(mocks.session)
+    })
+
+    it("con selfie (verificación esencial), el aviso previo pide quitarse gafas y gorra", async () => {
+        mocks.session.verification = { type: "document_upload" }
+        render(<VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />)
+
+        expect(await screen.findByText("quítate las gafas y la gorra")).toBeInTheDocument()
+        expect(screen.getByText(/limpia el lente de tu cámara/)).toBeInTheDocument()
+    })
+
+    it("en la captura de documento (sin selfie) no se menciona", async () => {
+        mocks.session.verification = { type: "document_capture", requiresBackImage: false }
+        render(<VerifyScreen reservationUuid="reservation" guestUuid="guest" basePath="/checkin/reservation" />)
+
+        await screen.findByText("Sube tu documento")
+        expect(screen.getByText(/limpia el lente de tu cámara/)).toBeInTheDocument()
+        expect(screen.queryByText(/gafas/)).toBeNull()
+    })
+})

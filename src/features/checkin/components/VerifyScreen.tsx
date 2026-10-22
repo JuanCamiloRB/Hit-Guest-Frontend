@@ -77,7 +77,7 @@ const PHOTOS_TOO_LARGE_MESSAGE =
     "Las fotos pesan demasiado para enviarlas. Vuelve a tomarlas con la cámara del teléfono, sin usar el modo de máxima resolución."
 
 const DOC_ERROR_UI: Record<string, { retry: RetryScope; message: string }> = {
-    FACE_MISMATCH:              { retry: "selfie",    message: "Tu selfie no coincide con el documento. Tómate otra foto." },
+    FACE_MISMATCH:              { retry: "selfie",    message: "Tu selfie no coincide con el documento. Tómate otra de frente, con buena luz y sin gafas ni gorra." },
     NO_FACE_DETECTED:           { retry: "selfie",    message: "No detectamos un rostro. Asegúrate de tener buena iluminación y que tu cara esté centrada." },
     SERVICE_UNAVAILABLE:        { retry: "all",       message: "Servicio no disponible. Intenta de nuevo en un momento." },
     CRITICAL_FIELD_ERROR:       { retry: "documents", message: "No pudimos leer el documento. Toma una foto más clara." },
@@ -1193,8 +1193,14 @@ export function VerifyScreen({
                     <Camera size={16} className="mt-0.5 shrink-0 text-amber-500" aria-hidden />
                     <p className="text-sm text-amber-800">
                         Antes de empezar, <span className="font-semibold">limpia el lente de tu cámara</span>{" "}
-                        y ubícate en un lugar <span className="font-semibold">con buena luz</span>. Así
-                        evitas que el escaneo falle por una imagen borrosa u oscura.
+                        y ubícate en un lugar <span className="font-semibold">con buena luz</span>.
+                        {/* Pedido de Ricardo (2026-10-21): las gafas son un motivo común de
+                            rechazo del face match. Solo donde hay selfie: la captura de
+                            documento no toma ninguna. */}
+                        {!isCaptureMode && (
+                            <> Para la selfie, <span className="font-semibold">quítate las gafas y la gorra</span>.</>
+                        )}{" "}
+                        Así evitas que la verificación falle.
                     </p>
                 </div>
             )}
@@ -1330,7 +1336,7 @@ export function VerifyScreen({
                                 </button>
                             </div>
                             <p className="text-xs text-slate-500 -mt-1">
-                                Tómate una selfie para confirmar que eres la persona del documento.
+                                Tómate una selfie de frente, con buena luz y sin gafas ni gorra, para confirmar que eres la persona del documento.
                             </p>
 
                             {selfieFile ? (
