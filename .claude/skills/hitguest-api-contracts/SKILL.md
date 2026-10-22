@@ -1225,30 +1225,149 @@ texto de producto. Renombrar el `id` rompería
 (`reservations-service.ts`), así que **tolera los dos nombres** — el rename del
 front no lo rompe, y tampoco lo rompería que el backend renombre su lado.
 
-### ⚠️ `by_source` vuelve con claves 0, 1, 2 (reporte de Didier, 2026-10-18; SIN confirmar)
+### ⚠️ Contratos por canal: claves reales, `contractRouting` y contrato por unidad — contrato 2026-10-19 (backend implementado y probado según el plan `20261019_contratos-por-canal-claves-y-claridad.md`; front implementado PARCIALMENTE 2026-10-23; NO verificado por curl)
 
-Captura de producción: el aviso de «canal que el catálogo no reconoce» lista
-«Canal 0 · Canal 1 · Canal 2», todos Contrato de alquiler · HitGuest Signature,
-y lo configurado por canal no aparece al volver a Documentos. El front SOLO
-escribe `by_source` como objeto con claves = id del canal (`"21"`, `"22"`…;
-`ContractRoutingSection` → `configure`); ningún camino del front lo manda como
-lista. Claves 0..n-1 = una lista JSON reindexada ⇒ hipótesis: el backend
-reindexa al persistir (`array_values`/`->values()` o equivalente).
-**Consecuencia si se confirma**: `routingForMode` descarta esas claves, la
-pantalla queda sin canales y, peor, el resolver no encuentra el canal de la
-reserva (`missing_source_entry`) ⇒ esas reservas NO generan contrato. Mismo
-patrón que el `by_source["1"]` del 2026-09-03.
-Confirmar con token de PM: el body del `PATCH /property-automations/{uuid}/configure`
-(Network) contra `parameters.by_source` de su respuesta y de
-`GET /properties/{uuid}/automations`. No reasignar en el front qué índice es
-qué canal: sería inventar el dato.
-**Front (2026-10-18, tras auditoría):** con claves que no son canales,
-`ContractRoutingSection` muestra «No pudimos identificar los canales de la
-configuración guardada…» (detalle plegado en «Información técnica») y BLOQUEA
-editar y guardar (`inert` en el área de edición, que también alcanza el editor
-TipTap; botón deshabilitado): guardar reemplazaría ese routing y podría poner
-un contrato en el canal equivocado. Responsable sin probar: comparar en Network
-el body del PATCH `configure`, su respuesta y el GET posterior.
+**✅ Causa de las claves 0, 1, 2 (reporte de Didier, 2026-10-18).** La
+hipótesis de entonces («el backend reindexa al persistir») era ❌ **falsa**: el
+backend guardaba bien (`{"22": …, "135": …}`) y la falla estaba **solo al
+responder**. Laravel convierte en lista cualquier objeto anidado con todas sus
+claves numéricas, así que `configure`, los `GET` y los listados devolvían
+`[{…}, {…}]`. Con `all_sources` la clave es `"all"` y nunca fallaba.
+- No hay datos que corregir: producción tiene sus 3 automations por canal con
+  ids reales (16, 103 y 174).
+- La firma del check-in siempre leyó los ids reales: los huéspedes sí firmaron.
+- Desde el deploy, `by_source` vuelve a ser **objeto** en todas las respuestas:
+  `configure`, `GET /property-automations/{uuid}`,
+  `GET /properties/{uuid}/automations`, `GET /property-automations`,
+  `POST /properties` (embebidas) y `listing-automation-overrides`.
+
+**✅ Merge o replace (pregunta abierta desde 2026-08-21, §5):**
+`PATCH …/configure` reemplaza **cada clave de primer nivel que se envía**, así
+que `by_source` se reemplaza completo y lo no enviado se conserva.
+`PATCH /property-automations/{uuid}` reemplaza `parameters` entero.
+
+**Canales con `slug`.** `GET /reservation-sources` trae `slug` en cada canal
+(`direct`, `airbnb`, `booking`, `vrbo`, `expedia`, …). En los documentos,
+`source` pasa a ser `{id, name, slug}`. El backend no sirve imágenes: el logo
+lo pone el front por `slug` (`ReservationSourceIdentity`, con `simple-icons`;
+Vrbo, Despegar y Agoda no están ahí y usan una marca propia). Mientras un
+backend no mande `slug`, se usa un respaldo por id de producción.
+
+**`contractRouting`** viene solo en la automation de firma (la de
+`provider.parameters.signature`), en `configure` y en los `GET` de automations.
+Los textos llegan en el idioma de `X-Locale`:
+
+```json
+"contractRouting": {
+  "mode": "per_source", "modeLabel": "Un contrato distinto por canal",
+  "channels": [{
+    "key": "21",
+    "channel": { "id": 21, "slug": "direct", "name": "Directo" },
+    "contractType": "agreement_and_guarantee", "contractTypeLabel": "Contrato de alquiler y garantía",
+    "provider": { "slug": "tufirma", "name": "TuFirma Digital", "label": "Firma digital (TuFirma)", "signsInPortal": false },
+    "document": { "uuid": "…", "updatedAt": "2026-10-19 21:11:50" },
+    "status": "ready", "statusLabel": "Listo",
+    "summary": "Directo · Contrato de alquiler y garantía · Firma digital (TuFirma)"
+  }],
+  "needsAttention": false
+}
+```
+
+- `channels` viene en el orden del catálogo. Con `all_sources` hay un solo
+  canal: `{"key": "all", "channel": {"id": null, "slug": "all", "name": "Todos los canales"}}`.
+- `document` es `null` si el canal no necesita texto (solo garantía) o si falta.
+- `status`: `ready` · `missing_document` (los huéspedes completan sin contrato;
+  si el backend sabe quién borró el texto, el `statusLabel` lo dice) ·
+  `unknown_channel` (clave que no es canal; ya no debería existir) ·
+  `provider_unavailable` (el método no firma ese tipo de contrato).
+- `needsAttention` = algún canal no está `ready`.
+
+**Contrato por unidad.** Apagar el contrato en una unidad **ahora sí tiene
+efecto**. Antes el check-in lo ignoraba y se firmaba y cobraba igual. Ahora el
+portal no muestra el paso (`contract.signingProvider = null`), no se despacha,
+no se cobra y no se envía nada. Una unidad puede tener su propio ruteo
+(`contract_mode` + `by_source` en `parameters` del override, mismas reglas).
+Mandar los dos en `null` vuelve a heredar. El `contractRouting` del override
+trae además `disabled: true` (sin canales) o
+`routingSource: "listing" | "property"`.
+
+**Un solo texto para todos los canales, aunque cada canal firme distinto.**
+El texto con `reservationSourceId: null` sirve a todos los canales también con
+`contract_mode: "per_source"`. El 422 `mode_mismatch_per_source` ya no
+existe, y ya no hace falta convertir el texto general en el de un canal al
+pasar a por canal. Lo que **sigue sin poderse** es tener el texto general y
+textos propios de algunos canales a la vez; eso queda para después.
+
+**422.** Vienen redactados para el PM y nombran el canal («Airbnb ya tiene un
+contrato activo…», «Falta el texto del contrato para: Booking.com…»). Hay 422
+nuevos:
+- `PATCH`/`POST /property-automations` ahora validan `by_source`.
+- `configure` valida `by_source` también al desactivar, si cambia.
+- `POST …/documents/{uuid}/restore` rechaza un contrato si el canal ya tiene
+  otro activo o si mezclaría modos.
+
+Borrar el contrato de un canal y volver a crearlo ya **no** da «duplicado».
+
+**Pendiente, con documentos que NO tenemos.** Según el plan hay dos
+actualizaciones del 2026-10-20, en `20261020_frontend-texto-contrato-por-unidad.md`:
+- el override de una unidad puede cambiar también el **texto**;
+- un cambio de textos de la propiedad que pise lo de una unidad responde 422
+  con `errors.confirmUnitOverrides` y espera confirmación.
+
+No implementadas: pedir el documento antes de tocarlo.
+
+**Cómo quedó en el front (2026-10-23):**
+- **Lectura de `contractRouting`.** `readContractRouting` en
+  `types/contract-routing.ts` lo lee como `unknown`. Un `status` desconocido
+  cuenta como «requiere atención» (falla cerrado). `automation-service` lo
+  normaliza en la automation y en el override.
+- **Tarjeta de Contrato** (`AutomationCard`). Pinta desde `contractRouting`:
+  logo y nombre del canal, `contractTypeLabel · provider.label`, un ícono por
+  estado y un aviso con los `statusLabel` que no están `ready`. Sin
+  `contractRouting` (backend anterior) sigue el `by_source` crudo.
+- **Bloqueo de edición** (`ContractRoutingSection`). Se dispara SOLO si
+  `by_source` llega como lista (`bySourceArrivedAsList`). Así quitarlo no
+  depende del orden de los deploys. Una clave de objeto que no es canal ya no
+  bloquea la edición, pero tampoco se borra sola. El payload nunca la reenvía
+  (`routingForMode` con el catálogo) y `by_source` se reemplaza completo, así
+  que cualquier guardado la borraría de rebote. Por eso el guardado queda
+  deshabilitado hasta que el PM pulse «Quitar configuración desconocida»
+  (auditoría 2026-10-23). En cada canal, si el servidor dice que no está
+  `ready`, se muestra su `statusLabel`.
+- **422.** `validationMessages()` (`lib/notify-error.ts`) muestra todos los
+  mensajes de `errors`, tal cual, en Documentos y en el modal de documento.
+  A diferencia de `normalizeApiError`, no descarta el error que coincide con
+  `message`.
+- **Tarjeta y `summary`.** No se usa `summary` entero porque empieza con el
+  nombre del canal, que ya está junto al logo. Se usan
+  `contractTypeLabel · provider.label`, también del backend, y `summary` como
+  respaldo.
+- **Unidad.** `digital-contract` tiene `supportsListingStatusOverride`. El modal
+  dice «Los huéspedes de esta unidad no firmarán contrato.». Al cambiar el
+  estado de un contrato **no se manda `parameters`**, porque `null` borraría el
+  ruteo propio de la unidad. El panel marca «Contrato propio de la unidad».
+- **❌ Sin implementar (tarea aparte, NO cosmética): el front rechaza una
+  configuración que el backend ya acepta.** Con `per_source` y un único texto
+  general (`reservationSourceId: null`):
+  - cada canal sale «Incompleto»;
+  - `findLockstepGaps` exige un texto por canal y bloquea el guardado;
+  - al guardar, `planDocumentSync` convierte el texto general en el de un canal.
+
+  Falta decidir cómo lo elige el PM (p. ej. «mismo texto para todos» / «uno
+  por canal»).
+- **❌ Sin implementar: `errors.confirmUnitOverrides`** (cero referencias en
+  `src`). Hoy el PM ve el mensaje del 422, pero no puede confirmar y seguir.
+  Además, el guardado sincroniza documentos con varias peticiones antes de
+  `configure`. Si una pide confirmación después de que otra ya corrió, queda un
+  estado parcial: `handleSave` lo reconcilia releyendo el servidor, pero no lo
+  revierte. Requiere `20261020_frontend-texto-contrato-por-unidad.md`. No
+  inventar el payload. Desplegar sin esto solo es seguro mientras ninguna
+  unidad tenga texto propio en producción.
+
+Confirmar con token de PM:
+- `curl -s "$API/properties/{uuid}/automations?includeProvider=true" "${H[@]}" | jq '.data[] | select(.contractRouting) | {by: (.parameters.by_source|type), cr: .contractRouting}'`
+  debe dar `"object"` y los canales con nombre.
+- `curl -s "$API/reservation-sources" "${H[@]}" | jq '[.data[] | {id, slug}]'`
 
 ### ⚠️ Reintento del contrato TuFirma, proveedor del slot y «formulario enviado» — contrato 2026-10-15 (backend en `main`, merge `9bff3f1`; front SIN implementar; NO verificado por curl)
 
@@ -1314,6 +1433,11 @@ regla **ya no aplica**. El contrato es opt-in.
 `executionOrder === 3`.
 
 ### ⚠️ `by_source` con un id que el catálogo no reconoce → fila visible pero ineditable
+
+> **Actualizado 2026-10-23:** ya no es «ineditable». Documentos avisa que la
+> clave se quita al guardar y el guardado la elimina (contrato 2026-10-19:
+> `configure` reemplaza `by_source` completo). Si el backend la marca, el
+> aviso usa el `statusLabel` de `unknown_channel`.
 
 Caso real (2026-09-03): una automatización de Contrato llegó con
 `parameters.by_source["1"]` (garantía y alquiler · TuFirma). ✅ **Verificado por
@@ -2183,6 +2307,9 @@ muestra el `digest` como referencia en pantalla.
   Hoy: 403 en `POST /property-automations`, 405 en
   `POST /properties/{uuid}/automations`. Sin esto, las automatizaciones se
   listan pero no se pueden activar. **Es el bloqueo principal.**
+- ✅ *Respondido 2026-10-19 (§2, «Contratos por canal: claves reales…»):
+  `configure` reemplaza cada clave de primer nivel que se envía y conserva el
+  resto.* Lo de abajo queda como historia.
 - **⚠️ `PATCH /property-automations/{uuid}/configure` con `parameters` OMITIDO:
   ¿merge o replace?** (preguntado a backend 2026-08-21, caso Insula). El toggle
   del frontend manda solo `{statusProviderId[, providerId]}` sin la clave

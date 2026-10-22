@@ -27,6 +27,7 @@ import { automationService } from "../../services/automation-service"
 import { getOverrideFieldSchema, isOverridableSlug } from "../../data/automation-definitions"
 import {
     LISTING_OVERRIDE_STATUS,
+    isSignatureProvider,
     type ListingAutomationOverride,
     type PropertyAutomation,
 } from "../../types/automation"
@@ -167,6 +168,17 @@ export function AutomationOverrideModal({
     const [identityChoice, setIdentityChoice] = useState<IdentityChoice>("inherit")
     const [identityError, setIdentityError] = useState<string | null>(null)
 
+    // Contrato: la unidad solo se apaga o hereda desde acá. Un ruteo propio de
+    // la unidad (`contract_mode` + `by_source` en su override) lo acepta la API,
+    // pero todavía no tiene pantalla: se respeta y no se pisa al guardar.
+    const contractProvider = activePa?.provider ?? override?.propertyAutomation?.provider ?? null
+    const isContract = (!!contractProvider && isSignatureProvider(contractProvider))
+        || slug === "tufirma" || slug === "hitguest_signature"
+    const contractHasOwnRouting = isContract && (
+        override?.contractRouting?.routingSource === "listing"
+        || (override?.parameters != null && "contract_mode" in override.parameters && override.parameters.contract_mode != null)
+    )
+
     const basePa = override?.propertyAutomation
     const baseParams = (basePa?.parameters ?? activePa?.parameters ?? {}) as Record<string, unknown>
 
@@ -291,14 +303,16 @@ export function AutomationOverrideModal({
         setSaving(true)
         try {
             const statusRecordId = isActive ? LISTING_OVERRIDE_STATUS.ACTIVE : LISTING_OVERRIDE_STATUS.INACTIVE
-            const parameters = buildParameters()
+            // Contrato: sin campos en este modal, `parameters: null` borraría el
+            // ruteo propio de la unidad (null en los dos = volver a heredar).
+            const parameters = isContract ? undefined : buildParameters()
             let saved: ListingAutomationOverride
 
             // Una unidad SIN override ya hereda. Guardarla activa y sin parámetros
             // creaba una fila explícita que la lista mostraba como «Hereda de la
             // propiedad» sin serlo, y no había forma de borrarla. Sin cambios no
             // se crea nada.
-            if (!isEdit && isActive && parameters == null) {
+            if (!isEdit && isActive && !parameters) {
                 toast.info("Sin cambios: la unidad sigue heredando de la propiedad.")
                 onClose()
                 return
@@ -310,7 +324,7 @@ export function AutomationOverrideModal({
                     uuid: override?.uuid ?? "",
                     listingUuid,
                     propertyAutomationUuid: selectedPaUuid,
-                    parameters,
+                    parameters: parameters ?? override?.parameters ?? null,
                     token: override?.token ?? null,
                     statusRecordId,
                     deletedAt: null,
@@ -335,14 +349,14 @@ export function AutomationOverrideModal({
             if (isEdit && override) {
                 saved = await automationService.updateListingOverride(override.uuid, {
                     statusRecordId,
-                    parameters,
+                    ...(parameters !== undefined ? { parameters } : {}),
                 })
             } else {
                 saved = await automationService.createListingOverride({
                     listingUuid,
                     propertyAutomationUuid: selectedPaUuid,
                     statusRecordId,
-                    parameters,
+                    parameters: parameters ?? null,
                 })
             }
             toast.success("Override guardado")
@@ -449,7 +463,13 @@ export function AutomationOverrideModal({
                                 {isActive ? "Activa en esta unidad" : "Desactivada para esta unidad"}
                             </Label>
                             <p className="text-[11px] text-slate-500">
-                                {!isActive
+                                {isContract
+                                    ? !isActive
+                                        ? "Los huéspedes de esta unidad no firmarán contrato."
+                                        : contractHasOwnRouting
+                                            ? "Esta unidad tiene su propio contrato por canal."
+                                            : "Firman el contrato de la propiedad. Apágalo para que no firmen en esta unidad."
+                                    : !isActive
                                     ? "La automatización se omite para reservas de esta unidad."
                                     : isEdit
                                         ? "Esta unidad tiene un override propio: aplica con los parámetros de abajo."

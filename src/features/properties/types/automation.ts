@@ -7,7 +7,7 @@
  */
 
 import type { LucideIcon } from "lucide-react"
-import type { ContractType } from "./contract-routing"
+import type { ContractRoutingView, ContractType } from "./contract-routing"
 
 // ─── Primitive Types ──────────────────────────────────────────────────
 
@@ -59,6 +59,8 @@ export interface PropertyAutomation {
   provider?: Provider | null
   property?: unknown | null
   usageRecords?: AutomationUsageRecord[] | null
+  /** Solo en la automation de firma (contrato 2026-10-19). Ausente = backend anterior. */
+  contractRouting?: ContractRoutingView | null
   // Derived helpers — set by service normalize(), never sent to API
   isActive: boolean                     // = statusProviderId === 8
   providerName?: string | null          // = provider.parameters.slug
@@ -442,6 +444,8 @@ export interface ListingAutomationOverride {
    * unidad no ejecuta nada. Nunca se confunden.
    */
   providerSource?: OverrideProviderSource
+  /** Solo en el override de la automation de firma (contrato 2026-10-19). */
+  contractRouting?: ContractRoutingView | null
   deletedAt: string | null
   propertyAutomation?: ListingOverridePropertyAutomation | null
   // Derived helper — set by service normalize(), never sent to API.

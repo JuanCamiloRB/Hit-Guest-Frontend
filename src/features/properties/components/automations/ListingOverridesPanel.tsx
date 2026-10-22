@@ -150,6 +150,10 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                 const params = hasOverride ? (override.parameters ?? {}) : {}
                                 const hasParams = identity ? identity.tone === "custom" : hasOverride && override.isActive &&
                                     Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
+                                // Ruteo de contrato propio de la unidad: no son campos de este panel.
+                                const ownContract = hasOverride && override.isActive && (
+                                    override.contractRouting?.routingSource === "listing" || params.contract_mode != null
+                                )
                                 // El token de un override de identidad no aplica (el contrato lo manda null).
                                 const hasToken = !isIdentity && hasOverride && override.token != null
 
@@ -234,6 +238,8 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                         Desactivada en esta unidad
                                                     </span>
                                                 </div>
+                                            ) : ownContract ? (
+                                                <span className="text-[10px] text-primary font-medium">Contrato propio de la unidad</span>
                                             ) : hasParams ? (
                                                 <div className="flex flex-wrap gap-x-3 mt-0.5">
                                                     {fieldSchema.map(field => {

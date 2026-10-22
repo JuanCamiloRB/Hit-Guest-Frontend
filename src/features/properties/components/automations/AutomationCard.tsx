@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef } from "react"
-import { Settings2, Loader2, AlertCircle, Clock, FileSignature } from "lucide-react"
+import { Settings2, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Clock, FileSignature } from "lucide-react"
 import {
     Card,
     CardContent,
@@ -31,7 +31,7 @@ import { ConfigModal } from "./ConfigModal"
 import { ListingOverridesPanel } from "./ListingOverridesPanel"
 import { isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
 import type { ListingMeta } from "./AutomationOverrideModal"
-import { ReservationSourceIdentity } from "../contracts/ReservationSourceIdentity"
+import { ReservationSourceIdentity, reservationSourceName, reservationSourceSlug } from "../contracts/ReservationSourceIdentity"
 
 const BACKEND_PENDING_MSG = "El backend aún no tiene este endpoint implementado. Contacta al equipo de desarrollo."
 
@@ -112,6 +112,11 @@ export function AutomationCard({
         || (!!automation?.provider && isSignatureProvider(automation.provider))
     const routingSummary = isContractRouting
         ? summarizeContractRouting(automation?.parameters)
+        : null
+    // El ruteo ya leído por el backend (contrato 2026-10-19), con nombre real del
+    // canal y estado. Sin él (backend anterior) se pinta el `by_source` crudo.
+    const routingView = isContractRouting && automation?.contractRouting?.channels.length
+        ? automation.contractRouting
         : null
     const providerName = automation?.providerName
         ?? getProviderSlug(providers.find(p => p.id === automation?.providerId))
@@ -536,9 +541,44 @@ export function AutomationCard({
                             {isContractRouting && (
                                 <div className="space-y-1">
                                     <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                        {routingSummary ? "Contrato configurado" : "Sin configurar"}
+                                        {routingView?.needsAttention
+                                            ? "Requiere atención"
+                                            : routingView || routingSummary ? "Contrato configurado" : "Sin configurar"}
                                     </Label>
-                                    {routingSummary ? (
+                                    {routingView ? (
+                                        <div className="space-y-2">
+                                            {routingView.needsAttention && (
+                                                <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                                                    {routingView.channels
+                                                        .filter((channel) => channel.status !== "ready")
+                                                        .map((channel) => (
+                                                            <p key={channel.key}>
+                                                                <span className="font-semibold">{channel.channel.name}:</span>{" "}
+                                                                {channel.statusLabel || "Revisa la configuración de este canal."}
+                                                            </p>
+                                                        ))}
+                                                </div>
+                                            )}
+                                            {routingView.channels.map((channel) => (
+                                                <div key={channel.key} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5">
+                                                    <div className="min-w-0">
+                                                        <ReservationSourceIdentity name={channel.channel.name} slug={channel.channel.slug} compact />
+                                                        {/* `summary` empieza con el nombre del canal, que ya está junto
+                                                            al logo: se usan sus dos partes, también del backend. Si no
+                                                            vienen, `summary` entero. */}
+                                                        <p className="mt-1 pl-11 text-xs text-slate-600">
+                                                            {[channel.contractTypeLabel, channel.provider?.label].filter(Boolean).join(" · ") || channel.summary}
+                                                        </p>
+                                                    </div>
+                                                    {channel.status === "ready" ? (
+                                                        <CheckCircle2 size={16} className="shrink-0 text-emerald-600" aria-label="Listo" />
+                                                    ) : (
+                                                        <AlertTriangle size={16} className="shrink-0 text-amber-600" aria-label="Requiere atención" />
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : routingSummary ? (
                                         <div className="space-y-2">
                                             {routingSummary.channels.map((channel) => {
                                                 const source = channel.sourceKey === ALL_SOURCES_KEY
@@ -549,8 +589,10 @@ export function AutomationCard({
                                                     <div key={channel.sourceKey} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5">
                                                         <div className="min-w-0">
                                                             <ReservationSourceIdentity
-                                                                source={source}
-                                                                fallbackName={channel.sourceKey === ALL_SOURCES_KEY ? "Todos los canales" : "Canal no identificado"}
+                                                                name={source
+                                                                    ? reservationSourceName(source)
+                                                                    : channel.sourceKey === ALL_SOURCES_KEY ? "Todos los canales" : "Canal no identificado"}
+                                                                slug={source ? reservationSourceSlug(source) : null}
                                                                 compact
                                                             />
                                                             <p className="mt-1 pl-11 text-xs text-slate-600">

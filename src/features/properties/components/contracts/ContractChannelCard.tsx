@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { ReservationSource } from "../../services/reservation-source-service"
-import { ReservationSourceIdentity } from "./ReservationSourceIdentity"
+import { ReservationSourceIdentity, reservationSourceName, reservationSourceSlug } from "./ReservationSourceIdentity"
 
 export type ContractChannelStatus = "configured" | "unconfigured" | "dirty" | "incomplete"
 
@@ -39,7 +39,7 @@ export function ContractChannelCard({
     children,
 }: Props) {
     const statusCopy = STATUS_COPY[status]
-    const sourceName = source?.name_translations?.es || source?.name || fallbackName || "Canal"
+    const sourceName = source ? reservationSourceName(source) : fallbackName || "Canal"
 
     return (
         <article className={cn(
@@ -49,7 +49,7 @@ export function ContractChannelCard({
             <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2.5">
-                        <ReservationSourceIdentity source={source} fallbackName={fallbackName} />
+                        <ReservationSourceIdentity name={sourceName} slug={source ? reservationSourceSlug(source) : null} />
                         <Badge variant="outline" className={cn("h-6 rounded-full px-2.5 text-[10px] font-bold uppercase tracking-wide", statusCopy.className)}>
                             {statusCopy.label}
                         </Badge>

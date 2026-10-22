@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useFormContext } from "react-hook-form"
 import { AlertCircle, AlertTriangle, CheckCircle2, FileSignature, Loader2 } from "lucide-react"
 import { toast } from "sonner"
-import { notifyError } from "@/lib/notify-error"
+import { notifyError, validationMessages } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import { Button } from "@/components/ui/button"
@@ -20,6 +20,7 @@ import {
 import { AUTOMATION_STATUS, isSignatureProvider, type Provider, type PropertyAutomation } from "../../types/automation"
 import {
     ALL_SOURCES_KEY,
+    bySourceArrivedAsList,
     orphanRoutingEntries,
     parseContractRouting,
     routingForMode,
@@ -101,6 +102,13 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     // acá (el payload nunca los reenvía), pero tampoco se calla: ver
     // `orphanRoutingEntries`.
     const [orphanRouting, setOrphanRouting] = useState<Array<{ sourceKey: string; routing: SourceRouting }>>([])
+    // `by_source` llegó como lista (bug del backend corregido el 2026-10-19):
+    // es lo único que bloquea la edición. Ver `bySourceArrivedAsList`.
+    const [routingArrivedAsList, setRoutingArrivedAsList] = useState(false)
+    // El PM pidió quitar la configuración de canales desconocidos. Sin este
+    // paso explícito no se guarda nada: `by_source` se reemplaza completo, y
+    // editar otro canal la borraría como efecto secundario.
+    const [orphanRemovalConfirmed, setOrphanRemovalConfirmed] = useState(false)
 
     const [providers, setProviders] = useState<Provider[]>([])
     const [automation, setAutomation] = useState<PropertyAutomation | null>(null)
@@ -189,6 +197,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 setPersistedMode(initialMode)
                 setPersistedBySource(initialRouting)
                 setOrphanRouting(orphanRoutingEntries(parsed?.by_source, allowedSourceIds))
+                setRoutingArrivedAsList(bySourceArrivedAsList(automationRes?.parameters))
+                setOrphanRemovalConfirmed(false)
 
                 const initialTexts = textsByDocumentChannel(docsRes.items)
                 setTexts(initialTexts)
@@ -277,16 +287,24 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     const showsUnsavedInference = !routingPersistedInAutomation && agreementDocs.length > 0
 
     /**
-     * Configuración guardada bajo claves que no son canales (p. ej. «0, 1, 2»,
-     * skill de contratos 2026-10-18): se perdió la relación con el canal
-     * original. Editar y guardar desde acá reemplazaría ese routing con lo que
-     * el PM crea que corresponde — asignar un contrato al canal equivocado.
-     * Hasta que soporte lo corrija, la edición queda bloqueada.
+     * `by_source` como lista JSON (las claves «0, 1, 2» del reporte del
+     * 2026-10-18): se perdió qué posición era qué canal, y guardar encima
+     * asignaría un contrato al canal equivocado. Desde el contrato 2026-10-19 el
+     * backend responde siempre un objeto; esto solo protege mientras corra uno
+     * anterior.
      */
-    const routingBlocked = orphanRouting.length > 0
+    const routingBlocked = routingArrivedAsList
+    // Una clave de objeto que no es un canal del catálogo (`unknown_channel`) sí
+    // se puede quitar, pero solo cuando el PM lo pide: el payload nunca la
+    // reenvía (`routingForMode` filtra por catálogo), así que cualquier guardado
+    // la eliminaría. Hasta confirmarlo, guardar queda deshabilitado.
+    const removableOrphans = routingBlocked ? [] : orphanRouting
+    const orphansPendingDecision = removableOrphans.length > 0 && !orphanRemovalConfirmed
+    const serverChannel = (key: string) => automation?.contractRouting?.channels.find((channel) => channel.key === key)
     const currentFingerprint = draftFingerprint(mode, desired.by_source, texts)
     const persistedFingerprint = draftFingerprint(persistedMode, persistedBySource, persistedTexts)
     const hasUnsavedChanges = currentFingerprint !== persistedFingerprint || showsUnsavedInference
+        || (removableOrphans.length > 0 && orphanRemovalConfirmed)
 
     const channelIsDirty = (key: string): boolean => {
         if (mode !== persistedMode) return true
@@ -298,6 +316,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
         if (channelIsDirty(key)) return "dirty"
         if (!routing) return "unconfigured"
         if (!routing.provider_slug || (requiresAgreementDocument(routing.contract_type) && !texts[key]?.trim())) return "incomplete"
+        const server = serverChannel(key)
+        if (server && server.status !== "ready") return "incomplete"
         return "configured"
     }
 
@@ -308,6 +328,9 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 : "Las reservas de este canal no firman contrato."
         }
         if (!routing.provider_slug) return "Completa la configuración y elige quién firma."
+        // Lo que el backend sabe y el front no (p. ej. quién borró el texto y cuándo).
+        const server = serverChannel(key)
+        if (!channelIsDirty(key) && server && server.status !== "ready" && server.statusLabel) return server.statusLabel
         const provider = findSignatureProvider(providers, routing.provider_slug)
         return `${CONTRACT_TYPE_LABELS[routing.contract_type]} · Firma: ${provider?.name ?? routing.provider_slug}`
     }
@@ -328,6 +351,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
         setAutomation(row)
         setAgreementDocs(documents)
         setOrphanRouting(confirmedOrphans)
+        setRoutingArrivedAsList(bySourceArrivedAsList(row?.parameters))
+        setOrphanRemovalConfirmed(false)
         setMode(confirmedMode)
         setBySource(confirmedRouting)
         setTexts(confirmedTexts)
@@ -354,7 +379,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     }
 
     const handleSave = async () => {
-        if (routingBlocked) return
+        if (routingBlocked || orphansPendingDecision) return
         if (Object.keys(desired.by_source).length === 0) {
             setSaveError("Configura al menos un canal antes de guardar.")
             return
@@ -485,11 +510,9 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             if (routingPersisted) {
                 setSaveError("El servidor recibió el guardado, pero no pudimos confirmar cómo quedó. Recarga la página antes de volver a intentarlo.")
             } else if (err instanceof ApiError && err.status === 422) {
-                const errors = err.errors
-                const first = Array.isArray(errors)
-                    ? errors.flatMap((e) => (typeof e === "string" ? [e] : Object.values(e).flat()))[0]
-                    : undefined
-                setSaveError(first || err.message || "Revisa la configuración de contrato y firma.")
+                // Redactados para el PM y con el canal nombrado (contrato
+                // 2026-10-19): se muestran todos, tal cual.
+                setSaveError(validationMessages(err, "Revisa la configuración de contrato y firma.").join("\n"))
             } else {
                 notifyError(err, "Error al guardar el contrato y la firma")
             }
@@ -554,6 +577,41 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                                 (`by_source` de la automatización de Contrato).
                             </p>
                         </details>
+                    </div>
+                </div>
+            )}
+
+            {removableOrphans.length > 0 && (
+                <div role="status" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
+                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                    <div className="space-y-1">
+                        <p className="font-semibold">Hay configuración guardada para un canal que ya no existe.</p>
+                        <ul className="space-y-0.5 text-xs">
+                            {removableOrphans.map(({ sourceKey, routing }) => (
+                                <li key={sourceKey}>
+                                    {serverChannel(sourceKey)?.statusLabel
+                                        || `Canal «${sourceKey}» · ${CONTRACT_TYPE_LABELS[routing.contract_type]}`}
+                                </li>
+                            ))}
+                        </ul>
+                        {orphanRemovalConfirmed ? (
+                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                                <span>Se quitará cuando guardes. Los demás canales no cambian.</span>
+                                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setOrphanRemovalConfirmed(false)} disabled={saving}>
+                                    Deshacer
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="space-y-2 text-xs">
+                                <p>
+                                    Para guardar cualquier cambio en los contratos hay que quitarla: al guardar se
+                                    reemplaza la configuración de todos los canales.
+                                </p>
+                                <Button type="button" variant="outline" size="sm" className="h-8 bg-white text-xs" onClick={() => setOrphanRemovalConfirmed(true)} disabled={saving}>
+                                    Quitar configuración desconocida
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -654,8 +712,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             </div>
 
             {saveError && (
-                <p className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                    <AlertCircle size={14} className="shrink-0" /> {saveError}
+                <p role="alert" className="flex items-start gap-2 whitespace-pre-line text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                    <AlertCircle size={14} className="mt-0.5 shrink-0" /> <span>{saveError}</span>
                 </p>
             )}
 
@@ -663,6 +721,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 <div className="flex items-center gap-2 text-sm">
                     {routingBlocked ? (
                         <><AlertTriangle className="h-4 w-4 text-amber-600" /><span className="font-semibold text-amber-800">Edición bloqueada hasta corregir los canales no identificados.</span></>
+                    ) : orphansPendingDecision ? (
+                        <><AlertTriangle className="h-4 w-4 text-amber-600" /><span className="font-semibold text-amber-800">Quita la configuración desconocida para poder guardar.</span></>
                     ) : hasUnsavedChanges ? (
                         <><AlertCircle className="h-4 w-4 text-amber-600" /><span className="font-semibold text-amber-800">Tienes cambios sin guardar.</span></>
                     ) : (
@@ -672,7 +732,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 <Button
                     type="button"
                     onClick={handleSave}
-                    disabled={saving || routingBlocked || !hasUnsavedChanges}
+                    disabled={saving || routingBlocked || orphansPendingDecision || !hasUnsavedChanges}
                     className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold"
                 >
                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}

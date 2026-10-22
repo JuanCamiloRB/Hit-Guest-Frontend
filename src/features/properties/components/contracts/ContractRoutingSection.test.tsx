@@ -7,6 +7,7 @@ import type { PropertyAutomation, Provider } from "../../types/automation"
 
 const mocks = vi.hoisted(() => ({
     automations: [] as unknown[],
+    documents: [] as unknown[],
     configure: vi.fn(),
 }))
 
@@ -23,7 +24,7 @@ vi.mock("../../services/reservation-source-service", () => ({
 }))
 vi.mock("../../services/property-document-service", () => ({
     propertyDocumentService: {
-        list: async () => ({ items: [], meta: { total: 0 } }),
+        list: async () => ({ items: mocks.documents, meta: { total: mocks.documents.length } }),
         getTypes: async () => [],
         create: vi.fn(), update: vi.fn(), remove: vi.fn(),
     },
@@ -47,7 +48,7 @@ const SIGNATURE: Provider = {
     parameters: { slug: "hitguest_signature", signature: { synchronous: true, contract_types: ["agreement_only"] } },
 }
 
-function signatureRow(bySource: Record<string, unknown>): PropertyAutomation {
+function signatureRow(bySource: unknown): PropertyAutomation {
     return {
         uuid: "contract-row", propertyUuid: "p-1", providerId: 1005, providerName: "hitguest_signature", provider: SIGNATURE,
         name: "Digital Signature", guestType: "main_guest", executionOrder: 10, token: null, deletedAt: null,
@@ -63,13 +64,18 @@ function Wrapper({ children }: { children: ReactNode }) {
     return <FormProvider {...form}>{children}</FormProvider>
 }
 
+import { ApiError } from "@/types/api"
 import { ContractRoutingSection } from "./ContractRoutingSection"
 
 describe("ContractRoutingSection — configuración guardada con claves que no son canales (reporte 2026-10-18)", () => {
-    beforeEach(() => vi.clearAllMocks())
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.documents = []
+    })
 
-    it("con claves 0/1/2 avisa en lenguaje claro y bloquea editar y guardar", async () => {
-        mocks.automations = [signatureRow({ 0: ROUTE, 1: ROUTE, 2: ROUTE })]
+    // Backend anterior al 2026-10-19: convertía `by_source` en lista al responder.
+    it("con `by_source` como lista avisa en lenguaje claro y bloquea editar y guardar", async () => {
+        mocks.automations = [signatureRow([ROUTE, ROUTE, ROUTE])]
         render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
 
         const alert = await screen.findByRole("alert")
@@ -110,5 +116,58 @@ describe("ContractRoutingSection — configuración guardada con claves que no s
         expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument()
         expect(screen.getByText("Tienes cambios sin guardar.")).toBeInTheDocument()
         expect(screen.getByRole("button", { name: "Guardar contrato y firma" })).toBeEnabled()
+    })
+})
+
+describe("ContractRoutingSection — contrato 2026-10-19", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.documents = [{ uuid: "doc-21", propertyDocumentTypeId: 92, reservationSourceId: 21, content: "<p>Texto</p>" }]
+    })
+
+    it("una clave que no es canal no bloquea la edición, pero no se borra hasta que el PM lo pide", async () => {
+        mocks.automations = [signatureRow({ 21: ROUTE, 999: ROUTE })]
+        mocks.configure.mockResolvedValue(signatureRow({ 21: ROUTE }))
+        render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
+        const user = userEvent.setup()
+
+        expect(await screen.findByText("Hay configuración guardada para un canal que ya no existe.")).toBeInTheDocument()
+        expect(screen.queryByText(/No pudimos identificar los canales/)).toBeNull()
+        expect(document.querySelector("[inert]")).toBeNull()
+
+        // `by_source` se reemplaza completo: guardar sin decidir la borraría de rebote.
+        const save = screen.getByRole("button", { name: "Guardar contrato y firma" })
+        expect(save).toBeDisabled()
+        expect(screen.getByText("Quita la configuración desconocida para poder guardar.")).toBeInTheDocument()
+
+        await user.click(screen.getByRole("button", { name: "Quitar configuración desconocida" }))
+        expect(screen.getByText(/Se quitará cuando guardes/)).toBeInTheDocument()
+        expect(save).toBeEnabled()
+        await user.click(save)
+
+        expect(mocks.configure).toHaveBeenCalledTimes(1)
+        const sent = mocks.configure.mock.calls[0][1].parameters
+        expect(Object.keys(sent.by_source)).toEqual(["21"])
+    })
+
+    it("un 422 muestra todos los mensajes del backend, tal cual", async () => {
+        mocks.automations = [signatureRow({ 21: ROUTE, 999: ROUTE })]
+        mocks.configure.mockRejectedValue(new ApiError(422, {
+            // El `message` repite el primer error: no por eso deja de mostrarse.
+            message: "Airbnb ya tiene un contrato activo. Edita ese contrato en vez de crear o restaurar otro.",
+            errors: {
+                "parameters.by_source.22": ["Airbnb ya tiene un contrato activo. Edita ese contrato en vez de crear o restaurar otro."],
+                "parameters.by_source.23": ["Falta el texto del contrato para: Booking.com. Créalo en Documentos y vuelve a guardar."],
+            },
+        }))
+        render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
+        const user = userEvent.setup()
+
+        await user.click(await screen.findByRole("button", { name: "Quitar configuración desconocida" }))
+        await user.click(screen.getByRole("button", { name: "Guardar contrato y firma" }))
+
+        const alert = await screen.findByRole("alert")
+        expect(alert).toHaveTextContent("Airbnb ya tiene un contrato activo. Edita ese contrato en vez de crear o restaurar otro.")
+        expect(alert).toHaveTextContent("Falta el texto del contrato para: Booking.com. Créalo en Documentos y vuelve a guardar.")
     })
 })

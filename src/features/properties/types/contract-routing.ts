@@ -102,6 +102,17 @@ export function orphanRoutingEntries(
 }
 
 /**
+ * `by_source` llegó como LISTA JSON: el bug del backend (corregido el
+ * 2026-10-19) que convertía en lista un objeto con claves numéricas al
+ * responder. Las posiciones 0, 1, 2 no son canales y no hay forma de saber cuál
+ * era cuál; guardar encima reemplazaría el routing real. Es la única forma
+ * del dato que bloquea la edición — una clave de objeto desconocida no.
+ */
+export function bySourceArrivedAsList(parameters: Record<string, unknown> | null | undefined): boolean {
+    return Array.isArray(parameters?.by_source)
+}
+
+/**
  * A property that predates this feature (or one with no automation configured
  * yet) has `parameters: {}` — no `contract_mode`/`by_source` at all. Treat
  * that as "not configured" rather than crashing on missing fields.
@@ -201,6 +212,84 @@ export function summarizeContractRouting(
     }
 }
 
+
+/**
+ * `contractRouting`: el ruteo ya leído canal por canal por el backend
+ * (contrato 2026-10-19). Viene solo en la automation de firma y en el override
+ * de una unidad sobre ella, con los textos en el idioma del request. El front
+ * lo PINTA; no vuelve a armar «Canal N · …» desde `by_source`.
+ */
+export interface ContractRoutingChannelView {
+    /** `"all"` o el id del canal como string — la misma clave de `by_source`. */
+    key: string
+    channel: { id: number | null; slug: string | null; name: string }
+    contractTypeLabel: string
+    provider: { slug: string; label: string; signsInPortal: boolean } | null
+    /**
+     * `ready` · `missing_document` · `unknown_channel` · `provider_unavailable`.
+     * Se guarda tal cual: un valor que el front no conoce cuenta como «no está
+     * listo» (falla cerrado) y se muestra su `statusLabel`.
+     */
+    status: string
+    statusLabel: string
+    summary: string
+}
+
+export interface ContractRoutingView {
+    modeLabel: string
+    /** En el orden del catálogo de canales, no en el guardado. */
+    channels: ContractRoutingChannelView[]
+    /** Algún canal no está `ready`. */
+    needsAttention: boolean
+    /** Solo en el override de una unidad: el contrato está apagado en ella. */
+    disabled: boolean
+    /** Solo en el override: `listing` = ruteo propio · `property` = hereda. */
+    routingSource: "listing" | "property" | null
+}
+
+function text(value: unknown): string {
+    return typeof value === "string" ? value : ""
+}
+
+function readChannelView(raw: unknown): ContractRoutingChannelView | null {
+    if (typeof raw !== "object" || raw === null) return null
+    const item = raw as Record<string, unknown>
+    const key = typeof item.key === "string" || typeof item.key === "number" ? String(item.key) : ""
+    if (!key) return null
+    const channel = typeof item.channel === "object" && item.channel !== null ? item.channel as Record<string, unknown> : {}
+    const provider = typeof item.provider === "object" && item.provider !== null ? item.provider as Record<string, unknown> : null
+    return {
+        key,
+        channel: {
+            id: typeof channel.id === "number" ? channel.id : null,
+            slug: typeof channel.slug === "string" && channel.slug ? channel.slug : null,
+            name: text(channel.name) || key,
+        },
+        contractTypeLabel: text(item.contractTypeLabel),
+        provider: provider
+            ? { slug: text(provider.slug), label: text(provider.label) || text(provider.name), signsInPortal: provider.signsInPortal === true }
+            : null,
+        status: text(item.status),
+        statusLabel: text(item.statusLabel),
+        summary: text(item.summary),
+    }
+}
+
+/** `null` cuando el backend no lo mandó (o no es un objeto): quien pinta usa el `by_source` crudo. */
+export function readContractRouting(raw: unknown): ContractRoutingView | null {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null
+    const view = raw as Record<string, unknown>
+    const channels = (Array.isArray(view.channels) ? view.channels : [])
+        .map(readChannelView)
+        .filter((channel): channel is ContractRoutingChannelView => channel !== null)
+    return {
+        modeLabel: text(view.modeLabel),
+        channels,
+        needsAttention: view.needsAttention === true || channels.some((channel) => channel.status !== "ready"),
+        disabled: view.disabled === true,
+        routingSource: view.routingSource === "listing" || view.routingSource === "property" ? view.routingSource : null,
+    }
+}
 
 export const CONTRACT_TYPE_LABELS: Record<ContractType, string> = {
     agreement_only: "Contrato de alquiler",

@@ -161,6 +161,53 @@ describe("AutomationOverrideModal — automatizaciones que no son de identidad",
     })
 })
 
+describe("AutomationOverrideModal — contrato por unidad (contrato 2026-10-19)", () => {
+    const SIGNATURE: Provider = {
+        ...provider(1005, "hitguest_signature"),
+        parameters: { slug: "hitguest_signature", signature: { synchronous: true, contract_types: ["agreement_only"] } },
+    }
+    const CONTRACT: PropertyAutomation = {
+        ...PDF,
+        uuid: "contract-row",
+        providerId: 1005,
+        providerName: "hitguest_signature",
+        provider: SIGNATURE,
+        name: "Digital Signature",
+        guestType: "main_guest",
+        executionOrder: 10,
+        parameters: { contract_mode: "all_sources", by_source: { all: { contract_type: "agreement_only", provider_slug: "hitguest_signature" } } },
+    }
+    const contract = { propertyAutomations: [CONTRACT], lockedPropertyAutomationUuid: "contract-row" }
+
+    it("apagarlo dice que los huéspedes de la unidad no firmarán, y crea el override inactivo", async () => {
+        mocks.createListingOverride.mockResolvedValue(override({ propertyAutomationUuid: "contract-row", statusRecordId: 7, isActive: false }))
+        renderModal(contract)
+        const user = userEvent.setup()
+        await user.click(screen.getByRole("switch"))
+        expect(screen.getByText("Los huéspedes de esta unidad no firmarán contrato.")).toBeInTheDocument()
+        await user.click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(mocks.createListingOverride).toHaveBeenCalledWith({
+            listingUuid: "unit-1", propertyAutomationUuid: "contract-row", statusRecordId: 7, parameters: null,
+        }))
+    })
+
+    it("cambiar el estado no pisa un ruteo propio de la unidad: el PATCH no manda `parameters`", async () => {
+        mocks.updateListingOverride.mockResolvedValue(override({ propertyAutomationUuid: "contract-row", statusRecordId: 7, isActive: false }))
+        renderModal({
+            ...contract,
+            override: override({
+                propertyAutomationUuid: "contract-row",
+                parameters: { contract_mode: "per_source", by_source: { 22: { contract_type: "agreement_only", provider_slug: "hitguest_signature" } } },
+            }),
+        })
+        expect(screen.getByText("Esta unidad tiene su propio contrato por canal.")).toBeInTheDocument()
+        const user = userEvent.setup()
+        await user.click(screen.getByRole("switch"))
+        await user.click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(mocks.updateListingOverride).toHaveBeenCalledWith("ov-1", { statusRecordId: 7 }))
+    })
+})
+
 describe("AutomationOverrideModal — identidad por unidad (contrato 2026-10-14)", () => {
     async function choose(label: RegExp) {
         const user = userEvent.setup()

@@ -41,6 +41,7 @@ import type {
     DeliveryRecordChannel,
 } from "../types/automation"
 import { LISTING_OVERRIDE_STATUS } from "../types/automation"
+import { readContractRouting } from "../types/contract-routing"
 import {
     normalizeAutomationStatus,
     normalizeExecutionOrder,
@@ -277,8 +278,10 @@ class AutomationService {
         // usa es el del override de listing, que se conserva).
         const provider = sanitizeProvider(raw.provider ?? null)
         const automationType = readAutomationType(raw)
+        const contractRouting = readContractRouting(raw.contractRouting ?? raw.contract_routing)
         return {
             uuid: raw.uuid,
+            ...(contractRouting ? { contractRouting } : {}),
             ...(automationType !== undefined ? { automationType } : {}),
             propertyUuid: raw.propertyUuid ?? raw.property_uuid ?? "",
             providerId,
@@ -760,6 +763,7 @@ class AutomationService {
     /** Normalizes a raw API override item into ListingAutomationOverride. */
     private normalizeOverride(r: any, listingUuid?: string): ListingAutomationOverride {
         const providerSource = readProviderSource(r)
+        const contractRouting = readContractRouting(r.contractRouting ?? r.contract_routing)
         const statusRecordId: ListingOverrideStatus =
             (r.statusRecordId ?? r.status_record_id ?? LISTING_OVERRIDE_STATUS.ACTIVE) as ListingOverrideStatus
         const rawPa = r.propertyAutomation ?? r.property_automation ?? null
@@ -792,6 +796,7 @@ class AutomationService {
             providerId: readOptionalNumber(r.providerId ?? r.provider_id),
             effectiveProvider: readEffectiveProvider(r.effectiveProvider ?? r.effective_provider),
             ...(providerSource !== undefined ? { providerSource } : {}),
+            ...(contractRouting ? { contractRouting } : {}),
         }
     }
 

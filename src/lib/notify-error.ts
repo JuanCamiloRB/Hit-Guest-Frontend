@@ -67,6 +67,15 @@ export function normalizeApiError(error: unknown, fallback = DEFAULT_FALLBACK): 
         message = "No tienes permiso para acceder a este recurso."
     }
 
+    const details = collectDetails(e)
+
+    // De-duplicate (a field msg may also appear in the top-level message).
+    const unique = [...new Set(details)].filter((d) => d && d !== message)
+    return { message, status, details: unique }
+}
+
+/** Los textos de `failedFields` y `errors`, en orden y sin filtrar. */
+function collectDetails(e: Record<string, unknown>): string[] {
     const details: string[] = []
 
     // OCR-style structured failures: failedFields: [{ field, reason, confidence }]
@@ -98,9 +107,7 @@ export function normalizeApiError(error: unknown, fallback = DEFAULT_FALLBACK): 
         }
     }
 
-    // De-duplicate (a field msg may also appear in the top-level message).
-    const unique = [...new Set(details)].filter((d) => d && d !== message)
-    return { message, status, details: unique }
+    return details
 }
 
 /**
@@ -114,6 +121,19 @@ export function notifyError(error: unknown, fallback = DEFAULT_FALLBACK): void {
     const { message, details } = normalizeApiError(error, fallback)
     const description = details.length ? details.slice(0, 5).join("\n") : undefined
     toast.error(message, description ? { description } : undefined)
+}
+
+/**
+ * Todos los mensajes de un 422, tal cual los redactó el backend, para mostrarlos
+ * en línea. Laravel resume varios errores en `message` («… (and 1 more error)»),
+ * así que se prefieren los de `errors` y `message` queda solo si no vino ninguno.
+ */
+export function validationMessages(error: unknown, fallback = DEFAULT_FALLBACK): string[] {
+    // Sin el filtro de `normalizeApiError`: allí un error idéntico a `message`
+    // se descarta porque ya se muestra como título; acá sería perderlo.
+    const raw = error && typeof error === "object" ? collectDetails(error as Record<string, unknown>) : []
+    const details = [...new Set(raw)].filter(Boolean)
+    return details.length > 0 ? details : [normalizeApiError(error, fallback).message]
 }
 
 /** Extracts just the localized message (no toast) — for inline display. */

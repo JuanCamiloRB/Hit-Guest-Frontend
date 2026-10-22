@@ -13,9 +13,14 @@ describe("overrides por unidad — capacidad separada de tener campos (contrato 
 
     it("los que tienen campos siguen siendo overridables; los que no tienen ni campos ni estado, no", () => {
         expect(isOverridableSlug("tra_colombia")).toBe(true)
-        expect(isOverridableSlug("hitguest_signature")).toBe(false)
+        expect(isOverridableSlug("proveedor_inexistente")).toBe(false)
         expect(isOverridableSlug(null)).toBe(false)
+    })
+
+    it("el contrato se puede apagar por unidad (contrato 2026-10-19: antes el check-in lo ignoraba)", () => {
+        expect(isOverridableSlug("hitguest_signature")).toBe(true)
+        expect(isOverridableSlug("tufirma")).toBe(true)
         const contract = AUTOMATION_DEFINITIONS.find((def) => def.id === "digital-contract")!
-        expect(supportsListingOverride(contract)).toBe(false)
+        expect(supportsListingOverride(contract)).toBe(true)
     })
 })

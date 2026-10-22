@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
-    orphanRoutingEntries, routingForMode, summarizeContractRouting, type SourceRouting } from "./contract-routing"
+    bySourceArrivedAsList, orphanRoutingEntries, readContractRouting, routingForMode, summarizeContractRouting, type SourceRouting } from "./contract-routing"
 
 const agreement: SourceRouting = {
     contract_type: "agreement_only",
@@ -126,5 +126,58 @@ describe("orphanRoutingEntries", () => {
             { "9": { contract_type: "??", provider_slug: 5 } as never },
             catalogo,
         )).toEqual([])
+    })
+})
+
+describe("readContractRouting — ruteo leído por el backend (contrato 2026-10-19)", () => {
+    const ready = {
+        key: "21",
+        channel: { id: 21, slug: "direct", name: "Directo" },
+        contractType: "agreement_only",
+        contractTypeLabel: "Contrato de alquiler",
+        provider: { slug: "tufirma", name: "TuFirma Digital", label: "Firma digital (TuFirma)", signsInPortal: false },
+        document: { uuid: "doc-1", updatedAt: "2026-10-19 21:11:50" },
+        status: "ready",
+        statusLabel: "Listo",
+        summary: "Directo · Contrato de alquiler · Firma digital (TuFirma)",
+    }
+
+    it("lee los canales con sus textos", () => {
+        const view = readContractRouting({ mode: "per_source", modeLabel: "Un contrato distinto por canal", channels: [ready], needsAttention: false })
+        expect(view?.channels[0]).toMatchObject({
+            key: "21",
+            channel: { id: 21, slug: "direct", name: "Directo" },
+            provider: { label: "Firma digital (TuFirma)", signsInPortal: false },
+            status: "ready",
+        })
+        expect(view?.needsAttention).toBe(false)
+    })
+
+    it("un estado desconocido cuenta como «requiere atención» aunque el flag no venga", () => {
+        const view = readContractRouting({ channels: [{ ...ready, status: "algo_nuevo" }] })
+        expect(view?.needsAttention).toBe(true)
+    })
+
+    it("«todos los canales» trae id null", () => {
+        const view = readContractRouting({ channels: [{ ...ready, key: "all", channel: { id: null, slug: "all", name: "Todos los canales" } }] })
+        expect(view?.channels[0].channel).toEqual({ id: null, slug: "all", name: "Todos los canales" })
+    })
+
+    it("ausente o con otra forma es null: se usa el `by_source` crudo", () => {
+        expect(readContractRouting(undefined)).toBeNull()
+        expect(readContractRouting([ready])).toBeNull()
+    })
+
+    it("override de unidad: desactivado y origen del ruteo", () => {
+        expect(readContractRouting({ disabled: true, channels: [], routingSource: "listing" }))
+            .toMatchObject({ disabled: true, routingSource: "listing", channels: [] })
+    })
+})
+
+describe("bySourceArrivedAsList", () => {
+    it("solo la lista JSON (bug previo al 2026-10-19) cuenta; un objeto con claves desconocidas no", () => {
+        expect(bySourceArrivedAsList({ by_source: [{}, {}] })).toBe(true)
+        expect(bySourceArrivedAsList({ by_source: { 999: {} } })).toBe(false)
+        expect(bySourceArrivedAsList(undefined)).toBe(false)
     })
 })

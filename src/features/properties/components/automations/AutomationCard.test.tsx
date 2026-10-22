@@ -314,6 +314,70 @@ describe("AutomationCard — Contrato", () => {
         expect(screen.getByText("ID guardado: 23")).toBeInTheDocument()
     })
 
+    describe("con `contractRouting` del backend (contrato 2026-10-19)", () => {
+        const channel = (key: string, name: string, slug: string, status: string, statusLabel: string) => ({
+            key,
+            channel: { id: Number(key), slug, name },
+            contractTypeLabel: "Contrato de alquiler",
+            provider: { slug: "hitguest_signature", label: "Firma nativa (en el portal)", signsInPortal: true },
+            status,
+            statusLabel,
+            summary: `${name} · Contrato de alquiler · Firma nativa (en el portal)`,
+        })
+
+        it("pinta cada canal con el nombre y los textos del backend, aunque el catálogo no esté", () => {
+            render(
+                <AutomationCard
+                    {...baseProps}
+                    definition={contractDefinition()}
+                    automation={{
+                        ...perSourceContract(),
+                        contractRouting: {
+                            modeLabel: "Un contrato distinto por canal",
+                            channels: [channel("21", "Directo", "direct", "ready", "Listo")],
+                            needsAttention: false,
+                            disabled: false,
+                            routingSource: null,
+                        },
+                    }}
+                    providers={[signedProvider()]}
+                />,
+            )
+
+            expect(screen.getByText("Directo")).toBeInTheDocument()
+            expect(screen.getByText("Contrato de alquiler · Firma nativa (en el portal)")).toBeInTheDocument()
+            expect(screen.queryByText(/Canal no identificado|ID guardado/)).toBeNull()
+            expect(screen.getByText("Contrato configurado")).toBeInTheDocument()
+        })
+
+        it("si algún canal no está listo, avisa con el texto del backend", () => {
+            render(
+                <AutomationCard
+                    {...baseProps}
+                    definition={contractDefinition()}
+                    automation={{
+                        ...perSourceContract(),
+                        contractRouting: {
+                            modeLabel: "Un contrato distinto por canal",
+                            channels: [
+                                channel("21", "Directo", "direct", "ready", "Listo"),
+                                channel("26", "Expedia", "expedia", "missing_document", "Falta el texto del contrato de este canal."),
+                            ],
+                            needsAttention: true,
+                            disabled: false,
+                            routingSource: null,
+                        },
+                    }}
+                    providers={[signedProvider()]}
+                />,
+            )
+
+            expect(screen.getByText("Requiere atención")).toBeInTheDocument()
+            expect(screen.getByText("Falta el texto del contrato de este canal.")).toBeInTheDocument()
+            expect(screen.getByLabelText("Requiere atención", { selector: "svg" })).toBeInTheDocument()
+        })
+    })
+
     it("activa sin routing: lo dice con sus consecuencias, no un 'sin configurar' neutro", () => {
         // Estado inalcanzable por esta UI (el toggle exige routing para
         // encender) — la fila se activó por otro camino (backend/import). El

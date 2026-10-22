@@ -22,6 +22,8 @@ export interface ReservationSource {
     id: number
     catalogCategoryId: number
     name: string
+    /** `direct`, `airbnb`, `booking`… (contrato 2026-10-19). Solo para el logo. */
+    slug?: string
     name_translations?: Record<string, string>
     parameters?: Record<string, unknown>
     order: number

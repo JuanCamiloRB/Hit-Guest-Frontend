@@ -101,6 +101,10 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
         bgColor: "bg-blue-50",
         guestType: "main",
         requiresConfig: true,
+        // Contrato 2026-10-19: apagarlo en una unidad sí tiene efecto (sin paso
+        // de contrato en el portal, sin despacho ni cobro). Antes el check-in
+        // ignoraba ese override, así que no se ofrecía.
+        supportsListingStatusOverride: true,
         providerOptions: [
             {
                 value: "tufirma",

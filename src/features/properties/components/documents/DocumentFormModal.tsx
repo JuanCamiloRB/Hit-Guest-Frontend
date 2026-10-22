@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import { Loader2, Eye, FileText } from "lucide-react"
 import { toast } from "sonner"
-import { notifyError } from "@/lib/notify-error"
+import { notifyError, validationMessages } from "@/lib/notify-error"
 import {
     Dialog,
     DialogContent,
@@ -108,11 +108,9 @@ export function DocumentFormModal({
             onClose()
         } catch (err) {
             if (err instanceof ApiError && err.status === 422) {
-                const errors = err.errors
-                const first = Array.isArray(errors)
-                    ? errors.flatMap((e) => (typeof e === "string" ? [e] : Object.values(e).flat()))[0]
-                    : undefined
-                setFieldError(first || err.message || "Datos inválidos")
+                // Redactados para el PM y con el canal nombrado (contrato
+                // 2026-10-19): se muestran todos, tal cual.
+                setFieldError(validationMessages(err, "Datos inválidos").join("\n"))
                 toast.error("Revisa los campos del documento")
             } else if (err instanceof ApiError && err.status === 401) {
                 notifyError(err, "No tienes permiso para realizar esta acción")
@@ -187,7 +185,7 @@ export function DocumentFormModal({
                         <DocumentEditor value={content} onChange={setContent} shortcodes={shortcodes} />
 
                         {fieldError && (
-                            <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                            <p role="alert" className="whitespace-pre-line text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
                                 {fieldError}
                             </p>
                         )}
