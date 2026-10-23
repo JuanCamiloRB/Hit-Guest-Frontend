@@ -159,3 +159,108 @@ describe("UnitContractTexts — texto del contrato por unidad (contrato 2026-10-
         expect(screen.queryByRole("button", { name: "Usar un texto propio" })).toBeNull()
     })
 })
+
+describe("UnitContractTexts — texto efectivo y vista desactualizada (auditoría 2026-10-23)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.calls = []
+        mocks.propertyDocs = [doc("p21", 21), doc("p23", 23)]
+        mocks.unitDocs = [doc("u23", 23, "unit-1")]
+        mocks.create.mockResolvedValue(doc("u21", 21, "unit-1"))
+        mocks.listListingOverrides.mockResolvedValue([override()])
+    })
+
+    const channel = (id: number, name: string, documentUuid: string) => ({
+        key: String(id), channel: { id, slug: null, name }, contractType: "agreement_only" as const,
+        contractTypeLabel: "Contrato de alquiler", provider: null, document: { uuid: documentUuid, updatedAt: null },
+        status: "ready", statusLabel: "Listo", summary: `${name} · Contrato de alquiler · Firma nativa (en el portal)`,
+    })
+
+    it("dice qué texto firma cada canal según el backend, con su resumen, y deja verlo sin editar", async () => {
+        renderSection(override({ channels: [channel(21, "Directo", "p21"), channel(23, "Booking.com", "u23")] }))
+
+        const directo = (await screen.findByText("Directo")).closest("li")!
+        expect(within(directo).getByText("Firma el texto de la propiedad")).toBeInTheDocument()
+        expect(within(directo).getByText("Directo · Contrato de alquiler · Firma nativa (en el portal)")).toBeInTheDocument()
+        expect(within(directo).getByRole("button", { name: "Ver texto" })).toBeInTheDocument()
+
+        const booking = screen.getByText("Booking.com").closest("li")!
+        expect(within(booking).getByText("Firma el texto propio de esta unidad")).toBeInTheDocument()
+    })
+
+    it("si la relectura falla tras guardar, lo avisa y deja volver a cargar", async () => {
+        mocks.listListingOverrides.mockRejectedValueOnce(new Error("red"))
+        renderSection(override())
+        const user = userEvent.setup()
+
+        const directo = (await screen.findByText("Directo")).closest("li")!
+        await user.click(within(directo).getByRole("button", { name: "Usar un texto propio" }))
+        await user.click(within(directo).getByRole("button", { name: "Guardar texto" }))
+
+        expect(await screen.findByText(/no pudimos actualizar esta vista/)).toBeInTheDocument()
+        await user.click(screen.getByRole("button", { name: /Volver a cargar/ }))
+        await vi.waitFor(() => expect(screen.queryByText(/no pudimos actualizar esta vista/)).toBeNull())
+    })
+})
+
+describe("UnitContractTexts — qué se dice después de una escritura (auditoría 2026-10-23)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.calls = []
+        mocks.propertyDocs = [doc("p21", 21)]
+        mocks.unitDocs = []
+        mocks.createListingOverride.mockResolvedValue(override())
+        mocks.listListingOverrides.mockResolvedValue([override()])
+    })
+
+    async function saveDirecto() {
+        const user = userEvent.setup()
+        const directo = (await screen.findByText("Directo")).closest("li")!
+        await user.click(within(directo).getByRole("button", { name: "Usar un texto propio" }))
+        await user.click(within(directo).getByRole("button", { name: "Guardar texto" }))
+        return directo
+    }
+
+    it("rechazada sin escribir nada: muestra el error, no relee y no dice que se guardó", async () => {
+        mocks.create.mockRejectedValue(new ApiError(422, { message: "x", errors: { listingUuid: ["La unidad no es de esta propiedad."] } }))
+        renderSection(override())
+
+        const directo = await saveDirecto()
+
+        expect(await within(directo).findByRole("alert")).toHaveTextContent("La unidad no es de esta propiedad.")
+        expect(mocks.listListingOverrides).not.toHaveBeenCalled()
+        expect(screen.queryByText(/se guardó/)).toBeNull()
+    })
+
+    it("override creado pero texto rechazado, y la relectura falla: lo dice tal cual", async () => {
+        mocks.create.mockRejectedValue(new ApiError(422, { message: "x", errors: { reservationSourceId: ["Elige el canal."] } }))
+        mocks.listListingOverrides.mockRejectedValue(new Error("red"))
+        renderSection(null)
+
+        const directo = await saveDirecto()
+
+        expect(await within(directo).findByRole("alert")).toHaveTextContent("Se activó el contrato en esta unidad, pero el texto no se guardó.")
+        expect(await screen.findByText("Se activó el contrato en esta unidad, pero el texto no se guardó y no pudimos actualizar esta vista.")).toBeInTheDocument()
+        expect(screen.queryByText(/El cambio se guardó/)).toBeNull()
+    })
+
+    it("un fallo de red no permite saber si se guardó: relee y, si eso también falla, lo admite", async () => {
+        mocks.create.mockRejectedValue(new TypeError("Failed to fetch"))
+        mocks.listListingOverrides.mockRejectedValue(new Error("red"))
+        renderSection(override())
+
+        await saveDirecto()
+
+        expect(await screen.findByText(/No pudimos confirmar si el cambio se guardó/)).toBeInTheDocument()
+    })
+
+    it("una relectura que no trae el override esperado cuenta como incompleta", async () => {
+        mocks.create.mockResolvedValue(doc("u21", 21, "unit-1"))
+        mocks.listListingOverrides.mockResolvedValue([])
+        renderSection(override())
+
+        await saveDirecto()
+
+        expect(await screen.findByText(/El cambio se guardó, pero no pudimos actualizar esta vista/)).toBeInTheDocument()
+    })
+})

@@ -12,7 +12,13 @@ const mocks = vi.hoisted(() => ({
     docUpdate: vi.fn(),
     docCreate: vi.fn(),
     docRemove: vi.fn(),
+    automationCreate: vi.fn(),
 }))
+
+// Radix Select usa APIs de puntero que jsdom no implementa.
+window.HTMLElement.prototype.hasPointerCapture = () => false
+window.HTMLElement.prototype.releasePointerCapture = () => {}
+window.HTMLElement.prototype.scrollIntoView = () => {}
 
 vi.mock("@/features/auth/services/catalog-service", () => ({
     catalogService: { getCountries: async () => [{ id: 48, extra: { iso2: "CO" } }] },
@@ -40,7 +46,7 @@ vi.mock("../../services/automation-service", async (importOriginal) => {
             listProviders: async () => [SIGNATURE],
             list: async () => mocks.automations,
             configure: mocks.configure,
-            create: vi.fn(),
+            create: mocks.automationCreate,
         },
     }
 })
@@ -264,5 +270,62 @@ describe("ContractRoutingSection — un solo texto con firma por canal (contrato
         await user.click(await screen.findByRole("radio", { name: /Un contrato para cada canal/ }))
 
         expect(screen.getByRole("radio", { name: /Mismo texto para todos los canales/ })).toHaveAttribute("aria-checked", "true")
+    })
+})
+
+describe("ContractRoutingSection — cancelar después de crear la fila de Contrato (auditoría 2026-10-23)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.automations = []
+        mocks.documents = [{ uuid: "doc-21", propertyDocumentTypeId: 92, reservationSourceId: 21, content: "<p>Texto</p>" }]
+        mocks.automationCreate.mockResolvedValue(signatureRow({}))
+    })
+
+    it("si la fila ya se creó, no dice «no se guardó nada»: reconcilia y avisa", async () => {
+        mocks.docUpdate.mockRejectedValueOnce(unitOverridesError())
+        render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
+        const user = userEvent.setup()
+
+        const directo = (await screen.findByText("Directo")).closest("article")!
+        await user.click(within(directo).getByRole("button", { name: /Configurar/ }))
+        await user.click(within(directo).getByRole("combobox"))
+        await user.click(await screen.findByRole("option", { name: "HitGuest Signature" }))
+        await user.click(screen.getByRole("radio", { name: /Mismo texto para todos los canales/ }))
+        await user.click(screen.getByRole("button", { name: "Guardar contrato y firma" }))
+        await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Cancelar" }))
+
+        expect(mocks.automationCreate).toHaveBeenCalledTimes(1)
+        expect(await screen.findByText(/Los pasos anteriores sí quedaron guardados/)).toBeInTheDocument()
+        expect(screen.queryByText(/No se guardó nada/)).toBeNull()
+        expect(mocks.configure).not.toHaveBeenCalled()
+    })
+})
+
+describe("ContractRoutingSection — de un contrato para todos a uno por canal, sin confirmaciones", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.documents = [{ uuid: "general", propertyDocumentTypeId: 92, reservationSourceId: null, content: "<p>General</p>" }]
+        mocks.automations = [{ ...signatureRow({}), parameters: { contract_mode: "all_sources", by_source: { all: ROUTE } } }]
+        mocks.configure.mockResolvedValue(signatureRow({ 21: ROUTE }))
+    })
+
+    it("conserva el texto general: no toca documentos y solo configura la firma", async () => {
+        render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
+        const user = userEvent.setup()
+
+        await user.click(await screen.findByRole("radio", { name: /Un contrato para cada canal/ }))
+        // Tras cambiar de modo el canal sale «con cambios», y su botón dice «Editar».
+        const directo = screen.getByText("Directo").closest("article")!
+        await user.click(within(directo).getByRole("button", { name: /Configurar|Editar/ }))
+        await user.click(within(directo).getByRole("combobox"))
+        await user.click(await screen.findByRole("option", { name: "HitGuest Signature" }))
+        await user.click(screen.getByRole("button", { name: "Guardar contrato y firma" }))
+
+        await vi.waitFor(() => expect(mocks.configure).toHaveBeenCalled())
+        expect(mocks.docUpdate).not.toHaveBeenCalled()
+        expect(mocks.docCreate).not.toHaveBeenCalled()
+        expect(mocks.docRemove).not.toHaveBeenCalled()
+        expect(screen.queryByRole("alertdialog")).toBeNull()
+        expect(mocks.configure.mock.calls[0][1].parameters).toEqual({ contract_mode: "per_source", by_source: { 21: ROUTE } })
     })
 })

@@ -1480,6 +1480,36 @@ producción tiene textos de unidad ni firmas propias.
   - El panel de overrides marca «Textos propios sin aplicar · revisar».
   - `onOverrideChanged` (modal → `ListingOverridesPanel` / `PropertiesUnits`)
     mantiene el override al día sin cerrar el modal.
+- **Ajustes de la auditoría del 2026-10-23:**
+  - Crear la fila estructural de Contrato cuenta como escritura (`writesApplied`).
+    Si el PM cancela una confirmación después, la pantalla reconcilia y avisa;
+    antes decía «no se guardó nada» con la fila ya creada.
+  - En `UnitContractTexts`, si la relectura falla después de escribir, la
+    pantalla lo dice («El cambio se guardó, pero no pudimos actualizar esta
+    vista») y ofrece «Volver a cargar». Antes solo quedaba en consola.
+  - Cada fila dice qué texto **firma** la unidad (`describeRowSigning`, en
+    `lib/unit-contract-texts.ts`):
+    - Con `contractRouting`, `channels[].document` es la ÚNICA fuente.
+      `document: null` (solo garantía, `missing_document`) nunca se rellena con
+      un texto deducido.
+    - Un canal fuera de la firma, un uuid que no se pudo cargar o canales con
+      textos distintos se dicen como tales.
+    - Solo un backend sin `contractRouting` deduce, y entonces dice «Usa…», no
+      «Firma…».
+    - Se muestran los `summary` y los `statusLabel` que no están `ready`.
+  - «Ver texto» abre `DocumentPreviewModal` con `allowRealReservation={false}`.
+    La lista de «Reserva real» es de toda la propiedad, o de todas si no
+    coincide ninguna, y una reserva de otra unidad da 403.
+  - Una escritura distingue tres resultados y se relee solo si algo pudo
+    cambiar:
+    - **Terminó:** se guardó.
+    - **4xx:** no se aplicó, pero pudo quedar creado el override del paso
+      anterior.
+    - **Red o 5xx:** no se sabe si se aplicó.
+
+    Si la relectura falla, el aviso dice cuál de los tres casos fue.
+  - La relectura que no trae un override que debe existir cuenta como
+    incompleta.
 
 **Contexto del análisis previo a implementar (2026-10-23):**
 - `ApiError` **descarta `meta`**. El constructor solo copia

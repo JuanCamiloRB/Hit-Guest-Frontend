@@ -507,6 +507,10 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     buildSignatureAutomationCreatePayload(propertyUuid, structuralProvider),
                 )
                 setAutomation(target)
+                // También es una escritura: si después el PM cancela una
+                // confirmación, la fila ya existe y no se puede decir «no se
+                // guardó nada» (auditoría 2026-10-23).
+                writesApplied += 1
             }
 
             // 1. property_documents first — configure() validates against their

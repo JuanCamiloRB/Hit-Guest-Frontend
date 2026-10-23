@@ -31,6 +31,12 @@ interface DocumentPreviewModalProps {
     documentUuid: string | null
     content: string
     shortcodes: string[]
+    /**
+     * `false` = solo datos de ejemplo. Para el texto de una UNIDAD: la lista de
+     * «Reserva real» es de toda la propiedad (y si no hay coincidencias, de todas
+     * las reservas), y renderizar con una reserva de otra unidad da 403.
+     */
+    allowRealReservation?: boolean
 }
 
 // Sample values used for the offline (client-side) preview.
@@ -69,6 +75,7 @@ export function DocumentPreviewModal({
     documentUuid,
     content,
     shortcodes,
+    allowRealReservation = true,
 }: DocumentPreviewModalProps) {
     const [mode, setMode] = useState<Mode>("sample")
     const [reservations, setReservations] = useState<Reservation[]>([])
@@ -148,6 +155,7 @@ export function DocumentPreviewModal({
                 </DialogHeader>
 
                 {/* Mode switch */}
+                {allowRealReservation && (
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
@@ -174,6 +182,7 @@ export function DocumentPreviewModal({
                         <Sparkles size={14} /> Reserva real
                     </button>
                 </div>
+                )}
 
                 {/* Real mode: reservation picker */}
                 {mode === "real" && (
@@ -257,7 +266,9 @@ export function DocumentPreviewModal({
 
                 {shortcodes.length > 0 && mode === "sample" && (
                     <p className="text-[11px] text-slate-400">
-                        Esta vista usa datos de ejemplo. Para ver datos reales selecciona &quot;Reserva real&quot;.
+                        {allowRealReservation
+                            ? <>Esta vista usa datos de ejemplo. Para ver datos reales selecciona &quot;Reserva real&quot;.</>
+                            : "Esta vista usa datos de ejemplo."}
                     </p>
                 )}
             </DialogContent>

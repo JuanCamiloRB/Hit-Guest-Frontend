@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertCircle, AlertTriangle, Loader2 } from "lucide-react"
+import { AlertCircle, AlertTriangle, Eye, Loader2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { validationMessages } from "@/lib/notify-error"
@@ -16,9 +16,11 @@ import {
     type PropertyDocument,
 } from "../../types/document"
 import { LISTING_OVERRIDE_STATUS, type ListingAutomationOverride } from "../../types/automation"
+import { ApiError } from "@/types/api"
 import type { ContractRoutingView } from "../../types/contract-routing"
-import { planUnitTexts, type UnitTextRow } from "../../lib/unit-contract-texts"
+import { describeRowSigning, planUnitTexts, type UnitTextRow } from "../../lib/unit-contract-texts"
 import { DocumentEditor } from "../documents/DocumentEditor"
+import { DocumentPreviewModal } from "../documents/DocumentPreviewModal"
 import { ReservationSourceIdentity, reservationSourceSlug } from "./ReservationSourceIdentity"
 
 interface Props {
@@ -68,6 +70,11 @@ export function UnitContractTexts({
     const [editing, setEditing] = useState<Editing | null>(null)
     const [busyKey, setBusyKey] = useState<string | null>(null)
     const [rowError, setRowError] = useState<{ key: string; messages: string[] } | null>(null)
+    // La relectura falló y la vista puede no ser lo que hay en el servidor. El
+    // texto dice QUÉ se sabe de la escritura (ver `run`).
+    const [staleNotice, setStaleNotice] = useState<string | null>(null)
+    const [refreshing, setRefreshing] = useState(false)
+    const [preview, setPreview] = useState<PropertyDocument | null>(null)
 
     const loadDocuments = useCallback(async () => {
         const [propertyRes, unitRes] = await Promise.all([
@@ -114,53 +121,98 @@ export function UnitContractTexts({
         })
         : null, [loaded, unitRouting, propertyRouting])
 
-    /** Relee los textos y el override: el `contractRouting` dice qué firma cada canal ahora. */
-    const refresh = async () => {
+    /**
+     * Relee los textos y el override: el `contractRouting` dice qué firma cada
+     * canal ahora. Si el override DEBE existir y no vuelve, la relectura está
+     * incompleta: aceptarla dejaría el `contractRouting` viejo como si nada.
+     */
+    const refresh = async (expectOverride: boolean) => {
         const documents = await loadDocuments()
         setLoaded((previous) => previous ? { ...previous, ...documents } : previous)
         const fresh = (await automationService.listListingOverrides(listingUuid))
             .find((item) => item.propertyAutomationUuid === propertyAutomationUuid)
         if (fresh) onOverrideChanged(fresh)
+        else if (expectOverride) throw new Error("El override del contrato no volvió en la relectura.")
     }
 
-    /** Sin override no aplica ningún texto propio: se crea activo y sin parámetros. */
-    const ensureActiveOverride = async () => {
-        if (override) return
-        const created = await automationService.createListingOverride({
-            listingUuid,
-            propertyAutomationUuid,
-            statusRecordId: LISTING_OVERRIDE_STATUS.ACTIVE,
-            parameters: null,
-        })
-        onOverrideChanged(created)
-    }
-
-    const run = async (key: string, action: () => Promise<void>, success: string) => {
-        setBusyKey(key)
-        setRowError(null)
+    /** `true` si releyó todo; si no, la vista puede estar vieja. */
+    const tryRefresh = async (expectOverride: boolean): Promise<boolean> => {
         try {
-            await action()
-            toast.success(success)
-            setEditing(null)
+            await refresh(expectOverride)
+            return true
         } catch (error) {
-            setRowError({ key, messages: validationMessages(error, "No se pudo guardar el texto de la unidad.") })
-        } finally {
-            // La relectura va aparte: si falla, lo escrito ya quedó y se dice.
-            try {
-                await refresh()
-            } catch (error) {
-                console.error("[UnitContractTexts] refresh error:", error)
-            }
-            setBusyKey(null)
+            console.error("[UnitContractTexts] refresh error:", error)
+            return false
         }
     }
 
-    const saveRow = (row: UnitTextRow, text: string) => run(row.key, async () => {
+    const retryRefresh = async () => {
+        setRefreshing(true)
+        if (await tryRefresh(override !== null)) setStaleNotice(null)
+        setRefreshing(false)
+    }
+
+    /**
+     * Una escritura de esta sección y lo que se sabe de ella después:
+     *  - terminó → se guardó;
+     *  - falló con 4xx → el backend no la aplicó (pero pudo quedar creado el
+     *    override del paso anterior);
+     *  - falló de otra forma (red, 5xx) → no se sabe si se aplicó.
+     * Solo se relee si algo pudo cambiar en el servidor, y si la relectura falla
+     * se dice exactamente cuál de esos casos fue.
+     */
+    const run = async (
+        key: string,
+        action: (progress: { overrideCreated: boolean }) => Promise<void>,
+        success: string,
+    ) => {
+        const progress = { overrideCreated: false }
+        setBusyKey(key)
+        setRowError(null)
+        let outcome: "saved" | "rejected" | "unknown" = "saved"
+        try {
+            await action(progress)
+            toast.success(success)
+            setEditing(null)
+        } catch (error) {
+            outcome = error instanceof ApiError && error.status >= 400 && error.status < 500 ? "rejected" : "unknown"
+            setRowError({
+                key,
+                messages: [
+                    ...validationMessages(error, "No se pudo guardar el texto de la unidad."),
+                    ...(progress.overrideCreated ? ["Se activó el contrato en esta unidad, pero el texto no se guardó."] : []),
+                ],
+            })
+        }
+
+        if (outcome !== "rejected" || progress.overrideCreated) {
+            const refreshed = await tryRefresh(override !== null || progress.overrideCreated)
+            setStaleNotice(refreshed ? null : outcome === "saved"
+                ? "El cambio se guardó, pero no pudimos actualizar esta vista: lo que ves puede estar desactualizado."
+                : outcome === "rejected"
+                    ? "Se activó el contrato en esta unidad, pero el texto no se guardó y no pudimos actualizar esta vista."
+                    : "No pudimos confirmar si el cambio se guardó ni actualizar esta vista. Vuelve a cargar antes de seguir.")
+        }
+        setBusyKey(null)
+    }
+
+    const saveRow = (row: UnitTextRow, text: string) => run(row.key, async (progress) => {
         if (row.unitDocument) {
             await propertyDocumentService.update(propertyUuid, row.unitDocument.uuid, { content: text })
             return
         }
-        await ensureActiveOverride()
+        // Sin override no aplica ningún texto propio: se crea activo y sin
+        // parámetros, antes del texto.
+        if (!override) {
+            const created = await automationService.createListingOverride({
+                listingUuid,
+                propertyAutomationUuid,
+                statusRecordId: LISTING_OVERRIDE_STATUS.ACTIVE,
+                parameters: null,
+            })
+            progress.overrideCreated = true
+            onOverrideChanged(created)
+        }
         await propertyDocumentService.create(propertyUuid, {
             propertyDocumentTypeId: AGREEMENT_DOCUMENT_TYPE_ID,
             statusRecordId: DOCUMENT_STATUS.ACTIVE,
@@ -189,7 +241,9 @@ export function UnitContractTexts({
     }
 
     const hasOwnTexts = loaded.unitDocuments.length > 0
-    const busy = disabled || busyKey !== null
+    const busy = disabled || busyKey !== null || refreshing
+    const routing = unitRouting ?? propertyRouting
+    const allDocuments = [...loaded.unitDocuments, ...loaded.propertyDocuments]
 
     return (
         <section className="space-y-3" aria-labelledby="unit-contract-texts">
@@ -199,6 +253,15 @@ export function UnitContractTexts({
                     Un texto propio reemplaza al de la propiedad solo en esta unidad. Lo que no personalices, lo hereda.
                 </p>
             </div>
+
+            {staleNotice && (
+                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    <span>{staleNotice}</span>
+                    <Button type="button" variant="outline" size="sm" className="h-7 bg-white text-xs" disabled={refreshing} onClick={() => void retryRefresh()}>
+                        <RefreshCw size={12} className={refreshing ? "mr-1 animate-spin" : "mr-1"} /> Volver a cargar
+                    </Button>
+                </div>
+            )}
 
             {replacedTexts.length > 0 && (
                 <div role="status" className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
@@ -244,6 +307,9 @@ export function UnitContractTexts({
                         const source = loaded.sources.find((item) => item.id === row.channelId)
                         const isEditing = editing?.key === row.key
                         const error = rowError?.key === row.key ? rowError.messages : null
+                        // Lo que la unidad FIRMA de verdad: con `contractRouting`,
+                        // solo lo que dice el backend (ver `describeRowSigning`).
+                        const signing = describeRowSigning(row, routing, allDocuments, listingUuid)
                         return (
                             <li key={row.key} className="rounded-xl border border-slate-200 bg-white p-3">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -253,16 +319,23 @@ export function UnitContractTexts({
                                             slug={row.slug ?? (source ? reservationSourceSlug(source) : null)}
                                             compact
                                         />
-                                        <p className="mt-1 pl-11 text-xs text-slate-600">
-                                            {row.unitDocument
-                                                ? "Texto propio de esta unidad"
-                                                : row.propertyDocument
-                                                    ? "Usa el texto de la propiedad"
-                                                    : "La propiedad no tiene texto para este canal"}
-                                        </p>
+                                        <p className="mt-1 pl-11 text-xs font-medium text-slate-700">{signing.headline}</p>
+                                        {signing.channels.map((channel) => (
+                                            <p key={channel.key} className="pl-11 text-xs text-slate-500">
+                                                {channel.summary || channel.channel.name}
+                                                {channel.status !== "ready" && channel.statusLabel && (
+                                                    <span className="block text-amber-700">{channel.statusLabel}</span>
+                                                )}
+                                            </p>
+                                        ))}
                                     </div>
                                     {!isEditing && (
-                                        <div className="flex shrink-0 gap-2">
+                                        <div className="flex shrink-0 flex-wrap gap-2">
+                                            {signing.document && (
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => setPreview(signing.document)}>
+                                                    <Eye size={14} className="mr-1" /> Ver texto
+                                                </Button>
+                                            )}
                                             {row.unitDocument && (
                                                 <Button
                                                     type="button"
@@ -330,6 +403,17 @@ export function UnitContractTexts({
                         )
                     })}
                 </ul>
+            )}
+
+            {preview && (
+                <DocumentPreviewModal
+                    onClose={() => setPreview(null)}
+                    propertyUuid={propertyUuid}
+                    documentUuid={preview.uuid}
+                    content={preview.content ?? ""}
+                    shortcodes={loaded.shortcodes}
+                    allowRealReservation={false}
+                />
             )}
 
             {hasOwnTexts && (

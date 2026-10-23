@@ -13,7 +13,7 @@
  */
 
 import type { PropertyDocument } from "../types/document"
-import { documentChannelId } from "../types/document"
+import { documentChannelId, documentListingUuid } from "../types/document"
 import type { ContractRoutingChannelView } from "../types/contract-routing"
 import { ALL_SOURCES_KEY, requiresAgreementDocument } from "../types/contract-routing"
 import type { ReservationSource } from "../services/reservation-source-service"
@@ -105,4 +105,73 @@ export function planUnitTexts({ propertyDocuments, unitDocuments, replacedUuids,
             }
         })
     return { textMode, rows }
+}
+
+export interface RowSigning {
+    /** Lo que se le dice al PM sobre esta fila. */
+    headline: string
+    /** El texto que se firma, solo si es UNO y está cargado (para «Ver texto»). */
+    document: PropertyDocument | null
+    /** Canales de la firma que caen en esta fila, para sus `summary` y avisos. */
+    channels: ContractRoutingChannelView[]
+}
+
+/**
+ * Qué texto FIRMA de verdad la unidad en esta fila.
+ *
+ * Con `contractRouting` manda el backend: `channels[].document` es la única
+ * fuente. `document: null` significa que ese canal no firma texto (solo
+ * garantía) o que le falta (`missing_document`) — nunca se rellena con un
+ * texto deducido. Solo un backend anterior, que no manda `contractRouting`,
+ * cae en la deducción por textos, y entonces no se afirma que «firma» nada.
+ */
+export function describeRowSigning(
+    row: UnitTextRow,
+    routing: { channels: ContractRoutingChannelView[] } | null,
+    documents: PropertyDocument[],
+    listingUuid: string,
+): RowSigning {
+    const ownedByUnit = (doc: PropertyDocument) => documentListingUuid(doc) === listingUuid
+
+    if (routing === null) {
+        const document = row.unitDocument ?? row.propertyDocument
+        return {
+            headline: !document
+                ? "Sin texto de contrato"
+                : ownedByUnit(document) ? "Usa el texto propio de esta unidad" : "Usa el texto de la propiedad",
+            document,
+            channels: [],
+        }
+    }
+
+    // La fila general cubre todos los canales de la firma; una de canal, solo el suyo.
+    const channels = row.channelId == null
+        ? routing.channels
+        : routing.channels.filter((channel) => channel.channel.id === row.channelId)
+    if (channels.length === 0) {
+        return { headline: "Este canal no está en la firma de contrato de esta unidad", document: null, channels }
+    }
+
+    const signedUuids = Array.from(new Set(channels.flatMap((channel) => channel.document ? [channel.document.uuid] : [])))
+    if (signedUuids.length === 0) {
+        const notReady = channels.find((channel) => channel.status !== "ready")
+        return {
+            headline: notReady?.statusLabel
+                || (row.channelId == null ? "Ningún canal firma texto de contrato de alquiler" : "En este canal no se firma texto de contrato de alquiler"),
+            document: null,
+            channels,
+        }
+    }
+    if (signedUuids.length > 1) {
+        return { headline: "Los canales firman textos distintos", document: null, channels }
+    }
+    const document = documents.find((doc) => doc.uuid === signedUuids[0]) ?? null
+    if (!document) {
+        return { headline: "Firma un texto que no pudimos cargar: vuelve a cargar la pantalla", document: null, channels }
+    }
+    return {
+        headline: ownedByUnit(document) ? "Firma el texto propio de esta unidad" : "Firma el texto de la propiedad",
+        document,
+        channels,
+    }
 }
