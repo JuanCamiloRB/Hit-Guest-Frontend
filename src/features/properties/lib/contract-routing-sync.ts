@@ -36,6 +36,46 @@ export interface DocumentSyncPlan {
 }
 
 /**
+ * Cómo se organizan los TEXTOS, independiente de cómo se firma:
+ *  - `shared`: un solo texto sin canal (`reservationSourceId: null`) para todos.
+ *  - `per_channel`: un texto por canal.
+ *
+ * Con `all_sources` siempre es `shared`. Con `per_source` puede ser cualquiera
+ * de los dos (contrato 2026-10-19 §2.4 bis: el texto general sirve a todos los
+ * canales aunque cada uno firme distinto). Lo que el backend NO admite es
+ * mezclarlos. Importa desde el contrato 2026-10-20: los textos de las unidades
+ * siguen el modo de los textos de la propiedad, así que convertir el texto
+ * general sin necesidad deja sin efecto los de las unidades.
+ */
+export type ContractTextMode = "shared" | "per_channel"
+
+/** Modo de los textos de la propiedad según sus documentos; `null` si no hay ninguno. */
+export function detectTextMode(currentDocs: PropertyDocument[]): ContractTextMode | null {
+    if (currentDocs.length === 0) return null
+    // Con textos por canal manda ese modo; un general sobrante es un resto que
+    // el backend ya no admite junto a ellos.
+    return currentDocs.some((d) => documentChannelId(d) != null) ? "per_channel" : "shared"
+}
+
+/** El modo de textos efectivo: `all_sources` siempre usa el texto general. */
+export function effectiveTextMode(mode: ContractMode, textMode: ContractTextMode): ContractTextMode {
+    return mode === "all_sources" ? "shared" : textMode
+}
+
+/** La clave de `texts` que guarda el texto que firma ese canal. */
+export function textKeyFor(mode: ContractMode, textMode: ContractTextMode, channelKey: string): string {
+    return effectiveTextMode(mode, textMode) === "shared" ? ALL_SOURCES_KEY : channelKey
+}
+
+/** Claves de `texts` que deben tener texto: las de los canales que firman contrato de alquiler. */
+export function requiredTextKeys(desired: ContractRoutingParameters, textMode: ContractTextMode): string[] {
+    const keys = Object.entries(desired.by_source)
+        .filter(([, routing]) => requiresAgreementDocument(routing.contract_type))
+        .map(([key]) => textKeyFor(desired.contract_mode, textMode, key))
+    return Array.from(new Set(keys))
+}
+
+/**
  * Infers the property's current mode from its type-92 documents (backend
  * plan §3.3 — there is no explicit "mode" field anywhere, it's inferred from
  * this list). `null` = no Agreement documents at all yet ("not configured").
@@ -60,17 +100,18 @@ export function planDocumentSync(
     currentDocs: PropertyDocument[],
     desired: ContractRoutingParameters,
     texts: Record<string, string>,
+    textMode: ContractTextMode = "per_channel",
 ): DocumentSyncPlan {
     const creates: DocumentCreate[] = []
     const updates: DocumentUpdate[] = []
     const deletes: string[] = []
 
     const nullDoc = currentDocs.find((d) => documentChannelId(d) == null) ?? null
-    const neededKeys = Object.entries(desired.by_source)
-        .filter(([, routing]) => requiresAgreementDocument(routing.contract_type))
-        .map(([key]) => key)
+    const neededKeys = requiredTextKeys(desired, textMode)
 
-    if (desired.contract_mode === "all_sources") {
+    // Un solo texto general: `all_sources`, o `per_source` con texto compartido
+    // (contrato 2026-10-19 §2.4 bis). Mismas reglas en los dos casos.
+    if (effectiveTextMode(desired.contract_mode, textMode) === "shared") {
         // Any leftover per-source rows are from a prior per_source configuration
         // and must go — a per_source → all_sources transition (§3.5). One of
         // them may get converted below instead of deleted.
@@ -145,11 +186,9 @@ export function planDocumentSync(
 export function findLockstepGaps(
     desired: ContractRoutingParameters,
     texts: Record<string, string>,
+    textMode: ContractTextMode = "per_channel",
 ): string[] {
-    return Object.entries(desired.by_source)
-        .filter(([, routing]) => requiresAgreementDocument(routing.contract_type))
-        .map(([key]) => key)
-        .filter((key) => !texts[key]?.trim())
+    return requiredTextKeys(desired, textMode).filter((key) => !texts[key]?.trim())
 }
 
 /**
@@ -165,12 +204,11 @@ export function isSaveConfirmed(
     sent: ContractRoutingParameters,
     confirmed: ContractRoutingParameters,
     documentChannelKeys: ReadonlySet<string>,
+    textMode: ContractTextMode = "per_channel",
 ): boolean {
     const sorted = (routing: ContractRoutingParameters["by_source"]) =>
         JSON.stringify(Object.entries(routing).sort(([a], [b]) => a.localeCompare(b)))
     if (sent.contract_mode !== confirmed.contract_mode) return false
     if (sorted(sent.by_source) !== sorted(confirmed.by_source)) return false
-    return Object.entries(confirmed.by_source)
-        .filter(([, routing]) => requiresAgreementDocument(routing.contract_type))
-        .every(([key]) => documentChannelKeys.has(key))
+    return requiredTextKeys(confirmed, textMode).every((key) => documentChannelKeys.has(key))
 }

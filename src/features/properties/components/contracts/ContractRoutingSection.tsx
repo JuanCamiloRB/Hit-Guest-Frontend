@@ -15,6 +15,7 @@ import {
     AGREEMENT_DOCUMENT_TYPE_ID,
     DOCUMENT_STATUS,
     documentChannelId,
+    isPropertyLevelDocument,
     type PropertyDocument,
 } from "../../types/document"
 import { AUTOMATION_STATUS, isSignatureProvider, type Provider, type PropertyAutomation } from "../../types/automation"
@@ -30,7 +31,23 @@ import {
     type ContractRoutingParameters,
     type SourceRouting,
 } from "../../types/contract-routing"
-import { detectMode, findLockstepGaps, isSaveConfirmed, planDocumentSync } from "../../lib/contract-routing-sync"
+import {
+    detectMode,
+    detectTextMode,
+    effectiveTextMode,
+    findLockstepGaps,
+    isSaveConfirmed,
+    planDocumentSync,
+    textKeyFor,
+    type ContractTextMode,
+} from "../../lib/contract-routing-sync"
+import {
+    UnitOverridesConfirmationDeclined,
+    withUnitOverridesConfirmation,
+    type UnitOverridesConfirmationRequest,
+} from "../../lib/unit-overrides-confirmation"
+import { DocumentEditor } from "../documents/DocumentEditor"
+import { UnitOverridesConfirmDialog } from "./UnitOverridesConfirmDialog"
 import {
     buildSignatureAutomationCreatePayload,
     findSignatureAutomation,
@@ -53,12 +70,16 @@ function draftFingerprint(
     mode: ContractMode,
     routing: Record<string, SourceRouting>,
     texts: Record<string, string>,
+    textMode: ContractTextMode,
 ): string {
     const normalizedRouting = comparableRouting(routingForMode(mode, routing))
+    const effective = effectiveTextMode(mode, textMode)
+    const textKeys = effective === "shared" ? [ALL_SOURCES_KEY] : Object.keys(normalizedRouting)
     return JSON.stringify({
         mode,
+        textMode: effective,
         routing: normalizedRouting,
-        texts: Object.fromEntries(Object.keys(normalizedRouting).map((key) => [key, texts[key] ?? ""])),
+        texts: Object.fromEntries(textKeys.map((key) => [key, texts[key] ?? ""])),
     })
 }
 
@@ -121,6 +142,15 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     const [persistedMode, setPersistedMode] = useState<ContractMode>("all_sources")
     const [persistedBySource, setPersistedBySource] = useState<Record<string, SourceRouting>>({})
     const [persistedTexts, setPersistedTexts] = useState<Record<string, string>>({})
+    // Cómo se organizan los textos en `per_source` (ver `ContractTextMode`).
+    const [textMode, setTextMode] = useState<ContractTextMode>("per_channel")
+    const [persistedTextMode, setPersistedTextMode] = useState<ContractTextMode>("per_channel")
+    // Pedido de confirmación abierto (422 `confirmUnitOverrides`) y su respuesta pendiente.
+    const [unitConfirm, setUnitConfirm] = useState<{
+        request: UnitOverridesConfirmationRequest
+        partial: boolean
+        resolve: (confirmed: boolean) => void
+    } | null>(null)
     const [expandedChannel, setExpandedChannel] = useState<string | null>(null)
 
     const [saving, setSaving] = useState(false)
@@ -185,11 +215,17 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 }
                 setProviders(Array.from(signatureProviders.values()))
                 setAutomation(automationRes)
-                setAgreementDocs(docsRes.items)
+                // Solo los textos de la PROPIEDAD: uno de unidad que se colara acá
+                // se convertiría o se borraría al guardar (contrato 2026-10-20).
+                const propertyDocs = docsRes.items.filter(isPropertyLevelDocument)
+                setAgreementDocs(propertyDocs)
                 setShortcodes(typesRes.find((t) => t.id === AGREEMENT_DOCUMENT_TYPE_ID)?.parameters?.shortcodes ?? [])
 
                 const parsed = parseContractRouting(automationRes?.parameters)
-                const initialMode = parsed?.contract_mode ?? detectMode(docsRes.items) ?? "all_sources"
+                const initialMode = parsed?.contract_mode ?? detectMode(propertyDocs) ?? "all_sources"
+                const initialTextMode = detectTextMode(propertyDocs) ?? "per_channel"
+                setTextMode(initialTextMode)
+                setPersistedTextMode(initialTextMode)
                 const allowedSourceIds = new Set(sourcesRes.map((source) => source.id))
                 const initialRouting = routingForMode(initialMode, parsed?.by_source ?? {}, allowedSourceIds)
                 setMode(initialMode)
@@ -200,7 +236,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 setRoutingArrivedAsList(bySourceArrivedAsList(automationRes?.parameters))
                 setOrphanRemovalConfirmed(false)
 
-                const initialTexts = textsByDocumentChannel(docsRes.items)
+                const initialTexts = textsByDocumentChannel(propertyDocs)
                 setTexts(initialTexts)
                 setPersistedTexts(initialTexts)
                 setExpandedChannel(null)
@@ -238,10 +274,39 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             const rest = { ...bySource }
             delete rest[ALL_SOURCES_KEY]
             setBySource(rest)
+            // Pasar a firma por canal NO obliga a partir el texto: si hay uno
+            // general, sigue sirviendo a todos (contrato 2026-10-19 §2.4 bis).
+            // Convertirlo sin necesidad dejaría sin efecto el texto general de
+            // las unidades (contrato 2026-10-20).
+            setTextMode(texts[ALL_SOURCES_KEY]?.trim() ? "shared" : "per_channel")
         }
         setExpandedChannel(null)
         setSaveError(null)
     }
+
+    const handleTextModeChange = (next: ContractTextMode) => {
+        if (next === textMode) return
+        // Se prellena con lo que ya había para no obligar a reescribirlo.
+        setTexts((previous) => {
+            if (next === "shared") {
+                if (previous[ALL_SOURCES_KEY]?.trim()) return previous
+                const firstChannelText = Object.keys(bySource).map((key) => previous[key]).find((text) => text?.trim())
+                return { ...previous, [ALL_SOURCES_KEY]: firstChannelText ?? "" }
+            }
+            const shared = previous[ALL_SOURCES_KEY] ?? ""
+            const next_ = { ...previous }
+            for (const key of Object.keys(bySource)) {
+                if (!next_[key]?.trim() && shared.trim()) next_[key] = shared
+            }
+            return next_
+        })
+        setTextMode(next)
+        setSaveError(null)
+    }
+
+    /** Abre el diálogo y espera la decisión del PM. */
+    const askUnitOverrides = (request: UnitOverridesConfirmationRequest, partial: boolean) =>
+        new Promise<boolean>((resolve) => setUnitConfirm({ request, partial, resolve }))
 
     // ── Per-channel edits (per_source mode) ─────────────────────────────────
 
@@ -274,7 +339,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
         contract_mode: mode,
         by_source: routingForMode(mode, bySource, new Set(sources.map((source) => source.id))),
     }
-    const gaps = findLockstepGaps(desired, texts)
+    const gaps = findLockstepGaps(desired, texts, textMode)
+    const usesSharedText = effectiveTextMode(mode, textMode) === "shared"
 
     // Esta pantalla puede VERSE configurada sin routing persistido: al cargar,
     // el modo y los textos se infieren de los property_documents cuando la
@@ -301,21 +367,23 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     const removableOrphans = routingBlocked ? [] : orphanRouting
     const orphansPendingDecision = removableOrphans.length > 0 && !orphanRemovalConfirmed
     const serverChannel = (key: string) => automation?.contractRouting?.channels.find((channel) => channel.key === key)
-    const currentFingerprint = draftFingerprint(mode, desired.by_source, texts)
-    const persistedFingerprint = draftFingerprint(persistedMode, persistedBySource, persistedTexts)
+    const currentFingerprint = draftFingerprint(mode, desired.by_source, texts, textMode)
+    const persistedFingerprint = draftFingerprint(persistedMode, persistedBySource, persistedTexts, persistedTextMode)
     const hasUnsavedChanges = currentFingerprint !== persistedFingerprint || showsUnsavedInference
         || (removableOrphans.length > 0 && orphanRemovalConfirmed)
 
     const channelIsDirty = (key: string): boolean => {
         if (mode !== persistedMode) return true
+        if (effectiveTextMode(mode, textMode) !== effectiveTextMode(persistedMode, persistedTextMode)) return true
+        const textKey = textKeyFor(mode, textMode, key)
         return JSON.stringify(bySource[key] ?? null) !== JSON.stringify(persistedBySource[key] ?? null)
-            || (texts[key] ?? "") !== (persistedTexts[key] ?? "")
+            || (texts[textKey] ?? "") !== (persistedTexts[textKey] ?? "")
     }
 
     const channelStatus = (key: string, routing: SourceRouting | undefined): ContractChannelStatus => {
         if (channelIsDirty(key)) return "dirty"
         if (!routing) return "unconfigured"
-        if (!routing.provider_slug || (requiresAgreementDocument(routing.contract_type) && !texts[key]?.trim())) return "incomplete"
+        if (!routing.provider_slug || (requiresAgreementDocument(routing.contract_type) && !texts[textKeyFor(mode, textMode, key)]?.trim())) return "incomplete"
         const server = serverChannel(key)
         if (server && server.status !== "ready") return "incomplete"
         return "configured"
@@ -340,7 +408,10 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
      * depende de esta comparación: un `by_source` reindexado como 0/1/2 nunca se
      * anuncia como guardado aunque el PATCH haya respondido 200.
      */
-    const applyConfirmedState = (row: PropertyAutomation | null, documents: PropertyDocument[]): boolean => {
+    const applyConfirmedState = (row: PropertyAutomation | null, allDocuments: PropertyDocument[]): boolean => {
+        const documents = allDocuments.filter(isPropertyLevelDocument)
+        const sentTextMode = textMode
+        const confirmedTextMode = detectTextMode(documents) ?? "per_channel"
         const allowedSourceIds = new Set(sources.map((source) => source.id))
         const parsed = parseContractRouting(row?.parameters)
         const confirmedOrphans = orphanRoutingEntries(parsed?.by_source, allowedSourceIds)
@@ -359,6 +430,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
         setPersistedMode(confirmedMode)
         setPersistedBySource(confirmedRouting)
         setPersistedTexts(confirmedTexts)
+        setTextMode(confirmedTextMode)
+        setPersistedTextMode(confirmedTextMode)
         setExpandedChannel(null)
 
         if (!parsed || confirmedOrphans.length > 0) {
@@ -370,6 +443,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             { contract_mode: mode, by_source: routingForMode(mode, desired.by_source) },
             { contract_mode: confirmedMode, by_source: confirmedRouting },
             new Set(Object.keys(confirmedTexts)),
+            sentTextMode,
         )
         if (!confirmedOk) {
             setSaveError("El servidor devolvió una configuración diferente a la enviada. Recarga antes de intentar nuevamente.")
@@ -415,6 +489,14 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
         setSaving(true)
         setSaveError(null)
         let routingPersisted = false
+        // Escrituras que el backend ya aplicó en este guardado: si el PM cancela
+        // una confirmación después, esas quedan y hay que decirlo.
+        let writesApplied = 0
+        const confirmable = async <T,>(write: (confirmUnitOverrides: boolean) => Promise<T>): Promise<T> => {
+            const result = await withUnitOverridesConfirmation(write, (request) => askUnitOverrides(request, writesApplied > 0))
+            writesApplied += 1
+            return result
+        }
         try {
             // 0. Si falta la fila estructural, el PM la crea INACTIVA. Crear no
             // equivale a activar: `/configure` es el endpoint que valida el
@@ -429,28 +511,32 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
 
             // 1. property_documents first — configure() validates against their
             //    live state at call time, not against what we're about to send (§1.4).
-            const plan = planDocumentSync(agreementDocs, desired, texts)
+            const plan = planDocumentSync(agreementDocs, desired, texts, textMode)
             // Execute deterministically. A conversion update must happen before
             // creating the remaining channel rows; deletes run last so a transient
             // failure does not remove more legal text than necessary. This cannot
             // make independent backend endpoints transactional, but it makes the
             // partial state predictable and therefore reconcilable.
+            //
+            // Cada escritura puede volver con el 422 `confirmUnitOverrides`
+            // (contrato 2026-10-20): el backend no la aplicó, se pregunta al PM y
+            // se reenvía ESA petición confirmada. Las anteriores ya quedaron.
             for (const update of plan.updates) {
-                await propertyDocumentService.update(propertyUuid, update.documentUuid, {
+                await confirmable((confirmUnitOverrides) => propertyDocumentService.update(propertyUuid, update.documentUuid, {
                     ...(update.reservationSourceId !== undefined ? { reservationSourceId: update.reservationSourceId } : {}),
                     ...(update.content !== undefined ? { content: update.content } : {}),
-                })
+                }, { confirmUnitOverrides }))
             }
             for (const create of plan.creates) {
-                await propertyDocumentService.create(propertyUuid, {
+                await confirmable((confirmUnitOverrides) => propertyDocumentService.create(propertyUuid, {
                         propertyDocumentTypeId: AGREEMENT_DOCUMENT_TYPE_ID,
                         statusRecordId: DOCUMENT_STATUS.ACTIVE,
                         reservationSourceId: create.reservationSourceId,
                         content: create.content,
-                })
+                }, { confirmUnitOverrides }))
             }
             for (const documentUuid of plan.deletes) {
-                await propertyDocumentService.remove(propertyUuid, documentUuid)
+                await confirmable((confirmUnitOverrides) => propertyDocumentService.remove(propertyUuid, documentUuid, { confirmUnitOverrides }))
             }
 
             // 2. Only now configure the automation with the final routing.
@@ -485,6 +571,12 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 toast.success("Contrato y firma guardados")
             }
         } catch (err) {
+            // El PM canceló la confirmación sin que nada se hubiera escrito: el
+            // backend no guardó, así que se conserva lo que estaba editando.
+            if (err instanceof UnitOverridesConfirmationDeclined && writesApplied === 0) {
+                setSaveError("No se guardó nada. Ajusta los textos si quieres evitar el cambio en las unidades.")
+                return
+            }
             // Every write above is an independent request. Always reconcile after
             // a failure so a retry plans from server truth instead of stale UUIDs
             // and cannot duplicate documents that were already created.
@@ -496,7 +588,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     }),
                     automationService.list(propertyUuid, { includeProvider: true }),
                 ])
-                setAgreementDocs(refreshedDocs.items)
+                setAgreementDocs(refreshedDocs.items.filter(isPropertyLevelDocument))
                 const reconciled = findSignatureAutomation(refreshedAutomations, providers)
                 const confirmed = applyConfirmedState(reconciled, refreshedDocs.items)
 
@@ -507,7 +599,9 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             } catch (reconcileError) {
                 console.error("[ContractRoutingSection] reconciliation error:", reconcileError)
             }
-            if (routingPersisted) {
+            if (err instanceof UnitOverridesConfirmationDeclined) {
+                setSaveError("Cancelaste un paso que afectaba a las unidades. Los pasos anteriores sí quedaron guardados: la pantalla muestra cómo quedó. Revísala antes de volver a guardar.")
+            } else if (routingPersisted) {
                 setSaveError("El servidor recibió el guardado, pero no pudimos confirmar cómo quedó. Recarga la página antes de volver a intentarlo.")
             } else if (err instanceof ApiError && err.status === 422) {
                 // Redactados para el PM y con el canal nombrado (contrato
@@ -670,6 +764,47 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 </ContractChannelCard>
             ) : (
                 <div className="space-y-3" aria-label="Configuración por canal">
+                    <fieldset className="space-y-2 rounded-xl border border-slate-200 p-3 sm:p-4">
+                        <legend className="px-1 text-sm font-bold text-slate-800">Texto del contrato de alquiler</legend>
+                        <div role="radiogroup" aria-label="Texto del contrato de alquiler" className="grid gap-2 sm:grid-cols-2">
+                            {([
+                                ["shared", "Mismo texto para todos los canales", "Cada canal puede firmar distinto, pero el texto es uno."],
+                                ["per_channel", "Un texto por canal", "Cada canal tiene su propio texto."],
+                            ] as const).map(([value, label, hint]) => (
+                                <button
+                                    key={value}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={textMode === value}
+                                    onClick={() => handleTextModeChange(value)}
+                                    disabled={saving}
+                                    className={textMode === value
+                                        ? "rounded-lg border border-[var(--color-brand-purple)] bg-[var(--color-brand-purple)]/5 px-3 py-2 text-left"
+                                        : "rounded-lg border border-slate-200 px-3 py-2 text-left hover:border-slate-300"}
+                                >
+                                    <span className="block text-sm font-semibold text-slate-800">{label}</span>
+                                    <span className="block text-xs text-slate-500">{hint}</span>
+                                </button>
+                            ))}
+                        </div>
+                        {textMode === "shared" && (
+                            <div className="space-y-1.5 pt-2">
+                                {gaps.includes(ALL_SOURCES_KEY) && (
+                                    <p className="flex items-center gap-1.5 text-xs text-amber-600">
+                                        <AlertCircle size={13} /> Los canales con contrato de alquiler necesitan este texto antes de guardar.
+                                    </p>
+                                )}
+                                <DocumentEditor
+                                    value={texts[ALL_SOURCES_KEY] ?? ""}
+                                    onChange={(text) => {
+                                        setTexts((previous) => ({ ...previous, [ALL_SOURCES_KEY]: text }))
+                                        setSaveError(null)
+                                    }}
+                                    shortcodes={shortcodes}
+                                />
+                            </div>
+                        )}
+                    </fieldset>
                     {sources.map((source) => {
                         const key = String(source.id)
                         const routing = bySource[key]
@@ -702,6 +837,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                                         }}
                                         shortcodes={shortcodes}
                                         hasTextGap={gaps.includes(key)}
+                                        showText={!usesSharedText}
                                     />
                                 )}
                             </ContractChannelCard>
@@ -710,6 +846,15 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 </div>
             )}
             </div>
+
+            <UnitOverridesConfirmDialog
+                request={unitConfirm?.request ?? null}
+                partial={unitConfirm?.partial ?? false}
+                onDecision={(confirmed) => {
+                    unitConfirm?.resolve(confirmed)
+                    setUnitConfirm(null)
+                }}
+            />
 
             {saveError && (
                 <p role="alert" className="flex items-start gap-2 whitespace-pre-line text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">

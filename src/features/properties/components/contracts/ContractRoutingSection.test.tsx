@@ -9,6 +9,9 @@ const mocks = vi.hoisted(() => ({
     automations: [] as unknown[],
     documents: [] as unknown[],
     configure: vi.fn(),
+    docUpdate: vi.fn(),
+    docCreate: vi.fn(),
+    docRemove: vi.fn(),
 }))
 
 vi.mock("@/features/auth/services/catalog-service", () => ({
@@ -26,7 +29,7 @@ vi.mock("../../services/property-document-service", () => ({
     propertyDocumentService: {
         list: async () => ({ items: mocks.documents, meta: { total: mocks.documents.length } }),
         getTypes: async () => [],
-        create: vi.fn(), update: vi.fn(), remove: vi.fn(),
+        create: mocks.docCreate, update: mocks.docUpdate, remove: mocks.docRemove,
     },
 }))
 vi.mock("../../services/automation-service", async (importOriginal) => {
@@ -169,5 +172,97 @@ describe("ContractRoutingSection — contrato 2026-10-19", () => {
         const alert = await screen.findByRole("alert")
         expect(alert).toHaveTextContent("Airbnb ya tiene un contrato activo. Edita ese contrato en vez de crear o restaurar otro.")
         expect(alert).toHaveTextContent("Falta el texto del contrato para: Booking.com. Créalo en Documentos y vuelve a guardar.")
+    })
+})
+
+/** El 422 del contrato 2026-10-20 §2.5. */
+function unitOverridesError() {
+    return new ApiError(422, {
+        message: "Este cambio reemplaza la configuración del contrato de algunas unidades. (and 1 more error)",
+        errors: {
+            confirmUnitOverrides: [
+                "Este cambio reemplaza la configuración del contrato de algunas unidades. Revisa cuáles y confirma para aplicarlo.",
+                "Apartamento 101: su texto propio para todos los canales dejará de aplicar.",
+            ],
+        },
+        meta: { affectedUnits: [{ listingUuid: "unit-101", listingName: "Apartamento 101", replacedTexts: [], channelsLeftWithoutText: [] }] },
+    })
+}
+
+describe("ContractRoutingSection — textos de las unidades (contrato 2026-10-20)", () => {
+    const channelDoc = { uuid: "doc-21", propertyDocumentTypeId: 92, reservationSourceId: 21, content: "<p>Texto</p>" }
+    // Un texto de UNIDAD que se colara en la lista: nunca se convierte ni se borra.
+    const unitDoc = { uuid: "unit-doc", propertyDocumentTypeId: 92, reservationSourceId: 22, listingUuid: "unit-101", content: "<p>Unidad</p>" }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.documents = [channelDoc, unitDoc]
+        mocks.automations = [signatureRow({ 21: ROUTE })]
+        mocks.configure.mockResolvedValue(signatureRow({ 21: ROUTE }))
+    })
+
+    async function switchToSharedTextAndSave(user: ReturnType<typeof userEvent.setup>) {
+        await user.click(await screen.findByRole("radio", { name: /Mismo texto para todos los canales/ }))
+        await user.click(screen.getByRole("button", { name: "Guardar contrato y firma" }))
+    }
+
+    it("si el backend pide confirmar, muestra las unidades y al continuar reenvía LA MISMA petición confirmada", async () => {
+        mocks.docUpdate.mockRejectedValueOnce(unitOverridesError()).mockResolvedValueOnce({})
+        render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
+        const user = userEvent.setup()
+
+        await switchToSharedTextAndSave(user)
+
+        const dialog = await screen.findByRole("alertdialog")
+        expect(dialog).toHaveTextContent("Apartamento 101: su texto propio para todos los canales dejará de aplicar.")
+        await user.click(within(dialog).getByRole("button", { name: "Continuar" }))
+
+        await vi.waitFor(() => expect(mocks.configure).toHaveBeenCalled())
+        expect(mocks.docUpdate.mock.calls).toEqual([
+            ["p-1", "doc-21", { reservationSourceId: null, content: "<p>Texto</p>" }, { confirmUnitOverrides: false }],
+            ["p-1", "doc-21", { reservationSourceId: null, content: "<p>Texto</p>" }, { confirmUnitOverrides: true }],
+        ])
+        // El texto de la unidad no entra en el plan de la propiedad.
+        expect(mocks.docRemove).not.toHaveBeenCalled()
+    })
+
+    it("si cancela antes de escribir nada, no se guarda nada y conserva lo que editaba", async () => {
+        mocks.docUpdate.mockRejectedValueOnce(unitOverridesError())
+        render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
+        const user = userEvent.setup()
+
+        await switchToSharedTextAndSave(user)
+        await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Cancelar" }))
+
+        expect(await screen.findByText(/No se guardó nada/)).toBeInTheDocument()
+        expect(mocks.docUpdate).toHaveBeenCalledTimes(1)
+        expect(mocks.configure).not.toHaveBeenCalled()
+        expect(screen.getByRole("radio", { name: /Mismo texto para todos los canales/ })).toHaveAttribute("aria-checked", "true")
+    })
+})
+
+describe("ContractRoutingSection — un solo texto con firma por canal (contrato 2026-10-19 §2.4 bis)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.documents = [{ uuid: "general", propertyDocumentTypeId: 92, reservationSourceId: null, content: "<p>General</p>" }]
+    })
+
+    it("una propiedad por canal con texto general se muestra así, sin canales «incompletos»", async () => {
+        mocks.automations = [signatureRow({ 21: ROUTE })]
+        render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
+
+        expect(await screen.findByRole("radio", { name: /Mismo texto para todos los canales/ })).toHaveAttribute("aria-checked", "true")
+        expect(screen.queryByText("Incompleto")).toBeNull()
+        expect(screen.getByText("La configuración está guardada.")).toBeInTheDocument()
+    })
+
+    it("pasar a firma por canal no parte el texto general", async () => {
+        mocks.automations = [{ ...signatureRow({}), parameters: { contract_mode: "all_sources", by_source: { all: ROUTE } } }]
+        render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
+        const user = userEvent.setup()
+
+        await user.click(await screen.findByRole("radio", { name: /Un contrato para cada canal/ }))
+
+        expect(screen.getByRole("radio", { name: /Mismo texto para todos los canales/ })).toHaveAttribute("aria-checked", "true")
     })
 })

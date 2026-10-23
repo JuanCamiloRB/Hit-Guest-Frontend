@@ -318,6 +318,8 @@ describe("AutomationCard — Contrato", () => {
         const channel = (key: string, name: string, slug: string, status: string, statusLabel: string) => ({
             key,
             channel: { id: Number(key), slug, name },
+            contractType: "agreement_only" as const,
+            document: null,
             contractTypeLabel: "Contrato de alquiler",
             provider: { slug: "hitguest_signature", label: "Firma nativa (en el portal)", signsInPortal: true },
             status,
@@ -338,6 +340,8 @@ describe("AutomationCard — Contrato", () => {
                             needsAttention: false,
                             disabled: false,
                             routingSource: null,
+                            replacedTexts: [],
+                            replacedTextsLabel: null,
                         },
                     }}
                     providers={[signedProvider()]}
@@ -366,6 +370,8 @@ describe("AutomationCard — Contrato", () => {
                             needsAttention: true,
                             disabled: false,
                             routingSource: null,
+                            replacedTexts: [],
+                            replacedTextsLabel: null,
                         },
                     }}
                     providers={[signedProvider()]}

@@ -25,14 +25,22 @@ import type {
     UpdatePropertyDocumentPayload,
     PropertyDocumentListResult,
     PaginationMeta,
+    UnitOverridesConfirmation,
 } from "../types/document"
 
 export interface DocumentListParams {
     propertyDocumentTypeId?: number
     statusRecordId?: number
     uuid?: string
+    /** Solo los textos de esa unidad. Sin esto, el backend devuelve solo los de la propiedad. */
+    listingUuid?: string
     page?: number
     perPage?: number
+}
+
+/** Solo se manda cuando el PM confirmó: sin confirmar, la petición va como siempre. */
+function confirmBody(confirmation: UnitOverridesConfirmation): { confirmUnitOverrides?: true } {
+    return confirmation.confirmUnitOverrides ? { confirmUnitOverrides: true } : {}
 }
 
 class PropertyDocumentService {
@@ -68,6 +76,7 @@ class PropertyDocumentService {
         if (params.propertyDocumentTypeId) qs.set("propertyDocumentTypeId[eq]", String(params.propertyDocumentTypeId))
         if (params.statusRecordId)         qs.set("statusRecordId[eq]", String(params.statusRecordId))
         if (params.uuid)                   qs.set("uuid[eq]", params.uuid)
+        if (params.listingUuid)            qs.set("listingUuid[eq]", params.listingUuid)
         if (params.page)                   qs.set("page", String(params.page))
         if (params.perPage)                qs.set("per_page", String(params.perPage))
 
@@ -96,10 +105,11 @@ class PropertyDocumentService {
     async create(
         propertyUuid: string,
         payload: CreatePropertyDocumentPayload,
+        confirmation: UnitOverridesConfirmation = {},
     ): Promise<PropertyDocument> {
         return apiClient.post<PropertyDocument>(
             `${API_BASE}/properties/${propertyUuid}/documents`,
-            payload,
+            { ...payload, ...confirmBody(confirmation) },
         )
     }
 
@@ -107,22 +117,34 @@ class PropertyDocumentService {
         propertyUuid: string,
         documentUuid: string,
         payload: UpdatePropertyDocumentPayload,
+        confirmation: UnitOverridesConfirmation = {},
     ): Promise<PropertyDocument> {
         return apiClient.patch<PropertyDocument>(
             `${API_BASE}/properties/${propertyUuid}/documents/${documentUuid}`,
-            payload,
+            { ...payload, ...confirmBody(confirmation) },
         )
     }
 
-    async remove(propertyUuid: string, documentUuid: string): Promise<void> {
+    /** DELETE no lleva body: la confirmación va en la URL (`?confirmUnitOverrides=1`). */
+    async remove(
+        propertyUuid: string,
+        documentUuid: string,
+        confirmation: UnitOverridesConfirmation = {},
+    ): Promise<void> {
+        const query = confirmation.confirmUnitOverrides ? "?confirmUnitOverrides=1" : ""
         await apiClient.delete<void>(
-            `${API_BASE}/properties/${propertyUuid}/documents/${documentUuid}`,
+            `${API_BASE}/properties/${propertyUuid}/documents/${documentUuid}${query}`,
         )
     }
 
-    async restore(propertyUuid: string, documentUuid: string): Promise<PropertyDocument> {
+    async restore(
+        propertyUuid: string,
+        documentUuid: string,
+        confirmation: UnitOverridesConfirmation = {},
+    ): Promise<PropertyDocument> {
         return apiClient.post<PropertyDocument>(
             `${API_BASE}/properties/${propertyUuid}/documents/${documentUuid}/restore`,
+            confirmBody(confirmation),
         )
     }
 

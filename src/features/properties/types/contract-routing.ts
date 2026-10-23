@@ -223,8 +223,16 @@ export interface ContractRoutingChannelView {
     /** `"all"` o el id del canal como string — la misma clave de `by_source`. */
     key: string
     channel: { id: number | null; slug: string | null; name: string }
+    /** `null` si el backend mandó un valor que el front no conoce. */
+    contractType: ContractType | null
     contractTypeLabel: string
     provider: { slug: string; label: string; signsInPortal: boolean } | null
+    /**
+     * El texto que firma este canal. En el override de una unidad es el que
+     * REALMENTE firma: el suyo donde reemplaza, el de la propiedad en el resto
+     * (contrato 2026-10-20). `null` = no necesita texto (solo garantía) o falta.
+     */
+    document: { uuid: string; updatedAt: string | null } | null
     /**
      * `ready` · `missing_document` · `unknown_channel` · `provider_unavailable`.
      * Se guarda tal cual: un valor que el front no conoce cuenta como «no está
@@ -245,10 +253,27 @@ export interface ContractRoutingView {
     disabled: boolean
     /** Solo en el override: `listing` = ruteo propio · `property` = hereda. */
     routingSource: "listing" | "property" | null
+    /**
+     * Solo en el override (contrato 2026-10-20): textos propios de la unidad que
+     * NO aplican porque la propiedad cambió de modo. Se conservan; impiden crear
+     * textos nuevos en la unidad hasta borrarlos.
+     */
+    replacedTexts: Array<{ uuid: string; channel: { id: number | null; slug: string | null; name: string } }>
+    /** El aviso ya redactado (quién y cuándo, si quedó registrado). `null` si no hay. */
+    replacedTextsLabel: string | null
 }
 
 function text(value: unknown): string {
     return typeof value === "string" ? value : ""
+}
+
+function readChannelRef(raw: unknown, fallbackName: string): { id: number | null; slug: string | null; name: string } {
+    const channel = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : {}
+    return {
+        id: typeof channel.id === "number" ? channel.id : null,
+        slug: typeof channel.slug === "string" && channel.slug ? channel.slug : null,
+        name: text(channel.name) || fallbackName,
+    }
 }
 
 function readChannelView(raw: unknown): ContractRoutingChannelView | null {
@@ -256,15 +281,15 @@ function readChannelView(raw: unknown): ContractRoutingChannelView | null {
     const item = raw as Record<string, unknown>
     const key = typeof item.key === "string" || typeof item.key === "number" ? String(item.key) : ""
     if (!key) return null
-    const channel = typeof item.channel === "object" && item.channel !== null ? item.channel as Record<string, unknown> : {}
     const provider = typeof item.provider === "object" && item.provider !== null ? item.provider as Record<string, unknown> : null
+    const document = typeof item.document === "object" && item.document !== null ? item.document as Record<string, unknown> : null
     return {
         key,
-        channel: {
-            id: typeof channel.id === "number" ? channel.id : null,
-            slug: typeof channel.slug === "string" && channel.slug ? channel.slug : null,
-            name: text(channel.name) || key,
-        },
+        channel: readChannelRef(item.channel, key),
+        contractType: CONTRACT_TYPES.has(item.contractType as ContractType) ? item.contractType as ContractType : null,
+        document: document && typeof document.uuid === "string" && document.uuid
+            ? { uuid: document.uuid, updatedAt: typeof document.updatedAt === "string" ? document.updatedAt : null }
+            : null,
         contractTypeLabel: text(item.contractTypeLabel),
         provider: provider
             ? { slug: text(provider.slug), label: text(provider.label) || text(provider.name), signsInPortal: provider.signsInPortal === true }
@@ -282,12 +307,23 @@ export function readContractRouting(raw: unknown): ContractRoutingView | null {
     const channels = (Array.isArray(view.channels) ? view.channels : [])
         .map(readChannelView)
         .filter((channel): channel is ContractRoutingChannelView => channel !== null)
+    const replacedTexts = (Array.isArray(view.replacedTexts) ? view.replacedTexts : []).flatMap((item: unknown) => {
+        if (typeof item !== "object" || item === null) return []
+        const replaced = item as Record<string, unknown>
+        return typeof replaced.uuid === "string" && replaced.uuid
+            ? [{ uuid: replaced.uuid, channel: readChannelRef(replaced.channel, "Todos los canales") }]
+            : []
+    })
     return {
         modeLabel: text(view.modeLabel),
         channels,
-        needsAttention: view.needsAttention === true || channels.some((channel) => channel.status !== "ready"),
+        needsAttention: view.needsAttention === true
+            || channels.some((channel) => channel.status !== "ready")
+            || replacedTexts.length > 0,
         disabled: view.disabled === true,
         routingSource: view.routingSource === "listing" || view.routingSource === "property" ? view.routingSource : null,
+        replacedTexts,
+        replacedTextsLabel: text(view.replacedTextsLabel) || null,
     }
 }
 

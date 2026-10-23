@@ -238,6 +238,8 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                         Desactivada en esta unidad
                                                     </span>
                                                 </div>
+                                            ) : override?.contractRouting?.replacedTexts.length ? (
+                                                <span className="text-[10px] font-medium text-amber-700">Textos propios sin aplicar · revisar</span>
                                             ) : ownContract ? (
                                                 <span className="text-[10px] text-primary font-medium">Contrato propio de la unidad</span>
                                             ) : hasParams ? (
@@ -292,6 +294,9 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                     onSaved={saved => {
                         setEntries(prev => ({ ...prev, [editingListing.uuid]: { state: "loaded", override: saved } }))
                         setEditingListing(null)
+                    }}
+                    onOverrideChanged={changed => {
+                        setEntries(prev => ({ ...prev, [editingListing.uuid]: { state: "loaded", override: changed } }))
                     }}
                     onInheritRestored={() => {
                         setEntries(prev => ({ ...prev, [editingListing.uuid]: { state: "loaded", override: null } }))

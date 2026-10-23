@@ -99,8 +99,18 @@ export interface PropertyDocument {
      */
     reservationSourceId?: number | null
     reservation_source_id?: number | null
-    /** Sideloaded when `reservationSourceId` is set — for display only, never sent back. */
-    source?: { id: number; name: string } | null
+    /**
+     * Sideloaded when `reservationSourceId` is set — for display only, never
+     * sent back. `slug` desde el contrato 2026-10-19 (para el logo).
+     */
+    source?: { id: number; name: string; slug?: string } | null
+    /**
+     * Unidad dueña del texto (contrato 2026-10-20). `null` = texto de la
+     * propiedad. Un texto de unidad reemplaza al de la propiedad solo en esa
+     * unidad, y solo con su override de contrato activo.
+     */
+    listingUuid?: string | null
+    listing_uuid?: string | null
     createdAt: string
     updatedAt: string
     deletedAt: string | null
@@ -112,6 +122,21 @@ export function documentChannelId(doc: PropertyDocument): number | null {
     return v == null ? null : Number(v)
 }
 
+/** La unidad dueña del texto, o `null` si es de la propiedad. */
+export function documentListingUuid(doc: PropertyDocument): string | null {
+    const v = doc.listingUuid ?? doc.listing_uuid
+    return typeof v === "string" && v ? v : null
+}
+
+/**
+ * Texto de la PROPIEDAD (no de una unidad). El GET sin filtro ya devuelve solo
+ * estos, pero quien sincroniza los textos de la propiedad filtra igual: un
+ * texto de unidad que se colara acá se convertiría o se borraría al guardar.
+ */
+export function isPropertyLevelDocument(doc: PropertyDocument): boolean {
+    return documentListingUuid(doc) === null
+}
+
 // ── Request payloads ─────────────────────────────────────────────────────
 
 export interface CreatePropertyDocumentPayload {
@@ -119,6 +144,17 @@ export interface CreatePropertyDocumentPayload {
     statusRecordId: number
     content?: string | null
     reservationSourceId?: number | null
+    /** Texto de una unidad (contrato 2026-10-20). No se cambia después: `PATCH` lo ignora. */
+    listingUuid?: string
+}
+
+/**
+ * Reenvío de una petición que el backend frenó con el 422
+ * `confirmUnitOverrides` (contrato 2026-10-20): el PM ya vio qué unidades
+ * cambian y confirmó. Va en el body (POST/PATCH/restore) o en la URL (DELETE).
+ */
+export interface UnitOverridesConfirmation {
+    confirmUnitOverrides?: boolean
 }
 
 export interface UpdatePropertyDocumentPayload {

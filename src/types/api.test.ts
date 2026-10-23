@@ -22,3 +22,12 @@ describe("toApiErrorResponse — cuerpo de error de un fetch directo", () => {
         expect(toApiErrorResponse("no-json", "HTTP 500")).toEqual({ message: "HTTP 500" })
     })
 })
+
+describe("ApiError — `meta` (contrato 2026-10-20, `confirmUnitOverrides`)", () => {
+    it("lo conserva tanto desde el cliente como desde un fetch directo", () => {
+        const meta = { affectedUnits: [{ listingUuid: "u", listingName: "Casa" }] }
+        expect(new ApiError(422, { message: "x", meta }).meta).toEqual(meta)
+        expect(toApiErrorResponse({ message: "x", meta }, "HTTP 422").meta).toEqual(meta)
+        expect(toApiErrorResponse({ message: "x", meta: null }, "HTTP 422")).not.toHaveProperty("meta")
+    })
+})

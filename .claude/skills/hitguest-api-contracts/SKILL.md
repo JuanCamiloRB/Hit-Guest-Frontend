@@ -1346,8 +1346,9 @@ No implementadas: pedir el documento antes de tocarlo.
   dice «Los huéspedes de esta unidad no firmarán contrato.». Al cambiar el
   estado de un contrato **no se manda `parameters`**, porque `null` borraría el
   ruteo propio de la unidad. El panel marca «Contrato propio de la unidad».
-- **❌ Sin implementar (tarea aparte, NO cosmética): el front rechaza una
-  configuración que el backend ya acepta.** Con `per_source` y un único texto
+- **✅ Implementado el 2026-10-23** (ver la sección del contrato 2026-10-20). Lo
+  que sigue queda como historia: **el front rechazaba una configuración que el
+  backend ya acepta.** Con `per_source` y un único texto
   general (`reservationSourceId: null`):
   - cada canal sale «Incompleto»;
   - `findLockstepGaps` exige un texto por canal y bloquea el guardado;
@@ -1355,8 +1356,8 @@ No implementadas: pedir el documento antes de tocarlo.
 
   Falta decidir cómo lo elige el PM (p. ej. «mismo texto para todos» / «uno
   por canal»).
-- **❌ Sin implementar: `errors.confirmUnitOverrides`** (cero referencias en
-  `src`). Hoy el PM ve el mensaje del 422, pero no puede confirmar y seguir.
+- **✅ Implementado el 2026-10-23** (ver la sección del contrato 2026-10-20).
+  Historia: **`errors.confirmUnitOverrides`** no tenía referencias en `src`. Hoy el PM ve el mensaje del 422, pero no puede confirmar y seguir.
   Además, el guardado sincroniza documentos con varias peticiones antes de
   `configure`. Si una pide confirmación después de que otra ya corrió, queda un
   estado parcial: `handleSave` lo reconcilia releyendo el servidor, pero no lo
@@ -1368,6 +1369,147 @@ Confirmar con token de PM:
 - `curl -s "$API/properties/{uuid}/automations?includeProvider=true" "${H[@]}" | jq '.data[] | select(.contractRouting) | {by: (.parameters.by_source|type), cr: .contractRouting}'`
   debe dar `"object"` y los canales con nombre.
 - `curl -s "$API/reservation-sources" "${H[@]}" | jq '[.data[] | {id, slug}]'`
+
+### ⚠️ Texto del contrato por unidad y confirmación `confirmUnitOverrides` — contrato 2026-10-20 (backend implementado y probado según los planes `20261020_texto-contrato-por-unidad.md` y `20261020_aviso-reemplazo-textos-unidad.md`; front implementado 2026-10-23; NO verificado por curl ni en staging)
+
+**Texto por unidad.** Una unidad puede tener su propio texto de contrato (tipo
+92), que reemplaza al de la propiedad **solo en esa unidad**.
+- **Solo aplica con su override de contrato ACTIVO** (`statusRecordId: 6`). Sin
+  override, o con el contrato apagado, no aplica.
+- **Sigue el modo de los TEXTOS de la propiedad.** Si la propiedad tiene texto
+  general, la unidad reemplaza ese (sin canal). Si tiene textos por canal, la
+  unidad reemplaza el de cada canal que elija, y el resto lo hereda.
+- **Firma para todos los canales** exige el texto general.
+
+**API.**
+- **Crear:** `POST /properties/{p}/documents` con `listingUuid` (+
+  `reservationSourceId` solo en modo por canal). `PATCH` ignora `listingUuid`.
+- **Leer:**
+  - Todos los `GET` traen `listingUuid` (`null` = de la propiedad).
+  - `GET /properties/{p}/documents` **sin filtro devuelve solo los de la
+    propiedad**.
+  - Para los de una unidad: `?listingUuid[eq]={uuid}`.
+- **Editar, borrar, restaurar:** igual que los de la propiedad.
+
+**422 al crear** (mensajes para el PM, mostrarlos tal cual):
+- `listingUuid`: la unidad no es de la propiedad, el documento no es tipo 92, o
+  la propiedad no tiene texto todavía.
+- `reservationSourceId`:
+  - el canal no sigue el modo de la propiedad;
+  - la unidad ya tiene texto para ese canal (o el general);
+  - hay un texto viejo del otro modo (`listing_has_stale_text`).
+
+**`contractRouting` del override** (`GET /listings/{uuid}/automation-overrides`):
+- `channels[].document.uuid` es el texto que la unidad **realmente firma**.
+- `replacedTexts: [{uuid, channel:{id,slug,name}}]` son los textos propios que
+  ya no aplican porque la propiedad cambió de modo. Se conservan, y vuelven a
+  aplicar si la propiedad vuelve al modo anterior.
+- `replacedTextsLabel` es el aviso redactado, con quién y cuándo.
+- `needsAttention` también es `true` con `replacedTexts`.
+- Con el contrato apagado: `replacedTexts: []` y `replacedTextsLabel: null`.
+
+**Portal:** `documents[]` y `contract/preview` ya devuelven el texto de la
+unidad. El front no cambia: firma con `contract/preview` → `agreement.uuid`
+(`ContractScreen`, `resolveContractDocument`).
+
+**`confirmUnitOverrides`.** Solo para textos tipo 92 **de la propiedad**, y solo
+si hay unidades afectadas. Una unidad está afectada si su texto propio deja de
+aplicar, o si su firma propia queda sin texto en algún canal. Cuando eso pasa,
+el backend **no aplica el cambio** y responde 422:
+- `errors.confirmUnitOverrides`: la primera frase es la introducción; después,
+  una por unidad y por efecto.
+- `meta.affectedUnits[]`: `{listingUuid, listingName, replacedTexts,
+  channelsLeftWithoutText}`. «Todos los canales» llega como
+  `{id: null, slug: "all"}`.
+
+Lo disparan:
+- `PATCH`: convertir el texto general en uno de canal, o al revés; desactivar el
+  último texto por canal.
+- `POST`: el primer texto por canal cuando una unidad tiene texto general.
+- `DELETE`: el último texto por canal.
+- `restore`: restaurar un texto del otro modo.
+
+Para continuar se reenvía **la misma petición**: con
+`"confirmUnitOverrides": true` en el body (POST, PATCH, restore) o con
+`?confirmUnitOverrides=1` en la URL (DELETE). Cancelar no deja nada que
+deshacer: el backend no guardó. Según el backend, hoy ninguna propiedad de
+producción tiene textos de unidad ni firmas propias.
+
+**Cómo quedó en el front (2026-10-23):**
+- **Errores de la API.** `ApiError.meta` y `toApiErrorResponse` conservan `meta`.
+- **Lector del 422.** `lib/unit-overrides-confirmation.ts`:
+  `readUnitOverridesConfirmation` reconoce el 422 por la clave
+  `errors.confirmUnitOverrides` y lee `meta.affectedUnits` como `unknown`.
+  `withUnitOverridesConfirmation` reenvía LA MISMA petición confirmada.
+- **Servicio de documentos.** `propertyDocumentService.create`, `update` y
+  `restore` llevan `confirmUnitOverrides` en el body; `remove` lo lleva como
+  `?confirmUnitOverrides=1`. `list` acepta `listingUuid` (`listingUuid[eq]`).
+- **Guardado de Documentos** (`ContractRoutingSection`):
+  - Cada escritura de texto pasa por la confirmación y abre
+    `UnitOverridesConfirmDialog`. La confirmación vale **por petición**: si
+    otra del mismo guardado la vuelve a pedir, se vuelve a preguntar, porque
+    puede afectar a otras unidades. Si ya hubo escrituras, el diálogo avisa
+    que cancelar no las deshace.
+  - Si el PM cancela antes de escribir nada, no se guarda nada y se conserva
+    lo que estaba editando.
+  - Si cancela después de alguna escritura, se relee el servidor y se le dice
+    que los pasos anteriores quedaron guardados.
+  - Al hidratar se filtran los textos de unidad (`isPropertyLevelDocument`).
+- **✅ Texto general con firma por canal** (cierra el pendiente del
+  2026-10-19 §2.4 bis):
+  - `ContractTextMode` (`shared` / `per_channel`) en `contract-routing-sync`,
+    con `detectTextMode`, `textKeyFor` y `requiredTextKeys`. `planDocumentSync`,
+    `findLockstepGaps` e `isSaveConfirmed` lo reciben.
+  - En «por canal», el PM elige entre «Mismo texto para todos los canales» y
+    «Un texto por canal».
+  - Pasar a firma por canal conserva el texto general (ya no lo convierte), así
+    que no reemplaza los textos de las unidades sin necesidad.
+- **Textos por unidad.** `UnitContractTexts` va en el modal del override de
+  contrato, con el modal más ancho:
+  - Las filas salen de `planUnitTexts` (`lib/unit-contract-texts.ts`):
+    - con texto general en la propiedad, una sola fila;
+    - con textos por canal, la unión de los canales con texto en la propiedad,
+      los ya personalizados y los que la firma efectiva necesita con contrato
+      de alquiler.
+  - Cada fila guarda por su cuenta. Sin override, **se crea activo y sin
+    parámetros antes del texto**.
+  - Los `replacedTexts` se muestran con `replacedTextsLabel` y un botón para
+    borrarlos. Mientras existan, crear textos nuevos queda deshabilitado.
+  - En una unidad sin guardar (borrador), o con el override inactivo, se
+    explica por qué no se puede personalizar.
+  - El panel de overrides marca «Textos propios sin aplicar · revisar».
+  - `onOverrideChanged` (modal → `ListingOverridesPanel` / `PropertiesUnits`)
+    mantiene el override al día sin cerrar el modal.
+
+**Contexto del análisis previo a implementar (2026-10-23):**
+- `ApiError` **descarta `meta`**. El constructor solo copia
+  message/errors/errorType/failedFields/code. Hay que agregarlo.
+- Detectar la confirmación por la **clave** `errors.confirmUnitOverrides`, nunca
+  por el texto.
+- El único que escribe textos tipo 92 de la propiedad es
+  `ContractRoutingSection` (`PropertiesDocuments` los excluye). Su guardado son
+  varias peticiones (updates → creates → deletes → `configure`), así que la
+  confirmación puede llegar a mitad del plan.
+- Nuestro `planDocumentSync` **convierte** el texto general en el de un canal al
+  pasar a firma por canal. Eso es justo lo que reemplaza los textos generales de
+  las unidades, y antes ya era innecesario (contrato 2026-10-19 §2.4 bis). Con
+  textos de unidad, esa conversión forzada dispara una confirmación que el PM no
+  necesita.
+- Defensa: filtrar `listingUuid != null` al hidratar `ContractRoutingSection`.
+  Si un día el GET sin filtro trajera textos de unidad, `planDocumentSync` los
+  convertiría o borraría.
+
+**Preguntas abiertas al backend:**
+1. ¿Un mismo guardado puede pedir confirmación dos veces? Por ejemplo, convertir
+   un texto y después borrar el último texto por canal. ¿Confirmar una vez
+   cubre el resto?
+2. ¿Crear un texto de unidad sin override activo da 201 aunque no aplique? El
+   front crearía antes el override activo.
+3. En modo por canal, ¿qué canales puede personalizar la unidad? ¿Solo los que
+   tienen texto en la propiedad, o también los de su firma propia?
+4. `listing_has_stale_text`, ¿viaja en `code` o solo es el texto del mensaje?
+5. Al borrar el override («Volver a heredar»), los textos de la unidad quedan
+   guardados sin aplicar. ¿El front debe ofrecer borrarlos?
 
 ### ⚠️ Reintento del contrato TuFirma, proveedor del slot y «formulario enviado» — contrato 2026-10-15 (backend en `main`, merge `9bff3f1`; front SIN implementar; NO verificado por curl)
 

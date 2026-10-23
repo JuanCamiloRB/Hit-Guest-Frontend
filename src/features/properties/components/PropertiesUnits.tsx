@@ -1281,6 +1281,9 @@ export function PropertiesUnits() {
                                 setListingOverrides(prev => ({ ...prev, [editingOverrideAutomation.uuid]: saved }))
                                 setEditingOverrideAutomation(null)
                             }}
+                            onOverrideChanged={(changed) => {
+                                setListingOverrides(prev => ({ ...prev, [editingOverrideAutomation.uuid]: changed }))
+                            }}
                             onInheritRestored={() => {
                                 setListingOverrides(prev => {
                                     const next = { ...prev }

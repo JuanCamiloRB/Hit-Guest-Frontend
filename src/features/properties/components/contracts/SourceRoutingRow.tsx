@@ -29,6 +29,11 @@ interface Props {
     shortcodes: string[]
     /** True when this channel needs agreement text but has none typed yet. */
     hasTextGap: boolean
+    /**
+     * `false` cuando el canal usa el texto general (firma por canal con un solo
+     * texto, contrato 2026-10-19 §2.4 bis): el editor vive fuera de la fila.
+     */
+    showText?: boolean
 }
 
 /**
@@ -46,6 +51,7 @@ export function SourceRoutingRow({
     onTextChange,
     shortcodes,
     hasTextGap,
+    showText = true,
 }: Props) {
     const needsAgreement = requiresAgreementDocument(routing.contract_type)
     const needsGuarantee = requiresGuaranteeText(routing.contract_type)
@@ -120,7 +126,10 @@ export function SourceRoutingRow({
             </div>
 
             {/* Agreement text */}
-            {needsAgreement && (
+            {needsAgreement && !showText && (
+                <p className="text-xs text-slate-500">Firma el texto para todos los canales.</p>
+            )}
+            {needsAgreement && showText && (
                 <div className="space-y-1.5">
                     <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
                         Texto del contrato

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { detectMode, findLockstepGaps, isSaveConfirmed, planDocumentSync } from "./contract-routing-sync"
+import { detectMode, detectTextMode, findLockstepGaps, isSaveConfirmed, planDocumentSync } from "./contract-routing-sync"
 import type { PropertyDocument } from "../types/document"
 import type { ContractRoutingParameters } from "../types/contract-routing"
 
@@ -193,5 +193,47 @@ describe("isSaveConfirmed — confirmación tras guardar (reporte 2026-10-18)", 
 
     it("falta el documento de un canal que lo necesita: no confirma", () => {
         expect(isSaveConfirmed(sent, sent, new Set())).toBe(false)
+    })
+})
+
+describe("texto general con firma por canal (contrato 2026-10-19 §2.4 bis)", () => {
+    const perSource = (bySource: ContractRoutingParameters["by_source"]): ContractRoutingParameters =>
+        ({ contract_mode: "per_source", by_source: bySource })
+    const agreement = { contract_type: "agreement_only" as const, provider_slug: "hitguest_signature" }
+    const guarantee = { contract_type: "guarantee_only" as const, provider_slug: "tufirma" }
+
+    it("pasar a firma por canal conserva el texto general: no lo convierte en el de un canal", () => {
+        const docs = [makeDoc({ uuid: "general", reservationSourceId: null, content: "Texto" })]
+        const plan = planDocumentSync(docs, perSource({ "21": agreement, "22": agreement }), { all: "Texto" }, "shared")
+        expect(plan).toEqual({ creates: [], updates: [], deletes: [] })
+    })
+
+    it("un solo texto exigido aunque varios canales firmen contrato de alquiler", () => {
+        const desired = perSource({ "21": agreement, "22": agreement, "23": guarantee })
+        expect(findLockstepGaps(desired, {}, "shared")).toEqual(["all"])
+        expect(findLockstepGaps(desired, { all: "<p>Texto</p>" }, "shared")).toEqual([])
+    })
+
+    it("de textos por canal a uno general: convierte uno y borra el resto", () => {
+        const docs = [
+            makeDoc({ uuid: "d21", reservationSourceId: 21, content: "A" }),
+            makeDoc({ uuid: "d22", reservationSourceId: 22, content: "B" }),
+        ]
+        const plan = planDocumentSync(docs, perSource({ "21": agreement, "22": agreement }), { all: "General" }, "shared")
+        expect(plan.updates).toEqual([{ documentUuid: "d21", reservationSourceId: null, content: "General" }])
+        expect(plan.deletes).toEqual(["d22"])
+        expect(plan.creates).toEqual([])
+    })
+
+    it("confirma el guardado con el documento general, no uno por canal", () => {
+        const sent = perSource({ "21": agreement, "22": agreement })
+        expect(isSaveConfirmed(sent, sent, new Set(["all"]), "shared")).toBe(true)
+        expect(isSaveConfirmed(sent, sent, new Set(["all"]), "per_channel")).toBe(false)
+    })
+
+    it("detectTextMode: con textos por canal manda ese modo", () => {
+        expect(detectTextMode([])).toBeNull()
+        expect(detectTextMode([makeDoc({ uuid: "g", reservationSourceId: null })])).toBe("shared")
+        expect(detectTextMode([makeDoc({ uuid: "c", reservationSourceId: 21 })])).toBe("per_channel")
     })
 })

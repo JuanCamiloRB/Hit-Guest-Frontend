@@ -24,6 +24,11 @@ export interface ApiErrorResponse {
     failedFields?: FailedFieldValue[]
     /** Código estable del error, cuando el backend lo manda (`SUPPORT_TARGET_NOT_ALLOWED`…). */
     code?: string
+    /**
+     * Datos estructurados del error, sin forma fija (p. ej. `affectedUnits` del
+     * 422 `confirmUnitOverrides`, contrato 2026-10-20). Quien lo lee lo valida.
+     */
+    meta?: unknown
 }
 
 export class ApiError extends Error {
@@ -33,6 +38,7 @@ export class ApiError extends Error {
     public errorType?: string
     public failedFields?: FailedFieldValue[]
     public code?: string
+    public meta?: unknown
 
     constructor(status: number, data: ApiErrorResponse) {
         super(data.message)
@@ -42,6 +48,7 @@ export class ApiError extends Error {
         this.errorType = data.errorType
         this.failedFields = data.failedFields
         this.code = typeof data.code === "string" ? data.code : undefined
+        this.meta = data.meta
     }
 }
 
@@ -67,5 +74,6 @@ export function toApiErrorResponse(raw: unknown, fallbackMessage: string): ApiEr
         ...(typeof body.errorType === "string" ? { errorType: body.errorType } : {}),
         ...(Array.isArray(body.failedFields) ? { failedFields: body.failedFields.filter(isFailedFieldValue) } : {}),
         ...(typeof body.code === "string" ? { code: body.code } : {}),
+        ...(body.meta !== undefined && body.meta !== null ? { meta: body.meta } : {}),
     }
 }

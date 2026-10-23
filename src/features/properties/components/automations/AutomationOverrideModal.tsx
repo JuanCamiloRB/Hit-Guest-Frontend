@@ -33,6 +33,7 @@ import {
 } from "../../types/automation"
 import { ParameterField } from "./ParameterField"
 import { IdentityOverrideSelector } from "./IdentityOverrideSelector"
+import { UnitContractTexts } from "../contracts/UnitContractTexts"
 import { ApiError } from "@/types/api"
 import { useIdentityProviderCatalog } from "../../hooks/useIdentityProviderCatalog"
 import {
@@ -73,6 +74,12 @@ interface Props {
      */
     draftMode?: boolean
     onSaved: (override: ListingAutomationOverride) => void
+    /**
+     * El override cambió SIN cerrar el modal: lo creó o lo releyó la sección de
+     * texto del contrato de la unidad (contrato 2026-10-20). Sin esto, el modal
+     * no se entera y su «Guardar» intentaría crear un segundo override.
+     */
+    onOverrideChanged?: (override: ListingAutomationOverride) => void
     /**
      * La unidad vuelve a heredar de la propiedad: se borró su override (o, en
      * borrador, se descartó). El llamador debe quitarlo de su estado.
@@ -132,6 +139,7 @@ export function AutomationOverrideModal({
     draftMode = false,
     onSaved,
     onInheritRestored,
+    onOverrideChanged,
 }: Props) {
     const isEdit = !!override
     const [saving, setSaving] = useState(false)
@@ -178,6 +186,8 @@ export function AutomationOverrideModal({
         override?.contractRouting?.routingSource === "listing"
         || (override?.parameters != null && "contract_mode" in override.parameters && override.parameters.contract_mode != null)
     )
+
+    const contractPropertyUuid = activePa?.propertyUuid || override?.propertyAutomation?.propertyUuid || ""
 
     const basePa = override?.propertyAutomation
     const baseParams = (basePa?.parameters ?? activePa?.parameters ?? {}) as Record<string, unknown>
@@ -394,7 +404,7 @@ export function AutomationOverrideModal({
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className="max-w-lg max-h-[88vh] overflow-y-auto">
+            <DialogContent className={cn("max-h-[88vh] overflow-y-auto", isContract ? "sm:max-w-3xl" : "max-w-lg")}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-base">
                         <Building2 size={16} className="text-[var(--color-brand-purple)]" />
@@ -482,6 +492,30 @@ export function AutomationOverrideModal({
                             className="data-[state=checked]:bg-[var(--color-brand-purple)]"
                         />
                     </div>
+                    )}
+
+                    {/* Texto del contrato de la unidad (contrato 2026-10-20): solo con el
+                        contrato activo en la unidad, y solo en una unidad ya guardada. */}
+                    {isContract && isActive && (
+                        draftMode || !listingUuid || !contractPropertyUuid || !onOverrideChanged ? (
+                            <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                                Guarda la unidad para poder personalizar el texto de su contrato.
+                            </p>
+                        ) : override && !override.isActive ? (
+                            <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                                Guarda primero para activar el contrato en esta unidad; después podrás personalizar su texto.
+                            </p>
+                        ) : (
+                            <UnitContractTexts
+                                propertyUuid={contractPropertyUuid}
+                                listingUuid={listingUuid}
+                                propertyAutomationUuid={selectedPaUuid}
+                                override={override ?? null}
+                                propertyRouting={activePa?.contractRouting ?? null}
+                                onOverrideChanged={onOverrideChanged}
+                                disabled={saving}
+                            />
+                        )
                     )}
 
                     {/* Provider-specific fields — identical to the property config, all optional */}
