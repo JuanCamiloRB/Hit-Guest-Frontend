@@ -24,7 +24,7 @@ vi.mock("../../services/property-document-service", () => ({
         }),
         getTypes: async () => [],
         create: (...args: unknown[]) => { mocks.calls.push("create-document"); return mocks.create(...args) },
-        update: mocks.update,
+        update: (...args: unknown[]) => { mocks.calls.push("update-document"); return mocks.update(...args) },
         remove: mocks.remove,
     },
 }))
@@ -262,5 +262,47 @@ describe("UnitContractTexts — qué se dice después de una escritura (auditor�
         await saveDirecto()
 
         expect(await screen.findByText(/El cambio se guardó, pero no pudimos actualizar esta vista/)).toBeInTheDocument()
+    })
+})
+
+describe("UnitContractTexts — texto conservado tras «Volver a heredar» (auditoría 2026-10-23)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.calls = []
+        mocks.propertyDocs = [doc("p23", 23)]
+        // El override se borró, pero el texto propio de la unidad quedó guardado.
+        mocks.unitDocs = [doc("u23", 23, "unit-1")]
+        mocks.update.mockResolvedValue(doc("u23", 23, "unit-1"))
+        mocks.createListingOverride.mockResolvedValue(override())
+        mocks.listListingOverrides.mockResolvedValue([override()])
+    })
+
+    it("editarlo sin override crea primero el override activo, y después actualiza el texto", async () => {
+        const { onOverrideChanged } = renderSection(null)
+        const user = userEvent.setup()
+
+        const booking = (await screen.findByText("Booking.com")).closest("li")!
+        await user.click(within(booking).getByRole("button", { name: "Editar texto propio" }))
+        await user.click(within(booking).getByRole("button", { name: "Guardar texto" }))
+
+        await vi.waitFor(() => expect(mocks.update).toHaveBeenCalled())
+        expect(mocks.calls).toEqual(["create-override", "update-document"])
+        expect(mocks.createListingOverride).toHaveBeenCalledWith({
+            listingUuid: "unit-1", propertyAutomationUuid: "contract-row", statusRecordId: 6, parameters: null,
+        })
+        expect(mocks.update).toHaveBeenCalledWith("p-1", "u23", { content: "<p>u23</p>" })
+        expect(onOverrideChanged).toHaveBeenCalled()
+    })
+
+    it("con override activo, editar no crea otro", async () => {
+        renderSection(override())
+        const user = userEvent.setup()
+
+        const booking = (await screen.findByText("Booking.com")).closest("li")!
+        await user.click(within(booking).getByRole("button", { name: "Editar texto propio" }))
+        await user.click(within(booking).getByRole("button", { name: "Guardar texto" }))
+
+        await vi.waitFor(() => expect(mocks.update).toHaveBeenCalled())
+        expect(mocks.calls).toEqual(["update-document"])
     })
 })

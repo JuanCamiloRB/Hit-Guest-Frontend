@@ -1472,7 +1472,10 @@ producción tiene textos de unidad ni firmas propias.
       los ya personalizados y los que la firma efectiva necesita con contrato
       de alquiler.
   - Cada fila guarda por su cuenta. Sin override, **se crea activo y sin
-    parámetros antes del texto**.
+    parámetros antes del texto**, tanto al CREAR como al EDITAR. «Volver a
+    heredar» borra el override pero conserva los textos; editar uno de esos sin
+    reactivar el override diría «guardado» sin que se aplique (auditoría
+    2026-10-23).
   - Los `replacedTexts` se muestran con `replacedTextsLabel` y un botón para
     borrarlos. Mientras existan, crear textos nuevos queda deshabilitado.
   - En una unidad sin guardar (borrador), o con el override inactivo, se

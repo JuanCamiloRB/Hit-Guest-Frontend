@@ -197,12 +197,11 @@ export function UnitContractTexts({
     }
 
     const saveRow = (row: UnitTextRow, text: string) => run(row.key, async (progress) => {
-        if (row.unitDocument) {
-            await propertyDocumentService.update(propertyUuid, row.unitDocument.uuid, { content: text })
-            return
-        }
         // Sin override no aplica ningún texto propio: se crea activo y sin
-        // parámetros, antes del texto.
+        // parámetros, ANTES de escribir el texto. Vale también al editar uno ya
+        // guardado: «Volver a heredar» borra el override pero conserva los
+        // textos, y editar uno de esos sin reactivarlo diría «guardado» sin que
+        // se aplique (auditoría 2026-10-23).
         if (!override) {
             const created = await automationService.createListingOverride({
                 listingUuid,
@@ -212,6 +211,10 @@ export function UnitContractTexts({
             })
             progress.overrideCreated = true
             onOverrideChanged(created)
+        }
+        if (row.unitDocument) {
+            await propertyDocumentService.update(propertyUuid, row.unitDocument.uuid, { content: text })
+            return
         }
         await propertyDocumentService.create(propertyUuid, {
             propertyDocumentTypeId: AGREEMENT_DOCUMENT_TYPE_ID,
