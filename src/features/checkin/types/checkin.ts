@@ -265,6 +265,17 @@ export interface MainGuestPrefill {
   email?: string
 }
 
+/**
+ * Estado del portal cuando la reserva NO se puede procesar. Llega sin
+ * `reservation`, solo con `message`. Un único tipo para todo el portal.
+ *  - `listing_inactive`: el alojamiento o su propiedad están inactivos
+ *    (contrato 2026-10-27). Un check-in ya completo sigue viendo su portal.
+ *  - `abandoned`: verificado por curl el 2026-10-14 (skill).
+ * `classifyPortalPayload` acepta cualquier otro texto: `PortalStatusScreen`
+ * degrada a un genérico con el mensaje del backend.
+ */
+export type PortalStatus = "cancelled" | "deleted" | "pending_sync" | "abandoned" | "listing_inactive"
+
 export interface CheckinPortalResponse {
   /**
    * v4.5: explicit portal lifecycle state. Present ONLY for cancelled (29) or
@@ -272,7 +283,7 @@ export interface CheckinPortalResponse {
    * the payload are absent and only `message` is provided. Status 30 (closed)
    * returns a full portal with `reservation.checkinAllowed = false` instead.
    */
-  portalStatus?: "cancelled" | "deleted" | "pending_sync"
+  portalStatus?: PortalStatus
   /** Human-readable explanation shown to the guest when portalStatus is set. */
   message?: string
   reservation: {
@@ -777,7 +788,7 @@ export interface SecondaryGateStatus {
    * acompañante leían como `notFound()`, mostrando "no encontrada" en vez de
    * decirle al huésped que su reserva fue cancelada.
    */
-  portalStatus?: "cancelled" | "deleted" | "pending_sync"
+  portalStatus?: PortalStatus
   portalMessage?: string
 }
 

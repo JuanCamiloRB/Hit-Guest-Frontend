@@ -278,6 +278,18 @@ export function PropertiesList() {
         fetchListings()
     }, [fetchProperties, fetchListings])
 
+    // Activar o desactivar una propiedad también cambia sus alojamientos en el
+    // backend (contrato 2026-10-27: apaga los activos y, al reactivarla, vuelven
+    // esos mismos). Sin releer, el conteo de alojamientos activos y la pestaña
+    // Alojamientos quedaban con el estado viejo.
+    const handlePropertyStatusChange = useCallback((uuid: string, status: "ACTIVE" | "INACTIVE") => {
+        const apply = (list: Property[]) => list.map((property) => property.uuid === uuid ? { ...property, status } : property)
+        if (propertiesCacheRef.current) propertiesCacheRef.current = apply(propertiesCacheRef.current)
+        setProperties(apply)
+        listingsCacheRef.current = null
+        void fetchListings()
+    }, [fetchListings])
+
     // ── Lazy load listings when switching to Alojamientos tab ──
     useEffect(() => {
         if (activeTab === "units" && !listingsCacheRef.current) {
@@ -394,6 +406,7 @@ export function PropertiesList() {
                                     property={property}
                                     activeListings={overviewByProperty?.[property.uuid ?? ""]?.activeListings ?? null}
                                     badges={overviewByProperty?.[property.uuid ?? ""]?.badges ?? null}
+                                    onStatusChange={handlePropertyStatusChange}
                                 />
                             ))}
                         </div>

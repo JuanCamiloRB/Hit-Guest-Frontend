@@ -1,4 +1,5 @@
 import { API_BASE } from "@/lib/config"
+import { signalIfListingInactive } from "../lib/listing-inactive-signal"
 import {
   CheckinPortalResponse,
   IdentifyPayload,
@@ -806,6 +807,9 @@ export class CheckinService {
         // Contact-challenge OTP errors (backend plan 20260731): { code, message,
         // attemptsRemaining? } (422) or { code, message, retryAfter? } (429).
         if (typeof payload.code === "string") error.code = payload.code
+        // Alojamiento o propiedad inactivos (contrato 2026-10-27): una sola
+        // señal para todo el portal, en vez de un manejo en cada pantalla.
+        signalIfListingInactive(error)
         if (typeof payload.attemptsRemaining === "number") error.attemptsRemaining = payload.attemptsRemaining
         // Subida OCR (§17, 2026-10-03): todo 422 trae el estado de la verificación.
         const verification = readUploadVerification(payload.verification ?? nested.verification)

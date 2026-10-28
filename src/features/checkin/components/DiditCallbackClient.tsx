@@ -132,6 +132,14 @@ export function DiditCallbackClient({
             try {
                 const portal = await checkinService.getPortal(ctx.reservationUuid)
                 if (!alive) return
+                // Reserva cancelada, eliminada o con el alojamiento inactivo
+                // (contrato 2026-10-27): no hay huéspedes que buscar. La ruta
+                // base relee el portal en el servidor y muestra su pantalla;
+                // buscar al huésped acá terminaba en «sin contexto».
+                if (portal.portalStatus) {
+                    router.replace(ctx.basePath)
+                    return
+                }
                 const guest = portal.registeredGuests?.find((item) => item.uuid === ctx.guestUuid)
                 if (!guest) {
                     setState("no_context")

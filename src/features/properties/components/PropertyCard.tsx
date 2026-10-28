@@ -28,6 +28,8 @@ import { propertiesService } from "../services/properties-service"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import type { PropertyBadge } from "../lib/property-badges"
+import { RECORD_STATUS } from "../lib/record-status"
+import { DeactivationConfirmDialog } from "./DeactivationConfirmDialog"
 
 interface PropertyCardProps {
     property: Property
@@ -68,6 +70,9 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
     const typeLabel = hasType ? catalogLabel : "Sin tipo"
     const [isActive, setIsActive] = useState(property.status === "ACTIVE")
     const [isToggling, setIsToggling] = useState(false)
+    // Desactivar pide confirmación ANTES de cualquier PATCH: el switch no se
+    // mueve hasta que el PM confirma.
+    const [confirmingDeactivation, setConfirmingDeactivation] = useState(false)
     const [imgError, setImgError] = useState(false)
 
     // Cover photo: prefer the top-level thumbnail, then the gallery's first image
@@ -83,10 +88,20 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
         ""
     const coverSrc = coverUrl && !imgError ? coverUrl : "/placeholder.svg"
 
+    /** Activar va directo; desactivar abre la confirmación. */
+    const requestStatusChange = (checked: boolean) => {
+        if (!property.uuid || isToggling) return
+        if (!checked && isActive) {
+            setConfirmingDeactivation(true)
+            return
+        }
+        void handleStatusToggle(checked)
+    }
+
     const handleStatusToggle = async (checked: boolean) => {
         if (!property.uuid) return
         setIsToggling(true)
-        const newStatusRecordId = checked ? 6 : 7
+        const newStatusRecordId = checked ? RECORD_STATUS.ACTIVE : RECORD_STATUS.INACTIVE
         const prevIsActive = isActive
 
         // Optimistic update
@@ -171,7 +186,9 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                                 className={cn("font-medium", isActive ? "text-destructive" : "text-emerald-600")}
-                                onSelect={() => handleStatusToggle(!isActive)}
+                                // Diferido: abrir el diálogo mientras el menú se cierra deja
+                                // `pointer-events: none` en el body (fallo conocido de Radix).
+                                onSelect={() => window.setTimeout(() => requestStatusChange(!isActive), 0)}
                             >
                                 {isActive ? "Desactivar Propiedad" : "Activar Propiedad"}
                             </DropdownMenuItem>
@@ -221,7 +238,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                         {isToggling && <Loader2 className="h-3 w-3 animate-spin text-slate-400" />}
                         <Switch
                             checked={isActive}
-                            onCheckedChange={handleStatusToggle}
+                            onCheckedChange={requestStatusChange}
                             disabled={isToggling}
                             className={cn(
                                 "data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-300",
@@ -236,6 +253,14 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                     <Link href={`/dashboard/properties/${propertyId}`}>Gestionar</Link>
                 </Button>
             </CardFooter>
+            <DeactivationConfirmDialog
+                target={confirmingDeactivation ? { kind: "property", name: property.name } : null}
+                onConfirm={() => {
+                    setConfirmingDeactivation(false)
+                    void handleStatusToggle(false)
+                }}
+                onCancel={() => setConfirmingDeactivation(false)}
+            />
         </Card>
     )
 }

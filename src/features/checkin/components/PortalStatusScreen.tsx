@@ -1,14 +1,15 @@
-import { XCircle, Trash2, Clock } from "lucide-react"
+import { XCircle, Trash2, Clock, PauseCircle } from "lucide-react"
+import type { PortalStatus } from "../types/checkin"
 
 interface PortalStatusScreenProps {
-    status: "cancelled" | "deleted" | "pending_sync"
+    status: PortalStatus
     message?: string
 }
 
-const STATUS_CONTENT: Record<
-    PortalStatusScreenProps["status"],
+const STATUS_CONTENT: Partial<Record<
+    PortalStatus,
     { icon: typeof XCircle; title: string; defaultMessage: string; accent: string }
-> = {
+>> = {
     cancelled: {
         icon: XCircle,
         title: "Reserva cancelada",
@@ -25,6 +26,15 @@ const STATUS_CONTENT: Record<
     // Airbnb iCal (2026-09-04): la reserva existe en Airbnb pero HIT todavía no
     // la sincronizó. A diferencia de los otros estados, este se resuelve SOLO
     // (el calendario se lee cada 30 min) — por eso es el único con Reintentar.
+    // Contrato 2026-10-27: el alojamiento o su propiedad están inactivos. Lo
+    // resuelve el anfitrión, no el huésped: sin Reintentar.
+    listing_inactive: {
+        icon: PauseCircle,
+        title: "Check-in no disponible por ahora",
+        defaultMessage:
+            "Esta reserva no puede procesarse porque el alojamiento asociado está inactivo o ya no existe.",
+        accent: "text-slate-500 bg-slate-100",
+    },
     pending_sync: {
         icon: Clock,
         title: "Estamos preparando tu check-in",

@@ -124,6 +124,21 @@ describe("DiditCallbackClient — context resolution", () => {
         )
     })
 
+    it("con la reserva bloqueada (alojamiento inactivo, 2026-10-27) vuelve a la ruta base en vez de «sin contexto»", async () => {
+        getPortal.mockResolvedValue({ portalStatus: "listing_inactive", message: "Esta reserva no puede procesarse…" })
+        render(
+            <DiditCallbackClient
+                verificationSessionId=""
+                status="Approved"
+                reservationUuid={RESERVATION_IN_URL}
+                guestUuid={GUEST}
+            />,
+        )
+
+        await waitFor(() => expect(replace).toHaveBeenCalledWith(`/checkin/${RESERVATION_IN_URL}`))
+        expect(screen.queryByText(/Sesión expirada/)).toBeNull()
+    })
+
     it("resumes a main guest from the URL alone with no stored context at all", async () => {
         render(
             <DiditCallbackClient

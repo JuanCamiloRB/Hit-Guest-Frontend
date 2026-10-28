@@ -1689,6 +1689,136 @@ catálogo.
 
 ---
 
+## 2a-bis. ⚠️ Alojamientos y propiedades inactivos — contrato 2026-10-27 (backend `20261027_listing-inactivo-operaciones.md`, implementado y probado; front PARCIAL; NO verificado por curl)
+
+**Cómo quedó en el front (2026-10-29; sin despacho por huésped ni conteo):**
+- **Un solo lector del 422:** `readInactiveResourceError` (`src/lib/inactive-resource.ts`) decide por `code`. Sirve para el `ApiError` del panel y para el error del portal. `inactiveResourceAction` arma el enlace «Gestionar propiedad / alojamiento»: nunca activa desde el error.
+- **Reglas por operación:** `reservationOperability` (`reservations/lib/reservation-availability.ts`). Crear exige todo activo. Editar sin mover se permite. Mover exige el destino activo. No se modelan restaurar ni reactivar: el panel no tiene esas acciones.
+- **Panel:**
+  - `ReservationDialog` (crear y mover) y «Reenviar link» (`OperationsPanel`) muestran el `message` del backend con el enlace «Gestionar…».
+  - `PropertiesUnits`: bajo una propiedad inactiva no se puede ACTIVAR una unidad (switch bloqueado, la unidad nueva nace inactiva). Desactivar sí. El 422 se muestra tal cual.
+  - `PropertiesList` relee los alojamientos al cambiar el estado de una propiedad, porque el backend también los cambia.
+- **Portal:**
+  - `PortalStatus` es un solo tipo, con `listing_inactive` y `abandoned`, y tiene contenido propio en `PortalStatusScreen`.
+  - Los 422 de las acciones se manejan en UN punto: `buildHttpError` llama a `signalIfListingInactive`, y `ListingInactiveBoundary` (en el layout del portal) reemplaza la pantalla en curso. Cubre las ~35 pantallas con `catch` y el callback de Didit.
+  - `DiditCallbackClient`: si el portal responde con `portalStatus`, navega a la ruta base, que lo pinta (antes terminaba en «sin contexto»).
+- **Aviso:** `DeactivationConfirmDialog` usa el texto exacto (es), 7 viñetas para el alojamiento y 9 para la propiedad.
+- **Pendiente:**
+  - El conteo de reservas, a la espera de una clave estable del catálogo de estados y del formato de `[in]`.
+  - El estado del alojamiento dentro de la reserva, para deshabilitar «Reenviar link» antes del clic.
+  - El despacho por huésped (§2.4–2.5), que va en un commit aparte.
+
+**Regla.** Un alojamiento NO es operable si su propiedad está inactiva
+(`statusRecord.id` ≠ 6) o eliminada → `PROPERTY_INACTIVE`, que tiene
+precedencia. Si no, cuando el alojamiento mismo está inactivo o eliminado →
+`LISTING_INACTIVE`.
+
+**Estado (§2.7).**
+- 6 = activo, 7 = inactivo (catálogo de categoría 3, solo esos dos valores).
+- **Siempre** llega anidado como `statusRecord: {id, name}`, nunca plano. Se
+  compara por `id` (el `name` llega traducido). Lo lee `readRecordStatus`.
+- Las listas NO ocultan inactivos; para filtrar se usa `?statusRecordId[eq]=6`
+  (sin el operador, el filtro se ignora).
+- En los PUT, `statusRecordId` va como número.
+
+**422 de reservas (§2.1).** Responden 422 con `code: "LISTING_INACTIVE" |
+"PROPERTY_INACTIVE"`, el mensaje traducido según `X-Locale` y el error en el
+campo `errors.listingId`:
+- crear;
+- mover (solo si el alojamiento CAMBIA y el destino está inactivo);
+- reactivar (solo si el estado PASA a confirmada);
+- restaurar (`POST /reservations/{uuid}/restore`);
+- reenviar el link (`send-checkin-link`).
+
+Se decide por `code`, nunca por el texto. Editar o cancelar una reserva que ya
+está en un inactivo sigue funcionando: el GET→PUT con el mismo alojamiento y
+estado no cuenta como mover ni reactivar.
+
+**Alojamientos bajo una propiedad inactiva (§2.2).** 422 `PROPERTY_INACTIVE`
+al activar (`errors.statusRecordId`), al moverlo activo a esa propiedad
+(`errors.propertyId`), al crearlo activo y al restaurarlo. Crearlo o moverlo
+INACTIVO sí se permite.
+
+**Portal (§2.3).**
+- **Entrada** (`GET /checkin/...`): HTTP 200 con `{portalStatus:
+  "listing_inactive", message}`, sin `reservation`. Funciona como `cancelled`,
+  `deleted` y `abandoned`, que tienen prioridad. Un check-in ya completo o una
+  reserva post-estancia muestran el portal normal.
+- **Acciones** (identify, OTP, Didit, form, firma, garantía, completes, docs de
+  secundarios, `saveGuest`): 422 `{code, message}` ANTES de validar el payload.
+  Hay que mostrar la misma pantalla.
+- **Siguen funcionando** porque son de lectura: el resultado de verificación,
+  el contrato firmado y su vista previa, el estado de la garantía, y el render
+  y PDF de documentos.
+- ✅ **Front:** `classifyPortalPayload` ya acepta cualquier `portalStatus` y
+  `PortalStatusScreen` degrada a un genérico con el `message` del backend. Falta
+  el contenido propio y mapear el 422 de las acciones a esa pantalla.
+
+**Despacho (§2.4).**
+- `dispatch`, `redispatch` y `resend-pdf` con el alojamiento o la propiedad
+  inactivos responden 422 con el mismo envelope (antes 202 sin efecto). Con el
+  alojamiento ELIMINADO sigue `listing_unavailable`.
+- **Por huésped** (disparos `on_guest_checkin_completed` y
+  `on_physical_checkout`, p. ej. SIRE):
+  - `POST /reservations/{r}/property-automations/{uuid}/dispatch` sin body crea
+    un job por cada huésped elegible sin ejecución; con
+    `{"guestUuid"}`, solo para ese huésped.
+  - El 202 trae `{message, dispatchedGuests: [uuid…]}`.
+  - Errores: 404 si el huésped no es de la reserva; 422 si no queda ninguno
+    pendiente, si ya tiene una ejecución exitosa o en curso, si falló (hay que
+    reintentar), si no aplica o no completó, o si se manda `guestUuid` a una
+    automatización de nivel reserva.
+- `redispatch`: se puede reintentar el último registro fallido de CADA huésped.
+  El enfriamiento de 5 minutos cuenta por huésped.
+
+**`automation-status` (§2.5).** Cada ítem trae además:
+- `isPerGuest`;
+- `guests[]`: `{guestUuid, name, isMainGuest, checkinCompleted, status
+  (not_started|pending|completed|failed|skipped), usageRecordId, lastError,
+  lastRunAt, canDispatch, canRedispatch}`.
+
+En una automatización por huésped, el `canDispatch` de arriba significa «hay
+algún huésped elegible sin ejecución». Para reintentar se usa el
+`usageRecordId` del huésped.
+
+**Contar reservas afectadas (§2.6).** Es `meta.total` de:
+- `GET /reservations?listingUuid[eq]={uuid}&statusReservationId[in]=…`
+- `GET /reservations?propertyUuid[eq]={uuid}&statusReservationId[in]=…` (nuevo)
+
+Cuentan las reservas confirmadas, en curso e incompletas. ⚠️ Los ids de
+incompleta y abandonada **cambian por ambiente**: salen del catálogo
+`status_reservation` (§ catálogo de estados). Falta confirmar el formato exacto
+de `[in]` (¿valores separados por coma?).
+
+**Respuestas a nuestras preguntas (§4).**
+- **Jobs en cola:** no se borran, pero cada uno relee el estado al correr y
+  termina sin hacer nada ni cobrar. Si se reactiva antes de que corra uno
+  diferido, ese job corre.
+- **Al reactivar:** nada se re-ejecuta solo. El PM reenvía los links. Las
+  automatizaciones por hora o por salida se retoman en las corridas nocturnas
+  si siguen en su ventana; las de check-in completado se despachan a mano.
+- **Qué reservas cuentan:** solo confirmadas, en curso e incompletas.
+- **Importadas:** se importan siempre (Calry, KunasPMS, iCal), pero no se operan
+  ni reciben link.
+- **Desactivar la propiedad** apaga sus alojamientos activos. Al reactivarla o
+  restaurarla vuelven ESOS mismos. Las desactivadas antes de este despliegue no
+  lo recuerdan: al reactivarlas se activan todos sus alojamientos.
+- **Barrido:** las reservas en curso se congelan. A los 30 días de la salida
+  pasan a abandonada o incompleta, nunca a cerrada.
+
+**Texto exacto del aviso al desactivar (§3).**
+- **es** — ya en `DeactivationConfirmDialog`. El panel hoy solo está en
+  español (`AVAILABLE_LANGUAGES = ["es"]`).
+- **en / pt** — guardados en el plan del backend para cuando el panel se
+  traduzca.
+- **Alojamiento:** 7 viñetas: qué se detiene; el portal y los links; no se
+  pueden crear, mover, reactivar ni restaurar reservas; lo importado se
+  registra pero no se opera; lo ejecutado no se revierte; la pausa de 30 días;
+  al reactivar hay que reenviar los links.
+- **Propiedad:** lo mismo, más dos líneas: se apagan sus alojamientos activos y
+  vuelven esos mismos al reactivar; mientras esté inactiva no se pueden
+  activar, crear activos, mover ni restaurar alojamientos en ella.
+
 ## 2b. Documentos de identidad en el detalle de reserva (panel del PM)
 
 ✅ **Verificado por curl el 2026-08-18** contra `GET /reservations/{uuid}/guests`
@@ -2607,6 +2737,34 @@ línea.
   suyo? (propusimos que sí); una verificación empezada, ¿sigue con su proveedor
   si se cambia el override a mitad de camino? (propusimos que sí: se fija al
   crear la sesión).
+- ✅ *Respondido por el backend el 2026-10-27/29: ver la sección «Alojamientos y
+  propiedades inactivos — contrato 2026-10-27». Lo que sigue queda como historia
+  del pedido. OJO: la razón llega en `code` (`LISTING_INACTIVE` /
+  `PROPERTY_INACTIVE`), no en `meta.reason` como habíamos pedido.*
+- **Reservas en propiedad o alojamiento INACTIVOS (pedido de Didier,
+  2026-10-27; front implementado con textos provisionales).** El front ya
+  bloquea crearlas en `ReservationDialog`: opciones deshabilitadas y marcadas,
+  validación antes del POST, y un estado ilegible bloquea. También pide
+  confirmar al desactivar (`DeactivationConfirmDialog`: `PropertyCard`,
+  `PropertyForm`, `PropertiesUnits`). Estado = `status_record` **6 activo / 7
+  inactivo**, leído solo con `readRecordStatus` (`properties/lib/record-status.ts`).
+  Los 1/2 que circulaban salían de un catálogo inventado en `PropertyForm`, ya
+  quitado. Pedido al backend:
+  1. `POST /reservations` → 422 con propiedad o alojamiento inactivos, con
+     `meta.reason: "listing_inactive" | "property_inactive"`. El front lo lee
+     por esa clave (`inactiveRejection`), nunca por el texto.
+  2. Al desactivar, ¿se cancelan los jobs ya en cola o solo no se programan
+     nuevos?
+  3. Al reactivar, ¿lo pendiente se reanuda, se pierde o necesita redispatch?
+  4. ¿«Todas las reservas asociadas» incluye finalizadas y canceladas?
+  5. ¿Aplica igual a reservas importadas por PMS o webhooks?
+  6. ¿Desactivar la propiedad cambia el estado de sus listings, o solo los
+     bloquea por jerarquía?
+  7. ¿El portal de check-in y el envío del link siguen funcionando? El aviso
+     dice «TODAS las automatizaciones».
+
+  Editar una reserva existente sigue permitido: se conserva su alojamiento
+  aunque esté inactivo, con aviso.
 - **`guest_filter` de SIRE y sanitizar `provider.parameters`**: ver
   «Detalles por automation» y «El `provider` sideloaded trae credenciales».
 - **200 incompleto del setup-intent de la garantía**: ver §2c.

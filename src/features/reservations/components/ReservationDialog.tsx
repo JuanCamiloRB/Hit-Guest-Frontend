@@ -73,6 +73,16 @@ import {
 import { readReservationFieldErrors } from "../lib/reservation-edit-errors"
 import { propertiesService } from "@/features/properties/services/properties-service"
 import { listingsService } from "@/features/properties/services/listings-service"
+import { readRecordStatus, type RecordStatus } from "@/features/properties/lib/record-status"
+import {
+    BOOKING_RULE,
+    NO_ACTIVE_LISTINGS,
+    NO_ACTIVE_PROPERTIES,
+    bookingBlock,
+    reservationOperability,
+    statusTag,
+} from "../lib/reservation-availability"
+import { inactiveResourceAction, readInactiveResourceError } from "@/lib/inactive-resource"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import { reservationsService } from "@/features/reservations/services/reservations-service"
 import { createReservationWithFollowUp } from "@/features/reservations/lib/create-reservation-followup"
@@ -122,6 +132,8 @@ interface PropertyOption {
     uuid: string
     name: string
     id: number
+    /** Solo se reserva en una activa; `unknown` cuenta como no activa. */
+    status: RecordStatus
 }
 
 interface ListingOption {
@@ -129,6 +141,7 @@ interface ListingOption {
     uuid: string
     name: string
     propertyUuid?: string
+    status: RecordStatus
 }
 
 interface CatalogOption {
@@ -193,6 +206,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
     })
 
     const selectedPropertyUuid = form.watch("propertyUuid")
+    const selectedListingId = form.watch("listingId")
+    // En edición, la propiedad y el alojamiento que la reserva ya tiene: se
+    // pueden conservar aunque estén inactivos (solo se bloquea CREAR).
+    const [editOriginal, setEditOriginal] = useState<{ propertyUuid: string; listingId: string } | null>(null)
     const selectedDates = form.watch("dates")
     const nights = selectedDates?.from && selectedDates?.to
         ? differenceInDays(selectedDates.to, selectedDates.from)
@@ -208,6 +225,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                     uuid: p.uuid,
                     name: p.name,
                     id: p.id,
+                    status: readRecordStatus(p),
                 }))
             )
         } catch (error) {
@@ -250,6 +268,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                     uuid: l.uuid || String(l.id),
                     name: l.name || l.internal_name || `Alojamiento ${l.id || (l.uuid || "").slice(0, 8)}`,
                     propertyUuid: propRefOf(l) ?? propertyUuid,
+                    status: readRecordStatus(l),
                 }))
             )
         } catch (error) {
@@ -381,6 +400,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                         }
                     }
 
+                    setEditOriginal({ propertyUuid, listingId })
                     form.reset({
                         // Una reserva antigua trae el nombre entero en `guest_name`
                         // y ningún apellido. Se carga tal cual para que el PM lo
@@ -416,6 +436,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             }
             loadReservation()
         } else if (open && mode === "create") {
+            setEditOriginal(null)
             form.reset({
                 guestName: "", guestLastname: "", guestCountry: "", emailGuest: "", guestPhone: "",
                 propertyUuid: "", listingId: "", reservationSourceId: "",
@@ -432,8 +453,39 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
         }
     }, [selectedPropertyUuid, loadListings, form])
 
+    // ── Propiedades y alojamientos inactivos ──
+    const isCreate = mode !== "edit"
+    const selectedProperty = properties.find((p) => p.uuid === selectedPropertyUuid)
+    const selectedListing = listings.find((l) => l.uuid === selectedListingId)
+    const isOriginal = (field: "propertyUuid" | "listingId", uuid: string) => !isCreate && editOriginal?.[field] === uuid
+    const noActiveProperties = isCreate && !loadingProperties && properties.length > 0
+        && !properties.some((p) => p.status === "active")
+    const noActiveListings = isCreate && selectedProperty?.status === "active" && !loadingListings
+        && listings.length > 0 && !listings.some((l) => l.status === "active")
+    const selectionBlock = selectedProperty
+        ? bookingBlock(selectedProperty.status, selectedListing?.status ?? null)
+        : null
+
     // ── Submit ──
     async function onSubmit(values: ReservationFormValues) {
+        // Última validación local antes del POST/PUT (el backend es la autoridad
+        // final). Crear exige todo activo; editar solo si MUEVE la reserva, y
+        // entonces el destino. Lo que no se puede leer cuenta como inactivo.
+        const property = properties.find((p) => p.uuid === values.propertyUuid)
+        const listing = listings.find((l) => l.uuid === values.listingId)
+        const operability = reservationOperability({
+            operation: isCreate ? "create" : "edit",
+            propertyStatus: property?.status ?? "unknown",
+            listingStatus: listing?.status ?? "unknown",
+            listingChanged: !isCreate && !!editOriginal && values.listingId !== editOriginal.listingId,
+        })
+        if (!operability.allowed) {
+            form.setError(operability.reason.startsWith("property") ? "propertyUuid" : "listingId", {
+                type: "inactive",
+                message: operability.message,
+            })
+            return
+        }
         setIsLoading(true)
 
         // Ensure departure is at least 1 day after arrival if user only clicked once
@@ -509,6 +561,23 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             window.dispatchEvent(new Event("reservationCreated"))
         } catch (error: any) {
             console.error("[ReservationDialog] Submit error:", error)
+            // Algo se desactivó después de abrir el formulario (contrato
+            // 2026-10-27). Se conserva el borrador, se muestra el mensaje del
+            // backend tal cual y se releen los estados. El enlace lleva a
+            // gestionar, no activa: activar una propiedad tiene efectos en
+            // cascada y pide su propia confirmación.
+            const inactive = readInactiveResourceError(error)
+            if (inactive) {
+                const manage = inactiveResourceAction(inactive, values.propertyUuid)
+                form.setError("listingId", { type: "inactive", message: inactive.message })
+                toast.error(mode === "edit" ? "No se pudo actualizar la reserva" : "No se pudo crear la reserva", {
+                    description: inactive.message,
+                    ...(manage ? { action: { label: manage.label, onClick: () => window.location.assign(manage.href) } } : {}),
+                })
+                void loadProperties()
+                if (values.propertyUuid) void loadListings(values.propertyUuid)
+                return
+            }
             // 422 con claves de campo (contrato §2g.5): se ancla cada mensaje —ya
             // localizado, se muestra tal cual— al control real del formulario. Las
             // claves que este formulario no edita (p. ej. `externalId`, que en
@@ -670,6 +739,12 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             <div className="h-px bg-gradient-to-r from-brand-blue/20 to-transparent w-full" />
                         </div>
 
+                        {isCreate && (
+                            <p className="flex items-start gap-2 text-xs text-slate-500">
+                                <AlertCircle size={14} className="mt-0.5 shrink-0 text-slate-400" /> {BOOKING_RULE}
+                            </p>
+                        )}
+
                         {/* Property gets its own full-width row (names are long, e.g.
                             "KeyPöint Retreat | Green Höuse"); Alojamiento + Canal share
                             a 2-column row so none of the three selects get cramped. */}
@@ -694,16 +769,22 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                {properties.map((p) => (
-                                                    <SelectItem key={p.uuid} value={p.uuid}>
-                                                        {p.name}
-                                                    </SelectItem>
-                                                ))}
+                                                {properties.map((p) => {
+                                                    const tag = statusTag(p.status, true)
+                                                    return (
+                                                        <SelectItem key={p.uuid} value={p.uuid} disabled={!!tag && !isOriginal("propertyUuid", p.uuid)}>
+                                                            {p.name}{tag && <>{" "}<span className="text-xs text-slate-400">· {tag}</span></>}
+                                                        </SelectItem>
+                                                    )
+                                                })}
                                                 {properties.length === 0 && !loadingProperties && (
                                                     <div className="px-3 py-2 text-xs text-slate-400">No hay opciones</div>
                                                 )}
                                             </SelectContent>
                                         </Select>
+                                        {noActiveProperties && (
+                                            <p role="alert" className="text-xs font-medium text-amber-700">{NO_ACTIVE_PROPERTIES}</p>
+                                        )}
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -738,16 +819,31 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                {listings.map((l) => (
-                                                    <SelectItem key={l.uuid} value={l.uuid}>
-                                                        {l.name}
-                                                    </SelectItem>
-                                                ))}
+                                                {listings.map((l) => {
+                                                    const tag = statusTag(l.status, false)
+                                                    return (
+                                                        <SelectItem key={l.uuid} value={l.uuid} disabled={!!tag && !isOriginal("listingId", l.uuid)}>
+                                                            {l.name}{tag && <>{" "}<span className="text-xs text-slate-400">· {tag}</span></>}
+                                                        </SelectItem>
+                                                    )
+                                                })}
                                                 {listings.length === 0 && !loadingListings && selectedPropertyUuid && (
                                                     <div className="px-3 py-2 text-xs text-slate-400">No hay alojamientos</div>
                                                 )}
                                             </SelectContent>
                                         </Select>
+                                        {noActiveListings && (
+                                            <p role="alert" className="text-xs font-medium text-amber-700">{NO_ACTIVE_LISTINGS}</p>
+                                        )}
+                                        {/* En edición se conserva el alojamiento aunque esté inactivo,
+                                            pero se avisa: sus automatizaciones no corren. */}
+                                        {!isCreate && selectionBlock && (
+                                            <p className="text-xs font-medium text-amber-700">
+                                                {selectionBlock.startsWith("property")
+                                                    ? "La propiedad de esta reserva está inactiva: sus automatizaciones están detenidas."
+                                                    : "El alojamiento de esta reserva está inactivo: sus automatizaciones están detenidas."}
+                                            </p>
+                                        )}
                                         <FormMessage />
                                     </FormItem>
                                 )}

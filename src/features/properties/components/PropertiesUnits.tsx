@@ -67,7 +67,10 @@ import {
     type UnitFormTab,
 } from "../lib/unit-form-validation"
 import { toAmenityIds, toListingPayload } from "../lib/listing-payload"
+import { RECORD_STATUS, readRecordStatus } from "../lib/record-status"
+import { readInactiveResourceError } from "@/lib/inactive-resource"
 import { automationDisplay } from "../lib/automation-display"
+import { DeactivationConfirmDialog } from "./DeactivationConfirmDialog"
 import type { ExternalPmsId } from "../types"
 
 const defaultUnit = {
@@ -146,6 +149,9 @@ export function PropertiesUnits() {
     const { control, watch } = useFormContext()
     // uuid is injected by the edit page — undefined for new properties
     const propertyUuid: string | undefined = watch("uuid")
+    // Bajo una propiedad inactiva no se activa ni se crea activo un alojamiento
+    // (contrato 2026-10-27 §2.2: 422 PROPERTY_INACTIVE). Desactivar sí se puede.
+    const propertyInactive = !!propertyUuid && readRecordStatus({ statusRecordId: watch("statusRecordId") }) === "inactive"
 
     const { fields, append, remove, update } = useFieldArray({
         control,
@@ -247,7 +253,9 @@ export function PropertiesUnits() {
     }, [])
 
     const handleOpenAddDialog = () => {
-        setUnitForm({ ...defaultUnit })
+        setUnitForm(propertyInactive
+            ? { ...defaultUnit, isActive: false, statusRecordId: RECORD_STATUS.INACTIVE }
+            : { ...defaultUnit })
         setEditingIndex(null)
         setListingOverrides({})
         setShowExternalPmsIdErrors(false)
@@ -345,7 +353,10 @@ export function PropertiesUnits() {
         setIsDialogOpen(true)
     }
 
-    const handleSaveUnit = async () => {
+    // Guardado en espera de que el PM confirme que desactiva la unidad.
+    const [confirmingUnitDeactivation, setConfirmingUnitDeactivation] = useState(false)
+
+    const handleSaveUnit = async (options: { deactivationConfirmed?: boolean } = {}) => {
         if (saveLockRef.current) return
         // Este diálogo no tiene resolver de zod (el formulario de propiedad sí),
         // así que las reglas se aplican acá. Antes sólo se comprobaba el nombre:
@@ -374,6 +385,17 @@ export function PropertiesUnits() {
             toast.error("Identificación externa incompleta", {
                 description: "Cada origen necesita su ID externo, o quita la fila.",
             })
+            return
+        }
+
+        // Pasar una unidad YA guardada de activa a inactiva detiene las
+        // automatizaciones de sus reservas: se confirma antes de escribir. Una
+        // unidad nueva no tiene reservas, y reactivar no pregunta.
+        const original = editingIndex !== null ? (fields[editingIndex] as Record<string, unknown> | undefined) : undefined
+        const wasActive = !!original && typeof original.uuid === "string" && original.uuid !== ""
+            && original.isActive !== false && readRecordStatus(original) !== "inactive"
+        if (wasActive && unitForm.isActive === false && !options.deactivationConfirmed) {
+            setConfirmingUnitDeactivation(true)
             return
         }
 
@@ -501,7 +523,11 @@ export function PropertiesUnits() {
                         description: identifierErrors[0].message,
                     })
                 } else {
-                    notifyError(err, "Error al guardar la unidad. Intenta de nuevo o guarda la propiedad completa.")
+                    // La propiedad se desactivó mientras se editaba (422
+                    // PROPERTY_INACTIVE): el mensaje del backend lo explica tal cual.
+                    const inactive = readInactiveResourceError(err)
+                    if (inactive) toast.error("No se pudo guardar la unidad", { description: inactive.message })
+                    else notifyError(err, "Error al guardar la unidad. Intenta de nuevo o guarda la propiedad completa.")
                 }
                 saveLockRef.current = false
                 setIsSavingUnit(false)
@@ -611,10 +637,17 @@ export function PropertiesUnits() {
                                     <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border">
                                         <div className="space-y-0.5">
                                             <Label className="text-sm font-medium">Estado del Alojamiento</Label>
-                                            <p className="text-[10px] text-muted-foreground">Activar o desactivar esta unidad específica.</p>
+                                            <p className={cn("text-[10px]", propertyInactive && !unitForm.isActive ? "font-medium text-amber-700" : "text-muted-foreground")}>
+                                                {propertyInactive && !unitForm.isActive
+                                                    ? "La propiedad está inactiva: actívala para poder activar este alojamiento."
+                                                    : "Activar o desactivar esta unidad específica."}
+                                            </p>
                                         </div>
                                         <Switch
                                             checked={unitForm.isActive}
+                                            // Solo se bloquea ACTIVAR: desactivar sigue permitido.
+                                            disabled={propertyInactive && !unitForm.isActive}
+                                            aria-label="Alojamiento activo"
                                             onCheckedChange={(checked) => setUnitForm({ ...unitForm, isActive: checked })}
                                         />
                                     </div>
@@ -1267,7 +1300,7 @@ export function PropertiesUnits() {
                                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSavingUnit}>Cancelar</Button>
                                 <Button
                                     type="button"
-                                    onClick={handleSaveUnit}
+                                    onClick={() => void handleSaveUnit()}
                                     disabled={isSavingUnit || roomTypesLoading || roomTypes.length === 0}
                                     className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold"
                                 >
@@ -1277,6 +1310,15 @@ export function PropertiesUnits() {
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
+
+                    <DeactivationConfirmDialog
+                        target={confirmingUnitDeactivation ? { kind: "listing", name: unitForm.name || "este alojamiento" } : null}
+                        onConfirm={() => {
+                            setConfirmingUnitDeactivation(false)
+                            void handleSaveUnit({ deactivationConfirmed: true })
+                        }}
+                        onCancel={() => setConfirmingUnitDeactivation(false)}
+                    />
 
                     {/* Override create/edit modal (live for saved listings, draft otherwise) */}
                     {editingOverrideAutomation && (

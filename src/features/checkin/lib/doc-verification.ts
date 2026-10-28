@@ -29,7 +29,7 @@
  * verificar. Lo único que decide este valor es si se piden dos fotos de más.
  */
 
-import type { RegisteredGuest, VerificationDirective, VerificationResultResponse } from "../types/checkin"
+import type { PortalStatus, RegisteredGuest, VerificationDirective, VerificationResultResponse } from "../types/checkin"
 
 /** Lo mínimo que se necesita de un huésped del portal — no el objeto entero. */
 type VerifiableGuest = Pick<RegisteredGuest, "isCompleted" | "verification">
@@ -45,7 +45,7 @@ export function resolvePreFormVerificationStep(input: {
     identityVerified: boolean
     resultStatus?: VerificationResultResponse["status"]
     directiveType?: VerificationDirective["type"]
-    portalStatus?: "cancelled" | "deleted" | "pending_sync"
+    portalStatus?: PortalStatus
     /** True only when the backend-issued OTP verification token is present. */
     contactChallengeSatisfied?: boolean
 }): PreFormVerificationStep {

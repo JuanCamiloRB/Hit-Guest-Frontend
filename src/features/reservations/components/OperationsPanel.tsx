@@ -65,6 +65,7 @@ import { ReservationPriceCard } from "./ReservationPriceCard"
 import { hasUsablePhone, isOtaApplicable } from "../lib/checkin-link-delivery-status"
 import { describeResendCharges } from "@/features/properties/lib/checkin-link-delivery"
 import Link from "next/link"
+import { inactiveResourceAction, readInactiveResourceError } from "@/lib/inactive-resource"
 
 export function OperationsPanel({ reservationId }: { reservationId: string }) {
     const [data, setData] = useState<ReservationDetailData | null>(null)
@@ -153,7 +154,19 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
             // un reenvío exitoso (reportado como «caché del front», 2026-10-08).
             setReloadKey((k) => k + 1)
         } catch (e) {
-            notifyError(e, "No se pudo enviar el link de check-in.")
+            // Alojamiento o propiedad inactivos (contrato 2026-10-27): no sale
+            // ningún link. Mensaje del backend tal cual, y el camino para
+            // gestionarlo (no se activa desde acá: tiene efectos en cascada).
+            const inactive = readInactiveResourceError(e)
+            if (inactive) {
+                const manage = inactiveResourceAction(inactive, data?.propertyUuid)
+                toast.error("No se pudo enviar el link de check-in", {
+                    description: inactive.message,
+                    ...(manage ? { action: { label: manage.label, onClick: () => window.location.assign(manage.href) } } : {}),
+                })
+            } else {
+                notifyError(e, "No se pudo enviar el link de check-in.")
+            }
         } finally {
             setIsSendingLink(false)
         }

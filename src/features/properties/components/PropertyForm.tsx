@@ -59,6 +59,8 @@ import { listingsService } from "../services/listings-service"
 import { toListingPayload, type ListingDraft } from "../lib/listing-payload"
 import { readExternalIdentifierServerErrors } from "../lib/external-pms-ids"
 import { ApiError } from "@/types/api"
+import { RECORD_STATUS, readRecordStatus } from "../lib/record-status"
+import { DeactivationConfirmDialog } from "./DeactivationConfirmDialog"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { COMMUNICATION_LOCALES, LOCALE_LABELS, DEFAULT_COMMUNICATION_LOCALE } from "@/lib/locales"
 
@@ -88,6 +90,8 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     const [isDeleting, setIsDeleting] = useState(false)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
     const [isValidationErrorOpen, setIsValidationErrorOpen] = useState(false)
+    // Guardado en espera de que el PM confirme que desactiva la propiedad.
+    const [pendingDeactivation, setPendingDeactivation] = useState<PropertyFormData | null>(null)
     const [validationErrors, setValidationErrors] = useState<{ label: string; tab: string; message: string }[]>([])
     const [activeTab, setActiveTab] = useState("details")
     const [statusRecords, setStatusRecords] = useState<CatalogOption[]>([])
@@ -111,11 +115,9 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                 if (statuses.length > 0) setStatusRecords(statuses)
             } catch (error) {
                 console.error("[PropertyForm] Error fetching calendars/statuses:", error)
-                // Fallback for status records since it's a critical dropdown
-                setStatusRecords([
-                    { id: "1", name: "Activo" },
-                    { id: "2", name: "Inactivo" }
-                ])
+                // Sin respaldo inventado: los ids 1/2 que había acá no existen en
+                // el catálogo real (6 activo, 7 inactivo) y podían guardarse.
+                setStatusRecords([])
             }
         }
         fetchCatalogs()
@@ -236,7 +238,23 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         setIsValidationErrorOpen(true)
     }
 
+    /**
+     * Pasar una propiedad existente de activa a inactiva pide confirmación
+     * antes de guardar: detiene todas las automatizaciones de sus reservas.
+     * Un estado inicial desconocido también pregunta (avisar de más es seguro).
+     */
     async function onSubmit(values: PropertyFormData) {
+        const deactivating = !!initialData?.uuid
+            && readRecordStatus(initialData) !== "inactive"
+            && Number(values.statusRecordId) !== RECORD_STATUS.ACTIVE
+        if (deactivating) {
+            setPendingDeactivation(values)
+            return
+        }
+        await saveProperty(values)
+    }
+
+    async function saveProperty(values: PropertyFormData) {
         if (submitLockRef.current) return
         submitLockRef.current = true
         setIsLoading(true)
@@ -534,10 +552,9 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                                                 <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
                                                             ))
                                                         ) : (
-                                                            <>
-                                                                <SelectItem value="1">Activo</SelectItem>
-                                                                <SelectItem value="2">Inactivo</SelectItem>
-                                                            </>
+                                                            <SelectItem value="__unavailable" disabled>
+                                                                No se pudo cargar el catálogo de estados
+                                                            </SelectItem>
                                                         )}
                                                     </SelectContent>
                                                 </Select>
@@ -713,6 +730,16 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     </Button>
                 </div>
             </form>
+
+            <DeactivationConfirmDialog
+                target={pendingDeactivation ? { kind: "property", name: pendingDeactivation.name || initialData?.name || "esta propiedad" } : null}
+                onConfirm={() => {
+                    const values = pendingDeactivation
+                    setPendingDeactivation(null)
+                    if (values) void saveProperty(values)
+                }}
+                onCancel={() => setPendingDeactivation(null)}
+            />
 
             <Dialog open={isValidationErrorOpen} onOpenChange={setIsValidationErrorOpen}>
                 <DialogContent className="sm:max-w-[440px]">

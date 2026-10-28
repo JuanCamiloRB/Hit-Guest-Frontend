@@ -1,6 +1,6 @@
 import "server-only"
 
-import type { CheckinPortalResponse, CheckinReservationV4, SecondaryGateStatus, SmartlockCode } from "../types/checkin"
+import type { CheckinPortalResponse, CheckinReservationV4, PortalStatus, SecondaryGateStatus, SmartlockCode } from "../types/checkin"
 import { assertRenderablePortal } from "../lib/portal-payload"
 
 const API_BASE = (
@@ -30,7 +30,7 @@ export type SecondaryGateResult =
     /** Portal accesible: la política de acceso la decide cada página. */
     | { kind: "ready"; status: SecondaryGateStatus }
     /** Reserva cancelada (29) o eliminada (108) — hay que explicárselo al huésped. */
-    | { kind: "portal_closed"; portalStatus: "cancelled" | "deleted" | "pending_sync"; message?: string }
+    | { kind: "portal_closed"; portalStatus: PortalStatus; message?: string }
     /** No se pudo resolver la reserva (404, red, backend caído). */
     | { kind: "unavailable" }
 
