@@ -5,7 +5,7 @@ import { AlertTriangle, ShieldCheck, Loader2 } from "lucide-react"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import {
     systemDocumentService,
-    hasUnresolvedShortcodes,
+    resolveGuaranteePreview,
     GUARANTEE_DOCUMENT_SLUG,
     type SystemDocument,
 } from "../../services/system-document-service"
@@ -50,9 +50,13 @@ export function GuaranteePreview() {
     }
 
     // The PM's own session language; guests never see this screen, so there is
-    // no negotiation with the reservation's communicationsLocale here.
-    const content = doc.content[language] ?? doc.content.es ?? Object.values(doc.content)[0] ?? ""
-    const unresolved = hasUnresolvedShortcodes(content)
+    // no negotiation with the reservation's communicationsLocale here. Texto y
+    // valores salen del MISMO idioma: mezclarlos daría «Card on File» en español.
+    const locale = doc.content[language] != null ? language : doc.content.es != null ? "es" : Object.keys(doc.content)[0]
+    const content = (locale && doc.content[locale]) ?? ""
+    // Solo las variables de la garantía, con los valores de la DB de HitGuest
+    // (Ricardo, 2026-10-29). Las de cada reserva las resuelve HitGuest en el PDF.
+    const { html, missing } = resolveGuaranteePreview(content, locale ? doc.extra?.[locale] : undefined)
 
     return (
         <div className="space-y-2">
@@ -62,13 +66,12 @@ export function GuaranteePreview() {
                 <span className="font-normal text-slate-400">— mantenida por HitGuest, no editable aquí</span>
             </div>
 
-            {unresolved && (
+            {/* Sin decir que «aparecerán igual en el PDF»: HitGuest las vuelve a
+                resolver al generarlo. Solo falta el dato para esta vista. */}
+            {missing.length > 0 && (
                 <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                     <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                    <span>
-                        Este texto todavía tiene variables sin configurar (resaltadas abajo). Aparecerán
-                        igual en el PDF firmado hasta que HitGuest las complete.
-                    </span>
+                    <span>No pudimos cargar toda la configuración de garantía para esta previsualización.</span>
                 </div>
             )}
 
@@ -78,17 +81,23 @@ export function GuaranteePreview() {
                 // user input — same trust boundary as the rendered contract preview
                 // elsewhere in the app (DocumentPreviewModal).
                 dangerouslySetInnerHTML={{
-                    __html: unresolved ? highlightUnresolved(content) : content,
+                    __html: missing.length > 0 ? highlightMissing(html, missing) : html,
                 }}
             />
         </div>
     )
 }
 
-/** Wraps unresolved `{{...}}` tokens so they stand out in the preview. */
-function highlightUnresolved(html: string): string {
+/**
+ * Resalta solo las variables de la garantía que faltaron. Las de cada reserva
+ * ({{guest_first_name}}…) son esperadas y no se marcan. Fuera de los `href`,
+ * donde un `<mark>` rompería el atributo.
+ */
+function highlightMissing(html: string, missing: string[]): string {
+    const keys = missing.join("|")
     return html.replace(
-        /\{\{[^{}]+\}\}/g,
-        (token) => `<mark class="bg-amber-200/70 rounded px-0.5">${token}</mark>`,
+        new RegExp(`(href=["'][^"']*)?\\{\\{\\s*(${keys})\\s*\\}\\}`, "gi"),
+        (token, insideHref?: string) =>
+            insideHref ? token : `<mark class="bg-amber-200/70 rounded px-0.5">${token}</mark>`,
     )
 }

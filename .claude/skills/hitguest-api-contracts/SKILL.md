@@ -1857,8 +1857,26 @@ capturado en el contrato de garantía, no 200).*
   (`guarantee_amount`, `guarantee_mechanism`, `guarantee_release_hours`,
   `damage_catalog_url`) viven en su `extra` y son `null` hasta que **HitGuest
   staff** los configure con una herramienta interna que este repo no construye.
-  El PM solo PREVISUALIZA (GuaranteePreview, read-only, con aviso de variables
-  sin resolver).
+  El PM solo PREVISUALIZA (GuaranteePreview, read-only).
+  ✅ **2026-10-29 (Ricardo, verificado en Network):** esos valores YA están
+  configurados en la DB y llegan por idioma en `extra.es` / `extra.en` (p. ej.
+  `guarantee_mechanism: "Tarjeta en Garantía"`, `guarantee_amount: "1000"`,
+  `guarantee_release_hours: "48"`, `damage_catalog_url`). Se guardan sin unidades:
+  la plantilla ya agrega «USD» y «h». HitGuest los reemplaza al generar el PDF.
+  El panel resuelve **solo esas cuatro** (`resolveGuaranteePreview`, en
+  `system-document-service.ts`): mismo idioma que el texto, valores escapados y
+  URL solo http(s). Las variables de cada reserva (`{{guest_first_name}}`…)
+  quedan tal cual y no avisan.
+
+  ❌ El aviso viejo («variables sin configurar… aparecerán igual en el PDF
+  firmado») era falso: detectaba cualquier `{{…}}` del texto crudo y el backend
+  sí las resuelve en el PDF. Ahora solo se avisa si falta una de las cuatro
+  («No pudimos cargar toda la configuración de garantía para esta
+  previsualización»).
+
+  ⚠️ Abierto: el `guarantee_amount` del anexo es TEXTO del PDF. Lo que se retiene
+  sale de `guaranteeAmount` del setup-intent (§2d-bis). Falta que el backend
+  confirme que los dos usan la misma fuente; el front no lo asume.
 - `SourceRouting` = `{contract_type, provider_slug}` — **no existe ningún campo
   de monto capturable por el PM** en el front ni en el contrato conocido.
 

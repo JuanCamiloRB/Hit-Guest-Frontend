@@ -22,23 +22,72 @@ export interface SystemDocument {
     /** Raw template per locale — shortcodes come UNRESOLVED (e.g. {{guest_first_name}}). */
     content: Record<string, string>
     /**
-     * Per-locale values for the document's own shortcodes (e.g.
-     * guarantee_amount). Values are `null` until HitGuest configures them —
-     * see `hasUnresolvedShortcodes`.
+     * Valores por idioma de las variables PROPIAS del documento, configurados
+     * en la DB de HitGuest (p. ej. `guarantee_amount: "1000"`). HitGuest los
+     * reemplaza al generar el PDF; el panel los usa solo para previsualizar.
      */
-    extra: Record<string, Record<string, string | null>>
+    extra: Record<string, Record<string, string | null> | undefined>
     createdAt: string
     updatedAt: string
 }
 
 /**
- * True if the rendered text still has an unsubstituted `{{...}}` token. The
- * guarantee's own shortcodes (guarantee_amount, etc.) are `null` until
- * HitGuest configures them, so the PM should see a warning instead of
- * assuming the previewed text is final (MD §2).
+ * Las ÚNICAS variables que el panel resuelve en la vista de configuración
+ * (Ricardo, 2026-10-29): las de la garantía, que vienen en `extra[idioma]`.
+ * Las demás (huésped, reserva, propiedad) son de cada reserva: las resuelve
+ * HitGuest al generar el PDF y se dejan tal cual.
  */
-export function hasUnresolvedShortcodes(content: string): boolean {
-    return /\{\{[^{}]+\}\}/.test(content)
+export const GUARANTEE_PREVIEW_VARIABLES: ReadonlySet<string> = new Set([
+    "guarantee_mechanism",
+    "guarantee_amount",
+    "guarantee_release_hours",
+    "damage_catalog_url",
+])
+
+export interface GuaranteePreviewResult {
+    html: string
+    /** Variables de la garantía que el texto usa y que no vinieron configuradas. */
+    missing: string[]
+}
+
+function escapeHtml(value: string): string {
+    return value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;")
+}
+
+/** Un valor usable; la URL del catálogo solo si es http(s) (va dentro de un `href`). */
+function usableValue(key: string, value: unknown): string | null {
+    if (typeof value !== "string" || value.trim() === "") return null
+    const trimmed = value.trim()
+    if (key === "damage_catalog_url" && !/^https?:\/\//i.test(trimmed)) return null
+    return trimmed
+}
+
+/**
+ * Sustituye en `content` SOLO las variables de la garantía con sus valores de
+ * `values` (el `extra` del MISMO idioma), escapados. Las que falten quedan como
+ * token y se informan en `missing`; cualquier otra variable queda intacta.
+ */
+export function resolveGuaranteePreview(
+    content: string,
+    values: Record<string, string | null> | undefined,
+): GuaranteePreviewResult {
+    const missing = new Set<string>()
+    const html = content.replace(/\{\{\s*([a-z0-9_]+)\s*\}\}/gi, (token, rawKey: string) => {
+        const key = rawKey.toLowerCase()
+        if (!GUARANTEE_PREVIEW_VARIABLES.has(key)) return token
+        const value = usableValue(key, values?.[key])
+        if (value === null) {
+            missing.add(key)
+            return token
+        }
+        return escapeHtml(value)
+    })
+    return { html, missing: Array.from(missing) }
 }
 
 class SystemDocumentService {
