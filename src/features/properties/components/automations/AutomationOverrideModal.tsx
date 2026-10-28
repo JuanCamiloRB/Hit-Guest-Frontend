@@ -34,6 +34,7 @@ import {
 import { ParameterField } from "./ParameterField"
 import { IdentityOverrideSelector } from "./IdentityOverrideSelector"
 import { UnitContractTexts } from "../contracts/UnitContractTexts"
+import { automationTitle } from "../../lib/automation-display"
 import { ApiError } from "@/types/api"
 import { useIdentityProviderCatalog } from "../../hooks/useIdentityProviderCatalog"
 import {
@@ -399,8 +400,8 @@ export function AutomationOverrideModal({
     }
 
     const automationLabel = isEdit
-        ? (override?.propertyAutomation?.name ?? activePa?.name ?? "Automatización")
-        : (activePa?.name ?? "")
+        ? (activePa ? automationTitle(activePa) : override?.propertyAutomation?.name ?? "Automatización")
+        : (activePa ? automationTitle(activePa) : "")
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
@@ -441,7 +442,7 @@ export function AutomationOverrideModal({
                                     <SelectContent>
                                         {availableAutomations.map(pa => (
                                             <SelectItem key={pa.uuid} value={pa.uuid}>
-                                                {pa.name}
+                                                {automationTitle(pa)}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>

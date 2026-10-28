@@ -26,6 +26,7 @@ import {
     sameChannelSet,
     type OptionalDeliveryChannel,
 } from "../../lib/checkin-link-delivery"
+import { CHECKIN_LINK_DELIVERY_TITLE } from "../../lib/automation-display"
 import { CheckinLinkDeliveryOverrides } from "./CheckinLinkDeliveryOverrides"
 import type { ListingMeta } from "./AutomationOverrideModal"
 
@@ -162,7 +163,7 @@ export function CheckinLinkDeliveryCard({
                         <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
                                 <h3 className="text-lg font-bold leading-none text-slate-900">
-                                    Envío del link de check-in
+                                    {CHECKIN_LINK_DELIVERY_TITLE}
                                 </h3>
                                 {automation?.isActive && (
                                     <Badge variant="outline" className="h-5 border-green-200 bg-green-50 text-[10px] font-bold uppercase tracking-wider text-green-600">

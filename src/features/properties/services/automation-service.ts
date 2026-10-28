@@ -764,6 +764,10 @@ class AutomationService {
     private normalizeOverride(r: any, listingUuid?: string): ListingAutomationOverride {
         const providerSource = readProviderSource(r)
         const contractRouting = readContractRouting(r.contractRouting ?? r.contract_routing)
+        // Ausente ≠ null: `null` es «la unidad no ejecuta nada»; ausente es un
+        // backend que no lo informa (o una automation que no es de identidad).
+        // Colapsarlos borraba el proveedor de toda fila con override.
+        const rawEffectiveProvider = r.effectiveProvider !== undefined ? r.effectiveProvider : r.effective_provider
         const statusRecordId: ListingOverrideStatus =
             (r.statusRecordId ?? r.status_record_id ?? LISTING_OVERRIDE_STATUS.ACTIVE) as ListingOverrideStatus
         const rawPa = r.propertyAutomation ?? r.property_automation ?? null
@@ -794,7 +798,7 @@ class AutomationService {
             isActive: statusRecordId === LISTING_OVERRIDE_STATUS.ACTIVE,
             // Contrato 2026-10-14: elección, efectivo y origen del proveedor.
             providerId: readOptionalNumber(r.providerId ?? r.provider_id),
-            effectiveProvider: readEffectiveProvider(r.effectiveProvider ?? r.effective_provider),
+            ...(rawEffectiveProvider !== undefined ? { effectiveProvider: readEffectiveProvider(rawEffectiveProvider) } : {}),
             ...(providerSource !== undefined ? { providerSource } : {}),
             ...(contractRouting ? { contractRouting } : {}),
         }

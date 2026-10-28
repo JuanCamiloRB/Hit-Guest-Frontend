@@ -67,6 +67,7 @@ import {
     type UnitFormTab,
 } from "../lib/unit-form-validation"
 import { toAmenityIds, toListingPayload } from "../lib/listing-payload"
+import { automationDisplay } from "../lib/automation-display"
 import type { ExternalPmsId } from "../types"
 
 const defaultUnit = {
@@ -261,7 +262,9 @@ export function PropertiesUnits() {
         // configure override drafts that get created right after the listing is saved.
         if (propertyUuid) {
             setOverridesLoading(true)
-            automationService.listGlobal({ propertyUuid })
+            // Con el provider: su `name` (editable en la DB) es lo que se muestra,
+            // nunca el slug (Ricardo, 2026-10-29).
+            automationService.listGlobal({ propertyUuid, includeProvider: true })
                 .then(automations => setPropertyAutomations(automations.filter(a => a.isActive || isIdentityPropertyAutomation(a))))
                 .catch(() => setPropertyAutomations([]))
                 .finally(() => setOverridesLoading(false))
@@ -321,7 +324,7 @@ export function PropertiesUnits() {
         if (propertyUuid && raw.uuid) {
             setOverridesLoading(true)
             Promise.all([
-                automationService.listGlobal({ propertyUuid }),
+                automationService.listGlobal({ propertyUuid, includeProvider: true }),
                 automationService.listListingOverrides(raw.uuid),
             ]).then(([automations, overrides]) => {
                 setPropertyAutomations(automations.filter(a => a.isActive || isIdentityPropertyAutomation(a)))
@@ -1178,6 +1181,7 @@ export function PropertiesUnits() {
                                                         const hasParams = !identity && hasOverride && override.isActive &&
                                                             Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
                                                         const hasToken = !identity && hasOverride && override.token != null
+                                                        const display = automationDisplay(automation, override ?? null)
 
                                                         return (
                                                             <div key={automation.uuid} className={cn(
@@ -1191,8 +1195,15 @@ export function PropertiesUnits() {
                                                                 <div className="min-w-0 space-y-0.5">
                                                                     <div className="flex items-center gap-2 flex-wrap">
                                                                         <Settings2 className="h-4 w-4 text-slate-400 shrink-0" />
-                                                                        <span className="text-sm font-bold text-slate-800 truncate">{automation.name}</span>
-                                                                        {slug && <span className="text-[10px] text-slate-400">{slug}</span>}
+                                                                        <span className="text-sm font-bold text-slate-800 truncate">{display.title}</span>
+                                                                        {display.detail && (
+                                                                            <Badge
+                                                                                variant="outline"
+                                                                                className="h-5 border-slate-200 bg-white text-[10px] font-semibold text-slate-600"
+                                                                            >
+                                                                                {display.detail}
+                                                                            </Badge>
+                                                                        )}
                                                                         {isInactive && (
                                                                             <Badge variant="outline" className="text-[9px] h-4 bg-red-50 text-red-600 border-red-200 uppercase font-bold">
                                                                                 Desactivada aquí
@@ -1219,6 +1230,7 @@ export function PropertiesUnits() {
                                                                                 : hasOverride
                                                                                     ? "Override activo sin parámetros propios."
                                                                                     : "Hereda la configuración de la propiedad."}
+                                                                        {display.channels && ` · ${display.channels}`}
                                                                     </p>
                                                                 </div>
                                                                 <Button
