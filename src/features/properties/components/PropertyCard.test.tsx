@@ -7,6 +7,9 @@ const mocks = vi.hoisted(() => ({ patch: vi.fn() }))
 vi.mock("../services/properties-service", () => ({ propertiesService: { patch: mocks.patch } }))
 vi.mock("../hooks/usePropertyTypeLabel", () => ({ usePropertyTypeLabel: () => null }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
+vi.mock("@/features/reservations/services/reservations-service", () => ({
+    reservationsService: { countAffectedReservations: async () => 3 },
+}))
 
 import { PropertyCard } from "./PropertyCard"
 

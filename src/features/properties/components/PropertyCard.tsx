@@ -254,7 +254,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 </Button>
             </CardFooter>
             <DeactivationConfirmDialog
-                target={confirmingDeactivation ? { kind: "property", name: property.name } : null}
+                target={confirmingDeactivation ? { kind: "property", name: property.name, uuid: property.uuid } : null}
                 onConfirm={() => {
                     setConfirmingDeactivation(false)
                     void handleStatusToggle(false)

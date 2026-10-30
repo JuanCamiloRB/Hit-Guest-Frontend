@@ -1312,7 +1312,7 @@ export function PropertiesUnits() {
                     </Dialog>
 
                     <DeactivationConfirmDialog
-                        target={confirmingUnitDeactivation ? { kind: "listing", name: unitForm.name || "este alojamiento" } : null}
+                        target={confirmingUnitDeactivation ? { kind: "listing", name: unitForm.name || "este alojamiento", uuid: (unitForm as { uuid?: string }).uuid } : null}
                         onConfirm={() => {
                             setConfirmingUnitDeactivation(false)
                             void handleSaveUnit({ deactivationConfirmed: true })

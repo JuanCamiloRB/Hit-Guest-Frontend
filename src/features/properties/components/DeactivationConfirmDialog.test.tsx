@@ -1,6 +1,12 @@
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+
+const mocks = vi.hoisted(() => ({ count: vi.fn() }))
+vi.mock("@/features/reservations/services/reservations-service", () => ({
+    reservationsService: { countAffectedReservations: mocks.count },
+}))
+
 import { DeactivationConfirmDialog } from "./DeactivationConfirmDialog"
 
 describe("DeactivationConfirmDialog", () => {
@@ -43,5 +49,39 @@ describe("DeactivationConfirmDialog", () => {
         await userEvent.setup().click(screen.getByRole("button", { name: "Cancelar" }))
         expect(onCancel).toHaveBeenCalledTimes(1)
         expect(onConfirm).not.toHaveBeenCalled()
+    })
+})
+
+describe("DeactivationConfirmDialog — reservas afectadas (contrato 2026-10-27 §2.6)", () => {
+    beforeEach(() => vi.clearAllMocks())
+
+    it("cuenta las del alojamiento y lo destaca", async () => {
+        mocks.count.mockResolvedValue(12)
+        render(<DeactivationConfirmDialog target={{ kind: "listing", name: "Apto 101", uuid: "l-1" }} onConfirm={vi.fn()} onCancel={vi.fn()} />)
+        expect(screen.getByText("Calculando las reservas afectadas…")).toBeInTheDocument()
+        expect(await screen.findByText("Se pausarán las automatizaciones de 12 reservas afectadas.")).toBeInTheDocument()
+        expect(mocks.count).toHaveBeenCalledWith({ listingUuid: "l-1" }, expect.any(AbortSignal))
+    })
+
+    it("de una propiedad, por su uuid", async () => {
+        mocks.count.mockResolvedValue(1)
+        render(<DeactivationConfirmDialog target={{ kind: "property", name: "Casa", uuid: "p-1" }} onConfirm={vi.fn()} onCancel={vi.fn()} />)
+        expect(await screen.findByText("Se pausarán las automatizaciones de 1 reserva afectada.")).toBeInTheDocument()
+        expect(mocks.count).toHaveBeenCalledWith({ propertyUuid: "p-1" }, expect.any(AbortSignal))
+    })
+
+    it("si el conteo falla, lo dice y se puede desactivar igual", async () => {
+        mocks.count.mockRejectedValue(new Error("red"))
+        const onConfirm = vi.fn()
+        render(<DeactivationConfirmDialog target={{ kind: "listing", name: "Apto", uuid: "l-1" }} onConfirm={onConfirm} onCancel={vi.fn()} />)
+        expect(await screen.findByText("No pudimos calcular cuántas reservas están afectadas.")).toBeInTheDocument()
+        await userEvent.setup().click(screen.getByRole("button", { name: "Desactivar y detener automatizaciones" }))
+        expect(onConfirm).toHaveBeenCalled()
+    })
+
+    it("sin uuid (unidad nueva) no cuenta nada", () => {
+        render(<DeactivationConfirmDialog target={{ kind: "listing", name: "Nueva" }} onConfirm={vi.fn()} onCancel={vi.fn()} />)
+        expect(mocks.count).not.toHaveBeenCalled()
+        expect(screen.queryByRole("status")).toBeNull()
     })
 })

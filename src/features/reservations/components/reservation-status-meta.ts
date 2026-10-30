@@ -20,14 +20,14 @@ interface ReservationStatusMeta {
  * must not be emerald here and #0bb37a two components over.
  */
 export const RESERVATION_STATUS_META: Record<Reservation["status"], ReservationStatusMeta> = {
-    // Ciclo de vida de la reserva — lo que mapea RESERVATION_STATUS_BY_ID.
+    // Ciclo de vida de la reserva — lo que mapea `mapReservationStatus` (slug primero).
     CONFIRMED: { label: "Confirmada", tone: "success" },
     IN_PROGRESS: { label: "En progreso", tone: "info" },
     CANCELLED: { label: "Cancelada", tone: "danger" },
     CLOSED: { label: "Finalizada", tone: "idle" },
     DELETED: { label: "Eliminada", tone: "danger" },
     UNKNOWN: { label: "Sin estado", tone: "warning" },
-    // Catálogo verificado 2026-10-09 (859/860).
+    // Llegan por `slug` (`abandoned`, `incomplete`): sus ids cambian por ambiente.
     ABANDONED: { label: "Abandonada", tone: "warning" },
     INCOMPLETE: { label: "Incompleta", tone: "warning" },
     // Estados del flujo de check-in que el mismo union admite (los que pinta

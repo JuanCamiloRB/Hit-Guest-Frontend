@@ -8,6 +8,7 @@ import { normalizeApiError } from "@/lib/notify-error"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { ReassuranceTicker } from "./ReassuranceTicker"
 import { CARD_WAIT_SCRIPT } from "../lib/reassurance"
+import { formatMoneyText } from "@/lib/money"
 import { GuaranteeInfoCard } from "@/features/checkin/components/GuaranteeInfoCard"
 import {
     describeGuaranteeSetupFailure,
@@ -494,7 +495,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
             {amount && currency && (
                 <p className="text-xs text-slate-500">
                     Solo autorizamos tu tarjeta — no se realiza ningún cobro ahora. HIT Guest únicamente
-                    la cobrará si se aprueba un reclamo por daños o consumos, hasta {currency} {amount}.
+                    la cobrará si se aprueba un reclamo por daños o consumos, hasta {formatMoneyText(amount, currency)}.
                 </p>
             )}
 

@@ -26,7 +26,7 @@ vi.mock("@/features/properties/services/automation-service", async (importOrigin
 }))
 
 import { ApiError } from "@/types/api"
-import { ReservationsNotReadyError, mapReservationStatus, readReservationStatusId, readReservationStatusLabel, reservationsService } from "./reservations-service"
+import { ReservationsNotReadyError, mapReservationStatus, readListingInactiveReason, readReservationStatusId, readReservationStatusLabel, reservationsService } from "./reservations-service"
 
 const TRANSLATED = { en: "Cancelled", es: "Cancelada" }
 
@@ -164,12 +164,21 @@ describe("reservationsService.list — bordes de la paginación y de las filas",
     })
 })
 
-describe("estados 859 y 860 del catálogo (verificado 2026-10-09)", () => {
-    it("Abandonada e Incompleta tienen estado propio, por id y por nombre", () => {
-        expect(mapReservationStatus({ statusReservation: { id: 859 } })).toBe("ABANDONED")
-        expect(mapReservationStatus({ statusReservationId: 860 })).toBe("INCOMPLETE")
+describe("estado por `slug` (contrato 2026-10-27 §7.1): Abandonada e Incompleta cambian de id por ambiente", () => {
+    it("el slug manda, aunque el id sea otro", () => {
+        expect(mapReservationStatus({ statusReservation: { id: 912, slug: "abandoned" } })).toBe("ABANDONED")
+        expect(mapReservationStatus({ statusReservation: { id: 913, slug: "incomplete" } })).toBe("INCOMPLETE")
+        expect(mapReservationStatus({ statusReservation: { id: 27, slug: "in_progress" } })).toBe("IN_PROGRESS")
+    })
+
+    it("sin slug, el nombre sigue funcionando como respaldo", () => {
         expect(mapReservationStatus({ statusReservation: { name: { en: "Abandoned", es: "Abandonada" } } })).toBe("ABANDONED")
         expect(mapReservationStatus({ statusReservation: { name: "Incompleta" } })).toBe("INCOMPLETE")
+    })
+
+    it("un 859/860 suelto ya NO se da por Abandonada/Incompleta: en otro ambiente puede ser otro estado", () => {
+        expect(mapReservationStatus({ statusReservation: { id: 859 } })).not.toBe("ABANDONED")
+        expect(mapReservationStatus({ statusReservationId: 860 })).not.toBe("INCOMPLETE")
     })
 
     it("el nombre del backend se lee en español en sus tres formas, para estados que el front no conozca", () => {
@@ -186,5 +195,23 @@ describe("readReservationStatusId — el id crudo, para distinguir ausente de no
         expect(readReservationStatusId({ status_reservation_id: "860" })).toBe(860)
         expect(readReservationStatusId({ statusReservation: { id: "x" } })).toBeNull()
         expect(readReservationStatusId({})).toBeNull()
+    })
+})
+
+describe("readListingInactiveReason — `listing.inactiveReason` (contrato 2026-10-27 §7.3)", () => {
+    it("lee los dos códigos y el null de operable", () => {
+        expect(readListingInactiveReason({ listing: { inactiveReason: "LISTING_INACTIVE" } })).toEqual({ listingInactiveReason: "LISTING_INACTIVE" })
+        expect(readListingInactiveReason({ listing: { inactiveReason: "PROPERTY_INACTIVE" } })).toEqual({ listingInactiveReason: "PROPERTY_INACTIVE" })
+        expect(readListingInactiveReason({ listing: { inactiveReason: null } })).toEqual({ listingInactiveReason: null })
+    })
+
+    it("`listing: null` es un alojamiento eliminado: no operable", () => {
+        expect(readListingInactiveReason({ listing: null })).toEqual({ listingInactiveReason: "LISTING_INACTIVE" })
+    })
+
+    it("sin la clave (backend anterior) o con un valor raro, no afirma nada", () => {
+        expect(readListingInactiveReason({ listing: { uuid: "l-1" } })).toEqual({})
+        expect(readListingInactiveReason({ listing: { inactiveReason: "OTRA" } })).toEqual({})
+        expect(readListingInactiveReason({})).toEqual({})
     })
 })

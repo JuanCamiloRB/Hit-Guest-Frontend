@@ -162,6 +162,31 @@ export class CatalogService {
     }
 
     /**
+     * Id numérico de cada estado de reserva, por su `slug` estable (contrato
+     * 2026-10-27 §7.1: `confirmed`, `in_progress`, `incomplete`…). Los ids de
+     * abandonada e incompleta cambian por ambiente: nunca se escriben a mano.
+     * A diferencia de `fetchCatalog`, un fallo SE LANZA: quien cuenta reservas
+     * no puede confundir «no pude leer el catálogo» con «cero reservas».
+     */
+    async getReservationStatusIdsBySlug(): Promise<Record<string, number>> {
+        return this.cached("reservationStatusIdsBySlug", async () => {
+            const url = `${API_BASE_URL}/catalogs?catalogCategoryName[eq]=status_reservation&status[eq]=ACT`
+            const result = await this.getWithAppToken<{ data?: unknown } | unknown[]>(url)
+            const rows = Array.isArray(result) ? result : Array.isArray((result as { data?: unknown }).data) ? (result as { data: unknown[] }).data : []
+            const bySlug: Record<string, number> = {}
+            for (const row of rows) {
+                if (!row || typeof row !== "object") continue
+                const { slug, id } = row as { slug?: unknown; id?: unknown }
+                const numericId = typeof id === "string" && id.trim() !== "" ? Number(id) : id
+                if (typeof slug === "string" && slug && typeof numericId === "number" && Number.isInteger(numericId)) {
+                    bySlug[slug.toLowerCase()] = numericId
+                }
+            }
+            return bySlug
+        })
+    }
+
+    /**
      * Fetches active catalog options by numeric category id.
      * Used by the dynamic check-in form: provider-declared `select` fields carry a
      * `catalog_category_id` (e.g. 8 = reason_for_trip) instead of a category name.

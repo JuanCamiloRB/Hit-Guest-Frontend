@@ -26,6 +26,17 @@ export function formatMoney(amount: number, currency: string | null | undefined)
     return amount.toLocaleString(LOCALE, options)
 }
 
+/**
+ * Un monto que el backend manda como TEXTO sin separador de miles («1000»,
+ * «1000.50»; contrato 2026-10-27 §7.5: el formato lo pone el front). Fuera de
+ * esa forma no se adivina: se muestra tal cual, junto a la moneda.
+ */
+export function formatMoneyText(amount: string, currency: string | null | undefined): string {
+    const trimmed = amount.trim()
+    if (!/^\d+(\.\d+)?$/.test(trimmed)) return currency ? `${currency} ${trimmed}` : trimmed
+    return formatMoney(Number(trimmed), currency)
+}
+
 /** Código ISO 4217 leído de una respuesta; `null` si no vino o no tiene esa forma. */
 export function readCurrencyCode(...candidates: unknown[]): string | null {
     for (const candidate of candidates) {

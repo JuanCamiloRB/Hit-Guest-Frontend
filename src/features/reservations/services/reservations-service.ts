@@ -1,4 +1,5 @@
 import { apiClient, handleSessionExpired, localeHeaders } from "@/lib/api-client"
+import type { InactiveResourceCode } from "@/lib/inactive-resource"
 import { exceedsProxyLimit, prepareImageForUpload } from "@/lib/image-upload"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { ApiError, toApiErrorResponse, type ApiErrorResponse } from "@/types/api"
@@ -31,6 +32,7 @@ import { differenceInDays } from "date-fns"
 import { listingsService } from "@/features/properties/services/listings-service"
 import { propertiesService } from "@/features/properties/services/properties-service"
 import { automationService, canonicalSlug } from "@/features/properties/services/automation-service"
+import { catalogService } from "@/features/auth/services/catalog-service"
 import type { AutomationStatusItem } from "@/features/properties/types/automation"
 import type { AutomationStatus } from "@/types"
 
@@ -50,9 +52,50 @@ const RESERVATION_STATUS_BY_ID: Record<number, Reservation["status"]> = {
     30: "CLOSED",
     108: "DELETED",
     109: "UNKNOWN",
-    // Verificado por curl 2026-10-09; ningún documento del backend dice qué los dispara.
-    859: "ABANDONED",
-    860: "INCOMPLETE",
+    // Abandonada e Incompleta NO van por id: cambian por ambiente (contrato
+    // 2026-10-27 §7.1). Las resuelve el `slug`, o el nombre como respaldo.
+}
+
+/**
+ * Clave estable del estado (contrato 2026-10-27 §7.1): `statusReservation.slug`.
+ * Es la PRIMERA fuente; el id y el nombre quedan para respuestas sin slug.
+ */
+const RESERVATION_STATUS_BY_SLUG: Record<string, Reservation["status"]> = {
+    confirmed: "CONFIRMED",
+    in_progress: "IN_PROGRESS",
+    closed: "CLOSED",
+    cancelled: "CANCELLED",
+    abandoned: "ABANDONED",
+    incomplete: "INCOMPLETE",
+    deleted: "DELETED",
+    unknown: "UNKNOWN",
+}
+
+/**
+ * `listing.inactiveReason` de la reserva (contrato 2026-10-27 §7.3), sin la
+ * clave si el backend no la manda. Un `listing: null` explícito es un
+ * alojamiento eliminado: no operable, como uno inactivo.
+ */
+export function readListingInactiveReason(r: unknown): { listingInactiveReason?: InactiveResourceCode | null } {
+    if (!r || typeof r !== "object" || !("listing" in r)) return {}
+    const listing = (r as { listing?: unknown }).listing
+    if (listing === null) return { listingInactiveReason: "LISTING_INACTIVE" }
+    if (typeof listing !== "object" || listing === undefined || !("inactiveReason" in listing)) return {}
+    const reason = (listing as { inactiveReason?: unknown }).inactiveReason
+    if (reason === null) return { listingInactiveReason: null }
+    return reason === "LISTING_INACTIVE" || reason === "PROPERTY_INACTIVE" ? { listingInactiveReason: reason } : {}
+}
+
+/** Los estados que corren automatizaciones (contrato 2026-10-27 §4). */
+export const AFFECTED_RESERVATION_STATUS_SLUGS = ["confirmed", "in_progress", "incomplete"] as const
+
+/** El `slug` del estado de la reserva, en minúsculas; `null` si no vino. */
+export function readReservationStatusSlug(r: unknown): string | null {
+    const statusReservation = r && typeof r === "object" ? (r as { statusReservation?: unknown }).statusReservation : undefined
+    const slug = statusReservation && typeof statusReservation === "object"
+        ? (statusReservation as { slug?: unknown }).slug
+        : undefined
+    return typeof slug === "string" && slug.trim() !== "" ? slug.trim().toLowerCase() : null
 }
 
 /** Texto plano de un campo que puede llegar como string, objeto de traducciones `{en, es}` o nada. */
@@ -119,6 +162,9 @@ export function readReservationStatusLabel(r: unknown): string | null {
  * sola reserva tumbaba el listado entero (la recién creada «no aparecía»).
  */
 export function mapReservationStatus(r: any): Reservation["status"] {
+    const slug = readReservationStatusSlug(r)
+    if (slug && RESERVATION_STATUS_BY_SLUG[slug]) return RESERVATION_STATUS_BY_SLUG[slug]
+
     const id = Number(
         r?.statusReservation?.id ?? r?.statusReservationId ?? r?.status_reservation_id
     )
@@ -434,6 +480,12 @@ export interface ReservationDetailData {
      */
     propertyUuid: string | null
     listingUuid: string | null
+    /**
+     * Por qué el alojamiento no es operable (contrato 2026-10-27 §7.3):
+     * `null` = operable; `undefined` = backend anterior que no lo informa (manda
+     * el 422). Un `listing: null` = alojamiento eliminado, se trata como inactivo.
+     */
+    listingInactiveReason?: InactiveResourceCode | null
     /** Qué pasó con el link de check-in por canal (`extra.*`, contrato 2026-09-19 §6). */
     checkinLinkDelivery: CheckinLinkDeliveryStatus
     automationStatus: {
@@ -644,6 +696,7 @@ export class ReservationsService {
             overwrittenEdits: readOverwrittenEdits(r.extra),
             propertyUuid,
             listingUuid: listing?.uuid ?? null,
+            ...readListingInactiveReason(r),
             checkinLinkDelivery: readCheckinLinkDelivery(r.extra),
             automationStatus: {
                 link: r.listing ? "success" : "pending",
@@ -997,6 +1050,47 @@ export class ReservationsService {
      * Un 202 es «todavía no» (`ReservationsNotReadyError`); un 2xx sin arreglo
      * es un fallo, nunca «cero reservas».
      */
+    /**
+     * Cuántas reservas se ven afectadas al desactivar un alojamiento o una
+     * propiedad (contrato 2026-10-27 §2.6): las que corren automatizaciones, es
+     * decir confirmadas, en curso e incompletas. Una sola página: solo
+     * interesa `meta.total`. Los ids salen del catálogo por `slug` (§7.1) y van
+     * separados por coma (§7.2). Si falta alguno o la respuesta no trae el
+     * total, se LANZA: un fallo nunca se presenta como «0 reservas».
+     */
+    async countAffectedReservations(
+        scope: { listingUuid: string } | { propertyUuid: string },
+        signal?: AbortSignal,
+    ): Promise<number> {
+        const idsBySlug = await catalogService.getReservationStatusIdsBySlug()
+        const ids = AFFECTED_RESERVATION_STATUS_SLUGS.map((slug) => idsBySlug[slug])
+        if (ids.some((id) => id === undefined)) {
+            throw new Error("El catálogo de estados de reserva no trae los slugs esperados.")
+        }
+        const qs = new URLSearchParams()
+        if ("listingUuid" in scope) qs.set("listingUuid[eq]", scope.listingUuid)
+        else qs.set("propertyUuid[eq]", scope.propertyUuid)
+        qs.set("statusReservationId[in]", ids.join(","))
+        qs.set("per_page", "1")
+        const token = useAuthStore.getState().user?.token
+        const res = await fetch(`${API_BASE}/reservations?${qs}`, {
+            headers: { Accept: "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+            cache: "no-store",
+            signal,
+        })
+        const json: unknown = await res.json().catch(() => ({}))
+        if (!res.ok) {
+            if (res.status === 401) handleSessionExpired()
+            throw new ApiError(res.status, toApiErrorResponse(json, `HTTP ${res.status}`))
+        }
+        const meta = json && typeof json === "object" ? (json as { meta?: Record<string, unknown> }).meta : undefined
+        const total = Number(meta?.total)
+        if (res.status !== 200 || !Number.isInteger(total) || total < 0) {
+            throw new Error("GET /reservations no devolvió `meta.total`.")
+        }
+        return total
+    }
+
     private async fetchAllReservationPages(): Promise<unknown[]> {
         const MAX_PAGES = 100
         const token = useAuthStore.getState().user?.token

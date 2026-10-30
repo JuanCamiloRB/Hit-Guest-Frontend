@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { formatMoney, readCurrencyCode } from "./money"
+import { formatMoney, formatMoneyText, readCurrencyCode } from "./money"
 
 describe("formatMoney", () => {
     it("nombra la moneda real (símbolo o código según el locale), nunca «$» para todo", () => {
@@ -23,5 +23,17 @@ describe("readCurrencyCode", () => {
         expect(readCurrencyCode(undefined, "cop")).toBe("COP")
         expect(readCurrencyCode("", null, "USD")).toBe("USD")
         expect(readCurrencyCode("pesos", 12, null)).toBeNull()
+    })
+})
+
+describe("formatMoneyText — monto que el backend manda como texto (contrato 2026-10-27 §7.5)", () => {
+    it("«1000» y «1000.50» salen con el formato del panel, como formatMoney", () => {
+        expect(formatMoneyText("1000", "USD")).toBe(formatMoney(1000, "USD"))
+        expect(formatMoneyText("1000.50", "USD")).toBe(formatMoney(1000.5, "USD"))
+    })
+
+    it("algo fuera de esa forma no se adivina: va tal cual con la moneda", () => {
+        expect(formatMoneyText("1.000,50", "USD")).toBe("USD 1.000,50")
+        expect(formatMoneyText("mil", null)).toBe("mil")
     })
 })

@@ -15,6 +15,7 @@
  */
 
 import type { RecordStatus } from "@/features/properties/lib/record-status"
+import type { InactiveResourceCode } from "@/lib/inactive-resource"
 
 export type BookingBlock = "property_inactive" | "listing_inactive" | "property_unknown" | "listing_unknown"
 
@@ -68,4 +69,20 @@ export function reservationOperability(input: {
     if (input.operation === "edit" && !input.listingChanged) return { allowed: true }
     const block = bookingBlock(input.propertyStatus, input.listingStatus)
     return block ? { allowed: false, reason: block, message: BOOKING_BLOCK_MESSAGES[block] } : { allowed: true }
+}
+
+/**
+ * Por qué no se puede enviar ni copiar el link de check-in de una reserva
+ * (contrato 2026-10-27 §7.3: `listing.inactiveReason`). `null` = no lo impide
+ * el alojamiento; con un backend que no informa la razón (`undefined`) decide
+ * el 422.
+ */
+export function checkinLinkBlockedReason(inactiveReason: InactiveResourceCode | null | undefined): string | null {
+    if (inactiveReason === "PROPERTY_INACTIVE") {
+        return "La propiedad de esta reserva está inactiva: no se envían links de check-in."
+    }
+    if (inactiveReason === "LISTING_INACTIVE") {
+        return "El alojamiento de esta reserva está inactivo o ya no existe: no se envían links de check-in."
+    }
+    return null
 }

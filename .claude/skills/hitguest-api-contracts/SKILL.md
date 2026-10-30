@@ -1691,7 +1691,17 @@ catálogo.
 
 ## 2a-bis. ⚠️ Alojamientos y propiedades inactivos — contrato 2026-10-27 (backend `20261027_listing-inactivo-operaciones.md`, implementado y probado; front PARCIAL; NO verificado por curl)
 
-**Cómo quedó en el front (2026-10-29; sin despacho por huésped ni conteo):**
+**✅ Respuestas del backend 2026-10-28** (plan `20261028_respuestas-frontend-estado-proveedores-garantia.md`; copia completa en `.claude/plans/20261027_frontend-reservas-listing-inactivo.md` §7; NO verificado por curl):
+- **Clave estable del estado de reserva:** `statusReservation.slug` viene en la reserva, y el catálogo `GET /catalogs?catalogCategoryName[eq]=status_reservation&status[eq]=ACT` lo trae en cada fila. Valores: `confirmed`, `in_progress`, `closed`, `cancelled`, `abandoned`, `incomplete`, `deleted`, `unknown`. Se usa el slug en vez de los ids: los de abandonada e incompleta (859/860) cambian por ambiente.
+- **`statusReservationId[in]`:** ids separados por coma (`27,28,860`). Los valores inválidos se ignoran; una lista vacía no filtra nada. La forma de arreglo `[in][]=` no está soportada. Se combina con `listingUuid[eq]`, `propertyUuid[eq]` y los demás filtros.
+- **`listing.inactiveReason`:** viene en todas las respuestas de reservas y vale `null`, `"LISTING_INACTIVE"` o `"PROPERTY_INACTIVE"`. «Reenviar link» se habilita con `inactiveReason === null` y el slug en `confirmed` o `in_progress`. Un `listing: null` significa alojamiento eliminado.
+- **`provider.name`:** didit → «Advanced Verification», textract → «Essential Verification», HitGuest Signature sin cambio. Son nombres en INGLÉS para todos los idiomas. ⚠️ El panel está en español y el badge de la unidad los mostrará así: hay que decidirlo con producto. Comparar por slug, nunca por nombre.
+- **Monto de la garantía:**
+  - Una sola fuente: el documento global, con el idioma de la propiedad (`communications_locale`) y respaldo en inglés. El anexo, `guaranteeAmount` y el tope del cobro leen el MISMO monto.
+  - `guaranteeAmount` llega siempre como número en texto sin separador de miles; el formato lo pone el front. `currency` es siempre `"USD"`.
+  - El monto no se congela por reserva. El SetupIntent no retiene nada.
+
+
 - **Un solo lector del 422:** `readInactiveResourceError` (`src/lib/inactive-resource.ts`) decide por `code`. Sirve para el `ApiError` del panel y para el error del portal. `inactiveResourceAction` arma el enlace «Gestionar propiedad / alojamiento»: nunca activa desde el error.
 - **Reglas por operación:** `reservationOperability` (`reservations/lib/reservation-availability.ts`). Crear exige todo activo. Editar sin mover se permite. Mover exige el destino activo. No se modelan restaurar ni reactivar: el panel no tiene esas acciones.
 - **Panel:**
@@ -1704,8 +1714,20 @@ catálogo.
   - `DiditCallbackClient`: si el portal responde con `portalStatus`, navega a la ruta base, que lo pinta (antes terminaba en «sin contexto»).
 - **Aviso:** `DeactivationConfirmDialog` usa el texto exacto (es), 7 viñetas para el alojamiento y 9 para la propiedad.
 - **Pendiente:**
-  - El conteo de reservas, a la espera de una clave estable del catálogo de estados y del formato de `[in]`.
-  - El estado del alojamiento dentro de la reserva, para deshabilitar «Reenviar link» antes del clic.
+  - ✅ (2026-10-30) Todo lo de abajo está implementado.
+
+**Implementado 2026-10-30 con las respuestas del 2026-10-28:**
+- **Estado de reserva:** `mapReservationStatus` usa primero `statusReservation.slug`. Los ids 859/860 salieron del mapa fijo; sin slug queda el respaldo por nombre.
+- **Conteo:**
+  - `catalogService.getReservationStatusIdsBySlug()` lanza si falla, nunca devuelve «0».
+  - `reservationsService.countAffectedReservations({listingUuid|propertyUuid})` pide confirmadas, en curso e incompletas con `[in]` por comas y `per_page=1`, y lee `meta.total`.
+  - `DeactivationConfirmDialog` lo pide al abrirse con su `uuid` y lo destaca. Si el conteo falla, lo dice y no bloquea la desactivación.
+- **Link de check-in:** `readListingInactiveReason` lee `listing.inactiveReason` (`listing: null` = eliminado). `checkinLinkBlockedReason` deshabilita «Enviar/Copiar link» en `OperationsPanel`, con la razón al lado.
+- **Monto de la garantía:** `formatMoneyText` (`lib/money.ts`) formatea `guaranteeAmount` en `GuaranteeCardForm`. Fuera de la forma «1000» / «1000.50» se muestra tal cual.
+- **Despacho por huésped (§2.4–2.5):**
+  - Tipos `AutomationGuestStatus` e `isPerGuest`; `readAutomationGuests` lee `guests[]` con los permisos en `false` si faltan. `automationService.dispatch` acepta `guestUuid`.
+  - En `useAutomationStatus`, las claves son `automationActionKey(automatización, huésped)`: «en curso» y enfriamiento POR huésped. El sondeo cuenta a los huéspedes en `pending`. Los 422 de inactivo en dispatch, redispatch y resend-pdf se muestran como error con el mensaje del backend.
+  - En `AutomationStatusItem`, una subfila por huésped con estado, check-in, error y su acción (`canDispatch` / `canRedispatch`). `skipped` se muestra como «No aplica». Arriba solo queda «Despachar pendientes», sin `guestUuid`.
   - El despacho por huésped (§2.4–2.5), que va en un commit aparte.
 
 **Regla.** Un alojamiento NO es operable si su propiedad está inactiva

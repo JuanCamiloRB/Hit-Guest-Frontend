@@ -66,6 +66,7 @@ import { hasUsablePhone, isOtaApplicable } from "../lib/checkin-link-delivery-st
 import { describeResendCharges } from "@/features/properties/lib/checkin-link-delivery"
 import Link from "next/link"
 import { inactiveResourceAction, readInactiveResourceError } from "@/lib/inactive-resource"
+import { checkinLinkBlockedReason } from "../lib/reservation-availability"
 
 export function OperationsPanel({ reservationId }: { reservationId: string }) {
     const [data, setData] = useState<ReservationDetailData | null>(null)
@@ -248,6 +249,11 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
     const disabledReason = isActionable
         ? undefined
         : `La reserva está ${statusMeta.label.toLowerCase()}: no admite acciones sobre el huésped.`
+    // Con el alojamiento o la propiedad inactivos no sale ningún link (contrato
+    // 2026-10-27 §7.3). Se dice antes del clic; el 422 sigue siendo la autoridad.
+    const linkBlockedReason = checkinLinkBlockedReason(data.listingInactiveReason)
+    const canUseCheckinLink = isActionable && !linkBlockedReason
+    const linkDisabledReason = disabledReason ?? linkBlockedReason ?? undefined
 
     return (
         <div className="flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto pb-10">
@@ -529,16 +535,16 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                     <Card className="border-none bg-primary p-0 text-white shadow-sm">
                         <CardContent className="p-5">
                             <h3 className="text-sm font-bold text-white">Acciones rápidas</h3>
-                            {disabledReason && (
-                                <p className="mt-1 text-xs text-white/70">{disabledReason}</p>
+                            {linkDisabledReason && (
+                                <p className="mt-1 text-xs text-white/70">{linkDisabledReason}</p>
                             )}
                             <div className="mt-4 space-y-2">
                                 <Dialog open={sendDialogOpen} onOpenChange={openSendDialog}>
                                     <DialogTrigger asChild>
                                         <Button
                                             variant="secondary"
-                                            disabled={!isActionable}
-                                            title={disabledReason}
+                                            disabled={!canUseCheckinLink}
+                                            title={linkDisabledReason}
                                             className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:opacity-40"
                                         >
                                             <span className="flex items-center gap-3">
@@ -613,8 +619,8 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                 <Button
                                     onClick={handleCopyCheckinLink}
                                     variant="secondary"
-                                    disabled={!isActionable}
-                                    title={disabledReason}
+                                    disabled={!canUseCheckinLink}
+                                    title={linkDisabledReason}
                                     className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:opacity-40"
                                 >
                                     <span className="flex items-center gap-3">

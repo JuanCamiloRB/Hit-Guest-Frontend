@@ -732,7 +732,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             </form>
 
             <DeactivationConfirmDialog
-                target={pendingDeactivation ? { kind: "property", name: pendingDeactivation.name || initialData?.name || "esta propiedad" } : null}
+                target={pendingDeactivation ? { kind: "property", name: pendingDeactivation.name || initialData?.name || "esta propiedad", uuid: initialData?.uuid } : null}
                 onConfirm={() => {
                     const values = pendingDeactivation
                     setPendingDeactivation(null)

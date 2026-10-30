@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { bookingBlock, reservationOperability, statusTag } from "./reservation-availability"
+import { bookingBlock, checkinLinkBlockedReason, reservationOperability, statusTag } from "./reservation-availability"
 
 describe("bookingBlock — solo se reserva en propiedad y alojamiento activos", () => {
     it("ambos activos: se puede", () => {
@@ -53,5 +53,17 @@ describe("statusTag", () => {
         expect(statusTag("inactive", false)).toBe("Inactivo")
         expect(statusTag("unknown", true)).toBe("Estado sin confirmar")
         expect(statusTag("active", true)).toBeNull()
+    })
+})
+
+describe("checkinLinkBlockedReason — `listing.inactiveReason` (contrato 2026-10-27 §7.3)", () => {
+    it("con el alojamiento o la propiedad inactivos no sale el link, y se dice por qué", () => {
+        expect(checkinLinkBlockedReason("LISTING_INACTIVE")).toMatch(/alojamiento de esta reserva está inactivo/)
+        expect(checkinLinkBlockedReason("PROPERTY_INACTIVE")).toMatch(/propiedad de esta reserva está inactiva/)
+    })
+
+    it("operable, o un backend que no lo informa: no lo bloquea (decide el 422)", () => {
+        expect(checkinLinkBlockedReason(null)).toBeNull()
+        expect(checkinLinkBlockedReason(undefined)).toBeNull()
     })
 })
