@@ -22,7 +22,7 @@ const IDENTITY: PropertyAutomation = {
     guestType: "main_guest", executionOrder: 1, parameters: {}, token: null,
     statusProviderId: AUTOMATION_STATUS.ACTIVE, deletedAt: null, isActive: true, providerName: "didit",
     automationType: "identity_verification",
-    provider: provider("didit", "Verificación Avanzada", { verification_type: "session" }),
+    provider: provider("didit", "Advanced Verification", { verification_type: "session" }),
 }
 
 const PDF: PropertyAutomation = {
@@ -42,7 +42,7 @@ describe("badge del proveedor con overrides reales de la API", () => {
     it("override SIN `effectiveProvider` (backend anterior): conserva el proveedor de la propiedad", async () => {
         const override = await overrideFromApi({ propertyAutomationUuid: "identity-row" })
         expect(override.effectiveProvider).toBeUndefined()
-        expect(automationDisplay(IDENTITY, override).detail).toBe("Verificación Avanzada")
+        expect(automationDisplay(IDENTITY, override).detail).toBe("Advanced Verification")
     })
 
     it("override no-identidad con parámetros propios: conserva provider.name", async () => {
@@ -60,17 +60,17 @@ describe("badge del proveedor con overrides reales de la API", () => {
         const override = await overrideFromApi({
             propertyAutomationUuid: "identity-row",
             providerId: 2,
-            effectiveProvider: { id: 2, name: "Verificación Esencial", slug: "textract", verificationType: "document_upload" },
+            effectiveProvider: { id: 2, name: "Essential Verification", slug: "textract", verificationType: "document_upload" },
             providerSource: "listing",
         })
-        expect(automationDisplay(IDENTITY, override).detail).toBe("Verificación Esencial")
+        expect(automationDisplay(IDENTITY, override).detail).toBe("Essential Verification")
     })
 
     it("también lee la forma snake_case", async () => {
         const override = await overrideFromApi({
             property_automation_uuid: "identity-row",
-            effective_provider: { id: 2, name: "Verificación Esencial", slug: "textract" },
+            effective_provider: { id: 2, name: "Essential Verification", slug: "textract" },
         })
-        expect(automationDisplay(IDENTITY, override).detail).toBe("Verificación Esencial")
+        expect(automationDisplay(IDENTITY, override).detail).toBe("Essential Verification")
     })
 })

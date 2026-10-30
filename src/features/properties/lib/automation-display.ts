@@ -13,7 +13,6 @@ import { definitionForAutomation } from "../data/automation-definitions"
 import type { ListingAutomationOverride, PropertyAutomation } from "../types/automation"
 import { describeChannels, isCheckinLinkDeliveryAutomation, resolveEffectiveChannels } from "./checkin-link-delivery"
 import { isIdentityPropertyAutomation } from "./identity-listing-override"
-import { providerLabel } from "./provider-labels"
 
 /** El título de la tarjeta propia del envío del link (no está en las definiciones). */
 export const CHECKIN_LINK_DELIVERY_TITLE = "Envío del link de check-in"
@@ -38,12 +37,13 @@ export function automationTitle(automation: PropertyAutomation): string {
 /**
  * Título y detalle de una automatización, para una unidad si se pasa su override.
  *
- * El detalle es el `name` del proveedor, que se edita desde la DB (pedido de
- * Ricardo, 2026-10-29: «colocá el nombre del Provider»). El de la unidad cuando
- * su override informa `effectiveProvider` —lo que REALMENTE ejecuta; `null` =
- * nada—; si no, el de la propiedad. Sin `name` legible, el de las
- * definiciones; si tampoco hay, «Proveedor configurado». El slug nunca llega a
- * la pantalla, ni siquiera como tooltip: es solo para front y back.
+ * El detalle es SOLO el `name` del proveedor que manda el backend (Ricardo,
+ * 2026-10-30: «usemos únicamente lo que envía el backend, así no le metemos
+ * lógica de negocio al front»). Es un único nombre para todos los idiomas,
+ * hoy en inglés («Advanced Verification»). El de la unidad cuando su override
+ * informa `effectiveProvider` —lo que REALMENTE ejecuta; `null` = nada—; si
+ * no, el de la propiedad. Sin `name`, «Proveedor configurado»: el front no
+ * traduce ni inventa nombres. El slug nunca llega a la pantalla.
  */
 export function automationDisplay(
     automation: PropertyAutomation,
@@ -58,12 +58,11 @@ export function automationDisplay(
     if (override && override.effectiveProvider !== undefined && isIdentityPropertyAutomation(automation)) {
         const effective = override.effectiveProvider
         if (effective === null) return { title, detail: null, channels }
-        return { title, detail: readableName(effective.name, effective.slug) ?? providerLabel(effective.slug) ?? "Proveedor configurado", channels }
+        return { title, detail: readableName(effective.name, effective.slug) ?? "Proveedor configurado", channels }
     }
 
     const slug = automation.provider?.parameters?.slug ?? automation.providerName ?? null
     const detail = readableName(automation.provider?.name, slug)
-        ?? providerLabel(slug)
         ?? (slug || automation.provider ? "Proveedor configurado" : null)
     return { title, detail, channels }
 }

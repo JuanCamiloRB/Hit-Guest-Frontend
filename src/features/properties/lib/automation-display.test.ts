@@ -17,25 +17,25 @@ function row(slug: string, over: Partial<PropertyAutomation> = {}): PropertyAuto
 
 describe("automationDisplay — lo que ve el PM, nunca el slug (2026-10-27)", () => {
     it("el detalle es el nombre del proveedor en la DB (Ricardo, 2026-10-29); el slug no sale", () => {
-        const didit = row("didit", { provider: provider("didit", "Verificación Avanzada", { verification_type: "session" }) })
+        const didit = row("didit", { provider: provider("didit", "Advanced Verification", { verification_type: "session" }) })
         expect(automationDisplay(didit)).toEqual({
-            title: "Verificación de Identidad (Principal)", detail: "Verificación Avanzada", channels: null,
+            title: "Verificación de Identidad (Principal)", detail: "Advanced Verification", channels: null,
         })
     })
 
     describe("con override de la unidad: el proveedor que REALMENTE ejecuta", () => {
-        const didit = row("didit", { provider: provider("didit", "Verificación Avanzada", { verification_type: "session" }) })
+        const didit = row("didit", { provider: provider("didit", "Advanced Verification", { verification_type: "session" }) })
         const withEffective = (effectiveProvider: unknown) =>
             ({ isActive: true, parameters: null, effectiveProvider }) as unknown as ListingAutomationOverride
 
         it("la unidad eligió Esencial: el badge no dice «Avanzada»", () => {
-            const override = withEffective({ id: 2, name: "Verificación Esencial", slug: "textract", verificationType: "document_upload" })
-            expect(automationDisplay(didit, override).detail).toBe("Verificación Esencial")
+            const override = withEffective({ id: 2, name: "Essential Verification", slug: "textract", verificationType: "document_upload" })
+            expect(automationDisplay(didit, override).detail).toBe("Essential Verification")
         })
 
-        it("sin nombre legible, el de las definiciones por su slug", () => {
+        it("sin nombre del backend, «Proveedor configurado»: el front no traduce (Ricardo, 2026-10-30)", () => {
             const override = withEffective({ id: 2, name: null, slug: "textract", verificationType: "document_upload" })
-            expect(automationDisplay(didit, override).detail).toBe("Verificación esencial")
+            expect(automationDisplay(didit, override).detail).toBe("Proveedor configurado")
         })
 
         it("la unidad no ejecuta nada: sin badge", () => {
@@ -44,7 +44,7 @@ describe("automationDisplay — lo que ve el PM, nunca el slug (2026-10-27)", ()
 
         it("un override sin `effectiveProvider` (backend anterior) muestra el de la propiedad", () => {
             const legacy = { isActive: true, parameters: null } as unknown as ListingAutomationOverride
-            expect(automationDisplay(didit, legacy).detail).toBe("Verificación Avanzada")
+            expect(automationDisplay(didit, legacy).detail).toBe("Advanced Verification")
         })
     })
 
@@ -56,13 +56,13 @@ describe("automationDisplay — lo que ve el PM, nunca el slug (2026-10-27)", ()
         expect(automationDisplay(signature)).toMatchObject({ title: "Contrato", detail: "Firma nativa HIT Guest" })
     })
 
-    it("sin el provider en la respuesta, cae al nombre de las definiciones, no al slug", () => {
+    it("sin el provider en la respuesta: «Proveedor configurado», nunca el slug ni una etiqueta del front", () => {
         const bare = row("didit", { provider: null })
-        expect(automationDisplay(bare).detail).toBe("Verificación avanzada")
+        expect(automationDisplay(bare).detail).toBe("Proveedor configurado")
     })
 
     it("un `name` igual al slug no cuenta como nombre legible", () => {
-        expect(automationDisplay(row("textract")).detail).toBe("Verificación esencial")
+        expect(automationDisplay(row("textract")).detail).toBe("Proveedor configurado")
     })
 
     describe("envío del link: el proveedor en el badge Y sus canales efectivos aparte", () => {
