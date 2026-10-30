@@ -27,6 +27,8 @@ function row(overrides: Partial<AutomationStatusItem>): AutomationStatusItem {
         requiresCheckin: null,
         redispatchRequiresCheckin: null,
         canManualDispatch: true,
+        isPerGuest: false,
+        guests: [],
         reservationCheckinCompleted: false,
         mainGuestCheckinCompleted: false,
         canDispatch: false,

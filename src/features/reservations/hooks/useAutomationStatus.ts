@@ -4,27 +4,52 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { normalizeApiError } from "@/lib/notify-error"
 import { automationService } from "@/features/properties/services/automation-service"
-import type { AutomationStatusItem } from "@/features/properties/types/automation"
+import type { AutomationGuestStatus, AutomationStatusItem } from "@/features/properties/types/automation"
+import { readInactiveResourceError } from "@/lib/inactive-resource"
 
 const POLL_INTERVAL_MS = 10_000
 const COOLDOWN_SECONDS = 300
+
+/**
+ * Clave de una acción: la automatización y, si es por huésped, el huésped
+ * (contrato 2026-10-27 §2.4). Dos huéspedes de SIRE comparten automatización,
+ * y el enfriamiento de 5 minutos del backend se cuenta POR HUÉSPED: con la
+ * clave de la automatización sola, reintentar a uno bloqueaba al otro.
+ */
+export function automationActionKey(automationUuid: string, guestUuid?: string | null): string {
+    return `${automationUuid}:${guestUuid ?? "reservation"}`
+}
+
+/** Alojamiento o propiedad inactivos (contrato 2026-10-27 §2.4): error, con el mensaje del backend. */
+function showInactive(error: unknown, title: string): boolean {
+    const inactive = readInactiveResourceError(error)
+    if (!inactive) return false
+    toast.error(title, { description: inactive.message })
+    return true
+}
+
+/** Algo sigue procesándose: la automatización o alguno de sus huéspedes. */
+export function hasPendingWork(list: AutomationStatusItem[]): boolean {
+    return list.some((item) => item.status === "pending" || (item.guests ?? []).some((guest) => guest.status === "pending"))
+}
 
 interface UseAutomationStatusResult {
     items: AutomationStatusItem[]
     isLoading: boolean
     error: string | null
-    /** Item uuids currently being re-dispatched (in-flight request). */
-    redispatchingUuids: Set<string>
-    /** Item uuids currently being dispatched for the first time (in-flight request). */
-    dispatchingUuids: Set<string>
+    /** Claves (`automationActionKey`) con un reintento en vuelo. */
+    redispatchingKeys: Set<string>
+    /** Claves (`automationActionKey`) con un despacho o reenvío en vuelo. */
+    dispatchingKeys: Set<string>
     /** Ticking clock (ms) so consumers can recompute cooldowns each second. */
     now: number
-    /** automationUuid → epoch ms until which a 429 cooldown applies. */
+    /** `automationActionKey` → epoch ms until which a 429 cooldown applies. */
     cooldownUntil: Record<string, number>
     refresh: () => Promise<void>
-    redispatch: (item: AutomationStatusItem) => Promise<void>
-    /** Manually trigger a not-yet-run automation (status "not_started"). */
-    dispatch: (item: AutomationStatusItem) => Promise<void>
+    /** Reintenta la automatización o, con `guest`, solo a ese huésped (su `usageRecordId`). */
+    redispatch: (item: AutomationStatusItem, guest?: AutomationGuestStatus) => Promise<void>
+    /** Despacha la automatización; sin `guest`, a todos los huéspedes elegibles. */
+    dispatch: (item: AutomationStatusItem, guest?: AutomationGuestStatus) => Promise<void>
     /** Resend the Guest Report PDF email for a completed automation. */
     resendPdf: (item: AutomationStatusItem) => Promise<void>
 }
@@ -33,8 +58,8 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
     const [items, setItems] = useState<AutomationStatusItem[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [redispatchingUuids, setRedispatchingUuids] = useState<Set<string>>(new Set())
-    const [dispatchingUuids, setDispatchingUuids] = useState<Set<string>>(new Set())
+    const [redispatchingKeys, setRedispatchingKeys] = useState<Set<string>>(new Set())
+    const [dispatchingKeys, setDispatchingKeys] = useState<Set<string>>(new Set())
     const [now, setNow] = useState(() => Date.now())
     const [cooldownUntil, setCooldownUntil] = useState<Record<string, number>>({})
 
@@ -61,14 +86,11 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
      * a Retry-After header or remaining-seconds body, so we anchor the countdown to
      * the moment we receive the 429 (per the API spec).
      */
-    const startCooldown = useCallback((automationUuid: string) => {
-        setCooldownUntil(prev => ({ ...prev, [automationUuid]: Date.now() + COOLDOWN_SECONDS * 1000 }))
+    const startCooldown = useCallback((key: string) => {
+        setCooldownUntil(prev => ({ ...prev, [key]: Date.now() + COOLDOWN_SECONDS * 1000 }))
     }, [])
 
-    const hasPending = useCallback(
-        (list: AutomationStatusItem[]) => list.some(i => i.status === "pending"),
-        [],
-    )
+    const hasPending = hasPendingWork
 
     const fetchStatus = useCallback(async (): Promise<AutomationStatusItem[]> => {
         const data = await automationService.getReservationStatus(reservationUuid)
@@ -114,18 +136,22 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
         }
     }, [fetchStatus, scheduleNext, isCurrent])
 
-    const redispatch = useCallback(async (item: AutomationStatusItem) => {
-        if (item.usageRecordId == null) return
-        setRedispatchingUuids(prev => new Set(prev).add(item.automationUuid))
+    const redispatch = useCallback(async (item: AutomationStatusItem, guest?: AutomationGuestStatus) => {
+        const recordId = guest ? guest.usageRecordId : item.usageRecordId
+        if (recordId == null) return
+        const key = automationActionKey(item.automationUuid, guest?.guestUuid)
+        setRedispatchingKeys(prev => new Set(prev).add(key))
         try {
-            await automationService.redispatch(reservationUuid, item.usageRecordId)
-            toast.success(`"${item.automationName}" reenviada. Procesando...`)
+            await automationService.redispatch(reservationUuid, recordId)
+            toast.success(guest ? `"${item.automationName}" reenviada para ${guest.name}. Procesando...` : `"${item.automationName}" reenviada. Procesando...`)
             const data = await fetchStatus()
             scheduleNext(data)
         } catch (error: unknown) {
             const { status, message } = normalizeApiError(error, "")
-            if (status === 429) {
-                startCooldown(item.automationUuid)
+            if (showInactive(error, "No se pudo reintentar la automatización")) {
+                // Nada que reintentar mientras siga inactivo.
+            } else if (status === 429) {
+                startCooldown(key)
                 toast.error("Espera unos minutos antes de reintentar esta automatización.")
             } else if (status === 422) {
                 // The record is no longer the latest, or no longer "failed" (a retry
@@ -139,27 +165,31 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
             }
         } finally {
             if (isCurrent()) {
-                setRedispatchingUuids(prev => {
+                setRedispatchingKeys(prev => {
                     const next = new Set(prev)
-                    next.delete(item.automationUuid)
+                    next.delete(key)
                     return next
                 })
             }
         }
     }, [reservationUuid, fetchStatus, scheduleNext, startCooldown, isCurrent])
 
-    const dispatch = useCallback(async (item: AutomationStatusItem) => {
+    const dispatch = useCallback(async (item: AutomationStatusItem, guest?: AutomationGuestStatus) => {
         if (!item.automationUuid) return
-        setDispatchingUuids(prev => new Set(prev).add(item.automationUuid))
+        const key = automationActionKey(item.automationUuid, guest?.guestUuid)
+        setDispatchingKeys(prev => new Set(prev).add(key))
         try {
-            await automationService.dispatch(reservationUuid, item.automationUuid)
-            toast.success(`"${item.automationName}" disparada. Procesando...`)
+            const response = await automationService.dispatch(reservationUuid, item.automationUuid, guest?.guestUuid)
+            // El 202 dice para cuántos huéspedes se despachó (§2.4): se muestra tal cual.
+            toast.success(response?.message || `"${item.automationName}" disparada. Procesando...`)
             const data = await fetchStatus()
             scheduleNext(data)
         } catch (error: unknown) {
             const { status, message } = normalizeApiError(error, "")
-            if (status === 429) {
-                startCooldown(item.automationUuid)
+            if (showInactive(error, "No se pudo despachar la automatización")) {
+                // Nada que despachar mientras siga inactivo.
+            } else if (status === 429) {
+                startCooldown(key)
                 toast.error("Espera unos minutos antes de volver a dispararla.")
             } else if (status === 422) {
                 // Inactive / already run / failed (use redispatch) / no job handler.
@@ -167,24 +197,27 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 const data = await fetchStatus()
                 scheduleNext(data)
             } else if (status === 404) {
-                toast.error("No se encontró la automatización para esta reserva.")
+                // Con `guestUuid`, el 404 es «el huésped no es de la reserva».
+                toast.error(message || "No se encontró la automatización para esta reserva.")
+                if (guest) await refresh()
             } else {
                 toast.error(message || "No se pudo disparar la automatización.")
             }
         } finally {
             if (isCurrent()) {
-                setDispatchingUuids(prev => {
+                setDispatchingKeys(prev => {
                     const next = new Set(prev)
-                    next.delete(item.automationUuid)
+                    next.delete(key)
                     return next
                 })
             }
         }
-    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown, isCurrent])
+    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown, isCurrent, refresh])
 
     const resendPdf = useCallback(async (item: AutomationStatusItem) => {
         if (!item.automationUuid) return
-        setDispatchingUuids(prev => new Set(prev).add(item.automationUuid))
+        const key = automationActionKey(item.automationUuid)
+        setDispatchingKeys(prev => new Set(prev).add(key))
         try {
             await automationService.resendPdf(reservationUuid, item.automationUuid)
             toast.success("Reporte PDF reenviado al correo.")
@@ -195,8 +228,10 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
             scheduleNext(data)
         } catch (error: unknown) {
             const { status, message } = normalizeApiError(error, "")
-            if (status === 429) {
-                startCooldown(item.automationUuid)
+            if (showInactive(error, "No se pudo reenviar el reporte PDF")) {
+                // Nada que reenviar mientras siga inactivo.
+            } else if (status === 429) {
+                startCooldown(key)
                 toast.error("Espera unos minutos antes de reenviar el reporte.")
             } else if (status === 422) {
                 toast.info(message || "No se puede reenviar el reporte en este momento.")
@@ -207,9 +242,9 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
             }
         } finally {
             if (isCurrent()) {
-                setDispatchingUuids(prev => {
+                setDispatchingKeys(prev => {
                     const next = new Set(prev)
-                    next.delete(item.automationUuid)
+                    next.delete(key)
                     return next
                 })
             }
@@ -247,5 +282,5 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
         return () => clearInterval(t)
     }, [now, cooldownUntil])
 
-    return { items, isLoading, error, redispatchingUuids, dispatchingUuids, now, cooldownUntil, refresh, redispatch, dispatch, resendPdf }
+    return { items, isLoading, error, redispatchingKeys, dispatchingKeys, now, cooldownUntil, refresh, redispatch, dispatch, resendPdf }
 }

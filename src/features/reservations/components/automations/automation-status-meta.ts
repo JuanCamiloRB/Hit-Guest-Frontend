@@ -2,6 +2,7 @@ import type { StatusTone } from "@/components/ui/status-pill"
 import { AUTOMATION_DEFINITIONS } from "@/features/properties/data/automation-definitions"
 import { PROVIDER_LABELS_BY_SLUG } from "@/features/properties/lib/provider-labels"
 import type {
+    AutomationGuestLiveStatus,
     AutomationLiveStatus,
     AutomationStatusItem,
     AutomationErrorDetail,
@@ -20,6 +21,16 @@ export const STATUS_META: Record<AutomationLiveStatus, StatusMeta> = {
     failed: { label: "Fallido", tone: "danger" },
     pending: { label: "Procesando", tone: "warning", pulse: true },
     not_started: { label: "No iniciado", tone: "idle" },
+}
+
+/**
+ * Estado de UN huésped en una automatización por huésped (contrato 2026-10-27
+ * §2.5). `skipped` = no le aplica (p. ej. SIRE con un huésped nacional): no es
+ * un error ni algo pendiente.
+ */
+export const GUEST_STATUS_META: Record<AutomationGuestLiveStatus, StatusMeta> = {
+    ...STATUS_META,
+    skipped: { label: "No aplica", tone: "idle" },
 }
 
 /**

@@ -182,6 +182,33 @@ export interface AutomationStatusItem {
   canDispatch: boolean
   /** Authoritative flag for the "Redispatch" button. */
   canRedispatch: boolean
+  /**
+   * Automatización POR HUÉSPED (contrato 2026-10-27 §2.5): disparos
+   * `on_guest_checkin_completed` u `on_physical_checkout`, p. ej. SIRE. Su
+   * `canDispatch` de arriba significa «hay algún huésped elegible sin
+   * ejecución».
+   */
+  isPerGuest: boolean
+  /** Un elemento por huésped; vacío en las de nivel reserva. */
+  guests: AutomationGuestStatus[]
+}
+
+/** `skipped` = no aplica a ese huésped (p. ej. SIRE con un huésped nacional). */
+export type AutomationGuestLiveStatus = AutomationLiveStatus | "skipped"
+
+export interface AutomationGuestStatus {
+  guestUuid: string
+  name: string
+  isMainGuest: boolean
+  checkinCompleted: boolean
+  status: AutomationGuestLiveStatus
+  /** Para reintentar a ESTE huésped. */
+  usageRecordId: number | null
+  lastError: string | null
+  lastRunAt: string | null
+  /** Autoritativos (backend): nunca se infieren del estado. */
+  canDispatch: boolean
+  canRedispatch: boolean
 }
 
 /** Structured error detail for a failed dispatch (automation-records). */

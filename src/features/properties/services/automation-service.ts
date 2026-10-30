@@ -31,6 +31,8 @@ import type {
     AutomationUsageRecord,
     AutomationStatusItem,
     AutomationLiveStatus,
+    AutomationGuestLiveStatus,
+    AutomationGuestStatus,
     ListingAutomationOverride,
     OverrideEffectiveProvider,
     OverrideProviderSource,
@@ -231,6 +233,38 @@ function readOptionalNumber(value: unknown): number | null {
 }
 
 /** `effectiveProvider` del override; uno sin id numérico no es utilizable. */
+const GUEST_LIVE_STATUSES: ReadonlySet<string> = new Set(["not_started", "pending", "completed", "failed", "skipped"])
+
+/**
+ * `guests[]` de `automation-status` (contrato 2026-10-27 §2.5), leído como
+ * `unknown`. Sin `guestUuid` el elemento no sirve para despachar y se descarta.
+ * Los permisos sin valor quedan en `false`: estas acciones facturan.
+ */
+export function readAutomationGuests(raw: unknown): AutomationGuestStatus[] {
+    if (!Array.isArray(raw)) return []
+    return raw.flatMap((item: unknown): AutomationGuestStatus[] => {
+        if (!item || typeof item !== "object") return []
+        const g = item as Record<string, unknown>
+        const guestUuid = g.guestUuid ?? g.guest_uuid
+        if (typeof guestUuid !== "string" || !guestUuid) return []
+        const status = typeof g.status === "string" && GUEST_LIVE_STATUSES.has(g.status) ? g.status as AutomationGuestLiveStatus : "not_started"
+        const usageRecordId = g.usageRecordId ?? g.usage_record_id
+        const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value : null)
+        return [{
+            guestUuid,
+            name: text(g.name) ?? "Huésped",
+            isMainGuest: (g.isMainGuest ?? g.is_main_guest) === true,
+            checkinCompleted: (g.checkinCompleted ?? g.checkin_completed) === true,
+            status,
+            usageRecordId: typeof usageRecordId === "number" && Number.isInteger(usageRecordId) ? usageRecordId : null,
+            lastError: text(g.lastError ?? g.last_error),
+            lastRunAt: text(g.lastRunAt ?? g.last_run_at),
+            canDispatch: (g.canDispatch ?? g.can_dispatch) === true,
+            canRedispatch: (g.canRedispatch ?? g.can_redispatch) === true,
+        }]
+    })
+}
+
 function readEffectiveProvider(raw: unknown): OverrideEffectiveProvider | null {
     if (!raw || typeof raw !== "object") return null
     const r = raw as Record<string, unknown>
@@ -584,6 +618,8 @@ class AutomationService {
             // recién al pulsarlo.
             canDispatch: pick(raw.canDispatch, raw.can_dispatch, false),
             canRedispatch: pick(raw.canRedispatch, raw.can_redispatch, false),
+            isPerGuest: pick(raw.isPerGuest, raw.is_per_guest, false) === true,
+            guests: readAutomationGuests(raw.guests),
         }
     }
 
@@ -707,10 +743,15 @@ class AutomationService {
      * Different from redispatch (which re-runs a FAILED automation).
      * 202 queued · 404 not found · 422 inactive/already-run/failed(use redispatch)/no-handler · 429 cooldown.
      */
-    async dispatch(reservationUuid: string, automationUuid: string): Promise<{ message: string }> {
+    async dispatch(
+        reservationUuid: string,
+        automationUuid: string,
+        /** Solo ese huésped (contrato 2026-10-27 §2.4). Sin él: todos los elegibles. */
+        guestUuid?: string,
+    ): Promise<{ message: string; dispatchedGuests?: string[] }> {
         const url = `${API_BASE}/reservations/${reservationUuid}/property-automations/${automationUuid}/dispatch`
         try {
-            return await apiClient.post<{ message: string }>(url, {})
+            return await apiClient.post<{ message: string; dispatchedGuests?: string[] }>(url, guestUuid ? { guestUuid } : {})
         } catch (error: any) {
             console.error("[AutomationService] dispatch error:", error)
             throw error

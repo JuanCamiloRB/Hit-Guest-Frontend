@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Loader2, RefreshCw, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useAutomationStatus } from "@/features/reservations/hooks/useAutomationStatus"
+import { hasPendingWork, useAutomationStatus } from "@/features/reservations/hooks/useAutomationStatus"
 import type { AutomationStatusItem as AutomationStatusItemType } from "@/features/properties/types/automation"
 import { AutomationStatusItem } from "./AutomationStatusItem"
 import { AutomationHistoryModal } from "./AutomationHistoryModal"
@@ -19,12 +19,12 @@ interface AutomationStatusListProps {
 }
 
 export function AutomationStatusList({ reservationUuid, totalGuests }: AutomationStatusListProps) {
-    const { items, isLoading, error, redispatchingUuids, dispatchingUuids, now, cooldownUntil, refresh, redispatch, dispatch, resendPdf } =
+    const { items, isLoading, error, redispatchingKeys, dispatchingKeys, now, cooldownUntil, refresh, redispatch, dispatch, resendPdf } =
         useAutomationStatus(reservationUuid)
 
     const [historyFor, setHistoryFor] = useState<{ uuid: string; name: string } | null>(null)
 
-    const isPolling = items.some(i => i.status === "pending")
+    const isPolling = hasPendingWork(items)
 
     const handleViewHistory = (item: AutomationStatusItemType) => {
         setHistoryFor({ uuid: item.automationUuid, name: item.automationName })
@@ -92,9 +92,9 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                             item={item}
                             reservationUuid={reservationUuid}
                             now={now}
-                            isRedispatching={redispatchingUuids.has(item.automationUuid)}
-                            isDispatching={dispatchingUuids.has(item.automationUuid)}
-                            cooldownUntil={cooldownUntil[item.automationUuid]}
+                            redispatchingKeys={redispatchingKeys}
+                            dispatchingKeys={dispatchingKeys}
+                            cooldownUntil={cooldownUntil}
                             notApplicable={
                                 totalGuests <= 1
                                 && item.status === "not_started"
