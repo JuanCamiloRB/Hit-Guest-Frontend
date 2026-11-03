@@ -3,17 +3,20 @@
  * cost breakdowns and aggregate KPIs for the Operations Dashboard.
  *
  * Source of truth: GET /reservations/{uuid}/automation-records (real billed
- * records with `unitCost` + `billable`). We fetch them per reservation in
- * parallel, the same pattern the reservations list already uses for status.
+ * records with `unitCost` + `billable`). We fetch them per reservation, a few at
+ * a time (`MAX_CONCURRENT_COST_REQUESTS`).
  */
 
 import { automationService } from "@/features/properties/services/automation-service"
 import { endOfMonth, isSameMonth, isValid, startOfMonth, subMonths } from "date-fns"
+import { ConcurrencyLimiter, settleWithConcurrency } from "@/lib/settle-with-concurrency"
 import type { Reservation } from "@/types"
 import type {
     CostCategory,
     CostLineItem,
     ReservationCost,
+    ReservationCostFailure,
+    ReservationCostsResult,
     ConsumptionAnalytics,
     ConsumptionSummary,
     LifetimeCostStats,
@@ -181,6 +184,12 @@ export function lifetimeCostStats(costs: readonly ReservationCost[], today: Date
 /** Months of history the consumption chart shows, including the current one. */
 export const HISTORY_MONTHS = 6
 
+/** Consultas de consumo por reserva en vuelo a la vez, para no saturar el backend. */
+export const MAX_CONCURRENT_COST_REQUESTS = 6
+
+/** Compartido por todas las cargas del tablero, incluidos retries simultáneos. */
+const costRequestLimiter = new ConcurrencyLimiter(MAX_CONCURRENT_COST_REQUESTS)
+
 class ConsumptionService {
     /**
      * Variante estricta para decisiones destructivas. A diferencia del tablero,
@@ -193,24 +202,43 @@ class ConsumptionService {
     }
 
     /**
-     * Per-reservation cost breakdown for the given reservations. Fetches usage
-     * records for each in parallel; a reservation whose records fail to load
-     * simply shows a zeroed breakdown rather than breaking the whole table.
+     * Desglose por reserva, con a lo sumo `MAX_CONCURRENT_COST_REQUESTS`
+     * consultas a la vez (hay una por reserva hasta que exista un endpoint
+     * agregado). Una reserva cuya consulta falla va a `failedReservations`, no
+     * a `costs`: antes se convertía en un desglose en cero y se sumaba como un
+     * consumo real de 0 USD. Ambas listas conservan el orden de `reservations`.
+     *
+     * `signal` llega hasta la petición HTTP: al abortar, las que esperaban turno
+     * no salen y las que estaban en vuelo se cancelan, liberando el limitador
+     * compartido (una petición colgada no bloquea la carga siguiente).
      */
-    async getReservationCosts(reservations: Reservation[]): Promise<ReservationCost[]> {
-        const results = await Promise.allSettled(
-            reservations.map((r) => automationService.listUsageRecords(r.id)),
+    async getReservationCosts(reservations: Reservation[], signal?: AbortSignal): Promise<ReservationCostsResult> {
+        const results = await settleWithConcurrency(
+            reservations,
+            costRequestLimiter,
+            (r) => automationService.listUsageRecords(r.id, undefined, signal),
+            signal,
         )
 
-        return reservations.map((reservation, i) => {
+        const costs: ReservationCost[] = []
+        const failedReservations: ReservationCostFailure[] = []
+        reservations.forEach((reservation, i) => {
             const result = results[i]
+            if (result.status === "rejected") {
+                failedReservations.push({
+                    reservationId: reservation.id,
+                    guestName: reservation.guestName,
+                    unitName: reservation.unitName,
+                    propertyName: reservation.propertyName,
+                    checkIn: reservation.checkIn,
+                })
+                return
+            }
             // Records enter as the typed AutomationUsageRecord[], but may carry
             // snake_case keys the readers normalize — treat as raw at this boundary.
-            const records = (
-                result.status === "fulfilled" ? result.value : []
-            ) as unknown as RawUsageRecord[]
-            return aggregate(reservation, records)
+            costs.push(aggregate(reservation, result.value as unknown as RawUsageRecord[]))
         })
+        return { costs, failedReservations }
     }
 
     /**

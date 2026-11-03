@@ -1,43 +1,221 @@
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { ReservationCost, ReservationCostFailure, ReservationCostsResult } from "../types"
 
 const mocks = vi.hoisted(() => ({
     list: vi.fn(),
     getReservationCosts: vi.fn(),
-    getBalance: vi.fn(),
 }))
 
 vi.mock("@/features/reservations/services/reservations-service", () => ({
+    ReservationsNotReadyError: class ReservationsNotReadyError extends Error {},
     reservationsService: { list: mocks.list },
 }))
-vi.mock("../services/consumption-service", async (importOriginal) => ({
-    ...(await importOriginal<typeof import("../services/consumption-service")>()),
-    consumptionService: {
-        getReservationCosts: mocks.getReservationCosts,
-        analyze: () => ({ summary: null, monthly: [], topNodes: [] }),
-    },
-}))
-vi.mock("../services/billing-service", () => ({
-    billingService: { getBalance: mocks.getBalance },
-}))
+vi.mock("../services/consumption-service", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("../services/consumption-service")>()
+    return {
+        ...actual,
+        // Solo se dobla la red; el análisis es el real.
+        consumptionService: {
+            getReservationCosts: mocks.getReservationCosts,
+            analyze: actual.consumptionService.analyze.bind(actual.consumptionService),
+        },
+    }
+})
 
-describe("useBillingData — el Tablero se entera de una reserva nueva", () => {
+import { useBillingData } from "./useBillingData"
+import { ReservationsNotReadyError } from "@/features/reservations/services/reservations-service"
+
+const thisMonth = new Date()
+
+function cost(id: string, total: number): ReservationCost {
+    return {
+        reservationId: id,
+        guestName: `Huésped ${id}`,
+        unitName: "101",
+        propertyName: "Pullman",
+        checkIn: thisMonth,
+        lineItems: [],
+        total,
+        nodeRuns: [],
+    }
+}
+
+function failure(id: string): ReservationCostFailure {
+    return { reservationId: id, guestName: `Huésped ${id}`, unitName: "102", propertyName: "Pullman", checkIn: thisMonth }
+}
+
+function result(costs: ReservationCost[], failedReservations: ReservationCostFailure[] = []): ReservationCostsResult {
+    return { costs, failedReservations }
+}
+
+function deferred<T>() {
+    let resolve!: (value: T) => void
+    let reject!: (reason?: unknown) => void
+    const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej })
+    return { promise, resolve, reject }
+}
+
+describe("useBillingData — un error nunca se ve como 0 USD", () => {
     beforeEach(() => {
         vi.clearAllMocks()
-        mocks.list.mockResolvedValue([])
-        mocks.getReservationCosts.mockResolvedValue([])
-        mocks.getBalance.mockResolvedValue({ amount: 6.49, currency: "USD" })
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        mocks.list.mockResolvedValue([{ id: "a" }])
+        mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
     })
 
-    it("vuelve a cargar los costos cuando se crea una reserva desde el encabezado", async () => {
-        const { useBillingData } = await import("./useBillingData")
-        const { result } = renderHook(() => useBillingData())
-        await waitFor(() => expect(result.current.isLoadingCosts).toBe(false))
-        expect(mocks.list).toHaveBeenCalledTimes(1)
+    it("éxito: ready, con las cifras calculadas", async () => {
+        const { result: hook } = renderHook(() => useBillingData())
+        expect(hook.current.status).toBe("loading")
+        expect(hook.current.summary).toBeNull()
 
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+        expect(hook.current.summary?.monthTotal).toBe(2.5)
+        expect(hook.current.costs).toHaveLength(1)
+    })
+
+    it("vacío real (cero reservas): ready, y aquí 0 sí es un dato", async () => {
+        mocks.list.mockResolvedValue([])
+        mocks.getReservationCosts.mockResolvedValue(result([]))
+        const { result: hook } = renderHook(() => useBillingData())
+
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+        expect(hook.current.summary?.monthTotal).toBe(0)
+    })
+
+    it("error total (falla la lista de reservas): error, sin cifras", async () => {
+        mocks.list.mockRejectedValue(new Error("network down"))
+        const { result: hook } = renderHook(() => useBillingData())
+
+        await waitFor(() => expect(hook.current.status).toBe("error"))
+        expect(hook.current.summary).toBeNull()
+        expect(hook.current.costs).toEqual([])
+        expect(hook.current.monthly).toEqual([])
+        expect(mocks.getReservationCosts).not.toHaveBeenCalled()
+    })
+
+    it("un 202 se presenta como sincronización, no como error total", async () => {
+        mocks.list.mockRejectedValue(new ReservationsNotReadyError("syncing"))
+        const { result: hook } = renderHook(() => useBillingData())
+
+        await waitFor(() => expect(hook.current.status).toBe("syncing"))
+        expect(hook.current.syncing).toBe(true)
+        expect(hook.current.summary).toBeNull()
+    })
+
+    it("error total (fallan TODAS las consultas): error, no un parcial con todo en cero", async () => {
+        mocks.getReservationCosts.mockResolvedValue(result([], [failure("a"), failure("b")]))
+        const { result: hook } = renderHook(() => useBillingData())
+
+        await waitFor(() => expect(hook.current.status).toBe("error"))
+        expect(hook.current.summary).toBeNull()
+    })
+
+    it("parcial: las fallidas quedan aparte y fuera de los totales", async () => {
+        mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)], [failure("b")]))
+        const { result: hook } = renderHook(() => useBillingData())
+
+        await waitFor(() => expect(hook.current.status).toBe("partial"))
+        expect(hook.current.failedReservations.map((f) => f.reservationId)).toEqual(["b"])
+        expect(hook.current.summary?.monthTotal).toBe(2.5)
+        expect(hook.current.summary?.lifetime.processedReservations).toBe(1)
+    })
+
+    it("reintentar tras un error total recupera sin recargar el navegador", async () => {
+        mocks.list.mockRejectedValueOnce(new Error("network down"))
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(hook.current.status).toBe("error"))
+
+        act(() => hook.current.retry())
+        expect(hook.current.status).toBe("loading")
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+        expect(hook.current.summary?.monthTotal).toBe(2.5)
+    })
+})
+
+describe("useBillingData — actualizar no borra lo que se ve", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        mocks.list.mockResolvedValue([{ id: "a" }])
+        mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
+    })
+
+    it("una reserva creada desde el encabezado recarga, conservando los datos mientras tanto", async () => {
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+
+        const pending = deferred<ReservationCostsResult>()
+        mocks.getReservationCosts.mockReturnValueOnce(pending.promise)
         act(() => { window.dispatchEvent(new Event("reservationCreated")) })
 
-        await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(2))
-        await waitFor(() => expect(result.current.isLoadingCosts).toBe(false))
+        await waitFor(() => expect(hook.current.status).toBe("refreshing"))
+        expect(hook.current.summary?.monthTotal).toBe(2.5)
+        expect(mocks.list).toHaveBeenCalledTimes(2)
+
+        await act(async () => pending.resolve(result([cost("a", 2.5), cost("b", 1)])))
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+        expect(hook.current.summary?.monthTotal).toBe(3.5)
+    })
+
+    it("si la actualización falla, se conservan los datos y se avisa", async () => {
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+
+        mocks.list.mockRejectedValueOnce(new Error("network down"))
+        act(() => hook.current.retry())
+        await waitFor(() => expect(hook.current.refreshFailed).toBe(true))
+
+        expect(hook.current.status).toBe("ready")
+        expect(hook.current.summary?.monthTotal).toBe(2.5)
+    })
+
+    it("carrera: una respuesta vieja que llega tarde no pisa la más reciente", async () => {
+        const first = deferred<ReservationCostsResult>()
+        const second = deferred<ReservationCostsResult>()
+        mocks.getReservationCosts.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(mocks.getReservationCosts).toHaveBeenCalledTimes(1))
+        act(() => hook.current.retry())
+        await waitFor(() => expect(mocks.getReservationCosts).toHaveBeenCalledTimes(2))
+
+        await act(async () => second.resolve(result([cost("nueva", 9)])))
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+        await act(async () => first.resolve(result([cost("vieja", 1)])))
+
+        expect(hook.current.costs.map((c) => c.reservationId)).toEqual(["nueva"])
+        expect(hook.current.summary?.monthTotal).toBe(9)
+    })
+
+    it("reintentar aborta la carga anterior antes de iniciar la nueva", async () => {
+        let firstSignal: AbortSignal | undefined
+        mocks.getReservationCosts
+            .mockImplementationOnce((_reservations, signal: AbortSignal) => {
+                firstSignal = signal
+                return new Promise<ReservationCostsResult>(() => {})
+            })
+            .mockResolvedValueOnce(result([cost("nueva", 9)]))
+
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(firstSignal).toBeDefined())
+        act(() => hook.current.retry())
+
+        await waitFor(() => expect(mocks.getReservationCosts).toHaveBeenCalledTimes(2))
+        expect(firstSignal?.aborted).toBe(true)
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+    })
+
+    it("al desmontar aborta la carga para no despachar consultas pendientes", async () => {
+        let receivedSignal: AbortSignal | undefined
+        mocks.getReservationCosts.mockImplementationOnce((_reservations, signal: AbortSignal) => {
+            receivedSignal = signal
+            return new Promise<ReservationCostsResult>(() => {})
+        })
+        const { unmount } = renderHook(() => useBillingData())
+        await waitFor(() => expect(receivedSignal).toBeDefined())
+
+        unmount()
+        expect(receivedSignal?.aborted).toBe(true)
     })
 })

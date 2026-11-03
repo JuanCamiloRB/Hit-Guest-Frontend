@@ -59,6 +59,24 @@ export interface ReservationCost {
     nodeRuns: NodeUsage[]
 }
 
+/**
+ * Una reserva cuyo consumo no se pudo consultar. Conserva lo necesario para
+ * mostrarla en la tabla como «Consumo no disponible»; nunca entra en totales,
+ * promedios, historial ni ranking (un fallo de red no es un costo de 0 USD).
+ */
+export interface ReservationCostFailure {
+    reservationId: string
+    guestName: string
+    unitName: string
+    propertyName: string
+    checkIn: Date
+}
+
+export interface ReservationCostsResult {
+    costs: ReservationCost[]
+    failedReservations: ReservationCostFailure[]
+}
+
 /** One month of the consumption history chart. */
 export interface MonthlyPoint {
     /** First day of the month. */

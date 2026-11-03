@@ -13,11 +13,14 @@ import {
 } from "@/features/billing/types"
 
 interface Props {
+    /** Último saldo conocido (el del store compartido); null = no disponible. */
     balance: AccountBalance | null
-    balancePending: boolean
     isLoadingBalance: boolean
+    /** La última consulta falló: con saldo, no se pudo actualizar; sin él, no hay. */
+    balanceError?: boolean
     /** Vuelve a pedir el saldo — reintentar es trabajo del cliente, no del usuario con F5. */
     onRetryBalance?: () => void
+    /** null = sin datos confiables: las cifras muestran «—», nunca 0. */
     summary: ConsumptionSummary | null
     isLoadingCosts: boolean
 }
@@ -34,8 +37,8 @@ interface Props {
  */
 export function BillingStatsCards({
     balance,
-    balancePending,
     isLoadingBalance,
+    balanceError = false,
     onRetryBalance,
     summary,
     isLoadingCosts,
@@ -54,39 +57,30 @@ export function BillingStatsCards({
                     </div>
                     {isLoadingBalance ? (
                         <Loader2 className="h-5 w-5 animate-spin text-slate-300" />
-                    ) : balancePending ? (
+                    ) : !balance ? (
                         <div className="space-y-0.5">
                             <div className="text-2xl font-bold text-ink-4">— USD</div>
                             {/* Decía "Pendiente de backend": jerga interna mostrada a quien
                                 paga. El cliente necesita saber qué ve y qué hacer, no en qué
                                 estado está nuestro roadmap. */}
-                            <p className="text-xs font-medium text-warning">
-                                Saldo no disponible por ahora
-                                {onRetryBalance && (
-                                    <>
-                                        {" · "}
-                                        <button
-                                            type="button"
-                                            onClick={onRetryBalance}
-                                            className="font-semibold underline underline-offset-2 hover:opacity-80"
-                                        >
-                                            Reintentar
-                                        </button>
-                                    </>
-                                )}
-                            </p>
+                            <BalanceNotice text="Saldo no disponible" onRetry={onRetryBalance} />
                         </div>
                     ) : (
-                        <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-slate-900">
-                                {balance!.amount.toLocaleString("es-CO", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}
-                            </span>
-                            <span className="text-xs font-semibold text-muted-foreground">
-                                {balance!.currency}
-                            </span>
+                        <div className="space-y-0.5">
+                            <div className="flex items-baseline gap-1">
+                                <span className="text-2xl font-bold text-slate-900">
+                                    {balance.amount.toLocaleString("es-CO", {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                    })}
+                                </span>
+                                <span className="text-xs font-semibold text-muted-foreground">
+                                    {balance.currency}
+                                </span>
+                            </div>
+                            {/* El mismo valor que el header: se conserva, pero se dice
+                                que puede no ser el actual. */}
+                            {balanceError && <BalanceNotice text="No se pudo actualizar" onRetry={onRetryBalance} />}
                         </div>
                     )}
                 </CardContent>
@@ -106,7 +100,7 @@ export function BillingStatsCards({
                 label="RESERVAS PROCESADAS"
                 loading={isLoadingCosts}
                 value={summary ? String(summary.lifetime.processedReservations) : "—"}
-                footer={<p className="text-xs text-muted-foreground">Todas las reservas procesadas</p>}
+                footer={summary && <p className="text-xs text-muted-foreground">Todas las reservas procesadas</p>}
             />
 
             <KpiCard
@@ -123,6 +117,26 @@ export function BillingStatsCards({
                 )}
             />
         </div>
+    )
+}
+
+function BalanceNotice({ text, onRetry }: { text: string; onRetry?: () => void }) {
+    return (
+        <p className="text-xs font-medium text-warning">
+            {text}
+            {onRetry && (
+                <>
+                    {" · "}
+                    <button
+                        type="button"
+                        onClick={onRetry}
+                        className="font-semibold underline underline-offset-2 hover:opacity-80"
+                    >
+                        Reintentar
+                    </button>
+                </>
+            )}
+        </p>
     )
 }
 

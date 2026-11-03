@@ -15,6 +15,8 @@ interface Props {
     topNodes: NodeUsage[]
     refMonth: Date
     isLoading: boolean
+    /** No hay datos confiables: no se dice que nada se ejecutó. */
+    unavailable?: boolean
 }
 
 /**
@@ -23,7 +25,7 @@ interface Props {
  * without charging), so this deliberately does not add up to the money figures —
  * the subtitle says so, because a PM would otherwise try to reconcile them.
  */
-export function TopNodesPanel({ topNodes, refMonth, isLoading }: Props) {
+export function TopNodesPanel({ topNodes, refMonth, isLoading, unavailable = false }: Props) {
     const rows = topNodes.slice(0, MAX_ROWS)
     const hidden = topNodes.length - rows.length
     const maxRuns = rows[0]?.runs ?? 0
@@ -38,6 +40,9 @@ export function TopNodesPanel({ topNodes, refMonth, isLoading }: Props) {
             <div>
                 {isLoading ? (
                     <LoadingState variant="spinner" className="h-56" label="Cargando ranking" />
+                ) : unavailable ? (
+                    // Sin datos confiables (error de carga): nunca «sin consumo».
+                    <EmptyState className="h-56 py-0" title="Consumo no disponible" />
                 ) : rows.length === 0 ? (
                     <EmptyState
                         className="h-56 py-0"

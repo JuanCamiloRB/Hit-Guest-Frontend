@@ -15,11 +15,23 @@ import {
 } from "@/components/ui/table"
 import { Search } from "lucide-react"
 import { COST_CATEGORIES } from "@/features/billing/lib/pricing"
-import { formatUsd, type ReservationCost } from "@/features/billing/types"
+import { formatUsd, type ReservationCost, type ReservationCostFailure } from "@/features/billing/types"
 
 interface Props {
     costs: ReservationCost[]
+    /** Reservas cuyo consumo no se pudo consultar: fila propia, sin montos. */
+    failedReservations?: ReservationCostFailure[]
     isLoading: boolean
+    /** No hay datos confiables (error de carga): ni filas ni «sin consumo». */
+    unavailable?: boolean
+}
+
+function matches(row: { guestName: string; unitName: string; propertyName: string }, q: string): boolean {
+    return (
+        row.guestName.toLowerCase().includes(q) ||
+        row.unitName.toLowerCase().includes(q) ||
+        row.propertyName.toLowerCase().includes(q)
+    )
 }
 
 function initials(name: string): string {
@@ -36,20 +48,20 @@ function initials(name: string): string {
  * per billable automation (Verificación, Contrato, TRA, SIRE, Accesos) plus the
  * total — the dashboard's answer to "how much did each reservation cost?".
  * Amounts come from real usage records; a category that didn't run shows "—".
+ * Una reserva cuya consulta falló va arriba como «Consumo no disponible»: un
+ * fallo no se muestra como una fila en 0 USD.
  */
-export function ReservationCostsList({ costs, isLoading }: Props) {
+export function ReservationCostsList({ costs, failedReservations = [], isLoading, unavailable = false }: Props) {
     const [query, setQuery] = useState("")
 
-    const filtered = useMemo(() => {
+    const { filtered, failed } = useMemo(() => {
         const q = query.trim().toLowerCase()
-        if (!q) return costs
-        return costs.filter(
-            (c) =>
-                c.guestName.toLowerCase().includes(q) ||
-                c.unitName.toLowerCase().includes(q) ||
-                c.propertyName.toLowerCase().includes(q),
-        )
-    }, [costs, query])
+        if (!q) return { filtered: costs, failed: failedReservations }
+        return {
+            filtered: costs.filter((c) => matches(c, q)),
+            failed: failedReservations.filter((f) => matches(f, q)),
+        }
+    }, [costs, failedReservations, query])
 
     return (
         <SectionCard
@@ -96,7 +108,13 @@ export function ReservationCostsList({ costs, isLoading }: Props) {
                                     <LoadingState rows={4} label="Cargando consumo por reserva" />
                                 </TableCell>
                             </TableRow>
-                        ) : filtered.length === 0 ? (
+                        ) : unavailable ? (
+                            <TableRow className="hover:bg-transparent">
+                                <TableCell colSpan={COST_CATEGORIES.length + 2} className="p-0">
+                                    <EmptyState title="Consumo no disponible" />
+                                </TableCell>
+                            </TableRow>
+                        ) : filtered.length === 0 && failed.length === 0 ? (
                             <TableRow className="hover:bg-transparent">
                                 <TableCell colSpan={COST_CATEGORIES.length + 2} className="p-0">
                                     <EmptyState
@@ -114,25 +132,30 @@ export function ReservationCostsList({ costs, isLoading }: Props) {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filtered.map((c) => (
+                            <>
+                            {failed.map((f) => (
+                                <TableRow
+                                    key={f.reservationId}
+                                    className="bg-amber-50/40 hover:bg-amber-50/60 border-b-[var(--color-brand-purple)]/5"
+                                >
+                                    <TableCell>
+                                        <GuestCell guestName={f.guestName} unitName={f.unitName} />
+                                    </TableCell>
+                                    <TableCell
+                                        colSpan={COST_CATEGORIES.length + 1}
+                                        className="text-right text-xs font-semibold text-amber-700"
+                                    >
+                                        Consumo no disponible
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                            {filtered.map((c) => (
                                 <TableRow
                                     key={c.reservationId}
                                     className="hover:bg-[var(--color-brand-purple)]/[0.02] border-b-[var(--color-brand-purple)]/5"
                                 >
                                     <TableCell>
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-9 w-9 shrink-0 rounded-full bg-[var(--color-brand-purple)]/10 text-[var(--color-brand-purple)] flex items-center justify-center text-xs font-bold">
-                                                {initials(c.guestName)}
-                                            </div>
-                                            <div className="min-w-0">
-                                                <p className="font-bold text-[var(--color-brand-navy)] truncate">
-                                                    {c.guestName}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground truncate">
-                                                    {c.unitName}
-                                                </p>
-                                            </div>
-                                        </div>
+                                        <GuestCell guestName={c.guestName} unitName={c.unitName} />
                                     </TableCell>
                                     {c.lineItems.map((item) => (
                                         <TableCell
@@ -158,11 +181,30 @@ export function ReservationCostsList({ costs, isLoading }: Props) {
                                         {formatUsd(c.total)}
                                     </TableCell>
                                 </TableRow>
-                            ))
+                            ))}
+                            </>
                         )}
                     </TableBody>
                 </Table>
             </div>
         </SectionCard>
+    )
+}
+
+function GuestCell({ guestName, unitName }: { guestName: string; unitName: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <div className="h-9 w-9 shrink-0 rounded-full bg-[var(--color-brand-purple)]/10 text-[var(--color-brand-purple)] flex items-center justify-center text-xs font-bold">
+                {initials(guestName)}
+            </div>
+            <div className="min-w-0">
+                <p className="font-bold text-[var(--color-brand-navy)] truncate">
+                    {guestName}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                    {unitName}
+                </p>
+            </div>
+        </div>
     )
 }

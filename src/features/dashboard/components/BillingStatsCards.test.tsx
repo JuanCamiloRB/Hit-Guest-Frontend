@@ -39,7 +39,7 @@ describe("BillingStatsCards — alcance histórico", () => {
         render(
             <BillingStatsCards
                 balance={null}
-                balancePending
+
                 isLoadingBalance={false}
                 summary={{
                     monthTotal: 0,

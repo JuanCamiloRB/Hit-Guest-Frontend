@@ -41,10 +41,10 @@ function isNotImplemented(error: unknown): boolean {
 
 /** Balance payload — tolerates `balance` (spec) or legacy `amount`, raw or `{ data }`. */
 interface BalanceResponse {
-    balance?: number
-    amount?: number
+    balance?: number | string
+    amount?: number | string
     currency?: string
-    data?: { balance?: number; amount?: number; currency?: string }
+    data?: { balance?: number | string; amount?: number | string; currency?: string }
 }
 
 interface CheckoutResponse {
@@ -64,8 +64,17 @@ class BillingService {
                 suppressUnauthorizedRedirect: true,
             })
             const raw = data?.data ?? data
+            const rawAmount = raw?.balance ?? raw?.amount
+            const amount = typeof rawAmount === "number"
+                ? rawAmount
+                : typeof rawAmount === "string" && rawAmount.trim() !== ""
+                    ? Number(rawAmount)
+                    : Number.NaN
+            if (!Number.isFinite(amount)) {
+                throw new TypeError("La respuesta de saldo no contiene un monto válido")
+            }
             return {
-                amount: Number(raw?.balance ?? raw?.amount ?? 0),
+                amount,
                 currency: String(raw?.currency ?? "USD"),
             }
         } catch (error) {

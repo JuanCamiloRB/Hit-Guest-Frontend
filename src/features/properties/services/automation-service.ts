@@ -705,19 +705,26 @@ class AutomationService {
     /**
      * GET /api/v1/reservations/{reservationUuid}/automation-records
      * Returns automation execution history for a reservation, newest first.
+     *
+     * `signal` cancela la petición HTTP en vuelo (no solo la que espera turno):
+     * el tablero la usa para liberar su limitador al reintentar o desmontar.
      */
     async listUsageRecords(
         reservationUuid: string,
         automationUuid?: string,
+        signal?: AbortSignal,
     ): Promise<AutomationUsageRecord[]> {
         const base = `${API_BASE}/reservations/${reservationUuid}/automation-records`
         const url = automationUuid ? `${base}?automationUuid=${automationUuid}` : base
         try {
-            const response = await apiClient.get<any>(url)
+            const response = await apiClient.get<any>(url, { signal })
             const items = response?.data ?? response
             return Array.isArray(items) ? items.map((item) => this.normalizeUsageRecord(item)) : []
         } catch (error: any) {
-            console.error("[AutomationService] listUsageRecords error:", error)
+            // Una cancelación es esperada (reintento o desmontaje): se propaga sin ruido.
+            if (error?.name !== "AbortError") {
+                console.error("[AutomationService] listUsageRecords error:", error)
+            }
             throw error
         }
     }

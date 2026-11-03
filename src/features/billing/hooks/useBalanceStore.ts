@@ -19,6 +19,11 @@ interface BalanceStore {
     pending: boolean
     isLoading: boolean
     loaded: boolean
+    /**
+     * La última consulta falló. Con `amount` conservado es un saldo que no se
+     * pudo actualizar; con `amount === null`, un saldo no disponible (nunca 0).
+     */
+    error: boolean
     /** Whether the PM dismissed the low-balance banner this session. */
     lowBannerDismissed: boolean
 
@@ -30,14 +35,23 @@ interface BalanceStore {
     state: () => BalanceState
 }
 
+/**
+ * Turno de la consulta más reciente. El header hace `load()` y el tablero
+ * `refresh()` al montarse: si ambas viajan, solo escribe la última que salió,
+ * aunque la anterior responda después.
+ */
+let latestRequest = 0
+
 async function fetchInto(
     set: (partial: Partial<BalanceStore>) => void,
 ): Promise<void> {
+    const request = ++latestRequest
     set({ isLoading: true })
     try {
         const balance = await billingService.getBalance()
+        if (request !== latestRequest) return
         if (balance === null) {
-            set({ pending: true, amount: null, isLoading: false, loaded: true })
+            set({ pending: true, amount: null, isLoading: false, loaded: true, error: false })
             return
         }
         set({
@@ -46,10 +60,12 @@ async function fetchInto(
             pending: false,
             isLoading: false,
             loaded: true,
+            error: false,
         })
     } catch {
+        if (request !== latestRequest) return
         // Keep any previous value; mark not-pending so we don't hide the UI.
-        set({ isLoading: false, loaded: true })
+        set({ isLoading: false, loaded: true, error: true })
     }
 }
 
@@ -59,6 +75,7 @@ export const useBalanceStore = create<BalanceStore>((set, get) => ({
     pending: false,
     isLoading: false,
     loaded: false,
+    error: false,
     lowBannerDismissed: false,
 
     load: async () => {

@@ -31,7 +31,7 @@ describe("getReservationCosts — la firma gratuita no desaparece del desglose",
             },
         ] as never)
 
-        const [cost] = await consumptionService.getReservationCosts([reserva])
+        const { costs: [cost] } = await consumptionService.getReservationCosts([reserva])
         const contrato = cost.lineItems.find((l) => l.category === "contract")!
 
         expect(contrato.freeCount).toBe(1)
@@ -45,7 +45,7 @@ describe("getReservationCosts — la firma gratuita no desaparece del desglose",
             { id: 2, status: "failed", billable: false, providerSlug: "hitguest_signature" },
         ] as never)
 
-        const [cost] = await consumptionService.getReservationCosts([reserva])
+        const { costs: [cost] } = await consumptionService.getReservationCosts([reserva])
 
         expect(cost.lineItems.find((l) => l.category === "checkin")!.amount).toBeCloseTo(0.75)
         expect(cost.lineItems.find((l) => l.category === "contract")!.freeCount).toBe(0)
@@ -61,7 +61,7 @@ describe("getReservationCosts — envío del link (contrato 2026-09-27 §13.6)",
             { id: 3, status: "completed", billable: true, unitCost: "0.0625", providerSlug: "whatsapp_checkin_link", channel: "ota_inbox" },
         ] as never)
 
-        const [cost] = await consumptionService.getReservationCosts([reserva])
+        const { costs: [cost] } = await consumptionService.getReservationCosts([reserva])
 
         expect(cost.lineItems.find((l) => l.category === "whatsapp")!.amount).toBeCloseTo(0.0625)
         expect(cost.lineItems.find((l) => l.category === "otaInbox")!.amount).toBeCloseTo(0.125)
@@ -73,7 +73,7 @@ describe("getReservationCosts — envío del link (contrato 2026-09-27 §13.6)",
             { id: 1, status: "completed", billable: true, unitCost: "0.0625", providerSlug: "whatsapp_checkin_link", channel: null },
         ] as never)
 
-        const [cost] = await consumptionService.getReservationCosts([reserva])
+        const { costs: [cost] } = await consumptionService.getReservationCosts([reserva])
 
         expect(cost.lineItems.find((l) => l.category === "whatsapp")!.amount).toBeCloseTo(0.0625)
         expect(cost.lineItems.find((l) => l.category === "otaInbox")!.amount).toBe(0)
@@ -88,12 +88,61 @@ describe("getReservationCosts — envío del link (contrato 2026-09-27 §13.6)",
             },
         ] as never)
 
-        const [cost] = await consumptionService.getReservationCosts([reserva])
+        const { costs: [cost] } = await consumptionService.getReservationCosts([reserva])
 
         expect(cost.total).toBe(0)
         expect(cost.lineItems.every((l) => l.count === 0 && l.freeCount === 0)).toBe(true)
         expect(cost.nodeRuns).toEqual([])
     })
+})
+
+describe("getReservationCosts — un fallo por reserva no es un costo de 0 USD (fase 1)", () => {
+    const reservas = Array.from({ length: 10 }, (_, i) => ({
+        id: `res-${i}`,
+        guestName: `Huésped ${i}`,
+        unitName: `Unidad ${i}`,
+        propertyName: "Pullman",
+        checkIn: new Date(2026, 8, i + 1),
+    })) as unknown as Reservation[]
+
+    it("la reserva fallida va a failedReservations con sus datos, y no a costs", async () => {
+        vi.mocked(automationService.listUsageRecords).mockImplementation(async (id: string) => {
+            if (id === "res-1") throw new Error("timeout")
+            return [{ id: 1, status: "completed", billable: true, unitCost: 1.5, providerSlug: "didit" }] as never
+        })
+
+        const { costs, failedReservations } = await consumptionService.getReservationCosts(reservas.slice(0, 3))
+
+        expect(costs.map((c) => c.reservationId)).toEqual(["res-0", "res-2"])
+        expect(failedReservations).toEqual([{
+            reservationId: "res-1",
+            guestName: "Huésped 1",
+            unitName: "Unidad 1",
+            propertyName: "Pullman",
+            checkIn: new Date(2026, 8, 2),
+        }])
+        // Lo que se analiza son SOLO los costos consultados: el fallo no suma ni
+        // cuenta como reserva de 0 USD en el promedio.
+        expect(consumptionService.analyze(costs, new Date(2026, 8, 1)).summary.grandTotal).toBe(3)
+    })
+
+    it("nunca hay más de seis consultas simultáneas, y el orden se conserva", async () => {
+        let running = 0
+        let peak = 0
+        vi.mocked(automationService.listUsageRecords).mockImplementation(async (id: string) => {
+            running += 1
+            peak = Math.max(peak, running)
+            await new Promise((resolve) => setTimeout(resolve, Number(id.split("-")[1]) % 3))
+            running -= 1
+            return [] as never
+        })
+
+        const { costs } = await consumptionService.getReservationCosts(reservas)
+
+        expect(peak).toBeLessThanOrEqual(6)
+        expect(costs.map((c) => c.reservationId)).toEqual(reservas.map((r) => r.id))
+    })
+
 })
 
 describe("getReservationCost — decisiones destructivas", () => {

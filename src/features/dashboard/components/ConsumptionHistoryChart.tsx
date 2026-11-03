@@ -13,6 +13,8 @@ interface Props {
     /** The month the rest of the Tablero is scoped to — emphasised in the plot. */
     refMonth: Date
     isLoading: boolean
+    /** No hay datos confiables: no se dibuja un historial en cero. */
+    unavailable?: boolean
 }
 
 /**
@@ -23,7 +25,7 @@ interface Props {
  * a month with no billed reservation is a real zero for the loaded data, drawn
  * as a baseline stub so it reads as "zero" rather than "missing".
  */
-export function ConsumptionHistoryChart({ monthly, refMonth, isLoading }: Props) {
+export function ConsumptionHistoryChart({ monthly, refMonth, isLoading, unavailable = false }: Props) {
     const ceiling = niceCeiling(Math.max(...monthly.map((m) => m.total), 0))
 
     return (
@@ -31,6 +33,9 @@ export function ConsumptionHistoryChart({ monthly, refMonth, isLoading }: Props)
             <div>
                 {isLoading ? (
                     <LoadingState variant="spinner" className="h-56" label="Cargando historial" />
+                ) : unavailable ? (
+                    // Sin datos confiables (error de carga): nunca «sin consumo».
+                    <EmptyState className="h-56 py-0" title="Consumo no disponible" />
                 ) : ceiling === 0 ? (
                     <EmptyState
                         className="h-56 py-0"
