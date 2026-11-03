@@ -67,7 +67,7 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
         <SectionCard
             flush
             title="Consumo por reserva"
-            description="Costo de cada automatización según lo consumido"
+            description="Desglose de las reservas cargadas, con o sin consumo facturado."
             actions={
                 <div className="relative w-full sm:w-64">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-4" />
@@ -121,12 +121,12 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
                                         title={
                                             query
                                                 ? "Ninguna reserva coincide con la búsqueda"
-                                                : "Todavía no hay reservas con consumo"
+                                                : "Todavía no hay reservas para mostrar"
                                         }
                                         description={
                                             query
                                                 ? "Prueba con otro nombre de huésped o alojamiento."
-                                                : "Cuando una automatización se ejecute y facture, la reserva aparecerá aquí."
+                                                : "Las reservas de la cuenta aparecerán aquí, con o sin consumo."
                                         }
                                     />
                                 </TableCell>

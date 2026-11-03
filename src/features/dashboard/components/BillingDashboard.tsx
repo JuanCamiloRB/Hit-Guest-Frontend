@@ -87,6 +87,7 @@ export function BillingDashboard() {
                 onRetryBalance={refresh}
                 summary={summary}
                 isLoadingCosts={isLoadingCosts}
+                refMonth={refMonth}
             />
 
             <div className="grid gap-6 lg:grid-cols-3">

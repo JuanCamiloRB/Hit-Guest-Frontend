@@ -219,3 +219,25 @@ describe("lifetimeCostStats — reservas y costo promedio de toda la cuenta", ()
         expect(summary.lifetime.avgPerReservation).toBe(3)
     })
 })
+
+describe("analyze — variación del mes elegido contra el anterior (fase 2)", () => {
+    const cost = (checkIn: Date, total: number): ReservationCost => ({
+        reservationId: `r-${checkIn.getTime()}-${total}`, guestName: "", unitName: "", propertyName: "",
+        checkIn, lineItems: [], total, nodeRuns: [],
+    })
+    const costs = [cost(new Date(2026, 8, 5), 4), cost(new Date(2026, 9, 3), 3), cost(new Date(2026, 9, 20), 2)]
+
+    it("sigue al selector: octubre contra septiembre", () => {
+        const { summary } = consumptionService.analyze(costs, new Date(2026, 9, 1))
+        expect(summary.monthTotal).toBe(5)
+        expect(summary.prevMonthTotal).toBe(4)
+        expect(summary.monthDeltaPct).toBeCloseTo(0.25)
+    })
+
+    it("al mover el selector cambia la comparación: septiembre contra agosto, sin base", () => {
+        const { summary } = consumptionService.analyze(costs, new Date(2026, 8, 1))
+        expect(summary.monthTotal).toBe(4)
+        expect(summary.prevMonthTotal).toBe(0)
+        expect(summary.monthDeltaPct).toBeNull()
+    })
+})

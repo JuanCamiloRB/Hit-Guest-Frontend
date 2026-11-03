@@ -33,7 +33,7 @@ export function TopNodesPanel({ topNodes, refMonth, isLoading, unavailable = fal
     return (
         <SectionCard
             title="Nodos más ejecutados"
-            description={`Ejecuciones exitosas en ${format(refMonth, "MMMM yyyy", {
+            description={`Ejecuciones exitosas de reservas con check-in en ${format(refMonth, "MMMM 'de' yyyy", {
                 locale: es,
             })}, incluidas las no facturables`}
         >

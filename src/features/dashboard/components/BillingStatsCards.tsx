@@ -1,14 +1,13 @@
 "use client"
 
 import { Card, CardContent } from "@/components/ui/card"
-import { format } from "date-fns"
+import { format, isSameYear, subMonths } from "date-fns"
 import { es } from "date-fns/locale"
 import { Loader2, Wallet, TrendingUp, TrendingDown, ReceiptText, Calculator } from "lucide-react"
 import { RechargeDialog } from "@/features/billing/components/RechargeDialog"
 import {
     formatUsd,
     type AccountBalance,
-    type AvgCostTrend,
     type ConsumptionSummary,
 } from "@/features/billing/types"
 
@@ -23,6 +22,8 @@ interface Props {
     /** null = sin datos confiables: las cifras muestran «—», nunca 0. */
     summary: ConsumptionSummary | null
     isLoadingCosts: boolean
+    /** Mes elegido en el selector: el de «Consumo del mes» y su variación. */
+    refMonth: Date
 }
 
 /**
@@ -30,10 +31,12 @@ interface Props {
  * billed reservations and average cost per reservation. Replaces the old
  * operational KPIs (which duplicated the Operaciones page).
  *
- * Solo «Consumo del mes» sigue al selector de mes. Reservas procesadas y costo
+ * Cada cifra dice su alcance. Solo «Consumo del mes» sigue al selector (por
+ * fecha de check-in, el criterio del tablero) y lleva su variación contra el
+ * mes anterior al elegido. Reservas con consumo facturado (total > 0) y costo
  * promedio son de TODA la cuenta (pedido de producto 2026-10-02): un mes sin
- * reservas los dejaba en 0 y se leían como «no hay nada». Por eso llevan la
- * leyenda «Todas las reservas procesadas».
+ * reservas los dejaba en 0 y se leían como «no hay nada». La tendencia
+ * histórica (`lifetime.avgTrend`) ya no se muestra: no seguía al selector.
  */
 export function BillingStatsCards({
     balance,
@@ -42,6 +45,7 @@ export function BillingStatsCards({
     onRetryBalance,
     summary,
     isLoadingCosts,
+    refMonth,
 }: Props) {
     return (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -92,15 +96,23 @@ export function BillingStatsCards({
                 label="CONSUMO DEL MES"
                 loading={isLoadingCosts}
                 value={summary ? formatUsd(summary.monthTotal) : "—"}
+                footer={summary && (
+                    <>
+                        <p className="text-xs text-muted-foreground">
+                            Reservas con check-in en {format(refMonth, "MMMM 'de' yyyy", { locale: es })}
+                        </p>
+                        <MonthDeltaLine summary={summary} refMonth={refMonth} />
+                    </>
+                )}
             />
 
             <KpiCard
                 icon={<ReceiptText className="h-4 w-4 text-slate-400" />}
                 accent="border-l-slate-200"
-                label="RESERVAS PROCESADAS"
+                label="RESERVAS CON CONSUMO FACTURADO"
                 loading={isLoadingCosts}
                 value={summary ? String(summary.lifetime.processedReservations) : "—"}
-                footer={summary && <p className="text-xs text-muted-foreground">Todas las reservas procesadas</p>}
+                footer={summary && <p className="text-xs text-muted-foreground">Desde el inicio de la cuenta</p>}
             />
 
             <KpiCard
@@ -110,10 +122,7 @@ export function BillingStatsCards({
                 loading={isLoadingCosts}
                 value={summary?.lifetime.avgPerReservation != null ? formatUsd(summary.lifetime.avgPerReservation) : "—"}
                 footer={summary && (
-                    <>
-                        <p className="text-xs text-muted-foreground">Todas las reservas procesadas</p>
-                        <AvgTrendLine trend={summary.lifetime.avgTrend} />
-                    </>
+                    <p className="text-xs text-muted-foreground">Reservas con consumo facturado · desde el inicio de la cuenta</p>
                 )}
             />
         </div>
@@ -184,34 +193,34 @@ const FLAT_THRESHOLD = 0.0005
 const percent = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 1 })
 
 /**
- * ¿Cada reserva cuesta más o menos que antes? Subir es la mala noticia para
- * quien paga, así que sube en rojo y baja en verde. Los dos meses se nombran:
- * pueden no ser consecutivos.
+ * ¿El mes elegido consumió más o menos que el anterior? Sigue al selector.
+ * Subir es la mala noticia para quien paga, así que sube en rojo y baja en
+ * verde. Sin consumo el mes anterior no hay base: se dice, sin inventar un %.
  */
-export function AvgTrendLine({ trend }: { trend: AvgCostTrend | null }) {
-    if (!trend) {
-        return <p className="text-xs text-muted-foreground">Sin meses para comparar todavía</p>
-    }
-    const months = `${format(trend.month, "MMM", { locale: es })} vs ${format(trend.baselineMonth, "MMM", { locale: es })}`
-    const title = `Costo promedio por reserva de ${format(trend.month, "MMMM yyyy", { locale: es })} comparado con ${format(trend.baselineMonth, "MMMM yyyy", { locale: es })}`
+export function MonthDeltaLine({ summary, refMonth }: { summary: ConsumptionSummary; refMonth: Date }) {
+    const prevMonth = subMonths(refMonth, 1)
+    // El año solo cuando cambia (enero vs diciembre del año anterior).
+    const prevLabel = format(prevMonth, isSameYear(prevMonth, refMonth) ? "MMMM" : "MMMM yyyy", { locale: es })
 
-    if (Math.abs(trend.deltaPct) < FLAT_THRESHOLD) {
-        return (
-            <p className="text-xs text-muted-foreground" title={title}>
-                Sin cambio · {months}
-            </p>
-        )
+    if (summary.monthDeltaPct === null) {
+        return <p className="text-xs text-muted-foreground">Sin consumo en {prevLabel} para comparar</p>
     }
-    const rising = trend.deltaPct > 0
+    if (Math.abs(summary.monthDeltaPct) < FLAT_THRESHOLD) {
+        return <p className="text-xs text-muted-foreground">Sin cambio vs {prevLabel}</p>
+    }
+    const rising = summary.monthDeltaPct > 0
     const Icon = rising ? TrendingUp : TrendingDown
     return (
-        <p className="flex items-center gap-1 text-xs text-muted-foreground" title={title}>
+        <p
+            className="flex items-center gap-1 text-xs text-muted-foreground"
+            title={`Consumo de ${format(refMonth, "MMMM yyyy", { locale: es })}: ${formatUsd(summary.monthTotal)}; ${format(prevMonth, "MMMM yyyy", { locale: es })}: ${formatUsd(summary.prevMonthTotal)}`}
+        >
             <span className="sr-only">{rising ? "Sube" : "Baja"}</span>
             <span className={`inline-flex items-center gap-0.5 font-semibold ${rising ? "text-red-600" : "text-emerald-600"}`}>
                 <Icon className="h-3.5 w-3.5" aria-hidden />
-                {rising ? "+" : "−"}{percent.format(Math.abs(trend.deltaPct) * 100)} %
+                {rising ? "+" : "−"}{percent.format(Math.abs(summary.monthDeltaPct) * 100)} %
             </span>
-            <span>{months}</span>
+            <span>vs {prevLabel}</span>
         </p>
     )
 }

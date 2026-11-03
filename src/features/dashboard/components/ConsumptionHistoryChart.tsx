@@ -29,7 +29,10 @@ export function ConsumptionHistoryChart({ monthly, refMonth, isLoading, unavaila
     const ceiling = niceCeiling(Math.max(...monthly.map((m) => m.total), 0))
 
     return (
-        <SectionCard title="Historial de consumo" description="Últimos 6 meses, en USD">
+        <SectionCard
+            title="Historial de consumo"
+            description={`6 meses hasta ${format(refMonth, "MMMM 'de' yyyy", { locale: es })} · agrupado por fecha de check-in, en USD`}
+        >
             <div>
                 {isLoading ? (
                     <LoadingState variant="spinner" className="h-56" label="Cargando historial" />
