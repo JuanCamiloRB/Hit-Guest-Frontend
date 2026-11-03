@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { configure, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { ApiError } from "@/types/api"
 
@@ -10,6 +10,12 @@ vi.mock("../lib/support-session", () => ({ enterSupportSession: mocks.enter }))
 
 import { ClientUsersDrawer } from "./ClientUsersDrawer"
 import { defaultSupportUser, supportReasonError } from "../lib/start-session"
+
+// Mismo margen que SupportConsole.test. Con la suite completa en paralelo, el
+// panel (Radix) tarda más de 1 s en montar: vencieron TRES pruebas distintas,
+// siempre en su primera espera (2026-11-04); solas pasan. Es el montaje, no un
+// `waitFor` concreto, así que el margen va para todo el archivo. No es lógica.
+configure({ asyncUtilTimeout: 4000 })
 
 const CLIENT = { uuid: "c-1", name: "Casa Rentals252a2", email: "contacto@casa.test", identificationNumber: "900123456", usersCount: 3 }
 const ANA = { uuid: "u-1", name: "Ana Pérez", email: "ana@casa.test", role: "property_manager", isAccountOwner: true, verified: true, canOpenSession: true }
