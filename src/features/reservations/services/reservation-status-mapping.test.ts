@@ -215,3 +215,29 @@ describe("readListingInactiveReason — `listing.inactiveReason` (contrato 2026-
         expect(readListingInactiveReason({})).toEqual({})
     })
 })
+
+describe("origen por `source.slug`: un nombre renombrado en el catálogo no cambia el logo", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        vi.spyOn(console, "info").mockImplementation(() => {})
+        mocks.listProperties.mockResolvedValue([])
+        mocks.listByProperty.mockResolvedValue([])
+        mocks.getReservationStatus.mockResolvedValue([])
+    })
+
+    it("lee el slug antes que el nombre; sin slug cae al nombre", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(page([
+            { ...NUEVA, uuid: "r-airbnb", source: { id: 22, slug: "airbnb", name: "Nombre renombrado" } },
+            { ...NUEVA, uuid: "r-booking", source: { id: 23, slug: "booking", name: { es: "Otro nombre" } } },
+            { ...NUEVA, uuid: "r-legacy", source: { id: 22, name: "Airbnb" } },
+            { ...NUEVA, uuid: "r-direct", source: { id: 21, slug: "direct", name: "Directo" } },
+        ])))
+        const list = await reservationsService.list()
+        expect(Object.fromEntries(list.map((r) => [r.id, r.source]))).toEqual({
+            "r-airbnb": "Airbnb",
+            "r-booking": "Booking",
+            "r-legacy": "Airbnb",
+            "r-direct": "Direct",
+        })
+    })
+})

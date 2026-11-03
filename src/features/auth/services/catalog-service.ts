@@ -5,6 +5,8 @@ const API_BASE_URL = typeof window === "undefined"
 export interface CatalogOption {
     id: string
     name: string
+    /** Clave estable de la fila, cuando el catálogo la trae (contrato 2026-10-27 §7.1). */
+    slug?: string
     description?: string
     extra?: any
 }
@@ -106,7 +108,8 @@ export class CatalogService {
             const rawOptions = result.data || result
             return rawOptions.map((item: any) => ({
                 id: String(item.uuid || item.id || item.value),
-                name: item.name || item.description || item.label || "Sin nombre"
+                name: item.name || item.description || item.label || "Sin nombre",
+                ...(typeof item.slug === "string" && item.slug ? { slug: item.slug } : {}),
             }))
         }).catch(error => {
             console.warn(`Catalog API (${categoryName}) failed`, error)
@@ -200,6 +203,7 @@ export class CatalogService {
             return (Array.isArray(rawOptions) ? rawOptions : []).map((item: any) => ({
                 id: String(item.id ?? item.uuid ?? item.value),
                 name: item.name_translations?.es || item.nameTranslations?.es || item.name || item.description || "Sin nombre",
+                ...(typeof item.slug === "string" && item.slug ? { slug: item.slug } : {}),
             }))
         }).catch(error => {
             console.warn(`Catalog API (categoryId=${categoryId}) failed`, error)

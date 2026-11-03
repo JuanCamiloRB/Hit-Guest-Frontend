@@ -1,5 +1,6 @@
 "use client"
 
+import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import { useEffect, useId, useMemo, useState } from "react"
 import { Link2, Plus, Trash2, TriangleAlert } from "lucide-react"
 
@@ -101,7 +102,7 @@ export function ExternalPmsIdsField({
             .filter((id) => id !== "0" && id !== "undefined" && !known.has(id))
         return [
             ...sources,
-            ...[...new Set(orphans)].map((id) => ({ id, name: `Origen #${id}` })),
+            ...[...new Set(orphans)].map((id): CatalogOption => ({ id, name: `Origen #${id}` })),
         ]
     }, [sources, rows])
 
@@ -202,7 +203,11 @@ export function ExternalPmsIdsField({
                                                         value={String(source.id)}
                                                         disabled={taken.has(String(source.id))}
                                                     >
-                                                        {source.name}
+                                                        <span className="flex items-center gap-2">
+                                                            {/* Por slug (estable); el nombre visible solo si el catálogo no lo trae. */}
+                                                            <ChannelLogo channel={source.slug ?? source.name} className="h-4 w-4" />
+                                                            {source.name}
+                                                        </span>
                                                     </SelectItem>
                                                 ))}
                                             </SelectContent>

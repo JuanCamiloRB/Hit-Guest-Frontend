@@ -1,40 +1,8 @@
 "use client"
 
-import type { ReactNode } from "react"
-import { Building2, Globe2, Plane } from "lucide-react"
-import { siAirbnb, siBookingdotcom, siExpedia, siTripadvisor, type SimpleIcon } from "simple-icons"
+import { ChannelLogo, channelBackground, channelBrand } from "@/components/brand/ChannelLogo"
 import { cn } from "@/lib/utils"
 import type { ReservationSource } from "../../services/reservation-source-service"
-
-interface BrandVisual {
-    background: string
-    foreground: string
-    mark: ReactNode
-}
-
-function SimpleIconMark({ icon }: { icon: SimpleIcon }) {
-    return (
-        <svg viewBox="0 0 24 24" className="h-6 w-6 fill-current" aria-hidden="true">
-            <path d={icon.path} />
-        </svg>
-    )
-}
-
-/**
- * Solo presentación, por el `slug` del canal (contrato 2026-10-19): el backend
- * no sirve imágenes. Los ids siguen saliendo de `GET /reservation-sources` y son
- * las claves de `by_source`. simple-icons no tiene Vrbo, Despegar ni Agoda.
- */
-const BRAND_BY_SLUG: Readonly<Record<string, BrandVisual>> = {
-    direct: { background: "bg-violet-50", foreground: "text-violet-700", mark: <Building2 className="h-6 w-6" aria-hidden="true" /> },
-    airbnb: { background: "bg-[#fff1f2]", foreground: "text-[#ff385c]", mark: <SimpleIconMark icon={siAirbnb} /> },
-    booking: { background: "bg-[#eef4ff]", foreground: "text-[#003a9a]", mark: <SimpleIconMark icon={siBookingdotcom} /> },
-    expedia: { background: "bg-[#eef0f7]", foreground: "text-[#191e3b]", mark: <SimpleIconMark icon={siExpedia} /> },
-    tripadvisor: { background: "bg-[#e9fbf4]", foreground: "text-[#00aa6c]", mark: <SimpleIconMark icon={siTripadvisor} /> },
-    vrbo: { background: "bg-[#f1f0ff]", foreground: "text-[#3b2b8f]", mark: <span className="text-sm font-black tracking-[-0.08em]">vrbo</span> },
-    despegar: { background: "bg-[#fff3e8]", foreground: "text-[#f36f21]", mark: <Plane className="h-6 w-6" aria-hidden="true" /> },
-    agoda: { background: "bg-[#fff0f5]", foreground: "text-[#e91e63]", mark: <span className="text-base font-black tracking-[-0.12em]">ago</span> },
-}
 
 /**
  * Respaldo para un backend que todavía no manda `slug`: los ids del catálogo
@@ -60,22 +28,28 @@ interface Props {
     className?: string
 }
 
+/**
+ * Logo + nombre del canal, en tarjeta. El logo sale de `ChannelLogo` (el mismo
+ * de la lista de reservas y del selector de origen), por el `slug` del canal
+ * (contrato 2026-10-19): el backend no sirve imágenes. Una marca sin logo
+ * (Vrbo, Despegar, Agoda, KunasPMS) lleva el ícono neutro, como en el resto.
+ */
 export function ReservationSourceIdentity({ name, slug, compact = false, className }: Props) {
-    const visual = slug ? BRAND_BY_SLUG[slug] : undefined
-    const initial = name.trim().charAt(0).toUpperCase()
+    const brand = channelBrand(slug)
 
     return (
         <div className={cn("flex min-w-0 items-center", compact ? "gap-2" : "gap-3", className)}>
             <span
                 className={cn(
-                    "flex shrink-0 items-center justify-center rounded-xl border border-black/5",
+                    "flex shrink-0 items-center justify-center rounded-xl border border-black/5 text-slate-600",
                     compact ? "h-9 w-9 rounded-lg" : "h-12 w-12",
-                    visual?.background ?? "bg-slate-100",
-                    visual?.foreground ?? "text-slate-600",
+                    channelBackground(brand),
                 )}
                 aria-hidden="true"
             >
-                {visual?.mark ?? (initial ? <span className="text-lg font-black">{initial}</span> : <Globe2 className="h-6 w-6" />)}
+                {/* Sin logo de marca, el mismo ícono neutro que la lista y el selector
+                    de origen: una sola regla en todo el panel. */}
+                <ChannelLogo channel={brand} className={compact ? "h-5 w-5" : "h-6 w-6"} />
             </span>
             <span className={cn("truncate font-bold text-slate-900", compact ? "text-sm" : "text-lg")}>{name}</span>
         </div>

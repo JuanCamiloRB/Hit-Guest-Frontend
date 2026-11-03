@@ -1,9 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { useState } from "react"
 import { render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { ExternalPmsIdsField, type ExternalPmsIdRowError } from "./ExternalPmsIdsField"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import type { ExternalPmsId } from "../types"
+import { siAirbnb, siBookingdotcom, siExpedia } from "simple-icons"
+
+// Radix Select usa APIs de puntero que jsdom no implementa.
+window.HTMLElement.prototype.hasPointerCapture = () => false
+window.HTMLElement.prototype.releasePointerCapture = () => {}
+window.HTMLElement.prototype.scrollIntoView = () => {}
 
 /**
  * The real `source_pms` catalog, as returned by the live API (ago 2026). Ids are
@@ -19,7 +26,7 @@ const PMS_SOURCES = [
 function setup(
     value: ExternalPmsId[],
     { sources = PMS_SOURCES, rowErrors }: {
-        sources?: typeof PMS_SOURCES
+        sources?: Array<{ id: string; name: string; slug?: string }>
         rowErrors?: ExternalPmsIdRowError[]
     } = {},
 ) {
@@ -131,5 +138,71 @@ describe("ExternalPmsIdsField", () => {
 
         expect(await screen.findByText("Ingresa el ID externo")).toBeInTheDocument()
         expect(await firstExternalIdInput()).toHaveAttribute("aria-invalid", "true")
+    })
+})
+
+describe("ExternalPmsIdsField — logos reales en el selector «Origen» (2026-11-04)", () => {
+    beforeEach(() => vi.restoreAllMocks())
+
+    async function openOrigins(sources: Array<{ id: string; name: string; slug?: string }>) {
+        const { onChange, user } = setup([{ sourcePmsId: 0, externalId: "" }], { sources })
+        const combobox = await screen.findByRole("combobox")
+        await waitFor(() => expect(combobox).toBeEnabled())
+        await user.click(combobox)
+        return { onChange, user }
+    }
+
+    const pathOf = (optionName: RegExp) =>
+        screen.getByRole("option", { name: optionName }).querySelector("path")?.getAttribute("d")
+
+    it("Airbnb, Booking.com y Expedia muestran su logo de marca; KunasPMS, el neutro", async () => {
+        await openOrigins([...PMS_SOURCES, { id: "140", name: "Expedia" }])
+        expect(pathOf(/Airbnb/)).toBe(siAirbnb.path)
+        expect(pathOf(/Booking\.com/)).toBe(siBookingdotcom.path)
+        expect(pathOf(/Expedia/)).toBe(siExpedia.path)
+        const kunas = screen.getByRole("option", { name: /KunasPMS/ }).querySelector("svg")
+        expect(kunas?.getAttribute("class")).toContain("text-slate-400")
+    })
+
+    it("el logo sale del slug del catálogo, no del nombre visible", async () => {
+        await openOrigins([{ id: "100", name: "Hospedaje por Airbnb", slug: "airbnb" }])
+        expect(pathOf(/Hospedaje por Airbnb/)).toBe(siAirbnb.path)
+    })
+
+    it("elegir un origen sigue mandando su id, no el slug ni el nombre", async () => {
+        const { onChange, user } = await openOrigins(PMS_SOURCES)
+        await user.click(screen.getByRole("option", { name: /Booking\.com/ }))
+        expect(onChange).toHaveBeenCalledWith([{ sourcePmsId: 101, externalId: "" }])
+    })
+
+    const triggerPaths = (combobox: HTMLElement) =>
+        Array.from(combobox.querySelectorAll("path")).map((p) => p.getAttribute("d"))
+
+    it("un origen guardado muestra su logo en el selector cerrado", async () => {
+        setup([{ sourcePmsId: 101, externalId: "BK-2" }])
+        const combobox = await screen.findByRole("combobox", { name: "Origen" })
+        await waitFor(() => expect(combobox).toHaveTextContent("Booking.com"))
+        expect(triggerPaths(combobox)).toContain(siBookingdotcom.path)
+    })
+
+    it("al elegir Airbnb, el selector cerrado conserva su logo", async () => {
+        vi.spyOn(catalogService, "getPmsSources").mockResolvedValue(PMS_SOURCES)
+        function Harness() {
+            const [value, setValue] = useState<ExternalPmsId[]>([{ sourcePmsId: 0, externalId: "" }])
+            return <ExternalPmsIdsField subject="propiedad" value={value} onChange={setValue} />
+        }
+        render(<Harness />)
+        const user = userEvent.setup()
+
+        const combobox = await screen.findByRole("combobox", { name: "Origen" })
+        await waitFor(() => expect(combobox).toBeEnabled())
+        expect(triggerPaths(combobox)).not.toContain(siAirbnb.path)
+
+        await user.click(combobox)
+        await user.click(screen.getByRole("option", { name: /Airbnb/ }))
+
+        await waitFor(() => expect(screen.queryByRole("option")).toBeNull())
+        expect(combobox).toHaveTextContent("Airbnb")
+        expect(triggerPaths(combobox)).toContain(siAirbnb.path)
     })
 })

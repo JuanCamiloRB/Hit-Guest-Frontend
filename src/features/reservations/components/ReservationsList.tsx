@@ -1,5 +1,6 @@
 "use client"
 
+import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import { Reservation } from "@/types"
 import { getColumns } from "./columns"
 import { consumptionService } from "@/features/billing/services/consumption-service"
@@ -285,7 +286,7 @@ export default function ReservationsList() {
                     />
                 </div>
                 <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filtrar por estado">
                         <SelectValue placeholder="Estado" />
                     </SelectTrigger>
                     <SelectContent>
@@ -296,13 +297,18 @@ export default function ReservationsList() {
                     </SelectContent>
                 </Select>
                 <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as typeof sourceFilter)}>
-                    <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectTrigger className="w-full sm:w-[160px]" aria-label="Filtrar por origen">
                         <SelectValue placeholder="Origen" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="ALL">Todos los orígenes</SelectItem>
                         {sourceOptions.map((s) => (
-                            <SelectItem key={s} value={s}>{s}</SelectItem>
+                            <SelectItem key={s} value={s}>
+                                <span className="flex items-center gap-2">
+                                    <ChannelLogo channel={s} className="h-4 w-4" />
+                                    {s}
+                                </span>
+                            </SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
