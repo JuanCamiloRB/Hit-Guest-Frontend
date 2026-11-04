@@ -24,7 +24,7 @@ export function MonthSelector({ value, onChange }: Props) {
     const label = format(value, "MMMM yyyy", { locale: es })
 
     return (
-        <div className="flex items-center gap-1 rounded-lg border bg-white px-1 py-1 shadow-sm">
+        <div className="flex items-center gap-1 rounded-lg border border-rule bg-card p-0.5">
             <Button
                 variant="ghost"
                 size="icon-sm"
@@ -34,7 +34,7 @@ export function MonthSelector({ value, onChange }: Props) {
                 <ChevronLeft className="h-4 w-4" />
             </Button>
 
-            <span className="min-w-[8.5rem] text-center text-sm font-semibold capitalize text-[var(--color-brand-navy)]">
+            <span className="min-w-[8.5rem] text-center text-sm font-semibold capitalize text-ink">
                 {label}
             </span>
 

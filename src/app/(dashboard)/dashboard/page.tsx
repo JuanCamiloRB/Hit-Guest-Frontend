@@ -3,7 +3,8 @@ import { BillingDashboard } from "@/features/dashboard/components/BillingDashboa
 
 export default function DashboardPage() {
     return (
-        <div className="flex flex-col gap-6 sm:gap-8 p-3 sm:p-6 lg:p-10">
+        // Sin padding propio: el de AdminLayout ya lo da (se sumaban los dos).
+        <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-8">
             <DashboardHeader />
 
             {/* The Tablero focuses on billing/consumption (cost per reservation,

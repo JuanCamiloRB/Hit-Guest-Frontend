@@ -7,19 +7,19 @@ export function DashboardHeader() {
     const { t } = useTranslation()
 
     return (
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0 pb-6">
+        <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
             <div>
-                <div className="flex items-center text-sm text-muted-foreground mb-1">
+                <div className="mb-1 flex items-center text-[13px] text-ink-3">
                     <span>{t('dashboard.home')}</span>
                     <span className="mx-2">›</span>
-                    <span className="text-primary font-medium">{t('dashboard.title')}</span>
+                    <span className="font-medium text-ink-2">{t('dashboard.title')}</span>
                 </div>
-                <h2 className="text-xl sm:text-3xl font-bold tracking-tight text-slate-900">{t('dashboard.title')}</h2>
-                <p className="text-muted-foreground mt-1">
+                <h1 className="text-2xl font-semibold tracking-tight text-ink sm:text-3xl">{t('dashboard.title')}</h1>
+                <p className="mt-1 text-sm text-ink-3">
                     {t('dashboard.description')}
                 </p>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-3">
                 <ReservationDialog />
             </div>
         </div>

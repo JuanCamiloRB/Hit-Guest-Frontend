@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/features/billing/hooks/useBillingData", () => ({ useBillingData: () => mocks.billing }))
 vi.mock("@/features/billing/services/billing-service", () => ({ billingService: { getBalance: mocks.getBalance } }))
 vi.mock("@/features/billing/components/RechargeDialog", () => ({ RechargeDialog: () => null }))
-vi.mock("./MonthSelector", () => ({ MonthSelector: () => null }))
+vi.mock("./MonthSelector", () => ({ MonthSelector: () => <div data-testid="month-selector" /> }))
 
 import { useBalanceStore } from "@/features/billing/hooks/useBalanceStore"
 import { BalanceWidget } from "@/features/billing/components/BalanceWidget"
@@ -60,38 +60,108 @@ function billing(status: ConsumptionStatus, extra: Record<string, unknown> = {})
     }
 }
 
-describe("BillingDashboard — fase 1: estados del consumo", () => {
+const activity = () => screen.getByRole("region", { name: "Actividad del mes" })
+
+describe("BillingDashboard — fase 3: cada estado vive en el nivel que afecta", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         useBalanceStore.setState({ amount: null, currency: "USD", pending: false, isLoading: false, loaded: false, error: false })
         mocks.getBalance.mockResolvedValue({ amount: 6.49, currency: "USD" })
     })
 
-    it("error total: aviso rojo con Reintentar, cifras en «—» y ningún «sin consumo»", () => {
+    it("tres niveles: saldo, actividad del mes (con el selector) e historial + detalle fuera de ella", () => {
+        billing("ready")
+        render(<BillingDashboard />)
+
+        const balance = screen.getByRole("region", { name: "Saldo disponible" })
+        const history = screen.getByRole("region", { name: "Desde el inicio de la cuenta" })
+        const table = screen.getByText("Detalle por reserva")
+
+        // El selector solo gobierna la actividad: saldo, histórico y tabla quedan fuera.
+        expect(within(activity()).getByTestId("month-selector")).toBeInTheDocument()
+        expect(activity()).not.toContainElement(balance)
+        expect(activity()).not.toContainElement(history)
+        expect(activity()).not.toContainElement(table)
+        // Orden de lectura: cuenta → periodo → historial → detalle.
+        expect(balance.compareDocumentPosition(activity()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+        expect(activity().compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+        expect(history.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+        // Historial y nodos son parte del mismo análisis.
+        expect(within(activity()).getByRole("heading", { name: "Historial" })).toBeInTheDocument()
+        expect(within(activity()).getByRole("heading", { name: "Nodos ejecutados" })).toBeInTheDocument()
+    })
+
+    it("carga inicial: skeleton completo del nivel 2, sin cifras", () => {
+        billing("loading")
+        render(<BillingDashboard />)
+        expect(within(activity()).getByRole("status", { name: "Cargando la actividad del mes" })).toBeInTheDocument()
+        expect(within(activity()).queryByText(/USD/)).toBeNull()
+    })
+
+    it("refresh: los datos siguen a la vista con «Actualizando…»", () => {
+        billing("refreshing")
+        render(<BillingDashboard />)
+        expect(within(activity()).getByText("Actualizando…")).toBeInTheDocument()
+        expect(within(activity()).getByText("4,00 USD")).toBeInTheDocument()
+        expect(screen.getByText("Ana Gómez")).toBeInTheDocument()
+        expect(screen.queryByRole("alert")).toBeNull()
+    })
+
+    it("error sin datos: un único mensaje en lugar del análisis, con Reintentar y sin ceros", () => {
         billing("error")
         render(<BillingDashboard />)
 
-        const alert = screen.getByRole("alert")
+        const alert = within(activity()).getByRole("alert")
         expect(alert).toHaveTextContent("No pudimos cargar la información de consumo.")
         fireEvent.click(within(alert).getByRole("button", { name: "Reintentar" }))
         expect(mocks.retry).toHaveBeenCalledTimes(1)
 
+        expect(within(activity()).queryByRole("heading", { name: "Historial" })).toBeNull()
         expect(screen.queryByText(/0,00 USD/)).toBeNull()
-        expect(screen.queryByText(/Sin consumo registrado/)).toBeNull()
+        expect(screen.queryByText(/Sin consumo facturado/)).toBeNull()
         expect(screen.queryByText(/Ninguna automatización se ejecutó/)).toBeNull()
-        expect(screen.queryByText(/Todavía no hay reservas con consumo/)).toBeNull()
-        expect(screen.getAllByText("Consumo no disponible")).toHaveLength(3)
+        expect(screen.queryByText(/Todavía no hay reservas/)).toBeNull()
     })
 
-    it("parcial: aviso amarillo con la cuenta y la fila fallida sin montos", () => {
+    it("error con datos: se conserva el análisis y se avisa que son los últimos datos", () => {
+        billing("ready", { refreshFailed: true })
+        render(<BillingDashboard />)
+        expect(within(activity()).getByText(/No pudimos actualizar el consumo\. Se muestran los últimos datos cargados\./)).toBeInTheDocument()
+        expect(within(activity()).getByText("4,00 USD")).toBeInTheDocument()
+        expect(within(activity()).getByRole("heading", { name: "Historial" })).toBeInTheDocument()
+        expect(screen.queryByRole("alert")).toBeNull()
+    })
+
+    it("202 sin datos: estado de sincronización, no un error rojo", () => {
+        billing("syncing")
+        render(<BillingDashboard />)
+
+        expect(screen.queryByRole("alert")).toBeNull()
+        const message = within(activity()).getByText("Las reservas se están sincronizando").closest("[role='status']") as HTMLElement
+        fireEvent.click(within(message).getByRole("button", { name: "Reintentar" }))
+        expect(mocks.retry).toHaveBeenCalledTimes(1)
+        expect(screen.queryByText(/0,00 USD/)).toBeNull()
+    })
+
+    it("202 con datos: se conservan los datos y se avisa la sincronización", () => {
+        billing("ready", { syncing: true })
+        render(<BillingDashboard />)
+        expect(within(activity()).getByText(/Las reservas se están sincronizando\. Se muestran los últimos datos cargados\./)).toBeInTheDocument()
+        expect(within(activity()).getByText("4,00 USD")).toBeInTheDocument()
+    })
+
+    it("parcial: el aviso va dentro del nivel 2, ANTES del análisis; las filas fallidas, en la tabla", () => {
         billing("partial", { failedReservations: [failure("r-1", "Beto Ruiz"), failure("r-2", "Carla Díaz"), failure("r-3", "Dani Paz")] })
         render(<BillingDashboard />)
 
-        expect(screen.getByText(/No pudimos consultar el consumo de 3 reservas\. Los totales mostrados pueden estar incompletos\./)).toBeInTheDocument()
+        const notice = within(activity()).getByText("No se pudo consultar el consumo de 3 reservas. Las cifras mostradas pueden estar incompletas.")
+        const amount = within(activity()).getByText("4,00 USD")
+        expect(notice.compareDocumentPosition(amount) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
         const row = screen.getByText("Beto Ruiz").closest("tr")!
         expect(row).toHaveTextContent("Consumo no disponible")
         expect(row).not.toHaveTextContent("USD")
-        // La reserva consultada sigue con su total.
         expect(screen.getByText("Ana Gómez").closest("tr")).toHaveTextContent("4,00")
     })
 
@@ -101,38 +171,11 @@ describe("BillingDashboard — fase 1: estados del consumo", () => {
         expect(screen.getByText(/el consumo de 1 reserva\. /)).toBeInTheDocument()
     })
 
-    it("actualizando: indicador discreto y los datos anteriores siguen a la vista", () => {
-        billing("refreshing")
-        render(<BillingDashboard />)
-        expect(screen.getByText("Actualizando consumo…")).toBeInTheDocument()
-        expect(screen.getByText("Ana Gómez")).toBeInTheDocument()
-        expect(screen.queryByRole("alert")).toBeNull()
-    })
-
     it("el aviso parcial permanece visible mientras actualiza", () => {
         billing("refreshing", { failedReservations: [failure("r-1", "Beto Ruiz")] })
         render(<BillingDashboard />)
-
-        expect(screen.getByText("Actualizando consumo…")).toBeInTheDocument()
-        expect(screen.getByText(/No pudimos consultar el consumo de 1 reserva/)).toBeInTheDocument()
-    })
-
-    it("un 202 muestra sincronización con reintento, no un error rojo", () => {
-        billing("syncing")
-        render(<BillingDashboard />)
-
-        const message = screen.getByText(/Las reservas se están sincronizando/)
-        expect(screen.queryByRole("alert")).toBeNull()
-        fireEvent.click(within(message.closest("div")!).getByRole("button", { name: "Reintentar" }))
-        expect(mocks.retry).toHaveBeenCalledTimes(1)
-        expect(screen.queryByText(/0,00 USD/)).toBeNull()
-    })
-
-    it("una actualización fallida avisa que se muestran los últimos datos", () => {
-        billing("ready", { refreshFailed: true })
-        render(<BillingDashboard />)
-        expect(screen.getByText(/No pudimos actualizar el consumo/)).toBeInTheDocument()
-        expect(screen.getByText("Ana Gómez")).toBeInTheDocument()
+        expect(screen.getByText("Actualizando…")).toBeInTheDocument()
+        expect(screen.getByText(/No se pudo consultar el consumo de 1 reserva/)).toBeInTheDocument()
     })
 })
 

@@ -20,8 +20,8 @@ export const en = {
   },
   dashboard: {
     home: "Home",
-    title: "Operations Dashboard",
-    description: "Management of bookings and active automations",
+    title: "Usage and billing",
+    description: "Your balance, automation usage and per-booking detail",
     filters: "Filters",
     newReservation: "New Booking",
   }

@@ -42,12 +42,12 @@ function cost(id: string, checkIn: Date, total: number): ReservationCost {
 
 describe("paneles — universo y agrupación explícitos", () => {
     it("el historial nombra el mes elegido y la agrupación por check-in", () => {
-        render(<ConsumptionHistoryChart monthly={[]} refMonth={nov} isLoading={false} />)
+        render(<ConsumptionHistoryChart monthly={[]} refMonth={nov} />)
         expect(screen.getByText("6 meses hasta noviembre de 2026 · agrupado por fecha de check-in, en USD")).toBeInTheDocument()
     })
 
     it("el ranking habla de reservas con check-in en el mes, no de ejecuciones del mes", () => {
-        render(<TopNodesPanel topNodes={[{ name: "Check-in Link Delivery", runs: 3 }]} refMonth={nov} isLoading={false} />)
+        render(<TopNodesPanel topNodes={[{ name: "Check-in Link Delivery", runs: 3 }]} refMonth={nov} />)
         expect(screen.getByText("Ejecuciones exitosas de reservas con check-in en noviembre de 2026, incluidas las no facturables")).toBeInTheDocument()
         // El nombre del nodo es el que manda el backend, sin mapeos.
         expect(screen.getByText("Check-in Link Delivery")).toBeInTheDocument()
@@ -83,29 +83,33 @@ describe("selector de mes — monto, mes y variación cambian juntos", () => {
         })
 
         render(<BillingDashboard />)
-        const card = (await screen.findByText("CONSUMO DEL MES")).closest("[data-slot='card']") as HTMLElement
+        const card = await screen.findByRole("region", { name: "Actividad del mes" })
+        // La cifra principal (el gráfico también rotula el mes elegido).
+        const hero = () => within(card).getByText("Consumo facturado").parentElement as HTMLElement
 
         // Mes actual: 3 USD, +50 % contra el anterior (2 USD).
-        await waitFor(() => expect(within(card).getByText("3,00 USD")).toBeInTheDocument())
+        await waitFor(() => expect(within(hero()).getByText("3,00 USD")).toBeInTheDocument())
         expect(within(card).getByText(`Reservas con check-in en ${label(current)}`)).toBeInTheDocument()
         expect(within(card).getByText(/\+50 %/)).toBeInTheDocument()
 
         fireEvent.click(screen.getByRole("button", { name: "Mes anterior" }))
 
         // Mes anterior: 2 USD, −50 % contra SU anterior (4 USD).
-        expect(within(card).getByText("2,00 USD")).toBeInTheDocument()
+        expect(within(hero()).getByText("2,00 USD")).toBeInTheDocument()
         expect(within(card).getByText(`Reservas con check-in en ${label(prev)}`)).toBeInTheDocument()
         expect(within(card).getByText(/−50 %/)).toBeInTheDocument()
 
         fireEvent.click(screen.getByRole("button", { name: "Mes anterior" }))
 
         // Dos meses atrás: sin consumo el mes previo → texto, no porcentaje.
-        expect(within(card).getByText("4,00 USD")).toBeInTheDocument()
+        expect(within(hero()).getByText("4,00 USD")).toBeInTheDocument()
         expect(within(card).getByText(/^Sin consumo en .+ para comparar$/)).toBeInTheDocument()
         expect(within(card).queryByText(/%/)).not.toBeInTheDocument()
 
-        // Las tarjetas históricas no llevan variación mensual.
-        const facturado = (screen.getByText("RESERVAS CON CONSUMO FACTURADO").closest("[data-slot='card']")) as HTMLElement
-        expect(within(facturado).queryByText(/%|vs /)).not.toBeInTheDocument()
+        // Las cifras históricas, fuera de la actividad, no llevan variación ni cambian con el mes.
+        const history = screen.getByRole("region", { name: "Desde el inicio de la cuenta" })
+        expect(card).not.toContainElement(history)
+        expect(within(history).queryByText(/%|vs /)).not.toBeInTheDocument()
+        expect(within(history).getByText("3")).toBeInTheDocument()
     })
 })

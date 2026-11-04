@@ -20,8 +20,8 @@ export const es = {
   },
   dashboard: {
     home: "Inicio",
-    title: "Tablero de Operaciones",
-    description: "Gestión de reservas y automatizaciones activas",
+    title: "Consumo y facturación",
+    description: "Tu saldo, el consumo de las automatizaciones y el detalle por reserva",
     filters: "Filtros",
     newReservation: "Nueva Reserva",
   }

@@ -66,7 +66,8 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
     return (
         <SectionCard
             flush
-            title="Consumo por reserva"
+            title="Detalle por reserva"
+            className="shadow-none"
             description="Desglose de las reservas cargadas, con o sin consumo facturado."
             actions={
                 <div className="relative w-full sm:w-64">
@@ -75,7 +76,7 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
                         placeholder="Buscar huésped, alojamiento…"
                         value={query}
                         onChange={(e) => setQuery(e.target.value)}
-                        className="pl-9 h-10"
+                        className="pl-9 h-9"
                         aria-label="Buscar en el consumo por reserva"
                     />
                 </div>
@@ -83,20 +84,20 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
         >
             <div className="overflow-x-auto">
                 <Table>
-                    <TableHeader className="bg-slate-50/50">
+                    <TableHeader>
                         <TableRow className="hover:bg-transparent">
-                            <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">
+                            <TableHead className="text-xs font-medium text-ink-3">
                                 Huésped / Alojamiento
                             </TableHead>
                             {COST_CATEGORIES.map((c) => (
                                 <TableHead
                                     key={c.key}
-                                    className="text-right font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest"
+                                    className="text-right text-xs font-medium text-ink-3"
                                 >
                                     {c.label}
                                 </TableHead>
                             ))}
-                            <TableHead className="text-right font-extrabold text-[var(--color-brand-purple)] uppercase text-[10px] tracking-widest">
+                            <TableHead className="text-right text-xs font-semibold text-ink">
                                 Total
                             </TableHead>
                         </TableRow>
@@ -136,14 +137,14 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
                             {failed.map((f) => (
                                 <TableRow
                                     key={f.reservationId}
-                                    className="bg-amber-50/40 hover:bg-amber-50/60 border-b-[var(--color-brand-purple)]/5"
+                                    className="bg-warning-sunk/40 hover:bg-warning-sunk/60"
                                 >
                                     <TableCell>
                                         <GuestCell guestName={f.guestName} unitName={f.unitName} />
                                     </TableCell>
                                     <TableCell
                                         colSpan={COST_CATEGORIES.length + 1}
-                                        className="text-right text-xs font-semibold text-amber-700"
+                                        className="text-right text-xs font-semibold text-warning"
                                     >
                                         Consumo no disponible
                                     </TableCell>
@@ -152,7 +153,7 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
                             {filtered.map((c) => (
                                 <TableRow
                                     key={c.reservationId}
-                                    className="hover:bg-[var(--color-brand-purple)]/[0.02] border-b-[var(--color-brand-purple)]/5"
+                                    className="hover:bg-sunk/50"
                                 >
                                     <TableCell>
                                         <GuestCell guestName={c.guestName} unitName={c.unitName} />
@@ -162,8 +163,8 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
                                             key={item.category}
                                             className={`text-right text-sm tabular-nums ${
                                                 item.consumed
-                                                    ? "font-semibold text-slate-700"
-                                                    : "text-slate-300"
+                                                    ? "font-medium text-ink-2"
+                                                    : "text-ink-4"
                                             }`}
                                         >
                                             {/* Tres estados, no dos: facturó (monto), corrió gratis
@@ -173,11 +174,11 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
                                             {item.consumed
                                                 ? formatUsd(item.amount)
                                                 : item.freeCount > 0
-                                                    ? <span className="text-xs font-medium text-slate-400">Sin cargo</span>
+                                                    ? <span className="text-xs font-medium text-ink-3">Sin cargo</span>
                                                     : "—"}
                                         </TableCell>
                                     ))}
-                                    <TableCell className="text-right font-extrabold text-[var(--color-brand-navy)] tabular-nums">
+                                    <TableCell className="text-right font-semibold text-ink tabular-nums">
                                         {formatUsd(c.total)}
                                     </TableCell>
                                 </TableRow>
@@ -194,14 +195,14 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
 function GuestCell({ guestName, unitName }: { guestName: string; unitName: string }) {
     return (
         <div className="flex items-center gap-3">
-            <div className="h-9 w-9 shrink-0 rounded-full bg-[var(--color-brand-purple)]/10 text-[var(--color-brand-purple)] flex items-center justify-center text-xs font-bold">
+            <div className="h-8 w-8 shrink-0 rounded-full bg-sunk text-ink-2 flex items-center justify-center text-xs font-semibold">
                 {initials(guestName)}
             </div>
             <div className="min-w-0">
-                <p className="font-bold text-[var(--color-brand-navy)] truncate">
+                <p className="font-medium text-ink truncate">
                     {guestName}
                 </p>
-                <p className="text-xs text-muted-foreground truncate">
+                <p className="text-xs text-ink-3 truncate">
                     {unitName}
                 </p>
             </div>

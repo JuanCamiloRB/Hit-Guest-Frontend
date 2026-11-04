@@ -2,19 +2,15 @@
 
 import { format, isSameMonth } from "date-fns"
 import { es } from "date-fns/locale"
-import { SectionCard } from "@/components/ui/section-card"
 import { EmptyState } from "@/components/ui/empty-state"
-import { LoadingState } from "@/components/ui/loading-state"
 import { formatUsd, type MonthlyPoint } from "@/features/billing/types"
+import { AnalysisHeading } from "./AnalysisHeading"
 
 interface Props {
     /** Six months ending at `refMonth`, oldest first. */
     monthly: MonthlyPoint[]
     /** The month the rest of the Tablero is scoped to — emphasised in the plot. */
     refMonth: Date
-    isLoading: boolean
-    /** No hay datos confiables: no se dibuja un historial en cero. */
-    unavailable?: boolean
 }
 
 /**
@@ -24,31 +20,27 @@ interface Props {
  * Every value is derived from the same cost breakdowns the table below shows;
  * a month with no billed reservation is a real zero for the loaded data, drawn
  * as a baseline stub so it reads as "zero" rather than "missing".
+ *
+ * Es una columna del análisis del periodo (nivel 2), no una tarjeta: la carga y
+ * el error los resuelve el nivel. Solo el mes elegido va en el color de marca
+ * (es la selección); el resto, en neutro.
  */
-export function ConsumptionHistoryChart({ monthly, refMonth, isLoading, unavailable = false }: Props) {
+export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
     const ceiling = niceCeiling(Math.max(...monthly.map((m) => m.total), 0))
 
     return (
-        <SectionCard
-            title="Historial de consumo"
-            description={`6 meses hasta ${format(refMonth, "MMMM 'de' yyyy", { locale: es })} · agrupado por fecha de check-in, en USD`}
-        >
-            <div>
-                {isLoading ? (
-                    <LoadingState variant="spinner" className="h-56" label="Cargando historial" />
-                ) : unavailable ? (
-                    // Sin datos confiables (error de carga): nunca «sin consumo».
-                    <EmptyState className="h-56 py-0" title="Consumo no disponible" />
-                ) : ceiling === 0 ? (
-                    <EmptyState
-                        className="h-56 py-0"
-                        title="Sin consumo registrado en estos 6 meses"
-                        description="Las automatizaciones facturadas aparecerán aquí."
-                    />
+        <div>
+            <AnalysisHeading
+                title="Historial"
+                description={`6 meses hasta ${format(refMonth, "MMMM 'de' yyyy", { locale: es })} · agrupado por fecha de check-in, en USD`}
+            />
+            <div className="mt-4">
+                {ceiling === 0 ? (
+                    <EmptyState className="h-48 py-0" title="Sin consumo facturado en estos 6 meses" />
                 ) : (
                     <div className="flex gap-3">
                         {/* Y axis — three recessive ticks, enough to read magnitude. */}
-                        <div className="flex flex-col justify-between h-48 pb-6 text-[10px] tabular-nums text-slate-400 text-right shrink-0">
+                        <div className="flex flex-col justify-between h-48 pb-6 text-[11px] tabular-nums text-ink-4 text-right shrink-0">
                             <span>{tick(ceiling)}</span>
                             <span>{tick(ceiling / 2)}</span>
                             <span>{tick(0)}</span>
@@ -57,9 +49,9 @@ export function ConsumptionHistoryChart({ monthly, refMonth, isLoading, unavaila
                         <div className="relative flex-1 min-w-0">
                             {/* Gridlines sit behind the marks and stop at the baseline. */}
                             <div className="absolute inset-x-0 top-0 h-48 pb-6 flex flex-col justify-between pointer-events-none">
-                                <div className="border-t border-slate-100" />
-                                <div className="border-t border-slate-100" />
-                                <div className="border-t border-slate-200" />
+                                <div className="border-t border-rule/60" />
+                                <div className="border-t border-rule/60" />
+                                <div className="border-t border-rule" />
                             </div>
 
                             <div className="relative flex items-end justify-between gap-2 h-48">
@@ -75,7 +67,7 @@ export function ConsumptionHistoryChart({ monthly, refMonth, isLoading, unavaila
                                         >
                                             {/* Tooltip — hit target is the whole column. */}
                                             <div className="pointer-events-none absolute bottom-full mb-1 z-10 hidden group-hover:block">
-                                                <div className="whitespace-nowrap rounded-md bg-[var(--color-brand-navy)] px-2 py-1 text-[11px] font-medium text-white shadow-lg">
+                                                <div className="whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] font-medium text-white">
                                                     <span className="capitalize">
                                                         {format(point.date, "MMMM yyyy", { locale: es })}
                                                     </span>
@@ -88,7 +80,7 @@ export function ConsumptionHistoryChart({ monthly, refMonth, isLoading, unavaila
 
                                             {/* Direct label on the scoped month only — never every bar. */}
                                             {isRef && point.total > 0 && (
-                                                <span className="mb-1 text-[10px] font-bold tabular-nums text-[var(--color-brand-navy)]">
+                                                <span className="mb-1 text-[11px] font-semibold tabular-nums text-ink">
                                                     {formatUsd(point.total)}
                                                 </span>
                                             )}
@@ -96,18 +88,18 @@ export function ConsumptionHistoryChart({ monthly, refMonth, isLoading, unavaila
                                             <div
                                                 className={`w-full max-w-[3rem] rounded-t transition-colors ${
                                                     isRef
-                                                        ? "bg-[var(--color-brand-purple)]"
-                                                        : "bg-[var(--color-brand-purple)]/35 group-hover:bg-[var(--color-brand-purple)]/60"
+                                                        ? "bg-primary"
+                                                        : "bg-ink-4/40 group-hover:bg-ink-4/70"
                                                 }`}
                                                 // A zero month still draws a 2px stub: present, and empty.
                                                 style={{ height: `max(${heightPct}%, 2px)` }}
                                             />
 
                                             <span
-                                                className={`absolute bottom-0 text-[10px] capitalize ${
+                                                className={`absolute bottom-0 text-[11px] capitalize ${
                                                     isRef
-                                                        ? "font-bold text-[var(--color-brand-navy)]"
-                                                        : "text-slate-400"
+                                                        ? "font-semibold text-ink"
+                                                        : "text-ink-4"
                                                 }`}
                                             >
                                                 {format(point.date, "MMM", { locale: es })}
@@ -120,7 +112,7 @@ export function ConsumptionHistoryChart({ monthly, refMonth, isLoading, unavaila
                     </div>
                 )}
             </div>
-        </SectionCard>
+        </div>
     )
 }
 
