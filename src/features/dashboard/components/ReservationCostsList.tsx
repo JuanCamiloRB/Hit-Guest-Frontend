@@ -14,7 +14,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Search } from "lucide-react"
+import { ChevronLeft, ChevronRight, Search } from "lucide-react"
 import { COST_CATEGORIES } from "@/features/billing/lib/pricing"
 import { formatUsd, type ReservationCost, type ReservationCostFailure } from "@/features/billing/types"
 
@@ -29,8 +29,16 @@ interface Props {
     loadingProgress?: { done: number; total: number } | null
 }
 
-/** Filas que se pintan de entrada; «Mostrar más» agrega otras tantas. */
-export const ROWS_PER_STEP = 25
+/** Filas por página: la tarjeta mide siempre lo mismo, como la tabla de Operaciones. */
+export const PAGE_SIZE = 15
+
+/**
+ * Solo el desglose tiene `lineItems`; así se distingue en la lista paginada.
+ * (Al revés no narra: un `ReservationCost` también cumple la forma de un fallo.)
+ */
+function isCost(row: ReservationCost | ReservationCostFailure): row is ReservationCost {
+    return "lineItems" in row
+}
 
 function matches(row: { guestName: string; unitName: string; propertyName: string }, q: string): boolean {
     return (
@@ -65,22 +73,26 @@ export function ReservationCostsList({
     loadingProgress = null,
 }: Props) {
     const [query, setQuery] = useState("")
-    // El DOM no crece con la cuenta: se pintan de a ROWS_PER_STEP, y una
-    // búsqueda nueva vuelve al primer tramo.
-    const [shown, setShown] = useState(ROWS_PER_STEP)
+    // Una búsqueda nueva vuelve a la primera página.
+    const [page, setPage] = useState(1)
     const search = (value: string) => {
         setQuery(value)
-        setShown(ROWS_PER_STEP)
+        setPage(1)
     }
 
-    const { filtered, failed } = useMemo(() => {
+    // Las fallidas van primero (son lo que hay que mirar) y entran en la misma
+    // paginación: la tarjeta mide siempre PAGE_SIZE filas.
+    const rows = useMemo(() => {
         const q = query.trim().toLowerCase()
-        if (!q) return { filtered: costs, failed: failedReservations }
-        return {
-            filtered: costs.filter((c) => matches(c, q)),
-            failed: failedReservations.filter((f) => matches(f, q)),
-        }
+        const failed = q ? failedReservations.filter((f) => matches(f, q)) : failedReservations
+        const filtered = q ? costs.filter((c) => matches(c, q)) : costs
+        return [...failed, ...filtered]
     }, [costs, failedReservations, query])
+    // Si la lista se achica (búsqueda) la página actual se recorta sola; si
+    // crece (carga progresiva) aparecen páginas nuevas sin mover la actual.
+    const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE))
+    const current = Math.min(page, pageCount)
+    const pageRows = rows.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
 
     return (
         <SectionCard
@@ -134,7 +146,7 @@ export function ReservationCostsList({
                                     <EmptyState title="Consumo no disponible" />
                                 </TableCell>
                             </TableRow>
-                        ) : filtered.length === 0 && failed.length === 0 ? (
+                        ) : rows.length === 0 ? (
                             <TableRow className="hover:bg-transparent">
                                 <TableCell colSpan={COST_CATEGORIES.length + 2} className="p-0">
                                     <EmptyState
@@ -152,14 +164,13 @@ export function ReservationCostsList({
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            <>
-                            {failed.map((f) => (
+                            pageRows.map((row) => !isCost(row) ? (
                                 <TableRow
-                                    key={f.reservationId}
+                                    key={row.reservationId}
                                     className="bg-warning-sunk/40 hover:bg-warning-sunk/60"
                                 >
                                     <TableCell>
-                                        <GuestCell guestName={f.guestName} unitName={f.unitName} />
+                                        <GuestCell guestName={row.guestName} unitName={row.unitName} />
                                     </TableCell>
                                     <TableCell
                                         colSpan={COST_CATEGORIES.length + 1}
@@ -168,16 +179,15 @@ export function ReservationCostsList({
                                         Consumo no disponible
                                     </TableCell>
                                 </TableRow>
-                            ))}
-                            {filtered.slice(0, shown).map((c) => (
+                            ) : (
                                 <TableRow
-                                    key={c.reservationId}
+                                    key={row.reservationId}
                                     className="hover:bg-sunk/50"
                                 >
                                     <TableCell>
-                                        <GuestCell guestName={c.guestName} unitName={c.unitName} />
+                                        <GuestCell guestName={row.guestName} unitName={row.unitName} />
                                     </TableCell>
-                                    {c.lineItems.map((item) => (
+                                    {row.lineItems.map((item) => (
                                         <TableCell
                                             key={item.category}
                                             className={`text-right text-sm tabular-nums ${
@@ -198,26 +208,36 @@ export function ReservationCostsList({
                                         </TableCell>
                                     ))}
                                     <TableCell className="text-right font-semibold text-ink tabular-nums">
-                                        {formatUsd(c.total)}
+                                        {formatUsd(row.total)}
                                     </TableCell>
                                 </TableRow>
-                            ))}
-                            </>
+                            ))
                         )}
                     </TableBody>
                 </Table>
             </div>
-            {(isLoading && loadingProgress) || filtered.length > shown ? (
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rule px-5 py-2 sm:px-6">
-                    {filtered.length > shown ? (
-                        <Button variant="ghost" size="sm" onClick={() => setShown((n) => n + ROWS_PER_STEP)}>
-                            Mostrar más ({filtered.length - shown} restantes)
-                        </Button>
-                    ) : <span />}
-                    {isLoading && loadingProgress && (
-                        <p role="status" className="py-1 text-[13px] text-ink-3">
-                            Cargando el consumo · {loadingProgress.done} de {loadingProgress.total} reservas
-                        </p>
+            {(isLoading && loadingProgress) || pageCount > 1 ? (
+                // El mismo control que la tabla de Operaciones (DataTable).
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rule px-5 py-3 sm:px-6">
+                    <div className="text-sm text-muted-foreground">
+                        {pageCount > 1 ? `Página ${current} de ${pageCount}` : null}
+                        {isLoading && loadingProgress && (
+                            <span role="status" className={pageCount > 1 ? "ml-3" : ""}>
+                                Cargando el consumo · {loadingProgress.done} de {loadingProgress.total} reservas
+                            </span>
+                        )}
+                    </div>
+                    {pageCount > 1 && (
+                        <div className="flex items-center space-x-2">
+                            <Button variant="outline" size="sm" onClick={() => setPage(current - 1)} disabled={current <= 1}>
+                                <ChevronLeft className="h-4 w-4 mr-1" />
+                                Anterior
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={() => setPage(current + 1)} disabled={current >= pageCount}>
+                                Siguiente
+                                <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+                        </div>
                     )}
                 </div>
             ) : null}
