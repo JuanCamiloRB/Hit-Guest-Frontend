@@ -628,16 +628,19 @@ class AutomationService {
      * Returns the current status of every active automation for the reservation,
      * ordered by execution_order. Includes automations that never ran (not_started).
      */
-    async getReservationStatus(reservationUuid: string): Promise<AutomationStatusItem[]> {
+    async getReservationStatus(reservationUuid: string, signal?: AbortSignal): Promise<AutomationStatusItem[]> {
         const statusUrl = `${API_BASE}/reservations/${reservationUuid}/automation-status`
         try {
             // /automation-status already carries everything the panel renders
             // (including contractPdfPath), so a single request per poll is enough.
-            const statusRes = await apiClient.get<any>(statusUrl)
+            const statusRes = await apiClient.get<any>(statusUrl, { signal })
             const items: any[] = Array.isArray(statusRes?.data ?? statusRes) ? (statusRes?.data ?? statusRes) : []
             return items.map((r: any) => this.normalizeStatusItem(r))
         } catch (error: any) {
-            console.error("[AutomationService] getReservationStatus error:", error)
+            // Cancelar (cambio de página, desmontaje) no es un error que reportar.
+            if (error?.name !== "AbortError") {
+                console.error("[AutomationService] getReservationStatus error:", error)
+            }
             throw error
         }
     }

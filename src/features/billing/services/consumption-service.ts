@@ -190,6 +190,16 @@ export const MAX_CONCURRENT_COST_REQUESTS = 6
 /** Compartido por todas las cargas del tablero, incluidos retries simultáneos. */
 const costRequestLimiter = new ConcurrencyLimiter(MAX_CONCURRENT_COST_REQUESTS)
 
+/** Avance de `getReservationCosts`: cuántas consultas terminaron y, si esta salió bien, su desglose. */
+export interface CostLoadProgress {
+    done: number
+    total: number
+    /** Posición de la reserva en la lista consultada: quien pinta conserva ese orden. */
+    index: number
+    /** `null` cuando la consulta de esta reserva falló (irá a `failedReservations`). */
+    cost: ReservationCost | null
+}
+
 class ConsumptionService {
     /**
      * Variante estricta para decisiones destructivas. A diferencia del tablero,
@@ -212,31 +222,48 @@ class ConsumptionService {
      * no salen y las que estaban en vuelo se cancelan, liberando el limitador
      * compartido (una petición colgada no bloquea la carga siguiente).
      */
-    async getReservationCosts(reservations: Reservation[], signal?: AbortSignal): Promise<ReservationCostsResult> {
-        const results = await settleWithConcurrency(
+    async getReservationCosts(
+        reservations: Reservation[],
+        signal?: AbortSignal,
+        onProgress?: (progress: CostLoadProgress) => void,
+    ): Promise<ReservationCostsResult> {
+        const total = reservations.length
+        let done = 0
+        // Cada desglose se arma en cuanto llega su consulta (y se avisa), no al
+        // final: la tabla puede pintar las filas a medida que llegan. `null` =
+        // esa consulta falló.
+        const costByIndex: (ReservationCost | null)[] = new Array(total).fill(null)
+        await settleWithConcurrency(
             reservations,
             costRequestLimiter,
             (r) => automationService.listUsageRecords(r.id, undefined, signal),
             signal,
+            (index, result) => {
+                done += 1
+                if (result.status === "fulfilled") {
+                    // Records enter as the typed AutomationUsageRecord[], but may carry
+                    // snake_case keys the readers normalize — treat as raw at this boundary.
+                    costByIndex[index] = aggregate(reservations[index], result.value as unknown as RawUsageRecord[])
+                }
+                onProgress?.({ done, total, index, cost: costByIndex[index] })
+            },
         )
 
         const costs: ReservationCost[] = []
         const failedReservations: ReservationCostFailure[] = []
         reservations.forEach((reservation, i) => {
-            const result = results[i]
-            if (result.status === "rejected") {
-                failedReservations.push({
-                    reservationId: reservation.id,
-                    guestName: reservation.guestName,
-                    unitName: reservation.unitName,
-                    propertyName: reservation.propertyName,
-                    checkIn: reservation.checkIn,
-                })
+            const cost = costByIndex[i]
+            if (cost) {
+                costs.push(cost)
                 return
             }
-            // Records enter as the typed AutomationUsageRecord[], but may carry
-            // snake_case keys the readers normalize — treat as raw at this boundary.
-            costs.push(aggregate(reservation, result.value as unknown as RawUsageRecord[]))
+            failedReservations.push({
+                reservationId: reservation.id,
+                guestName: reservation.guestName,
+                unitName: reservation.unitName,
+                propertyName: reservation.propertyName,
+                checkIn: reservation.checkIn,
+            })
         })
         return { costs, failedReservations }
     }

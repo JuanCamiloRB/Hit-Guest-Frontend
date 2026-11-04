@@ -105,7 +105,13 @@ export interface Reservation {
     statusId?: number | null
     source: "Airbnb" | "Booking" | "Direct"
     totalPrice: number
+    /**
+     * Semáforo de automatizaciones. `undefined` = todavía no se consultó (se
+     * carga por fila visible en Operaciones), no «sin automatizaciones».
+     */
     automationStatus?: AutomationStatus
+    /** Check-in de la reserva completo (`isCheckinCompleted` del backend). */
+    isCheckinCompleted?: boolean
     /** Huéspedes esperados en la reserva (`total_guests`). */
     totalGuests?: number
     /**

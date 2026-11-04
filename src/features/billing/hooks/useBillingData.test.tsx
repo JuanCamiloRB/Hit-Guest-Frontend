@@ -270,3 +270,59 @@ describe("useBillingData — volver al Tablero muestra lo último mientras actua
         await waitFor(() => expect(hook.current.status).toBe("ready"))
     })
 })
+
+describe("useBillingData — la carga inicial pinta lo que ya llegó", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        resetBillingDataCache()
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        mocks.list.mockResolvedValue([{ id: "a" }, { id: "b" }, { id: "c" }])
+    })
+
+    it("sin datos previos, costs crece con cada consulta y loadingProgress dice cuántas van; summary espera", async () => {
+        const pending = deferred<ReservationCostsResult>()
+        let report!: (progress: { done: number; total: number; index: number; cost: ReservationCost | null }) => void
+        mocks.getReservationCosts.mockImplementationOnce((_r, _s, onProgress) => {
+            report = onProgress
+            return pending.promise
+        })
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(report).toBeDefined())
+
+        // Llega primero la tercera y después la primera: la tabla las muestra
+        // en el orden de la lista, no en el de llegada.
+        act(() => report({ done: 1, total: 3, index: 2, cost: cost("c", 1) }))
+        act(() => report({ done: 2, total: 3, index: 1, cost: null }))
+        act(() => report({ done: 3, total: 3, index: 0, cost: cost("a", 2.5) }))
+        expect(hook.current.status).toBe("loading")
+        expect(hook.current.summary).toBeNull()
+        expect(hook.current.costs.map((c) => c.reservationId)).toEqual(["a", "c"])
+        expect(hook.current.loadingProgress).toEqual({ done: 3, total: 3 })
+
+        await act(async () => pending.resolve(result([cost("a", 2.5), cost("c", 1)], [failure("b")])))
+        await waitFor(() => expect(hook.current.status).toBe("partial"))
+        expect(hook.current.loadingProgress).toBeNull()
+        expect(hook.current.costs).toHaveLength(2)
+    })
+
+    it("con datos en pantalla, una actualización no los reemplaza a medias", async () => {
+        mocks.getReservationCosts.mockResolvedValueOnce(result([cost("a", 2.5)]))
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+
+        const pending = deferred<ReservationCostsResult>()
+        let onProgress: unknown
+        mocks.getReservationCosts.mockImplementationOnce((_r, _s, cb) => {
+            onProgress = cb
+            return pending.promise
+        })
+        act(() => hook.current.retry())
+        await waitFor(() => expect(hook.current.status).toBe("refreshing"))
+
+        expect(onProgress).toBeUndefined()
+        expect(hook.current.loadingProgress).toBeNull()
+        expect(hook.current.costs.map((c) => c.reservationId)).toEqual(["a"])
+        await act(async () => pending.resolve(result([cost("a", 2.5), cost("b", 1)])))
+        await waitFor(() => expect(hook.current.costs).toHaveLength(2))
+    })
+})

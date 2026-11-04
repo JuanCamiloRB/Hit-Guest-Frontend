@@ -86,4 +86,21 @@ describe("settleWithConcurrency", () => {
         expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(6)
         expect(results.filter((result) => result.status === "rejected")).toHaveLength(24)
     })
+
+    it("onSettled avisa cada resultado al llegar, con su índice, sin esperar al resto", async () => {
+        const seen: Array<[number, string]> = []
+        const results = await settleWithConcurrency(
+            [30, 5, 15],
+            3,
+            async (ms, index) => {
+                await tick(ms)
+                if (index === 2) throw new Error("falló")
+                return `t${index}`
+            },
+            undefined,
+            (index, result) => seen.push([index, result.status]),
+        )
+        expect(seen).toEqual([[1, "fulfilled"], [2, "rejected"], [0, "fulfilled"]])
+        expect(results.map((result) => result.status)).toEqual(["fulfilled", "fulfilled", "rejected"])
+    })
 })

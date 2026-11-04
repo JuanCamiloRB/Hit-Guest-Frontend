@@ -35,6 +35,18 @@ interface DataTableProps<TData, TValue> {
      * llegan del backend — un criterio invisible para quien la mira.
      */
     defaultSorting?: SortingState
+    /**
+     * Avisa qué filas están en pantalla (página, orden y filtro aplicados),
+     * cada vez que cambian. Para cargar por fila solo lo que se ve. Debe ser
+     * una función estable (useCallback): cada identidad nueva vuelve a avisar.
+     */
+    onVisibleRowsChange?: (rows: TData[]) => void
+    /**
+     * Identidad estable de cada fila. Sin esto la fila se identifica por su
+     * posición, y reemplazar la lista por otra del mismo tamaño no cuenta como
+     * un cambio de filas visibles.
+     */
+    getRowId?: (row: TData) => string
 }
 
 export function DataTable<TData, TValue>({
@@ -42,6 +54,8 @@ export function DataTable<TData, TValue>({
     data,
     filterColumn,
     defaultSorting,
+    onVisibleRowsChange,
+    getRowId,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>(defaultSorting ?? [])
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -49,6 +63,7 @@ export function DataTable<TData, TValue>({
     const table = useReactTable({
         data,
         columns,
+        getRowId,
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         onSortingChange: setSorting,
@@ -60,6 +75,13 @@ export function DataTable<TData, TValue>({
             columnFilters,
         },
     })
+
+    // La clave resume las filas visibles: con el mismo conjunto no se vuelve a
+    // avisar aunque `data` cambie de identidad (p. ej. al completarse una fila).
+    const visibleKey = table.getRowModel().rows.map((row) => row.id).join("|")
+    React.useEffect(() => {
+        onVisibleRowsChange?.(table.getRowModel().rows.map((row) => row.original))
+    }, [table, visibleKey, onVisibleRowsChange])
 
     return (
         <div className="w-full">

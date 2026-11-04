@@ -140,13 +140,67 @@ describe("reservationsService.list — bordes de la paginación y de las filas",
         mocks.getReservationStatus.mockResolvedValue([])
     })
 
-    it("una fila sin uuid ni id se descarta: no se consulta su estado ni se le arma un enlace", async () => {
+    it("una fila sin uuid ni id se descarta y no se le arma un enlace", async () => {
         const sinId = { ...NUEVA, uuid: undefined, id: undefined }
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(page([NUEVA, sinId])))
         const list = await reservationsService.list()
         expect(list.map((r) => r.id)).toEqual(["res-nueva"])
-        expect(mocks.getReservationStatus).toHaveBeenCalledTimes(1)
-        expect(mocks.getReservationStatus).toHaveBeenCalledWith("res-nueva")
+    })
+
+    it("list() no consulta el semáforo de ninguna reserva: eso lo pide Operaciones por fila visible", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(page([NUEVA])))
+        const list = await reservationsService.list()
+        expect(list[0].automationStatus).toBeUndefined()
+        expect(mocks.getReservationStatus).not.toHaveBeenCalled()
+    })
+
+    it("loadAutomationStatus consulta UNA reserva con la señal y arma su semáforo", async () => {
+        const controller = new AbortController()
+        const status = await reservationsService.loadAutomationStatus(
+            { id: "res-nueva", isCheckinCompleted: true },
+            controller.signal,
+        )
+        expect(mocks.getReservationStatus).toHaveBeenCalledWith("res-nueva", controller.signal)
+        expect(status.checkin).toBe("success")
+    })
+
+    it("loadAutomationStatus: si la consulta falla, el semáforo queda sin datos (no se tumba la fila)", async () => {
+        mocks.getReservationStatus.mockRejectedValueOnce(new Error("503"))
+        const status = await reservationsService.loadAutomationStatus({ id: "res-nueva", isCheckinCompleted: false })
+        expect(status.checkin).toBe("none")
+    })
+
+    it("las páginas 2..última se piden en paralelo y la lista conserva el orden", async () => {
+        const row = (n: number) => ({ ...NUEVA, uuid: `res-${n}` })
+        let releasePage2!: () => void
+        const page2 = new Promise<Response>((resolve) => {
+            releasePage2 = () => resolve(page([row(2)], { last_page: 3 }))
+        })
+        const fetchMock = vi.fn((url: string) => {
+            const n = Number(new URL(url, "http://x").searchParams.get("page"))
+            if (n === 1) return Promise.resolve(page([row(1)], { last_page: 3 }))
+            if (n === 2) return page2
+            return Promise.resolve(page([row(3)], { last_page: 3 }))
+        })
+        vi.stubGlobal("fetch", fetchMock)
+
+        const pending = reservationsService.list()
+        // La 3 salió sin esperar a la 2.
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3))
+        releasePage2()
+
+        const list = await pending
+        expect(list.map((r) => r.id)).toEqual(["res-1", "res-2", "res-3"])
+    })
+
+    it("una página que falla sigue siendo un fallo de la lista, nunca una lista parcial", async () => {
+        const row = (n: number) => ({ ...NUEVA, uuid: `res-${n}` })
+        vi.stubGlobal("fetch", vi.fn((url: string) => {
+            const n = Number(new URL(url, "http://x").searchParams.get("page"))
+            if (n === 2) return Promise.resolve(page([], undefined, 503))
+            return Promise.resolve(page([row(n)], { last_page: 3 }))
+        }))
+        await expect(reservationsService.list()).rejects.toBeTruthy()
     })
 
     it("un meta.last_page que no es un entero ≥ 1 es un fallo, no cien peticiones", async () => {

@@ -32,6 +32,7 @@ import { differenceInDays } from "date-fns"
 import { listingsService } from "@/features/properties/services/listings-service"
 import { propertiesService } from "@/features/properties/services/properties-service"
 import { automationService, canonicalSlug } from "@/features/properties/services/automation-service"
+import { settleWithConcurrency } from "@/lib/settle-with-concurrency"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import type { AutomationStatusItem } from "@/features/properties/types/automation"
 import type { AutomationStatus } from "@/types"
@@ -212,6 +213,18 @@ const CHECKIN_NAME_RE = /identity|verificaci[oó]n|check-?in/i
  * CHECKIN_NAME_RE, and evaluated AFTER it so it can't steal a check-in row.
  */
 const CONTRACT_NAME_RE = /firma|contrato|signature/i
+
+/** Páginas de `GET /reservations` en vuelo a la vez, después de la primera. */
+const RESERVATION_PAGE_CONCURRENCY = 4
+
+/**
+ * Flag real de check-in completo de la fila cruda; el estado global
+ * CHECKED_IN solo cuando el backend no lo manda (payloads viejos).
+ */
+function readCheckinCompleted(raw: any, status: Reservation["status"]): boolean {
+    const flag = raw?.isCheckinCompleted ?? raw?.is_checkin_completed
+    return flag === undefined || flag === null ? status === "CHECKED_IN" : Boolean(flag)
+}
 
 /** SIRE check-out (order 8) vs check-in (order 7), told apart by the name. */
 function sireKind(name: string): "sireIn" | "sireOut" {
@@ -1026,13 +1039,15 @@ export class ReservationsService {
     private listInFlight: Promise<Reservation[]> | null = null
 
     /**
-     * Lists reservations (with per-reservation automation status merged in).
+     * Lists reservations, SIN el semáforo de automatizaciones (ver
+     * `loadAutomationStatus`: una petición por reserva, solo para las filas
+     * que se ven).
      *
      * Concurrent callers on the same page (e.g. StatsCards + ReservationsList)
-     * share a single in-flight request so the reservations fetch and the N
-     * per-reservation automation-status fetches run once. This is deduping, NOT
-     * caching: the shared promise is cleared as soon as it settles, so every
-     * later call (manual refresh, after create/delete) fetches fresh data.
+     * share a single in-flight request so the reservations fetch runs once.
+     * This is deduping, NOT caching: the shared promise is cleared as soon as
+     * it settles, so every later call (manual refresh, after create/delete)
+     * fetches fresh data.
      */
     async list(): Promise<Reservation[]> {
         if (this.listInFlight) return this.listInFlight
@@ -1091,50 +1106,78 @@ export class ReservationsService {
         return total
     }
 
+    private async fetchReservationsPage(page: number): Promise<{ items: unknown[]; lastPage: number }> {
+        const token = useAuthStore.getState().user?.token
+        const res = await fetch(`${API_BASE}/reservations?page=${page}`, {
+            headers: {
+                Accept: "application/json",
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            cache: "no-store",
+        })
+        const json: unknown = await res.json().catch(() => ({}))
+        if (res.status === 202) throw new ReservationsNotReadyError(json)
+        if (!res.ok) {
+            if (res.status === 401) handleSessionExpired()
+            throw new ApiError(res.status, (json ?? { message: `HTTP ${res.status}` }) as ApiErrorResponse)
+        }
+        const body = (json && typeof json === "object" ? json : {}) as { data?: unknown; meta?: Record<string, unknown> }
+        const items = Array.isArray(body.data) ? body.data : Array.isArray(json) ? json : null
+        if (!items) {
+            throw new Error(
+                `GET /reservations respondió ${res.status} sin arreglo de reservas (claves: ${Object.keys(body).join(", ") || typeof json})`,
+            )
+        }
+        // Sin `meta` = una sola página. Con `meta`, `last_page` tiene que ser un
+        // entero ≥ 1: un valor raro (`NaN`, 0, texto) no se interpreta como
+        // «sigue pidiendo hasta el tope».
+        const rawLast = body.meta?.last_page ?? body.meta?.lastPage
+        const lastPage = rawLast === undefined ? 1 : Number(rawLast)
+        if (!Number.isInteger(lastPage) || lastPage < 1) {
+            throw new Error(`GET /reservations: meta.last_page inválido (${String(rawLast)})`)
+        }
+        return { items, lastPage }
+    }
+
+    /**
+     * La primera página dice cuántas hay; las demás se piden en paralelo (de a
+     * `RESERVATION_PAGE_CONCURRENCY`), en vez de una tras otra. El orden se
+     * conserva y cualquier página fallida sigue siendo un fallo de la lista.
+     */
     private async fetchAllReservationPages(): Promise<unknown[]> {
         const MAX_PAGES = 100
-        const token = useAuthStore.getState().user?.token
-        const all: unknown[] = []
-        for (let page = 1; page <= MAX_PAGES; page++) {
-            const res = await fetch(`${API_BASE}/reservations?page=${page}`, {
-                headers: {
-                    Accept: "application/json",
-                    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                },
-                cache: "no-store",
-            })
-            const json: unknown = await res.json().catch(() => ({}))
-            if (res.status === 202) throw new ReservationsNotReadyError(json)
-            if (!res.ok) {
-                if (res.status === 401) handleSessionExpired()
-                throw new ApiError(res.status, (json ?? { message: `HTTP ${res.status}` }) as ApiErrorResponse)
-            }
-            const body = (json && typeof json === "object" ? json : {}) as { data?: unknown; meta?: Record<string, unknown> }
-            const items = Array.isArray(body.data) ? body.data : Array.isArray(json) ? json : null
-            if (!items) {
-                throw new Error(
-                    `GET /reservations respondió ${res.status} sin arreglo de reservas (claves: ${Object.keys(body).join(", ") || typeof json})`,
-                )
-            }
-            all.push(...items)
-            // Sin `meta` = una sola página. Con `meta`, `last_page` tiene que ser un
-            // entero ≥ 1: un valor raro (`NaN`, 0, texto) no se interpreta como
-            // «sigue pidiendo hasta el tope».
-            const rawLast = body.meta?.last_page ?? body.meta?.lastPage
-            const lastPage = rawLast === undefined ? 1 : Number(rawLast)
-            if (!Number.isInteger(lastPage) || lastPage < 1) {
-                throw new Error(`GET /reservations: meta.last_page inválido (${String(rawLast)})`)
-            }
-            if (page === 1 && lastPage > MAX_PAGES) {
-                // Una lista parcial presentada como completa es peor que un fallo.
-                throw new Error(`GET /reservations: ${lastPage} páginas superan el máximo de ${MAX_PAGES}; no se entrega una lista parcial`)
-            }
-            if (page === 1 && lastPage > 1) {
-                console.info(`[reservations] GET /reservations viene paginado (${lastPage} páginas): se siguen todas.`)
-            }
-            if (page >= lastPage) break
+        const first = await this.fetchReservationsPage(1)
+        if (first.lastPage > MAX_PAGES) {
+            // Una lista parcial presentada como completa es peor que un fallo.
+            throw new Error(`GET /reservations: ${first.lastPage} páginas superan el máximo de ${MAX_PAGES}; no se entrega una lista parcial`)
+        }
+        if (first.lastPage === 1) return first.items
+        console.info(`[reservations] GET /reservations viene paginado (${first.lastPage} páginas): se siguen todas.`)
+
+        const rest = Array.from({ length: first.lastPage - 1 }, (_, i) => i + 2)
+        const results = await settleWithConcurrency(rest, RESERVATION_PAGE_CONCURRENCY, (page) => this.fetchReservationsPage(page))
+        const all = [...first.items]
+        for (const result of results) {
+            if (result.status === "rejected") throw result.reason
+            all.push(...result.value.items)
         }
         return all
+    }
+
+    /**
+     * Semáforo de automatizaciones de UNA reserva. Vive aparte de `list()` a
+     * propósito: es una petición por reserva y solo Operaciones la necesita,
+     * para las filas que se ven. Un fallo de esta consulta no es un fallo de
+     * la lista: el semáforo queda «sin datos», como siempre.
+     */
+    async loadAutomationStatus(
+        reservation: Pick<Reservation, "id" | "isCheckinCompleted">,
+        signal?: AbortSignal,
+    ): Promise<AutomationStatus> {
+        const items = await automationService
+            .getReservationStatus(reservation.id, signal)
+            .catch(() => [] as AutomationStatusItem[])
+        return buildTrafficLight(items, reservation.isCheckinCompleted === true)
     }
 
     private async fetchList(): Promise<Reservation[]> {
@@ -1155,16 +1198,12 @@ export class ReservationsService {
             // descarta (y se dice en consola), en vez de tumbar el lote entero y
             // dejar la pantalla con la lista anterior.
             const skipped: string[] = []
-            // Fila cruda por id: el emparejamiento por índice con `dataArray[i]`
-            // se desalineaba en cuanto una fila se descartaba.
-            const rawById = new Map<string, any>()
             const reservations = dataArray.flatMap((r: any): Reservation[] => {
                 try {
                     // Sin identificador no hay ficha que abrir ni estado que consultar:
                     // la fila se descarta (y se avisa) en vez de generar enlaces inválidos.
                     const rowId = typeof r?.uuid === "string" && r.uuid ? r.uuid : r?.id != null ? String(r.id) : ""
                     if (!rowId) throw new Error("reserva sin uuid ni id")
-                    rawById.set(rowId, r)
                 const checkIn = parseCalendarDate(r.arrivalDate || r.arrival_date)
                 const checkOut = parseCalendarDate(r.departureDate || r.departure_date)
                 
@@ -1243,6 +1282,10 @@ export class ReservationsService {
                     // manda es el fallo más silencioso (nada revienta, el dato
                     // simplemente nunca llega a quien lo necesite).
                     origin: readReservationOrigin(r),
+                    // El flag real de la reserva (la misma fuente que el detalle); el
+                    // estado global CHECKED_IN solo como respaldo de payloads viejos.
+                    // Lo lee `loadAutomationStatus` al armar el semáforo.
+                    isCheckinCompleted: readCheckinCompleted(r, status),
                 }]
                 } catch (error) {
                     skipped.push(String(r?.uuid ?? r?.id ?? "?"))
@@ -1273,28 +1316,10 @@ export class ReservationsService {
                 )
             }
 
-            // Estado de automatizaciones por reserva.
-            //
-            // La columna CHECK-IN habla solo de check-ins COMPLETOS (decisión de
-            // producto, 2026-08-21), y ese conteo ya viene en `GET /reservations`
-            // (`completedGuests`). La consulta al portal por reserva que traía el
-            // conteo de verificados se eliminó junto con ese eje de la celda.
-            const statusResults = await Promise.allSettled(
-                reservations.map((res: Reservation) =>
-                    automationService.getReservationStatus(res.id).catch(() => [] as AutomationStatusItem[])
-                )
-            )
-            for (let i = 0; i < reservations.length; i++) {
-                const result = statusResults[i]
-                const items = result.status === "fulfilled" ? result.value : []
-                // Use the reservation's real check-in flag (same source as the detail view),
-                // falling back to the global CHECKED_IN status for older payloads.
-                const raw = rawById.get(reservations[i].id)
-                const checkinCompleted = raw?.isCheckinCompleted ?? raw?.is_checkin_completed
-                    ?? (reservations[i].status === "CHECKED_IN")
-                reservations[i].automationStatus = buildTrafficLight(items, checkinCompleted)
-            }
-
+            // El semáforo de automatizaciones NO viene aquí: son N peticiones
+            // (una por reserva) y salían todas a la vez, también para el
+            // Tablero, que no las usa. Operaciones las pide por fila visible con
+            // `loadAutomationStatus`.
             return reservations
         } catch (error) {
             console.error("[ReservationsService] Error listing reservations:", error)

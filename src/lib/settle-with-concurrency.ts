@@ -50,12 +50,18 @@ export class ConcurrencyLimiter {
     }
 }
 
-/** `Promise.allSettled` ordenado, con limitador local o compartido. */
+/**
+ * `Promise.allSettled` ordenado, con limitador local o compartido.
+ *
+ * `onSettled` avisa de cada resultado en cuanto llega (en orden de llegada,
+ * no de índice): sirve para pintar progresivamente sin esperar al último.
+ */
 export async function settleWithConcurrency<T, R>(
     items: readonly T[],
     limiterOrLimit: ConcurrencyLimiter | number,
     task: (item: T, index: number) => Promise<R>,
     signal?: AbortSignal,
+    onSettled?: (index: number, result: PromiseSettledResult<R>) => void,
 ): Promise<PromiseSettledResult<R>[]> {
     const limiter = typeof limiterOrLimit === "number"
         ? new ConcurrencyLimiter(limiterOrLimit)
@@ -65,6 +71,9 @@ export async function settleWithConcurrency<T, R>(
         limiter.run(() => task(item, index), signal).then(
             (value): PromiseFulfilledResult<R> => ({ status: "fulfilled", value }),
             (reason): PromiseRejectedResult => ({ status: "rejected", reason }),
-        ),
+        ).then((result) => {
+            onSettled?.(index, result)
+            return result
+        }),
     ))
 }

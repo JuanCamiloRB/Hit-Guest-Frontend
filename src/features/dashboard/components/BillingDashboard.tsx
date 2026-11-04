@@ -22,6 +22,7 @@ export function BillingDashboard() {
     const {
         status,
         costs,
+        loadingProgress,
         failedReservations,
         refreshFailed,
         syncing,
@@ -60,6 +61,7 @@ export function BillingDashboard() {
                 failedCount={failedReservations.length}
                 refreshFailed={refreshFailed}
                 syncing={syncing}
+                loadingProgress={loadingProgress}
                 onRetry={retry}
             />
 
@@ -70,6 +72,7 @@ export function BillingDashboard() {
                     costs={costs}
                     failedReservations={failedReservations}
                     isLoading={isLoadingCosts}
+                    loadingProgress={loadingProgress}
                     unavailable={status === "error" || status === "syncing"}
                 />
             </div>

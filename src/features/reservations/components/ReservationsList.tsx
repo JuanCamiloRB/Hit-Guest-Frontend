@@ -30,6 +30,7 @@ import { es } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { ReservationsNotReadyError, reservationsService } from "../services/reservations-service"
+import { useAutomationStatusLoader } from "../hooks/useAutomationStatusLoader"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 
@@ -87,13 +88,18 @@ const NOT_READY_RETRY_MS = 2500
 /**
  * Al volver a la pestaña se relee la lista (un huésped puede terminar su
  * check-in desde su celular mientras el PM tiene esto abierto), pero no más de
- * una vez cada minuto: cada carga pide además el estado de automatizaciones de
- * CADA reserva.
+ * una vez cada minuto: cada relectura vuelve a pedir, de fondo, el semáforo de
+ * cada reserva.
  */
 const REFRESH_ON_FOCUS_MIN_MS = 60_000
+
+/** Identidad de fila para la tabla: por uuid, no por posición. */
+const rowId = (reservation: Reservation) => reservation.id
 export default function ReservationsList() {
     const [reservations, setReservations] = useState<Reservation[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    // El semáforo llega aparte de la lista: visible primero, el resto de fondo.
+    const { prioritize, fill, withStatus } = useAutomationStatusLoader()
     const [deleteTarget, setDeleteTarget] = useState<Reservation | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
     /**
@@ -212,6 +218,7 @@ export default function ReservationsList() {
         () => getColumns({ onDelete: requestDelete }),
         [requestDelete]
     )
+    const rows = useMemo(() => withStatus(filtered), [filtered, withStatus])
 
     useEffect(() => {
         let cancelled = false
@@ -225,7 +232,10 @@ export default function ReservationsList() {
             lastLoadAt = Date.now()
             try {
                 const data = await reservationsService.list()
-                if (!cancelled) setReservations(data)
+                if (!cancelled) {
+                    setReservations(data)
+                    fill(data)
+                }
             } catch (error) {
                 if (cancelled) return
                 if (error instanceof ReservationsNotReadyError && attempt < NOT_READY_RETRIES) {
@@ -260,7 +270,7 @@ export default function ReservationsList() {
             window.removeEventListener("reservationCreated", handleReservationCreated)
             document.removeEventListener("visibilitychange", handleVisibility)
         }
-    }, [])
+    }, [fill])
 
     if (isLoading) {
         // Esqueletos con la forma de las filas que vienen: la tabla no salta
@@ -382,7 +392,13 @@ export default function ReservationsList() {
                 )}
             </div>
 
-            <DataTable columns={columns} data={filtered} defaultSorting={[...DEFAULT_SORTING]} />
+            <DataTable
+                columns={columns}
+                data={rows}
+                defaultSorting={[...DEFAULT_SORTING]}
+                getRowId={rowId}
+                onVisibleRowsChange={prioritize}
+            />
 
             <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
                 <AlertDialogContent>

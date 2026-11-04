@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { startOfMonth } from "date-fns"
 import { ReservationsNotReadyError, reservationsService } from "@/features/reservations/services/reservations-service"
-import { consumptionService } from "../services/consumption-service"
+import { consumptionService, type CostLoadProgress } from "../services/consumption-service"
 import type {
     ConsumptionSummary,
     MonthlyPoint,
@@ -25,8 +25,14 @@ export type ConsumptionStatus = "loading" | "ready" | "refreshing" | "error" | "
 
 interface BillingData {
     status: ConsumptionStatus
-    /** Reservas con consumo consultado. Vacío mientras no hay datos. */
+    /**
+     * Reservas con consumo consultado. Durante la carga inicial (sin datos
+     * previos) va creciendo a medida que llega cada consulta: la tabla las
+     * pinta ya; las cifras esperan a `summary`.
+     */
     costs: ReservationCost[]
+    /** Avance de la carga inicial («N de M»); null fuera de ella. */
+    loadingProgress: { done: number; total: number } | null
     /** Reservas cuyo consumo no se pudo consultar: fuera de toda cifra. */
     failedReservations: ReservationCostFailure[]
     /**
@@ -85,6 +91,12 @@ export function resetBillingDataCache(): void {
  */
 export function useBillingData(): BillingData {
     const [data, setData] = useState<ReservationCostsResult | null>(() => lastResult)
+    /**
+     * Solo en la carga inicial: lo que ya llegó, en la posición de su reserva
+     * (`null` = todavía no, o falló), para pintarlo sin esperar al resto y sin
+     * que la tabla se reordene al completarse.
+     */
+    const [partial, setPartial] = useState<{ byIndex: (ReservationCost | null)[]; done: number } | null>(null)
     // Arranca en true: la primera carga sale del efecto de montaje.
     const [inFlight, setInFlight] = useState(true)
     const [lastLoadIssue, setLastLoadIssue] = useState<"error" | "syncing" | null>(null)
@@ -105,7 +117,23 @@ export function useBillingData(): BillingData {
         try {
             const reservations = await reservationsService.list()
             if (controller.signal.aborted) return
-            const result = await consumptionService.getReservationCosts(reservations, controller.signal)
+            // Progresivo solo sin datos en pantalla (`lastResult` es lo que se
+            // ve): una actualización conserva lo anterior hasta tener el
+            // resultado completo (fase 1).
+            const progressive = lastResult === null
+            if (progressive) setPartial({ byIndex: new Array(reservations.length).fill(null), done: 0 })
+            const onProgress = progressive
+                ? ({ done, index, cost }: CostLoadProgress) => {
+                    if (id !== requestId.current) return
+                    setPartial((prev) => {
+                        if (!prev) return prev
+                        const byIndex = prev.byIndex.slice()
+                        byIndex[index] = cost
+                        return { byIndex, done }
+                    })
+                }
+                : undefined
+            const result = await consumptionService.getReservationCosts(reservations, controller.signal, onProgress)
             if (result.costs.length === 0 && result.failedReservations.length > 0) {
                 throw new AllCostRequestsFailedError(result.failedReservations.length)
             }
@@ -121,6 +149,7 @@ export function useBillingData(): BillingData {
         } finally {
             if (id === requestId.current) {
                 if (activeController.current === controller) activeController.current = null
+                setPartial(null)
                 setInFlight(false)
             }
         }
@@ -152,6 +181,10 @@ export function useBillingData(): BillingData {
         () => (data ? consumptionService.analyze(data.costs, refMonth) : null),
         [data, refMonth],
     )
+    const partialCosts = useMemo(
+        () => (partial ? partial.byIndex.filter((cost): cost is ReservationCost => cost !== null) : []),
+        [partial],
+    )
 
     const status: ConsumptionStatus = !data
         ? inFlight ? "loading" : lastLoadIssue === "syncing" ? "syncing" : "error"
@@ -160,7 +193,8 @@ export function useBillingData(): BillingData {
 
     return {
         status,
-        costs: data?.costs ?? [],
+        costs: data?.costs ?? partialCosts,
+        loadingProgress: !data && partial ? { done: partial.done, total: partial.byIndex.length } : null,
         failedReservations: data?.failedReservations ?? [],
         refreshFailed: data !== null && lastLoadIssue === "error" && !inFlight,
         syncing: lastLoadIssue === "syncing" && !inFlight,

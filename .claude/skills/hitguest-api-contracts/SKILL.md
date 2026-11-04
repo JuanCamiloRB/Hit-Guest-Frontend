@@ -1043,8 +1043,12 @@ probable; falta verlo en `GET /reservations`. Preguntas abiertas a backend: qué
 proceso y condición temporal asigna cada uno, si Abandonada es terminal, si
 Incompleta puede retomarse, si permiten reenviar el link y si activan
 automatizaciones. La lista se relee al volver a la pestaña, como mucho una
-vez por minuto (cada carga pide además el estado de automatizaciones de cada
-reserva).
+vez por minuto. **2026-11-05:** `list()` ya NO pide el semáforo
+(`GET /reservations/{uuid}/automation-status`) de cada reserva: salían N de
+golpe, también para el Tablero, que no lo usa. Operaciones lo pide por fila
+visible con `useAutomationStatusLoader` (6 a la vez, lo visible primero, el
+resto de fondo); `Reservation.automationStatus === undefined` significa
+«cargando», no «sin automatizaciones».
 
 ### ✅ Catálogo `property_type` — los ids NO son 100/101/102 = Casa/Hotel/Apartamento
 
@@ -2692,6 +2696,9 @@ muestra el `digest` como referencia en pantalla.
   `propertyDocumentService.list` leen `meta` con un `fetch` crudo por eso).
   **Corregido 2026-10-08**: `fetchAllReservationPages` sigue `?page=N` hasta
   `meta.last_page` con el token de sesión (si no pagina, una sola llamada);
+  2026-11-05: la primera página en serie (dice cuántas hay) y las demás en
+  paralelo de a `RESERVATION_PAGE_CONCURRENCY` (4), orden conservado, una
+  página fallida = fallo de la lista;
   `source.name` y `emailGuest` se leen con tolerancia (el `name` puede ser
   `{en, es}` como el del estado); cada fila se mapea aislada y una mal formada
   se descarta con `console.error` en vez de tumbar el lote. Confirmar con

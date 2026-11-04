@@ -1,6 +1,7 @@
 "use client"
 
 import { ColumnDef, Row, SortingFn } from "@tanstack/react-table"
+import { Skeleton } from "@/components/ui/skeleton"
 import { MoreVertical, Trash2 } from "lucide-react"
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import Link from "next/link"
@@ -47,6 +48,21 @@ const sortBySource: SortingFn<Reservation> = (a, b) =>
 
 const sortByStatus: SortingFn<Reservation> = (a, b) =>
     compareStatus(a.original.status, b.original.status)
+
+/**
+ * El semáforo se carga por fila visible después de la lista: hasta que llega,
+ * la celda dice que está cargando, nunca «—» (que significa «no configurada»).
+ */
+function StatusLoading() {
+    // Sin `role="status"`: una región viva por celda anunciaría «cargando»
+    // diez veces por página. El texto queda para quien navegue la tabla.
+    return (
+        <div className="inline-flex">
+            <Skeleton className="h-5 w-16 rounded-full" />
+            <span className="sr-only">Cargando estado</span>
+        </div>
+    )
+}
 
 export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
   const { onDelete } = options || {}
@@ -159,6 +175,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             compareLight(key, a.original.automationStatus, b.original.automationStatus)) as SortingFn<Reservation>,
         cell: ({ row }: { row: Row<Reservation> }) => {
             const res = row.original
+            if (res.automationStatus === undefined) return <StatusLoading />
             // CHECK-IN dice cuántos huéspedes TERMINARON su check-in ("1 de 3
             // completados") — solo ese eje, por decisión de producto (2026-08-21):
             // la verificación de identidad se mira en el detalle, no en la lista.
@@ -180,6 +197,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         enableSorting: false,
         cell: ({ row }) => {
             const status = row.original.automationStatus
+            if (status === undefined) return <StatusLoading />
             return (
                 <div className="flex flex-wrap items-center gap-1">
                     {REPORT_LIGHTS.map(({ key, short }) => {

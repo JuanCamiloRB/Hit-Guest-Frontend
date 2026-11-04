@@ -101,6 +101,15 @@ copiarlo, no reinventarlo:
      que un cambio de estado lo desmontaba y React se llevaba el iframe de
      Stripe con él, dejando la referencia al element apuntando a un huérfano. Se
      oculta (`hidden`), no se quita.
+- **«Una petición por fila» nunca sale de golpe para toda la lista.** La
+  lista llega primero y cada fila se completa cuando le toca: lo visible
+  primero, el resto de fondo, con límite de concurrencia, y la pantalla pinta
+  lo que ya llegó. Precedentes: `useAutomationStatusLoader` +
+  `lib/priority-load-queue.ts` + `DataTable.onVisibleRowsChange` (semáforo de
+  Operaciones) y `getReservationCosts(onProgress)` → `useBillingData`
+  (`loadingProgress`, Tablero). Las cifras agregadas esperan al total y dicen
+  «N de M»: un total parcial presentado como final es el mismo error que el
+  «0 USD» de un fallo.
 - **Servicio**: clase con instancia exportada al final
   (`export const xService = new XService()`), JSDoc de cabecera listando cada
   endpoint real, distinción explícita token de sesión vs. token de app.

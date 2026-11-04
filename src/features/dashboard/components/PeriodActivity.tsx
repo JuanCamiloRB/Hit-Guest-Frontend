@@ -24,6 +24,8 @@ interface Props {
     refreshFailed: boolean
     /** Reservas respondió 202 (sincronizando). */
     syncing: boolean
+    /** Avance de la carga inicial: las cifras esperan al total, pero se dice cuánto falta. */
+    loadingProgress?: { done: number; total: number } | null
     onRetry: () => void
 }
 
@@ -50,6 +52,7 @@ export function PeriodActivity({
     failedCount,
     refreshFailed,
     syncing,
+    loadingProgress = null,
     onRetry,
 }: Props) {
     return (
@@ -74,7 +77,7 @@ export function PeriodActivity({
 
             <div className="flex flex-col gap-6 px-5 py-5 sm:px-6 sm:py-6">
                 {status === "loading" ? (
-                    <ActivitySkeleton />
+                    <ActivitySkeleton progress={loadingProgress} />
                 ) : !summary ? (
                     // Sin datos confiables: un solo mensaje en lugar del análisis.
                     status === "syncing" ? (
@@ -182,14 +185,24 @@ function RetryButton({ onRetry, className }: { onRetry: () => void; className?: 
     )
 }
 
-/** Skeleton con la forma final: cifra, variación, historial y nodos. */
-function ActivitySkeleton() {
+/**
+ * Skeleton con la forma final: cifra, variación, historial y nodos. Las cifras
+ * salen solo con todas las reservas consultadas (un total parcial mentiría),
+ * así que mientras tanto se dice cuántas van.
+ */
+function ActivitySkeleton({ progress }: { progress: { done: number; total: number } | null }) {
     return (
         <div role="status" aria-label="Cargando la actividad del mes" className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
                 <Skeleton className="h-3.5 w-28" />
                 <Skeleton className="h-8 w-44" />
-                <Skeleton className="h-3.5 w-56" />
+                {progress ? (
+                    <p className="text-[13px] text-ink-3">
+                        Calculando el consumo · {progress.done} de {progress.total} reservas
+                    </p>
+                ) : (
+                    <Skeleton className="h-3.5 w-56" />
+                )}
             </div>
             <div className="grid gap-6 border-t border-rule pt-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:gap-0">
                 <div className="min-w-0 lg:pr-8">

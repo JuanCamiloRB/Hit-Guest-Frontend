@@ -241,3 +241,32 @@ describe("analyze — variación del mes elegido contra el anterior (fase 2)", (
         expect(summary.monthDeltaPct).toBeNull()
     })
 })
+
+describe("getReservationCosts — onProgress avisa cada consulta al llegar", () => {
+    it("done sube de 1 al total, cada aviso trae su índice y el desglose (o null si falló)", async () => {
+        const reservas = Array.from({ length: 3 }, (_, i) => ({
+            id: `res-${i}`,
+            guestName: `Huésped ${i}`,
+            unitName: "101",
+            propertyName: "Pullman",
+            checkIn: new Date(2026, 10, 1),
+        })) as unknown as Reservation[]
+        vi.mocked(automationService.listUsageRecords).mockImplementation(async (id: string) => {
+            if (id === "res-1") throw new Error("503")
+            return []
+        })
+
+        const seen: Array<{ done: number; total: number; index: number; failed: boolean }> = []
+        const result = await consumptionService.getReservationCosts(reservas, undefined, (p) =>
+            seen.push({ done: p.done, total: p.total, index: p.index, failed: p.cost === null }),
+        )
+
+        expect(seen.map((s) => s.done)).toEqual([1, 2, 3])
+        expect(seen.every((s) => s.total === 3)).toBe(true)
+        expect(seen.map((s) => s.index).sort()).toEqual([0, 1, 2])
+        expect(seen.find((s) => s.index === 1)?.failed).toBe(true)
+        expect(seen.filter((s) => s.index !== 1).every((s) => !s.failed)).toBe(true)
+        expect(result.costs.map((c) => c.reservationId)).toEqual(["res-0", "res-2"])
+        expect(result.failedReservations.map((f) => f.reservationId)).toEqual(["res-1"])
+    })
+})

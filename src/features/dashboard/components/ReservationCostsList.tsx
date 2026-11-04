@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { Button } from "@/components/ui/button"
 import { SectionCard } from "@/components/ui/section-card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { LoadingState } from "@/components/ui/loading-state"
@@ -24,7 +25,12 @@ interface Props {
     isLoading: boolean
     /** No hay datos confiables (error de carga): ni filas ni «sin consumo». */
     unavailable?: boolean
+    /** Carga inicial en curso: `costs` trae lo que ya llegó y esto, cuánto falta. */
+    loadingProgress?: { done: number; total: number } | null
 }
+
+/** Filas que se pintan de entrada; «Mostrar más» agrega otras tantas. */
+export const ROWS_PER_STEP = 25
 
 function matches(row: { guestName: string; unitName: string; propertyName: string }, q: string): boolean {
     return (
@@ -51,8 +57,21 @@ function initials(name: string): string {
  * Una reserva cuya consulta falló va arriba como «Consumo no disponible»: un
  * fallo no se muestra como una fila en 0 USD.
  */
-export function ReservationCostsList({ costs, failedReservations = [], isLoading, unavailable = false }: Props) {
+export function ReservationCostsList({
+    costs,
+    failedReservations = [],
+    isLoading,
+    unavailable = false,
+    loadingProgress = null,
+}: Props) {
     const [query, setQuery] = useState("")
+    // El DOM no crece con la cuenta: se pintan de a ROWS_PER_STEP, y una
+    // búsqueda nueva vuelve al primer tramo.
+    const [shown, setShown] = useState(ROWS_PER_STEP)
+    const search = (value: string) => {
+        setQuery(value)
+        setShown(ROWS_PER_STEP)
+    }
 
     const { filtered, failed } = useMemo(() => {
         const q = query.trim().toLowerCase()
@@ -75,7 +94,7 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
                     <Input
                         placeholder="Buscar huésped, alojamiento…"
                         value={query}
-                        onChange={(e) => setQuery(e.target.value)}
+                        onChange={(e) => search(e.target.value)}
                         className="pl-9 h-9"
                         aria-label="Buscar en el consumo por reserva"
                     />
@@ -103,7 +122,7 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading ? (
+                        {isLoading && costs.length === 0 ? (
                             <TableRow className="hover:bg-transparent">
                                 <TableCell colSpan={COST_CATEGORIES.length + 2} className="p-0">
                                     <LoadingState rows={4} label="Cargando consumo por reserva" />
@@ -150,7 +169,7 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
                                     </TableCell>
                                 </TableRow>
                             ))}
-                            {filtered.map((c) => (
+                            {filtered.slice(0, shown).map((c) => (
                                 <TableRow
                                     key={c.reservationId}
                                     className="hover:bg-sunk/50"
@@ -188,6 +207,20 @@ export function ReservationCostsList({ costs, failedReservations = [], isLoading
                     </TableBody>
                 </Table>
             </div>
+            {(isLoading && loadingProgress) || filtered.length > shown ? (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-rule px-5 py-2 sm:px-6">
+                    {filtered.length > shown ? (
+                        <Button variant="ghost" size="sm" onClick={() => setShown((n) => n + ROWS_PER_STEP)}>
+                            Mostrar más ({filtered.length - shown} restantes)
+                        </Button>
+                    ) : <span />}
+                    {isLoading && loadingProgress && (
+                        <p role="status" className="py-1 text-[13px] text-ink-3">
+                            Cargando el consumo · {loadingProgress.done} de {loadingProgress.total} reservas
+                        </p>
+                    )}
+                </div>
+            ) : null}
         </SectionCard>
     )
 }
