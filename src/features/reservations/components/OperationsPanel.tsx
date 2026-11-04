@@ -1,7 +1,8 @@
 "use client"
 
-import { useEffect, useState, type ComponentType, type ReactNode } from "react"
-import { reservationsService, ReservationDetailData } from "../services/reservations-service"
+import { useState, type ComponentType, type ReactNode } from "react"
+import { reservationsService } from "../services/reservations-service"
+import { useReservationDetail } from "../hooks/useReservationDetail"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
@@ -69,17 +70,16 @@ import { inactiveResourceAction, readInactiveResourceError } from "@/lib/inactiv
 import { checkinLinkBlockedReason } from "../lib/reservation-availability"
 
 export function OperationsPanel({ reservationId }: { reservationId: string }) {
-    const [data, setData] = useState<ReservationDetailData | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
-    const [error, setError] = useState<string | null>(null)
+    // Si la fila se precargó al pasar el cursor, la ficha se ve al instante y
+    // se revalida detrás; si no, esqueleto como siempre.
+    const { data, status, refreshFailed, errorMessage: error, reload } = useReservationDetail(reservationId)
+    const isLoading = status === "loading"
     const [isSendingLink, setIsSendingLink] = useState(false)
     const [sendDialogOpen, setSendDialogOpen] = useState(false)
     const [recipientEmail, setRecipientEmail] = useState("")
     // "default" => omit locale (use property's configured language).
     const [localeChoice, setLocaleChoice] = useState<"default" | CommunicationLocale>("default")
     const [priceDialogOpen, setPriceDialogOpen] = useState(false)
-    /** Recarga el detalle tras registrar el valor (el aviso debe irse solo). */
-    const [reloadKey, setReloadKey] = useState(0)
     // Por dónde sale el link de ESTA reserva (propiedad + unidad). Alimenta el
     // aviso de teléfono faltante y el costo en el diálogo de reenvío.
     const linkChannels = useCheckinLinkChannels(data?.propertyUuid ?? null, data?.listingUuid ?? null)
@@ -92,33 +92,6 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
         })
         : null
 
-    // `ReservationDialog` emite `reservationCreated` tras guardar (también al
-    // editar). Sin esto, editar desde la ficha —el teléfono, por ejemplo— no
-    // refrescaba nada y el aviso de «sin teléfono» seguía en pantalla.
-    useEffect(() => {
-        const reload = () => setReloadKey((k) => k + 1)
-        window.addEventListener("reservationCreated", reload)
-        return () => window.removeEventListener("reservationCreated", reload)
-    }, [])
-
-    useEffect(() => {
-        let mounted = true
-        async function load() {
-            try {
-                const result = await reservationsService.getById(reservationId)
-                if (mounted) setData(result)
-            } catch (e) {
-                console.error("[OperationsPanel] Error loading reservation:", e)
-                if (mounted) {
-                    setError(e instanceof Error ? e.message : "Error al cargar la reserva")
-                }
-            } finally {
-                if (mounted) setIsLoading(false)
-            }
-        }
-        load()
-        return () => { mounted = false }
-    }, [reservationId, reloadKey])
 
     // Prefill recipient with the main guest's email and reset the language to the
     // property default each time the dialog opens.
@@ -153,7 +126,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
             // La tarjeta «Link de check-in» lee `extra.checkinLink*` de la ficha:
             // sin releer, seguía diciendo «Todavía no se ha enviado» después de
             // un reenvío exitoso (reportado como «caché del front», 2026-10-08).
-            setReloadKey((k) => k + 1)
+            reload()
         } catch (e) {
             // Alojamiento o propiedad inactivos (contrato 2026-10-27): no sale
             // ningún link. Mensaje del backend tal cual, y el camino para
@@ -225,7 +198,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
         )
     }
 
-    if (error || !data) {
+    if (!data) {
         return (
             <div className="mx-auto flex min-h-[40vh] max-w-md flex-col items-center justify-center gap-3 text-center">
                 <p className="text-base font-semibold text-ink">
@@ -257,6 +230,15 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
 
     return (
         <div className="flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto pb-10">
+            {refreshFailed && (
+                // Mismo aviso que las listas: la ficha sigue a la vista, pero puede no ser la actual.
+                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-[13px] text-ink-2">
+                    <span>No pudimos actualizar la reserva. Se muestra la última cargada.</span>
+                    <button type="button" onClick={reload} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">
+                        Reintentar
+                    </button>
+                </div>
+            )}
             {/* Breadcrumbs & Header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
                 <div className="min-w-0 space-y-1">
@@ -426,7 +408,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             initialValue={data.priceUnconfirmed ? null : data.totalPrice}
                             open
                             onClose={() => setPriceDialogOpen(false)}
-                            onSaved={() => setReloadKey((k) => k + 1)}
+                            onSaved={() => reload()}
                         />
                     )}
 

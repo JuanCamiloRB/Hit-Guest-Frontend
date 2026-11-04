@@ -24,6 +24,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { ChevronDown } from "lucide-react"
 import { useReservations } from "../hooks/useReservations"
+import { cancelDetailPrefetch, startDetailPrefetch } from "../lib/detail-prefetch"
 import type { Reservation } from "@/types"
 import { cn } from "@/lib/utils"
 
@@ -288,6 +289,10 @@ export function ReservationsCalendar() {
                                 <Link
                                     key={`in-${res.id}`}
                                     href={`/dashboard/reservations/${res.id}`}
+                                    onMouseEnter={() => startDetailPrefetch(res.id)}
+                                    onMouseLeave={() => cancelDetailPrefetch(res.id)}
+                                    onFocus={() => startDetailPrefetch(res.id)}
+                                    onBlur={() => cancelDetailPrefetch(res.id)}
                                     className="flex items-center gap-1 text-xs truncate bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 py-0.5 rounded cursor-pointer hover:bg-emerald-100"
                                     title={`Entrada · ${res.guestName} · ${res.propertyName}`}
                                 >
@@ -300,6 +305,10 @@ export function ReservationsCalendar() {
                                 <Link
                                     key={`out-${res.id}`}
                                     href={`/dashboard/reservations/${res.id}`}
+                                    onMouseEnter={() => startDetailPrefetch(res.id)}
+                                    onMouseLeave={() => cancelDetailPrefetch(res.id)}
+                                    onFocus={() => startDetailPrefetch(res.id)}
+                                    onBlur={() => cancelDetailPrefetch(res.id)}
                                     className="flex items-center gap-1 text-xs truncate bg-amber-50 text-amber-700 border border-amber-200 px-1 py-0.5 rounded cursor-pointer hover:bg-amber-100"
                                     title={`Salida · ${res.guestName} · ${res.propertyName}`}
                                 >

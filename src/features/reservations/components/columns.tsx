@@ -2,6 +2,7 @@
 
 import { ColumnDef, Row, SortingFn } from "@tanstack/react-table"
 import { Skeleton } from "@/components/ui/skeleton"
+import { cancelDetailPrefetch, startDetailPrefetch } from "../lib/detail-prefetch"
 import { MoreVertical, Trash2 } from "lucide-react"
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import Link from "next/link"
@@ -92,6 +93,11 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
                         <Link
                             href={`/dashboard/reservations/${reservation.id}`}
                             className="font-bold text-sm text-ink hover:text-primary transition-colors truncate"
+                            // Quedarse sobre la fila (o enfocarla) precarga la ficha.
+                            onMouseEnter={() => startDetailPrefetch(reservation.id)}
+                            onMouseLeave={() => cancelDetailPrefetch(reservation.id)}
+                            onFocus={() => startDetailPrefetch(reservation.id)}
+                            onBlur={() => cancelDetailPrefetch(reservation.id)}
                         >
                             {guestName}
                         </Link>

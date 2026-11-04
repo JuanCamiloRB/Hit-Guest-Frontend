@@ -1,0 +1,124 @@
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { ReservationDetailData } from "../services/reservations-service"
+import { readCheckinLinkDelivery } from "../lib/checkin-link-delivery-status"
+import { readReservationOrigin } from "../lib/reservation-origin"
+
+const mocks = vi.hoisted(() => ({ getById: vi.fn() }))
+
+vi.mock("../services/reservations-service", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("../services/reservations-service")>()),
+    reservationsService: { getById: mocks.getById },
+}))
+// Los hijos cargan sus propios datos; aquí se prueba solo cómo el panel usa la ficha.
+vi.mock("./automations", () => ({ AutomationStatusList: () => null }))
+vi.mock("./GuestDocumentsCard", () => ({ GuestDocumentsCard: () => null }))
+vi.mock("./PropertyDocumentsCard", () => ({ PropertyDocumentsCard: () => null }))
+vi.mock("./CheckinLinkDeliveryCard", () => ({ CheckinLinkDeliveryCard: () => null }))
+vi.mock("./ReservationDialog", () => ({ ReservationDialog: () => null }))
+vi.mock("./RegisterPriceDialog", () => ({ RegisterPriceDialog: () => null }))
+vi.mock("../hooks/useCheckinLinkChannels", () => ({
+    useCheckinLinkChannels: () => ({ channels: ["email"], resolved: false, unitCosts: { whatsapp: null, ota_inbox: null } }),
+}))
+
+import { detailCacheFor, prefetchReservationDetail, resetReservationDetailCache } from "../lib/reservation-detail-cache"
+import { OperationsPanel } from "./OperationsPanel"
+
+function detail(guestName: string): ReservationDetailData {
+    return {
+        uuid: "r1",
+        guestName,
+        email: "ana@example.com",
+        phone: "+573001112233",
+        propertyName: "Pullman",
+        unitName: "Suite 101",
+        checkIn: new Date(2026, 10, 13),
+        checkOut: new Date(2026, 10, 15),
+        nights: 2,
+        status: "CONFIRMED",
+        statusLabel: "Confirmada",
+        statusId: 27,
+        source: "Airbnb",
+        totalPrice: 350000,
+        currency: "COP",
+        totalGuests: 2,
+        externalId: "MANUAL-001",
+        origin: readReservationOrigin({}),
+        capacityDeclarationRequired: false,
+        priceUnconfirmed: false,
+        priceDeclaredByGuest: false,
+        guestPriceDeclaration: null,
+        overwrittenEdits: [],
+        propertyUuid: "p1",
+        listingUuid: "l1",
+        listingInactiveReason: null,
+        checkinLinkDelivery: readCheckinLinkDelivery({}),
+        automationStatus: { link: "none", checkin: "pending", contract: "none", code: "none", tra: "none", sireIn: "none", sireOut: "none" },
+    }
+}
+
+const skeleton = () => screen.queryByText("Cargando reserva…")
+
+describe("OperationsPanel — la ficha desde la caché", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        resetReservationDetailCache()
+        vi.spyOn(console, "error").mockImplementation(() => {})
+    })
+
+    it("sin precarga: esqueleto hasta que llega la ficha", async () => {
+        mocks.getById.mockResolvedValue(detail("Ana García"))
+        render(<OperationsPanel reservationId="r1" />)
+        expect(skeleton()).toBeInTheDocument()
+        expect(await screen.findByRole("heading", { level: 1, name: "Ana García" })).toBeInTheDocument()
+        expect(skeleton()).toBeNull()
+    })
+
+    it("precargada: se pinta al instante, sin esqueleto, y se revalida detrás", async () => {
+        mocks.getById.mockResolvedValueOnce(detail("Ana García"))
+        prefetchReservationDetail("r1")
+        await waitFor(() => expect(detailCacheFor("r1").read()).not.toBeNull())
+
+        let release!: (value: ReservationDetailData) => void
+        mocks.getById.mockReturnValueOnce(new Promise<ReservationDetailData>((res) => { release = res }))
+        render(<OperationsPanel reservationId="r1" />)
+        expect(skeleton()).toBeNull()
+        expect(screen.getByRole("heading", { level: 1, name: "Ana García" })).toBeInTheDocument()
+
+        await act(async () => release(detail("Ana García Ruiz")))
+        expect(await screen.findByRole("heading", { level: 1, name: "Ana García Ruiz" })).toBeInTheDocument()
+        expect(mocks.getById).toHaveBeenCalledTimes(2)
+    })
+
+    it("sin ficha y con fallo: «No pudimos cargar la reserva» con el mensaje", async () => {
+        mocks.getById.mockRejectedValue(new Error("Servicio no disponible"))
+        render(<OperationsPanel reservationId="r1" />)
+        expect(await screen.findByText("No pudimos cargar la reserva")).toBeInTheDocument()
+        expect(screen.getByText("Servicio no disponible")).toBeInTheDocument()
+    })
+
+    it("con ficha y una actualización fallida: se conserva y avisa; Reintentar vuelve a pedir", async () => {
+        mocks.getById.mockResolvedValueOnce(detail("Ana García")).mockRejectedValueOnce(new Error("503"))
+        render(<OperationsPanel reservationId="r1" />)
+        await screen.findByRole("heading", { level: 1, name: "Ana García" })
+
+        await act(async () => { window.dispatchEvent(new Event("reservationCreated")) })
+        expect(await screen.findByText(/No pudimos actualizar la reserva/)).toBeInTheDocument()
+        expect(screen.getByRole("heading", { level: 1, name: "Ana García" })).toBeInTheDocument()
+
+        mocks.getById.mockResolvedValueOnce(detail("Ana García"))
+        fireEvent.click(screen.getByRole("button", { name: "Reintentar" }))
+        await waitFor(() => expect(screen.queryByText(/No pudimos actualizar la reserva/)).toBeNull())
+        expect(mocks.getById).toHaveBeenCalledTimes(3)
+    })
+
+    it("editar (reservationCreated) relee la ficha sin volver al esqueleto", async () => {
+        mocks.getById.mockResolvedValueOnce(detail("Ana García")).mockResolvedValueOnce(detail("Ana Editada"))
+        render(<OperationsPanel reservationId="r1" />)
+        await screen.findByRole("heading", { level: 1, name: "Ana García" })
+
+        await act(async () => { window.dispatchEvent(new Event("reservationCreated")) })
+        expect(skeleton()).toBeNull()
+        expect(await screen.findByRole("heading", { level: 1, name: "Ana Editada" })).toBeInTheDocument()
+    })
+})
