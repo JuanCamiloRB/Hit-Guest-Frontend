@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { resetReservationsCache } from "../hooks/useReservations"
 import type { Reservation } from "@/types"
 import ReservationsList from "./ReservationsList"
 import { ReservationsNotReadyError } from "../services/reservations-service"
@@ -59,6 +60,7 @@ function deferred<T>() {
 
 describe("ReservationsList — verificación de consumo antes de eliminar", () => {
     beforeEach(() => {
+        resetReservationsCache()
         vi.clearAllMocks()
         mocks.deleteHandler = null
         mocks.list.mockResolvedValue([reservation])
@@ -116,6 +118,7 @@ describe("ReservationsList — verificación de consumo antes de eliminar", () =
 
 describe("ReservationsList — un «todavía no» del backend no deja la tabla en blanco", () => {
     beforeEach(() => {
+        resetReservationsCache()
         vi.clearAllMocks()
         vi.useFakeTimers()
         mocks.deleteHandler = null
@@ -150,6 +153,7 @@ describe("ReservationsList — un «todavía no» del backend no deja la tabla e
 
 describe("ReservationsList — recarga al volver a la pestaña, con límite", () => {
     beforeEach(() => {
+        resetReservationsCache()
         vi.clearAllMocks()
         vi.useFakeTimers()
         mocks.list.mockResolvedValue([reservation])
@@ -175,5 +179,50 @@ describe("ReservationsList — recarga al volver a la pestaña, con límite", ()
         await act(async () => { await vi.advanceTimersByTimeAsync(60_000); returnToTab() })
         await act(async () => { await vi.advanceTimersByTimeAsync(0) })
         expect(mocks.list).toHaveBeenCalledTimes(2)
+    })
+})
+
+describe("ReservationsList — la lista compartida", () => {
+    beforeEach(() => {
+        resetReservationsCache()
+        vi.clearAllMocks()
+        mocks.deleteHandler = null
+        mocks.remove.mockResolvedValue(undefined)
+        vi.spyOn(console, "error").mockImplementation(() => {})
+    })
+
+    it("sin lista y con fallo muestra el error con Reintentar, nunca «no hay reservas»", async () => {
+        mocks.list.mockRejectedValueOnce(new Error("503")).mockResolvedValueOnce([reservation])
+        render(<ReservationsList />)
+
+        expect(await screen.findByText("No pudimos cargar las reservas")).toBeInTheDocument()
+        fireEvent.click(screen.getByRole("button", { name: "Reintentar" }))
+        expect(await screen.findByTestId("row-count")).toHaveTextContent("1")
+        expect(mocks.list).toHaveBeenCalledTimes(2)
+    })
+
+    it("una actualización fallida conserva las filas y avisa, sin esqueleto", async () => {
+        mocks.list.mockResolvedValueOnce([reservation]).mockRejectedValueOnce(new Error("503"))
+        render(<ReservationsList />)
+        expect(await screen.findByTestId("row-count")).toHaveTextContent("1")
+
+        await act(async () => { window.dispatchEvent(new Event("reservationCreated")) })
+        expect(await screen.findByText(/No pudimos actualizar la lista/)).toBeInTheDocument()
+        expect(screen.getByTestId("row-count")).toHaveTextContent("1")
+        expect(screen.queryByText("Cargando reservaciones")).toBeNull()
+    })
+
+    it("borrar quita la fila en el acto y no vuelve a pedir la lista", async () => {
+        mocks.list.mockResolvedValue([reservation])
+        mocks.getReservationCost.mockResolvedValue({ total: 0 })
+        render(<ReservationsList />)
+
+        fireEvent.click(await screen.findByRole("button", { name: "Solicitar eliminación" }))
+        await waitFor(() => expect(screen.getByRole("button", { name: "Eliminar" })).toBeEnabled())
+        fireEvent.click(screen.getByRole("button", { name: "Eliminar" }))
+
+        await waitFor(() => expect(screen.getByTestId("row-count")).toHaveTextContent("0"))
+        expect(mocks.remove).toHaveBeenCalledWith(reservation.id)
+        expect(mocks.list).toHaveBeenCalledTimes(1)
     })
 })

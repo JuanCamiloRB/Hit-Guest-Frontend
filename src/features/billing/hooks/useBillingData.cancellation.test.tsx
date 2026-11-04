@@ -19,6 +19,7 @@ vi.mock("@/features/properties/services/automation-service", async (importOrigin
     automationService: { listUsageRecords: mocks.listUsageRecords },
 }))
 
+import { resetReservationsCache } from "@/features/reservations/hooks/useReservations"
 import { resetBillingDataCache, useBillingData, type ConsumptionStatus } from "./useBillingData"
 
 const RESERVATIONS = Array.from({ length: 30 }, (_, i) => ({
@@ -33,6 +34,7 @@ describe("useBillingData — reintentar libera el limitador aunque haya peticion
     beforeEach(() => {
         vi.clearAllMocks()
         resetBillingDataCache()
+        resetReservationsCache()
         vi.spyOn(console, "error").mockImplementation(() => {})
         mocks.list.mockResolvedValue(RESERVATIONS)
     })

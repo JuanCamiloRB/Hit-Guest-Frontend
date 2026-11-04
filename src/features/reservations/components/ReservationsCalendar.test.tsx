@@ -1,9 +1,11 @@
 import { act, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { resetReservationsCache } from "../hooks/useReservations"
 import type { Reservation } from "@/types"
 
 const mocks = vi.hoisted(() => ({ list: vi.fn() }))
-vi.mock("../services/reservations-service", () => ({ reservationsService: { list: mocks.list } }))
+vi.mock("../services/reservations-service", () => ({ ReservationsNotReadyError: class ReservationsNotReadyError extends Error {},
+    reservationsService: { list: mocks.list } }))
 
 import { ReservationsCalendar } from "./ReservationsCalendar"
 
@@ -18,6 +20,7 @@ function reservation(id: string, guestName: string): Reservation {
 
 describe("ReservationsCalendar — se entera de una reserva nueva", () => {
     beforeEach(() => {
+        resetReservationsCache()
         vi.clearAllMocks()
         mocks.list.mockResolvedValueOnce([reservation("r-1", "Ana Gómez")])
     })

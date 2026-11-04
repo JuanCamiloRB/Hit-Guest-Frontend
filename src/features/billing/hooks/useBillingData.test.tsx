@@ -23,6 +23,7 @@ vi.mock("../services/consumption-service", async (importOriginal) => {
     }
 })
 
+import { resetReservationsCache } from "@/features/reservations/hooks/useReservations"
 import { resetBillingDataCache, useBillingData } from "./useBillingData"
 import { ReservationsNotReadyError } from "@/features/reservations/services/reservations-service"
 
@@ -60,6 +61,7 @@ describe("useBillingData — un error nunca se ve como 0 USD", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         resetBillingDataCache()
+        resetReservationsCache()
         vi.spyOn(console, "error").mockImplementation(() => {})
         mocks.list.mockResolvedValue([{ id: "a" }])
         mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
@@ -138,6 +140,7 @@ describe("useBillingData — actualizar no borra lo que se ve", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         resetBillingDataCache()
+        resetReservationsCache()
         vi.spyOn(console, "error").mockImplementation(() => {})
         mocks.list.mockResolvedValue([{ id: "a" }])
         mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
@@ -226,6 +229,7 @@ describe("useBillingData — volver al Tablero muestra lo último mientras actua
     beforeEach(() => {
         vi.clearAllMocks()
         resetBillingDataCache()
+        resetReservationsCache()
         vi.spyOn(console, "error").mockImplementation(() => {})
         mocks.list.mockResolvedValue([{ id: "a" }])
         mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
@@ -275,6 +279,7 @@ describe("useBillingData — la carga inicial pinta lo que ya llegó", () => {
     beforeEach(() => {
         vi.clearAllMocks()
         resetBillingDataCache()
+        resetReservationsCache()
         vi.spyOn(console, "error").mockImplementation(() => {})
         mocks.list.mockResolvedValue([{ id: "a" }, { id: "b" }, { id: "c" }])
     })

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import {
     format,
     startOfMonth,
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ChevronDown } from "lucide-react"
-import { reservationsService } from "../services/reservations-service"
+import { useReservations } from "../hooks/useReservations"
 import type { Reservation } from "@/types"
 import { cn } from "@/lib/utils"
 
@@ -108,31 +108,14 @@ function MultiSelectFilter({
 
 export function ReservationsCalendar() {
     const [currentMonth, setCurrentMonth] = useState(new Date())
-    const [reservations, setReservations] = useState<Reservation[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    // La misma lista que Operaciones: cambiar de pestaña no vuelve a pedirla.
+    const { reservations: loaded, status } = useReservations()
+    const reservations = useMemo(() => (loaded ?? []).filter(hasValidStay), [loaded])
+    const isLoading = status === "loading"
     const [filter, setFilter] = useState<MovementFilter>("both")
     // Empty set = "all". Multi-select: pick several properties / alojamientos.
     const [selectedProperties, setSelectedProperties] = useState<Set<string>>(new Set())
     const [selectedUnits, setSelectedUnits] = useState<Set<string>>(new Set())
-
-    useEffect(() => {
-        let mounted = true
-        const load = () => {
-            reservationsService.list()
-                .then((data) => { if (mounted) setReservations(data.filter(hasValidStay)) })
-                // Un fallo (o un 202 de «todavía no») no borra lo ya cargado.
-                .catch((error) => { if (mounted) console.error("[ReservationsCalendar] list() falló:", error) })
-                .finally(() => { if (mounted) setIsLoading(false) })
-        }
-        load()
-        // Misma señal que la lista: una reserva creada desde cualquier pantalla
-        // tiene que aparecer acá sin recargar la página.
-        window.addEventListener("reservationCreated", load)
-        return () => {
-            mounted = false
-            window.removeEventListener("reservationCreated", load)
-        }
-    }, [])
 
     // Only offer properties/units actually present in the loaded data.
     const propertyOptions = useMemo(() => {

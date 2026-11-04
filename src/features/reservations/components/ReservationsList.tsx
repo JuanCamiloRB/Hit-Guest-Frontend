@@ -29,8 +29,10 @@ import { format, isValid, isWithinInterval, startOfDay, endOfDay } from "date-fn
 import { es } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
-import { ReservationsNotReadyError, reservationsService } from "../services/reservations-service"
+import { reservationsService } from "../services/reservations-service"
 import { useAutomationStatusLoader } from "../hooks/useAutomationStatusLoader"
+import { reservationsCache, useReservations } from "../hooks/useReservations"
+import { EmptyState } from "@/components/ui/empty-state"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 
@@ -82,24 +84,24 @@ import {
 } from "@/components/ui/alert-dialog"
 
 
-/** Reintentos ante un «todavía no» (202) de la lista, y la espera entre ellos. */
-const NOT_READY_RETRIES = 3
-const NOT_READY_RETRY_MS = 2500
-/**
- * Al volver a la pestaña se relee la lista (un huésped puede terminar su
- * check-in desde su celular mientras el PM tiene esto abierto), pero no más de
- * una vez cada minuto: cada relectura vuelve a pedir, de fondo, el semáforo de
- * cada reserva.
- */
-const REFRESH_ON_FOCUS_MIN_MS = 60_000
 
 /** Identidad de fila para la tabla: por uuid, no por posición. */
 const rowId = (reservation: Reservation) => reservation.id
 export default function ReservationsList() {
-    const [reservations, setReservations] = useState<Reservation[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    // La lista compartida: al volver se ve la anterior mientras se refresca.
+    const { reservations: loaded, status, syncing, refreshFailed, version, refresh } = useReservations()
+    const reservations = useMemo(() => loaded ?? [], [loaded])
     // El semáforo llega aparte de la lista: visible primero, el resto de fondo.
     const { prioritize, fill, withStatus } = useAutomationStatusLoader()
+    // Cada lista que llega del servidor renueva los semáforos de fondo (un
+    // huésped pudo completar su check-in). Un `patch` local (borrar) no.
+    useEffect(() => {
+        const list = reservationsCache.read()
+        if (version > 0 && list) fill(list)
+    }, [version, fill])
+    useEffect(() => {
+        if (syncing) toast.info("Sincronización en progreso", { description: "Las reservas se actualizarán en unos segundos." })
+    }, [syncing])
     const [deleteTarget, setDeleteTarget] = useState<Reservation | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
     /**
@@ -203,7 +205,9 @@ export default function ReservationsList() {
         setIsDeleting(true)
         try {
             await reservationsService.delete(deleteTarget.id)
-            setReservations((prev) => prev.filter((r) => r.id !== deleteTarget.id))
+            // El servidor ya confirmó: la fila desaparece en el acto para todos
+            // los que miran la lista, sin volver a pedirla.
+            reservationsCache.patch((list) => list.filter((r) => r.id !== deleteTarget.id))
             toast.success("Reserva eliminada correctamente")
         } catch (error) {
             console.error("Failed to delete reservation:", error)
@@ -220,64 +224,27 @@ export default function ReservationsList() {
     )
     const rows = useMemo(() => withStatus(filtered), [filtered, withStatus])
 
-    useEffect(() => {
-        let cancelled = false
-        let retryTimer: ReturnType<typeof setTimeout> | null = null
 
-        // Un fallo nunca borra lo ya cargado: `setReservations` solo corre con
-        // datos. Un «todavía no» (202 durante una sincronización) se reintenta
-        // solo, unas pocas veces, sin dejar la tabla en blanco mientras tanto.
-        let lastLoadAt = Date.now()
-        const loadReservations = async (attempt = 0) => {
-            lastLoadAt = Date.now()
-            try {
-                const data = await reservationsService.list()
-                if (!cancelled) {
-                    setReservations(data)
-                    fill(data)
-                }
-            } catch (error) {
-                if (cancelled) return
-                if (error instanceof ReservationsNotReadyError && attempt < NOT_READY_RETRIES) {
-                    if (attempt === 0) toast.info("Sincronización en progreso", { description: "Las reservas se actualizarán en unos segundos." })
-                    retryTimer = setTimeout(() => void loadReservations(attempt + 1), NOT_READY_RETRY_MS)
-                    return
-                }
-                console.error("Failed to fetch reservations:", error)
-            } finally {
-                if (!cancelled) setIsLoading(false)
-            }
-        }
-        void loadReservations()
-
-        const handleReservationCreated = () => {
-            setIsLoading(true)
-            void loadReservations()
-        }
-
-        // Sin esqueleto: se refresca en silencio sobre lo que ya se ve.
-        const handleVisibility = () => {
-            if (document.visibilityState === "visible" && Date.now() - lastLoadAt >= REFRESH_ON_FOCUS_MIN_MS) {
-                void loadReservations()
-            }
-        }
-
-        window.addEventListener("reservationCreated", handleReservationCreated)
-        document.addEventListener("visibilitychange", handleVisibility)
-        return () => {
-            cancelled = true
-            if (retryTimer) clearTimeout(retryTimer)
-            window.removeEventListener("reservationCreated", handleReservationCreated)
-            document.removeEventListener("visibilitychange", handleVisibility)
-        }
-    }, [fill])
-
-    if (isLoading) {
+    if (status === "loading") {
         // Esqueletos con la forma de las filas que vienen: la tabla no salta
         // cuando llegan los datos, y se ve qué se está cargando.
         return (
             <div className="rounded-xl border border-rule bg-white">
                 <LoadingState rows={6} label="Cargando reservaciones" />
+            </div>
+        )
+    }
+
+    if (status === "error") {
+        // Sin lista no hay nada que filtrar: un fallo se dice, no se muestra
+        // como «no hay reservas».
+        return (
+            <div className="rounded-xl border border-rule bg-white">
+                <EmptyState
+                    title={syncing ? "Las reservas se están sincronizando" : "No pudimos cargar las reservas"}
+                    description={syncing ? "Intenta nuevamente en unos segundos." : "Revisa tu conexión e intenta de nuevo."}
+                    action={<Button variant="outline" size="sm" onClick={refresh}>Reintentar</Button>}
+                />
             </div>
         )
     }
@@ -391,6 +358,16 @@ export default function ReservationsList() {
                     </Button>
                 )}
             </div>
+
+            {refreshFailed && (
+                // Mismo aviso que el Tablero: la lista sigue a la vista, pero puede no ser la actual.
+                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-[13px] text-ink-2">
+                    <span>No pudimos actualizar la lista. Se muestra la última cargada.</span>
+                    <button type="button" onClick={refresh} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">
+                        Reintentar
+                    </button>
+                </div>
+            )}
 
             <DataTable
                 columns={columns}

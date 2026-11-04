@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { startOfMonth } from "date-fns"
-import { ReservationsNotReadyError, reservationsService } from "@/features/reservations/services/reservations-service"
+import { ReservationsNotReadyError } from "@/features/reservations/services/reservations-service"
+import { reservationsCache } from "@/features/reservations/hooks/useReservations"
 import { consumptionService, type CostLoadProgress } from "../services/consumption-service"
 import type {
     ConsumptionSummary,
@@ -115,7 +116,8 @@ export function useBillingData(): BillingData {
         const controller = new AbortController()
         activeController.current = controller
         try {
-            const reservations = await reservationsService.list()
+            // La misma lista que Operaciones y el Calendario (dedupe y último valor).
+            const reservations = await reservationsCache.load()
             if (controller.signal.aborted) return
             // Progresivo solo sin datos en pantalla (`lastResult` es lo que se
             // ve): una actualización conserva lo anterior hasta tener el
