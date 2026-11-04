@@ -16,7 +16,7 @@ import {
 
 /** Balance card + recharge (packages/custom) + transaction history. */
 export function BillingSettings() {
-    const { amount, currency, isLoading: balanceLoading, pending, refresh } = useBalanceStore()
+    const { amount, isLoading: balanceLoading, loaded: balanceLoaded, pending, error: balanceError, refresh } = useBalanceStore()
 
     const [packages, setPackages] = useState<PackagesInfo | null>(null)
     const [selected, setSelected] = useState<number | null>(null)
@@ -109,15 +109,30 @@ export function BillingSettings() {
                         <span className="text-sm text-slate-400">
                             El backend de pagos aún no está disponible.
                         </span>
-                    ) : balanceLoading && amount === null ? (
+                    ) : amount === null && (balanceLoading || !balanceLoaded) ? (
+                        // También antes de la primera consulta: sin esto el primer
+                        // render decía «no disponible» un instante.
                         <div className="h-9 w-32 animate-pulse rounded bg-slate-100" />
+                    ) : amount === null ? (
+                        // Sin saldo conocido se dice; «0,00 USD» en rojo sería un dato inventado.
+                        <div>
+                            <span className="text-4xl font-black tabular-nums text-slate-400">— USD</span>
+                            <p className="mt-1 text-xs font-medium text-amber-600">
+                                Saldo no disponible ·{" "}
+                                <button type="button" onClick={() => void refresh()} className="font-semibold underline underline-offset-2">
+                                    Reintentar
+                                </button>
+                            </p>
+                        </div>
                     ) : (
-                        <>
+                        <div>
                             <span className={`text-4xl font-black tabular-nums ${balanceColor}`}>
                                 {formatUsd(amount)}
                             </span>
-                            <span className="text-sm font-bold text-slate-400">{currency}</span>
-                        </>
+                            {balanceError && (
+                                <p className="mt-1 text-xs font-medium text-amber-600">No se pudo actualizar el saldo</p>
+                            )}
+                        </div>
                     )}
                 </div>
 

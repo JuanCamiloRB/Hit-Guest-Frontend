@@ -169,6 +169,8 @@ export function PropertiesUnits() {
     const [roomTypesLoading, setRoomTypesLoading] = useState(true)
     const [isSavingUnit, setIsSavingUnit] = useState(false)
     const saveLockRef = useRef(false)
+    /** Turno de la última carga de automatizaciones/overrides del diálogo: solo esa escribe. */
+    const overridesRequestRef = useRef(0)
 
     // ── Automations overrides state ──────────────────────────────────────────
     // Active property-level automations of the parent property
@@ -270,12 +272,20 @@ export function PropertiesUnits() {
         // configure override drafts that get created right after the listing is saved.
         if (propertyUuid) {
             setOverridesLoading(true)
+            const request = ++overridesRequestRef.current
             // Con el provider: su `name` (editable en la DB) es lo que se muestra,
             // nunca el slug (Ricardo, 2026-10-29).
             automationService.listGlobal({ propertyUuid, includeProvider: true })
-                .then(automations => setPropertyAutomations(automations.filter(a => a.isActive || isIdentityPropertyAutomation(a))))
-                .catch(() => setPropertyAutomations([]))
-                .finally(() => setOverridesLoading(false))
+                .then(automations => {
+                    if (request !== overridesRequestRef.current) return
+                    setPropertyAutomations(automations.filter(a => a.isActive || isIdentityPropertyAutomation(a)))
+                })
+                .catch(() => {
+                    if (request === overridesRequestRef.current) setPropertyAutomations([])
+                })
+                .finally(() => {
+                    if (request === overridesRequestRef.current) setOverridesLoading(false)
+                })
         }
         setIsDialogOpen(true)
     }
@@ -331,10 +341,15 @@ export function PropertiesUnits() {
         // Load property automations and listing overrides for existing listings
         if (propertyUuid && raw.uuid) {
             setOverridesLoading(true)
+            // Solo la carga del ÚLTIMO diálogo abierto escribe: abrir A, cancelar
+            // y abrir B no puede dejar en B los overrides de A (y editarlos
+            // escribiría sobre A).
+            const request = ++overridesRequestRef.current
             Promise.all([
                 automationService.listGlobal({ propertyUuid, includeProvider: true }),
                 automationService.listListingOverrides(raw.uuid),
             ]).then(([automations, overrides]) => {
+                if (request !== overridesRequestRef.current) return
                 setPropertyAutomations(automations.filter(a => a.isActive || isIdentityPropertyAutomation(a)))
 
                 // Build overrides map keyed by property automation uuid
@@ -344,9 +359,13 @@ export function PropertiesUnits() {
                 }
                 setListingOverrides(map)
             }).catch(() => {
-                setPropertyAutomations([])
-            }).finally(() => setOverridesLoading(false))
+                if (request === overridesRequestRef.current) setPropertyAutomations([])
+            }).finally(() => {
+                if (request === overridesRequestRef.current) setOverridesLoading(false)
+            })
         } else {
+            // También invalida una carga anterior en vuelo: no puede escribir aquí.
+            overridesRequestRef.current += 1
             setPropertyAutomations([])
         }
 
