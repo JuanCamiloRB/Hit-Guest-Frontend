@@ -58,6 +58,20 @@ class AllCostRequestsFailedError extends Error {
 }
 
 /**
+ * Última carga buena. Volver al Tablero la muestra de inmediato (`refreshing`)
+ * mientras se actualiza, en vez de reiniciar desde el skeleton. Un error nunca
+ * se guarda. No hace falta segmentarla por cuenta: todo cambio de cuenta
+ * (logout, 401, entrar o salir de soporte) recarga el documento y reinicia el
+ * módulo (ver `support-session.ts`).
+ */
+let lastResult: ReservationCostsResult | null = null
+
+/** Solo para tests: olvida la última carga. */
+export function resetBillingDataCache(): void {
+    lastResult = null
+}
+
+/**
  * Consumo por reserva para el Tablero. El saldo NO vive aquí: lo comparte
  * `useBalanceStore` con el header y el banner, para que digan lo mismo.
  *
@@ -70,7 +84,7 @@ class AllCostRequestsFailedError extends Error {
  * datos anteriores, se conservan y se avisa (`refreshFailed`).
  */
 export function useBillingData(): BillingData {
-    const [data, setData] = useState<ReservationCostsResult | null>(null)
+    const [data, setData] = useState<ReservationCostsResult | null>(() => lastResult)
     // Arranca en true: la primera carga sale del efecto de montaje.
     const [inFlight, setInFlight] = useState(true)
     const [lastLoadIssue, setLastLoadIssue] = useState<"error" | "syncing" | null>(null)
@@ -96,6 +110,7 @@ export function useBillingData(): BillingData {
                 throw new AllCostRequestsFailedError(result.failedReservations.length)
             }
             if (id !== requestId.current) return
+            lastResult = result
             setData(result)
             setLastLoadIssue(null)
         } catch (error) {

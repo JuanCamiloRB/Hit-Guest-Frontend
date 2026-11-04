@@ -23,7 +23,7 @@ vi.mock("../services/consumption-service", async (importOriginal) => {
     }
 })
 
-import { useBillingData } from "./useBillingData"
+import { resetBillingDataCache, useBillingData } from "./useBillingData"
 import { ReservationsNotReadyError } from "@/features/reservations/services/reservations-service"
 
 const thisMonth = new Date()
@@ -59,6 +59,7 @@ function deferred<T>() {
 describe("useBillingData — un error nunca se ve como 0 USD", () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        resetBillingDataCache()
         vi.spyOn(console, "error").mockImplementation(() => {})
         mocks.list.mockResolvedValue([{ id: "a" }])
         mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
@@ -136,6 +137,7 @@ describe("useBillingData — un error nunca se ve como 0 USD", () => {
 describe("useBillingData — actualizar no borra lo que se ve", () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        resetBillingDataCache()
         vi.spyOn(console, "error").mockImplementation(() => {})
         mocks.list.mockResolvedValue([{ id: "a" }])
         mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
@@ -217,5 +219,54 @@ describe("useBillingData — actualizar no borra lo que se ve", () => {
 
         unmount()
         expect(receivedSignal?.aborted).toBe(true)
+    })
+})
+
+describe("useBillingData — volver al Tablero muestra lo último mientras actualiza", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        resetBillingDataCache()
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        mocks.list.mockResolvedValue([{ id: "a" }])
+        mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
+    })
+
+    it("al volver arranca en refreshing con los datos anteriores, no en el skeleton", async () => {
+        const first = renderHook(() => useBillingData())
+        await waitFor(() => expect(first.result.current.status).toBe("ready"))
+        first.unmount()
+
+        const pending = deferred<ReservationCostsResult>()
+        mocks.getReservationCosts.mockReturnValueOnce(pending.promise)
+        const { result: hook } = renderHook(() => useBillingData())
+
+        expect(hook.current.status).toBe("refreshing")
+        expect(hook.current.summary?.monthTotal).toBe(2.5)
+        await act(async () => pending.resolve(result([cost("a", 2.5), cost("b", 1)])))
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+        expect(hook.current.summary?.monthTotal).toBe(3.5)
+    })
+
+    it("si la actualización al volver falla, se ven los anteriores con el aviso", async () => {
+        const first = renderHook(() => useBillingData())
+        await waitFor(() => expect(first.result.current.status).toBe("ready"))
+        first.unmount()
+
+        mocks.list.mockRejectedValueOnce(new Error("network down"))
+        const { result: hook } = renderHook(() => useBillingData())
+
+        await waitFor(() => expect(hook.current.refreshFailed).toBe(true))
+        expect(hook.current.summary?.monthTotal).toBe(2.5)
+    })
+
+    it("un error nunca queda guardado: sin una carga buena previa, volver arranca en loading", async () => {
+        mocks.list.mockRejectedValueOnce(new Error("network down"))
+        const first = renderHook(() => useBillingData())
+        await waitFor(() => expect(first.result.current.status).toBe("error"))
+        first.unmount()
+
+        const { result: hook } = renderHook(() => useBillingData())
+        expect(hook.current.status).toBe("loading")
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
     })
 })
