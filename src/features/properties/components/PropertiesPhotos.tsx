@@ -13,6 +13,7 @@ import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { propertiesService, PROPERTY_IMAGE_LIMITS, extractPicturesUrl } from "../services/properties-service"
+import { invalidatePropertiesCaches } from "../lib/properties-cache"
 import {
     validatePropertyImages,
     ALLOWED_IMAGE_ACCEPT,
@@ -68,6 +69,8 @@ export function PropertiesPhotos() {
         setIsUploading(true)
         try {
             const updated = await propertiesService.uploadImages(uuid, files)
+            // La portada de la tarjeta cambió: la lista arranca limpia al volver.
+            invalidatePropertiesCaches()
             syncGallery(extractPicturesUrl(updated))
             toast.success(files.length > 1 ? "Fotos subidas" : "Foto subida")
         } catch (err) {
@@ -82,6 +85,7 @@ export function PropertiesPhotos() {
         setDeletingUrl(url)
         try {
             const updated = await propertiesService.deleteImage(uuid, url)
+            invalidatePropertiesCaches()
             syncGallery(extractPicturesUrl(updated))
             toast.success("Foto eliminada")
         } catch (err) {

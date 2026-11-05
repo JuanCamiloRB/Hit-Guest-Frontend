@@ -1,11 +1,11 @@
 "use client"
 
-import { readPropertyTypeId } from "../lib/property-type"
-import { useState, useMemo, useEffect, useRef, useCallback } from "react"
+import { useState, useMemo, useCallback } from "react"
 import { Property, Unit } from "@/types"
 import { PropertyCard } from "./PropertyCard"
 import { Button } from "@/components/ui/button"
 import { Plus, Search, Filter, Home, List, Loader2 } from "lucide-react"
+import { EmptyState } from "@/components/ui/empty-state"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { SectionCard } from "@/components/ui/section-card"
@@ -32,45 +32,8 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
-import { apiResponseToFormData } from "../types"
-import { useAuthStore } from "@/lib/store/auth-store"
-import {
-    derivePropertyBadges,
-    type PropertyAutomationOverviewRow,
-    type PropertyBadge,
-} from "../lib/property-badges"
-
-/** Resumen por propiedad para las tarjetas. `badges: null` = no se pudo saber. */
-interface PropertyOverview {
-    activeListings: number
-    badges: PropertyBadge[] | null
-}
-
-// ── BFF helper ─────────────────────────────────────────────────────────
-// Calls our own Next.js API routes (same-origin, no CORS preflight).
-async function bffFetch<T = any>(path: string): Promise<T> {
-    const state = useAuthStore.getState()
-    const token = state.user?.token || ""
-
-    // Account-scoped data: never call without the user's session token. Prevents
-    // the auth-store hydration race from firing an unauthenticated request (which
-    // an old BFF build would have served with the shared app token — cross-account leak).
-    if (!token) {
-        throw new Error("BFF error 401: sin sesión")
-    }
-
-    const res = await fetch(path, {
-        headers: {
-            Authorization: `Bearer ${token}`,
-        },
-    })
-
-    if (!res.ok) {
-        throw new Error(`BFF error ${res.status}`)
-    }
-
-    return res.json()
-}
+import { useCachedLoad } from "@/hooks/useCachedLoad"
+import { portfolioCache, propertiesCache } from "../lib/properties-cache"
 
 // ── Component ──────────────────────────────────────────────────────────
 
@@ -78,224 +41,44 @@ export function PropertiesList() {
     const [searchQuery, setSearchQuery] = useState("")
     const [statusFilter, setStatusFilter] = useState<string>("ALL")
     const [propertyFilter, setPropertyFilter] = useState<string>("ALL")
-    const [properties, setProperties] = useState<Property[]>([])
-    const [units, setUnits] = useState<Unit[]>([])
-    const [isLoading, setIsLoading] = useState(true)
-    const [isLoadingListings, setIsLoadingListings] = useState(false)
     const [activeTab, setActiveTab] = useState("properties")
+
+    // Dos cargas, las dos detrás de caché (volver muestra lo último mientras se
+    // refresca): las propiedades solas pintan las tarjetas enseguida; el
+    // portafolio agregado (más lento) trae alojamientos, conteos e insignias.
+    const light = useCachedLoad(propertiesCache)
+    const portfolio = useCachedLoad(portfolioCache)
+    const refreshLight = light.refresh
+    const refreshPortfolio = portfolio.refresh
+    const properties = useMemo(
+        () => light.data ?? portfolio.data?.properties ?? [],
+        [light.data, portfolio.data],
+    )
+    const units = useMemo(() => portfolio.data?.listings ?? [], [portfolio.data])
     // `null` = todavía no llegó el agregado: las tarjetas muestran "—", nunca un
     // cero inventado.
-    const [overviewByProperty, setOverviewByProperty] = useState<Record<string, PropertyOverview> | null>(null)
-
-    // ── Cache refs: avoid re-fetching when switching tabs ──
-    const propertiesCacheRef = useRef<Property[] | null>(null)
-    const listingsCacheRef = useRef<Unit[] | null>(null)
-    const rawPropertiesRef = useRef<any[]>([])
-
-    // ── Fetch properties only (lightweight, for the Properties tab) ──
-    const fetchProperties = useCallback(async () => {
-        // Return cached data if available
-        if (propertiesCacheRef.current) {
-            setProperties(propertiesCacheRef.current)
-            setIsLoading(false)
-            return
-        }
-
-        setIsLoading(true)
-        try {
-            const response = await bffFetch<{ data: any[] }>("/api/bff/properties")
-            const apiProperties = response.data || []
-            rawPropertiesRef.current = apiProperties
-
-            const convertedProperties: Property[] = apiProperties.map((apiProp, index) => {
-                const formData = apiResponseToFormData(apiProp)
-                return {
-                    id: apiProp.uuid || String(index + 1),
-                    uuid: apiProp.uuid,
-                    name: formData.name,
-                    description: formData.description || "",
-                    email: formData.email,
-                    phone: formData.phone,
-                    address: {
-                        line1: formData.address,
-                        city: formData.city,
-                        country: "Colombia"
-                    },
-                    address_detail: formData.addressDetail,
-                    city: formData.city,
-                    state: formData.state,
-                    country_id: formData.countryId,
-                    geo_location: formData.latitude && formData.longitude
-                        ? `${formData.latitude},${formData.longitude}`
-                        : null,
-                    timezone: formData.timezone,
-                    status_record_id: formData.statusRecordId,
-                    status: formData.statusRecordId === 1 || formData.statusRecordId === 6 ? "ACTIVE" : "INACTIVE",
-                    type: String(readPropertyTypeId(apiProp) ?? ""),
-                    thumbnailUrl: formData.thumbnailUrl,
-                    created_at: apiProp.createdAt,
-                    updated_at: apiProp.updatedAt,
-                    extra: {
-                        ...apiProp.extra,
-                        propertyTypeId: readPropertyTypeId(apiProp),
-                        thumbnailUrl: formData.thumbnailUrl,
-                    }
-                } as unknown as Property
-            })
-
-            propertiesCacheRef.current = convertedProperties
-            setProperties(convertedProperties)
-        } catch (error) {
-            console.error("[PropertiesList] Error fetching properties:", error)
-            setProperties([])
-        } finally {
-            setIsLoading(false)
-        }
-    }, [])
-
-    // ── Fetch listings + resumen por propiedad (agregado) ──
-    const listingsInFlightRef = useRef(false)
-    const fetchListings = useCallback(async () => {
-        // Return cached data if available
-        if (listingsCacheRef.current) {
-            setUnits(listingsCacheRef.current)
-            return
-        }
-        // El montaje y el cambio de pestaña pueden pedirlo casi a la vez; una
-        // sola petición alcanza para los dos.
-        if (listingsInFlightRef.current) return
-        listingsInFlightRef.current = true
-
-        setIsLoadingListings(true)
-        try {
-            // Use the aggregated BFF endpoint — 1 request, server does the N calls
-            const response = await bffFetch<{
-                properties: any[]
-                listings: any[]
-                automationsByProperty?: Record<string, PropertyAutomationOverviewRow[] | null>
-            }>("/api/bff/properties-with-listings")
-
-            const apiUnits = response.listings || []
-
-            const convertedUnits: Unit[] = apiUnits.map((u: any, index) => {
-                const uPrice = Number(u.price || u.start_price || u.startPrice || u.total_price || u.extra?.startPrice || 0)
-                const isActive = (u.statusRecordId === 1 || u.statusRecordId === 6 || u.status_record_id === 1 || u.status_record_id === 6 || u.statusRecord?.id === 1 || u.statusRecord?.id === 6)
-
-                return {
-                    id: u.uuid || String(index + 1),
-                    uuid: u.uuid,
-                    propertyId: u._propertyUuid || u.propertyUuid || u.property_uuid || u.property_id || "",
-                    name: u.name,
-                    number: u.internalName || u.internal_name || "",
-                    type: "ENTIRE_PLACE",
-                    capacity: u.extra?.maxOccupancy || u.extra?.max_occupancy || u.maxOccupancy || 2,
-                    amenities: [],
-                    pricePerNight: uPrice,
-                    status: isActive ? "ACTIVE" : "INACTIVE",
-                    inheritWifi: false
-                } as Unit
-            })
-
-            listingsCacheRef.current = convertedUnits
-            setUnits(convertedUnits)
-
-            // Resumen por propiedad para las tarjetas: conteo de alojamientos
-            // activos + insignias de automatizaciones encendidas. Solo datos que
-            // el backend afirma: un fetch de automations caído llega como `null`
-            // y la tarjeta no muestra insignias (tampoco la ausencia de
-            // cerradura) en vez de afirmar "nada configurado".
-            const autoMap = response.automationsByProperty ?? {}
-            const activeCounts: Record<string, number> = {}
-            for (const unit of convertedUnits) {
-                if (unit.status === "ACTIVE" && unit.propertyId) {
-                    activeCounts[unit.propertyId] = (activeCounts[unit.propertyId] ?? 0) + 1
-                }
-            }
-            const overview: Record<string, PropertyOverview> = {}
-            const propertyUuids = new Set<string>([
-                ...(response.properties ?? []).map((p) => String(p.uuid)),
-                ...Object.keys(autoMap),
-            ])
-            for (const uuid of propertyUuids) {
-                overview[uuid] = {
-                    activeListings: activeCounts[uuid] ?? 0,
-                    badges: derivePropertyBadges(autoMap[uuid] ?? null),
-                }
-            }
-            setOverviewByProperty(overview)
-
-            // Also update properties cache if we got them from the aggregated endpoint
-            if (response.properties && !propertiesCacheRef.current) {
-                const apiProperties = response.properties
-                rawPropertiesRef.current = apiProperties
-                const convertedProperties: Property[] = apiProperties.map((apiProp, index) => {
-                    const formData = apiResponseToFormData(apiProp)
-                    return {
-                        id: apiProp.uuid || String(index + 1),
-                        uuid: apiProp.uuid,
-                        name: formData.name,
-                        description: formData.description || "",
-                        email: formData.email,
-                        phone: formData.phone,
-                        address: { line1: formData.address, city: formData.city, country: "Colombia" },
-                        address_detail: formData.addressDetail,
-                        city: formData.city,
-                        state: formData.state,
-                        country_id: formData.countryId,
-                        geo_location: formData.latitude && formData.longitude ? `${formData.latitude},${formData.longitude}` : null,
-                        timezone: formData.timezone,
-                        status_record_id: formData.statusRecordId,
-                        status: formData.statusRecordId === 1 || formData.statusRecordId === 6 ? "ACTIVE" : "INACTIVE",
-                        type: String(readPropertyTypeId(apiProp) ?? ""),
-                        thumbnailUrl: formData.thumbnailUrl,
-                        created_at: apiProp.createdAt,
-                        updated_at: apiProp.updatedAt,
-                        extra: {
-                            ...apiProp.extra,
-                            propertyTypeId: readPropertyTypeId(apiProp),
-                            thumbnailUrl: formData.thumbnailUrl,
-                        }
-                    } as unknown as Property
-                })
-                propertiesCacheRef.current = convertedProperties
-                setProperties(convertedProperties)
-            }
-        } catch (error) {
-            console.error("[PropertiesList] Error fetching listings:", error)
-            setUnits([])
-        } finally {
-            listingsInFlightRef.current = false
-            setIsLoadingListings(false)
-        }
-    }, [])
-
-    // ── Initial load ──
-    // Properties primero (pinta rápido) y el agregado en segundo plano: de él
-    // salen el conteo de alojamientos y las insignias de las tarjetas. Ambos
-    // cachean, así que el cambio de pestaña no repite nada.
-    useEffect(() => {
-        fetchProperties()
-        fetchListings()
-    }, [fetchProperties, fetchListings])
+    const overviewByProperty = portfolio.data?.overview ?? null
+    const hasProperties = light.data !== null || portfolio.data !== null
+    const isLoading = !hasProperties && (light.status === "loading" || portfolio.status === "loading")
+    // Sin nada cargado y las dos cargas caídas: se dice, no «no hay propiedades».
+    const propertiesFailed = !hasProperties && light.status === "error" && portfolio.status === "error"
+    const isLoadingListings = portfolio.status === "loading"
+    const listingsFailed = portfolio.status === "error"
+    const retryAll = useCallback(() => {
+        refreshLight()
+        refreshPortfolio()
+    }, [refreshLight, refreshPortfolio])
 
     // Activar o desactivar una propiedad también cambia sus alojamientos en el
     // backend (contrato 2026-10-27: apaga los activos y, al reactivarla, vuelven
-    // esos mismos). Sin releer, el conteo de alojamientos activos y la pestaña
-    // Alojamientos quedaban con el estado viejo.
+    // esos mismos). La tarjeta cambia en el acto y el portafolio se relee
+    // detrás, conservando lo que se ve.
     const handlePropertyStatusChange = useCallback((uuid: string, status: "ACTIVE" | "INACTIVE") => {
         const apply = (list: Property[]) => list.map((property) => property.uuid === uuid ? { ...property, status } : property)
-        if (propertiesCacheRef.current) propertiesCacheRef.current = apply(propertiesCacheRef.current)
-        setProperties(apply)
-        listingsCacheRef.current = null
-        void fetchListings()
-    }, [fetchListings])
-
-    // ── Lazy load listings when switching to Alojamientos tab ──
-    useEffect(() => {
-        if (activeTab === "units" && !listingsCacheRef.current) {
-            fetchListings()
-        }
-    }, [activeTab, fetchListings])
+        propertiesCache.patch(apply)
+        portfolioCache.patch((current) => ({ ...current, properties: apply(current.properties) }))
+        refreshPortfolio()
+    }, [refreshPortfolio])
 
     const filteredProperties = useMemo(() => {
         return properties.filter((property: Property) => {
@@ -390,6 +173,14 @@ export function PropertiesList() {
                             <Loader2 className="h-12 w-12 text-[var(--color-brand-purple)] animate-spin mb-4" />
                             <p className="text-[var(--color-brand-navy)]/60 font-bold tracking-wide">Preparando tus propiedades...</p>
                         </div>
+                    ) : propertiesFailed ? (
+                        <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
+                            <EmptyState
+                                title="No pudimos cargar tus propiedades"
+                                description="Revisa tu conexión e intenta de nuevo."
+                                action={<Button variant="outline" size="sm" onClick={retryAll}>Reintentar</Button>}
+                            />
+                        </div>
                     ) : filteredProperties.length === 0 ? (
                         <div className="text-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
                             <div className="bg-slate-100 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -402,7 +193,9 @@ export function PropertiesList() {
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {filteredProperties.map((property: Property) => (
                                 <PropertyCard
-                                    key={property.id}
+                                    // El interruptor de la tarjeta se siembra al montar: si el
+                                    // estado llega distinto en un refresco, se vuelve a montar.
+                                    key={`${property.id}-${property.status}`}
                                     property={property}
                                     activeListings={overviewByProperty?.[property.uuid ?? ""]?.activeListings ?? null}
                                     badges={overviewByProperty?.[property.uuid ?? ""]?.badges ?? null}
@@ -417,6 +210,14 @@ export function PropertiesList() {
                     {isLoadingListings ? (
                         <SectionCard flush title="Listado de Alojamientos">
                             <LoadingState rows={5} label="Cargando alojamientos" />
+                        </SectionCard>
+                    ) : listingsFailed ? (
+                        <SectionCard flush title="Listado de Alojamientos">
+                            <EmptyState
+                                title="No pudimos cargar los alojamientos"
+                                description="Revisa tu conexión e intenta de nuevo."
+                                action={<Button variant="outline" size="sm" onClick={refreshPortfolio}>Reintentar</Button>}
+                            />
                         </SectionCard>
                     ) : (
                         <SectionCard

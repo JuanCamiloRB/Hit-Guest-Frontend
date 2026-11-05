@@ -72,6 +72,7 @@ import { readInactiveResourceError } from "@/lib/inactive-resource"
 import { automationDisplay } from "../lib/automation-display"
 import { DeactivationConfirmDialog } from "./DeactivationConfirmDialog"
 import type { ExternalPmsId } from "../types"
+import { invalidatePropertiesCaches } from "../lib/properties-cache"
 
 const defaultUnit = {
     name: "",
@@ -443,6 +444,7 @@ export function PropertiesUnits() {
                 if (editingIndex !== null && (unitForm as any).uuid) {
                     // UPDATE existing listing — use updatePayload which includes root-level price (PUT accepts it)
                     const updated = await listingsService.update((unitForm as any).uuid, updatePayload as any)
+                    invalidatePropertiesCaches()
                     const apiData = updated?.data ?? updated ?? {}
                     // Rebuild local state: price comes from extra.startPrice
                     const refreshed = {
@@ -475,6 +477,7 @@ export function PropertiesUnits() {
                 } else {
                     // CREATE new listing
                     const created = await listingsService.create(payload as any)
+                    invalidatePropertiesCaches()
                     const apiData = created?.data ?? created ?? {}
                     const newListingUuid = apiData.uuid || created?.uuid
                     if (!newListingUuid) {
@@ -571,6 +574,7 @@ export function PropertiesUnits() {
         if (propertyUuid && unit.uuid) {
             try {
                 await listingsService.delete(unit.uuid)
+                invalidatePropertiesCaches()
                 toast.success("Unidad eliminada")
             } catch (err) {
                 console.error("[PropertiesUnits] Error deleting listing:", err)

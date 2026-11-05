@@ -69,6 +69,26 @@ describe("createStaleCache", () => {
         expect(cache.read()).toEqual(["v3"])
     })
 
+    it("invalidate olvida el valor (avisa) y lo en vuelo; el siguiente load pide de nuevo", async () => {
+        const pending = deferred<string[]>()
+        const fetcher = vi.fn().mockResolvedValueOnce(["v1"]).mockReturnValueOnce(pending.promise).mockResolvedValueOnce(["v3"])
+        const cache = createStaleCache(fetcher)
+        await cache.load()
+        const listener = vi.fn()
+        cache.subscribe(listener)
+        const stale = cache.refresh()
+
+        cache.invalidate()
+        expect(cache.read()).toBeNull()
+        expect(listener).toHaveBeenCalledTimes(1)
+
+        pending.resolve(["v2"])
+        await stale
+        expect(cache.read()).toBeNull()
+        await cache.load()
+        expect(cache.read()).toEqual(["v3"])
+    })
+
     it("reset descarta lo en vuelo", async () => {
         const pending = deferred<string[]>()
         const cache = createStaleCache(() => pending.promise)

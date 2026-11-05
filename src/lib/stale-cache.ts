@@ -8,6 +8,11 @@
  * - `refresh()`: pide de nuevo aunque haya una en vuelo, y esa anterior deja
  *   de contar (empezó antes del cambio que motiva el refresco): su resultado
  *   llega a quien la pidió, pero no se guarda.
+ * - `invalidate()`: olvida el valor y lo en vuelo. Para cuando una mutación
+ *   dejó el valor guardado en un estado que se sabe incorrecto: la próxima
+ *   pantalla arranca limpia en vez de mostrarlo. SOLO sin pantallas montadas
+ *   sobre la caché (la mutación ocurre en otra ruta): una montada quedaría sin
+ *   valor y sin carga, que se lee como error. Con una montada, `refresh()`.
  * - `patch()`: ajusta el valor en el acto (quitar una fila borrada) sin
  *   esperar al servidor.
  * - `subscribe()` + `read()`: para `useSyncExternalStore`.
@@ -19,6 +24,7 @@ export interface StaleCache<T> {
     read(): T | null
     load(): Promise<T>
     refresh(): Promise<T>
+    invalidate(): void
     patch(update: (value: T) => T): void
     subscribe(listener: () => void): () => void
     /** Solo para tests: vuelve al estado inicial. */
@@ -51,6 +57,12 @@ export function createStaleCache<T>(fetcher: () => Promise<T>): StaleCache<T> {
         read: () => value,
         load: () => inflight ?? start(),
         refresh: () => start(),
+        invalidate() {
+            inflight = null
+            if (value === null) return
+            value = null
+            notify()
+        },
         patch(update) {
             if (value === null) return
             value = update(value)

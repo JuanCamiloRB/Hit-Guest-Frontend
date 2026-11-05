@@ -52,7 +52,7 @@ function fieldError(errors: ApiError["errors"], key: string): string | null {
  */
 export function AirbnbIcalPanel() {
     const userUuid = useAuthStore((s) => s.user?.uuid)
-    const { listings, isLoading: loadingListings } = usePortfolio()
+    const { listings, isLoading: loadingListings, loadFailed: listingsFailed, refresh: retryListings } = usePortfolio()
 
     const [feeds, setFeeds] = useState<IcalFeed[] | null>(null)
     const [loadError, setLoadError] = useState(false)
@@ -274,6 +274,8 @@ export function AirbnbIcalPanel() {
                 onClose={() => setCreateOpen(false)}
                 listings={listings.map((l) => ({ uuid: String(l.uuid), name: l.name }))}
                 loadingListings={loadingListings}
+                listingsFailed={listingsFailed}
+                onRetryListings={retryListings}
                 userUuid={userUuid}
                 onCreated={(feed) => {
                     setFeeds((prev) => [...(prev ?? []), feed])
@@ -345,6 +347,8 @@ function CreateFeedDialog({
     onClose,
     listings,
     loadingListings,
+    listingsFailed,
+    onRetryListings,
     userUuid,
     onCreated,
 }: {
@@ -352,6 +356,9 @@ function CreateFeedDialog({
     onClose: () => void
     listings: { uuid: string; name: string }[]
     loadingListings: boolean
+    /** El portafolio no cargó: el selector lo dice, no queda vacío en silencio. */
+    listingsFailed: boolean
+    onRetryListings: () => void
     userUuid: string | undefined
     onCreated: (feed: IcalFeed) => void
 }) {
@@ -449,6 +456,14 @@ function CreateFeedDialog({
                                 ))}
                             </SelectContent>
                         </Select>
+                        {listingsFailed && (
+                            <p role="alert" className="text-xs text-warning">
+                                No pudimos cargar tus alojamientos.{" "}
+                                <button type="button" onClick={onRetryListings} className="font-semibold underline underline-offset-2">
+                                    Reintentar
+                                </button>
+                            </p>
+                        )}
                     </div>
 
                     <div className="space-y-1.5">

@@ -61,6 +61,7 @@ import { readExternalIdentifierServerErrors } from "../lib/external-pms-ids"
 import { ApiError } from "@/types/api"
 import { RECORD_STATUS, readRecordStatus } from "../lib/record-status"
 import { DeactivationConfirmDialog } from "./DeactivationConfirmDialog"
+import { invalidatePropertiesCaches } from "../lib/properties-cache"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { COMMUNICATION_LOCALES, LOCALE_LABELS, DEFAULT_COMMUNICATION_LOCALE } from "@/lib/locales"
 
@@ -271,10 +272,12 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
 
             if (propertyUuid) {
                 await propertiesService.update(propertyUuid, submitValues)
+                invalidatePropertiesCaches()
                 toast.success("Propiedad actualizada")
                 router.push("/dashboard/properties")
             } else {
                 const response = await propertiesService.create(submitValues)
+                invalidatePropertiesCaches()
                 const responseWithEnvelope = response as PropertyApiResponse & { data?: PropertyApiResponse }
                 propertyUuid = response.uuid || responseWithEnvelope.data?.uuid
                 if (!propertyUuid) {
@@ -350,6 +353,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         setIsDeleting(true)
         try {
             await propertiesService.delete(initialData.uuid)
+            invalidatePropertiesCaches()
             toast.success("Propiedad eliminada", {
                 description: "La propiedad ha sido eliminada exitosamente.",
             })
