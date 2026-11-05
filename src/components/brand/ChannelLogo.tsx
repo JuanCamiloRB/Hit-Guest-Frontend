@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 import { Building2, Globe2 } from "lucide-react"
-import { siAirbnb, siBookingdotcom, siExpedia, siTripadvisor, type SimpleIcon } from "simple-icons"
+import { siAirbnb, siBookingdotcom, siExpedia, siGoogleads, siGooglecalendar, siTripadvisor, siTripdotcom, type SimpleIcon } from "simple-icons"
 import { cn } from "@/lib/utils"
 
 /**
@@ -41,6 +41,9 @@ const BRANDS: Readonly<Record<string, BrandVisual>> = {
     booking: { color: "text-[#003a9a]", background: "bg-[#eef4ff]", render: simpleIcon(siBookingdotcom) },
     expedia: { color: "text-[#191e3b]", background: "bg-[#eef0f7]", render: simpleIcon(siExpedia) },
     tripadvisor: { color: "text-[#00aa6c]", background: "bg-[#e9fbf4]", render: simpleIcon(siTripadvisor) },
+    tripcom: { color: "text-[#287dfa]", background: "bg-[#eef5ff]", render: simpleIcon(siTripdotcom) },
+    googlecalendar: { color: "text-[#4285f4]", background: "bg-[#eef3fe]", render: simpleIcon(siGooglecalendar) },
+    googleads: { color: "text-[#4285f4]", background: "bg-[#eef3fe]", render: simpleIcon(siGoogleads) },
 }
 
 /** Alias de nombre o slug → marca. «Booking», «Booking.com», «booking_com» son lo mismo. */
@@ -50,6 +53,9 @@ const ALIASES: Readonly<Record<string, string>> = {
     booking: "booking", bookingcom: "booking",
     expedia: "expedia",
     tripadvisor: "tripadvisor",
+    tripcom: "tripcom",
+    googlecalendar: "googlecalendar",
+    googleads: "googleads",
 }
 
 /** La marca de un slug o un nombre de canal; `null` si no tiene logo propio. */
