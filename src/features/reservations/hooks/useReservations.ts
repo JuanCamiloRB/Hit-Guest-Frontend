@@ -11,7 +11,7 @@ import { ReservationsNotReadyError, reservationsService } from "../services/rese
  * volver a cualquiera de los tres muestra la última lista al instante mientras
  * se refresca detrás, y los tres piden una sola vez.
  */
-export const reservationsCache = createStaleCache(() => reservationsService.list())
+export const reservationsCache = createStaleCache((signal) => reservationsService.list(signal))
 
 /** Solo para tests. */
 export function resetReservationsCache(): void {

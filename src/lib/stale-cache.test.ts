@@ -112,3 +112,82 @@ describe("createStaleCache", () => {
         expect(listener).toHaveBeenCalledTimes(2)
     })
 })
+
+describe("createStaleCache — cancelación", () => {
+    it("refresh cancela la petición que reemplaza, y quien la esperaba recibe el resultado nuevo", async () => {
+        const signals: AbortSignal[] = []
+        const fresh = deferred<string[]>()
+        const fetcher = vi.fn((signal: AbortSignal) => {
+            signals.push(signal)
+            if (signals.length === 1) {
+                return new Promise<string[]>((_, reject) => signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))))
+            }
+            return fresh.promise
+        })
+        const cache = createStaleCache(fetcher)
+        const waiting = cache.load()
+
+        const refreshed = cache.refresh()
+        expect(signals[0].aborted).toBe(true)
+        fresh.resolve(["nuevo"])
+        await expect(waiting).resolves.toEqual(["nuevo"])
+        await expect(refreshed).resolves.toEqual(["nuevo"])
+        expect(cache.read()).toEqual(["nuevo"])
+    })
+
+    it("invalidate cancela lo en vuelo", () => {
+        let seen: AbortSignal | undefined
+        const cache = createStaleCache((signal) => {
+            seen = signal
+            return new Promise<string[]>(() => {})
+        })
+        void cache.load().catch(() => {})
+        cache.invalidate()
+        expect(seen?.aborted).toBe(true)
+    })
+
+    it("sin consumidores se cancela tras un tick; cambiar de pantalla en el mismo render no cancela", async () => {
+        const signals: AbortSignal[] = []
+        const cache = createStaleCache((signal) => {
+            signals.push(signal)
+            return new Promise<string[]>(() => {})
+        })
+        // Cambio de pestaña: una pantalla se va y otra llega en el mismo render.
+        const leave = cache.subscribe(() => {})
+        void cache.load().catch(() => {})
+        leave()
+        const stay = cache.subscribe(() => {})
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        expect(signals[0].aborted).toBe(false)
+
+        // Ya no queda nadie.
+        stay()
+        await new Promise((resolve) => setTimeout(resolve, 5))
+        expect(signals[0].aborted).toBe(true)
+    })
+
+    it("si la nueva falla de verdad, quien esperaba la reemplazada recibe ESE fallo, no la cancelación", async () => {
+        let n = 0
+        const cache = createStaleCache((signal) => {
+            n += 1
+            if (n === 1) return new Promise<string[]>((_, reject) => signal.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))))
+            return Promise.reject(new Error("503"))
+        })
+        const waiting = cache.load()
+        await expect(cache.refresh()).rejects.toThrow("503")
+        await expect(waiting).rejects.toThrow("503")
+    })
+
+    it("sin consumidores, una respuesta que llega igual (fetcher que ignora la señal) se guarda", async () => {
+        const late = deferred<string[]>()
+        const cache = createStaleCache(() => late.promise)
+        const leave = cache.subscribe(() => {})
+        void cache.load().catch(() => {})
+        leave()
+        await new Promise((resolve) => setTimeout(resolve, 5))
+
+        late.resolve(["precargado"])
+        await new Promise((resolve) => setTimeout(resolve, 0))
+        expect(cache.read()).toEqual(["precargado"])
+    })
+})

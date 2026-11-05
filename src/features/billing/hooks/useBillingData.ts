@@ -162,6 +162,10 @@ export function useBillingData(): BillingData {
         void fetchCosts()
     }, [fetchCosts])
 
+    // El Tablero cuenta como consumidor de la lista compartida mientras está
+    // montado: sin esto, la caché cancelaría su carga por «nadie mirando».
+    useEffect(() => reservationsCache.subscribe(() => {}), [])
+
     useEffect(() => {
         void fetchCosts()
         // El botón «Nueva Reserva» vive en el encabezado de este mismo Tablero:

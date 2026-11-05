@@ -298,3 +298,78 @@ describe("origen por `source.slug`: un nombre renombrado en el catálogo no camb
         })
     })
 })
+
+describe("reservationsService.list — cancelación y duplicados entre páginas", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        vi.spyOn(console, "info").mockImplementation(() => {})
+        mocks.listProperties.mockResolvedValue([])
+        mocks.listByProperty.mockResolvedValue([])
+    })
+
+    it("la señal llega a cada página; cancelar la lista corta las que siguen en vuelo", async () => {
+        const row = (n: number) => ({ ...NUEVA, uuid: `res-${n}` })
+        const seen: AbortSignal[] = []
+        vi.stubGlobal("fetch", vi.fn((url: string, init: RequestInit) => {
+            seen.push(init.signal as AbortSignal)
+            const n = Number(new URL(url, "http://x").searchParams.get("page"))
+            if (n === 1) return Promise.resolve(page([row(1)], { last_page: 3 }))
+            return new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))))
+        }))
+        const controller = new AbortController()
+        const pending = reservationsService.list(controller.signal)
+        await vi.waitFor(() => expect(seen).toHaveLength(3))
+
+        controller.abort()
+        await expect(pending).rejects.toMatchObject({ name: "AbortError" })
+        expect(seen.slice(1).every((signal) => signal.aborted)).toBe(true)
+        expect(console.error).not.toHaveBeenCalled()
+    })
+
+    it("una página que falla cancela las demás y se reporta ESE fallo, no las cancelaciones", async () => {
+        const row = (n: number) => ({ ...NUEVA, uuid: `res-${n}` })
+        const seen: AbortSignal[] = []
+        vi.stubGlobal("fetch", vi.fn((url: string, init: RequestInit) => {
+            const n = Number(new URL(url, "http://x").searchParams.get("page"))
+            if (n === 1) return Promise.resolve(page([row(1)], { last_page: 3 }))
+            if (n === 2) return Promise.resolve(page([], undefined, 503))
+            seen.push(init.signal as AbortSignal)
+            return new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))))
+        }))
+        await expect(reservationsService.list()).rejects.toMatchObject({ status: 503 })
+        expect(seen[0]?.aborted).toBe(true)
+    })
+
+    it("una reserva repetida entre páginas (la lista cambió mientras se pedía) sale una sola vez", async () => {
+        const row = (n: number) => ({ ...NUEVA, uuid: `res-${n}` })
+        vi.stubGlobal("fetch", vi.fn((url: string) => {
+            const n = Number(new URL(url, "http://x").searchParams.get("page"))
+            if (n === 1) return Promise.resolve(page([row(1), row(2)], { last_page: 2 }))
+            return Promise.resolve(page([row(2), row(3)], { last_page: 2 }))
+        }))
+        const list = await reservationsService.list()
+        expect(list.map((r) => r.id)).toEqual(["res-1", "res-2", "res-3"])
+    })
+
+    it("cancelar mientras se lee el cuerpo es una cancelación, no «sin arreglo», y no se registra como error", async () => {
+        const controller = new AbortController()
+        vi.stubGlobal("fetch", vi.fn(() => Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => {
+                controller.abort()
+                return Promise.reject(new DOMException("aborted", "AbortError"))
+            },
+        } as unknown as Response)))
+        await expect(reservationsService.list(controller.signal)).rejects.toMatchObject({ name: "AbortError" })
+        expect(console.error).not.toHaveBeenCalled()
+    })
+
+    it("las filas sin uuid ni id no se deduplican entre sí (se descartan después, al mapear)", async () => {
+        const sinId = { ...NUEVA, uuid: undefined, id: undefined }
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(page([NUEVA, NUEVA, sinId, sinId])))
+        const list = await reservationsService.list()
+        expect(list.map((r) => r.id)).toEqual(["res-nueva"])
+    })
+})

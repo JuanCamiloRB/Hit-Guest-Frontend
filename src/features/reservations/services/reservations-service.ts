@@ -205,6 +205,24 @@ const CHECKIN_NAME_RE = /identity|verificaci[oó]n|check-?in/i
  */
 const CONTRACT_NAME_RE = /firma|contrato|signature/i
 
+/**
+ * Una reserva por uuid (o id). Con páginas pedidas en paralelo sobre una lista
+ * que cambia, un alta o una baja corre filas de una página a otra y la misma
+ * reserva puede llegar dos veces.
+ */
+function dedupeById(items: unknown[]): unknown[] {
+    const seen = new Set<string>()
+    return items.filter((item) => {
+        const raw = item as { uuid?: unknown; id?: unknown } | null
+        const key = raw?.uuid ?? raw?.id
+        if (key == null) return true
+        const id = String(key)
+        if (seen.has(id)) return false
+        seen.add(id)
+        return true
+    })
+}
+
 /** Páginas de `GET /reservations` en vuelo a la vez, después de la primera. */
 const RESERVATION_PAGE_CONCURRENCY = 4
 
@@ -1026,24 +1044,16 @@ export class ReservationsService {
         return r?.message || "La exoneración fue revocada."
     }
 
-    /** In-flight `list()` promise, shared to dedupe concurrent callers. */
-    private listInFlight: Promise<Reservation[]> | null = null
-
     /**
      * Lists reservations, SIN el semáforo de automatizaciones (ver
      * `loadAutomationStatus`: una petición por reserva, solo para las filas
      * que se ven).
      *
-     * Concurrent callers on the same page (e.g. StatsCards + ReservationsList)
-     * share a single in-flight request so the reservations fetch runs once.
-     * This is deduping, NOT caching: the shared promise is cleared as soon as
-     * it settles, so every later call (manual refresh, after create/delete)
-     * fetches fresh data.
+     * La comparte y deduplica `reservationsCache` (useReservations); por eso
+     * aquí no hay caché propia. `signal` corta todas las páginas en vuelo.
      */
-    async list(): Promise<Reservation[]> {
-        if (this.listInFlight) return this.listInFlight
-        this.listInFlight = this.fetchList().finally(() => { this.listInFlight = null })
-        return this.listInFlight
+    async list(signal?: AbortSignal): Promise<Reservation[]> {
+        return this.fetchList(signal)
     }
 
     /**
@@ -1097,7 +1107,9 @@ export class ReservationsService {
         return total
     }
 
-    private async fetchReservationsPage(page: number): Promise<{ items: unknown[]; lastPage: number }> {
+    private async fetchReservationsPage(page: number, signal?: AbortSignal): Promise<{ items: unknown[]; lastPage: number }> {
+        // Cancelada antes de salir (p. ej. entre la página 1 y las demás): no se pide.
+        signal?.throwIfAborted()
         const token = useAuthStore.getState().user?.token
         const res = await fetch(`${API_BASE}/reservations?page=${page}`, {
             headers: {
@@ -1105,8 +1117,11 @@ export class ReservationsService {
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             cache: "no-store",
+            signal,
         })
         const json: unknown = await res.json().catch(() => ({}))
+        // Cancelada mientras se leía el cuerpo: es una cancelación, no «sin arreglo».
+        signal?.throwIfAborted()
         if (res.status === 202) throw new ReservationsNotReadyError(json)
         if (!res.ok) {
             if (res.status === 401) handleSessionExpired()
@@ -1135,24 +1150,43 @@ export class ReservationsService {
      * `RESERVATION_PAGE_CONCURRENCY`), en vez de una tras otra. El orden se
      * conserva y cualquier página fallida sigue siendo un fallo de la lista.
      */
-    private async fetchAllReservationPages(): Promise<unknown[]> {
+    private async fetchAllReservationPages(signal?: AbortSignal): Promise<unknown[]> {
         const MAX_PAGES = 100
-        const first = await this.fetchReservationsPage(1)
+        const first = await this.fetchReservationsPage(1, signal)
         if (first.lastPage > MAX_PAGES) {
             // Una lista parcial presentada como completa es peor que un fallo.
             throw new Error(`GET /reservations: ${first.lastPage} páginas superan el máximo de ${MAX_PAGES}; no se entrega una lista parcial`)
         }
-        if (first.lastPage === 1) return first.items
+        if (first.lastPage === 1) return dedupeById(first.items)
         console.info(`[reservations] GET /reservations viene paginado (${first.lastPage} páginas): se siguen todas.`)
 
         const rest = Array.from({ length: first.lastPage - 1 }, (_, i) => i + 2)
-        const results = await settleWithConcurrency(rest, RESERVATION_PAGE_CONCURRENCY, (page) => this.fetchReservationsPage(page))
-        const all = [...first.items]
-        for (const result of results) {
-            if (result.status === "rejected") throw result.reason
-            all.push(...result.value.items)
+        // Una página que falla hace inútiles las demás (la lista sería parcial):
+        // se cancelan, y también si quien pidió la lista la cancela.
+        const pages = new AbortController()
+        const cancelPages = () => pages.abort()
+        signal?.addEventListener("abort", cancelPages, { once: true })
+        let failure: unknown = null
+        try {
+            const results = await settleWithConcurrency(
+                rest,
+                RESERVATION_PAGE_CONCURRENCY,
+                (page) => this.fetchReservationsPage(page, pages.signal),
+                pages.signal,
+                (_index, result) => {
+                    if (result.status === "rejected" && failure === null) {
+                        failure = result.reason
+                        pages.abort()
+                    }
+                },
+            )
+            // Se reporta el fallo que cortó la lista, no las cancelaciones que provocó.
+            if (failure !== null) throw failure
+            signal?.throwIfAborted()
+            return dedupeById([...first.items, ...results.flatMap((r) => (r.status === "fulfilled" ? r.value.items : []))])
+        } finally {
+            signal?.removeEventListener("abort", cancelPages)
         }
-        return all
     }
 
     /**
@@ -1170,12 +1204,12 @@ export class ReservationsService {
         return buildTrafficLight(items, reservation.isCheckinCompleted === true)
     }
 
-    private async fetchList(): Promise<Reservation[]> {
+    private async fetchList(signal?: AbortSignal): Promise<Reservation[]> {
 
         try {
             // Independent requests — run together instead of one blocking the other.
             const [dataArray, lookupResult] = await Promise.all([
-                this.fetchAllReservationPages(),
+                this.fetchAllReservationPages(signal),
                 buildListingLookup(),
             ])
             const { map: listingLookup, failedProperties } = lookupResult
@@ -1309,7 +1343,10 @@ export class ReservationsService {
             // `loadAutomationStatus`.
             return reservations
         } catch (error) {
-            console.error("[ReservationsService] Error listing reservations:", error)
+            // Cancelar (refresco que reemplaza, nadie mirando) no es un fallo que reportar.
+            if ((error as { name?: string })?.name !== "AbortError") {
+                console.error("[ReservationsService] Error listing reservations:", error)
+            }
             throw error
         }
     }
