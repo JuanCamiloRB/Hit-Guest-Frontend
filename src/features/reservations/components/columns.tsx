@@ -212,7 +212,8 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         // encabezado se quedaría sin control de orden.
         // Sin semáforo (cargando o fallido) no hay valor: `sortUndefined: "last"`
         // lo deja al final en los dos sentidos, nunca mezclado con «—».
-        accessorFn: (row: Reservation) => row.automationStatus?.[key],
+        // `ForSort`: mientras se completa un orden, el valor de cuando empezó.
+        accessorFn: (row: Reservation) => row.automationStatusForSort?.[key],
         sortUndefined: "last" as const,
         // TanStack decide la primera dirección mirando el valor de la primera
         // fila; sin semáforo todavía sería `undefined` y empezaría al revés.
@@ -220,7 +221,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         // Ordena por severidad, no por el texto de la pastilla: pulsar CONTRATO
         // responde "¿cuáles me faltan por firmar?" y sube esos al principio.
         sortingFn: ((a: Row<Reservation>, b: Row<Reservation>) =>
-            compareLight(key, a.original.automationStatus, b.original.automationStatus)) as SortingFn<Reservation>,
+            compareLight(key, a.original.automationStatusForSort, b.original.automationStatusForSort)) as SortingFn<Reservation>,
         cell: ({ row }: { row: Row<Reservation> }) => {
             const res = row.original
             if (res.automationStatusFailed) {

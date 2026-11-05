@@ -10,9 +10,18 @@ export const STATUS_CONCURRENCY = 6
 
 /**
  * Lo que se sabe del semáforo de una reserva. Ausente = todavía cargando;
- * `failed` = la consulta falló, que NO es «sin automatizaciones».
+ * `ok: false` = la consulta falló, que NO es «sin automatizaciones». Un fallo
+ * que se está reintentando sigue contando como resultado (`retrying`): la
+ * celda muestra que carga, pero un orden por estado ya completo no vuelve a
+ * «Preparando…» por un reintento.
  */
-type StatusEntry = { ok: true; status: AutomationStatus } | { ok: false }
+type StatusEntry = { ok: true; status: AutomationStatus } | { ok: false; retrying?: true }
+
+/**
+ * Lo que se sabía de los semáforos en un momento dado: para ordenar con esos
+ * valores mientras llegan los nuevos, sin que la tabla salte con cada uno.
+ */
+export type StatusSnapshot = ReadonlyMap<string, StatusEntry>
 
 /** Cómo terminó una preparación (`ensure`): con todo, o cancelada. */
 export type EnsureOutcome = { cancelled: false; failed: number } | { cancelled: true }
@@ -93,7 +102,7 @@ export function useAutomationStatusLoader() {
     /** Reintenta UNA fila que falló, adelante de todo. */
     const retry = useCallback((row: Reservation) => {
         const next = new Map(entriesRef.current)
-        next.delete(row.id)
+        next.set(row.id, { ok: false, retrying: true })
         entriesRef.current = next
         setEntries(next)
         queueRef.current?.request([row], true)
@@ -105,6 +114,10 @@ export function useAutomationStatusLoader() {
      * tienen resultado (un fallo cuenta como resultado), con cuántas fallaron;
      * o como cancelada. `cancel` retira de la cola lo que sigue esperando
      * turno: quien cancela vuelve a pedir lo que sí necesita (lo visible).
+     *
+     * Operaciones no espera la promesa (deriva «Preparando…» de lo que ya
+     * llegó); solo usa `cancel`. La promesa es el contrato de quien sí
+     * necesite esperar, y nunca queda colgada.
      */
     const ensure = useCallback((rows: readonly Reservation[]): StatusPreparation => {
         const requested = missing(rows)
@@ -136,13 +149,22 @@ export function useAutomationStatusLoader() {
         }
     }, [])
 
-    /** Las filas con lo que se sabe: semáforo, fallo o nada (cargando). */
+    /**
+     * Las filas con lo que se sabe: semáforo, fallo o nada (cargando). Con
+     * `sortBy`, el valor por el que se ORDENA sale de esa foto (lo que se ve
+     * sigue en vivo): una fila que no estaba en la foto queda al final.
+     */
     const withStatus = useCallback(
-        (rows: readonly Reservation[]): Reservation[] =>
+        (rows: readonly Reservation[], sortBy?: StatusSnapshot | null): Reservation[] =>
             rows.map((row) => {
                 const entry = entries.get(row.id)
-                if (!entry) return row
-                return entry.ok ? { ...row, automationStatus: entry.status } : { ...row, automationStatusFailed: true }
+                const sortEntry = sortBy ? sortBy.get(row.id) : entry
+                const automationStatusForSort = sortEntry?.ok ? sortEntry.status : undefined
+                // Sin resultado, o reintentando: la celda dice que carga.
+                if (!entry || (!entry.ok && entry.retrying)) return sortBy || entry ? { ...row, automationStatusForSort } : row
+                return entry.ok
+                    ? { ...row, automationStatus: entry.status, automationStatusForSort }
+                    : { ...row, automationStatusFailed: true, automationStatusForSort }
             }),
         [entries],
     )
@@ -153,5 +175,5 @@ export function useAutomationStatusLoader() {
         [entries],
     )
 
-    return { prioritize, prefetch, renew, retry, ensure, withStatus, settledCount }
+    return { prioritize, prefetch, renew, retry, ensure, withStatus, settledCount, snapshot: entries as StatusSnapshot }
 }

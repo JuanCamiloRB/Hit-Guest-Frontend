@@ -31,7 +31,7 @@ import { es } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { reservationsService } from "../services/reservations-service"
-import { useAutomationStatusLoader, type StatusPreparation } from "../hooks/useAutomationStatusLoader"
+import { useAutomationStatusLoader, type StatusSnapshot } from "../hooks/useAutomationStatusLoader"
 import { reservationsCache, useReservations } from "../hooks/useReservations"
 import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -89,6 +89,8 @@ import {
 
 /** Columnas que ordenan por el semáforo: necesitan el de todas las filas antes de ordenar. */
 const STATUS_SORT_COLUMNS = new Set(["link", "checkin", "contract", "code"])
+/** `some`, no solo el primero: el orden múltiple (shift + clic) también cuenta. */
+const hasStatusSort = (sorting: SortingState) => sorting.some((s) => STATUS_SORT_COLUMNS.has(s.id))
 
 /** Valor del filtro de origen para las reservas sin canal informado. */
 const NO_SOURCE = "__sin_origen__"
@@ -101,7 +103,7 @@ export default function ReservationsList() {
     const reservations = useMemo(() => loaded ?? [], [loaded])
     // El semáforo llega aparte de la lista y solo para lo necesario: lo visible
     // primero, la página siguiente detrás, todo solo al ordenar por estado.
-    const { prioritize, prefetch, renew, retry: retryStatus, ensure, withStatus, settledCount } = useAutomationStatusLoader()
+    const { prioritize, prefetch, renew, retry: retryStatus, ensure, withStatus, settledCount, snapshot } = useAutomationStatusLoader()
     const visibleRowsRef = useRef<Reservation[]>([])
     const nextRowsRef = useRef<Reservation[]>([])
     const handleVisibleRows = useCallback((visible: Reservation[], next: Reservation[]) => {
@@ -245,64 +247,64 @@ export default function ReservationsList() {
         () => getColumns({ onDelete: requestDelete, onRetryStatus: retryStatus }),
         [requestDelete, retryStatus]
     )
-    const rows = useMemo(() => withStatus(filtered), [filtered, withStatus])
-
     // Ordenar por una columna de estado necesita el semáforo de TODAS las filas
-    // del filtro: se intercepta, se completa lo que falta y recién ahí se ordena.
-    // Con datos a medias el orden sería falso. El resto de columnas, al instante.
+    // del filtro. Con datos a medias el orden sería falso, así que mientras
+    // falten se «prepara»: se piden y la tabla sigue con el último orden
+    // completo. El resto de columnas, al instante.
+    //
+    // - `sorting`: lo que pidió el usuario.
+    // - `shown`: lo que la tabla muestra (el último orden completo), la foto de
+    //   valores con que se ordena mientras se prepara, y el último orden sin
+    //   columnas de estado (a donde vuelve «Cancelar orden»).
     const [sorting, setSorting] = useState<SortingState>(() => [...DEFAULT_SORTING])
-    const [preparingSort, setPreparingSort] = useState<Reservation[] | null>(null)
-    const sortRequest = useRef(0)
-    // La carga masiva de la preparación en curso: cancelarla la saca de la cola.
-    const preparation = useRef<StatusPreparation | null>(null)
-    /**
-     * Corta la preparación en curso: lo que esperaba turno no sale (con 500
-     * reservas, cancelar no termina pidiendo las otras 480). Lo en vuelo
-     * termina. Lo visible y la página siguiente se vuelven a pedir, porque la
-     * preparación los había adelantado en la misma cola.
-     */
-    const stopPreparation = () => {
-        if (!preparation.current) return
-        preparation.current.cancel()
-        preparation.current = null
-        prioritize(visibleRowsRef.current)
-        prefetch(nextRowsRef.current)
+    const [shown, setShown] = useState<{ sorting: SortingState; frozen: StatusSnapshot | null; lastPlain: SortingState }>(
+        () => ({ sorting, frozen: null, lastPlain: sorting }),
+    )
+    const settled = settledCount(filtered)
+    // Un fallo cuenta como resultado: queda al final, con su aviso.
+    const preparing = hasStatusSort(sorting) && settled < filtered.length
+    if (!preparing && (shown.sorting !== sorting || shown.frozen)) {
+        // Completo: se aplica una sola vez, con los valores actuales.
+        setShown({ sorting, frozen: null, lastPlain: hasStatusSort(sorting) ? shown.lastPlain : sorting })
+    } else if (preparing && hasStatusSort(shown.sorting) && !shown.frozen) {
+        // El conjunto ordenado por estado creció (otro filtro, una reserva
+        // nueva): se ordena con lo que se sabía; lo nuevo, estable al final.
+        setShown({ ...shown, frozen: snapshot })
     }
-    const statusSortActive = sorting.some((s) => STATUS_SORT_COLUMNS.has(s.id))
-    // Mientras se ordena por estado, lo que se agregue (otro filtro, una reserva
-    // nueva) también se completa: el orden no puede volver a quedar a medias.
+    const tableSorting = preparing ? shown.sorting : sorting
+    const sortValues = preparing ? shown.frozen : null
+    const rows = useMemo(() => withStatus(filtered, sortValues), [filtered, sortValues, withStatus])
+
+    // La carga de lo que falta, para el conjunto MÁS RECIENTE: si el filtro
+    // cambia en medio, la limpieza retira lo que la anterior dejó esperando
+    // (lo en vuelo termina) y se prepara la nueva. Lo visible y la página
+    // siguiente se vuelven a pedir: la preparación los había adelantado en la
+    // misma cola.
+    const preparingRows = preparing ? filtered : null
     useEffect(() => {
-        if (statusSortActive) prefetch(filtered)
-    }, [statusSortActive, filtered, prefetch])
-    // En vivo, no guardado: si una fila se reintenta con éxito, deja de contar.
-    const failedInStatusSort = statusSortActive ? rows.filter((r) => r.automationStatusFailed).length : 0
-    const cancelPreparingSort = () => {
-        sortRequest.current += 1
-        stopPreparation()
-        setPreparingSort(null)
-    }
-    const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
-        const next = typeof updater === "function" ? updater(sorting) : updater
-        const request = ++sortRequest.current
-        const target = filtered
-        // Gana el último pedido: lo que preparaba el anterior ya no hace falta.
-        stopPreparation()
-        // `some`, no solo el primero: el orden múltiple (shift + clic) también cuenta.
-        if (!next.some((s) => STATUS_SORT_COLUMNS.has(s.id)) || settledCount(target) === target.length) {
-            setSorting(next)
-            setPreparingSort(null)
-            return
+        if (!preparingRows) return
+        const preparation = ensure(preparingRows)
+        return () => {
+            preparation.cancel()
+            // Después del commit: si cambió el filtro, la tabla ya avisó cuáles
+            // son las filas visibles NUEVAS (no se piden las que quedaron fuera).
+            queueMicrotask(() => {
+                prioritize(visibleRowsRef.current)
+                prefetch(nextRowsRef.current)
+            })
         }
-        setPreparingSort(target)
-        const current = ensure(target)
-        preparation.current = current
-        void current.promise.then((outcome) => {
-            // Cancelada, o reemplazada por otro pedido: gana el último.
-            if (outcome.cancelled || request !== sortRequest.current) return
-            preparation.current = null
-            setSorting(next)
-            setPreparingSort(null)
-        })
+    }, [preparingRows, ensure, prioritize, prefetch])
+
+    // En vivo, no guardado: si una fila se reintenta con éxito, deja de contar.
+    const failedInStatusSort = !preparing && hasStatusSort(tableSorting)
+        ? rows.filter((r) => r.automationStatusFailed).length
+        : 0
+    // Nunca queda un orden por estado que se sabe incompleto: vuelve al último
+    // orden sin columnas de estado (normalmente, por fecha de entrada).
+    const cancelPreparingSort = () => setSorting(shown.lastPlain)
+    // Gana siempre el último pedido; relativo a lo que se ve.
+    const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+        setSorting(typeof updater === "function" ? updater(tableSorting) : updater)
     }
 
 
@@ -451,9 +453,9 @@ export default function ReservationsList() {
                 </div>
             )}
 
-            {preparingSort ? (
+            {preparing ? (
                 <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-sunk px-3 py-2 text-[13px] text-ink-2">
-                    <span>Preparando todos los estados para ordenar… {settledCount(preparingSort)} de {preparingSort.length}</span>
+                    <span>Preparando todos los estados para ordenar… {settled} de {filtered.length}</span>
                     <button type="button" onClick={cancelPreparingSort} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">
                         Cancelar orden
                     </button>
@@ -467,7 +469,7 @@ export default function ReservationsList() {
             <DataTable
                 columns={columns}
                 data={rows}
-                sorting={sorting}
+                sorting={tableSorting}
                 onSortingChange={handleSortingChange}
                 getRowId={rowId}
                 onVisibleRowsChange={handleVisibleRows}

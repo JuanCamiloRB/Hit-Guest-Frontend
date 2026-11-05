@@ -7,6 +7,7 @@ import { ReservationsNotReadyError } from "../services/reservations-service"
 
 const mocks = vi.hoisted(() => ({
     deleteHandler: null as null | ((reservation: Reservation) => void),
+    retryHandler: null as null | ((reservation: Reservation) => void),
     list: vi.fn(),
     remove: vi.fn(),
     getReservationCost: vi.fn(),
@@ -14,8 +15,9 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("./columns", () => ({
-    getColumns: ({ onDelete }: { onDelete: (reservation: Reservation) => void }) => {
+    getColumns: ({ onDelete, onRetryStatus }: { onDelete: (reservation: Reservation) => void; onRetryStatus: (reservation: Reservation) => void }) => {
         mocks.deleteHandler = onDelete
+        mocks.retryHandler = onRetryStatus
         return []
     },
 }))
@@ -30,11 +32,13 @@ vi.mock("@/components/shared/data-table", () => ({
         <>
             <span data-testid="row-count">{data.length}</span>
             <span data-testid="sorting">{sorting?.map((s) => s.id).join(",")}</span>
+            <span data-testid="sort-values">{data.map((r) => `${r.id}:${r.automationStatusForSort?.contract ?? "-"}`).join(",")}</span>
             <button type="button" onClick={() => mocks.deleteHandler?.(data[0])}>Solicitar eliminación</button>
             <button type="button" onClick={() => onSortingChange?.([{ id: "contract", desc: false }])}>Ordenar por contrato</button>
             <button type="button" onClick={() => onSortingChange?.([{ id: "guestName", desc: false }])}>Ordenar por huésped</button>
             <button type="button" onClick={() => onSortingChange?.([{ id: "guestName", desc: false }, { id: "checkin", desc: false }])}>Ordenar múltiple</button>
             <button type="button" onClick={() => onVisibleRowsChange?.(data.slice(0, 10), data.slice(10, 20))}>Mostrar primera página</button>
+            <button type="button" onClick={() => mocks.retryHandler?.(data.find((r) => r.automationStatusFailed)!)}>Reintentar la fallida</button>
         </>
     ),
 }))
@@ -380,5 +384,137 @@ describe("ReservationsList — ordenar por un estado espera a tenerlos todos", (
         ])
         await act(async () => { window.dispatchEvent(new Event("reservationCreated")) })
         await waitFor(() => expect(mocks.loadAutomationStatus.mock.calls.slice(before).map(([r]) => r.id)).toContain("d"))
+    })
+})
+
+describe("ReservationsList — el conjunto cambia con un orden por estado activo", () => {
+    const rowsOf = (...ids: string[]) => ids.map((id) => ({ ...reservation, id }))
+    let gates: Map<string, (value: unknown) => void>
+    const started = () => mocks.loadAutomationStatus.mock.calls.map(([r]) => r.id as string)
+
+    beforeEach(() => {
+        resetReservationsCache()
+        vi.clearAllMocks()
+        gates = new Map()
+        mocks.list.mockResolvedValue(rowsOf("a", "b", "c"))
+        mocks.loadAutomationStatus.mockImplementation((r: Reservation) =>
+            ["a", "b", "c"].includes(r.id)
+                ? Promise.resolve({ contract: "success" })
+                : new Promise((resolve) => gates.set(r.id, resolve)))
+    })
+
+    async function sortedByContract() {
+        render(<ReservationsList />)
+        await screen.findByTestId("row-count")
+        fireEvent.click(screen.getByRole("button", { name: "Ordenar por contrato" }))
+        await waitFor(() => expect(screen.getByTestId("sorting")).toHaveTextContent("contract"))
+        expect(screen.queryByText(/Preparando/)).toBeNull()
+    }
+
+    async function listBecomes(...ids: string[]) {
+        mocks.list.mockResolvedValue(rowsOf(...ids))
+        await act(async () => { window.dispatchEvent(new Event("reservationCreated")) })
+        await waitFor(() => expect(screen.getByTestId("row-count")).toHaveTextContent(String(ids.length)))
+    }
+
+    it("filas nuevas: vuelve «Preparando…», el orden sigue y lo que llega no mueve nada; al completar, se aplica una vez", async () => {
+        await sortedByContract()
+        await listBecomes("a", "b", "c", "d", "e")
+
+        expect(await screen.findByText(/Preparando todos los estados para ordenar… 3 de 5/)).toBeInTheDocument()
+        expect(screen.getByTestId("sorting")).toHaveTextContent("contract")
+        await waitFor(() => expect(gates.has("e")).toBe(true))
+
+        await act(async () => gates.get("d")!({ contract: "pending" }))
+        expect(await screen.findByText(/4 de 5/)).toBeInTheDocument()
+        // Se ordena con lo que se sabía al empezar: «d» sigue sin valor (al final).
+        expect(screen.getByTestId("sort-values")).toHaveTextContent("d:-")
+
+        await act(async () => gates.get("e")!({ contract: "success" }))
+        await waitFor(() => expect(screen.queryByText(/Preparando/)).toBeNull())
+        expect(screen.getByTestId("sort-values")).toHaveTextContent("d:pending")
+        expect(screen.getByTestId("sorting")).toHaveTextContent("contract")
+    })
+
+    it("«Cancelar orden» con el conjunto a medias vuelve al último orden sin estados", async () => {
+        await sortedByContract()
+        await listBecomes("a", "b", "c", "d")
+
+        fireEvent.click(await screen.findByRole("button", { name: "Cancelar orden" }))
+        expect(screen.queryByText(/Preparando/)).toBeNull()
+        expect(screen.getByTestId("sorting")).toHaveTextContent("checkIn")
+        expect(screen.getByTestId("sorting")).not.toHaveTextContent("contract")
+    })
+
+    it("si el conjunto vuelve a cambiar durante «Preparando…», gana el último: lo que esperaba turno del anterior no sale", async () => {
+        await sortedByContract()
+        const first = Array.from({ length: 10 }, (_, i) => `n${i + 1}`)
+        await listBecomes("a", "b", "c", ...first)
+        await waitFor(() => expect(gates.size).toBe(6))
+
+        await listBecomes("a", "b", "c", "m1", "m2")
+        expect(await screen.findByText(/Preparando todos los estados para ordenar… 3 de 5/)).toBeInTheDocument()
+        // Se liberan los seis en vuelo de la preparación anterior.
+        await act(async () => ["n1", "n2", "n3", "n4", "n5", "n6"].forEach((id) => gates.get(id)!({ contract: "success" })))
+        await waitFor(() => expect(started()).toEqual(expect.arrayContaining(["m1", "m2"])))
+        expect(started()).not.toEqual(expect.arrayContaining(["n7"]))
+        expect(started().filter((id) => ["n7", "n8", "n9", "n10"].includes(id))).toEqual([])
+
+        await act(async () => { gates.get("m1")!({ contract: "success" }); gates.get("m2")!({ contract: "pending" }) })
+        await waitFor(() => expect(screen.queryByText(/Preparando/)).toBeNull())
+        expect(screen.getByTestId("sorting")).toHaveTextContent("contract")
+    })
+
+    it("una fila que falla mientras el conjunto crece cuenta como resultado: queda al final, con el aviso", async () => {
+        await sortedByContract()
+        await listBecomes("a", "b", "c", "d")
+        expect(await screen.findByText(/Preparando todos los estados para ordenar… 3 de 4/)).toBeInTheDocument()
+        await waitFor(() => expect(gates.has("d")).toBe(true))
+        mocks.loadAutomationStatus.mockClear()
+
+        // Un 503 se modela como rechazo: el `gate` resuelve, así que se reemplaza.
+        await act(async () => { gates.get("d")!(Promise.reject(new Error("503"))) })
+        await waitFor(() => expect(screen.queryByText(/Preparando/)).toBeNull())
+        expect(screen.getByText(/No se pudo cargar el estado de 1 reserva: queda al final del orden/)).toBeInTheDocument()
+        expect(screen.getByTestId("sort-values")).toHaveTextContent("d:-")
+        expect(screen.getByTestId("sorting")).toHaveTextContent("contract")
+    })
+
+    it("reintentar la fallida con el orden ya completo no vuelve a «Preparando…» ni pone «Cancelar orden»", async () => {
+        mocks.loadAutomationStatus.mockImplementation((r: Reservation) =>
+            r.id === "a" ? Promise.reject(new Error("503")) : Promise.resolve({ contract: "success" }))
+        await sortedByContract()
+        expect(screen.getByText(/No se pudo cargar el estado de 1 reserva/)).toBeInTheDocument()
+
+        let finish!: (value: unknown) => void
+        mocks.loadAutomationStatus.mockImplementation(() => new Promise((resolve) => { finish = resolve }))
+        fireEvent.click(screen.getByRole("button", { name: "Reintentar la fallida" }))
+        expect(screen.queryByText(/Preparando/)).toBeNull()
+        expect(screen.queryByRole("button", { name: "Cancelar orden" })).toBeNull()
+        expect(screen.getByTestId("sorting")).toHaveTextContent("contract")
+        // Mientras se reintenta deja de contar como fallida.
+        expect(screen.queryByText(/No se pudo cargar el estado/)).toBeNull()
+
+        await waitFor(() => expect(finish).toBeDefined())
+        await act(async () => finish({ contract: "pending" }))
+        expect(screen.getByTestId("sort-values")).toHaveTextContent("a:pending")
+        expect(screen.getByTestId("sorting")).toHaveTextContent("contract")
+    })
+
+    it("si el filtro cambia durante el PRIMER «Preparando…», se prepara el conjunto nuevo y el orden se aplica al completarlo", async () => {
+        render(<ReservationsList />)
+        await screen.findByTestId("row-count")
+        await listBecomes("a", "b", "x")
+        fireEvent.click(screen.getByRole("button", { name: "Ordenar por contrato" }))
+        expect(await screen.findByText(/Preparando todos los estados para ordenar… 2 de 3/)).toBeInTheDocument()
+
+        await listBecomes("a", "y")
+        expect(await screen.findByText(/Preparando todos los estados para ordenar… 1 de 2/)).toBeInTheDocument()
+        expect(screen.getByTestId("sorting")).toHaveTextContent("checkIn")
+        await waitFor(() => expect(gates.has("y")).toBe(true))
+
+        await act(async () => gates.get("y")!({ contract: "pending" }))
+        await waitFor(() => expect(screen.getByTestId("sorting")).toHaveTextContent("contract"))
+        expect(screen.queryByText(/Preparando/)).toBeNull()
     })
 })

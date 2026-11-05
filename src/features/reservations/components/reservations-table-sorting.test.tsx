@@ -29,6 +29,8 @@ const makeReservation = (
     source: "Direct",
     totalPrice: 180,
     ...overrides,
+    // Como `withStatus` fuera de una preparación: se ordena por el valor vivo.
+    automationStatusForSort: overrides.automationStatusForSort ?? overrides.automationStatus,
 }) as Reservation
 
 const ROWS: Reservation[] = [

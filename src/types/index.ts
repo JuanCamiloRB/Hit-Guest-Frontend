@@ -121,6 +121,12 @@ export interface Reservation {
      * de `automationStatus` ausente (todavía cargando) y de «sin automatización».
      */
     automationStatusFailed?: boolean
+    /**
+     * Solo de pantalla: el semáforo por el que se ORDENA. Igual a
+     * `automationStatus`, salvo mientras se completa un orden por estado: ahí
+     * es el que había al empezar, para que la tabla no salte con cada llegada.
+     */
+    automationStatusForSort?: AutomationStatus
     /** Check-in de la reserva completo (`isCheckinCompleted` del backend). */
     isCheckinCompleted?: boolean
     /** Huéspedes esperados en la reserva (`total_guests`). */
