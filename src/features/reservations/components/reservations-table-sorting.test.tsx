@@ -137,3 +137,27 @@ describe("ordenamiento de la tabla de reservas", () => {
         expect(renderedGuests()[0]).toContain("Pendiente Dos")
     })
 })
+
+describe("columnas de estado — cargando, listo y «No disponible»", () => {
+    it("una fila cuyo semáforo falló dice «No disponible» (nunca «—») y reintenta solo esa fila", () => {
+        const retried: string[] = []
+        const failed = makeReservation("r1", "Bruno Perez", "2026-07-23", { automationStatusFailed: true })
+        const loading = makeReservation("r2", "Ana Torres", "2026-08-05")
+        render(
+            <DataTable
+                columns={getColumns({ onRetryStatus: (r) => retried.push(r.id) })}
+                data={[failed, loading]}
+            />,
+        )
+
+        const failedRow = screen.getByText("Bruno Perez").closest("tr")!
+        // LINK lleva el reintento; CHECK-IN, CONTRATO, ACCESO y REPORTES solo lo dicen.
+        expect(within(failedRow).getAllByText("No disponible")).toHaveLength(5)
+        fireEvent.click(within(failedRow).getByRole("button", { name: "No disponible. Reintentar el estado de Bruno Perez" }))
+        expect(retried).toEqual(["r1"])
+
+        const loadingRow = screen.getByText("Ana Torres").closest("tr")!
+        expect(within(loadingRow).getAllByText("Cargando estado")).toHaveLength(5)
+        expect(within(loadingRow).queryByText("No disponible")).toBeNull()
+    })
+})

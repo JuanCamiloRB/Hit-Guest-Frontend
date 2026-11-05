@@ -1049,6 +1049,14 @@ golpe, también para el Tablero, que no lo usa. Operaciones lo pide por fila
 visible con `useAutomationStatusLoader` (6 a la vez, lo visible primero, el
 resto de fondo); `Reservation.automationStatus === undefined` significa
 «cargando», no «sin automatizaciones».
+**2026-11-05 (2):** un FALLO de `automation-status` ya no se convierte en
+`[]` («—», no configurada): `loadAutomationStatus` lo lanza, la fila queda
+con `automationStatusFailed` y se pinta «No disponible» con reintento por
+fila. ⚠️ Sin verificar por curl: qué responde `automation-status` para una
+reserva sin alojamiento o con el alojamiento borrado (¿`[]` o 4xx?). Si es
+4xx, esas filas dirán «No disponible» siempre; en ese caso, tratar ESE
+status concreto como «sin automatizaciones» en el servicio, nunca con un
+catch genérico.
 
 ### ✅ Catálogo `property_type` — los ids NO son 100/101/102 = Casa/Hotel/Apartamento
 

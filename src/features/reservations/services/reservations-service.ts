@@ -1167,16 +1167,15 @@ export class ReservationsService {
     /**
      * Semáforo de automatizaciones de UNA reserva. Vive aparte de `list()` a
      * propósito: es una petición por reserva y solo Operaciones la necesita,
-     * para las filas que se ven. Un fallo de esta consulta no es un fallo de
-     * la lista: el semáforo queda «sin datos», como siempre.
+     * para las filas que se ven. Un fallo se LANZA: convertirlo en «sin
+     * automatizaciones» mostraba un 500 como si el backend hubiera dicho «no
+     * configurada». Quien lo pide decide cómo decirlo.
      */
     async loadAutomationStatus(
         reservation: Pick<Reservation, "id" | "isCheckinCompleted">,
         signal?: AbortSignal,
     ): Promise<AutomationStatus> {
-        const items = await automationService
-            .getReservationStatus(reservation.id, signal)
-            .catch(() => [] as AutomationStatusItem[])
+        const items = await automationService.getReservationStatus(reservation.id, signal)
         return buildTrafficLight(items, reservation.isCheckinCompleted === true)
     }
 

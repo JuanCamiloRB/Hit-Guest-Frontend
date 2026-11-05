@@ -164,10 +164,11 @@ describe("reservationsService.list — bordes de la paginación y de las filas",
         expect(status.checkin).toBe("success")
     })
 
-    it("loadAutomationStatus: si la consulta falla, el semáforo queda sin datos (no se tumba la fila)", async () => {
+    it("loadAutomationStatus: un fallo se lanza, nunca se convierte en «sin automatizaciones»", async () => {
         mocks.getReservationStatus.mockRejectedValueOnce(new Error("503"))
-        const status = await reservationsService.loadAutomationStatus({ id: "res-nueva", isCheckinCompleted: false })
-        expect(status.checkin).toBe("none")
+        await expect(
+            reservationsService.loadAutomationStatus({ id: "res-nueva", isCheckinCompleted: false }),
+        ).rejects.toThrow("503")
     })
 
     it("las páginas 2..última se piden en paralelo y la lista conserva el orden", async () => {

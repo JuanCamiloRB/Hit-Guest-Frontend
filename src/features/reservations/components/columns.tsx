@@ -3,7 +3,7 @@
 import { ColumnDef, Row, SortingFn } from "@tanstack/react-table"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cancelDetailPrefetch, startDetailPrefetch } from "../lib/detail-prefetch"
-import { MoreVertical, Trash2 } from "lucide-react"
+import { MoreVertical, Trash2, RefreshCw } from "lucide-react"
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import Link from "next/link"
 
@@ -26,6 +26,8 @@ import { compareText, compareDates, compareStatus, compareLight } from "./reserv
 
 export interface ColumnsOptions {
     onDelete?: (reservation: Reservation) => void
+    /** Reintenta el semáforo de una fila cuya consulta falló. */
+    onRetryStatus?: (reservation: Reservation) => void
 }
 
 /** Column headers for the per-automation status columns. */
@@ -51,6 +53,32 @@ const sortByStatus: SortingFn<Reservation> = (a, b) =>
     compareStatus(a.original.status, b.original.status)
 
 /**
+ * La consulta del semáforo de la fila falló: «No disponible», nunca «—» (que
+ * significa «no configurada»). Una sola consulta trae todas las luces de la
+ * fila, así que el reintento va solo en la primera columna.
+ */
+function StatusUnavailable({ reservation, onRetry }: { reservation?: Reservation; onRetry?: (reservation: Reservation) => void }) {
+    if (!reservation || !onRetry) return <StatusPill tone="idle">No disponible</StatusPill>
+    // La misma píldora que las demás celdas, dentro de un botón: se ven iguales
+    // y el reintento no duplica estilos.
+    return (
+        <button
+            type="button"
+            onClick={() => onRetry(reservation)}
+            // El nombre empieza por lo que se ve (WCAG 2.5.3): «No disponible».
+            aria-label={`No disponible. Reintentar el estado de ${reservation.guestName}`}
+            title="Reintentar"
+            className="rounded-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        >
+            <StatusPill tone="idle">
+                No disponible
+                <RefreshCw className="h-3 w-3" aria-hidden />
+            </StatusPill>
+        </button>
+    )
+}
+
+/**
  * El semáforo se carga por fila visible después de la lista: hasta que llega,
  * la celda dice que está cargando, nunca «—» (que significa «no configurada»).
  */
@@ -66,7 +94,7 @@ function StatusLoading() {
 }
 
 export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
-  const { onDelete } = options || {}
+  const { onDelete, onRetryStatus } = options || {}
   return [
     {
         accessorKey: "guestName",
@@ -181,6 +209,11 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             compareLight(key, a.original.automationStatus, b.original.automationStatus)) as SortingFn<Reservation>,
         cell: ({ row }: { row: Row<Reservation> }) => {
             const res = row.original
+            if (res.automationStatusFailed) {
+                return key === "link"
+                    ? <StatusUnavailable reservation={res} onRetry={onRetryStatus} />
+                    : <StatusUnavailable />
+            }
             if (res.automationStatus === undefined) return <StatusLoading />
             // CHECK-IN dice cuántos huéspedes TERMINARON su check-in ("1 de 3
             // completados") — solo ese eje, por decisión de producto (2026-08-21):
@@ -203,6 +236,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         enableSorting: false,
         cell: ({ row }) => {
             const status = row.original.automationStatus
+            if (row.original.automationStatusFailed) return <StatusUnavailable />
             if (status === undefined) return <StatusLoading />
             return (
                 <div className="flex flex-wrap items-center gap-1">

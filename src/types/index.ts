@@ -110,6 +110,11 @@ export interface Reservation {
      * carga por fila visible en Operaciones), no «sin automatizaciones».
      */
     automationStatus?: AutomationStatus
+    /**
+     * Solo de pantalla: la consulta del semáforo de esta fila falló. Distinto
+     * de `automationStatus` ausente (todavía cargando) y de «sin automatización».
+     */
+    automationStatusFailed?: boolean
     /** Check-in de la reserva completo (`isCheckinCompleted` del backend). */
     isCheckinCompleted?: boolean
     /** Huéspedes esperados en la reserva (`total_guests`). */

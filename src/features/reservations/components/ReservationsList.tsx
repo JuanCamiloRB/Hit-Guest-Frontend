@@ -92,7 +92,7 @@ export default function ReservationsList() {
     const { reservations: loaded, status, syncing, refreshFailed, version, refresh } = useReservations()
     const reservations = useMemo(() => loaded ?? [], [loaded])
     // El semáforo llega aparte de la lista: visible primero, el resto de fondo.
-    const { prioritize, fill, withStatus } = useAutomationStatusLoader()
+    const { prioritize, fill, retry: retryStatus, withStatus } = useAutomationStatusLoader()
     // Cada lista que llega del servidor renueva los semáforos de fondo (un
     // huésped pudo completar su check-in). Un `patch` local (borrar) no.
     useEffect(() => {
@@ -219,8 +219,8 @@ export default function ReservationsList() {
     }
 
     const columns = useMemo(
-        () => getColumns({ onDelete: requestDelete }),
-        [requestDelete]
+        () => getColumns({ onDelete: requestDelete, onRetryStatus: retryStatus }),
+        [requestDelete, retryStatus]
     )
     const rows = useMemo(() => withStatus(filtered), [filtered, withStatus])
 
