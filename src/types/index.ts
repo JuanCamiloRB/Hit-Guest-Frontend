@@ -103,7 +103,13 @@ export interface Reservation {
     statusLabel?: string | null
     /** Id crudo del catálogo `status_reservation`; `null` si el backend no lo mandó. */
     statusId?: number | null
-    source: "Airbnb" | "Booking" | "Direct"
+    /**
+     * Canal comercial con su nombre real (Airbnb, Expedia, Directo…); `null`
+     * si el backend no lo informó. Nunca se colapsa en «Direct».
+     */
+    source: string | null
+    /** Clave del canal para el logo (`airbnb`, `direct`…). */
+    sourceSlug?: string | null
     totalPrice: number
     /**
      * Semáforo de automatizaciones. `undefined` = todavía no se consultó (se

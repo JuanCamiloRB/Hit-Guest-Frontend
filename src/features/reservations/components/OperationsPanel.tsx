@@ -3,6 +3,7 @@
 import { useState, type ComponentType, type ReactNode } from "react"
 import { reservationsService } from "../services/reservations-service"
 import { useReservationDetail } from "../hooks/useReservationDetail"
+import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import {
@@ -53,7 +54,7 @@ import { RegisterPriceDialog } from "./RegisterPriceDialog"
 import {
     getReservationStatusMeta,
     isReservationActionable,
-    isExternalReservation,
+    reservationChannelKind,
     formatGuestName,
     guestInitials,
 } from "./reservation-status-meta"
@@ -218,7 +219,11 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
     // Un canal que no es Direct llega por channel manager / OTA; el panel antes
     // rotulaba TODA reserva como "Reserva Externa", contradiciendo el
     // "Plataforma Direct" que mostraba justo al lado.
-    const isExternal = isExternalReservation(data.source)
+    // Directa solo si el canal dice Directo; sin canal (o «Desconocido»), se dice que no se sabe.
+    const channelKind = reservationChannelKind(data.source, data.sourceSlug)
+    const channelLabel = channelKind === "external"
+        ? `Reserva externa · ${data.source}`
+        : channelKind === "direct" ? "Reserva directa" : UNKNOWN_CHANNEL_LABEL
     const disabledReason = isActionable
         ? undefined
         : `La reserva está ${statusMeta.label.toLowerCase()}: no admite acciones sobre el huésped.`
@@ -325,9 +330,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                             {guestName}
                                         </h2>
                                         <p className="mt-1 truncate text-sm text-ink-3">
-                                            {isExternal
-                                                ? `Reserva externa · ${data.source}`
-                                                : "Reserva directa"}
+                                            {channelLabel}
                                             {data.externalId && ` · ${data.externalId}`}
                                         </p>
                                     </div>
@@ -442,7 +445,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                         ? `Importada desde ${data.origin.importSourceLabel ?? "el PMS"}`
                                         : data.origin.originKnown
                                             ? "Creada manualmente en HitGuest"
-                                            : isExternal ? `Canal ${data.source}` : "Reserva directa"}
+                                            : channelKind === "external" ? `Canal ${data.source}` : channelLabel}
                                     {" · "}
                                     {data.externalId || data.uuid.slice(0, 8)}
                                 </p>

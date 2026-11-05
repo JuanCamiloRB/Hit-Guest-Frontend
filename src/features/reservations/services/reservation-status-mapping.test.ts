@@ -288,11 +288,13 @@ describe("origen por `source.slug`: un nombre renombrado en el catálogo no camb
             { ...NUEVA, uuid: "r-direct", source: { id: 21, slug: "direct", name: "Directo" } },
         ])))
         const list = await reservationsService.list()
-        expect(Object.fromEntries(list.map((r) => [r.id, r.source]))).toEqual({
-            "r-airbnb": "Airbnb",
-            "r-booking": "Booking",
-            "r-legacy": "Airbnb",
-            "r-direct": "Direct",
+        // El nombre que se muestra es el del backend; el logo sale del slug
+        // (o del id, si el backend todavía no manda slug).
+        expect(Object.fromEntries(list.map((r) => [r.id, [r.source, r.sourceSlug]]))).toEqual({
+            "r-airbnb": ["Nombre renombrado", "airbnb"],
+            "r-booking": ["Otro nombre", "booking"],
+            "r-legacy": ["Airbnb", "airbnb"],
+            "r-direct": ["Directo", "direct"],
         })
     })
 })

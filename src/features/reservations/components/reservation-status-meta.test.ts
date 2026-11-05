@@ -4,7 +4,7 @@ import {
     RESERVATION_STATUS_META,
     getReservationStatusMeta,
     isReservationActionable,
-    isExternalReservation,
+    reservationChannelKind,
     formatGuestName,
     guestInitials,
     unmappedStatusLabel,
@@ -77,11 +77,20 @@ describe("isReservationActionable", () => {
     })
 })
 
-describe("isExternalReservation", () => {
-    it("treats only channel-manager sources as external", () => {
-        expect(isExternalReservation("Airbnb")).toBe(true)
-        expect(isExternalReservation("Booking")).toBe(true)
-        expect(isExternalReservation("Direct")).toBe(false)
+describe("reservationChannelKind", () => {
+    it("directa solo con canal Directo; cualquier otro canal es externo", () => {
+        expect(reservationChannelKind("Airbnb")).toBe("external")
+        expect(reservationChannelKind("Booking")).toBe("external")
+        expect(reservationChannelKind("Expedia", "expedia")).toBe("external")
+        expect(reservationChannelKind("Vrbo", "vrbo")).toBe("external")
+        expect(reservationChannelKind("Direct")).toBe("direct")
+        expect(reservationChannelKind("Directo", "direct")).toBe("direct")
+    })
+
+    it("sin canal o con el canal «Desconocido» no se afirma ninguna de las dos", () => {
+        expect(reservationChannelKind(null)).toBe("unknown")
+        expect(reservationChannelKind("Desconocido", "unknown")).toBe("unknown")
+        expect(reservationChannelKind("Desconocido")).toBe("unknown")
     })
 
     /**
@@ -104,11 +113,11 @@ describe("isExternalReservation", () => {
     it("no autoriza a deducir el origen ni a bloquear la edición", () => {
         // Un canal externo NO implica que la reserva la haya importado ese canal:
         // el PM pudo crearla a mano y elegir ese canal.
-        expect(isExternalReservation("Airbnb")).toBe(true)
+        expect(reservationChannelKind("Airbnb")).toBe("external")
         // Y si alguna vez sirviera para bloquear, tendría que valer igual para
         // Booking — que también se sincroniza y nunca estuvo bloqueado. Esa
         // asimetría era la señal de que la regla estaba inventada.
-        expect(isExternalReservation("Booking")).toBe(isExternalReservation("Airbnb"))
+        expect(reservationChannelKind("Booking")).toBe(reservationChannelKind("Airbnb"))
     })
 })
 

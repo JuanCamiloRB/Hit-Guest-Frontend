@@ -3,14 +3,7 @@
 import { ChannelLogo, channelBackground, channelBrand } from "@/components/brand/ChannelLogo"
 import { cn } from "@/lib/utils"
 import type { ReservationSource } from "../../services/reservation-source-service"
-
-/**
- * Respaldo para un backend que todavía no manda `slug`: los ids del catálogo
- * de producción (skill de contratos). Borrar cuando `slug` llegue siempre.
- */
-const LEGACY_SLUG_BY_ID: Readonly<Record<number, string>> = {
-    21: "direct", 22: "airbnb", 23: "booking", 24: "vrbo", 25: "despegar", 26: "expedia", 846: "agoda",
-}
+import { LEGACY_CHANNEL_SLUG_BY_ID } from "@/lib/reservation-channel"
 
 export function reservationSourceName(source: ReservationSource): string {
     const translated = source.name_translations?.es
@@ -18,7 +11,7 @@ export function reservationSourceName(source: ReservationSource): string {
 }
 
 export function reservationSourceSlug(source: ReservationSource): string | null {
-    return source.slug || LEGACY_SLUG_BY_ID[source.id] || null
+    return source.slug || LEGACY_CHANNEL_SLUG_BY_ID[source.id] || null
 }
 
 interface Props {

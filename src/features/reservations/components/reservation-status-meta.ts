@@ -1,3 +1,4 @@
+import { channelBrand } from "@/components/brand/ChannelLogo"
 import type { StatusTone } from "@/components/ui/status-pill"
 import type { Reservation } from "@/types"
 
@@ -101,13 +102,22 @@ export function isReservationActionable(status: Reservation["status"]): boolean 
     return !TERMINAL_STATUSES.has(status)
 }
 
+/** El catálogo trae un canal «Desconocido» (id 107): saber eso es no saber el canal. */
+const UNKNOWN_CHANNEL_KEYS = new Set(["unknown", "desconocido"])
+
 /**
- * Reservations booked through a channel manager / OTA. Direct reservations are
- * created inside HitGuest, so labelling them "Reserva Externa" (as the panel
- * did unconditionally) contradicted the "Plataforma Direct" line right next to it.
+ * Qué se puede afirmar del canal de una reserva. Directo = creada en HitGuest;
+ * externa = llegó por un canal (OTA, PMS…). Directa y externa se
+ * contradicen, así que el panel ya no rotula «Reserva Externa» a todo.
+ *
+ * `unknown` = sin canal informado o el canal «Desconocido»: ni directa ni
+ * externa, y quien pinta lo dice así en vez de afirmar una de las dos.
  */
-export function isExternalReservation(source: "Airbnb" | "Booking" | "Direct"): boolean {
-    return source !== "Direct"
+export function reservationChannelKind(source: string | null, slug?: string | null): "direct" | "external" | "unknown" {
+    if (!source) return "unknown"
+    const key = (slug ?? source).toLowerCase().replace(/[^a-z]/g, "")
+    if (UNKNOWN_CHANNEL_KEYS.has(key) || UNKNOWN_CHANNEL_KEYS.has(source.toLowerCase().trim())) return "unknown"
+    return channelBrand(slug ?? source) === "direct" ? "direct" : "external"
 }
 
 /**

@@ -32,6 +32,7 @@ import { cn } from "@/lib/utils"
 import { reservationsService } from "../services/reservations-service"
 import { useAutomationStatusLoader } from "../hooks/useAutomationStatusLoader"
 import { reservationsCache, useReservations } from "../hooks/useReservations"
+import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
 import { EmptyState } from "@/components/ui/empty-state"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
@@ -84,6 +85,9 @@ import {
 } from "@/components/ui/alert-dialog"
 
 
+
+/** Valor del filtro de origen para las reservas sin canal informado. */
+const NO_SOURCE = "__sin_origen__"
 
 /** Identidad de fila para la tabla: por uuid, no por posición. */
 const rowId = (reservation: Reservation) => reservation.id
@@ -155,7 +159,8 @@ export default function ReservationsList() {
     // ── Filters (client-side over the loaded reservations) ──
     const [search, setSearch] = useState("")
     const [statusFilter, setStatusFilter] = useState<"ALL" | Reservation["status"]>("ALL")
-    const [sourceFilter, setSourceFilter] = useState<"ALL" | Reservation["source"]>("ALL")
+    // "ALL" o el nombre real de un canal presente en la cuenta.
+    const [sourceFilter, setSourceFilter] = useState<string>("ALL")
     // Date-range filter: pick the column (check-in / checkout) and a from–to range.
     const [dateField, setDateField] = useState<DateField>("checkIn")
     const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
@@ -165,10 +170,16 @@ export default function ReservationsList() {
         () => Array.from(new Set([...CORE_STATUSES, ...reservations.map((r) => r.status)])),
         [reservations],
     )
-    const sourceOptions = useMemo(
-        () => Array.from(new Set(reservations.map((r) => r.source))),
-        [reservations],
-    )
+    // Canales presentes en la cuenta, con su slug para el logo (el mismo que la
+    // columna: un canal renombrado conserva su marca). Sin canal, opción aparte.
+    const sourceOptions = useMemo(() => {
+        const slugByName = new Map<string, string | null>()
+        for (const r of reservations) {
+            if (r.source && !slugByName.has(r.source)) slugByName.set(r.source, r.sourceSlug ?? null)
+        }
+        return Array.from(slugByName, ([name, slug]) => ({ name, slug })).sort((a, b) => a.name.localeCompare(b.name, "es"))
+    }, [reservations])
+    const hasUnknownSource = useMemo(() => reservations.some((r) => !r.source), [reservations])
 
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase()
@@ -178,7 +189,7 @@ export default function ReservationsList() {
         const rangeEnd = dateRange?.from ? endOfDay(dateRange.to ?? dateRange.from) : null
         return reservations.filter((r) => {
             if (statusFilter !== "ALL" && r.status !== statusFilter) return false
-            if (sourceFilter !== "ALL" && r.source !== sourceFilter) return false
+            if (sourceFilter === NO_SOURCE ? !!r.source : sourceFilter !== "ALL" && r.source !== sourceFilter) return false
             if (rangeStart && rangeEnd) {
                 const d = r[dateField]
                 if (!(d instanceof Date) || !isValid(d)) return false
@@ -273,20 +284,21 @@ export default function ReservationsList() {
                         ))}
                     </SelectContent>
                 </Select>
-                <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as typeof sourceFilter)}>
+                <Select value={sourceFilter} onValueChange={setSourceFilter}>
                     <SelectTrigger className="w-full sm:w-[160px]" aria-label="Filtrar por origen">
                         <SelectValue placeholder="Origen" />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="ALL">Todos los orígenes</SelectItem>
-                        {sourceOptions.map((s) => (
-                            <SelectItem key={s} value={s}>
+                        {sourceOptions.map(({ name, slug }) => (
+                            <SelectItem key={name} value={name}>
                                 <span className="flex items-center gap-2">
-                                    <ChannelLogo channel={s} className="h-4 w-4" />
-                                    {s}
+                                    <ChannelLogo channel={slug ?? name} className="h-4 w-4" />
+                                    {name}
                                 </span>
                             </SelectItem>
                         ))}
+                        {hasUnknownSource && <SelectItem value={NO_SOURCE}>{UNKNOWN_CHANNEL_LABEL}</SelectItem>}
                     </SelectContent>
                 </Select>
                 <Popover>

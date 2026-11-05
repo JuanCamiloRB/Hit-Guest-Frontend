@@ -2,6 +2,7 @@
 
 import { ColumnDef, Row, SortingFn } from "@tanstack/react-table"
 import { Skeleton } from "@/components/ui/skeleton"
+import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
 import { cancelDetailPrefetch, startDetailPrefetch } from "../lib/detail-prefetch"
 import { MoreVertical, Trash2, RefreshCw } from "lucide-react"
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
@@ -47,7 +48,10 @@ const sortByCheckIn: SortingFn<Reservation> = (a, b) =>
     compareDates(a.original.checkIn, b.original.checkIn)
 
 const sortBySource: SortingFn<Reservation> = (a, b) =>
-    compareText(a.original.source, b.original.source)
+    // Sin canal, al final (como una fecha ausente), no primero por ser texto vacío.
+    a.original.source && b.original.source
+        ? compareText(a.original.source, b.original.source)
+        : a.original.source ? -1 : b.original.source ? 1 : 0
 
 const sortByStatus: SortingFn<Reservation> = (a, b) =>
     compareStatus(a.original.status, b.original.status)
@@ -170,9 +174,11 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         header: "ORIGEN",
         sortingFn: sortBySource,
         cell: ({ row }) => {
-            const source = row.original.source
+            const { source, sourceSlug } = row.original
+            // Sin canal informado se dice; nunca se asume «Directo».
+            if (!source) return <span className="text-sm text-ink-4">{UNKNOWN_CHANNEL_LABEL}</span>
             // Logo real de la marca (simple-icons), el mismo de las demás pantallas.
-            const icon = <ChannelLogo channel={source} className="h-4 w-4" />
+            const icon = <ChannelLogo channel={sourceSlug ?? source} className="h-4 w-4" />
             return (
                 <div className="flex items-center gap-2">
                     {icon}

@@ -226,3 +226,30 @@ describe("ReservationsList — la lista compartida", () => {
         expect(mocks.list).toHaveBeenCalledTimes(1)
     })
 })
+
+describe("ReservationsList — filtro de origen con los canales reales", () => {
+    beforeEach(() => {
+        // El Select de Radix desplaza la opción elegida a la vista; jsdom no lo implementa.
+        Element.prototype.scrollIntoView = vi.fn()
+        resetReservationsCache()
+        vi.clearAllMocks()
+        mocks.deleteHandler = null
+    })
+
+    it("ofrece los canales de la cuenta ordenados y «Origen no informado»; elegirlo deja solo las sin canal", async () => {
+        mocks.list.mockResolvedValue([
+            { ...reservation, id: "a", source: "Expedia", sourceSlug: "expedia" },
+            { ...reservation, id: "b", source: null, sourceSlug: null },
+            { ...reservation, id: "c", source: "Airbnb", sourceSlug: "airbnb" },
+        ])
+        render(<ReservationsList />)
+        expect(await screen.findByTestId("row-count")).toHaveTextContent("3")
+
+        fireEvent.keyDown(screen.getByRole("combobox", { name: "Filtrar por origen" }), { key: "Enter" })
+        const options = (await screen.findAllByRole("option")).map((o) => o.textContent)
+        expect(options).toEqual(["Todos los orígenes", "Airbnb", "Expedia", "Origen no informado"])
+
+        fireEvent.click(screen.getByRole("option", { name: "Origen no informado" }))
+        await waitFor(() => expect(screen.getByTestId("row-count")).toHaveTextContent("1"))
+    })
+})

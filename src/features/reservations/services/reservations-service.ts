@@ -33,6 +33,7 @@ import { listingsService } from "@/features/properties/services/listings-service
 import { propertiesService } from "@/features/properties/services/properties-service"
 import { automationService, canonicalSlug } from "@/features/properties/services/automation-service"
 import { settleWithConcurrency } from "@/lib/settle-with-concurrency"
+import { readReservationChannel } from "@/lib/reservation-channel"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import type { AutomationStatusItem } from "@/features/properties/types/automation"
 import type { AutomationStatus } from "@/types"
@@ -97,16 +98,6 @@ export function readReservationStatusSlug(r: unknown): string | null {
         ? (statusReservation as { slug?: unknown }).slug
         : undefined
     return typeof slug === "string" && slug.trim() !== "" ? slug.trim().toLowerCase() : null
-}
-
-/** Texto plano de un campo que puede llegar como string, objeto de traducciones `{en, es}` o nada. */
-function readText(value: unknown): string {
-    if (typeof value === "string") return value
-    if (value && typeof value === "object") {
-        const v = value as Record<string, unknown>
-        return typeof v.en === "string" ? v.en : typeof v.es === "string" ? v.es : ""
-    }
-    return ""
 }
 
 /** Reads the English name out of the catalog's translations JSON (string or object). */
@@ -456,7 +447,9 @@ export interface ReservationDetailData {
     /** Nombre del estado según el backend; respaldo para estados que el front no mapea. */
     statusLabel?: string | null
     statusId?: number | null
-    source: "Airbnb" | "Booking" | "Direct"
+    /** Canal comercial con su nombre real; `null` si el backend no lo informó. */
+    source: string | null
+    sourceSlug?: string | null
     totalPrice: number
     /**
      * Reservation currency (ISO 4217). `null` = la respuesta no la trajo: es un
@@ -639,10 +632,7 @@ export class ReservationsService {
             || r.emailGuest?.split("@")[0]
             || "Huésped"
 
-        let sourceName: "Airbnb" | "Booking" | "Direct" = "Direct"
-        const srcSlug = r.source?.slug || r.source?.name || ""
-        if (srcSlug.toLowerCase().includes("airbnb")) sourceName = "Airbnb"
-        else if (srcSlug.toLowerCase().includes("booking")) sourceName = "Booking"
+        const channel = readReservationChannel(r)
 
         const listing = r.listing || {}
         const property = listing?.property || {}
@@ -687,7 +677,8 @@ export class ReservationsService {
             status,
             statusLabel: readReservationStatusLabel(r),
             statusId: readReservationStatusId(r),
-            source: sourceName,
+            source: channel?.name ?? null,
+            sourceSlug: channel?.slug ?? null,
             totalPrice: Number(r.totalPrice || r.total_price || 0),
             currency: readCurrencyCode(r.currency, r.currency_code),
             // `0` = capacidad sin declarar (Airbnb iCal) y DEBE sobrevivir: con
@@ -1213,12 +1204,8 @@ export class ReservationsService {
                     || (typeof r.emailGuest === "string" ? r.emailGuest.split("@")[0] : "")
                     || "Huésped"
 
-                // ── Source: API returns { source: { id, name, slug } } ──
-                let sourceName: "Airbnb" | "Booking" | "Direct" = "Direct"
-                // `source.name` puede ser un objeto de traducciones, como el del estado.
-                const srcSlug = (readText(r.source?.slug) || readText(r.source?.name)).toLowerCase()
-                if (srcSlug.includes("airbnb")) sourceName = "Airbnb"
-                else if (srcSlug.includes("booking")) sourceName = "Booking"
+                // ── Canal: { source: { id, name, slug } }, con su nombre real ──
+                const channel = readReservationChannel(r)
 
                 // ── Listing / Property ──
                 // GET /reservations does not reliably nest a usable property inside
@@ -1263,7 +1250,8 @@ export class ReservationsService {
                     status,
             statusLabel: readReservationStatusLabel(r),
             statusId: readReservationStatusId(r),
-                    source: sourceName,
+                    source: channel?.name ?? null,
+                    sourceSlug: channel?.slug ?? null,
                     totalPrice: Number(r.totalPrice || r.total_price || 0),
                     totalGuests: readCount(r.totalGuests ?? r.total_guests),
                     // Conteo de huéspedes con el check-in completo. Se leen las

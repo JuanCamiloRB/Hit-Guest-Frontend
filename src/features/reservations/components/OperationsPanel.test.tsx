@@ -121,4 +121,30 @@ describe("OperationsPanel — la ficha desde la caché", () => {
         expect(skeleton()).toBeNull()
         expect(await screen.findByRole("heading", { level: 1, name: "Ana Editada" })).toBeInTheDocument()
     })
+
+    it("el canal se dice tal cual: Expedia es externa, sin canal es «Origen no informado» (nunca «directa»)", async () => {
+        mocks.getById.mockResolvedValueOnce({ ...detail("Ana García"), source: "Expedia", sourceSlug: "expedia" })
+        const first = render(<OperationsPanel reservationId="r1" />)
+        expect(await screen.findByText(/Reserva externa · Expedia/)).toBeInTheDocument()
+        first.unmount()
+        resetReservationDetailCache()
+
+        mocks.getById.mockResolvedValueOnce({ ...detail("Ana García"), source: null, sourceSlug: null })
+        render(<OperationsPanel reservationId="r1" />)
+        expect((await screen.findAllByText(/Origen no informado/)).length).toBeGreaterThan(0)
+        expect(screen.queryByText(/Reserva directa/)).toBeNull()
+    })
+
+    it("«Directo» es reserva directa y «Desconocido» no se afirma como externa", async () => {
+        mocks.getById.mockResolvedValueOnce({ ...detail("Ana García"), source: "Directo", sourceSlug: "direct" })
+        const first = render(<OperationsPanel reservationId="r1" />)
+        expect((await screen.findAllByText(/Reserva directa/)).length).toBeGreaterThan(0)
+        first.unmount()
+        resetReservationDetailCache()
+
+        mocks.getById.mockResolvedValueOnce({ ...detail("Ana García"), source: "Desconocido", sourceSlug: "unknown" })
+        render(<OperationsPanel reservationId="r1" />)
+        expect((await screen.findAllByText(/Origen no informado/)).length).toBeGreaterThan(0)
+        expect(screen.queryByText(/Reserva externa/)).toBeNull()
+    })
 })

@@ -161,3 +161,22 @@ describe("columnas de estado — cargando, listo y «No disponible»", () => {
         expect(within(loadingRow).queryByText("No disponible")).toBeNull()
     })
 })
+
+describe("columna ORIGEN — el canal real", () => {
+    it("muestra Expedia o Trip.com con su nombre (antes «Direct») y «Origen no informado» si no hay canal", () => {
+        render(
+            <DataTable
+                columns={getColumns()}
+                data={[
+                    makeReservation("r1", "Bruno Perez", "2026-07-23", { source: "Expedia", sourceSlug: "expedia" }),
+                    makeReservation("r2", "Ana Torres", "2026-08-05", { source: "Trip.com", sourceSlug: "trip_com" }),
+                    makeReservation("r3", "Luis Díaz", "2026-08-06", { source: null, sourceSlug: null }),
+                ]}
+            />,
+        )
+        expect(within(screen.getByText("Bruno Perez").closest("tr")!).getByText("Expedia")).toBeInTheDocument()
+        expect(within(screen.getByText("Ana Torres").closest("tr")!).getByText("Trip.com")).toBeInTheDocument()
+        expect(within(screen.getByText("Luis Díaz").closest("tr")!).getByText("Origen no informado")).toBeInTheDocument()
+        expect(screen.queryByText("Direct")).toBeNull()
+    })
+})
