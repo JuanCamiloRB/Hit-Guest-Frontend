@@ -52,6 +52,18 @@ export class PriorityLoadQueue<T> {
         this.pump()
     }
 
+    /**
+     * Retira de la espera estas claves (una carga que ya nadie necesita). Lo
+     * que está en vuelo no se toca: termina y su resultado vale.
+     */
+    withdraw(keys: Iterable<string>): void {
+        const drop = new Set(keys)
+        const keep = this.pending.filter((item) => !drop.has(this.keyOf(item)))
+        this.pending.length = 0
+        this.pending.push(...keep)
+        for (const key of drop) this.queued.delete(key)
+    }
+
     /** Cancela lo pendiente y lo que está en vuelo (desmontaje). */
     dispose(): void {
         this.controller.abort()

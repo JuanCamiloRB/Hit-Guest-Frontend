@@ -14,6 +14,16 @@ export const STATUS_CONCURRENCY = 6
  */
 type StatusEntry = { ok: true; status: AutomationStatus } | { ok: false }
 
+/** Cómo terminó una preparación (`ensure`): con todo, o cancelada. */
+export type EnsureOutcome = { cancelled: false; failed: number } | { cancelled: true }
+
+/** Una preparación en curso: se espera o se cancela; nunca queda colgada. */
+export interface StatusPreparation {
+    promise: Promise<EnsureOutcome>
+    /** Retira lo que esta preparación dejó esperando turno (lo en vuelo termina). */
+    cancel: () => void
+}
+
 /**
  * Semáforo de automatizaciones por reserva, cargado aparte de la lista y solo
  * para lo que hace falta: las filas que se ven (`prioritize`), la página
@@ -30,15 +40,16 @@ export function useAutomationStatusLoader() {
     // La misma tabla, legible desde callbacks estables sin esperar un render.
     const entriesRef = useRef(entries)
     const queueRef = useRef<PriorityLoadQueue<Reservation> | null>(null)
-    // Quien espera a que un conjunto de filas termine (`ensure`).
-    const waitersRef = useRef(new Set<() => void>())
+    // Quien espera a que un conjunto de filas termine (`ensure`), con cómo
+    // soltarlo si la pantalla se va.
+    const waitersRef = useRef(new Map<() => void, () => void>())
 
     useEffect(() => {
         const waiters = waitersRef.current
         const write = (id: string, entry: StatusEntry) => {
             entriesRef.current = new Map(entriesRef.current).set(id, entry)
             setEntries(entriesRef.current)
-            waiters.forEach((check) => check())
+            waiters.forEach((_release, check) => check())
         }
         const queue = new PriorityLoadQueue<Reservation>(
             STATUS_CONCURRENCY,
@@ -57,6 +68,7 @@ export function useAutomationStatusLoader() {
         return () => {
             queue.dispose()
             queueRef.current = null
+            waiters.forEach((release) => release())
             waiters.clear()
         }
     }, [])
@@ -89,22 +101,39 @@ export function useAutomationStatusLoader() {
 
     /**
      * Completa el semáforo de TODAS estas filas (para ordenar por una columna
-     * de estado) pidiendo solo las que faltan. Resuelve cuando todas tienen
-     * resultado, con cuántas fallaron.
+     * de estado) pidiendo solo las que faltan. La promesa resuelve cuando todas
+     * tienen resultado (un fallo cuenta como resultado), con cuántas fallaron;
+     * o como cancelada. `cancel` retira de la cola lo que sigue esperando
+     * turno: quien cancela vuelve a pedir lo que sí necesita (lo visible).
      */
-    const ensure = useCallback((rows: readonly Reservation[]): Promise<number> => {
-        queueRef.current?.request(missing(rows), true)
-        return new Promise((resolve) => {
-            const waiters = waitersRef.current
-            const check = () => {
+    const ensure = useCallback((rows: readonly Reservation[]): StatusPreparation => {
+        const requested = missing(rows)
+        queueRef.current?.request(requested, true)
+        const waiters = waitersRef.current
+        let check: () => void = () => {}
+        let release: () => void = () => {}
+        const promise = new Promise<EnsureOutcome>((resolve) => {
+            check = () => {
                 const current = entriesRef.current
                 if (!rows.every((row) => current.has(row.id))) return
                 waiters.delete(check)
-                resolve(rows.filter((row) => current.get(row.id)?.ok === false).length)
+                resolve({ cancelled: false, failed: rows.filter((row) => current.get(row.id)?.ok === false).length })
             }
-            waiters.add(check)
-            check()
+            release = () => {
+                waiters.delete(check)
+                resolve({ cancelled: true })
+            }
         })
+        waiters.set(check, release)
+        check()
+        return {
+            promise,
+            cancel: () => {
+                if (!waiters.has(check)) return
+                queueRef.current?.withdraw(requested.map((row) => row.id))
+                release()
+            },
+        }
     }, [])
 
     /** Las filas con lo que se sabe: semáforo, fallo o nada (cargando). */

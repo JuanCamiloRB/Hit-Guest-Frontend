@@ -99,12 +99,12 @@ describe("useAutomationStatusLoader — solo lo necesario", () => {
         mocks.loadAutomationStatus
             .mockResolvedValueOnce(light("pending"))
             .mockRejectedValueOnce(new Error("503"))
-        let failed: number | undefined
+        let outcome: unknown
         await act(async () => {
-            failed = await result.current.ensure(rows("a", "b", "c"))
+            outcome = await result.current.ensure(rows("a", "b", "c")).promise
         })
 
-        expect(failed).toBe(1)
+        expect(outcome).toEqual({ cancelled: false, failed: 1 })
         expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(3)
         expect(result.current.settledCount(rows("a", "b", "c"))).toBe(3)
     })
@@ -121,5 +121,43 @@ describe("useAutomationStatusLoader — solo lo necesario", () => {
 
         unmount()
         expect(seen?.aborted).toBe(true)
+    })
+
+    it("cancelar una preparación de 500: lo en vuelo termina, las que esperaban turno no salen y la promesa resuelve cancelada", async () => {
+        const started: string[] = []
+        const gates: Array<() => void> = []
+        mocks.loadAutomationStatus.mockImplementation((reservation: Reservation) => {
+            started.push(reservation.id)
+            return new Promise<AutomationStatus>((resolve) => gates.push(() => resolve(light("success"))))
+        })
+        const { result } = renderHook(() => useAutomationStatusLoader())
+        const all = Array.from({ length: 500 }, (_, i) => row(`r${i}`))
+
+        let preparation!: ReturnType<typeof result.current.ensure>
+        act(() => { preparation = result.current.ensure(all) })
+        await waitFor(() => expect(started).toHaveLength(6))
+
+        act(() => preparation.cancel())
+        await expect(preparation.promise).resolves.toEqual({ cancelled: true })
+        // Quien cancela vuelve a pedir lo visible (10) y la página siguiente (10).
+        act(() => {
+            result.current.prioritize(all.slice(0, 10))
+            result.current.prefetch(all.slice(10, 20))
+        })
+        for (let i = 0; i < 40 && gates.length > 0; i++) {
+            await act(async () => { gates.splice(0).forEach((open) => open()) })
+        }
+
+        expect(started).toHaveLength(20)
+        expect(started.every((id) => Number(id.slice(1)) < 20)).toBe(true)
+    })
+
+    it("al desmontar, una preparación pendiente resuelve cancelada (nunca queda colgada)", async () => {
+        mocks.loadAutomationStatus.mockImplementation(() => new Promise(() => {}))
+        const { result, unmount } = renderHook(() => useAutomationStatusLoader())
+        let preparation!: ReturnType<typeof result.current.ensure>
+        act(() => { preparation = result.current.ensure(rows("a")) })
+        unmount()
+        await expect(preparation.promise).resolves.toEqual({ cancelled: true })
     })
 })

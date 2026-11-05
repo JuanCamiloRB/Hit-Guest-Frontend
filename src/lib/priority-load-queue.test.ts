@@ -90,4 +90,27 @@ describe("PriorityLoadQueue", () => {
         await new Promise((res) => setTimeout(res, 0))
         expect(started).toEqual(["a"])
     })
+
+    it("withdraw retira solo lo pendiente de esas claves; lo en vuelo termina y lo demás sigue", async () => {
+        const started: string[] = []
+        const gates = new Map<string, ReturnType<typeof deferred>>()
+        const queue = new PriorityLoadQueue<string>(2, (id) => id, async (id) => {
+            started.push(id)
+            const gate = deferred()
+            gates.set(id, gate)
+            await gate.promise
+        })
+
+        queue.request(["a", "b", "c", "d", "e"], false)
+        await vi.waitFor(() => expect(started).toEqual(["a", "b"]))
+        queue.withdraw(["a", "c", "d"])
+        gates.get("a")!.resolve()
+        gates.get("b")!.resolve()
+        await vi.waitFor(() => expect(started).toEqual(["a", "b", "e"]))
+
+        // Retirada, la clave se puede volver a pedir.
+        queue.request(["c"], true)
+        gates.get("e")!.resolve()
+        await vi.waitFor(() => expect(started).toEqual(["a", "b", "e", "c"]))
+    })
 })

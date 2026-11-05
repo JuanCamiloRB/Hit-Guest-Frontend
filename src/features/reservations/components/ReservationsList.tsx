@@ -31,7 +31,7 @@ import { es } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
 import { cn } from "@/lib/utils"
 import { reservationsService } from "../services/reservations-service"
-import { useAutomationStatusLoader } from "../hooks/useAutomationStatusLoader"
+import { useAutomationStatusLoader, type StatusPreparation } from "../hooks/useAutomationStatusLoader"
 import { reservationsCache, useReservations } from "../hooks/useReservations"
 import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -103,8 +103,10 @@ export default function ReservationsList() {
     // primero, la página siguiente detrás, todo solo al ordenar por estado.
     const { prioritize, prefetch, renew, retry: retryStatus, ensure, withStatus, settledCount } = useAutomationStatusLoader()
     const visibleRowsRef = useRef<Reservation[]>([])
+    const nextRowsRef = useRef<Reservation[]>([])
     const handleVisibleRows = useCallback((visible: Reservation[], next: Reservation[]) => {
         visibleRowsRef.current = visible
+        nextRowsRef.current = next
         prioritize(visible)
         prefetch(next)
     }, [prioritize, prefetch])
@@ -251,6 +253,21 @@ export default function ReservationsList() {
     const [sorting, setSorting] = useState<SortingState>(() => [...DEFAULT_SORTING])
     const [preparingSort, setPreparingSort] = useState<Reservation[] | null>(null)
     const sortRequest = useRef(0)
+    // La carga masiva de la preparación en curso: cancelarla la saca de la cola.
+    const preparation = useRef<StatusPreparation | null>(null)
+    /**
+     * Corta la preparación en curso: lo que esperaba turno no sale (con 500
+     * reservas, cancelar no termina pidiendo las otras 480). Lo en vuelo
+     * termina. Lo visible y la página siguiente se vuelven a pedir, porque la
+     * preparación los había adelantado en la misma cola.
+     */
+    const stopPreparation = () => {
+        if (!preparation.current) return
+        preparation.current.cancel()
+        preparation.current = null
+        prioritize(visibleRowsRef.current)
+        prefetch(nextRowsRef.current)
+    }
     const statusSortActive = sorting.some((s) => STATUS_SORT_COLUMNS.has(s.id))
     // Mientras se ordena por estado, lo que se agregue (otro filtro, una reserva
     // nueva) también se completa: el orden no puede volver a quedar a medias.
@@ -261,12 +278,15 @@ export default function ReservationsList() {
     const failedInStatusSort = statusSortActive ? rows.filter((r) => r.automationStatusFailed).length : 0
     const cancelPreparingSort = () => {
         sortRequest.current += 1
+        stopPreparation()
         setPreparingSort(null)
     }
     const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
         const next = typeof updater === "function" ? updater(sorting) : updater
         const request = ++sortRequest.current
         const target = filtered
+        // Gana el último pedido: lo que preparaba el anterior ya no hace falta.
+        stopPreparation()
         // `some`, no solo el primero: el orden múltiple (shift + clic) también cuenta.
         if (!next.some((s) => STATUS_SORT_COLUMNS.has(s.id)) || settledCount(target) === target.length) {
             setSorting(next)
@@ -274,9 +294,12 @@ export default function ReservationsList() {
             return
         }
         setPreparingSort(target)
-        void ensure(target).then(() => {
-            // Si mientras tanto se pidió otro orden (o se canceló), gana el último.
-            if (request !== sortRequest.current) return
+        const current = ensure(target)
+        preparation.current = current
+        void current.promise.then((outcome) => {
+            // Cancelada, o reemplazada por otro pedido: gana el último.
+            if (outcome.cancelled || request !== sortRequest.current) return
+            preparation.current = null
             setSorting(next)
             setPreparingSort(null)
         })
@@ -432,7 +455,7 @@ export default function ReservationsList() {
                 <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-sunk px-3 py-2 text-[13px] text-ink-2">
                     <span>Preparando todos los estados para ordenar… {settledCount(preparingSort)} de {preparingSort.length}</span>
                     <button type="button" onClick={cancelPreparingSort} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">
-                        Cancelar
+                        Cancelar orden
                     </button>
                 </div>
             ) : failedInStatusSort > 0 ? (

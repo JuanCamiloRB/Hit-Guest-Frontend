@@ -21,10 +21,11 @@ vi.mock("./columns", () => ({
 }))
 
 vi.mock("@/components/shared/data-table", () => ({
-    DataTable: ({ data, sorting, onSortingChange }: {
+    DataTable: ({ data, sorting, onSortingChange, onVisibleRowsChange }: {
         data: Reservation[]
         sorting?: { id: string; desc: boolean }[]
         onSortingChange?: (next: { id: string; desc: boolean }[]) => void
+        onVisibleRowsChange?: (visible: Reservation[], next: Reservation[]) => void
     }) => (
         <>
             <span data-testid="row-count">{data.length}</span>
@@ -33,6 +34,7 @@ vi.mock("@/components/shared/data-table", () => ({
             <button type="button" onClick={() => onSortingChange?.([{ id: "contract", desc: false }])}>Ordenar por contrato</button>
             <button type="button" onClick={() => onSortingChange?.([{ id: "guestName", desc: false }])}>Ordenar por huésped</button>
             <button type="button" onClick={() => onSortingChange?.([{ id: "guestName", desc: false }, { id: "checkin", desc: false }])}>Ordenar múltiple</button>
+            <button type="button" onClick={() => onVisibleRowsChange?.(data.slice(0, 10), data.slice(10, 20))}>Mostrar primera página</button>
         </>
     ),
 }))
@@ -311,11 +313,34 @@ describe("ReservationsList — ordenar por un estado espera a tenerlos todos", (
         await screen.findByTestId("row-count")
 
         fireEvent.click(screen.getByRole("button", { name: "Ordenar por contrato" }))
-        fireEvent.click(await screen.findByRole("button", { name: "Cancelar" }))
+        fireEvent.click(await screen.findByRole("button", { name: "Cancelar orden" }))
         expect(screen.queryByText(/Preparando/)).toBeNull()
         await waitFor(() => expect(pending).toHaveLength(3))
         await act(async () => pending.forEach((resolve) => resolve({ contract: "success" })))
         expect(screen.getByTestId("sorting")).toHaveTextContent("checkIn")
+    })
+
+    it("500 reservas, 10 visibles + 10 siguientes: «Cancelar orden» no termina consultando las otras 480", async () => {
+        const many = Array.from({ length: 500 }, (_, i) => ({ ...reservation, id: `r${i}` }))
+        mocks.list.mockResolvedValue(many)
+        const gates: Array<() => void> = []
+        mocks.loadAutomationStatus.mockImplementation(() => new Promise((resolve) => gates.push(() => resolve({ contract: "success" }))))
+        render(<ReservationsList />)
+        await screen.findByTestId("row-count")
+        fireEvent.click(screen.getByRole("button", { name: "Mostrar primera página" }))
+        // Sin respuesta todavía: lo visible ocupa los seis lugares.
+        await waitFor(() => expect(gates).toHaveLength(6))
+
+        fireEvent.click(screen.getByRole("button", { name: "Ordenar por contrato" }))
+        fireEvent.click(await screen.findByRole("button", { name: "Cancelar orden" }))
+        for (let i = 0; i < 40 && gates.length > 0; i++) {
+            await act(async () => { gates.splice(0).forEach((open) => open()) })
+        }
+
+        const ids = mocks.loadAutomationStatus.mock.calls.map(([r]) => Number((r as Reservation).id.slice(1)))
+        expect(ids.every((n) => n < 20)).toBe(true)
+        // Lo visible y la siguiente sí llegan, aunque la preparación los había adelantado.
+        expect(new Set(ids).size).toBe(20)
     })
 
     it("pedir otro orden mientras se prepara: gana el último", async () => {
