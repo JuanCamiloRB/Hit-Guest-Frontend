@@ -67,6 +67,11 @@ export function DataTable<TData, TValue>({
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         onSortingChange: setSorting,
+        // TanStack vuelve a la página 1 cada vez que `data` cambia de identidad,
+        // y las filas se completan de a poco (semáforos): pasar a la página 2
+        // devolvía a la 1 en cuanto llegaban sus datos. La página se reinicia
+        // solo cuando cambia lo que se ve (efecto de abajo).
+        autoResetPageIndex: false,
         getSortedRowModel: getSortedRowModel(),
         onColumnFiltersChange: setColumnFilters,
         getFilteredRowModel: getFilteredRowModel(),
@@ -75,6 +80,16 @@ export function DataTable<TData, TValue>({
             columnFilters,
         },
     })
+
+    // Volver a la primera página solo si cambian las filas (búsqueda, filtro,
+    // altas y bajas), el orden o un filtro de columna; no cuando llegan datos
+    // nuevos para las mismas filas.
+    const rowsKey = getRowId ? data.map(getRowId).join("|") : String(data.length)
+    const sortingKey = sorting.map((s) => `${s.id}:${s.desc}`).join(",")
+    const filtersKey = JSON.stringify(columnFilters)
+    React.useEffect(() => {
+        table.setPageIndex(0)
+    }, [table, rowsKey, sortingKey, filtersKey])
 
     // La clave resume las filas visibles: con el mismo conjunto no se vuelve a
     // avisar aunque `data` cambie de identidad (p. ej. al completarse una fila).
