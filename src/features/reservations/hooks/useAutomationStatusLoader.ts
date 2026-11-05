@@ -52,6 +52,17 @@ export function useAutomationStatusLoader() {
     // Quien espera a que un conjunto de filas termine (`ensure`), con cómo
     // soltarlo si la pantalla se va.
     const waitersRef = useRef(new Map<() => void, () => void>())
+    // Pedidos que llegan antes de que exista la cola. La tabla avisa sus filas
+    // en SU efecto, y React corre los efectos de los hijos antes que los del
+    // padre (donde se crea la cola). Con la lista en caché la tabla está desde
+    // el primer render: sin esto, ese aviso se perdía y, como las filas no
+    // cambian, la tabla no volvía a avisar (esqueletos hasta recargar).
+    const earlyRef = useRef<Array<{ rows: readonly Reservation[]; front: boolean }>>([])
+    const send = useCallback((rows: readonly Reservation[], front: boolean) => {
+        const queue = queueRef.current
+        if (queue) queue.request(rows, front)
+        else earlyRef.current.push({ rows, front })
+    }, [])
 
     useEffect(() => {
         const waiters = waitersRef.current
@@ -74,9 +85,12 @@ export function useAutomationStatusLoader() {
             },
         )
         queueRef.current = queue
+        // En el orden en que llegaron: lo visible delante, la siguiente detrás.
+        for (const { rows, front } of earlyRef.current.splice(0)) queue.request(rows, front)
         return () => {
             queue.dispose()
             queueRef.current = null
+            earlyRef.current = []
             waiters.forEach((release) => release())
             waiters.clear()
         }
@@ -86,18 +100,18 @@ export function useAutomationStatusLoader() {
 
     /** Filas en pantalla sin semáforo todavía (ni fallido): adelante de todo. */
     const prioritize = useCallback((rows: readonly Reservation[]) => {
-        queueRef.current?.request(missing(rows), true)
-    }, [])
+        send(missing(rows), true)
+    }, [send])
 
     /** La página siguiente: detrás de lo visible, para que al pasar ya esté. */
     const prefetch = useCallback((rows: readonly Reservation[]) => {
-        queueRef.current?.request(missing(rows), false)
-    }, [])
+        send(missing(rows), false)
+    }, [send])
 
     /** Vuelve a pedir estas filas aunque ya tengan semáforo (refresco de lo visible). */
     const renew = useCallback((rows: readonly Reservation[]) => {
-        queueRef.current?.request(rows, true)
-    }, [])
+        send(rows, true)
+    }, [send])
 
     /** Reintenta UNA fila que falló, adelante de todo. */
     const retry = useCallback((row: Reservation) => {
@@ -105,8 +119,8 @@ export function useAutomationStatusLoader() {
         next.set(row.id, { ok: false, retrying: true })
         entriesRef.current = next
         setEntries(next)
-        queueRef.current?.request([row], true)
-    }, [])
+        send([row], true)
+    }, [send])
 
     /**
      * Completa el semáforo de TODAS estas filas (para ordenar por una columna
@@ -121,7 +135,7 @@ export function useAutomationStatusLoader() {
      */
     const ensure = useCallback((rows: readonly Reservation[]): StatusPreparation => {
         const requested = missing(rows)
-        queueRef.current?.request(requested, true)
+        send(requested, true)
         const waiters = waitersRef.current
         let check: () => void = () => {}
         let release: () => void = () => {}
@@ -143,11 +157,13 @@ export function useAutomationStatusLoader() {
             promise,
             cancel: () => {
                 if (!waiters.has(check)) return
+                // Solo la cola: `ensure` corre en efectos declarados después del
+                // que la crea, así que nada suyo queda en `earlyRef`.
                 queueRef.current?.withdraw(requested.map((row) => row.id))
                 release()
             },
         }
-    }, [])
+    }, [send])
 
     /**
      * Las filas con lo que se sabe: semáforo, fallo o nada (cargando). Con
