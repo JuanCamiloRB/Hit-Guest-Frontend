@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
 import {
     Table,
     TableBody,
@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { TEAM_ROLE_LABELS, type TeamRole, type User } from "@/features/auth/types"
 import { userService } from "../services/user-service"
+import { usersCache } from "../lib/users-cache"
+import { useCachedLoad } from "@/hooks/useCachedLoad"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { TransferOwnershipDialog } from "./TransferOwnershipDialog"
 import {
@@ -86,8 +88,11 @@ export function UserManagement() {
         currentUser?.clientUuid ||
         (currentUser?.clientId && currentUser.clientId !== "CLT-001" ? currentUser.clientId : null)
 
-    const [users, setUsers] = useState<User[]>([])
-    const [isLoading, setIsLoading] = useState(true)
+    // La lista de la cuenta, con caché: volver a la pestaña la muestra al
+    // instante y un fallo nunca la vacía.
+    const { data, status, refreshFailed, errorMessage, refresh: fetchUsers } = useCachedLoad(usersCache)
+    const users = useMemo(() => data ?? [], [data])
+    const isLoading = status === "loading"
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [transferOpen, setTransferOpen] = useState(false)
@@ -96,27 +101,6 @@ export function UserManagement() {
         resolver: zodResolver(createSchema) as Resolver<UserFormValues>,
         defaultValues: { firstName: "", email: "", password: "", role: "property_staff" },
     })
-
-    const fetchUsers = async () => {
-        try {
-            setUsers(await userService.getUsers())
-        } catch (error) {
-            notifyError(error, "No se pudieron cargar los usuarios")
-        } finally {
-            setIsLoading(false)
-        }
-    }
-
-    // Mount load via promise chain so setState runs in async callbacks (not
-    // synchronously in the effect body — react-hooks/set-state-in-effect).
-    useEffect(() => {
-        let active = true
-        userService.getUsers()
-            .then((data) => { if (active) setUsers(data) })
-            .catch((e) => { if (active) notifyError(e, "No se pudieron cargar los usuarios") })
-            .finally(() => { if (active) setIsLoading(false) })
-        return () => { active = false }
-    }, [])
 
     const handleDialogChange = (open: boolean) => {
         setIsDialogOpen(open)
@@ -170,6 +154,8 @@ export function UserManagement() {
         if (!confirm(`¿Eliminar a ${user.firstName} de la cuenta?`)) return
         try {
             await userService.deleteUser(user.id)
+            // El servidor confirmó: la fila sale en el acto, y el refresco lo corrobora.
+            usersCache.patch((list) => list.filter((u) => u.id !== user.id))
             toast.success("Usuario eliminado")
             fetchUsers()
         } catch (error) {
@@ -310,6 +296,16 @@ export function UserManagement() {
                 </Dialog>
             </div>
 
+            {refreshFailed && (
+                // Mismo aviso que las demás listas, fuera del borde de la tabla: se ve la última cargada.
+                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-[13px] text-ink-2">
+                    <span>No pudimos actualizar la lista. Se muestra la última cargada.</span>
+                    <button type="button" onClick={fetchUsers} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">
+                        Reintentar
+                    </button>
+                </div>
+            )}
+
             {/* Role column intentionally omitted: the backend doesn't expose the role
                 per user yet. Only the account-owner badge is available today. */}
             <div className="rounded-md border overflow-hidden">
@@ -326,6 +322,16 @@ export function UserManagement() {
                             <TableRow>
                                 <TableCell colSpan={3} className="h-24 text-center">
                                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                                </TableCell>
+                            </TableRow>
+                        ) : status === "error" ? (
+                            // Un fallo se dice: «no hay usuarios» sería falso.
+                            <TableRow>
+                                <TableCell colSpan={3} className="h-24 text-center">
+                                    <p className="text-sm font-semibold text-slate-900">No pudimos cargar los usuarios</p>
+                                    {/* El motivo del servidor (p. ej. un 403 por permisos), tal cual. */}
+                                    {errorMessage && <p className="mt-1 text-xs text-muted-foreground">{errorMessage}</p>}
+                                    <Button variant="outline" size="sm" className="mt-2" onClick={fetchUsers}>Reintentar</Button>
                                 </TableCell>
                             </TableRow>
                         ) : users.length === 0 ? (
@@ -356,7 +362,8 @@ export function UserManagement() {
                                         {canDelete(user) || canTransferFrom(user) ? (
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon">
+                                                    {/* Solo ícono: sin nombre, un lector de pantalla diría «botón». */}
+                                                    <Button variant="ghost" size="icon" aria-label={`Acciones para ${user.firstName}`}>
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>
