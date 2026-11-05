@@ -11,6 +11,7 @@ import {
     SortingState,
     getFilteredRowModel,
     ColumnFiltersState,
+    OnChangeFn,
 } from "@tanstack/react-table"
 
 import {
@@ -36,11 +37,19 @@ interface DataTableProps<TData, TValue> {
      */
     defaultSorting?: SortingState
     /**
-     * Avisa qué filas están en pantalla (página, orden y filtro aplicados),
-     * cada vez que cambian. Para cargar por fila solo lo que se ve. Debe ser
-     * una función estable (useCallback): cada identidad nueva vuelve a avisar.
+     * Orden controlado desde afuera (patrón estándar de TanStack): para quien
+     * necesita decidir ANTES de ordenar (p. ej. completar los datos de una
+     * columna). Sin estas dos props la tabla maneja su propio orden.
      */
-    onVisibleRowsChange?: (rows: TData[]) => void
+    sorting?: SortingState
+    onSortingChange?: OnChangeFn<SortingState>
+    /**
+     * Avisa qué filas están en pantalla y cuáles forman la página siguiente
+     * (página, orden y filtro aplicados), cada vez que cambian. Para cargar
+     * por fila solo lo que se ve y precargar lo próximo. Debe ser una función
+     * estable (useCallback): cada identidad nueva vuelve a avisar.
+     */
+    onVisibleRowsChange?: (visible: TData[], next: TData[]) => void
     /**
      * Identidad estable de cada fila. Sin esto la fila se identifica por su
      * posición, y reemplazar la lista por otra del mismo tamaño no cuenta como
@@ -54,10 +63,13 @@ export function DataTable<TData, TValue>({
     data,
     filterColumn,
     defaultSorting,
+    sorting: controlledSorting,
+    onSortingChange,
     onVisibleRowsChange,
     getRowId,
 }: DataTableProps<TData, TValue>) {
-    const [sorting, setSorting] = React.useState<SortingState>(defaultSorting ?? [])
+    const [ownSorting, setOwnSorting] = React.useState<SortingState>(defaultSorting ?? [])
+    const sorting = controlledSorting ?? ownSorting
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
 
     const table = useReactTable({
@@ -66,7 +78,7 @@ export function DataTable<TData, TValue>({
         getRowId,
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
-        onSortingChange: setSorting,
+        onSortingChange: onSortingChange ?? setOwnSorting,
         // TanStack vuelve a la página 1 cada vez que `data` cambia de identidad,
         // y las filas se completan de a poco (semáforos): pasar a la página 2
         // devolvía a la 1 en cuanto llegaban sus datos. La página se reinicia
@@ -91,11 +103,20 @@ export function DataTable<TData, TValue>({
         table.setPageIndex(0)
     }, [table, rowsKey, sortingKey, filtersKey])
 
-    // La clave resume las filas visibles: con el mismo conjunto no se vuelve a
-    // avisar aunque `data` cambie de identidad (p. ej. al completarse una fila).
-    const visibleKey = table.getRowModel().rows.map((row) => row.id).join("|")
+    // La página siguiente, con el mismo orden y filtro que la actual.
+    const { pageIndex, pageSize } = table.getState().pagination
+    const nextRows = table.getPrePaginationRowModel().rows.slice((pageIndex + 1) * pageSize, (pageIndex + 2) * pageSize)
+    // La clave resume las filas visibles y las siguientes: con los mismos
+    // conjuntos no se vuelve a avisar aunque `data` cambie de identidad (p. ej.
+    // al completarse una fila).
+    const visibleKey = [...table.getRowModel().rows, ...nextRows].map((row) => row.id).join("|")
     React.useEffect(() => {
-        onVisibleRowsChange?.(table.getRowModel().rows.map((row) => row.original))
+        onVisibleRowsChange?.(
+            table.getRowModel().rows.map((row) => row.original),
+            nextRows.map((row) => row.original),
+        )
+        // `nextRows` se deriva de la tabla en cada render; `visibleKey` lo resume.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [table, visibleKey, onVisibleRowsChange])
 
     return (

@@ -6,6 +6,7 @@ import { getColumns } from "./columns"
 import { consumptionService } from "@/features/billing/services/consumption-service"
 import { formatUsd } from "@/features/billing/types"
 import { DEFAULT_SORTING } from "./reservation-sorting"
+import type { OnChangeFn, SortingState } from "@tanstack/react-table"
 import { DataTable } from "@/components/shared/data-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/popover"
 import { Search, X, CalendarIcon } from "lucide-react"
 import { LoadingState } from "@/components/ui/loading-state"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { format, isValid, isWithinInterval, startOfDay, endOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
@@ -86,6 +87,9 @@ import {
 
 
 
+/** Columnas que ordenan por el semáforo: necesitan el de todas las filas antes de ordenar. */
+const STATUS_SORT_COLUMNS = new Set(["link", "checkin", "contract", "code"])
+
 /** Valor del filtro de origen para las reservas sin canal informado. */
 const NO_SOURCE = "__sin_origen__"
 
@@ -95,14 +99,20 @@ export default function ReservationsList() {
     // La lista compartida: al volver se ve la anterior mientras se refresca.
     const { reservations: loaded, status, syncing, refreshFailed, version, refresh } = useReservations()
     const reservations = useMemo(() => loaded ?? [], [loaded])
-    // El semáforo llega aparte de la lista: visible primero, el resto de fondo.
-    const { prioritize, fill, retry: retryStatus, withStatus } = useAutomationStatusLoader()
-    // Cada lista que llega del servidor renueva los semáforos de fondo (un
-    // huésped pudo completar su check-in). Un `patch` local (borrar) no.
+    // El semáforo llega aparte de la lista y solo para lo necesario: lo visible
+    // primero, la página siguiente detrás, todo solo al ordenar por estado.
+    const { prioritize, prefetch, renew, retry: retryStatus, ensure, withStatus, settledCount } = useAutomationStatusLoader()
+    const visibleRowsRef = useRef<Reservation[]>([])
+    const handleVisibleRows = useCallback((visible: Reservation[], next: Reservation[]) => {
+        visibleRowsRef.current = visible
+        prioritize(visible)
+        prefetch(next)
+    }, [prioritize, prefetch])
+    // Un refresco de la lista (no la primera carga, ni un `patch` local)
+    // renueva el semáforo de lo que se ve: un huésped pudo completar su check-in.
     useEffect(() => {
-        const list = reservationsCache.read()
-        if (version > 0 && list) fill(list)
-    }, [version, fill])
+        if (version > 1) renew(visibleRowsRef.current)
+    }, [version, renew])
     useEffect(() => {
         if (syncing) toast.info("Sincronización en progreso", { description: "Las reservas se actualizarán en unos segundos." })
     }, [syncing])
@@ -234,6 +244,43 @@ export default function ReservationsList() {
         [requestDelete, retryStatus]
     )
     const rows = useMemo(() => withStatus(filtered), [filtered, withStatus])
+
+    // Ordenar por una columna de estado necesita el semáforo de TODAS las filas
+    // del filtro: se intercepta, se completa lo que falta y recién ahí se ordena.
+    // Con datos a medias el orden sería falso. El resto de columnas, al instante.
+    const [sorting, setSorting] = useState<SortingState>(() => [...DEFAULT_SORTING])
+    const [preparingSort, setPreparingSort] = useState<Reservation[] | null>(null)
+    const sortRequest = useRef(0)
+    const statusSortActive = sorting.some((s) => STATUS_SORT_COLUMNS.has(s.id))
+    // Mientras se ordena por estado, lo que se agregue (otro filtro, una reserva
+    // nueva) también se completa: el orden no puede volver a quedar a medias.
+    useEffect(() => {
+        if (statusSortActive) prefetch(filtered)
+    }, [statusSortActive, filtered, prefetch])
+    // En vivo, no guardado: si una fila se reintenta con éxito, deja de contar.
+    const failedInStatusSort = statusSortActive ? rows.filter((r) => r.automationStatusFailed).length : 0
+    const cancelPreparingSort = () => {
+        sortRequest.current += 1
+        setPreparingSort(null)
+    }
+    const handleSortingChange: OnChangeFn<SortingState> = (updater) => {
+        const next = typeof updater === "function" ? updater(sorting) : updater
+        const request = ++sortRequest.current
+        const target = filtered
+        // `some`, no solo el primero: el orden múltiple (shift + clic) también cuenta.
+        if (!next.some((s) => STATUS_SORT_COLUMNS.has(s.id)) || settledCount(target) === target.length) {
+            setSorting(next)
+            setPreparingSort(null)
+            return
+        }
+        setPreparingSort(target)
+        void ensure(target).then(() => {
+            // Si mientras tanto se pidió otro orden (o se canceló), gana el último.
+            if (request !== sortRequest.current) return
+            setSorting(next)
+            setPreparingSort(null)
+        })
+    }
 
 
     if (status === "loading") {
@@ -381,12 +428,26 @@ export default function ReservationsList() {
                 </div>
             )}
 
+            {preparingSort ? (
+                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-sunk px-3 py-2 text-[13px] text-ink-2">
+                    <span>Preparando todos los estados para ordenar… {settledCount(preparingSort)} de {preparingSort.length}</span>
+                    <button type="button" onClick={cancelPreparingSort} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">
+                        Cancelar
+                    </button>
+                </div>
+            ) : failedInStatusSort > 0 ? (
+                <p role="status" className="rounded-lg bg-warning-sunk px-3 py-2 text-[13px] text-ink-2">
+                    No se pudo cargar el estado de {failedInStatusSort} {failedInStatusSort === 1 ? "reserva" : "reservas"}: {failedInStatusSort === 1 ? "queda" : "quedan"} al final del orden.
+                </p>
+            ) : null}
+
             <DataTable
                 columns={columns}
                 data={rows}
-                defaultSorting={[...DEFAULT_SORTING]}
+                sorting={sorting}
+                onSortingChange={handleSortingChange}
                 getRowId={rowId}
-                onVisibleRowsChange={prioritize}
+                onVisibleRowsChange={handleVisibleRows}
             />
 
             <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     list: vi.fn(),
     remove: vi.fn(),
     getReservationCost: vi.fn(),
+    loadAutomationStatus: vi.fn(),
 }))
 
 vi.mock("./columns", () => ({
@@ -20,16 +21,24 @@ vi.mock("./columns", () => ({
 }))
 
 vi.mock("@/components/shared/data-table", () => ({
-    DataTable: ({ data }: { data: Reservation[] }) => (
+    DataTable: ({ data, sorting, onSortingChange }: {
+        data: Reservation[]
+        sorting?: { id: string; desc: boolean }[]
+        onSortingChange?: (next: { id: string; desc: boolean }[]) => void
+    }) => (
         <>
             <span data-testid="row-count">{data.length}</span>
+            <span data-testid="sorting">{sorting?.map((s) => s.id).join(",")}</span>
             <button type="button" onClick={() => mocks.deleteHandler?.(data[0])}>Solicitar eliminación</button>
+            <button type="button" onClick={() => onSortingChange?.([{ id: "contract", desc: false }])}>Ordenar por contrato</button>
+            <button type="button" onClick={() => onSortingChange?.([{ id: "guestName", desc: false }])}>Ordenar por huésped</button>
+            <button type="button" onClick={() => onSortingChange?.([{ id: "guestName", desc: false }, { id: "checkin", desc: false }])}>Ordenar múltiple</button>
         </>
     ),
 }))
 
 vi.mock("../services/reservations-service", () => ({
-    reservationsService: { list: mocks.list, delete: mocks.remove },
+    reservationsService: { list: mocks.list, delete: mocks.remove, loadAutomationStatus: mocks.loadAutomationStatus },
     ReservationsNotReadyError: class ReservationsNotReadyError extends Error {},
 }))
 
@@ -251,5 +260,100 @@ describe("ReservationsList — filtro de origen con los canales reales", () => {
 
         fireEvent.click(screen.getByRole("option", { name: "Origen no informado" }))
         await waitFor(() => expect(screen.getByTestId("row-count")).toHaveTextContent("1"))
+    })
+})
+
+describe("ReservationsList — ordenar por un estado espera a tenerlos todos", () => {
+    beforeEach(() => {
+        resetReservationsCache()
+        vi.clearAllMocks()
+        mocks.deleteHandler = null
+        mocks.list.mockResolvedValue([
+            { ...reservation, id: "a" },
+            { ...reservation, id: "b" },
+            { ...reservation, id: "c" },
+        ])
+    })
+
+    it("ordenar por huésped es inmediato y no pide ningún estado", async () => {
+        render(<ReservationsList />)
+        await screen.findByTestId("row-count")
+        fireEvent.click(screen.getByRole("button", { name: "Ordenar por huésped" }))
+        expect(screen.getByTestId("sorting")).toHaveTextContent("guestName")
+        expect(mocks.loadAutomationStatus).not.toHaveBeenCalled()
+    })
+
+    it("ordenar por contrato: «Preparando…», pide los que faltan y recién ahí ordena; avisa cuántos fallaron", async () => {
+        const pending: Array<{ resolve: (v: unknown) => void; reject: (e: unknown) => void }> = []
+        mocks.loadAutomationStatus.mockImplementation(() => new Promise((resolve, reject) => pending.push({ resolve, reject })))
+        render(<ReservationsList />)
+        await screen.findByTestId("row-count")
+
+        fireEvent.click(screen.getByRole("button", { name: "Ordenar por contrato" }))
+        expect(await screen.findByText(/Preparando todos los estados para ordenar… 0 de 3/)).toBeInTheDocument()
+        expect(screen.getByTestId("sorting")).toHaveTextContent("checkIn")
+        await waitFor(() => expect(pending).toHaveLength(3))
+
+        await act(async () => {
+            pending[0].resolve({ contract: "success" })
+            pending[1].resolve({ contract: "pending" })
+            pending[2].reject(new Error("503"))
+        })
+        await waitFor(() => expect(screen.getByTestId("sorting")).toHaveTextContent("contract"))
+        expect(screen.getByText(/No se pudo cargar el estado de 1 reserva: queda al final del orden/)).toBeInTheDocument()
+        expect(screen.queryByText(/Preparando/)).toBeNull()
+    })
+
+    it("Cancelar deja el orden como estaba; y si se pide otro orden mientras tanto, gana el último", async () => {
+        const pending: Array<(v: unknown) => void> = []
+        mocks.loadAutomationStatus.mockImplementation(() => new Promise((resolve) => pending.push(resolve)))
+        render(<ReservationsList />)
+        await screen.findByTestId("row-count")
+
+        fireEvent.click(screen.getByRole("button", { name: "Ordenar por contrato" }))
+        fireEvent.click(await screen.findByRole("button", { name: "Cancelar" }))
+        expect(screen.queryByText(/Preparando/)).toBeNull()
+        await waitFor(() => expect(pending).toHaveLength(3))
+        await act(async () => pending.forEach((resolve) => resolve({ contract: "success" })))
+        expect(screen.getByTestId("sorting")).toHaveTextContent("checkIn")
+    })
+
+    it("pedir otro orden mientras se prepara: gana el último", async () => {
+        const pending: Array<(v: unknown) => void> = []
+        mocks.loadAutomationStatus.mockImplementation(() => new Promise((resolve) => pending.push(resolve)))
+        render(<ReservationsList />)
+        await screen.findByTestId("row-count")
+
+        fireEvent.click(screen.getByRole("button", { name: "Ordenar por contrato" }))
+        fireEvent.click(screen.getByRole("button", { name: "Ordenar por huésped" }))
+        expect(screen.getByTestId("sorting")).toHaveTextContent("guestName")
+        await waitFor(() => expect(pending).toHaveLength(3))
+        await act(async () => pending.forEach((resolve) => resolve({ contract: "success" })))
+        expect(screen.getByTestId("sorting")).toHaveTextContent("guestName")
+    })
+
+    it("el orden múltiple con un estado también espera a tenerlos todos", async () => {
+        mocks.loadAutomationStatus.mockImplementation(() => new Promise(() => {}))
+        render(<ReservationsList />)
+        await screen.findByTestId("row-count")
+
+        fireEvent.click(screen.getByRole("button", { name: "Ordenar múltiple" }))
+        expect(await screen.findByText(/Preparando todos los estados/)).toBeInTheDocument()
+        expect(screen.getByTestId("sorting")).toHaveTextContent("checkIn")
+    })
+
+    it("con el orden por estado activo, una reserva nueva también recibe su estado (el orden no queda a medias)", async () => {
+        mocks.loadAutomationStatus.mockResolvedValue({ contract: "success" })
+        render(<ReservationsList />)
+        await screen.findByTestId("row-count")
+        fireEvent.click(screen.getByRole("button", { name: "Ordenar por contrato" }))
+        await waitFor(() => expect(screen.getByTestId("sorting")).toHaveTextContent("contract"))
+        const before = mocks.loadAutomationStatus.mock.calls.length
+
+        mocks.list.mockResolvedValue([
+            { ...reservation, id: "a" }, { ...reservation, id: "b" }, { ...reservation, id: "c" }, { ...reservation, id: "d" },
+        ])
+        await act(async () => { window.dispatchEvent(new Event("reservationCreated")) })
+        await waitFor(() => expect(mocks.loadAutomationStatus.mock.calls.slice(before).map(([r]) => r.id)).toContain("d"))
     })
 })

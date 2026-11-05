@@ -208,7 +208,13 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         // Sin `accessorFn` esto sería una display column, y TanStack le da
         // `getCanSort() === false` porque no hay valor que ordenar: el
         // encabezado se quedaría sin control de orden.
-        accessorFn: (row: Reservation) => row.automationStatus?.[key] ?? "none",
+        // Sin semáforo (cargando o fallido) no hay valor: `sortUndefined: "last"`
+        // lo deja al final en los dos sentidos, nunca mezclado con «—».
+        accessorFn: (row: Reservation) => row.automationStatus?.[key],
+        sortUndefined: "last" as const,
+        // TanStack decide la primera dirección mirando el valor de la primera
+        // fila; sin semáforo todavía sería `undefined` y empezaría al revés.
+        sortDescFirst: false,
         // Ordena por severidad, no por el texto de la pastilla: pulsar CONTRATO
         // responde "¿cuáles me faltan por firmar?" y sube esos al principio.
         sortingFn: ((a: Row<Reservation>, b: Row<Reservation>) =>

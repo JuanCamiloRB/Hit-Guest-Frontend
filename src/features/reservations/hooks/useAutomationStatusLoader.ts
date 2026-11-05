@@ -15,26 +15,30 @@ export const STATUS_CONCURRENCY = 6
 type StatusEntry = { ok: true; status: AutomationStatus } | { ok: false }
 
 /**
- * Semáforo de automatizaciones por reserva, cargado aparte de la lista: las
- * filas que se ven van primero (`prioritize`), el resto se rellena de fondo
- * (`fill`), de a `STATUS_CONCURRENCY`. Antes `list()` pedía las N de golpe y
- * la pantalla esperaba a la última.
+ * Semáforo de automatizaciones por reserva, cargado aparte de la lista y solo
+ * para lo que hace falta: las filas que se ven (`prioritize`), la página
+ * siguiente detrás (`prefetch`) y, al ordenar por una columna de estado, lo
+ * que falte de toda la lista (`ensure`). Nunca la lista entera de golpe.
  *
- * Un refresco de la lista vuelve a pedir todas (`fill`) sin borrar lo que se
- * ve: cada semáforo se reemplaza cuando llega el nuevo. Una fila que falló no
- * se vuelve a pedir sola al pasar por pantalla (contra un backend caído sería
- * un bucle): se reintenta con `retry` o con el próximo refresco.
+ * Lo ya obtenido se conserva mientras la pantalla esté abierta. Un refresco
+ * renueva solo lo visible (`renew`), sin borrarlo hasta que llega lo nuevo.
+ * Una fila que falló no se vuelve a pedir sola al pasar por pantalla (contra
+ * un backend caído sería un bucle): se reintenta con `retry` o con `renew`.
  */
 export function useAutomationStatusLoader() {
     const [entries, setEntries] = useState<ReadonlyMap<string, StatusEntry>>(() => new Map())
     // La misma tabla, legible desde callbacks estables sin esperar un render.
     const entriesRef = useRef(entries)
     const queueRef = useRef<PriorityLoadQueue<Reservation> | null>(null)
+    // Quien espera a que un conjunto de filas termine (`ensure`).
+    const waitersRef = useRef(new Set<() => void>())
 
     useEffect(() => {
+        const waiters = waitersRef.current
         const write = (id: string, entry: StatusEntry) => {
             entriesRef.current = new Map(entriesRef.current).set(id, entry)
             setEntries(entriesRef.current)
+            waiters.forEach((check) => check())
         }
         const queue = new PriorityLoadQueue<Reservation>(
             STATUS_CONCURRENCY,
@@ -53,17 +57,25 @@ export function useAutomationStatusLoader() {
         return () => {
             queue.dispose()
             queueRef.current = null
+            waiters.clear()
         }
     }, [])
 
+    const missing = (rows: readonly Reservation[]) => rows.filter((row) => !entriesRef.current.has(row.id))
+
     /** Filas en pantalla sin semáforo todavía (ni fallido): adelante de todo. */
     const prioritize = useCallback((rows: readonly Reservation[]) => {
-        queueRef.current?.request(rows.filter((row) => !entriesRef.current.has(row.id)), true)
+        queueRef.current?.request(missing(rows), true)
     }, [])
 
-    /** Toda la lista (nueva o refrescada): de fondo, detrás de lo visible. */
-    const fill = useCallback((rows: readonly Reservation[]) => {
-        queueRef.current?.request(rows, false)
+    /** La página siguiente: detrás de lo visible, para que al pasar ya esté. */
+    const prefetch = useCallback((rows: readonly Reservation[]) => {
+        queueRef.current?.request(missing(rows), false)
+    }, [])
+
+    /** Vuelve a pedir estas filas aunque ya tengan semáforo (refresco de lo visible). */
+    const renew = useCallback((rows: readonly Reservation[]) => {
+        queueRef.current?.request(rows, true)
     }, [])
 
     /** Reintenta UNA fila que falló, adelante de todo. */
@@ -73,6 +85,26 @@ export function useAutomationStatusLoader() {
         entriesRef.current = next
         setEntries(next)
         queueRef.current?.request([row], true)
+    }, [])
+
+    /**
+     * Completa el semáforo de TODAS estas filas (para ordenar por una columna
+     * de estado) pidiendo solo las que faltan. Resuelve cuando todas tienen
+     * resultado, con cuántas fallaron.
+     */
+    const ensure = useCallback((rows: readonly Reservation[]): Promise<number> => {
+        queueRef.current?.request(missing(rows), true)
+        return new Promise((resolve) => {
+            const waiters = waitersRef.current
+            const check = () => {
+                const current = entriesRef.current
+                if (!rows.every((row) => current.has(row.id))) return
+                waiters.delete(check)
+                resolve(rows.filter((row) => current.get(row.id)?.ok === false).length)
+            }
+            waiters.add(check)
+            check()
+        })
     }, [])
 
     /** Las filas con lo que se sabe: semáforo, fallo o nada (cargando). */
@@ -86,5 +118,11 @@ export function useAutomationStatusLoader() {
         [entries],
     )
 
-    return { prioritize, fill, retry, withStatus }
+    /** Cuántas de estas filas ya tienen resultado (para «N de M»). */
+    const settledCount = useCallback(
+        (rows: readonly Reservation[]) => rows.filter((row) => entries.has(row.id)).length,
+        [entries],
+    )
+
+    return { prioritize, prefetch, renew, retry, ensure, withStatus, settledCount }
 }

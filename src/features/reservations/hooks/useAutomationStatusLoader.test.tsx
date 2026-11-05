@@ -11,22 +11,27 @@ vi.mock("../services/reservations-service", () => ({
 import { useAutomationStatusLoader } from "./useAutomationStatusLoader"
 
 const row = (id: string) => ({ id } as Reservation)
+const rows = (...ids: string[]) => ids.map(row)
 const light = (checkin: AutomationStatus["checkin"]) => ({ checkin } as AutomationStatus)
 
 function deferred<T>() {
     let resolve!: (value: T) => void
-    const promise = new Promise<T>((res) => { resolve = res })
-    return { promise, resolve }
+    let reject!: (reason?: unknown) => void
+    const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej })
+    return { promise, resolve, reject }
 }
 
-describe("useAutomationStatusLoader", () => {
+const statusOf = (result: { current: ReturnType<typeof useAutomationStatusLoader> }, id: string) =>
+    result.current.withStatus([row(id)])[0]
+
+describe("useAutomationStatusLoader — solo lo necesario", () => {
     beforeEach(() => {
         // mockReset, no clearAllMocks: una implementación que nunca resuelve no
         // puede pasar de un test al siguiente.
         mocks.loadAutomationStatus.mockReset()
     })
 
-    it("las filas visibles se consultan antes que el relleno, y withStatus las completa al llegar", async () => {
+    it("lo visible se adelanta a la página siguiente que todavía espera turno", async () => {
         const order: string[] = []
         const gates = new Map<string, ReturnType<typeof deferred<AutomationStatus>>>()
         mocks.loadAutomationStatus.mockImplementation((reservation: Reservation) => {
@@ -36,31 +41,72 @@ describe("useAutomationStatusLoader", () => {
             return gate.promise
         })
         const { result } = renderHook(() => useAutomationStatusLoader())
-        const rows = Array.from({ length: 8 }, (_, i) => row(`r${i + 1}`))
 
-        // Como en la pantalla: primero se encola toda la lista, después se ve una página.
-        act(() => result.current.fill(rows))
+        // Ocho de la página siguiente: salen seis (el límite) y dos esperan turno.
+        const next = rows("n1", "n2", "n3", "n4", "n5", "n6", "n7", "n8")
+        act(() => result.current.prefetch(next))
         await waitFor(() => expect(order).toHaveLength(6))
-        act(() => result.current.prioritize([row("r8"), row("r7")]))
+        // Lo visible se adelanta a lo que todavía espera turno.
+        act(() => result.current.prioritize(rows("v1", "v2")))
+        gates.get("n1")!.resolve(light("success"))
+        gates.get("n2")!.resolve(light("success"))
+        await waitFor(() => expect(order.slice(6)).toEqual(["v1", "v2"]))
 
-        gates.get("r1")!.resolve(light("success"))
-        await waitFor(() => expect(order[6]).toBe("r8"))
-        await waitFor(() => expect(result.current.withStatus([row("r1")])[0].automationStatus?.checkin).toBe("success"))
-        expect(result.current.withStatus([row("r2")])[0].automationStatus).toBeUndefined()
+        gates.forEach((gate) => gate.resolve(light("success")))
+        await waitFor(() => expect(order).toHaveLength(10))
+        expect(order.slice(8)).toEqual(["n7", "n8"])
     })
 
-    it("una fila ya cargada no se vuelve a pedir desde prioritize, pero fill (refresco) sí la renueva", async () => {
-        mocks.loadAutomationStatus.mockResolvedValue(light("pending"))
+    it("lo ya cargado no se vuelve a pedir al verlo; renew sí, sin borrarlo hasta que llega lo nuevo", async () => {
+        mocks.loadAutomationStatus.mockResolvedValueOnce(light("pending"))
         const { result } = renderHook(() => useAutomationStatusLoader())
+        act(() => result.current.prioritize(rows("a")))
+        await waitFor(() => expect(statusOf(result, "a").automationStatus?.checkin).toBe("pending"))
 
-        act(() => result.current.fill([row("a")]))
-        await waitFor(() => expect(result.current.withStatus([row("a")])[0].automationStatus).toBeDefined())
-
-        act(() => result.current.prioritize([row("a")]))
+        act(() => result.current.prioritize(rows("a")))
         expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(1)
 
-        act(() => result.current.fill([row("a")]))
+        const fresh = deferred<AutomationStatus>()
+        mocks.loadAutomationStatus.mockReturnValueOnce(fresh.promise)
+        act(() => result.current.renew(rows("a")))
         await waitFor(() => expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(2))
+        expect(statusOf(result, "a").automationStatus?.checkin).toBe("pending")
+        await act(async () => fresh.resolve(light("success")))
+        await waitFor(() => expect(statusOf(result, "a").automationStatus?.checkin).toBe("success"))
+    })
+
+    it("un fallo marca la fila, no se repite al verla y se reintenta a pedido", async () => {
+        mocks.loadAutomationStatus.mockRejectedValueOnce(new Error("503"))
+        const { result } = renderHook(() => useAutomationStatusLoader())
+        act(() => result.current.prioritize(rows("a")))
+        await waitFor(() => expect(statusOf(result, "a").automationStatusFailed).toBe(true))
+
+        act(() => result.current.prioritize(rows("a")))
+        expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(1)
+
+        mocks.loadAutomationStatus.mockResolvedValueOnce(light("success"))
+        act(() => result.current.retry(row("a")))
+        expect(statusOf(result, "a").automationStatusFailed).toBeUndefined()
+        await waitFor(() => expect(statusOf(result, "a").automationStatus?.checkin).toBe("success"))
+    })
+
+    it("ensure pide solo lo que falta y resuelve cuando todo terminó, con cuántas fallaron", async () => {
+        mocks.loadAutomationStatus.mockResolvedValueOnce(light("success"))
+        const { result } = renderHook(() => useAutomationStatusLoader())
+        act(() => result.current.prioritize(rows("a")))
+        await waitFor(() => expect(statusOf(result, "a").automationStatus).toBeDefined())
+
+        mocks.loadAutomationStatus
+            .mockResolvedValueOnce(light("pending"))
+            .mockRejectedValueOnce(new Error("503"))
+        let failed: number | undefined
+        await act(async () => {
+            failed = await result.current.ensure(rows("a", "b", "c"))
+        })
+
+        expect(failed).toBe(1)
+        expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(3)
+        expect(result.current.settledCount(rows("a", "b", "c"))).toBe(3)
     })
 
     it("al desmontar se cancela lo en vuelo y no se escribe estado después", async () => {
@@ -70,44 +116,10 @@ describe("useAutomationStatusLoader", () => {
             return new Promise<AutomationStatus>((resolve) => signal.addEventListener("abort", () => resolve(light("none"))))
         })
         const { result, unmount } = renderHook(() => useAutomationStatusLoader())
-        act(() => result.current.fill([row("a")]))
+        act(() => result.current.prioritize(rows("a")))
         await waitFor(() => expect(seen).toBeDefined())
 
         unmount()
         expect(seen?.aborted).toBe(true)
-    })
-
-    it("un fallo marca la fila (no «sin automatizaciones»), no se repite al verla y se reintenta a pedido", async () => {
-        mocks.loadAutomationStatus.mockRejectedValueOnce(new Error("503"))
-        const { result } = renderHook(() => useAutomationStatusLoader())
-
-        act(() => result.current.fill([row("a")]))
-        await waitFor(() => expect(result.current.withStatus([row("a")])[0].automationStatusFailed).toBe(true))
-        expect(result.current.withStatus([row("a")])[0].automationStatus).toBeUndefined()
-
-        act(() => result.current.prioritize([row("a")]))
-        expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(1)
-
-        mocks.loadAutomationStatus.mockResolvedValueOnce(light("success"))
-        act(() => result.current.retry(row("a")))
-        expect(result.current.withStatus([row("a")])[0].automationStatusFailed).toBeUndefined()
-        await waitFor(() => expect(result.current.withStatus([row("a")])[0].automationStatus?.checkin).toBe("success"))
-        expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(2)
-    })
-
-    it("un refresco de la lista vuelve a pedir la fila fallida y sigue diciendo «No disponible» hasta el resultado", async () => {
-        mocks.loadAutomationStatus.mockRejectedValueOnce(new Error("503"))
-        const { result } = renderHook(() => useAutomationStatusLoader())
-        act(() => result.current.fill([row("a")]))
-        await waitFor(() => expect(result.current.withStatus([row("a")])[0].automationStatusFailed).toBe(true))
-
-        let release!: (value: AutomationStatus) => void
-        mocks.loadAutomationStatus.mockReturnValueOnce(new Promise<AutomationStatus>((res) => { release = res }))
-        act(() => result.current.fill([row("a")]))
-        await waitFor(() => expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(2))
-        expect(result.current.withStatus([row("a")])[0].automationStatusFailed).toBe(true)
-
-        await act(async () => release(light("success")))
-        await waitFor(() => expect(result.current.withStatus([row("a")])[0].automationStatus?.checkin).toBe("success"))
     })
 })

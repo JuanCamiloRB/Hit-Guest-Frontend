@@ -180,3 +180,15 @@ describe("columna ORIGEN — el canal real", () => {
         expect(screen.queryByText("Direct")).toBeNull()
     })
 })
+
+describe("columnas de estado — el primer clic ordena hacia arriba aunque haya filas cargando", () => {
+    it("CONTRATO con la primera fila todavía sin semáforo: ascendente, no al revés", () => {
+        const data = [
+            makeReservation("r1", "Bruno Perez", "2026-07-23"),
+            makeReservation("r2", "Ana Torres", "2026-08-05", { automationStatus: { link: "none", checkin: "none", contract: "pending", code: "none", tra: "none", sireIn: "none", sireOut: "none" } }),
+        ]
+        render(<DataTable columns={getColumns()} data={data} />)
+        fireEvent.click(screen.getByRole("button", { name: /CONTRATO/ }))
+        expect(screen.getByRole("columnheader", { name: /CONTRATO/ })).toHaveAttribute("aria-sort", "ascending")
+    })
+})
