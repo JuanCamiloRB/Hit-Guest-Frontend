@@ -26,6 +26,7 @@ import { catalogService, CatalogOption } from "@/features/auth/services/catalog-
 import { useEffect, useState } from "react"
 import { User } from "../../auth/types"
 import { authService } from "@/features/auth/services/auth-service"
+import { ApiError } from "@/types/api"
 import { Loader2 } from "lucide-react"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { ClientLogoSection } from "./ClientLogoSection"
@@ -81,6 +82,10 @@ export function ProfileForm({ user }: ProfileFormProps) {
     const [countries, setCountries] = useState<any[]>([])
     const [personTypes, setPersonTypes] = useState<CatalogOption[]>([])
     const [identTypes, setIdentTypes] = useState<CatalogOption[]>([])
+    // La cuenta no se pudo leer (fallo, no «sin cuenta»): no se muestra el
+    // formulario, porque guardar pisaría la cuenta real con los valores de la sesión.
+    const [accountError, setAccountError] = useState<string | null>(null)
+    const [loadAttempt, setLoadAttempt] = useState(0)
     // Client uuid from the session (populated by GET /user at login). The legacy
     // "CLT-001" placeholder means we don't really have one → treat as absent.
     const sessionClientUuid =
@@ -106,22 +111,47 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
     const isCompany = form.watch("personTypeId") === "2"
 
-    // Catalogs + the client record. GET /account may not exist yet — the form
-    // falls back to the session user's data (already in defaultValues).
+    // Catalogs + the client record. Without a client uuid in the session there
+    // is no account to protect and the form uses the session user's data
+    // (already in defaultValues). WITH one, the account must load: a failure
+    // or an empty answer shows an error instead of a form that would save
+    // the session defaults over the real account.
     useEffect(() => {
         let active = true
+        // Un 401 ya está redirigiendo al login: no se muestra el error un instante.
+        let redirecting = false
         ;(async () => {
             try {
-                const [countryList, personList, identList, account] = await Promise.all([
+                const [countryList, personList, identList, accountResult] = await Promise.all([
                     catalogService.getCountries().catch(() => []),
                     catalogService.getPersonTypes().catch(() => []),
                     catalogService.getIdentificationTypes().catch(() => []),
-                    sessionClientUuid ? authService.getClient(sessionClientUuid) : Promise.resolve(null),
+                    sessionClientUuid
+                        ? authService.getClient(sessionClientUuid).then(
+                            (value) => ({ ok: true as const, value }),
+                            (error: unknown) => ({ ok: false as const, error }),
+                        )
+                        : Promise.resolve({ ok: true as const, value: null }),
                 ])
                 if (!active) return
                 setCountries(countryList || [])
                 setPersonTypes(personList || [])
                 setIdentTypes(identList || [])
+                if (!accountResult.ok) {
+                    const { error } = accountResult
+                    if (error instanceof ApiError && error.status === 401) {
+                        redirecting = true
+                        return
+                    }
+                    setAccountError(error instanceof Error && error.message ? error.message : "Intenta de nuevo en unos segundos.")
+                    return
+                }
+                const account = accountResult.value
+                if (sessionClientUuid && !account) {
+                    setAccountError("La cuenta llegó vacía. Intenta de nuevo en unos segundos.")
+                    return
+                }
+                setAccountError(null)
                 setClientUuid(account?.uuid ?? sessionClientUuid)
                 if (account) {
                     setLogoUrl(account.logoUrl)
@@ -136,12 +166,12 @@ export function ProfileForm({ user }: ProfileFormProps) {
                     })
                 }
             } finally {
-                if (active) setIsHydrating(false)
+                if (active && !redirecting) setIsHydrating(false)
             }
         })()
         return () => { active = false }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [])
+    }, [loadAttempt])
 
     async function onSubmit(data: ProfileValues) {
         if (!clientUuid) {
@@ -182,6 +212,28 @@ export function ProfileForm({ user }: ProfileFormProps) {
         return (
             <div className="flex items-center justify-center py-16">
                 <Loader2 className="h-6 w-6 animate-spin text-[var(--color-brand-purple)]" />
+            </div>
+        )
+    }
+
+    if (accountError) {
+        // Sin una copia confiable de la cuenta no hay formulario: «Guardar»
+        // enviaría los valores de la sesión encima de los datos reales.
+        return (
+            <div role="alert" className="flex flex-col items-center gap-2 py-16 text-center">
+                <p className="text-sm font-semibold text-slate-900">No pudimos cargar la cuenta</p>
+                <p className="text-xs text-muted-foreground">{accountError}</p>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={() => {
+                        setIsHydrating(true)
+                        setLoadAttempt((n) => n + 1)
+                    }}
+                >
+                    Reintentar
+                </Button>
             </div>
         )
     }

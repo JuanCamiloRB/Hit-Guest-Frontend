@@ -117,37 +117,38 @@ class AuthServiceImpl implements AuthService {
 
     /**
      * GET /clients/{uuid} — the CLIENTE record for "Mi cuenta" (12 fields + logoUrl).
-     * `clientUuid` comes from the session (GET /user). Returns null on failure so the
-     * form falls back to session data.
+     * `clientUuid` comes from the session (GET /user).
+     *
+     * `null` = la respuesta llegó sin una cuenta reconocible (ni `uuid` ni
+     * `name`): con todos los campos vacíos no es una cuenta. Un fallo
+     * de la petición se LANZA: antes también era `null`, y el formulario de
+     * perfil se quedaba con los valores de la sesión y dejaba guardarlos
+     * encima de la cuenta real (persona jurídica → natural, campos vacíos).
      */
     async getClient(clientUuid: string): Promise<ClientAccount | null> {
-        try {
-            const data = await apiClient.get<any>(`${API_BASE}/clients/${clientUuid}`)
-            const c = data?.client || data?.data?.client || data?.data || data
-            if (!c || typeof c !== "object") return null
-            const id = (v: unknown) => (v == null ? "" : String(v))
-            const profile: Partial<ClientProfile> = {
-                personTypeId: id(c.personTypeId ?? c.person_type_id),
-                name: c.name ?? "",
-                lastname: c.lastname ?? "",
-                identificationTypeId: id(c.identificationTypeId ?? c.identification_type_id),
-                identificationNumber: c.identificationNumber ?? c.identification_number ?? "",
-                email: c.email ?? "",
-                phone: c.phone ?? "",
-                address: c.address ?? "",
-                addressDetail: c.addressDetail ?? c.address_detail ?? "",
-                city: c.city ?? "",
-                state: c.state ?? "",
-                countryId: id(c.countryId ?? c.country_id ?? c.country?.id),
-            }
-            return {
-                profile,
-                uuid: c.uuid ?? null,
-                // logoUrl is omitted (not null) when the client has no logo.
-                logoUrl: c.logoUrl ?? c.logo_url ?? null,
-            }
-        } catch {
-            return null
+        const data = await apiClient.get<any>(`${API_BASE}/clients/${clientUuid}`)
+        const c = data?.client || data?.data?.client || data?.data || data
+        if (!c || typeof c !== "object" || (!c.uuid && !c.name)) return null
+        const id = (v: unknown) => (v == null ? "" : String(v))
+        const profile: Partial<ClientProfile> = {
+            personTypeId: id(c.personTypeId ?? c.person_type_id),
+            name: c.name ?? "",
+            lastname: c.lastname ?? "",
+            identificationTypeId: id(c.identificationTypeId ?? c.identification_type_id),
+            identificationNumber: c.identificationNumber ?? c.identification_number ?? "",
+            email: c.email ?? "",
+            phone: c.phone ?? "",
+            address: c.address ?? "",
+            addressDetail: c.addressDetail ?? c.address_detail ?? "",
+            city: c.city ?? "",
+            state: c.state ?? "",
+            countryId: id(c.countryId ?? c.country_id ?? c.country?.id),
+        }
+        return {
+            profile,
+            uuid: c.uuid ?? null,
+            // logoUrl is omitted (not null) when the client has no logo.
+            logoUrl: c.logoUrl ?? c.logo_url ?? null,
         }
     }
 

@@ -2,10 +2,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({
     post: vi.fn(),
+    get: vi.fn(),
 }))
 
 vi.mock("@/lib/api-client", () => ({
-    apiClient: { post: mocks.post },
+    apiClient: { post: mocks.post, get: mocks.get },
     handleSessionExpired: vi.fn(),
 }))
 
@@ -46,5 +47,19 @@ describe("mapUserResponse — isPrincipal sin inventar (auditoría 2026-10-14)",
             .toMatchObject({ canAccessSupportConsole: true, canManageSupportAgents: false })
         expect(mapUserResponse({ uuid: "b" }, "t"))
             .toMatchObject({ canAccessSupportConsole: false, canManageSupportAgents: false })
+    })
+})
+
+describe("authService.getClient — un fallo no se disfraza de «sin cuenta»", () => {
+    it("un fallo de la petición se lanza (antes devolvía null y el perfil guardaba la sesión encima)", async () => {
+        mocks.get.mockRejectedValueOnce(new Error("503"))
+        await expect(authService.getClient("c1")).rejects.toThrow("503")
+    })
+
+    it("una respuesta sin cuenta reconocible es null; una cuenta con uuid se lee", async () => {
+        mocks.get.mockResolvedValueOnce({ data: {} })
+        await expect(authService.getClient("c1")).resolves.toBeNull()
+        mocks.get.mockResolvedValueOnce({ data: { uuid: "c1", name: "Hoteles SAS", personTypeId: 2 } })
+        await expect(authService.getClient("c1")).resolves.toMatchObject({ uuid: "c1", profile: { name: "Hoteles SAS", personTypeId: "2" } })
     })
 })
