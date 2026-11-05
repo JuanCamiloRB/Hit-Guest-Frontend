@@ -102,6 +102,19 @@ describe("reservationsService.list — lo que llega del backend no tumba ni reco
         for (const call of fetchMock.mock.calls) expect(call[1].headers.Authorization).toBe("Bearer pm-token")
     })
 
+    it("pinta con lo que trae la reserva: no espera el mapa de propiedades y nunca usa el alojamiento como propiedad", async () => {
+        const conPropiedad = { ...NUEVA, uuid: "r-1", listing: { uuid: "l-1", name: "Suite", internalName: "101", property: { uuid: "p-1", name: "Casa Mar" } } }
+        const sinPropiedad = { ...NUEVA, uuid: "r-2", listing: { uuid: "l-2", name: "Loft" } }
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(page([conPropiedad, sinPropiedad])))
+
+        const list = await reservationsService.list()
+        expect(mocks.listProperties).not.toHaveBeenCalled()
+        expect(mocks.listByProperty).not.toHaveBeenCalled()
+        expect(list[0]).toMatchObject({ unitId: "l-1", propertyId: "p-1", propertyName: "Casa Mar", unitName: "Suite (101)" })
+        // Vacía hasta que responda el portafolio: ni «no disponible» ni «Loft».
+        expect(list[1]).toMatchObject({ unitId: "l-2", propertyId: "", propertyName: "", unitName: "Loft" })
+    })
+
     it("un 202 se traduce a «todavía no», no a cero reservas", async () => {
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(page([], undefined, 202)))
         await expect(reservationsService.list()).rejects.toBeInstanceOf(ReservationsNotReadyError)

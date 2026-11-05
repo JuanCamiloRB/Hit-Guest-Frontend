@@ -34,6 +34,7 @@ import { propertiesService } from "@/features/properties/services/properties-ser
 import { automationService, canonicalSlug } from "@/features/properties/services/automation-service"
 import { settleWithConcurrency } from "@/lib/settle-with-concurrency"
 import { readReservationChannel } from "@/lib/reservation-channel"
+import { UNKNOWN_PROPERTY_LABEL, unitLabel } from "../lib/listing-names"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import type { AutomationStatusItem } from "@/features/properties/types/automation"
 import type { AutomationStatus } from "@/types"
@@ -524,93 +525,6 @@ export interface ReservationDetailData {
 }
 
 /**
- * Surfaces the day `GET /reservations` starts paginating.
- *
- * The endpoint is contracted to return every reservation the token owns (no
- * `page`/`per_page` filters, no `meta` envelope). We deliberately do NOT crawl
- * pages here — that would mean inventing query params the API doesn't document.
- * We only detect the envelope and shout, because the failure mode is invisible:
- * consumers would just see fewer reservations and read the gap as "no activity".
- */
-interface ListingLookupEntry {
-    propertyId: string
-    propertyName: string
-    unitName: string
-}
-
-/**
- * Resolves listingUuid → {propertyId, propertyName, unitName} for the whole
- * account, once per `fetchList()` call.
- *
- * `GET /reservations` does NOT reliably nest a usable property inside its
- * `listing` field (confirmed by getById()'s own workaround, and by
- * listingsService.listByProperty()'s comment about the flat
- * `/listings?property_uuid=` query having leaked listings across properties
- * in the past — Ricardo, jul 2026). The only route documented as
- * account-scoped and correct is the nested `/properties/{uuid}/listings`, so
- * that's what this builds the map from, instead of trusting anything on the
- * raw reservation shape.
- */
-export interface ListingLookupResult {
-    map: Map<string, ListingLookupEntry>
-    /** Propiedades cuyos alojamientos no se pudieron cargar. */
-    failedProperties: string[]
-}
-
-export async function buildListingLookup(): Promise<ListingLookupResult> {
-    const map = new Map<string, ListingLookupEntry>()
-    const failedProperties: string[] = []
-
-    let properties: Awaited<ReturnType<typeof propertiesService.list>>
-    try {
-        properties = await propertiesService.list()
-    } catch (error) {
-        console.error("[ReservationsService] No se pudo listar propiedades:", error)
-        return { map, failedProperties }
-    }
-
-    // `Promise.allSettled`, no `Promise.all`: con `all`, un solo 503 en una
-    // propiedad rechazaba de inmediato y el mapa se devolvía a medio construir
-    // —las propiedades que aún no habían resuelto no llegaban a agregarse—, así
-    // que una petición caída dejaba sin alojamiento a reservas de propiedades
-    // que habían respondido perfectamente. Ahora cada propiedad cae sola.
-    const results = await Promise.allSettled(
-        properties.map(async (property) => {
-            const listings = await listingsService.listByProperty(property.uuid)
-            return { property, listings }
-        }),
-    )
-
-    for (let i = 0; i < results.length; i++) {
-        const result = results[i]
-        if (result.status === "rejected") {
-            failedProperties.push(properties[i]?.name || properties[i]?.uuid || "desconocida")
-            continue
-        }
-        const { property, listings } = result.value
-        for (const listing of listings) {
-            if (!listing?.uuid) continue
-            map.set(listing.uuid, {
-                propertyId: property.uuid,
-                propertyName: property.name,
-                unitName: listing.internalName || listing.internal_name
-                    ? `${listing.name ?? "Alojamiento"} (${listing.internalName ?? listing.internal_name})`
-                    : listing.name || "Alojamiento",
-            })
-        }
-    }
-
-    if (failedProperties.length > 0) {
-        console.error(
-            `[ReservationsService] No se pudieron cargar los alojamientos de ${failedProperties.length} ` +
-            `propiedad(es): ${failedProperties.join(", ")}. Sus reservas se mostrarán sin propiedad.`,
-        )
-    }
-
-    return { map, failedProperties }
-}
-
-/**
  * Lee un conteo no negativo de un campo de la API, o `undefined` si no vino.
  *
  * `undefined` y `0` NO son lo mismo aquí: la columna CHECK-IN muestra "0 de 3
@@ -685,7 +599,8 @@ export class ReservationsService {
             guestName,
             email: r.emailGuest || r.email_guest,
             phone: r.extra?.guestPhone || r.extra?.guest_phone,
-            propertyName: propertyName || listing?.name || "Propiedad",
+            // Nunca el nombre del alojamiento como propiedad.
+            propertyName: propertyName || UNKNOWN_PROPERTY_LABEL,
             unitName: listing?.internalName || listing?.internal_name
                 ? `${listing?.name ?? "Alojamiento"} (${listing.internalName ?? listing.internal_name})`
                 : listing?.name || "Alojamiento",
@@ -1207,16 +1122,10 @@ export class ReservationsService {
     private async fetchList(signal?: AbortSignal): Promise<Reservation[]> {
 
         try {
-            // Independent requests — run together instead of one blocking the other.
-            const [dataArray, lookupResult] = await Promise.all([
-                this.fetchAllReservationPages(signal),
-                buildListingLookup(),
-            ])
-            const { map: listingLookup, failedProperties } = lookupResult
-
-            // Only fires once per fetchList() call (not once per unmatched reservation)
-            // — this is a config/contract signal, not per-row spam.
-            let unmatchedListings = 0
+            // Solo `/reservations`: propiedad y alojamiento salen del payload y los
+            // completa el portafolio fuera del camino crítico (`withListingNames`).
+            // Antes la lista esperaba propiedades + alojamientos de CADA propiedad.
+            const dataArray = await this.fetchAllReservationPages(signal)
 
             // Cada fila se mapea aislada: una reserva con una forma inesperada se
             // descarta (y se dice en consola), en vez de tumbar el lote entero y
@@ -1242,29 +1151,21 @@ export class ReservationsService {
                 const channel = readReservationChannel(r)
 
                 // ── Listing / Property ──
-                // GET /reservations does not reliably nest a usable property inside
-                // `listing` (see buildListingLookup()'s JSDoc) — so resolve via the
-                // account-wide listing→property map built from the documented-correct
-                // nested route, not from assuming one shape of the raw reservation.
-                // Try every documented candidate for the listing's own UUID, since the
-                // exact field name here isn't confirmed by any single doc in this repo.
+                // Lo que trae el payload; el portafolio lo completa después
+                // (`withListingNames`). Se prueban las claves documentadas del
+                // uuid del alojamiento: ningún documento confirma una sola.
                 const listing = r.listing || {}
                 const listingUuid: string | undefined =
                     listing?.uuid || r.listingUuid || r.listing_uuid || undefined
-                const resolved = listingUuid ? listingLookup.get(listingUuid) : undefined
-
-                if (!resolved) unmatchedListings++
-
-                const propertyName = resolved?.propertyName
-                    || listing?.property?.name
-                    || listing?.name
-                    || "Propiedad Desconocida"
-                const propertyId = resolved?.propertyId
-                    || listing?.property?.uuid
+                // Vacío = todavía no se sabe (lo completa el portafolio, que
+                // pone «Propiedad no disponible» si tampoco la conoce). Nunca el
+                // nombre del alojamiento como propiedad.
+                const propertyName: string = listing?.property?.name || ""
+                const propertyId = listing?.property?.uuid
                     || listing?.propertyUuid
                     || listing?.property_uuid
                     || ""
-                const unitName = resolved?.unitName || listing?.name || "Alojamiento"
+                const unitName = unitLabel(listing?.name, listing?.internalName ?? listing?.internal_name)
                 const unitId = listingUuid || r.listingId?.toString() || r.listing_id?.toString() || ""
 
                 const status = mapReservationStatus(r)
@@ -1316,25 +1217,6 @@ export class ReservationsService {
             })
             if (skipped.length > 0) {
                 console.error(`[reservations] ${skipped.length} reserva(s) no se pudieron mapear y NO se muestran: ${skipped.join(", ")}`)
-            }
-
-            // Dos causas MUY distintas producen el mismo síntoma, y el aviso
-            // anterior siempre culpaba a la segunda: mandaba a revisar el
-            // contrato del backend cuando lo único que había pasado era un 503.
-            if (unmatchedListings > 0 && failedProperties.length > 0) {
-                console.warn(
-                    `[reservations] ${unmatchedListings}/${reservations.length} reservas sin propiedad porque no se ` +
-                        `pudieron cargar los alojamientos de: ${failedProperties.join(", ")}. Es un fallo de red o del ` +
-                        `backend, NO un problema del contrato — reintentar antes de investigar los nombres de campo.`,
-                )
-            } else if (unmatchedListings > 0 && listingLookup.size > 0) {
-                console.error(
-                    `[reservations] ${unmatchedListings}/${reservations.length} reservas no pudieron unirse al mapa ` +
-                        `de propiedades/alojamientos — ninguna de las claves candidatas (listing.uuid, listingUuid, ` +
-                        `listing_uuid) coincidió con un listing conocido. El filtro de "Propiedades"/"Alojamientos" ` +
-                        `en el calendario de Operaciones mostrará "Propiedad Desconocida"/"Alojamiento" para esas ` +
-                        `reservas — confirmar con backend el campo real que identifica el listing en GET /reservations.`,
-                )
             }
 
             // El semáforo de automatizaciones NO viene aquí: son N peticiones

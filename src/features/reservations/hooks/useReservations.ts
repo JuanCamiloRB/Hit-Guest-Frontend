@@ -1,10 +1,12 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useMemo, useRef } from "react"
 import { useCachedLoad } from "@/hooks/useCachedLoad"
 import { createStaleCache } from "@/lib/stale-cache"
 import type { Reservation } from "@/types"
 import { ReservationsNotReadyError, reservationsService } from "../services/reservations-service"
+import { withListingNames } from "../lib/listing-names"
+import { useListingPortfolio } from "./useListingPortfolio"
 
 /**
  * La lista de reservas que comparten Operaciones, el Calendario y el Tablero:
@@ -61,6 +63,11 @@ const LIST_OPTIONS = {
 export function useReservations(): ReservationsState {
     const { data, status, retrying, refreshFailed, version, refresh } = useCachedLoad(reservationsCache, LIST_OPTIONS)
 
+    // Propiedad y alojamiento de cada fila, fuera del camino crítico: la lista
+    // ya se ve y los nombres se completan cuando responde el portafolio.
+    const portfolio = useListingPortfolio()
+    const reservations = useMemo(() => (data ? withListingNames(data, portfolio) : null), [data, portfolio])
+
     // Sin esqueleto: se refresca en silencio sobre lo que ya se ve.
     const lastLoadAt = useRef(0)
     useEffect(() => {
@@ -77,5 +84,5 @@ export function useReservations(): ReservationsState {
         return () => document.removeEventListener("visibilitychange", onVisibility)
     }, [refresh])
 
-    return { reservations: data, status, syncing: retrying, refreshFailed, version, refresh }
+    return { reservations, status, syncing: retrying, refreshFailed, version, refresh }
 }

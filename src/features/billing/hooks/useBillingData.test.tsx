@@ -5,7 +5,10 @@ import type { ReservationCost, ReservationCostFailure, ReservationCostsResult } 
 const mocks = vi.hoisted(() => ({
     list: vi.fn(),
     getReservationCosts: vi.fn(),
+    bffFetch: vi.fn(),
 }))
+
+vi.mock("@/lib/bff-client", () => ({ bffFetch: mocks.bffFetch }))
 
 vi.mock("@/features/reservations/services/reservations-service", () => ({
     ReservationsNotReadyError: class ReservationsNotReadyError extends Error {},
@@ -24,6 +27,7 @@ vi.mock("../services/consumption-service", async (importOriginal) => {
 })
 
 import { resetReservationsCache } from "@/features/reservations/hooks/useReservations"
+import { resetPropertiesCaches } from "@/features/properties/lib/properties-cache"
 import { resetBillingDataCache, useBillingData } from "./useBillingData"
 import { ReservationsNotReadyError } from "@/features/reservations/services/reservations-service"
 
@@ -62,9 +66,27 @@ describe("useBillingData — un error nunca se ve como 0 USD", () => {
         vi.clearAllMocks()
         resetBillingDataCache()
         resetReservationsCache()
+        resetPropertiesCaches()
+        mocks.bffFetch.mockRejectedValue(new Error("BFF error 503"))
         vi.spyOn(console, "error").mockImplementation(() => {})
         mocks.list.mockResolvedValue([{ id: "a" }])
         mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
+    })
+
+    it("no espera al portafolio: el consumo se pide y se muestra; los nombres llegan después", async () => {
+        let release!: (value: unknown) => void
+        mocks.bffFetch.mockReturnValueOnce(new Promise((res) => { release = res }))
+        mocks.list.mockResolvedValue([{ id: "a", unitId: "l-1", propertyName: "" }])
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+        expect(hook.current.costs[0]).toMatchObject({ unitName: "101", propertyName: "Pullman" })
+
+        await act(async () => release({
+            properties: [{ uuid: "p-1", name: "Casa Mar" }],
+            listings: [{ uuid: "l-1", property_uuid: "p-1", name: "Suite", internalName: "101" }],
+        }))
+        await waitFor(() => expect(hook.current.costs[0]).toMatchObject({ unitName: "Suite (101)", propertyName: "Casa Mar" }))
+        expect(hook.current.summary?.monthTotal).toBe(2.5)
     })
 
     it("éxito: ready, con las cifras calculadas", async () => {
@@ -141,6 +163,8 @@ describe("useBillingData — actualizar no borra lo que se ve", () => {
         vi.clearAllMocks()
         resetBillingDataCache()
         resetReservationsCache()
+        resetPropertiesCaches()
+        mocks.bffFetch.mockRejectedValue(new Error("BFF error 503"))
         vi.spyOn(console, "error").mockImplementation(() => {})
         mocks.list.mockResolvedValue([{ id: "a" }])
         mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
@@ -230,6 +254,8 @@ describe("useBillingData — volver al Tablero muestra lo último mientras actua
         vi.clearAllMocks()
         resetBillingDataCache()
         resetReservationsCache()
+        resetPropertiesCaches()
+        mocks.bffFetch.mockRejectedValue(new Error("BFF error 503"))
         vi.spyOn(console, "error").mockImplementation(() => {})
         mocks.list.mockResolvedValue([{ id: "a" }])
         mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
@@ -280,6 +306,8 @@ describe("useBillingData — la carga inicial pinta lo que ya llegó", () => {
         vi.clearAllMocks()
         resetBillingDataCache()
         resetReservationsCache()
+        resetPropertiesCaches()
+        mocks.bffFetch.mockRejectedValue(new Error("BFF error 503"))
         vi.spyOn(console, "error").mockImplementation(() => {})
         mocks.list.mockResolvedValue([{ id: "a" }, { id: "b" }, { id: "c" }])
     })

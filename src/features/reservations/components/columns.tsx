@@ -138,7 +138,9 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
                         <span className="text-xs text-ink-2 truncate">
                             {reservation.unitName}
                         </span>
-                        {reservation.unitName !== reservation.propertyName && (
+                        {/* Vacío mientras el portafolio no responde: sin texto que
+                            parezca un fallo mientras solo está cargando. */}
+                        {reservation.propertyName && reservation.unitName !== reservation.propertyName && (
                             <span className="text-xs text-ink-3 truncate">
                                 {reservation.propertyName}
                             </span>

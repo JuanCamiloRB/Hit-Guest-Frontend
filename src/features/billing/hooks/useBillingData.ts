@@ -1,9 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { startOfMonth } from "date-fns"
 import { ReservationsNotReadyError } from "@/features/reservations/services/reservations-service"
 import { reservationsCache } from "@/features/reservations/hooks/useReservations"
+import { withListingNames } from "@/features/reservations/lib/listing-names"
+import { useListingPortfolio } from "@/features/reservations/hooks/useListingPortfolio"
 import { consumptionService, type CostLoadProgress } from "../services/consumption-service"
 import type {
     ConsumptionSummary,
@@ -78,6 +80,18 @@ export function resetBillingDataCache(): void {
     lastResult = null
 }
 
+/** Los nombres que trae cada fila de consumo, actualizados con los del portafolio. */
+function withNames<T extends { reservationId: string; unitName: string; propertyName: string }>(
+    rows: T[],
+    names: Map<string, { unitName: string; propertyName: string }> | null,
+): T[] {
+    if (!names || rows.length === 0) return rows
+    return rows.map((row) => {
+        const named = names.get(row.reservationId)
+        return named ? { ...row, unitName: named.unitName, propertyName: named.propertyName } : row
+    })
+}
+
 /**
  * Consumo por reserva para el Tablero. El saldo NO vive aquí: lo comparte
  * `useBalanceStore` con el header y el banner, para que digan lo mismo.
@@ -116,7 +130,9 @@ export function useBillingData(): BillingData {
         const controller = new AbortController()
         activeController.current = controller
         try {
-            // La misma lista que Operaciones y el Calendario (dedupe y último valor).
+            // La misma lista que Operaciones y el Calendario (dedupe y último
+            // valor). Los nombres del portafolio no se esperan: se ponen al
+            // mostrar (`withNames`), así el BFF no retrasa ninguna consulta.
             const reservations = await reservationsCache.load()
             if (controller.signal.aborted) return
             // Progresivo solo sin datos en pantalla (`lastResult` es lo que se
@@ -162,9 +178,15 @@ export function useBillingData(): BillingData {
         void fetchCosts()
     }, [fetchCosts])
 
-    // El Tablero cuenta como consumidor de la lista compartida mientras está
-    // montado: sin esto, la caché cancelaría su carga por «nadie mirando».
-    useEffect(() => reservationsCache.subscribe(() => {}), [])
+    // Suscribirse además cuenta al Tablero como consumidor de la lista
+    // compartida: sin eso, la caché cancelaría su carga por «nadie mirando».
+    const list = useSyncExternalStore(reservationsCache.subscribe, reservationsCache.read, () => null)
+    const portfolio = useListingPortfolio()
+    /** Propiedad y alojamiento de cada reserva, cuando el portafolio respondió. */
+    const names = useMemo(
+        () => (list && portfolio ? new Map(withListingNames(list, portfolio).map((r) => [r.id, r])) : null),
+        [list, portfolio],
+    )
 
     useEffect(() => {
         void fetchCosts()
@@ -191,6 +213,8 @@ export function useBillingData(): BillingData {
         () => (partial ? partial.byIndex.filter((cost): cost is ReservationCost => cost !== null) : []),
         [partial],
     )
+    const costs = useMemo(() => withNames(data?.costs ?? partialCosts, names), [data, partialCosts, names])
+    const failedReservations = useMemo(() => withNames(data?.failedReservations ?? [], names), [data, names])
 
     const status: ConsumptionStatus = !data
         ? inFlight ? "loading" : lastLoadIssue === "syncing" ? "syncing" : "error"
@@ -199,9 +223,9 @@ export function useBillingData(): BillingData {
 
     return {
         status,
-        costs: data?.costs ?? partialCosts,
+        costs,
         loadingProgress: !data && partial ? { done: partial.done, total: partial.byIndex.length } : null,
-        failedReservations: data?.failedReservations ?? [],
+        failedReservations,
         refreshFailed: data !== null && lastLoadIssue === "error" && !inFlight,
         syncing: lastLoadIssue === "syncing" && !inFlight,
         summary: analytics?.summary ?? null,
