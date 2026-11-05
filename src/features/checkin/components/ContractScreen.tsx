@@ -10,6 +10,7 @@ import { normalizeVerificationResult } from "@/features/checkin/lib/verification
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { getVerificationTokenState } from "@/features/checkin/lib/verification-token"
+import { adoptLegacyGuestFormDraft, dropLegacyGuestFormDraft, guestFormDraftKey } from "@/features/checkin/lib/guest-form-draft"
 import { isDocumentExpired } from "@/features/checkin/lib/document-expiry"
 import { classifyCompleteFailure } from "@/features/checkin/lib/complete-failure"
 import {
@@ -515,12 +516,18 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
         setIsSubmitting(true)
         setSubmitStatus("")
         try {
-            const formKey = `checkin-guest-form-${reservationUuid}`
+            const formKey = guestFormDraftKey(reservationUuid, guestUuid)
             const rawForm = localStorage.getItem(formKey)
-            if (!rawForm) {
-                throw new Error("No se encontraron los datos del formulario.")
+            // Un titular que llenó el formulario antes de la clave por huésped.
+            const form = (rawForm ? JSON.parse(rawForm) : isMainGuest ? adoptLegacyGuestFormDraft(reservationUuid, guestUuid) : null) as GuestFormData | null
+            if (!form) {
+                // P. ej. un acompañante que estaba a mitad de camino cuando el
+                // borrador pasó a ser por huésped: vuelve al formulario, no a
+                // un callejón sin salida.
+                toast.error("No encontramos tus datos en este dispositivo. Vuelve a completarlos.")
+                router.push(`${basePath}/guest?guest_uuid=${guestUuid}`)
+                return
             }
-            const form: GuestFormData = JSON.parse(rawForm)
 
             // `profile.email` es REQUIRED en ambos /complete (§16/§18). El
             // formulario lo exige, pero este borrador vive en localStorage y
@@ -663,6 +670,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             if (lastError) throw lastError
 
             localStorage.removeItem(formKey)
+            if (isMainGuest) dropLegacyGuestFormDraft(reservationUuid)
             localStorage.removeItem(`checkin-identify-${reservationUuid}`)
             // tufirma: the contract is signed externally (email). The main guest's
             // part is registered, but the contract stays "pending_signature" until the

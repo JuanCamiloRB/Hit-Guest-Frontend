@@ -106,7 +106,7 @@ describe("VerifyScreen — captura de documento sin verificación (contrato 2026
         expect(screen.queryByText("Tomar selfie")).toBeNull()
         expect(screen.queryByText("Confirma tus datos")).toBeNull()
         await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/checkin/reservation/guest?guest_uuid=guest"))
-        expect(JSON.parse(localStorage.getItem("checkin-guest-form-reservation") ?? "null"))
+        expect(JSON.parse(localStorage.getItem("checkin-guest-form-reservation-guest") ?? "null"))
             .toMatchObject({ identificationNumber: "DOC-1" })
         expect(mocks.toastSuccess).not.toHaveBeenCalledWith("Identidad verificada exitosamente")
     })
@@ -263,7 +263,7 @@ describe("VerifyScreen — contrato síncrono de Textract", () => {
         fireEvent.click(screen.getByRole("button", { name: "Continuar" }))
         expect(JSON.parse(localStorage.getItem("checkin-secondary-form-token") ?? "null"))
             .toMatchObject({ identificationNumber: "DOC-1" })
-        expect(localStorage.getItem("checkin-guest-form-reservation")).toBeNull()
+        expect(localStorage.getItem("checkin-guest-form-reservation-guest")).toBeNull()
     })
 
     it("no deja confirmar una fecha de nacimiento futura recibida o editada en OCR", async () => {

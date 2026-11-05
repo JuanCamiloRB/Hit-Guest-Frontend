@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { ContractScreen } from "./ContractScreen"
+import { toast } from "sonner"
 
 const mocks = vi.hoisted(() => {
     const push = vi.fn()
@@ -101,7 +102,7 @@ describe("ContractScreen — firma nativa no idempotente", () => {
         mocks.loadSession.mockImplementation(() => ({ isMainGuest: mocks.isMainGuest }))
         localStorage.clear()
         sessionStorage.clear()
-        localStorage.setItem("checkin-guest-form-reservation-1", JSON.stringify({
+        localStorage.setItem("checkin-guest-form-reservation-1-guest-1", JSON.stringify({
             email: "ada@example.com",
             name: "Ada",
             lastname: "Lovelace",
@@ -256,6 +257,63 @@ describe("ContractScreen — firma nativa no idempotente", () => {
         expect(mocks.completeMainGuest).not.toHaveBeenCalled()
     })
 
+    it("borrador de antes de la clave por huésped: un secundario NUNCA usa el del titular; sin el suyo, vuelve al formulario", async () => {
+        mocks.isMainGuest = false
+        const legacy = localStorage.getItem("checkin-guest-form-reservation-1-guest-1")!
+        localStorage.removeItem("checkin-guest-form-reservation-1-guest-1")
+        localStorage.setItem("checkin-guest-form-reservation-1", legacy)
+        mocks.getPortal.mockResolvedValue({
+            ...portal(),
+            registeredGuests: [{ uuid: "guest-1", isMain: false, isCompleted: false, verification: { status: "approved", currentStep: "form" } }],
+        })
+
+        render(<ContractScreen reservationUuid="reservation-1" basePath="/checkin/reservation-1" />)
+        fireEvent.click(await screen.findByRole("button", { name: "Completar check-in" }))
+
+        await waitFor(() => expect(mocks.push).toHaveBeenCalledWith("/checkin/reservation-1/guest?guest_uuid=guest-1"))
+        expect(toast.error).toHaveBeenCalled()
+        expect(mocks.completeSecondaryGuest).not.toHaveBeenCalled()
+        // Ni se copia ni se borra: es del titular.
+        expect(localStorage.getItem("checkin-guest-form-reservation-1")).toBe(legacy)
+        expect(localStorage.getItem("checkin-guest-form-reservation-1-guest-1")).toBeNull()
+    })
+
+    it("un secundario que completa con su borrador no toca el borrador viejo del titular", async () => {
+        mocks.isMainGuest = false
+        localStorage.setItem("checkin-guest-form-reservation-1", JSON.stringify({ name: "Titular" }))
+        mocks.getPortal.mockResolvedValue({
+            ...portal(),
+            registeredGuests: [{ uuid: "guest-1", isMain: false, isCompleted: false, verification: { status: "approved", currentStep: "form" } }],
+        })
+        mocks.completeSecondaryGuest.mockResolvedValue({ message: "Secondary guest checkin completed." })
+
+        render(<ContractScreen reservationUuid="reservation-1" basePath="/checkin/reservation-1" />)
+        fireEvent.click(await screen.findByRole("button", { name: "Completar check-in" }))
+
+        await waitFor(() => expect(mocks.completeSecondaryGuest).toHaveBeenCalledOnce())
+        await waitFor(() => expect(localStorage.getItem("checkin-guest-form-reservation-1-guest-1")).toBeNull())
+        expect(localStorage.getItem("checkin-guest-form-reservation-1")).toBe(JSON.stringify({ name: "Titular" }))
+    })
+
+    it("borrador de antes de la clave por huésped: el titular confirmado lo usa y al terminar no queda ninguno", async () => {
+        const legacy = localStorage.getItem("checkin-guest-form-reservation-1-guest-1")!
+        localStorage.removeItem("checkin-guest-form-reservation-1-guest-1")
+        localStorage.setItem("checkin-guest-form-reservation-1", legacy)
+        mocks.getPortal.mockResolvedValue(portal())
+        mocks.completeMainGuest.mockResolvedValue({ message: "Main guest checkin completed." })
+
+        render(<ContractScreen reservationUuid="reservation-1" basePath="/checkin/reservation-1" />)
+        await screen.findByText("Documentos y Firma")
+        fireEvent.click(screen.getByRole("button", { name: "Dibujar firma de prueba" }))
+        fireEvent.click(screen.getByRole("checkbox"))
+        fireEvent.click(screen.getByRole("button", { name: "Firmar y Completar" }))
+
+        await waitFor(() => expect(mocks.completeMainGuest).toHaveBeenCalledOnce())
+        expect(mocks.completeMainGuest.mock.calls[0][1]).toMatchObject({ profile: expect.objectContaining({ email: "ada@example.com" }) })
+        await waitFor(() => expect(localStorage.getItem("checkin-guest-form-reservation-1")).toBeNull())
+        expect(localStorage.getItem("checkin-guest-form-reservation-1-guest-1")).toBeNull()
+    })
+
     it("si complete hizo commit y falla el refresh posterior, navega sin repetir el envío", async () => {
         mocks.getPortal.mockImplementation(() => (
             mocks.completeMainGuest.mock.calls.length > 0
@@ -296,7 +354,7 @@ describe("ContractScreen — fases contrato → tarjeta cuando hay garantía", (
         mocks.loadSession.mockImplementation(() => ({ isMainGuest: mocks.isMainGuest }))
         localStorage.clear()
         sessionStorage.clear()
-        localStorage.setItem("checkin-guest-form-reservation-1", JSON.stringify({
+        localStorage.setItem("checkin-guest-form-reservation-1-guest-1", JSON.stringify({
             email: "ada@example.com",
             name: "Ada",
             lastname: "Lovelace",

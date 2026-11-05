@@ -22,6 +22,7 @@ import { buildCompletedCheckinHref } from "@/features/checkin/lib/success-entry"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { diditCompletionAction } from "@/features/checkin/lib/didit-completion"
 import type { VerificationResult } from "@didit-protocol/sdk-web"
+import { guestFormDraftKey } from "@/features/checkin/lib/guest-form-draft"
 
 interface VerifyScreenProps {
     reservationUuid: string
@@ -103,7 +104,7 @@ export function VerifyScreen({
     guestUuid,
     basePath,
     isSecondary = false,
-    formStorageKey = `checkin-guest-form-${reservationUuid}`,
+    formStorageKey = guestFormDraftKey(reservationUuid, guestUuid),
     fromCallback = false,
     diditError,
 }: VerifyScreenProps) {

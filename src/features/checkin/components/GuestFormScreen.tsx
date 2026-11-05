@@ -22,6 +22,7 @@ import {
     applyPrefillPatch,
 } from "@/features/checkin/lib/main-guest-prefill"
 import { useLocalStorage } from "@/features/checkin/hooks/useLocalStorage"
+import { adoptLegacyGuestFormDraft, dropLegacyGuestFormDraft, guestFormDraftKey } from "@/features/checkin/lib/guest-form-draft"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { getVerificationToken } from "@/features/checkin/lib/verification-token"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
@@ -57,7 +58,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
     const { load } = useIdentifySession(reservationUuid)
     const session = load(guestUuid || undefined)
 
-    const [form, setForm] = useLocalStorage<GuestFormData>(`checkin-guest-form-${reservationUuid}`, {
+    const [form, setForm] = useLocalStorage<GuestFormData>(guestFormDraftKey(reservationUuid, guestUuid), {
         ...emptyGuestForm,
         name: session?.guestName ?? "",
         lastname: session?.guestLastname ?? "",
@@ -186,6 +187,16 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                     const isMainGuest = currentGuest?.isMain ?? session?.isMainGuest ?? false
                     if (isMainGuest && portal) {
                         mainGuestPrefill = normalizeMainGuestPrefill(portal.reservation?.mainGuestPrefill)
+                    }
+                    // Borrador de antes de la clave por huésped: solo del titular
+                    // confirmado, y antes del prefill (que solo llena lo vacío).
+                    // Con el titular ya terminado no le sirve a nadie: se borra
+                    // para que sus datos no queden en un dispositivo compartido.
+                    if (isMainGuest) {
+                        const legacy = adoptLegacyGuestFormDraft(reservationUuid, guestUuid)
+                        if (legacy) setForm((prev) => ({ ...prev, ...legacy }))
+                    } else if (portal?.registeredGuests?.some((guest) => guest.isMain && guest.isCompleted)) {
+                        dropLegacyGuestFormDraft(reservationUuid)
                     }
                 } catch (e) {
                     // Sin portal no hay estado que mirar, pero el token del OTP sigue
