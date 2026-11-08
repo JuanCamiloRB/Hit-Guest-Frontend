@@ -129,7 +129,10 @@
   --muted: #f4f4f5;
   --muted-foreground: #71717a;
 
-  --destructive: #ef4444;
+  /* Relleno del BOTÓN destructivo (separado de --danger a propósito, ver
+     arriba). #ef4444 daba 3.76:1 con texto blanco; #C81E1E da 5.74:1, y 5.04:1
+     en hover (bg-destructive/90): los dos pasan AA (4.5:1). */
+  --destructive: #C81E1E;
   --border: #e4e4e7;
   --input: #e4e4e7;
   --ring: #9D4CF2;
