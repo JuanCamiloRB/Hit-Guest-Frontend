@@ -61,6 +61,9 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-destructive-hover: var(--destructive-hover);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -77,10 +80,19 @@
   --background: #F9FBFA;
   --foreground: #1a1a1a;
 
-  --primary: #9D4CF2; /* Brand Purple (Restored) */
+  /* Marca ≠ interacción. La marca sigue en --color-brand-purple (#9D4CF2) y
+     --color-brand-blue (#5467FA): logos, ilustraciones, detalles. Los colores
+     de INTERACCIÓN (botones, enlaces, selección) son un poco más oscuros para
+     pasar AA (4.5:1) con texto blanco y como texto sobre el fondo: el morado de
+     marca daba 4.42:1 y el azul 4.47:1. El hover es un color explícito más
+     oscuro, no una opacidad (que aclaraba y bajaba el contraste). Los pares los
+     fija `globals-contrast.test.ts`. */
+  --primary: #8B3EE0;         /* 5.44:1 con blanco */
+  --primary-hover: #7B30CF;   /* 6.63:1 */
   --primary-foreground: #ffffff;
 
-  --secondary: #5467FA; /* Brand Blue */
+  --secondary: #4A5BEF;       /* 5.21:1 con blanco */
+  --secondary-hover: #3F4CD6; /* 6.53:1 */
   --secondary-foreground: #ffffff;
 
   /* shadcn reserva `accent` para el TINTE DE HOVER/HIGHLIGHT de sus primitivos
@@ -133,6 +145,7 @@
      arriba). #ef4444 daba 3.76:1 con texto blanco; #C81E1E da 5.74:1, y 5.04:1
      en hover (bg-destructive/90): los dos pasan AA (4.5:1). */
   --destructive: #C81E1E;
+  --destructive-hover: #B01818; /* 7.02:1 */
   --border: #e4e4e7;
   --input: #e4e4e7;
   --ring: #9D4CF2;
@@ -157,16 +170,23 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.21 0.006 285.885);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: #5467FA;
-  --primary-foreground: #ffffff;
+  /* En oscuro un solo morado no puede llevar texto blanco Y servir de texto
+     sobre el fondo casi negro: el contrato se invierte (morado claro con tinta
+     oscura encima). Mismos pares AA que en claro (`globals-contrast.test.ts`). */
+  --primary: #B794F6;
+  --primary-hover: #CBB0F9;
+  --primary-foreground: #1B2047;
   --secondary: oklch(0.274 0.006 286.033);
+  --secondary-hover: oklch(0.32 0.006 286.033);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.274 0.006 286.033);
   --muted-foreground: oklch(0.705 0.015 286.067);
   /* Mismo contrato que en claro: `accent` es el tinte de hover, no la marca. */
   --accent: oklch(0.274 0.006 286.033);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
+  /* El rojo claro anterior daba menos de 3:1 con el texto blanco del botón. */
+  --destructive: #C81E1E;
+  --destructive-hover: #B01818;
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
   --ring: #9D4CF2;
