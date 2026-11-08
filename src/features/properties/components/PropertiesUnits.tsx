@@ -71,6 +71,17 @@ import { RECORD_STATUS, readRecordStatus } from "../lib/record-status"
 import { readInactiveResourceError } from "@/lib/inactive-resource"
 import { automationDisplay } from "../lib/automation-display"
 import { DeactivationConfirmDialog } from "./DeactivationConfirmDialog"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { buttonVariants } from "@/components/ui/button"
 import type { ExternalPmsId } from "../types"
 import { invalidatePropertiesCaches } from "../lib/properties-cache"
 
@@ -144,6 +155,11 @@ export function isMeaningfulOverride(o: ListingAutomationOverride): boolean {
     if (o.token) return true
     const params = o.parameters ?? {}
     return Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
+}
+
+/** Nombre para mostrar de una unidad: nombre, si no su número interno. */
+function unitDisplayName(unit: { name?: string; internalName?: string; internal_name?: string }, fallback: string): string {
+    return unit.name || unit.internalName || unit.internal_name || fallback
 }
 
 export function PropertiesUnits() {
@@ -569,20 +585,44 @@ export function PropertiesUnits() {
         setIsDialogOpen(false)
     }
 
-    const handleRemoveUnit = async (index: number) => {
+    // Un alojamiento ya guardado se borra en el backend: antes ocurría al
+    // primer clic en la papelera. Ahora se confirma, y mientras se borra no se
+    // puede cerrar ni volver a pulsar. Una fila sin guardar solo sale del
+    // formulario, sin preguntar: no hay nada que borrar en el backend.
+    const [unitToDelete, setUnitToDelete] = useState<{ uuid: string; name: string; isActive: boolean } | null>(null)
+    const [isDeletingUnit, setIsDeletingUnit] = useState(false)
+    // Candado síncrono contra el doble clic (el estado llega un render tarde).
+    const deleteLockRef = useRef(false)
+
+    const handleRemoveUnit = (index: number) => {
         const unit = fields[index] as any
         if (propertyUuid && unit.uuid) {
-            try {
-                await listingsService.delete(unit.uuid)
-                invalidatePropertiesCaches()
-                toast.success("Unidad eliminada")
-            } catch (err) {
-                console.error("[PropertiesUnits] Error deleting listing:", err)
-                notifyError(err, "Error al eliminar la unidad")
-                return
-            }
+            setUnitToDelete({ uuid: unit.uuid, name: unitDisplayName(unit, "este alojamiento"), isActive: unit.isActive !== false })
+            return
         }
         remove(index)
+    }
+
+    const confirmRemoveUnit = async () => {
+        if (!unitToDelete || deleteLockRef.current) return
+        deleteLockRef.current = true
+        setIsDeletingUnit(true)
+        try {
+            await listingsService.delete(unitToDelete.uuid)
+            invalidatePropertiesCaches()
+            // Por uuid, no por la posición de cuando se abrió el diálogo.
+            const index = fields.findIndex((f) => (f as { uuid?: string }).uuid === unitToDelete.uuid)
+            if (index >= 0) remove(index)
+            toast.success("Alojamiento eliminado")
+            setUnitToDelete(null)
+        } catch (err) {
+            // El diálogo sigue abierto: se puede reintentar o cancelar.
+            console.error("[PropertiesUnits] Error deleting listing:", err)
+            notifyError(err, "No pudimos eliminar el alojamiento")
+        } finally {
+            deleteLockRef.current = false
+            setIsDeletingUnit(false)
+        }
     }
 
     return (
@@ -1417,8 +1457,15 @@ export function PropertiesUnits() {
                                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleOpenEditDialog(index)}>
                                             <Edit2 className="h-4 w-4" />
                                         </Button>
-                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleRemoveUnit(index)}>
-                                            <Trash2 className="h-4 w-4" />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            aria-label={`Eliminar ${unitDisplayName(field, "alojamiento")}`}
+                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                            onClick={() => handleRemoveUnit(index)}
+                                        >
+                                            <Trash2 className="h-4 w-4" aria-hidden />
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -1427,6 +1474,48 @@ export function PropertiesUnits() {
                     </TableBody>
                 </Table>
             </CardContent>
+
+            <AlertDialog
+                open={unitToDelete !== null}
+                // Mientras se borra no se cierra: el resultado tiene que verse.
+                onOpenChange={(open) => { if (!open && !isDeletingUnit) setUnitToDelete(null) }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar este alojamiento?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Se elimina <span className="font-semibold text-slate-800">{unitToDelete?.name}</span> de
+                            esta propiedad. Sus reservas se conservan, pero quedan sin alojamiento y no podrás
+                            enviarles el link de check-in.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {/* Solo si está activo: uno inactivo ya no se puede «desactivar». */}
+                    {unitToDelete?.isActive && (
+                        <p className="text-sm text-slate-600">
+                            Si prefieres dejar de operarlo sin eliminarlo, puedes desactivarlo; un alojamiento
+                            inactivo se puede reactivar.
+                        </p>
+                    )}
+                    {/* El botón deshabilitado pierde el foco: esto lo anuncia. */}
+                    <p role="status" className="sr-only">{isDeletingUnit ? "Eliminando el alojamiento…" : ""}</p>
+                    <AlertDialogFooter>
+                        {/* Radix enfoca «Cancelar» al abrir: eliminar exige un clic deliberado. */}
+                        <AlertDialogCancel disabled={isDeletingUnit}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            className={cn(buttonVariants({ variant: "destructive" }), "gap-2")}
+                            disabled={isDeletingUnit}
+                            onClick={(event) => {
+                                // Sin esto Radix cierra al clic y «Eliminando…» nunca se ve.
+                                event.preventDefault()
+                                void confirmRemoveUnit()
+                            }}
+                        >
+                            {isDeletingUnit && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                            {isDeletingUnit ? "Eliminando…" : "Eliminar alojamiento"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     )
 }
