@@ -7,7 +7,19 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { Upload, X, Camera, Loader2, ImageIcon, Info } from "lucide-react"
+import { Upload, Trash2, Camera, Loader2, ImageIcon, Info } from "lucide-react"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import { useFormContext } from "react-hook-form"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
@@ -37,7 +49,11 @@ export function PropertiesPhotos() {
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const [isUploading, setIsUploading] = useState(false)
-    const [deletingUrl, setDeletingUrl] = useState<string | null>(null)
+    // Borrar una foto se confirma (antes era al primer clic, con un botón que
+    // solo aparecía al pasar el mouse). Mientras se borra no se cierra.
+    const [photoToDelete, setPhotoToDelete] = useState<{ url: string; position: number; total: number } | null>(null)
+    const [isDeletingPhoto, setIsDeletingPhoto] = useState(false)
+    const deleteLockRef = useRef(false)
 
     /**
      * Mirror the backend gallery into the form. Critically, `thumbnailUrl` is kept
@@ -80,20 +96,27 @@ export function PropertiesPhotos() {
         }
     }
 
-    async function removeImage(url: string) {
-        if (!uuid) return
-        setDeletingUrl(url)
+    async function confirmRemoveImage() {
+        if (!uuid || !photoToDelete || deleteLockRef.current) return
+        deleteLockRef.current = true
+        setIsDeletingPhoto(true)
         try {
-            const updated = await propertiesService.deleteImage(uuid, url)
+            const updated = await propertiesService.deleteImage(uuid, photoToDelete.url)
             invalidatePropertiesCaches()
             syncGallery(extractPicturesUrl(updated))
             toast.success("Foto eliminada")
+            setPhotoToDelete(null)
         } catch (err) {
-            notifyError(err, "No se pudo eliminar la foto")
+            // El diálogo sigue abierto: se puede reintentar o cancelar.
+            notifyError(err, "No pudimos eliminar la foto")
         } finally {
-            setDeletingUrl(null)
+            deleteLockRef.current = false
+            setIsDeletingPhoto(false)
         }
     }
+
+    const photoLabel = (position: number, total: number) =>
+        `foto ${position} de ${total}${position === 1 ? " (portada)" : ""}`
 
     return (
         <Card>
@@ -128,28 +151,28 @@ export function PropertiesPhotos() {
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                        {picturesUrl.map((url) => (
+                        {picturesUrl.map((url, index) => (
                             <div
                                 key={url}
-                                className="aspect-video relative rounded-md overflow-hidden group border bg-slate-50"
+                                className="aspect-video relative rounded-md overflow-hidden border bg-slate-50"
                             >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={url} alt="Foto de la propiedad" className="object-cover w-full h-full" />
-                                {deletingUrl === url ? (
-                                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                        <Loader2 className="h-5 w-5 animate-spin text-white" />
-                                    </div>
-                                ) : (
-                                    <button
-                                        type="button"
-                                        onClick={() => removeImage(url)}
-                                        disabled={isUploading}
-                                        className="absolute top-2 right-2 p-1 bg-black/50 hover:bg-black/70 rounded-full text-white opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-40"
-                                        aria-label="Eliminar foto"
-                                    >
-                                        <X className="h-4 w-4" />
-                                    </button>
-                                )}
+                                <img
+                                    src={url}
+                                    alt={`Foto ${index + 1} de ${picturesUrl.length} de la propiedad${index === 0 ? " (portada)" : ""}`}
+                                    className="object-cover w-full h-full"
+                                />
+                                {/* Siempre visible: con teclado y en pantallas táctiles no
+                                    hay «pasar el mouse». 36 px de área táctil. */}
+                                <button
+                                    type="button"
+                                    onClick={() => setPhotoToDelete({ url, position: index + 1, total: picturesUrl.length })}
+                                    disabled={isUploading}
+                                    className="absolute top-1.5 right-1.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/60 disabled:opacity-40"
+                                    aria-label={`Eliminar ${photoLabel(index + 1, picturesUrl.length)}`}
+                                >
+                                    <Trash2 className="h-4 w-4" aria-hidden />
+                                </button>
                             </div>
                         ))}
 
@@ -193,6 +216,47 @@ export function PropertiesPhotos() {
                     </div>
                 )}
             </CardContent>
+
+            <AlertDialog
+                open={photoToDelete !== null}
+                onOpenChange={(open) => { if (!open && !isDeletingPhoto) setPhotoToDelete(null) }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar esta foto?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Se elimina la {photoToDelete ? photoLabel(photoToDelete.position, photoToDelete.total) : "foto"} de
+                            la galería de la propiedad.
+                            {/* La portada nueva la fija el formulario (`syncGallery`) y se
+                                guarda con «Actualizar Propiedad»: no se promete más que eso. */}
+                            {photoToDelete?.position === 1 && (photoToDelete.total > 1
+                                ? " Es la portada: al guardar la propiedad, la siguiente foto queda como portada."
+                                : " Es la única foto: al guardar la propiedad, se queda sin portada.")}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    {photoToDelete && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={photoToDelete.url} alt="" className="aspect-video w-full rounded-md border object-cover" />
+                    )}
+                    <p role="status" className="sr-only">{isDeletingPhoto ? "Eliminando la foto…" : ""}</p>
+                    <AlertDialogFooter>
+                        {/* Radix enfoca «Cancelar» al abrir: eliminar exige un clic deliberado. */}
+                        <AlertDialogCancel disabled={isDeletingPhoto}>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                            className={cn(buttonVariants({ variant: "destructive" }), "gap-2")}
+                            disabled={isDeletingPhoto}
+                            onClick={(event) => {
+                                // Sin esto Radix cierra al clic y «Eliminando…» nunca se ve.
+                                event.preventDefault()
+                                void confirmRemoveImage()
+                            }}
+                        >
+                            {isDeletingPhoto && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
+                            {isDeletingPhoto ? "Eliminando…" : "Eliminar foto"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     )
 }
