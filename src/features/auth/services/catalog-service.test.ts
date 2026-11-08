@@ -52,3 +52,41 @@ describe("catalogService — el `slug` del backend llega a CatalogOption (logos 
         ])
     })
 })
+
+
+describe("catalogService.getReservationSources — nunca inventa ids de canal", () => {
+    // La caché es del módulo: cada caso importa uno nuevo, así no dependen del orden.
+    async function freshService() {
+        vi.resetModules()
+        const { CatalogService: Fresh } = await import("./catalog-service")
+        return new Fresh()
+    }
+    afterEach(() => {
+        vi.unstubAllGlobals()
+        vi.restoreAllMocks()
+    })
+
+    it("catálogo fallido: lanza, sin 14/15/16 de respaldo", async () => {
+        vi.stubGlobal("fetch", vi.fn(async () => new Response("{}", { status: 503 })))
+        vi.spyOn(console, "warn").mockImplementation(() => {})
+        await expect((await freshService()).getReservationSources()).rejects.toThrow(/canales/)
+    })
+
+    it("catálogo vacío: lanza y no queda en caché, así Reintentar vuelve a pedir", async () => {
+        const fetchMock = vi.fn(async () => new Response(JSON.stringify({ data: [] }), { status: 200 }))
+        vi.stubGlobal("fetch", fetchMock)
+        const service = await freshService()
+        await expect(service.getReservationSources()).rejects.toThrow(/canales/)
+        await expect(service.getReservationSources()).rejects.toThrow(/canales/)
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it("catálogo correcto: devuelve los canales del backend tal cual", async () => {
+        vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ data: [
+            { id: 21, name: "Directo" }, { id: 22, name: "Airbnb" },
+        ] }), { status: 200 })))
+        expect(await (await freshService()).getReservationSources()).toEqual([
+            { id: "21", name: "Directo" }, { id: "22", name: "Airbnb" },
+        ])
+    })
+})

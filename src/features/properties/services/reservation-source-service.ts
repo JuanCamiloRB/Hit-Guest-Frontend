@@ -7,9 +7,10 @@
  *
  * This is deliberately a NEW service, not a reuse of
  * `catalogService.getReservationSources()`. That method hits a different
- * endpoint (`/catalogs?catalogCategoryName[eq]=reservation_source`) and, on an
- * empty response, falls back to HARDCODED ids (14/15/16) that don't match the
- * real catalog (Direct=21, Airbnb=22, Booking.com=23 — per the backend plan).
+ * endpoint (`/catalogs?catalogCategoryName[eq]=reservation_source`) and, until
+ * 2026-11, fell back on an empty response to HARDCODED ids (14/15/16) that
+ * don't match the real catalog (Direct=21, Airbnb=22, Booking.com=23 — per the
+ * backend plan). It now throws instead.
  * A wrong id here silently routes a contract to the wrong channel, so this
  * service talks to the documented endpoint directly and never invents ids: a
  * failed request is surfaced as an error, not papered over with a guess.

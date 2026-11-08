@@ -303,14 +303,18 @@ export class CatalogService {
         })
     }
 
+    /**
+     * Canales para crear o editar una reserva. Sin respaldo inventado: antes,
+     * un catálogo vacío o caído devolvía 14/15/16, que no son los ids reales,
+     * y la reserva quedaba en otro canal sin que nadie lo notara. Ahora un
+     * fallo o un vacío LANZA (la pantalla lo dice y bloquea la creación), y
+     * el vacío no queda en caché: «Reintentar» vuelve a pedir.
+     */
     async getReservationSources(): Promise<CatalogOption[]> {
         const sources = await this.fetchCatalog("reservation_source")
         if (sources.length === 0) {
-            return [
-                { id: "14", name: "Airbnb" },
-                { id: "15", name: "Booking.com" },
-                { id: "16", name: "Directo" },
-            ]
+            cache.delete("catalog:reservation_source")
+            throw new Error("No se pudo cargar el catálogo de canales de reserva")
         }
         return sources
     }
@@ -326,8 +330,8 @@ export class CatalogService {
      * 101 Booking.com, 134 KunasPMS — none of them carries a `uuid`.
      *
      * No hardcoded fallback, deliberately. `getReservationSources()` above shows
-     * why: its 14/15/16 fallback never matched the real catalog and silently
-     * routed data to the wrong channel. An empty list here means "no se pudo
+     * why: until 2026-11 its 14/15/16 fallback never matched the real catalog
+     * and silently routed data to the wrong channel. An empty list here means "no se pudo
      * cargar", and the UI says exactly that.
      */
     async getPmsSources(): Promise<CatalogOption[]> {

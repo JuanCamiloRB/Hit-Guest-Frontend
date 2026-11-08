@@ -62,7 +62,7 @@ import {
 } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import {
@@ -180,6 +180,11 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
     const [loadingProperties, setLoadingProperties] = useState(false)
     const [loadingListings, setLoadingListings] = useState(false)
     const [loadingSources, setLoadingSources] = useState(false)
+    // Sin catálogo de canales no se crea la reserva: nunca un id supuesto.
+    const [sourcesFailed, setSourcesFailed] = useState(false)
+    // Tras un «Reintentar» que funciona, el foco pasa al selector de canal
+    // (el aviso con el botón desaparece y el foco no puede quedar en el aire).
+    const channelTriggerRef = useRef<HTMLButtonElement>(null)
     const [loadingCountries, setLoadingCountries] = useState(false)
     const [loadingCurrencies, setLoadingCurrencies] = useState(false)
 
@@ -303,25 +308,25 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
     }, [form])
 
     // ── Load Reservation Sources ──
-    const loadReservationSources = useCallback(async () => {
+    /** `true` si quedaron canales para elegir. */
+    const loadReservationSources = useCallback(async (): Promise<boolean> => {
         setLoadingSources(true)
         try {
-            const sources = await catalogService.getReservationSources()
-            setReservationSources(
-                sources.map((s: any) => ({
-                    id: Number(s.id),
-                    name: s.name,
-                    code: s.code,
-                }))
-            )
+            const sources = (await catalogService.getReservationSources())
+                .map((s: any) => ({ id: Number(s.id), name: s.name, code: s.code }))
+                // El backend espera el id numérico: uno que no lo sea no se ofrece.
+                .filter((s) => Number.isInteger(s.id) && s.id > 0)
+            if (sources.length === 0) throw new Error("catálogo de canales sin ids válidos")
+            setReservationSources(sources)
+            setSourcesFailed(false)
+            return true
         } catch (error) {
+            // Sin respaldo inventado: antes caía a 14/15/16, que no son los ids
+            // reales, y la reserva quedaba en otro canal sin aviso.
             console.error("[ReservationDialog] Error loading sources:", error)
-            // Fallback values
-            setReservationSources([
-                { id: 14, name: "Airbnb" },
-                { id: 15, name: "Booking.com" },
-                { id: 16, name: "Directo" },
-            ])
+            setReservationSources([])
+            setSourcesFailed(true)
+            return false
         } finally {
             setLoadingSources(false)
         }
@@ -486,6 +491,8 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             })
             return
         }
+        // Defensa: el botón ya está deshabilitado en este caso.
+        if (mode === "create" && sourcesFailed) return
         setIsLoading(true)
 
         // Ensure departure is at least 1 day after arrival if user only clicked once
@@ -855,9 +862,9 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="font-semibold text-slate-700">Canal de Reserva *</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value} disabled={loadingSources}>
+                                        <Select onValueChange={field.onChange} value={field.value} disabled={loadingSources || sourcesFailed}>
                                             <FormControl>
-                                                <SelectTrigger className="bg-slate-50 border-slate-200 focus:ring-brand-blue/30 focus:border-brand-blue rounded-xl h-11 transition-colors">
+                                                <SelectTrigger ref={channelTriggerRef} className="bg-slate-50 border-slate-200 focus:ring-brand-blue/30 focus:border-brand-blue rounded-xl h-11 transition-colors">
                                                     <SelectValue placeholder={loadingSources ? "Cargando..." : "Selecciona..."} />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -869,6 +876,26 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                 ))}
                                             </SelectContent>
                                         </Select>
+                                        {sourcesFailed && (
+                                            <p role="alert" className="text-sm text-danger">
+                                                No pudimos cargar los canales de reserva.
+                                                {mode === "create" && " Sin canal no se puede crear la reserva."}{" "}
+                                                {/* `aria-disabled`, no `disabled`: el foco se queda en el botón mientras reintenta. */}
+                                                <button
+                                                    type="button"
+                                                    aria-disabled={loadingSources}
+                                                    onClick={async () => {
+                                                        if (loadingSources) return
+                                                        if (await loadReservationSources()) {
+                                                            requestAnimationFrame(() => channelTriggerRef.current?.focus())
+                                                        }
+                                                    }}
+                                                    className="font-semibold text-primary underline-offset-2 hover:underline aria-disabled:opacity-60"
+                                                >
+                                                    {loadingSources ? "Reintentando…" : "Reintentar"}
+                                                </button>
+                                            </p>
+                                        )}
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -1094,7 +1121,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={isLoading}
+                                disabled={isLoading || (mode === "create" && (sourcesFailed || loadingSources))}
                                 className="bg-brand-purple hover:bg-brand-purple/90 text-white gap-2 font-semibold min-w-[160px]"
                             >
                                 {isLoading ? (
