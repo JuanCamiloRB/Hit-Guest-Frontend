@@ -16,11 +16,17 @@ window.matchMedia = window.matchMedia ?? ((query: string) => ({
     addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false,
 }) as MediaQueryList)
 
-const mocks = vi.hoisted(() => ({ getReservationSources: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+    getReservationSources: vi.fn(),
+    getRawById: vi.fn(),
+    update: vi.fn(),
+    properties: [] as unknown[],
+    listings: [] as unknown[],
+}))
 
-vi.mock("@/features/properties/services/properties-service", () => ({ propertiesService: { list: async () => [] } }))
+vi.mock("@/features/properties/services/properties-service", () => ({ propertiesService: { list: async () => mocks.properties } }))
 vi.mock("@/features/properties/services/listings-service", () => ({
-    listingsService: { listByProperty: async () => [], getById: async () => null },
+    listingsService: { listByProperty: async () => mocks.listings, getById: async () => null },
 }))
 vi.mock("@/features/auth/services/catalog-service", () => ({
     catalogService: {
@@ -29,7 +35,9 @@ vi.mock("@/features/auth/services/catalog-service", () => ({
         getCurrencies: async () => [],
     },
 }))
-vi.mock("@/features/reservations/services/reservations-service", () => ({ reservationsService: {} }))
+vi.mock("@/features/reservations/services/reservations-service", () => ({
+    reservationsService: { getRawById: mocks.getRawById, update: mocks.update },
+}))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), warning: vi.fn() } }))
 
 import { ReservationDialog } from "./ReservationDialog"
@@ -47,6 +55,8 @@ const createButton = () => screen.getByRole("button", { name: /Crear Reserva/ })
 describe("ReservationDialog — canales: sin catálogo no se crea la reserva", () => {
     beforeEach(() => {
         mocks.getReservationSources.mockReset()
+        mocks.properties = []
+        mocks.listings = []
         vi.spyOn(console, "error").mockImplementation(() => {})
     })
 
@@ -97,5 +107,69 @@ describe("ReservationDialog — canales: sin catálogo no se crea la reserva", (
         await openDialog()
         expect(await screen.findByRole("alert")).toHaveTextContent("No pudimos cargar los canales de reserva.")
         expect(createButton()).toBeDisabled()
+    })
+
+    it("editar con el catálogo caído: se conserva y se reenvía el canal de la reserva; nada se vacía solo", async () => {
+        mocks.getReservationSources.mockRejectedValue(new Error("No se pudo cargar el catálogo de canales de reserva"))
+        mocks.properties = [{ uuid: "p-1", name: "Casa Mar", statusRecord: { id: 6 } }]
+        mocks.listings = [{ uuid: "l-1", name: "Suite 101", statusRecordId: 6 }]
+        mocks.getRawById.mockResolvedValue({
+            uuid: "r-1",
+            arrivalDate: "2026-12-01",
+            departureDate: "2026-12-03",
+            listing: { uuid: "l-1", property: { uuid: "p-1" } },
+            source: { id: 22, name: "Airbnb", slug: "airbnb" },
+            extra: { guestName: "Ada", guestLastname: "Lovelace", guestCountry: "Colombia" },
+            emailGuest: "ada@example.com",
+            totalGuests: 2,
+            totalPrice: 100,
+            currency: "COP",
+        })
+        mocks.update.mockResolvedValue({})
+        const user = userEvent.setup()
+        render(<ReservationDialog mode="edit" reservationUuid="r-1" trigger={<button type="button">Editar reserva</button>} />)
+        await user.click(screen.getByRole("button", { name: "Editar reserva" }))
+        expect(await screen.findByDisplayValue("ada@example.com")).toBeInTheDocument()
+
+        const alert = await screen.findByRole("alert")
+        expect(alert).toHaveTextContent("No pudimos cargar los canales de reserva. Se conserva el canal actual.")
+        expect(alert).not.toHaveTextContent("Sin canal no se puede crear la reserva.")
+        expect(await channelSelect()).toHaveTextContent("Airbnb")
+
+        const save = screen.getByRole("button", { name: /Guardar Cambios/ })
+        await waitFor(() => expect(save).toBeEnabled())
+        await user.click(save)
+        await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(1))
+        const payload = mocks.update.mock.calls[0][1] as Record<string, unknown>
+        expect(payload.reservationSourceId).toBe(22)
+        expect(payload).toMatchObject({ listingUuid: "l-1" })
+    })
+
+    it("editar con un catálogo que no trae el canal de la reserva: se ofrece igual y se ve", async () => {
+        mocks.getReservationSources.mockResolvedValue([{ id: "21", name: "Directo" }])
+        mocks.properties = [{ uuid: "p-1", name: "Casa Mar", statusRecord: { id: 6 } }]
+        mocks.listings = [{ uuid: "l-1", name: "Suite 101", statusRecordId: 6 }]
+        mocks.getRawById.mockResolvedValue({
+            uuid: "r-2",
+            arrivalDate: "2026-12-01",
+            departureDate: "2026-12-03",
+            listing: { uuid: "l-1", property: { uuid: "p-1" } },
+            source: { id: 22, name: "Airbnb", slug: "airbnb" },
+            extra: { guestName: "Ada", guestLastname: "Lovelace", guestCountry: "Colombia" },
+            emailGuest: "ada@example.com",
+            totalGuests: 2,
+            totalPrice: 100,
+            currency: "COP",
+        })
+        const user = userEvent.setup()
+        render(<ReservationDialog mode="edit" reservationUuid="r-2" trigger={<button type="button">Editar reserva</button>} />)
+        await user.click(screen.getByRole("button", { name: "Editar reserva" }))
+        expect(await screen.findByDisplayValue("ada@example.com")).toBeInTheDocument()
+
+        const select = await channelSelect()
+        await waitFor(() => expect(select).toHaveTextContent("Airbnb"))
+        expect(screen.queryByRole("alert")).toBeNull()
+        await user.click(select)
+        expect((await screen.findAllByRole("option")).map((o) => o.textContent)).toEqual(["Airbnb", "Directo"])
     })
 })

@@ -6,10 +6,26 @@ import { Select as SelectPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Dentro de un `<form>`, Radix acompaña el Select con un `<select>` nativo
+ * oculto. Si el valor llega ANTES que su opción (catálogos o alojamientos que
+ * cargan después de rellenar el formulario), ese nativo queda en "", dispara
+ * `change` y Radix llama `onValueChange("")`: el campo se vaciaba solo y el
+ * formulario pedía de nuevo un dato que ya tenía. Un `SelectItem` no puede
+ * valer "" (Radix lo prohíbe), así que "" nunca es una elección del usuario y
+ * se ignora. Para vaciar un campo a propósito se cambia `value`, no esto.
+ */
 function Select({
+  onValueChange,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />
+  return (
+    <SelectPrimitive.Root
+      data-slot="select"
+      onValueChange={onValueChange && ((value: string) => { if (value !== "") onValueChange(value) })}
+      {...props}
+    />
+  )
 }
 
 function SelectGroup({

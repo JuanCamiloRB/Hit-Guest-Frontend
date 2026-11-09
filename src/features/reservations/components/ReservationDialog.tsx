@@ -84,6 +84,7 @@ import {
 } from "../lib/reservation-availability"
 import { inactiveResourceAction, readInactiveResourceError } from "@/lib/inactive-resource"
 import { catalogService } from "@/features/auth/services/catalog-service"
+import { readReservationChannel } from "@/lib/reservation-channel"
 import { reservationsService } from "@/features/reservations/services/reservations-service"
 import { createReservationWithFollowUp } from "@/features/reservations/lib/create-reservation-followup"
 import { readGuestNameParts } from "@/features/reservations/lib/guest-name"
@@ -185,6 +186,9 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
     // Tras un «Reintentar» que funciona, el foco pasa al selector de canal
     // (el aviso con el botón desaparece y el foco no puede quedar en el aire).
     const channelTriggerRef = useRef<HTMLButtonElement>(null)
+    // Al editar, el canal que ya tiene la reserva: si el catálogo falla o no lo
+    // trae, se ofrece igual, para que se vea y se reenvíe tal cual.
+    const [editSource, setEditSource] = useState<{ id: number; name: string } | null>(null)
     const [loadingCountries, setLoadingCountries] = useState(false)
     const [loadingCurrencies, setLoadingCurrencies] = useState(false)
 
@@ -378,6 +382,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             const loadReservation = async () => {
                 setIsLoading(true)
                 setEditingOrigin(null)
+                setEditSource(null)
                 try {
                     const raw = await reservationsService.getRawById(reservationUuid)
                     setEditingOrigin(readReservationOrigin(raw))
@@ -406,6 +411,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                     }
 
                     setEditOriginal({ propertyUuid, listingId })
+                    const ownSourceId = Number(raw.source?.id ?? raw.reservationSourceId ?? raw.reservation_source_id)
+                    setEditSource(Number.isInteger(ownSourceId) && ownSourceId > 0
+                        ? { id: ownSourceId, name: readReservationChannel(raw)?.name ?? "Canal actual" }
+                        : null)
                     form.reset({
                         // Una reserva antigua trae el nombre entero en `guest_name`
                         // y ningún apellido. Se carga tal cual para que el PM lo
@@ -442,6 +451,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             loadReservation()
         } else if (open && mode === "create") {
             setEditOriginal(null)
+            setEditSource(null)
             form.reset({
                 guestName: "", guestLastname: "", guestCountry: "", emailGuest: "", guestPhone: "",
                 propertyUuid: "", listingId: "", reservationSourceId: "",
@@ -869,7 +879,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                {reservationSources.map((s) => (
+                                                {(mode === "edit" && editSource && !reservationSources.some((s) => s.id === editSource.id)
+                                                    ? [editSource, ...reservationSources]
+                                                    : reservationSources
+                                                ).map((s) => (
                                                     <SelectItem key={s.id} value={String(s.id)}>
                                                         {s.name}
                                                     </SelectItem>
@@ -879,7 +892,8 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                         {sourcesFailed && (
                                             <p role="alert" className="text-sm text-danger">
                                                 No pudimos cargar los canales de reserva.
-                                                {mode === "create" && " Sin canal no se puede crear la reserva."}{" "}
+                                                {mode === "create" && " Sin canal no se puede crear la reserva."}
+                                                {mode === "edit" && editSource && " Se conserva el canal actual."}{" "}
                                                 {/* `aria-disabled`, no `disabled`: el foco se queda en el botón mientras reintenta. */}
                                                 <button
                                                     type="button"
