@@ -75,6 +75,20 @@ describe.each([
     })
 })
 
+describe("tinta de estado en tema claro pasa AA (4.5:1) sobre su pastilla y sobre las superficies", () => {
+    it.each(["success", "warning", "info", "danger"])("%s", (tone) => {
+        for (const surface of [`${tone}-sunk`, "background", "card", "sunk"]) {
+            expect(contrast(light[tone], light[surface]), `${tone} sobre ${surface}`).toBeGreaterThanOrEqual(4.5)
+        }
+    })
+})
+
+describe("indicador de foco (--ring sólido) en tema claro: 3:1 (WCAG 1.4.11)", () => {
+    it.each(["background", "card", "sunk"])("sobre %s", (surface) => {
+        expect(contrast(light.ring, light[surface])).toBeGreaterThanOrEqual(3)
+    })
+})
+
 describe("tinta secundaria (ink-3) en tema claro pasa AA (4.5:1) sobre cada superficie", () => {
     it.each(["background", "card", "sunk", "neutral-sunk"])("sobre %s", (surface) => {
         expect(contrast(light["ink-3"], light[surface])).toBeGreaterThanOrEqual(4.5)

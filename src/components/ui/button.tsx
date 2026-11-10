@@ -9,7 +9,13 @@ import { cn } from "@/lib/utils"
  * Estados (Fase 1, paso 4.2):
  * - hover y active: color explícito del token (`*-hover`), nunca opacidad ni
  *   escala/desplazamiento; active repite el hover para que en táctil se note.
- * - focus-visible: anillo de 3 px.
+ * - focus-visible: `outline` sólido de 2 px separado 2 px (paso 5). El anillo
+ *   anterior (ring-ring/50) daba 2,01:1 sobre blanco: no llegaba al 3:1 de un
+ *   indicador (WCAG 1.4.11), y en el destructivo (/20) menos. El morado sólido
+ *   da 4,42:1, la separación deja ver el fondo junto a los rellenos, y un
+ *   `outline` sí se pinta en el modo de alto contraste (un ring es una sombra).
+ *   `outline-solid` es obligatorio: `outline-none` deja `--tw-outline-style:
+ *   none` y `outline-2` lo hereda, así que sin él no se pinta nada.
  * - disabled: legible (fondo sunk + tinta ink-3, 4.70:1) en vez de opacidad al
  *   50 %; `cursor-not-allowed`. Un botón nativo deshabilitado no dispara
  *   eventos; `aria-disabled` (p. ej. un enlace con asChild) lo bloquea el
@@ -24,13 +30,13 @@ import { cn } from "@/lib/utils"
  *   (Se retiraron `xs`/`icon-xs`, de 24 px: nadie los usaba.)
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive disabled:cursor-not-allowed disabled:text-ink-3 disabled:shadow-none aria-disabled:not-data-loading:cursor-not-allowed aria-disabled:not-data-loading:text-ink-3 aria-disabled:not-data-loading:shadow-none data-loading:cursor-progress",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-invalid:border-destructive disabled:cursor-not-allowed disabled:text-ink-3 disabled:shadow-none aria-disabled:not-data-loading:cursor-not-allowed aria-disabled:not-data-loading:text-ink-3 aria-disabled:not-data-loading:shadow-none data-loading:cursor-progress",
   {
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary-hover active:bg-primary-hover disabled:bg-sunk aria-disabled:not-data-loading:bg-sunk",
         destructive:
-          "bg-destructive text-white hover:bg-destructive-hover active:bg-destructive-hover focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 disabled:bg-sunk aria-disabled:not-data-loading:bg-sunk",
+          "bg-destructive text-white hover:bg-destructive-hover active:bg-destructive-hover disabled:bg-sunk aria-disabled:not-data-loading:bg-sunk",
         outline:
           "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground active:bg-accent dark:bg-input/30 dark:border-input dark:hover:bg-input/50 disabled:bg-transparent",
         secondary:

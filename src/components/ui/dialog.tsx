@@ -19,9 +19,9 @@ export const modalSurface = cn(
   "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
 )
 
-/** «Cerrar» con área táctil de 40 px (densidad predeterminada) y foco visible. */
+/** «Cerrar» con área táctil de 40 px (densidad predeterminada) y el mismo foco que Button (outline sólido, 3:1). */
 export const closeButton =
-  "absolute top-3 right-3 inline-flex size-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-accent hover:text-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+  "absolute top-3 right-3 inline-flex size-10 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-accent hover:text-ink outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
 
 function Dialog({
   ...props

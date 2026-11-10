@@ -121,12 +121,19 @@
   /* ── Estado ─────────────────────────────────────────────────────────
      Cada uno con su fondo de pastilla. Reservados para estado: nunca son
      "el color 4" de una serie. El verde anterior (#71f5a4) era neón y no
-     alcanzaba contraste sobre blanco. */
-  --success: #0E9F6E;
+     alcanzaba contraste sobre blanco.
+     Son TINTA de texto (12 px en StatusPill y en avisos), así que necesitan
+     4.5:1 sobre su propio fondo. Los anteriores daban 2.97 (#0E9F6E), 3.21
+     (#C2721A) y 3.69 (#3B6FF5); mismos tonos, más oscuros.
+     Sin contrato en tema oscuro todavía (la app no aplica `.dark`): ahí estas
+     tintas quedan bajo 4.5:1 sobre el fondo oscuro. Al activar el tema, cada
+     tinta y su `*-sunk` se redefinen JUNTOS en `.dark` (aclarar solo la tinta
+     rompería las pastillas, que conservan el fondo claro). */
+  --success: #0B7B55; /* 4.62 sunk · 5.28 blanco */
   --success-sunk: #DFF5EB;
-  --warning: #C2721A;
+  --warning: #9D5C15; /* 4.62 sunk · 5.28 blanco */
   --warning-sunk: #FBEEDC;
-  --info: #3B6FF5;
+  --info: #1F5AF4;    /* 4.60 sunk · 5.49 blanco */
   --info-sunk: #E4EBFE;
   /* El único estado que faltaba: sin él, cada componente que tenía que pintar
      un fallo se inventaba su propio rojo (red-600 sobre red-50/60, que no llega

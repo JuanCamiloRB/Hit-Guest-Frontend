@@ -19,6 +19,9 @@ describe("Dialog", () => {
         render(<Dialog open><DialogContent><DialogTitle>Editar</DialogTitle><DialogDescription>Detalle</DialogDescription></DialogContent></Dialog>)
         const close = await screen.findByRole("button", { name: "Cerrar" })
         expect(close).toHaveClass("size-10")
+        // El mismo foco que Button: outline sólido, no el anillo translúcido (2,01:1).
+        expect(close).toHaveClass("focus-visible:outline-solid", "focus-visible:outline-2", "focus-visible:outline-ring")
+        expect(close.className).not.toMatch(/focus-visible:ring-/)
         expect(close.querySelector("svg")).toHaveAttribute("aria-hidden", "true")
         expect(screen.getByText("Detalle")).toHaveClass("text-ink-2")
     })

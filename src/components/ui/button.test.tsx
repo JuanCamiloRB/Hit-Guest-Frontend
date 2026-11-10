@@ -20,8 +20,15 @@ describe("Button — estados", () => {
         expect(buttonVariants({ variant: "destructive" })).toMatch(/active:bg-destructive-hover/)
     })
 
-    it("foco visible de 3 px", () => {
-        expect(buttonVariants()).toMatch(/focus-visible:ring-\[3px\]/)
+    it("foco visible: outline sólido de 2 px separado del botón", () => {
+        // Foco: outline sólido (3:1, visible en alto contraste), nunca el anillo translúcido.
+        const classes = buttonVariants().split(/\s+/)
+        for (const cls of ["focus-visible:outline-solid", "focus-visible:outline-2", "focus-visible:outline-offset-2", "focus-visible:outline-ring"]) {
+            expect(classes).toContain(cls)
+        }
+        for (const variant of ["default", "secondary", "destructive", "outline", "ghost", "link"] as const) {
+            expect(buttonVariants({ variant })).not.toMatch(/focus-visible:ring-/)
+        }
     })
 
     it("deshabilitado: legible (sunk + ink-3), cursor not-allowed y sin eventos", () => {

@@ -516,7 +516,8 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                     {/* Quick Actions.
                         El título y los iconos estaban en `text-primary/50`, es
                         decir morado al 50% SOBRE morado: invisibles. Todo lo que
-                        va dentro de esta tarjeta se pinta con blancos. */}
+                        va dentro de esta tarjeta se pinta con blancos, también el
+                        foco: el outline morado del Button daría 1,23:1 aquí. */}
                     <Card className="border-none bg-primary p-0 text-white shadow-sm">
                         <CardContent className="p-5">
                             <h3 className="text-sm font-bold text-white">Acciones rápidas</h3>
@@ -530,7 +531,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                             variant="secondary"
                                             disabled={!canUseCheckinLink}
                                             title={linkDisabledReason}
-                                            className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:bg-white/5 disabled:text-white/60"
+                                            className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 focus-visible:outline-white disabled:bg-white/5 disabled:text-white/60"
                                         >
                                             <span className="flex items-center gap-3">
                                                 <Send size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />
@@ -606,7 +607,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     variant="secondary"
                                     disabled={!canUseCheckinLink}
                                     title={linkDisabledReason}
-                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:bg-white/5 disabled:text-white/60"
+                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 focus-visible:outline-white disabled:bg-white/5 disabled:text-white/60"
                                 >
                                     <span className="flex items-center gap-3">
                                         <Copy size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />
@@ -619,7 +620,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     variant="secondary"
                                     disabled={!data.email || !isActionable}
                                     title={!data.email ? "El huésped no tiene correo registrado" : disabledReason}
-                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:bg-white/5 disabled:text-white/60"
+                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 focus-visible:outline-white disabled:bg-white/5 disabled:text-white/60"
                                 >
                                     <span className="flex items-center gap-3">
                                         <MessageSquare size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />
