@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest"
 import { fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import NextLink from "next/link"
 import { Button, buttonVariants } from "./button"
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }), usePathname: () => "/" }))
 
 const VARIANTS = ["default", "destructive", "outline", "secondary", "ghost", "link"] as const
 
@@ -32,18 +35,19 @@ describe("Button — estados", () => {
         expect(onClick).not.toHaveBeenCalled()
     })
 
-    it("cargando: indicador, texto propio, aria-busy; sigue enfocable y no repite la acción", async () => {
+    it("cargando: indicador, texto propio, aria-busy y aria-disabled; conserva el foco y no repite la acción", async () => {
         const onClick = vi.fn()
         const user = userEvent.setup()
         render(<Button loading loadingLabel="Guardando…" onClick={onClick}>Guardar cambios</Button>)
         const button = screen.getByRole("button", { name: "Guardando…" })
         expect(button).toHaveAttribute("aria-busy", "true")
-        expect(button).toBeEnabled()
+        // No disponible para la tecnología asistiva, pero sin `disabled`: conserva el foco.
+        expect(button).toHaveAttribute("aria-disabled", "true")
+        expect(button).not.toHaveAttribute("disabled")
         expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true")
-        button.focus()
+        await user.click(button)
+        await user.click(button)
         expect(button).toHaveFocus()
-        await user.click(button)
-        await user.click(button)
         expect(onClick).not.toHaveBeenCalled()
     })
 
@@ -85,9 +89,12 @@ describe("Button — estados", () => {
         expect(click.defaultPrevented).toBe(true)
     })
 
-    it("un enlace deshabilitado (asChild) se bloquea con aria-disabled", () => {
-        render(<Button asChild aria-disabled="true"><a href="/x">Exportar</a></Button>)
-        expect(screen.getByRole("link", { name: "Exportar" })).toHaveClass("aria-disabled:pointer-events-none")
+    it("cargando conserva su color: los estilos de no disponible excluyen data-loading", () => {
+        render(<Button loading loadingLabel="Guardando…">Guardar</Button>)
+        const button = screen.getByRole("button", { name: "Guardando…" })
+        expect(button).toHaveAttribute("data-loading", "true")
+        expect(button).toHaveClass("bg-primary", "aria-disabled:not-data-loading:bg-sunk")
+        expect(button).not.toHaveClass("aria-disabled:bg-sunk")
     })
 
     it("cargando: Espacio y Enter con teclado tampoco repiten la acción", async () => {
@@ -100,15 +107,53 @@ describe("Button — estados", () => {
         expect(onClick).not.toHaveBeenCalled()
     })
 
-    it("aria-disabled bloquea también el teclado (enlace con asChild y botón)", async () => {
+    it("enlace asChild con aria-disabled: ni ratón ni Enter ejecutan su propio onClick ni navegan", async () => {
+        const own = vi.fn()
+        const user = userEvent.setup()
+        render(<Button asChild aria-disabled="true"><a href="/x" onClick={own}>Exportar</a></Button>)
+        const link = screen.getByRole("link", { name: "Exportar" })
+        await user.click(link)
+        link.focus()
+        await user.keyboard("{Enter}")
+        expect(own).not.toHaveBeenCalled()
+        // La navegación también queda cancelada.
+        const click = new MouseEvent("click", { bubbles: true, cancelable: true })
+        link.dispatchEvent(click)
+        expect(click.defaultPrevented).toBe(true)
+        expect(own).not.toHaveBeenCalled()
+    })
+
+    it("enlace asChild con NextLink, ocupado o deshabilitado: no ejecuta su onClick ni navega", async () => {
+        const own = vi.fn()
+        const user = userEvent.setup()
+        const { rerender } = render(<Button asChild loading><NextLink href="/reservas" onClick={own}>Ver reservas</NextLink></Button>)
+        await user.click(screen.getByRole("link", { name: "Ver reservas" }))
+        rerender(<Button asChild aria-disabled="true"><NextLink href="/reservas" onClick={own}>Ver reservas</NextLink></Button>)
+        const link = screen.getByRole("link", { name: "Ver reservas" })
+        link.focus()
+        await user.keyboard("{Enter}")
+        expect(own).not.toHaveBeenCalled()
+        expect(link).toHaveAttribute("aria-disabled", "true")
+    })
+
+    it("un clic bloqueado no llega al contenedor clicable (fila o tarjeta)", async () => {
+        const parent = vi.fn()
+        const user = userEvent.setup()
+        render(
+            <div onClick={parent} role="presentation">
+                <Button loading loadingLabel="Guardando…">Guardar</Button>
+                <Button aria-disabled>Archivar</Button>
+            </div>,
+        )
+        await user.click(screen.getByRole("button", { name: "Guardando…" }))
+        await user.click(screen.getByRole("button", { name: "Archivar" }))
+        expect(parent).not.toHaveBeenCalled()
+    })
+
+    it("aria-disabled en un botón: Enter tampoco lo ejecuta", async () => {
         const onClick = vi.fn()
         const user = userEvent.setup()
-        render(<>
-            <Button asChild aria-disabled="true" onClick={onClick}><a href="/x">Exportar</a></Button>
-            <Button aria-disabled onClick={onClick}>Archivar</Button>
-        </>)
-        screen.getByRole("link", { name: "Exportar" }).focus()
-        await user.keyboard("{Enter}")
+        render(<Button aria-disabled onClick={onClick}>Archivar</Button>)
         screen.getByRole("button", { name: "Archivar" }).focus()
         await user.keyboard("{Enter}")
         expect(onClick).not.toHaveBeenCalled()

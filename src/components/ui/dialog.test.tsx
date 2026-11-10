@@ -99,9 +99,11 @@ describe("AlertDialogAction — acciones asíncronas", () => {
 
         await user.click(await screen.findByRole("button", { name: "Eliminar" }))
         const action = screen.getByRole("button", { name: "Eliminando…" })
-        // Ocupada, no deshabilitada: conserva el foco.
-        expect(action).toBeEnabled()
+        // Ocupada (aria-disabled), sin `disabled`: conserva el foco.
         expect(action).toHaveAttribute("aria-busy", "true")
+        expect(action).toHaveAttribute("aria-disabled", "true")
+        expect(action).not.toHaveAttribute("disabled")
+        expect(action).toHaveFocus()
         expect(screen.getByRole("status")).toHaveTextContent("Eliminando…")
         expect(screen.getByRole("alertdialog")).toBeInTheDocument()
         await user.click(action)

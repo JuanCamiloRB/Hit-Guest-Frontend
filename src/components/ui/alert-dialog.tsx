@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import { buttonVariants } from "@/components/ui/button"
+import { blockWhenUnavailable, buttonVariants } from "@/components/ui/button"
 import { modalSurface } from "@/components/ui/dialog"
 
 function AlertDialog({
@@ -113,8 +113,9 @@ interface AlertDialogActionProps extends Omit<React.ComponentProps<typeof AlertD
    */
   keepOpen?: boolean
   /**
-   * En curso: indicador, `pendingLabel` y `aria-busy`, y no se repite. Como
-   * `Button loading`: NO se deshabilita (conserva color y foco).
+   * En curso: indicador, `pendingLabel`, `aria-busy` y `aria-disabled`, y no se
+   * repite ni cierra. Como `Button loading`: NO usa `disabled` (conserva color
+   * y foco).
    */
   pending?: boolean
   /** Lo que dice mientras está en curso («Eliminando…»). */
@@ -138,12 +139,14 @@ function AlertDialogAction({
         disabled={disabled}
         aria-busy={pending || undefined}
         data-loading={pending || undefined}
+        {...props}
+        aria-disabled={pending || props["aria-disabled"] || undefined}
+        // Captura: antes que el cierre de Radix y que cualquier contenedor.
+        onClickCapture={(event) => blockWhenUnavailable(event, pending)}
         onClick={(event) => {
-          if (keepOpen || pending) event.preventDefault()
-          if (pending) return
+          if (keepOpen) event.preventDefault()
           onClick?.(event)
         }}
-        {...props}
       >
         {pending && <Loader2 className="animate-spin" aria-hidden />}
         {pending && pendingLabel ? pendingLabel : children}
