@@ -178,6 +178,11 @@
   --sidebar-ring: #ffffff;
 }
 
+/* HitGuest soporta ÚNICAMENTE tema claro. Este bloque y las clases `dark:` son
+   infraestructura incompleta heredada de shadcn, no un tema habilitado: la app
+   no tiene ThemeProvider ni nada que agregue `.dark`, y la escala ink y las
+   tintas de estado no tienen valores oscuros. Antes de exponerlo hace falta una
+   fase propia de tokens, contraste y revisión por pantalla. */
 .dark {
   --radius: 0.75rem;
   --background: oklch(0.141 0.005 285.823);

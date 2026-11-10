@@ -7,15 +7,18 @@ import {
   OctagonXIcon,
   TriangleAlertIcon,
 } from "lucide-react"
-import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
+/**
+ * Tema fijo en claro: HitGuest solo soporta tema claro (ver el bloque `.dark`
+ * de globals.css). Con `useTheme()` sin ThemeProvider el valor caía en
+ * "system", así que en un sistema operativo oscuro los toasts salían oscuros
+ * sobre una app clara.
+ */
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
-
   return (
     <Sonner
-      theme={theme as ToasterProps["theme"]}
+      theme="light"
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,
