@@ -53,7 +53,10 @@ vi.mock("@/features/billing/services/consumption-service", () => ({
 }))
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
-vi.mock("@/lib/notify-error", () => ({ notifyError: vi.fn() }))
+vi.mock("@/lib/notify-error", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/notify-error")>()),
+    notifyError: vi.fn(),
+}))
 
 const reservation = {
     id: "reservation-1",
@@ -88,12 +91,32 @@ describe("ReservationsList — verificación de consumo antes de eliminar", () =
         render(<ReservationsList />)
 
         fireEvent.click(await screen.findByRole("button", { name: "Solicitar eliminación" }))
-        expect(screen.getByRole("status")).toHaveTextContent(/Verificando el consumo/)
+        // Dos regiones de estado: la consulta de consumo y la de la acción (vacía hasta eliminar).
+        expect(screen.getAllByRole("status").some((el) => /Verificando el consumo/.test(el.textContent ?? ""))).toBe(true)
         expect(screen.getByRole("button", { name: "Eliminar" })).toBeDisabled()
 
         pending.resolve({ total: 0.75 })
         expect(await screen.findByText(/0,75/)).toBeInTheDocument()
         expect(screen.getByRole("button", { name: "Eliminar" })).toBeEnabled()
+    })
+
+    it("al eliminar se ve «Eliminando…» sin cerrarse; si falla, el diálogo sigue abierto para reintentar", async () => {
+        mocks.getReservationCost.mockResolvedValue({ total: 0 })
+        let fail!: (e: unknown) => void
+        mocks.remove.mockReturnValueOnce(new Promise((_r, reject) => { fail = reject }))
+        render(<ReservationsList />)
+        fireEvent.click(await screen.findByRole("button", { name: "Solicitar eliminación" }))
+        await waitFor(() => expect(screen.getByRole("button", { name: "Eliminar" })).toBeEnabled())
+
+        fireEvent.click(screen.getByRole("button", { name: "Eliminar" }))
+        expect(await screen.findByRole("button", { name: "Eliminando…" })).toBeDisabled()
+        expect(screen.getAllByRole("status").some((el) => el.textContent === "Eliminando…")).toBe(true)
+        expect(screen.getByRole("alertdialog")).toBeInTheDocument()
+
+        await act(async () => fail(new Error("500")))
+        await waitFor(() => expect(screen.getByRole("button", { name: "Eliminar" })).toBeEnabled())
+        expect(screen.getByRole("alertdialog")).toBeInTheDocument()
+        expect(mocks.remove).toHaveBeenCalledTimes(1)
     })
 
     it("un fallo no se convierte en cero y exige reintentar la consulta", async () => {
@@ -239,6 +262,25 @@ describe("ReservationsList — la lista compartida", () => {
         await waitFor(() => expect(screen.getByTestId("row-count")).toHaveTextContent("0"))
         expect(mocks.remove).toHaveBeenCalledWith(reservation.id)
         expect(mocks.list).toHaveBeenCalledTimes(1)
+        // Con éxito, el diálogo se cierra (el cierre ya no va en `finally`).
+        await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument())
+    })
+
+    it("un 404 al eliminar (ya no existe): cierra, avisa y relee la lista en vez de reintentar para siempre", async () => {
+        const { ApiError } = await import("@/types/api")
+        mocks.list.mockResolvedValue([reservation])
+        mocks.getReservationCost.mockResolvedValue({ total: 0 })
+        mocks.remove.mockRejectedValueOnce(new ApiError(404, { message: "No encontrada" } as never))
+        render(<ReservationsList />)
+
+        fireEvent.click(await screen.findByRole("button", { name: "Solicitar eliminación" }))
+        await waitFor(() => expect(screen.getByRole("button", { name: "Eliminar" })).toBeEnabled())
+        mocks.list.mockResolvedValue([])
+        fireEvent.click(screen.getByRole("button", { name: "Eliminar" }))
+
+        await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument())
+        await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(2))
+        await waitFor(() => expect(screen.getByTestId("row-count")).toHaveTextContent("0"))
     })
 })
 

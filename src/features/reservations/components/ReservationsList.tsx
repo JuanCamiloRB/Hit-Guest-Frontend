@@ -8,7 +8,7 @@ import { formatUsd } from "@/features/billing/types"
 import { DEFAULT_SORTING } from "./reservation-sorting"
 import type { OnChangeFn, SortingState } from "@tanstack/react-table"
 import { DataTable } from "@/components/shared/data-table"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
     Select,
@@ -36,7 +36,7 @@ import { reservationsCache, useReservations } from "../hooks/useReservations"
 import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
 import { EmptyState } from "@/components/ui/empty-state"
 import { toast } from "sonner"
-import { notifyError } from "@/lib/notify-error"
+import { normalizeApiError, notifyError } from "@/lib/notify-error"
 
 /** Which date column the range filter applies to. */
 type DateField = "checkIn" | "checkOut"
@@ -122,6 +122,8 @@ export default function ReservationsList() {
     }, [syncing])
     const [deleteTarget, setDeleteTarget] = useState<Reservation | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
+    // Candado síncrono contra el doble clic (el estado llega un render tarde).
+    const deleteLockRef = useRef(false)
     /**
      * Consumo facturado de la reserva que se está por eliminar, con el id al que
      * pertenece (se deriva en render: sin id coincidente no se muestra — así no
@@ -226,7 +228,8 @@ export default function ReservationsList() {
     }
 
     const handleDelete = async () => {
-        if (!deleteTarget || deleteConsumptionState?.status !== "ready") return
+        if (!deleteTarget || deleteLockRef.current || deleteConsumptionState?.status !== "ready") return
+        deleteLockRef.current = true
         setIsDeleting(true)
         try {
             await reservationsService.delete(deleteTarget.id)
@@ -234,12 +237,23 @@ export default function ReservationsList() {
             // los que miran la lista, sin volver a pedirla.
             reservationsCache.patch((list) => list.filter((r) => r.id !== deleteTarget.id))
             toast.success("Reserva eliminada correctamente")
+            setDeleteTarget(null)
         } catch (error) {
+            if (normalizeApiError(error).status === 404) {
+                // Ya no está (otra persona la eliminó, por ejemplo): reintentar
+                // fallaría siempre. Se cierra y se relee la lista del servidor,
+                // que decide; no se da por eliminada en el front.
+                toast.info("Esta reserva ya no existe. Actualizamos la lista.")
+                setDeleteTarget(null)
+                refresh()
+                return
+            }
+            // Cualquier otro fallo: el diálogo sigue abierto para reintentar o cancelar.
             console.error("Failed to delete reservation:", error)
             notifyError(error, "Error al eliminar la reserva")
         } finally {
+            deleteLockRef.current = false
             setIsDeleting(false)
-            setDeleteTarget(null)
         }
     }
 
@@ -475,7 +489,8 @@ export default function ReservationsList() {
                 onVisibleRowsChange={handleVisibleRows}
             />
 
-            <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}>
+            {/* Mientras se elimina no se cierra: el resultado tiene que verse. */}
+            <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open && !isDeleting) setDeleteTarget(null) }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Eliminar reserva?</AlertDialogTitle>
@@ -513,12 +528,16 @@ export default function ReservationsList() {
                                 Reintentar consulta
                             </Button>
                         )}
+                        {/* keepOpen: antes Radix cerraba al clic y «Eliminando…» nunca se veía. */}
                         <AlertDialogAction
-                            onClick={handleDelete}
-                            disabled={isDeleting || !consumptionResolved}
-                            className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                            className={buttonVariants({ variant: "destructive" })}
+                            keepOpen
+                            pending={isDeleting}
+                            pendingLabel="Eliminando…"
+                            onClick={() => void handleDelete()}
+                            disabled={!consumptionResolved}
                         >
-                            {isDeleting ? "Eliminando..." : "Eliminar"}
+                            Eliminar
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

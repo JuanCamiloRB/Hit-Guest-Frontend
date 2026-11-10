@@ -159,11 +159,7 @@ export function SupportAgentsManager() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel disabled={revokeBusy}>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                            disabled={revokeBusy}
-                            onClick={(event) => { event.preventDefault(); void confirmRevoke() }}
-                        >
-                            {revokeBusy && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden />}
+                        <AlertDialogAction keepOpen pending={revokeBusy} pendingLabel="Revocando…" onClick={() => void confirmRevoke()}>
                             Revocar acceso
                         </AlertDialogAction>
                     </AlertDialogFooter>
