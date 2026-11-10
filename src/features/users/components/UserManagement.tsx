@@ -363,7 +363,7 @@ export function UserManagement() {
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     {/* Solo ícono: sin nombre, un lector de pantalla diría «botón». */}
-                                                    <Button variant="ghost" size="icon" aria-label={`Acciones para ${user.firstName}`}>
+                                                    <Button variant="ghost" size="icon-sm" aria-label={`Acciones para ${user.firstName}`}>
                                                         <MoreHorizontal className="h-4 w-4" />
                                                     </Button>
                                                 </DropdownMenuTrigger>

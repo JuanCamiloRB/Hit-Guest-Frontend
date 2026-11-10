@@ -112,7 +112,7 @@ export function BillingSettings() {
                     ) : amount === null && (balanceLoading || !balanceLoaded) ? (
                         // También antes de la primera consulta: sin esto el primer
                         // render decía «no disponible» un instante.
-                        <div className="h-9 w-32 animate-pulse rounded bg-slate-100" />
+                        <div className="h-10 w-32 animate-pulse rounded bg-slate-100" />
                     ) : amount === null ? (
                         // Sin saldo conocido se dice; «0,00 USD» en rojo sería un dato inventado.
                         <div>

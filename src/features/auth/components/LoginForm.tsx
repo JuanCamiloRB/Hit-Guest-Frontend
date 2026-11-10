@@ -97,7 +97,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                         <FormLabel>Correo electrónico <span className="text-destructive">*</span></FormLabel>
                                         <FormControl>
                                             <div className="relative">
-                                                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                                 <Input
                                                     id="email"
                                                     placeholder="nombre@hitguest.com"
@@ -153,7 +153,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                         </div>
                                         <FormControl>
                                             <div className="relative">
-                                                <Lock className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                                 <Input
                                                     id="otp"
                                                     placeholder="123456"

@@ -146,5 +146,17 @@ describe("Select", () => {
         await user.click(screen.getByRole("combobox", { name: "País" }))
         expect(await screen.findByRole("option", { name: "Colombia" })).toHaveClass("focus:[&_svg:not([class*='text-'])]:text-primary-foreground")
     })
+
+    it("la altura por defecto (40 px) se puede sobrescribir desde la pantalla; sm sigue en 32", () => {
+        const { rerender } = render(
+            <Select><SelectTrigger aria-label="Canal" className="h-11"><SelectValue placeholder="Selecciona..." /></SelectTrigger></Select>,
+        )
+        const trigger = screen.getByRole("combobox", { name: "Canal" })
+        expect(trigger).toHaveClass("h-11")
+        expect(trigger).not.toHaveClass("h-10")
+        expect(trigger.className).not.toMatch(/data-\[size=default\]:h-/)
+        rerender(<Select><SelectTrigger aria-label="Canal" size="sm"><SelectValue placeholder="Selecciona..." /></SelectTrigger></Select>)
+        expect(screen.getByRole("combobox", { name: "Canal" })).toHaveClass("data-[size=sm]:h-8")
+    })
 })
 

@@ -15,10 +15,10 @@ import {
 import { Sheet, SheetContent, SheetTitle } from "./sheet"
 
 describe("Dialog", () => {
-    it("cerrar se llama «Cerrar», tiene área táctil de 36 px y la X es decorativa", async () => {
+    it("cerrar se llama «Cerrar», tiene área táctil de 40 px y la X es decorativa", async () => {
         render(<Dialog open><DialogContent><DialogTitle>Editar</DialogTitle><DialogDescription>Detalle</DialogDescription></DialogContent></Dialog>)
         const close = await screen.findByRole("button", { name: "Cerrar" })
-        expect(close).toHaveClass("size-9")
+        expect(close).toHaveClass("size-10")
         expect(close.querySelector("svg")).toHaveAttribute("aria-hidden", "true")
         expect(screen.getByText("Detalle")).toHaveClass("text-ink-2")
     })
@@ -59,7 +59,7 @@ describe("Dialog", () => {
 
     it("el Sheet también se cierra con «Cerrar»", async () => {
         render(<Sheet open><SheetContent><SheetTitle>Usuarios</SheetTitle></SheetContent></Sheet>)
-        expect(await screen.findByRole("button", { name: "Cerrar" })).toHaveClass("size-9")
+        expect(await screen.findByRole("button", { name: "Cerrar" })).toHaveClass("size-10")
     })
 })
 

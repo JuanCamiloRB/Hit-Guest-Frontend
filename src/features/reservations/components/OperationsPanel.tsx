@@ -183,7 +183,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         <Skeleton className="h-3 w-40" />
                         <Skeleton className="h-8 w-64" />
                     </div>
-                    <Skeleton className="h-9 w-52" />
+                    <Skeleton className="h-10 w-52" />
                 </div>
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
                     <div className="flex flex-col gap-6 lg:col-span-8">

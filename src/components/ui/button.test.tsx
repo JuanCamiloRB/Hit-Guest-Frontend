@@ -177,5 +177,19 @@ describe("Button — estados", () => {
         await user.click(screen.getByRole("button"))
         expect(capture).toHaveBeenCalledTimes(1)
     })
+
+    it("densidades: predeterminada 40/44 px, compacta 32 px y ningún tamaño por debajo de 32", () => {
+        expect(buttonVariants({ size: "default" })).toMatch(/\bh-10\b/)
+        expect(buttonVariants({ size: "icon" })).toMatch(/\bsize-10\b/)
+        expect(buttonVariants({ size: "lg" })).toMatch(/\bh-11\b/)
+        expect(buttonVariants({ size: "icon-lg" })).toMatch(/\bsize-11\b/)
+        expect(buttonVariants({ size: "sm" })).toMatch(/\bh-8\b/)
+        expect(buttonVariants({ size: "icon-sm" })).toMatch(/\bsize-8\b/)
+        for (const size of ["default", "sm", "lg", "icon", "icon-sm", "icon-lg"] as const) {
+            // h-6 / h-7 / size-6 / size-7 = 24–28 px: por debajo del mínimo compacto.
+            // Solo la altura del botón (clase suelta), no `[&_svg…]:size-4` del ícono.
+            expect(buttonVariants({ size })).not.toMatch(/(^|\s)(h|size)-([1-7](\.5)?|\[(1?\d|2\d|3[01])px\])(\s|$)/)
+        }
+    })
 })
 
