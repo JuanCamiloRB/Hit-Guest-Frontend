@@ -75,6 +75,12 @@ describe.each([
     })
 })
 
+describe("tinta secundaria (ink-3) en tema claro pasa AA (4.5:1) sobre cada superficie", () => {
+    it.each(["background", "card", "sunk", "neutral-sunk"])("sobre %s", (surface) => {
+        expect(contrast(light["ink-3"], light[surface])).toBeGreaterThanOrEqual(4.5)
+    })
+})
+
 describe("marca separada de la interacción", () => {
     it("los colores de marca no cambian", () => {
         expect(css).toMatch(/--color-brand-purple:\s*#9D4CF2;/)

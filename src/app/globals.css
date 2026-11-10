@@ -109,7 +109,10 @@
      de ocho pasos de slate elegidos a ojo por cada componente. */
   --ink: #1B2047;   /* el dato: nombres, montos, títulos */
   --ink-2: #4A5178; /* apoyo legible: fechas, descripciones */
-  --ink-3: #757CA0; /* metadatos y encabezados de columna */
+  /* metadatos y encabezados de columna. Es texto real (11–13 px): necesita AA.
+     #757CA0 daba 4.08:1 sobre la card y 3.58:1 sobre neutral-sunk; #636B8D da
+     5.23 / 5.03 / 4.70 / 4.59 (card, fondo, sunk, neutral-sunk). */
+  --ink-3: #636B8D;
   --ink-4: #A2A8C4; /* ausencia: el guion de "no aplica" */
   --rule: #E4E7F0;  /* separadores */
   --sunk: #F1F3F7;  /* superficie hundida */
