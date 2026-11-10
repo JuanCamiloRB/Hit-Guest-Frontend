@@ -100,6 +100,23 @@ describe("sanitizeProvider", () => {
         })
     })
 
+    it("conserva el `scope` de la tarifa y descarta una tarifa imposible", () => {
+        const billingOf = (billing: unknown) => sanitizeProvider({
+            id: 1, name: "x", description: null, order: 0, statusProviderId: 8,
+            parameters: { slug: "x", billing },
+        })?.parameters.billing
+
+        expect(billingOf({ billable: true, unit_cost: 0.5, scope: "per_execution" }))
+            .toEqual({ billable: true, unit_cost: 0.5, scope: "per_execution" })
+        expect(billingOf({ billable: true, unit_cost: 0.5, scope: 3 })).toEqual({ billable: true, unit_cost: 0.5 })
+        expect(billingOf({ billable: true, unit_cost: -1 })).toBeUndefined()
+        expect(billingOf({ billable: true, unit_cost: Number.NaN })).toBeUndefined()
+        // Un decimal de Laravel como texto limpio se lee; uno ambiguo, no.
+        expect(billingOf({ billable: true, unit_cost: "0.5000" })).toEqual({ billable: true, unit_cost: 0.5 })
+        expect(billingOf({ billable: true, unit_cost: "0,5" })).toBeUndefined()
+        expect(billingOf({ billable: true, unit_cost: "" })).toBeUndefined()
+    })
+
     it("ignora un `applicable_countries` que no sea un array de strings", () => {
         const result = sanitizeProvider({
             id: 1, name: "x", description: null, order: 0, statusProviderId: 8,

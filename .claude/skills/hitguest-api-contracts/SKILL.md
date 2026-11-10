@@ -725,6 +725,31 @@ login de SIRE existen solo por apartamento. Lo que hay:
 | Stripe card | `requires_guarantee: true` — se salta aunque esté activa y se dispare manualmente, si el contrato no exige garantía (422). |
 | Firma nativa | Solo soporta `agreement_only`. `billable: false` — la única gratuita. |
 
+### ⚠️ Tarifas en la pestaña de automatizaciones (front 2026-11-11; NO verificado por curl)
+
+Cada tarjeta dice su costo con `provider.parameters.billing`
+(`{billable, unit_cost, scope?}`), el mismo dato de WhatsApp/OTA. Nada escrito
+a mano: `lib/automation-cost.ts` (`describeAutomationCost`) y, para los canales
+del link, `describeChannelCost` en `checkin-link-delivery.ts`.
+
+- Sin `billing` → «Puede generar costo». `billable: false` → «Sin costo»
+  **aunque traiga `unit_cost` > 0** (el link también lo respeta). Tarifa 0 →
+  «Sin costo por ahora». Positiva → `formatUsdRate` (hasta 4 decimales).
+- Unidad solo por `scope` documentado: `per_execution` → «cada vez que se
+  ejecuta»; otro `scope` → monto sin unidad. **SIRE nunca lleva unidad**
+  (`hideCostUnit` en sus dos definiciones): factura una vez por reserva aunque
+  haya varias ejecuciones.
+- `unit_cost` se acepta como número o como decimal en texto limpio (`"0.5000"`);
+  negativo, no finito o ambiguo (`"0,5"`) se descarta.
+- Identidad: la tarifa sigue a la opción elegida y cada opción del selector
+  dice la suya. Contrato: la tarifa va por canal, la del firmante de ese canal.
+- **Abierto con backend**: (1) qué `billing` trae cada provider en producción,
+  con las dos consultas (didit/textract no salen con `?country=`):
+  `curl -s "$API/providers?country=CO" "${H[@]}" | jq '.data[] | {slug: .parameters.slug, billing: .parameters.billing}'`
+  y lo mismo con `?statusProviderId[eq]=8`; (2) qué `scope` manda SIRE y qué
+  valores de `scope` existen; (3) si `unit_cost` llega como número o texto;
+  (4) si toda tarifa es en USD (el front lo asume, `billing` no trae moneda).
+
 ### Dónde vive esto en el código
 
 - `lib/automation-catalog.ts` — cruza filas existentes con `default_setup.slots`.

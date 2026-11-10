@@ -45,6 +45,7 @@ import type {
     ParameterFieldSchema,
     PropertyAutomation,
     Provider,
+    ProviderOption,
     ProviderSetupSlot,
 } from "../types/automation"
 
@@ -131,16 +132,27 @@ export function bindCatalogProviders(
         providerOptions: definition.providerOptions.flatMap((option) => {
             const slug = canonicalSlug(option.value)
             const current = slug === currentSlug ? automation?.providerId ?? undefined : undefined
+            // El provider guardado en la fila cubre la opción que el catálogo no
+            // devolvió (desactivado o filtrado), también para su tarifa.
+            const saved = slug === currentSlug ? automation?.provider ?? null : null
             if (isIdentity) {
                 const level = identityLevelOfSlug(option.value)
-                const providerId = (level ? identityCatalog[level]?.id : undefined) ?? current
-                return providerId == null ? [] : [{ ...option, providerId }]
+                const bound = (level ? identityCatalog[level] : null) ?? saved
+                const providerId = bound?.id ?? current
+                return providerId == null ? [] : [withBilling({ ...option, providerId }, bound)]
             }
             if (!available.has(slug) && slug !== currentSlug) return []
-            const providerId = providerBySlug.get(slug)?.id ?? current
-            return providerId == null ? [] : [{ ...option, providerId }]
+            const bound = providerBySlug.get(slug) ?? saved
+            const providerId = bound?.id ?? current
+            return providerId == null ? [] : [withBilling({ ...option, providerId }, bound)]
         }),
     }
+}
+
+/** Copia la tarifa del provider ligado; sin tarifa, la opción queda sin `billing`. */
+function withBilling(option: ProviderOption, provider: Provider | null | undefined): ProviderOption {
+    const billing = provider?.parameters?.billing
+    return billing ? { ...option, billing } : option
 }
 
 function slotOrder(slot: AutomationSlot): number {

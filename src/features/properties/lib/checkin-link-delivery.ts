@@ -22,6 +22,7 @@ import {
     type PropertyAutomation,
     type PropertyAutomationCreatePayload,
     type Provider,
+    type ProviderBilling,
 } from "../types/automation"
 
 // ── Identidad de la automatización y sus providers ─────────────────────────
@@ -203,10 +204,19 @@ export function isEmailFallback(resolvedChannels: readonly DeliveryChannel[]): b
 
 // ── Tarifas ────────────────────────────────────────────────────────────────
 
-/** `parameters.billing.unit_cost` del provider; `null` si no vino. Nunca un valor inventado. */
-export function providerUnitCost(provider: Provider | null | undefined): number | null {
-    const cost = provider?.parameters?.billing?.unit_cost
-    return typeof cost === "number" && Number.isFinite(cost) ? cost : null
+/** `parameters.billing` completo del provider; `null` si no vino. Nunca un valor inventado. */
+export function providerBilling(provider: Provider | null | undefined): ProviderBilling | null {
+    return provider?.parameters?.billing ?? null
+}
+
+/**
+ * La tarifa que manda: `null` = no se conoce; `"free"` = `billable: false`
+ * (gratis aunque traiga un `unit_cost`); si no, el monto. Leer solo `unit_cost`
+ * contradecía a las tarjetas, que sí respetan `billable`.
+ */
+function chargeOf(billing: ProviderBilling | null): number | "free" | null {
+    if (!billing) return null
+    return billing.billable ? billing.unit_cost : "free"
 }
 
 /**
@@ -214,24 +224,24 @@ export function providerUnitCost(provider: Provider | null | undefined): number 
  * Finanzas con un UPDATE, sin despliegue). Un `0,00 USD` se lee como error.
  * Sin tarifa conocida no se afirma un cobro: «puede generar costo».
  */
-export function describeChannelCost(unitCost: number | null): string {
-    if (unitCost == null) return "Puede generar costo"
-    if (unitCost === 0) return "Sin costo por ahora"
-    return `${formatUsdRate(unitCost)} por mensaje`
+export function describeChannelCost(billing: ProviderBilling | null): string {
+    const charge = chargeOf(billing)
+    if (charge == null) return "Puede generar costo"
+    if (charge === "free") return "Sin costo"
+    if (charge === 0) return "Sin costo por ahora"
+    return `${formatUsdRate(charge)} por mensaje`
 }
 
-/** Solo con una tarifa positiva se puede afirmar que el mensaje se cobra. */
-export function isChargedCost(unitCost: number | null): boolean {
-    return unitCost != null && unitCost > 0
-}
-
-export type ChannelUnitCosts = Record<OptionalDeliveryChannel, number | null>
+/** La tarifa (`billing` completo) de cada canal opcional; `null` = no se conoce. */
+export type ChannelUnitCosts = Record<OptionalDeliveryChannel, ProviderBilling | null>
 
 /** La tarifa de un envío que no es seguro: se dice condicionada, nunca afirmada. */
-function tentativeOtaCost(unitCost: number | null): string {
-    if (unitCost == null) return "si sale, puede generar costo"
-    if (unitCost === 0) return "si sale, hoy no tiene costo"
-    return `si sale, cuesta ${formatUsdRate(unitCost)}`
+function tentativeOtaCost(billing: ProviderBilling | null): string {
+    const charge = chargeOf(billing)
+    if (charge == null) return "si sale, puede generar costo"
+    if (charge === "free") return "si sale, no tiene costo"
+    if (charge === 0) return "si sale, hoy no tiene costo"
+    return `si sale, cuesta ${formatUsdRate(charge)}`
 }
 
 /**
@@ -276,11 +286,12 @@ export function describeResendCharges(input: {
     if (attempted.length > 0) {
         const names = attempted.map((channel) => CHANNEL_INLINE_LABEL[channel])
         const costs = attempted.map((channel) => {
-            const cost = unitCosts[channel]
+            const charge = chargeOf(unitCosts[channel])
             const name = CHANNEL_LABEL[channel]
-            if (cost == null) return `${name} puede generar costo`
-            if (cost === 0) return `${name} hoy no tiene costo`
-            return `${name} cuesta ${formatUsdRate(cost)}`
+            if (charge == null) return `${name} puede generar costo`
+            if (charge === "free") return `${name} no tiene costo`
+            if (charge === 0) return `${name} hoy no tiene costo`
+            return `${name} cuesta ${formatUsdRate(charge)}`
         })
         sentences.unshift(
             `También saldrá por ${names.join(" y ")}. ${costs.join("; ")}.`,

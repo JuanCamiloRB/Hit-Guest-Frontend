@@ -219,9 +219,14 @@ describe("AutomationCard — Contrato", () => {
      */
     const contractDefinition = () => definitionFor("digital-contract")
 
+    // TuFirma cobra: la fixture no puede decir lo contrario (la de `makeProvider` es gratuita).
     const signedProvider = (): Provider => {
         const provider = makeProvider(1002, "tufirma")
-        return { ...provider, name: "TuFirma Digital" }
+        return {
+            ...provider,
+            name: "TuFirma Digital",
+            parameters: { ...provider.parameters, billing: { billable: true, unit_cost: 0.8, scope: "per_execution" } },
+        }
     }
 
     const routedContract = (overrides: Partial<PropertyAutomation> = {}) => makeAutomation({
@@ -259,7 +264,7 @@ describe("AutomationCard — Contrato", () => {
         )
 
         expect(screen.getByText("Todos los canales")).toBeInTheDocument()
-        expect(screen.getByText("Contrato de alquiler · TuFirma Digital")).toBeInTheDocument()
+        expect(screen.getByText("Contrato de alquiler · TuFirma Digital · 0,80 USD cada vez que se ejecuta")).toBeInTheDocument()
     })
 
     const perSourceContract = () => makeAutomation({
@@ -294,9 +299,9 @@ describe("AutomationCard — Contrato", () => {
         )
 
         expect(screen.getByText("Airbnb")).toBeInTheDocument()
-        expect(screen.getByText("Contrato de alquiler · hitguest_signature")).toBeInTheDocument()
+        expect(screen.getByText("Contrato de alquiler · hitguest_signature · Puede generar costo")).toBeInTheDocument()
         expect(screen.getByText("Booking.com")).toBeInTheDocument()
-        expect(screen.getByText("Contrato de garantía · TuFirma Digital")).toBeInTheDocument()
+        expect(screen.getByText("Contrato de garantía · TuFirma Digital · 0,80 USD cada vez que se ejecuta")).toBeInTheDocument()
     })
 
     it("sin catálogo conserva el id como detalle técnico sin presentarlo como nombre del canal", () => {
@@ -349,7 +354,7 @@ describe("AutomationCard — Contrato", () => {
             )
 
             expect(screen.getByText("Directo")).toBeInTheDocument()
-            expect(screen.getByText("Contrato de alquiler · Firma nativa (en el portal)")).toBeInTheDocument()
+            expect(screen.getByText("Contrato de alquiler · Firma nativa (en el portal) · Puede generar costo")).toBeInTheDocument()
             expect(screen.queryByText(/Canal no identificado|ID guardado/)).toBeNull()
             expect(screen.getByText("Contrato configurado")).toBeInTheDocument()
         })
@@ -837,5 +842,172 @@ describe("AutomationCard — protección SIRE", () => {
                 parameters: expect.objectContaining({ guest_filter: "foreign_only" }),
             }),
         ))
+    })
+})
+
+describe("AutomationCard — costo", () => {
+    /** La definición ya ligada al catálogo, como la entrega `bindCatalogProviders`. */
+    const priced = (definitionId: string, billing?: Provider["parameters"]["billing"]) => {
+        const definition = definitionFor(definitionId)
+        return {
+            ...definition,
+            providerOptions: definition.providerOptions.map((option) => ({ ...option, ...(billing ? { billing } : {}) })),
+        }
+    }
+    const costLine = () => screen.getByText(/^Costo:/).closest("p")
+
+    it("dice cuánto cuesta antes de activarla, con la tarifa y la unidad del backend", () => {
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={priced("tra-colombia", { billable: true, unit_cost: 0.5, scope: "per_execution" })}
+                automation={null}
+                providers={[makeProvider(1, "tra-colombia")]}
+            />,
+        )
+
+        expect(costLine()).toHaveTextContent("Costo: 0,50 USD cada vez que se ejecuta")
+    })
+
+    it("con un `scope` desconocido muestra el monto sin inventarle unidad", () => {
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={priced("tra-colombia", { billable: true, unit_cost: 0.0625, scope: "per_month" })}
+                automation={null}
+                providers={[makeProvider(1, "tra-colombia")]}
+            />,
+        )
+
+        expect(costLine()).toHaveTextContent(/^Costo: 0,0625 USD$/)
+    })
+
+    it.each([
+        [{ billable: false, unit_cost: 0 }, "Sin costo"],
+        [{ billable: true, unit_cost: 0 }, "Sin costo por ahora"],
+        [undefined, "Puede generar costo"],
+    ] as const)("tarifa %o → «%s»", (billing, expected) => {
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={priced("tra-colombia", billing)}
+                automation={null}
+                providers={[makeProvider(1, "tra-colombia")]}
+            />,
+        )
+
+        // Anclado: «Sin costo» no debe aceptar «Sin costo por ahora».
+        expect(costLine()?.textContent).toBe(`Costo: ${expected}`)
+    })
+
+    it("en identidad, la tarifa sigue al proveedor elegido y cada opción dice la suya", async () => {
+        // Las tarifas llegan del catálogo real y las liga `bindCatalogProviders`,
+        // igual que en `PropertiesAutomation`: nada escrito a mano en la prueba.
+        const identity = (id: number, slug: string, verificationType: string, unitCost: number): Provider => ({
+            ...makeProvider(id, slug),
+            parameters: {
+                ...makeProvider(id, slug).parameters,
+                verification_type: verificationType,
+                billing: { billable: true, unit_cost: unitCost, scope: "per_execution" },
+            },
+        })
+        const catalog = [identity(1000, "didit", "session", 1.5), identity(1004, "textract", "document_upload", 0.25)]
+        const automation = makeAutomation({
+            uuid: "identity-row",
+            providerId: 1000,
+            executionOrder: 1,
+            guestType: "main_guest",
+            provider: catalog[0],
+            providerName: "didit", // lo deriva `normalize()` del servicio
+        })
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={bindCatalogProviders(
+                    definitionFor("identity-verification-main"),
+                    automation,
+                    [],
+                    [],
+                    resolveIdentityProviders(catalog),
+                )}
+                automation={automation}
+                providers={[]}
+            />,
+        )
+
+        expect(costLine()).toHaveTextContent("Costo: 1,50 USD cada vez que se ejecuta")
+
+        const user = userEvent.setup()
+        await user.click(screen.getByRole("combobox"))
+        expect(await screen.findByRole("option", { name: /Verificación avanzada.*1,50 USD/ })).toBeInTheDocument()
+        await user.click(screen.getByRole("option", { name: /Verificación esencial.*0,25 USD/ }))
+
+        expect(costLine()).toHaveTextContent("Costo: 0,25 USD cada vez que se ejecuta")
+    })
+
+    it("SIRE muestra el monto sin unidad: cobra una vez por reserva, no por ejecución", () => {
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={priced("sire-colombia-checkin", { billable: true, unit_cost: 0.35, scope: "per_execution" })}
+                automation={null}
+                providers={[makeProvider(2, "sire_colombia")]}
+            />,
+        )
+
+        expect(costLine()?.textContent).toBe("Costo: 0,35 USD")
+    })
+
+    it("sin opciones de proveedor no invita a elegir: no hay selector", () => {
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={{ ...definitionFor("identity-verification-main"), providerOptions: [] }}
+                automation={null}
+                providers={[]}
+            />,
+        )
+
+        expect(screen.queryByRole("combobox")).toBeNull()
+        expect(costLine()?.textContent).toBe("Costo: Puede generar costo")
+    })
+
+    it("en Contrato, el firmante que falta en el catálogo toma la tarifa del provider de la fila", () => {
+        const native: Provider = {
+            ...makeProvider(1005, "hitguest_signature"),
+            parameters: { ...makeProvider(1005, "hitguest_signature").parameters, billing: { billable: false, unit_cost: 0 } },
+        }
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={{ ...definitionFor("digital-contract") }}
+                automation={makeAutomation({
+                    uuid: "contract-row",
+                    providerId: 1005,
+                    isActive: true,
+                    provider: native,
+                    parameters: {
+                        contract_mode: "all_sources",
+                        by_source: { all: { contract_type: "agreement_only", provider_slug: "hitguest_signature" } },
+                    },
+                })}
+                providers={[]}
+            />,
+        )
+
+        expect(screen.getByText(/^Contrato de alquiler · .* · Sin costo$/)).toBeInTheDocument()
+    })
+
+    it("en identidad, sin proveedor elegido, avisa que depende de la elección", () => {
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={priced("identity-verification-main", { billable: true, unit_cost: 1.5, scope: "per_execution" })}
+                automation={null}
+                providers={[]}
+            />,
+        )
+
+        expect(costLine()).toHaveTextContent("Costo: depende del proveedor que elijas")
     })
 })

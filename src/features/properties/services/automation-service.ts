@@ -118,8 +118,22 @@ export function sanitizeProvider(raw: unknown): Provider | null {
     }
 
     const billing = params.billing as Record<string, unknown> | undefined
-    if (typeof billing?.billable === "boolean" && typeof billing.unit_cost === "number") {
-        parameters.billing = { billable: billing.billable, unit_cost: billing.unit_cost }
+    // Una tarifa negativa o no finita no es una tarifa: se descarta y la UI dice
+    // que no se conoce, en vez de mostrar un monto imposible. Un decimal de
+    // Laravel puede llegar como texto ("0.5000"): se acepta solo si es un número
+    // limpio, sin adivinar separadores.
+    const unitCost = typeof billing?.unit_cost === "string" && /^\d+(\.\d+)?$/.test(billing.unit_cost)
+        ? Number(billing.unit_cost)
+        : billing?.unit_cost
+    if (typeof billing?.billable === "boolean"
+        && typeof unitCost === "number"
+        && Number.isFinite(unitCost)
+        && unitCost >= 0) {
+        parameters.billing = {
+            billable: billing.billable,
+            unit_cost: unitCost,
+            ...(typeof billing.scope === "string" && billing.scope !== "" ? { scope: billing.scope } : {}),
+        }
     }
 
     if (Array.isArray(params.applicable_countries)

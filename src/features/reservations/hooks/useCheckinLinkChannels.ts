@@ -5,7 +5,7 @@ import { automationService } from "@/features/properties/services/automation-ser
 import {
     DELIVERY_PROVIDERS,
     isCheckinLinkDeliveryAutomation,
-    providerUnitCost,
+    providerBilling,
     resolveEffectiveChannels,
     type ChannelUnitCosts,
     type DeliveryChannel,
@@ -69,8 +69,8 @@ export function useCheckinLinkChannels(
                     channels,
                     resolved: true,
                     unitCosts: {
-                        whatsapp: providerUnitCost(automation?.provider),
-                        ota_inbox: providerUnitCost(otaProvider),
+                        whatsapp: providerBilling(automation?.provider),
+                        ota_inbox: providerBilling(otaProvider),
                     },
                 })
             }

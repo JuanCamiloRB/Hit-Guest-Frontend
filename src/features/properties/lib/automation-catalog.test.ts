@@ -296,6 +296,27 @@ describe("buildAutomationSlots", () => {
 describe("bindCatalogProviders", () => {
     const identity = AUTOMATION_DEFINITIONS.find((item) => item.id === "identity-verification-main")!
 
+    it("liga a cada opción la tarifa de SU provider, también la del guardado en la fila", () => {
+        const tra = AUTOMATION_DEFINITIONS.find((item) => item.id === "tra-colombia")!
+        const priced = (provider: Provider, unit_cost: number): Provider => ({
+            ...provider,
+            parameters: { ...provider.parameters, billing: { billable: true, unit_cost, scope: "per_execution" } },
+        })
+        const catalogTra = priced(makeProvider(1, "tra_colombia", { enabled: true }), 0.5)
+        expect(bindCatalogProviders(tra, null, [catalogTra], ["tra_colombia"]).providerOptions[0].billing)
+            .toEqual({ billable: true, unit_cost: 0.5, scope: "per_execution" })
+
+        // El catálogo ya no lo devuelve, pero la fila lo trae: su tarifa no se pierde.
+        const saved = priced(makeProvider(1, "tra_colombia", { enabled: true }), 0.75)
+        const row = { providerId: 1, providerName: "tra_colombia", provider: saved } as PropertyAutomation
+        expect(bindCatalogProviders(tra, row, [], []).providerOptions[0].billing?.unit_cost).toBe(0.75)
+
+        // Sin tarifa en el provider, la opción no la inventa.
+        const unpriced = makeProvider(1, "tra_colombia", { enabled: true })
+        delete unpriced.parameters.billing
+        expect(bindCatalogProviders(tra, null, [unpriced], ["tra_colombia"]).providerOptions[0]).not.toHaveProperty("billing")
+    })
+
     it("toma los ids de identidad del catálogo de identidad, no de constantes", () => {
         const didit = makeProvider(701, "didit", { enabled: false })
         const textract = makeProvider(845, "textract", { enabled: false })

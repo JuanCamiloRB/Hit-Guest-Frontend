@@ -65,7 +65,9 @@ describe("CheckinLinkDeliveryCard — canal «mensaje en la OTA» (contrato 2026
     it("con PMS se ofrece con la tarifa de SU provider y guarda los tres canales en orden", async () => {
         renderCard({ automation: automationWith(["email"]), pmsConnected: true })
         const ota = screen.getByRole("checkbox", { name: /Mensaje en la OTA/ })
-        expect(ota).toHaveAccessibleName(/0,0625 USD por mensaje/)
+        // El nombre es canal + tarifa, sin la etiqueta «Cobrado» que no se entendía.
+        expect(ota).toHaveAccessibleName("Mensaje en la OTA 0,0625 USD por mensaje")
+        expect(screen.getByRole("checkbox", { name: /Email/ })).toHaveAccessibleName("Email Incluido siempre")
         expect(screen.getByRole("checkbox", { name: /WhatsApp/ })).toHaveAccessibleName(/Sin costo por ahora/)
 
         fireEvent.click(ota)

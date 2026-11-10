@@ -93,6 +93,17 @@ export interface ProviderSetupSlot {
   parameters?: Record<string, unknown>
 }
 
+/**
+ * `parameters.billing` de un provider: lo que cuesta cada uso y si se cobra.
+ * `scope` dice POR QUÉ se cobra (hoy solo se conoce `per_execution`); un valor
+ * desconocido se conserva y la UI muestra el monto sin unidad.
+ */
+export interface ProviderBilling {
+  billable: boolean
+  unit_cost: number
+  scope?: string
+}
+
 /** Provider record from GET /api/v1/providers */
 export interface Provider {
   id: number
@@ -118,7 +129,7 @@ export interface Provider {
      * acá — declararlos haría que el tipo afirme algo falso.
      */
     internalUse?: { path: string }
-    billing?: { billable: boolean; unit_cost: number }
+    billing?: ProviderBilling
     /** Presente solo en los providers de identidad (didit, textract). */
     verification_type?: string
     /** ISO2 country codes where this provider applies, or ["ALL"]. */
@@ -374,6 +385,11 @@ export interface ProviderOption {
   description: string
   parametersSchema: ParameterFieldSchema[]
   /**
+   * La tarifa del provider al que quedó ligada la opción (`bindCatalogProviders`).
+   * Ausente = el catálogo no la trae; la tarjeta lo dice, nunca la supone.
+   */
+  billing?: ProviderBilling
+  /**
    * Optional known provider id, used as a fallback when the slug can't be resolved
    * from GET /providers (e.g. the record isn't returned by the active-only filter).
    */
@@ -405,6 +421,13 @@ export interface AutomationDefinition {
    * TTLock → lock_id only; SIRE → company_code; TRA → token + rnt
    */
   listingOverrideSchema?: ParameterFieldSchema[]
+  /**
+   * El `billing.scope` del provider no describe cómo cobra ESTA automatización,
+   * así que la tarjeta muestra el monto sin unidad. SIRE: factura una vez por
+   * reserva aunque haya varias ejecuciones (y tiene dos tarjetas), así que
+   * «cada vez que se ejecuta» prometería un cobro que no ocurre.
+   */
+  hideCostUnit?: boolean
 }
 
 // ─── Listing Automation Overrides ────────────────────────────────────

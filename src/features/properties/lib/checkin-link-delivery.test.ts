@@ -6,13 +6,12 @@ import {
     describeChannelCost,
     describeChannels,
     describeResendCharges,
-    isChargedCost,
     isCheckinLinkDeliveryAutomation,
     isEmailFallback,
     nextExecutionOrder,
     optionalChannelsOf,
     partitionCheckinLinkDelivery,
-    providerUnitCost,
+    providerBilling,
     readChannelErrors,
     readDeliveryChannels,
     readOverrideSelection,
@@ -182,26 +181,37 @@ describe("selección de canales (email fijo)", () => {
 })
 
 describe("tarifas — siempre del provider de cada canal", () => {
-    it("lee el unit_cost y no inventa uno", () => {
-        expect(providerUnitCost(whatsappProvider)).toBe(0)
-        expect(providerUnitCost(otaProvider)).toBe(0.0625)
-        expect(providerUnitCost(traProvider)).toBeNull()
-        expect(providerUnitCost(null)).toBeNull()
+    it("lee el billing completo y no inventa uno", () => {
+        expect(providerBilling(whatsappProvider)).toEqual({ billable: true, unit_cost: 0 })
+        expect(providerBilling(otaProvider)).toEqual({ billable: true, unit_cost: 0.0625 })
+        expect(providerBilling(traProvider)).toBeNull()
+        expect(providerBilling(null)).toBeNull()
     })
 
     it("0 se dice «sin costo por ahora»; sin tarifa, «puede generar costo»", () => {
-        expect(describeChannelCost(0)).toBe("Sin costo por ahora")
+        expect(describeChannelCost({ billable: true, unit_cost: 0 })).toBe("Sin costo por ahora")
         expect(describeChannelCost(null)).toBe("Puede generar costo")
         // Cuatro decimales: redondear 0.0625 a «0,06» subestima la tarifa un 4 %.
-        expect(describeChannelCost(0.0625)).toBe("0,0625 USD por mensaje")
-        expect(isChargedCost(0.0625)).toBe(true)
-        expect(isChargedCost(0)).toBe(false)
-        expect(isChargedCost(null)).toBe(false)
+        expect(describeChannelCost({ billable: true, unit_cost: 0.0625 })).toBe("0,0625 USD por mensaje")
+    })
+
+    it("`billable: false` manda sobre el `unit_cost`, igual que en las demás tarjetas", () => {
+        const free = { billable: false, unit_cost: 0.1 }
+        expect(describeChannelCost(free)).toBe("Sin costo")
+        const text = describeResendCharges({
+            channels: ["email", "whatsapp", "ota_inbox"],
+            whatsappUsable: true,
+            otaApplicable: null,
+            unitCosts: { whatsapp: free, ota_inbox: free },
+        })!
+        expect(text).toContain("WhatsApp no tiene costo")
+        expect(text).toContain("si sale, no tiene costo")
+        expect(text).not.toContain("0,10")
     })
 })
 
 describe("describeResendCharges (§8 + §13.8)", () => {
-    const costs = { whatsapp: 0, ota_inbox: 0.0625 }
+    const costs = { whatsapp: { billable: true, unit_cost: 0 }, ota_inbox: { billable: true, unit_cost: 0.0625 } }
 
     it("solo email: no hay nada que advertir", () => {
         expect(describeResendCharges({ channels: ["email"], whatsappUsable: true, otaApplicable: true, unitCosts: costs })).toBeNull()

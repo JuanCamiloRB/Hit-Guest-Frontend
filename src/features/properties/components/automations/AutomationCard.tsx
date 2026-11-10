@@ -30,6 +30,7 @@ import { ApiError } from "@/types/api"
 import { ConfigModal } from "./ConfigModal"
 import { ListingOverridesPanel } from "./ListingOverridesPanel"
 import { isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
+import { describeAutomationCost } from "../../lib/automation-cost"
 import type { ListingMeta } from "./AutomationOverrideModal"
 import { ReservationSourceIdentity, reservationSourceName, reservationSourceSlug } from "../contracts/ReservationSourceIdentity"
 
@@ -139,6 +140,19 @@ export function AutomationCard({
         return providers.find(p => normalizeSlug(getProviderSlug(p)) === target)?.name ?? slug
     }, [providers])
 
+    /**
+     * Tarifa del firmante de un canal, por su slug; `null` si el canal no tiene
+     * firmante. Si el catálogo no lo trae, sirve el provider de la fila cuando es
+     * el mismo: sin eso, el firmante gratuito podía decir «puede generar costo».
+     */
+    const signatureProviderCost = useCallback((slug: string | null | undefined): string | null => {
+        if (!slug) return null
+        const target = normalizeSlug(slug)
+        const signer = providers.find(p => normalizeSlug(getProviderSlug(p)) === target)
+            ?? (normalizeSlug(getProviderSlug(automation?.provider)) === target ? automation?.provider : undefined)
+        return describeAutomationCost(signer?.parameters?.billing)
+    }, [providers, automation?.provider])
+
     const [toggling, setToggling] = useState(false)
     const [configOpen, setConfigOpen] = useState(false)
     const [configSaving, setConfigSaving] = useState(false)
@@ -183,6 +197,17 @@ export function AutomationCard({
     // parametersSchema — HIT manages the creds — so it must activate directly
     // instead of bouncing to an empty config modal (the "no se puede activar" bug).
     const selectedProviderNeedsConfig = (selectedProvider?.parametersSchema?.length ?? 0) > 0
+
+    // Lo que cuesta, a la vista antes de activar. Contrato cobra según quién firma
+    // en cada canal (se dice en cada fila); identidad, según el proveedor elegido.
+    const costLabel = isContractRouting
+        ? "según quién firma en cada canal"
+        : selectedProvider
+            ? describeAutomationCost(selectedProvider.billing, { withUnit: !definition.hideCostUnit })
+            // «Elige» solo si hay entre qué elegir: sin opciones no hay selector.
+            : definition.providerOptions.length > 1
+                ? "depende del proveedor que elijas"
+                : describeAutomationCost(undefined)
 
     /**
      * Claves REQUERIDAS por el esquema del proveedor que todavía no tienen valor.
@@ -470,6 +495,9 @@ export function AutomationCard({
                                         )}
                                     </div>
                                     <p className="text-sm text-slate-500 leading-relaxed">{definition.description}</p>
+                                    <p className="text-xs text-slate-500">
+                                        Costo: <span className="font-semibold text-slate-700">{costLabel}</span>
+                                    </p>
                                 </div>
                                 <div className="shrink-0">
                                     {toggling
@@ -512,7 +540,13 @@ export function AutomationCard({
                                                 <SelectItem key={opt.value} value={opt.value}>
                                                     <div>
                                                         <div className="font-medium">{opt.label}</div>
-                                                        <div className="text-xs text-slate-500">{opt.description}</div>
+                                                        {/* Sin color ni opacidad propios: heredan el del ítem,
+                                                            que pasa a blanco sobre morado al enfocarlo (con
+                                                            opacidad bajaba de 4,5:1). */}
+                                                        <div className="text-xs">{opt.description}</div>
+                                                        <div className="text-xs font-medium">
+                                                            Costo: {describeAutomationCost(opt.billing, { withUnit: !definition.hideCostUnit })}
+                                                        </div>
                                                     </div>
                                                 </SelectItem>
                                             ))}
@@ -567,7 +601,7 @@ export function AutomationCard({
                                                             al logo: se usan sus dos partes, también del backend. Si no
                                                             vienen, `summary` entero. */}
                                                         <p className="mt-1 pl-11 text-xs text-slate-600">
-                                                            {[channel.contractTypeLabel, channel.provider?.label].filter(Boolean).join(" · ") || channel.summary}
+                                                            {[channel.contractTypeLabel, channel.provider?.label, signatureProviderCost(channel.provider?.slug)].filter(Boolean).join(" · ") || channel.summary}
                                                         </p>
                                                     </div>
                                                     {channel.status === "ready" ? (
@@ -596,7 +630,7 @@ export function AutomationCard({
                                                                 compact
                                                             />
                                                             <p className="mt-1 pl-11 text-xs text-slate-600">
-                                                                {[CONTRACT_TYPE_LABELS[channel.contractType], signatureProviderLabel(channel.providerSlug)]
+                                                                {[CONTRACT_TYPE_LABELS[channel.contractType], signatureProviderLabel(channel.providerSlug), signatureProviderCost(channel.providerSlug)]
                                                                     .filter(Boolean)
                                                                     .join(" · ")}
                                                             </p>

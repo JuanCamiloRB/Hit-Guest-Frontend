@@ -299,6 +299,7 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
     {
         order: 7,
         id: "sire-colombia-checkin",
+        hideCostUnit: true,
         title: "SIRE Colombia — Check-in",
         description: "Registro automático de huéspedes extranjeros ante Migración Colombia (SIRE) al hacer check-in.",
         icon: ClipboardList,
@@ -369,6 +370,7 @@ export const AUTOMATION_DEFINITIONS: AutomationDefinition[] = [
     {
         order: 8,
         id: "sire-colombia-checkout",
+        hideCostUnit: true,
         title: "SIRE Colombia — Check-out",
         description: "Notificación automática de salida de huéspedes extranjeros ante Migración Colombia (SIRE) al hacer check-out.",
         icon: ClipboardList,

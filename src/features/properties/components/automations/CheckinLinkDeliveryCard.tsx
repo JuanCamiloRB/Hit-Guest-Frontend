@@ -11,16 +11,15 @@ import { Label } from "@/components/ui/label"
 import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
 import { automationService } from "../../services/automation-service"
-import { AUTOMATION_STATUS, type PropertyAutomation, type Provider } from "../../types/automation"
+import { AUTOMATION_STATUS, type PropertyAutomation, type Provider, type ProviderBilling } from "../../types/automation"
 import {
     CHANNEL_LABEL,
     buildChannels,
     buildCheckinLinkDeliveryCreatePayload,
     describeChannelCost,
     describeChannels,
-    isChargedCost,
     optionalChannelsOf,
-    providerUnitCost,
+    providerBilling,
     readChannelErrors,
     readDeliveryChannels,
     sameChannelSet,
@@ -185,22 +184,22 @@ export function CheckinLinkDeliveryCard({
                             <div className="flex items-center gap-3">
                                 <Checkbox id="checkin-link-email" checked disabled aria-readonly />
                                 <Label htmlFor="checkin-link-email" className="flex flex-1 items-center justify-between gap-3 font-medium text-slate-700">
-                                    <span>{CHANNEL_LABEL.email}</span>
-                                    <span className="text-xs font-normal text-slate-400">Incluido siempre</span>
+                                    <span>{CHANNEL_LABEL.email}</span>{" "}
+                                    <span className="text-xs font-normal text-slate-500">Incluido siempre</span>
                                 </Label>
                             </div>
 
                             <ChannelOption
                                 channel="whatsapp"
                                 checked={selected.has("whatsapp")}
-                                unitCost={providerUnitCost(providers.whatsapp)}
+                                billing={providerBilling(providers.whatsapp)}
                                 onChange={toggle}
                             />
                             {showOta && (
                                 <ChannelOption
                                     channel="ota_inbox"
                                     checked={selected.has("ota_inbox")}
-                                    unitCost={providerUnitCost(providers.ota_inbox)}
+                                    billing={providerBilling(providers.ota_inbox)}
                                     onChange={toggle}
                                 />
                             )}
@@ -265,12 +264,12 @@ export function CheckinLinkDeliveryCard({
 function ChannelOption({
     channel,
     checked,
-    unitCost,
+    billing,
     onChange,
 }: {
     channel: OptionalDeliveryChannel
     checked: boolean
-    unitCost: number | null
+    billing: ProviderBilling | null
     onChange: (channel: OptionalDeliveryChannel, checked: boolean) => void
 }) {
     const id = `checkin-link-${channel}`
@@ -278,15 +277,10 @@ function ChannelOption({
         <div className="flex items-center gap-3">
             <Checkbox id={id} checked={checked} onCheckedChange={(value) => onChange(channel, value === true)} />
             <Label htmlFor={id} className="flex flex-1 items-center justify-between gap-3 font-medium text-slate-700">
-                <span>{CHANNEL_LABEL[channel]}</span>
-                <span className="flex items-center gap-2 text-xs font-normal text-slate-400">
-                    {describeChannelCost(unitCost)}
-                    {isChargedCost(unitCost) && (
-                        <Badge variant="outline" className="h-4 border-amber-200 bg-amber-50 text-[9px] font-bold uppercase text-amber-700">
-                            Cobrado
-                        </Badge>
-                    )}
-                </span>
+                {/* El espacio separa canal y tarifa en el nombre accesible
+                    («WhatsApp 0,10 USD…», no «WhatsApp0,10 USD…»). */}
+                <span>{CHANNEL_LABEL[channel]}</span>{" "}
+                <span className="text-xs font-normal text-slate-500">{describeChannelCost(billing)}</span>
             </Label>
         </div>
     )
