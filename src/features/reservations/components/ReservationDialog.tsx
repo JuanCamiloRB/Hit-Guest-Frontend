@@ -822,7 +822,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                             <FormControl>
                                                 <SelectTrigger className={cn(
                                                     "bg-slate-50 border-slate-200 focus:ring-brand-blue/30 focus:border-brand-blue rounded-xl h-11 transition-colors",
-                                                    !!selectedPropertyUuid && !loadingListings && listings.length === 0 && "disabled:opacity-100 bg-brand-purple/5 border-brand-purple/30 text-brand-purple font-medium placeholder:text-brand-purple"
+                                                    !!selectedPropertyUuid && !loadingListings && listings.length === 0 && "bg-brand-purple/5 disabled:bg-brand-purple/5 disabled:text-brand-purple data-[placeholder]:text-brand-purple border-brand-purple/30 text-brand-purple font-medium placeholder:text-brand-purple"
                                                 )}>
                                                     <SelectValue className="text-brand-purple" placeholder={
                                                         !selectedPropertyUuid

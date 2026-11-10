@@ -5,6 +5,12 @@ import { Switch as SwitchPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Interruptor (Fase 1, paso 4.4). Apagado: pista ink-3 (5.23:1 con el fondo y
+ * con el círculo blanco) en vez de --input (1.27:1). El estado no depende solo
+ * del color: el círculo cambia de lado. Área táctil ampliada con un
+ * pseudo-elemento, sin mover el diseño.
+ */
 function Switch({
   className,
   size = "default",
@@ -17,7 +23,7 @@ function Switch({
       data-slot="switch"
       data-size={size}
       className={cn(
-        "peer data-[state=checked]:bg-primary data-[state=unchecked]:bg-input focus-visible:border-ring focus-visible:ring-ring/50 dark:data-[state=unchecked]:bg-input/80 group/switch inline-flex shrink-0 items-center rounded-full border border-transparent shadow-xs transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-[1.15rem] data-[size=default]:w-8 data-[size=sm]:h-3.5 data-[size=sm]:w-6",
+        "peer relative after:absolute after:-inset-x-1 after:-inset-y-2.5 data-[state=checked]:bg-primary data-[state=unchecked]:bg-ink-3 focus-visible:border-ring focus-visible:ring-ring/50 dark:data-[state=unchecked]:bg-input/80 group/switch inline-flex shrink-0 items-center rounded-full border border-transparent shadow-xs transition-all outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 data-[size=default]:h-[1.15rem] data-[size=default]:w-8 data-[size=sm]:h-3.5 data-[size=sm]:w-6",
         className
       )}
       {...props}
