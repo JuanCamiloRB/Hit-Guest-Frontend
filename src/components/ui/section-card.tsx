@@ -1,51 +1,66 @@
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
-import { Card } from "@/components/ui/card"
+import { cardSurface } from "@/components/ui/card"
 
-interface SectionCardProps extends React.ComponentProps<"div"> {
+interface SectionCardProps extends Omit<React.ComponentProps<"section">, "title"> {
     title: string
     description?: string
-    /** Filters, search or buttons scoped to this section. */
+    /** Filtros, búsqueda o botones de esta sección. En móvil bajan bajo el título. */
     actions?: React.ReactNode
-    /** Set when the body owns its own padding (a table, a full-bleed chart). */
+    /** El cuerpo trae su propio espaciado (una tabla, un gráfico a sangre). */
     flush?: boolean
+    /**
+     * Nivel del título en la página. Por defecto h3, como hasta ahora; al
+     * migrar cada pantalla se ajusta a su jerarquía real.
+     */
+    headingLevel?: 2 | 3 | 4
 }
 
 /**
- * The panel wrapper for a titled section — list, table or chart.
+ * Una sección con título: lista, tabla o gráfico.
  *
- * Replaces four hand-copied headers that each rebuilt the same thing with a
- * purple-to-blue gradient strip and a colored icon chip. That treatment was
- * decoration: it spent color on the container instead of on the data, and
- * repeated identically on every panel so it ranked nothing. Here the title
- * carries the hierarchy and the surface stays quiet.
+ * Es un `<section>` nombrado por su título (`aria-labelledby`), con la misma
+ * superficie que `Card` (`cardSurface`) pero sin su `gap-6`/`py-6`: entre el
+ * encabezado y el cuerpo no queda espacio heredado (antes, 24 px extra). Un
+ * solo padding para encabezado y cuerpo (`px-5`), y `flush` deja el cuerpo sin
+ * ninguno.
+ *
+ * Sustituye a cuatro encabezados copiados a mano con una franja degradada y un
+ * ícono de color: eso gastaba color en el contenedor en vez de en el dato. Aquí
+ * el título lleva la jerarquía y la superficie queda en silencio.
  */
 function SectionCard({
     title,
     description,
     actions,
     flush = false,
+    headingLevel = 3,
     className,
     children,
     ...props
 }: SectionCardProps) {
+    const titleId = React.useId()
+    const Heading = `h${headingLevel}` as const
+
     return (
-        <Card
+        <section
             data-slot="section-card"
-            className={cn("overflow-hidden border-rule p-0 shadow-sm", className)}
+            aria-labelledby={titleId}
+            className={cn(cardSurface, "flex flex-col gap-0 overflow-hidden", className)}
             {...props}
         >
+            {/* El DOM sigue el orden visual: en móvil, título y después acciones. */}
             <div className="flex flex-col gap-3 border-b border-rule px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                    <h3 className="text-base font-bold text-ink">{title}</h3>
-                    {description && <p className="mt-0.5 text-xs text-ink-3">{description}</p>}
+                <div className="min-w-0 flex-1">
+                    <Heading id={titleId} className="text-base font-bold text-ink break-words">{title}</Heading>
+                    {description && <p className="mt-0.5 text-xs text-ink-2">{description}</p>}
                 </div>
-                {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+                {actions && <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">{actions}</div>}
             </div>
 
             <div className={cn(!flush && "p-5")}>{children}</div>
-        </Card>
+        </section>
     )
 }
 

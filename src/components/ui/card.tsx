@@ -2,14 +2,19 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * La superficie que comparten Card y SectionCard: fondo, tinta, borde, radio y
+ * una sola elevación baja, todo con tokens. Neutral a propósito: sin
+ * degradados, colores de estado, hover ni escala. El color semántico va en el
+ * contenido, y una card clicable lleva dentro un enlace o botón real.
+ */
+const cardSurface = "bg-card text-ink rounded-xl border border-rule shadow-sm"
+
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card"
-      className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm",
-        className
-      )}
+      className={cn(cardSurface, "flex flex-col gap-6 py-6", className)}
       {...props}
     />
   )
@@ -42,7 +47,8 @@ function CardDescription({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="card-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      // ink-2 = «apoyo legible» (7.67:1); ink-3 no llega al 4.5:1 de AA.
+      className={cn("text-ink-2 text-sm", className)}
       {...props}
     />
   )
@@ -82,6 +88,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 export {
+  cardSurface,
   Card,
   CardHeader,
   CardFooter,

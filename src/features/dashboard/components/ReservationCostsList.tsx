@@ -96,6 +96,8 @@ export function ReservationCostsList({
 
     return (
         <SectionCard
+            // Hermana de las otras secciones del Tablero, que son h2.
+            headingLevel={2}
             flush
             title="Detalle por reserva"
             className="shadow-none"
