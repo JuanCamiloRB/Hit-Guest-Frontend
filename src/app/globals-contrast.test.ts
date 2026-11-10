@@ -83,6 +83,14 @@ describe("tinta de estado en tema claro pasa AA (4.5:1) sobre su pastilla y sobr
     })
 })
 
+describe("FeedbackBanner en tema claro: título (tinta del tono) y cuerpo (ink-2) pasan AA sobre el fondo del tono", () => {
+    it.each(["info", "success", "warning", "danger"])("%s", (tone) => {
+        const surface = light[`${tone}-sunk`]
+        expect(contrast(light[tone], surface), `título ${tone}`).toBeGreaterThanOrEqual(4.5)
+        expect(contrast(light["ink-2"], surface), `cuerpo ${tone}`).toBeGreaterThanOrEqual(4.5)
+    })
+})
+
 describe("indicador de foco (--ring sólido) en tema claro: 3:1 (WCAG 1.4.11)", () => {
     it.each(["background", "card", "sunk"])("sobre %s", (surface) => {
         expect(contrast(light.ring, light[surface])).toBeGreaterThanOrEqual(3)
