@@ -148,6 +148,11 @@ export function SupportAgentsManager() {
                 )}
             </SectionCard>
 
+            {/* EXCEPCIÓN DELIBERADA: a diferencia de los demás borrados (que siguen
+                abiertos al fallar para reintentar), este diálogo se cierra también
+                si revocar falla. Un 404 SUPPORT_AGENT_NOT_FOUND significa que ya no
+                era agente, y en cualquier caso la lista se relee (`reload()` en
+                `confirmRevoke`). No «corregirlo» al migrar sin revisar esto. */}
             <AlertDialog open={revoking !== null} onOpenChange={(open) => { if (!open && !revokeBusy) setRevoking(null) }}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
