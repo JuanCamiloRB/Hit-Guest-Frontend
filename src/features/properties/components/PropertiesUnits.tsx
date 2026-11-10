@@ -1496,22 +1496,17 @@ export function PropertiesUnits() {
                             inactivo se puede reactivar.
                         </p>
                     )}
-                    {/* El botón deshabilitado pierde el foco: esto lo anuncia. */}
-                    <p role="status" className="sr-only">{isDeletingUnit ? "Eliminando el alojamiento…" : ""}</p>
                     <AlertDialogFooter>
                         {/* Radix enfoca «Cancelar» al abrir: eliminar exige un clic deliberado. */}
                         <AlertDialogCancel disabled={isDeletingUnit}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
-                            className={cn(buttonVariants({ variant: "destructive" }), "gap-2")}
-                            disabled={isDeletingUnit}
-                            onClick={(event) => {
-                                // Sin esto Radix cierra al clic y «Eliminando…» nunca se ve.
-                                event.preventDefault()
-                                void confirmRemoveUnit()
-                            }}
+                            className={buttonVariants({ variant: "destructive" })}
+                            keepOpen
+                            pending={isDeletingUnit}
+                            pendingLabel="Eliminando…"
+                            onClick={() => void confirmRemoveUnit()}
                         >
-                            {isDeletingUnit && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-                            {isDeletingUnit ? "Eliminando…" : "Eliminar alojamiento"}
+                            Eliminar alojamiento
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

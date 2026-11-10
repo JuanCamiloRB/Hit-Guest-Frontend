@@ -19,7 +19,6 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { buttonVariants } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
 import { useFormContext } from "react-hook-form"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
@@ -238,21 +237,17 @@ export function PropertiesPhotos() {
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={photoToDelete.url} alt="" className="aspect-video w-full rounded-md border object-cover" />
                     )}
-                    <p role="status" className="sr-only">{isDeletingPhoto ? "Eliminando la foto…" : ""}</p>
                     <AlertDialogFooter>
                         {/* Radix enfoca «Cancelar» al abrir: eliminar exige un clic deliberado. */}
                         <AlertDialogCancel disabled={isDeletingPhoto}>Cancelar</AlertDialogCancel>
                         <AlertDialogAction
-                            className={cn(buttonVariants({ variant: "destructive" }), "gap-2")}
-                            disabled={isDeletingPhoto}
-                            onClick={(event) => {
-                                // Sin esto Radix cierra al clic y «Eliminando…» nunca se ve.
-                                event.preventDefault()
-                                void confirmRemoveImage()
-                            }}
+                            className={buttonVariants({ variant: "destructive" })}
+                            keepOpen
+                            pending={isDeletingPhoto}
+                            pendingLabel="Eliminando…"
+                            onClick={() => void confirmRemoveImage()}
                         >
-                            {isDeletingPhoto && <Loader2 className="h-4 w-4 animate-spin" aria-hidden />}
-                            {isDeletingPhoto ? "Eliminando…" : "Eliminar foto"}
+                            Eliminar foto
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

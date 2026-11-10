@@ -6,6 +6,22 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { cardSurface } from "@/components/ui/card"
+
+/**
+ * Superficie de un modal: la misma de Card con la elevación alta (overlay), y
+ * un alto máximo con scroll propio para que en móvil nada quede fuera de la
+ * pantalla. Un consumidor con su propio alto lo sobrescribe con `className`.
+ */
+export const modalSurface = cn(
+  cardSurface,
+  "shadow-lg fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 p-6 duration-200 outline-none sm:max-w-lg",
+  "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+)
+
+/** «Cerrar» con área táctil de 36 px y foco visible (antes: 16 px y «Close»). */
+export const closeButton =
+  "absolute top-3 right-3 inline-flex size-9 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-accent hover:text-ink focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
 
 function Dialog({
   ...props
@@ -61,7 +77,10 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 outline-none sm:max-w-lg",
+          modalSurface,
+          // Con la X, el título le deja su espacio: uno largo no se mete debajo.
+          // En móvil el título va centrado, así que el margen es simétrico.
+          showCloseButton && "[&_[data-slot=dialog-title]]:px-8 sm:[&_[data-slot=dialog-title]]:pl-0",
           className
         )}
         {...props}
@@ -70,10 +89,10 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className={closeButton}
           >
-            <XIcon />
-            <span className="sr-only">Close</span>
+            <XIcon aria-hidden />
+            <span className="sr-only">Cerrar</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>
@@ -111,7 +130,7 @@ function DialogFooter({
       {children}
       {showCloseButton && (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          <Button variant="outline">Cerrar</Button>
         </DialogPrimitive.Close>
       )}
     </div>
@@ -138,7 +157,8 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      // ink-2 = «apoyo legible» (7.67:1), como en Card.
+      className={cn("text-ink-2 text-sm", className)}
       {...props}
     />
   )

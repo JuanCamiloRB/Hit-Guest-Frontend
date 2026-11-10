@@ -405,7 +405,7 @@ export function AutomationOverrideModal({
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className={cn("max-h-[88vh] overflow-y-auto", isContract ? "sm:max-w-3xl" : "max-w-lg")}>
+            <DialogContent className={cn("max-h-[88vh] overflow-y-auto", isContract ? "sm:max-w-3xl" : "sm:max-w-lg")}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-base">
                         <Building2 size={16} className="text-[var(--color-brand-purple)]" />

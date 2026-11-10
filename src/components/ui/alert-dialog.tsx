@@ -1,10 +1,12 @@
 "use client"
 
 import * as React from "react"
+import { Loader2 } from "lucide-react"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import { modalSurface } from "@/components/ui/dialog"
 
 function AlertDialog({
   ...props
@@ -49,10 +51,7 @@ function AlertDialogContent({
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
-        className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
-          className
-        )}
+        className={cn(modalSurface, className)}
         {...props}
       />
     </AlertDialogPortal>
@@ -99,21 +98,54 @@ function AlertDialogDescription({
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
-      className={cn("text-muted-foreground text-sm", className)}
+      className={cn("text-ink-2 text-sm", className)}
       {...props}
     />
   )
 }
 
+// Sin `asChild`: el indicador de carga se suma a los hijos y un Slot exige uno solo.
+interface AlertDialogActionProps extends Omit<React.ComponentProps<typeof AlertDialogPrimitive.Action>, "asChild"> {
+  /**
+   * La acción es asíncrona: el clic NO cierra el diálogo (Radix lo cerraba al
+   * instante, así que «Eliminando…» nunca se veía y un fallo quedaba sin
+   * contexto). Quien la usa lo cierra al terminar bien.
+   */
+  keepOpen?: boolean
+  /** En curso: deshabilitada, con indicador y `pendingLabel`, y anunciada. */
+  pending?: boolean
+  /** Lo que dice mientras está en curso («Eliminando…»). */
+  pendingLabel?: string
+}
+
 function AlertDialogAction({
   className,
+  keepOpen = false,
+  pending = false,
+  pendingLabel,
+  disabled,
+  onClick,
+  children,
   ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
+}: AlertDialogActionProps) {
   return (
-    <AlertDialogPrimitive.Action
-      className={cn(buttonVariants(), className)}
-      {...props}
-    />
+    <>
+      <AlertDialogPrimitive.Action
+        className={cn(buttonVariants(), className)}
+        disabled={disabled || pending}
+        aria-busy={pending || undefined}
+        onClick={(event) => {
+          if (keepOpen) event.preventDefault()
+          onClick?.(event)
+        }}
+        {...props}
+      >
+        {pending && <Loader2 className="animate-spin" aria-hidden />}
+        {pending && pendingLabel ? pendingLabel : children}
+      </AlertDialogPrimitive.Action>
+      {/* El botón deshabilitado pierde el foco: el lector de pantalla lo oye aquí. */}
+      {keepOpen && <span role="status" className="sr-only">{pending ? pendingLabel ?? "" : ""}</span>}
+    </>
   )
 }
 

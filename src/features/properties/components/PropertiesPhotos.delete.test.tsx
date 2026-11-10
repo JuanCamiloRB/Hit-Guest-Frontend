@@ -89,7 +89,7 @@ describe("PropertiesPhotos — eliminar una foto pide confirmación", () => {
         expect(within(dialog).getByRole("button", { name: "Eliminando…" })).toBeDisabled()
         expect(within(dialog).getByRole("button", { name: "Cancelar" })).toBeDisabled()
         // El botón deshabilitado pierde el foco: el lector de pantalla lo oye aquí.
-        expect(within(dialog).getByRole("status")).toHaveTextContent("Eliminando la foto…")
+        expect(within(dialog).getByRole("status")).toHaveTextContent("Eliminando…")
         await user.keyboard("{Escape}")
         expect(screen.getByRole("alertdialog")).toBeInTheDocument()
         expect(mocks.deleteImage).toHaveBeenCalledTimes(1)
