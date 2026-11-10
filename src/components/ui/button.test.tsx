@@ -164,5 +164,18 @@ describe("Button — estados", () => {
         const button = screen.getByRole("button", { name: "Crear Reserva" })
         expect(button).toHaveClass("bg-brand-purple", "disabled:bg-sunk", "disabled:text-ink-3")
     })
+
+    it("no disponible: tampoco ejecuta el onClickCapture de quien lo usa; disponible, sí", async () => {
+        const capture = vi.fn()
+        const user = userEvent.setup()
+        const { rerender } = render(<Button loading onClickCapture={capture}>Guardar</Button>)
+        await user.click(screen.getByRole("button"))
+        rerender(<Button aria-disabled onClickCapture={capture}>Guardar</Button>)
+        await user.click(screen.getByRole("button"))
+        expect(capture).not.toHaveBeenCalled()
+        rerender(<Button onClickCapture={capture}>Guardar</Button>)
+        await user.click(screen.getByRole("button"))
+        expect(capture).toHaveBeenCalledTimes(1)
+    })
 })
 

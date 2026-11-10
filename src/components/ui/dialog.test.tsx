@@ -173,5 +173,26 @@ describe("AlertDialogAction — acciones asíncronas", () => {
         expect(content).toHaveClass("bg-card", "border-rule", "rounded-xl", "shadow-lg", "overflow-y-auto")
         expect(screen.getByText("Algo.")).toHaveClass("text-ink-2")
     })
+
+    it("aria-disabled explícito también bloquea: no ejecuta la acción ni cierra", async () => {
+        const onClick = vi.fn()
+        const user = userEvent.setup()
+        render(
+            <AlertDialog open>
+                <AlertDialogContent>
+                    <AlertDialogTitle>¿Seguro?</AlertDialogTitle>
+                    <AlertDialogDescription>Algo.</AlertDialogDescription>
+                    <AlertDialogFooter><AlertDialogAction aria-disabled onClick={onClick}>Continuar</AlertDialogAction></AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>,
+        )
+        const action = await screen.findByRole("button", { name: "Continuar" })
+        expect(action).toHaveAttribute("aria-disabled", "true")
+        await user.click(action)
+        action.focus()
+        await user.keyboard("{Enter}")
+        expect(onClick).not.toHaveBeenCalled()
+        expect(screen.getByRole("alertdialog")).toBeInTheDocument()
+    })
 })
 

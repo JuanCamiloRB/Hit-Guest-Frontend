@@ -129,9 +129,12 @@ function AlertDialogAction({
   pendingLabel,
   disabled,
   onClick,
+  onClickCapture,
   children,
   ...props
 }: AlertDialogActionProps) {
+  // Mismo contrato que Button: no disponible = pending || aria-disabled explícito.
+  const unavailable = pending || props["aria-disabled"] === true || props["aria-disabled"] === "true"
   return (
     <>
       <AlertDialogPrimitive.Action
@@ -140,9 +143,12 @@ function AlertDialogAction({
         aria-busy={pending || undefined}
         data-loading={pending || undefined}
         {...props}
-        aria-disabled={pending || props["aria-disabled"] || undefined}
+        aria-disabled={unavailable || undefined}
         // Captura: antes que el cierre de Radix y que cualquier contenedor.
-        onClickCapture={(event) => blockWhenUnavailable(event, pending)}
+        onClickCapture={(event) => {
+          if (unavailable) return blockWhenUnavailable(event, true)
+          onClickCapture?.(event)
+        }}
         onClick={(event) => {
           if (keepOpen) event.preventDefault()
           onClick?.(event)

@@ -105,7 +105,9 @@ function Button({
       {...props}
       aria-disabled={unavailable || undefined}
       onClickCapture={(event: React.MouseEvent<HTMLButtonElement>) => {
-        blockWhenUnavailable(event, unavailable)
+        // No disponible: se corta aquí y no llega a ningún manejador, tampoco al
+        // onClickCapture de quien usa el botón.
+        if (unavailable) return blockWhenUnavailable(event, true)
         onClickCapture?.(event)
       }}
     >
