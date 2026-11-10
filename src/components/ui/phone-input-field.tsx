@@ -17,14 +17,26 @@ interface PhoneInputProps {
     onChange?: (value: string) => void;
     disabled?: boolean;
     placeholder?: string;
+    /**
+     * Los pone `FormControl` (Slot): el `id` al que apunta la etiqueta, la
+     * descripción y el error, y el estado inválido. Antes se perdían: la
+     * etiqueta «Teléfono» no nombraba nada y el error no quedaba vinculado.
+     */
+    id?: string;
+    "aria-describedby"?: string;
+    "aria-invalid"?: boolean | "true" | "false";
 }
 
 export function PhoneInputField({
     value = "",
     onChange,
     disabled = false,
-    placeholder = "300 123 4567"
+    placeholder = "300 123 4567",
+    id,
+    "aria-describedby": describedBy,
+    "aria-invalid": ariaInvalid,
 }: PhoneInputProps) {
+    const invalid = ariaInvalid === true || ariaInvalid === "true"
     const [countries, setCountries] = useState<any[]>([])
     const [isLoading, setIsLoading] = useState(true)
 
@@ -69,9 +81,9 @@ export function PhoneInputField({
 
     if (isLoading) {
         return (
-            <div className="flex gap-3 w-full h-11 items-center bg-slate-50/50 border border-slate-200 rounded-xl px-4">
-                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                <span className="text-xs text-muted-foreground">Cargando prefijos...</span>
+            <div role="status" className="flex gap-3 w-full h-11 items-center bg-slate-50/50 border border-slate-200 rounded-xl px-4">
+                <Loader2 className="h-4 w-4 animate-spin text-ink-3" aria-hidden />
+                <span className="text-xs text-ink-3">Cargando prefijos…</span>
             </div>
         )
     }
@@ -84,7 +96,11 @@ export function PhoneInputField({
                     value={matchedCountry?.name || (countries.length > 0 ? countries[0].name : "")}
                     disabled={disabled}
                 >
-                    <SelectTrigger className="w-full !h-11 px-2.5 bg-slate-50 border-slate-200 focus:ring-[var(--color-brand-purple)]/30 focus:border-[var(--color-brand-purple)] rounded-xl group-hover:border-[var(--color-brand-blue)]/40 transition-colors">
+                    <SelectTrigger
+                        aria-label="Prefijo telefónico"
+                        aria-invalid={invalid || undefined}
+                        aria-describedby={invalid ? describedBy : undefined}
+                        className="w-full !h-11 px-2.5 bg-slate-50 border-slate-200 focus:ring-[var(--color-brand-purple)]/30 focus:border-[var(--color-brand-purple)] rounded-xl group-hover:border-[var(--color-brand-blue)]/40 transition-colors">
                         <SelectValue>
                             <div className="flex items-center gap-1.5 w-full">
                                 <span className="text-sm shrink-0">{matchedCountry?.extra?.emoji ? `${matchedCountry.extra.emoji} ` : ""}</span>
@@ -107,8 +123,16 @@ export function PhoneInputField({
             </div>
             <div className="flex-1">
                 <div className="relative group">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-[var(--color-brand-purple)] transition-colors" />
+                    <Phone aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-[var(--color-brand-purple)] transition-colors" />
                     <Input
+                        id={id}
+                        // Sin etiqueta externa (sin `id`), se nombra solo.
+                        aria-label={id ? undefined : "Número de teléfono"}
+                        aria-describedby={describedBy}
+                        aria-invalid={invalid || undefined}
+                        type="tel"
+                        inputMode="numeric"
+                        autoComplete="tel-national"
                         placeholder={placeholder}
                         disabled={disabled}
                         value={currentNumber}
