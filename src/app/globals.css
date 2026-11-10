@@ -51,6 +51,7 @@
 
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-input-hover: var(--input-hover);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
@@ -150,7 +151,12 @@
   --destructive: #C81E1E;
   --destructive-hover: #B01818; /* 7.02:1 */
   --border: #e4e4e7;
-  --input: #e4e4e7;
+  /* Borde de un CAMPO (Input, Textarea, Select, calendario): es la señal que lo
+     identifica, así que necesita 3:1 (WCAG 1.4.11). #e4e4e7 daba 1.27:1; #8188A6
+     da 3.50 card / 3.36 fondo / 3.15 sunk. El hover usa su propio token (ink-3,
+     5.23:1), no ink-4 (2.35:1). --border sigue para separadores y tarjetas. */
+  --input: #8188A6;
+  --input-hover: #636B8D;
   --ring: #9D4CF2;
 
   /* El sidebar se pinta en navy. El token decía morado mientras el componente
@@ -191,7 +197,9 @@
   --destructive: #C81E1E;
   --destructive-hover: #B01818;
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  /* Mismo contrato en oscuro: 4.09:1 sobre el fondo y 3.64:1 sobre card. */
+  --input: oklch(0.55 0.015 286);
+  --input-hover: oklch(0.72 0.015 286);
   --ring: #9D4CF2;
   --sidebar: oklch(0.21 0.006 285.885);
   --sidebar-foreground: oklch(0.985 0 0);

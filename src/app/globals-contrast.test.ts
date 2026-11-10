@@ -81,6 +81,16 @@ describe("tinta secundaria (ink-3) en tema claro pasa AA (4.5:1) sobre cada supe
     })
 })
 
+describe.each([
+    ["claro", light, ["background", "card", "sunk"]],
+    ["oscuro", dark, ["background", "card"]],
+] as const)("borde de campo (--input) y su hover en tema %s: 3:1 (WCAG 1.4.11)", (_theme, t, surfaces) => {
+    it.each(surfaces)("sobre %s", (surface) => {
+        expect(contrast(t.input, t[surface])).toBeGreaterThanOrEqual(3)
+        expect(contrast(t["input-hover"], t[surface])).toBeGreaterThanOrEqual(3)
+    })
+})
+
 describe("marca separada de la interacción", () => {
     it("los colores de marca no cambian", () => {
         expect(css).toMatch(/--color-brand-purple:\s*#9D4CF2;/)

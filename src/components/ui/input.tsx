@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
  * Estados de un campo de texto (Fase 1, paso 4.3), compartidos por Input y
  * Textarea:
  * - texto ink; placeholder ink-3 (5.23:1 sobre blanco, 4.70 sobre sunk).
- * - hover: borde ink-4, solo si se puede escribir (no deshabilitado, no
+ * - hover: borde --input-hover (ink-3, 5.23:1), solo si se puede escribir (no deshabilitado, no
  *   readonly, no inválido: el rojo del error manda) y SIN foco: el borde de
  *   foco gana siempre. Va con `hover:` de Tailwind, que solo aplica con
  *   puntero (`@media (hover:hover)`): en táctil el hover no se queda pegado.
@@ -17,7 +17,7 @@ import { cn } from "@/lib/utils"
  */
 export const fieldStates = [
   "text-ink placeholder:text-ink-3 border-input",
-  "[&:not([readonly],[aria-invalid=true],:focus):enabled]:hover:border-ink-4",
+  "[&:not([readonly],[aria-invalid=true],:focus):enabled]:hover:border-input-hover",
   "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
   "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   "disabled:cursor-not-allowed disabled:bg-sunk disabled:text-ink-3 disabled:shadow-none",
