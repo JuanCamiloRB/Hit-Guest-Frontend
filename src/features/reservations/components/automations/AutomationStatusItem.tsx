@@ -186,7 +186,7 @@ export function AutomationStatusItem({
                             variant="outline"
                             disabled={retryDisabled}
                             onClick={() => onRedispatch(item)}
-                            className="h-8 gap-1.5 border-danger/30 text-danger hover:bg-danger-sunk hover:text-danger disabled:opacity-60"
+                            className="h-8 gap-1.5 border-danger/30 text-danger hover:bg-danger-sunk hover:text-danger"
                         >
                             {isRedispatching ? (
                                 <><Loader2 size={14} className="animate-spin" /> Reenviando...</>
@@ -202,7 +202,7 @@ export function AutomationStatusItem({
                             variant="outline"
                             disabled={isDispatching || inCooldown}
                             onClick={() => onDispatch(item)}
-                            className="h-8 gap-1.5 border-primary/20 text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-60"
+                            className="h-8 gap-1.5 border-primary/20 text-primary hover:bg-primary/10 hover:text-primary"
                         >
                             {isDispatching ? (
                                 <><Loader2 size={14} className="animate-spin" /> Disparando...</>
@@ -235,7 +235,7 @@ export function AutomationStatusItem({
                             }}
                             onBlur={() => setConfirmingResend(false)}
                             className={cn(
-                                "h-8 gap-1.5 disabled:opacity-60",
+                                "h-8 gap-1.5",
                                 confirmingResend
                                     ? "border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
                                     : "border-primary/20 text-primary hover:bg-primary/10 hover:text-primary",
@@ -320,7 +320,7 @@ function GuestRow({
                             disabled={isRedispatching || inCooldown}
                             onClick={() => onRedispatch(item, guest)}
                             aria-label={`Reintentar para ${guest.name}`}
-                            className="h-7 gap-1 border-danger/30 px-2 text-xs text-danger hover:bg-danger-sunk hover:text-danger disabled:opacity-60"
+                            className="h-7 gap-1 border-danger/30 px-2 text-xs text-danger hover:bg-danger-sunk hover:text-danger"
                         >
                             {isRedispatching ? <Loader2 size={12} className="animate-spin" /> : inCooldown ? formatCooldown(cooldownLeft) : <><RotateCcw size={12} /> Reintentar</>}
                         </Button>
@@ -331,7 +331,7 @@ function GuestRow({
                             disabled={isDispatching || inCooldown}
                             onClick={() => onDispatch(item, guest)}
                             aria-label={`Despachar para ${guest.name}`}
-                            className="h-7 gap-1 border-primary/20 px-2 text-xs text-primary hover:bg-primary/10 hover:text-primary disabled:opacity-60"
+                            className="h-7 gap-1 border-primary/20 px-2 text-xs text-primary hover:bg-primary/10 hover:text-primary"
                         >
                             {isDispatching ? <Loader2 size={12} className="animate-spin" /> : inCooldown ? formatCooldown(cooldownLeft) : <><Play size={12} /> Despachar</>}
                         </Button>

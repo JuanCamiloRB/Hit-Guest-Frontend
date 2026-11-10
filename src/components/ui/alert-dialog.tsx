@@ -112,7 +112,10 @@ interface AlertDialogActionProps extends Omit<React.ComponentProps<typeof AlertD
    * contexto). Quien la usa lo cierra al terminar bien.
    */
   keepOpen?: boolean
-  /** En curso: deshabilitada, con indicador y `pendingLabel`, y anunciada. */
+  /**
+   * En curso: indicador, `pendingLabel` y `aria-busy`, y no se repite. Como
+   * `Button loading`: NO se deshabilita (conserva color y foco).
+   */
   pending?: boolean
   /** Lo que dice mientras está en curso («Eliminando…»). */
   pendingLabel?: string
@@ -132,10 +135,12 @@ function AlertDialogAction({
     <>
       <AlertDialogPrimitive.Action
         className={cn(buttonVariants(), className)}
-        disabled={disabled || pending}
+        disabled={disabled}
         aria-busy={pending || undefined}
+        data-loading={pending || undefined}
         onClick={(event) => {
-          if (keepOpen) event.preventDefault()
+          if (keepOpen || pending) event.preventDefault()
+          if (pending) return
           onClick?.(event)
         }}
         {...props}
@@ -143,7 +148,7 @@ function AlertDialogAction({
         {pending && <Loader2 className="animate-spin" aria-hidden />}
         {pending && pendingLabel ? pendingLabel : children}
       </AlertDialogPrimitive.Action>
-      {/* El botón deshabilitado pierde el foco: el lector de pantalla lo oye aquí. */}
+      {/* Lo anuncia aunque el lector de pantalla esté en otra parte del diálogo. */}
       {keepOpen && <span role="status" className="sr-only">{pending ? pendingLabel ?? "" : ""}</span>}
     </>
   )

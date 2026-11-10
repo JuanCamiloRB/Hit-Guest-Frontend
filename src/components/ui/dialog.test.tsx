@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
-import { render, screen, waitFor } from "@testing-library/react"
+import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "./dialog"
@@ -91,7 +91,7 @@ function AsyncConfirm({ onConfirm }: { onConfirm: () => Promise<void> }) {
 }
 
 describe("AlertDialogAction — acciones asíncronas", () => {
-    it("keepOpen: el clic no cierra; en curso dice «Eliminando…», se deshabilita, se anuncia y no se repite", async () => {
+    it("keepOpen: el clic no cierra; en curso dice «Eliminando…», queda ocupada, se anuncia y no se repite", async () => {
         let finish!: () => void
         const onConfirm = vi.fn(() => new Promise<void>((resolve) => { finish = resolve }))
         const user = userEvent.setup()
@@ -99,7 +99,8 @@ describe("AlertDialogAction — acciones asíncronas", () => {
 
         await user.click(await screen.findByRole("button", { name: "Eliminar" }))
         const action = screen.getByRole("button", { name: "Eliminando…" })
-        expect(action).toBeDisabled()
+        // Ocupada, no deshabilitada: conserva el foco.
+        expect(action).toBeEnabled()
         expect(action).toHaveAttribute("aria-busy", "true")
         expect(screen.getByRole("status")).toHaveTextContent("Eliminando…")
         expect(screen.getByRole("alertdialog")).toBeInTheDocument()
@@ -139,7 +140,7 @@ describe("AlertDialogAction — acciones asíncronas", () => {
         expect(screen.queryByRole("status")).toBeNull()
     })
 
-    it("pending sin keepOpen también se deshabilita y muestra su texto (sin región de estado)", async () => {
+    it("pending sin keepOpen también se marca ocupada y muestra su texto (sin región de estado)", async () => {
         render(
             <AlertDialog open>
                 <AlertDialogContent>
@@ -149,8 +150,12 @@ describe("AlertDialogAction — acciones asíncronas", () => {
                 </AlertDialogContent>
             </AlertDialog>,
         )
-        expect(await screen.findByRole("button", { name: "Guardando…" })).toBeDisabled()
+        const busy = await screen.findByRole("button", { name: "Guardando…" })
+        expect(busy).toHaveAttribute("aria-busy", "true")
         expect(screen.queryByRole("status")).toBeNull()
+        // Ocupada: un clic no la repite ni cierra el diálogo.
+        fireEvent.click(busy)
+        expect(screen.getByRole("alertdialog")).toBeInTheDocument()
     })
 
     it("AlertDialogContent usa la misma superficie de modal", async () => {

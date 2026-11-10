@@ -109,7 +109,7 @@ describe("ReservationsList — verificación de consumo antes de eliminar", () =
         await waitFor(() => expect(screen.getByRole("button", { name: "Eliminar" })).toBeEnabled())
 
         fireEvent.click(screen.getByRole("button", { name: "Eliminar" }))
-        expect(await screen.findByRole("button", { name: "Eliminando…" })).toBeDisabled()
+        expect(await screen.findByRole("button", { name: "Eliminando…" })).toHaveAttribute("aria-busy", "true")
         expect(screen.getAllByRole("status").some((el) => el.textContent === "Eliminando…")).toBe(true)
         expect(screen.getByRole("alertdialog")).toBeInTheDocument()
 

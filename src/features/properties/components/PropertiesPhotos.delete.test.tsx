@@ -86,7 +86,7 @@ describe("PropertiesPhotos — eliminar una foto pide confirmación", () => {
         const dialog = await screen.findByRole("alertdialog")
         await user.click(within(dialog).getByRole("button", { name: "Eliminar foto" }))
 
-        expect(within(dialog).getByRole("button", { name: "Eliminando…" })).toBeDisabled()
+        expect(within(dialog).getByRole("button", { name: "Eliminando…" })).toHaveAttribute("aria-busy", "true")
         expect(within(dialog).getByRole("button", { name: "Cancelar" })).toBeDisabled()
         // El botón deshabilitado pierde el foco: el lector de pantalla lo oye aquí.
         expect(within(dialog).getByRole("status")).toHaveTextContent("Eliminando…")

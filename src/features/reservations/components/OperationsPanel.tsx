@@ -530,7 +530,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                             variant="secondary"
                                             disabled={!canUseCheckinLink}
                                             title={linkDisabledReason}
-                                            className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:opacity-40"
+                                            className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:bg-white/5 disabled:text-white/60"
                                         >
                                             <span className="flex items-center gap-3">
                                                 <Send size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />
@@ -606,7 +606,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     variant="secondary"
                                     disabled={!canUseCheckinLink}
                                     title={linkDisabledReason}
-                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:opacity-40"
+                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:bg-white/5 disabled:text-white/60"
                                 >
                                     <span className="flex items-center gap-3">
                                         <Copy size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />
@@ -619,7 +619,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     variant="secondary"
                                     disabled={!data.email || !isActionable}
                                     title={!data.email ? "El huésped no tiene correo registrado" : disabledReason}
-                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:opacity-40"
+                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 disabled:bg-white/5 disabled:text-white/60"
                                 >
                                     <span className="flex items-center gap-3">
                                         <MessageSquare size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />

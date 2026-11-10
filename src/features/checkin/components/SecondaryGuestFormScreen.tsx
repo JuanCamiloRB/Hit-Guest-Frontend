@@ -597,7 +597,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                     <Button
                         onClick={handleSubmit}
                         disabled={!isFormValid || isSubmitting}
-                        className="flex-1 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/25 transition-all disabled:opacity-50"
+                        className="flex-1 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/25 transition-all"
                     >
                         {isSubmitting ? (
                             <><Loader2 className="animate-spin mr-2" size={20} /> Guardando...</>

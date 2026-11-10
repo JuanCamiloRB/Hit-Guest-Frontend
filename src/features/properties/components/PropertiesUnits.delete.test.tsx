@@ -69,7 +69,7 @@ describe("PropertiesUnits — eliminar un alojamiento pide confirmación", () =>
         const action = within(dialog).getByRole("button", { name: "Eliminar alojamiento" })
 
         await user.click(action)
-        expect(within(dialog).getByRole("button", { name: "Eliminando…" })).toBeDisabled()
+        expect(within(dialog).getByRole("button", { name: "Eliminando…" })).toHaveAttribute("aria-busy", "true")
         expect(within(dialog).getByRole("button", { name: "Cancelar" })).toBeDisabled()
         await user.keyboard("{Escape}")
         expect(screen.getByRole("alertdialog")).toBeInTheDocument()
