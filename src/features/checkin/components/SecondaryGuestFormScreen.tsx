@@ -409,7 +409,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
     if (isLoadingSchema) {
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in">
-                <Loader2 className="w-8 h-8 animate-spin text-brand-purple" />
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 <p className="text-sm font-medium text-slate-500">Preparando formulario...</p>
             </div>
         )
@@ -532,13 +532,13 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                             {isFieldVisible('arrivalTime') && (
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-semibold text-slate-700">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-red-400 ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.arrivalTime || ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" />
+                                    <input type="time" value={form.arrivalTime || ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                             {isFieldVisible('departureTime') && (
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-semibold text-slate-700">Hora de salida{isFieldRequired('departureTime') && <span className="text-red-400 ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.departureTime || ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" />
+                                    <input type="time" value={form.departureTime || ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                         </div>
@@ -597,7 +597,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                     <Button
                         onClick={handleSubmit}
                         disabled={!isFormValid || isSubmitting}
-                        className="flex-1 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/25 transition-all"
+                        className="flex-1 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/25 transition-all"
                     >
                         {isSubmitting ? (
                             <><Loader2 className="animate-spin mr-2" size={20} /> Guardando...</>

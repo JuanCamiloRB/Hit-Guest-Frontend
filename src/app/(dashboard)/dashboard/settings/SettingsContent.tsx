@@ -78,17 +78,17 @@ export function SettingsContent() {
                             className={cn(
                                 "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-xl group relative text-left w-full",
                                 activeTab === tab.id
-                                    ? "bg-white text-[var(--color-brand-purple)] shadow-sm border border-slate-100"
+                                    ? "bg-white text-primary shadow-sm border border-slate-100"
                                     : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
                             )}
                         >
                             <tab.icon className={cn(
                                 "h-4 w-4 transition-colors",
-                                activeTab === tab.id ? "text-[var(--color-brand-purple)]" : "text-slate-400 group-hover:text-slate-600"
+                                activeTab === tab.id ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
                             )} />
                             <span>{tab.label}</span>
                             {activeTab === tab.id && (
-                                <div className="absolute right-3 h-1 w-1 rounded-full bg-[var(--color-brand-purple)]" />
+                                <div className="absolute right-3 h-1 w-1 rounded-full bg-primary" />
                             )}
                         </button>
                     ))}

@@ -122,7 +122,7 @@ export function PropertiesPhotos() {
         <Card>
             <CardHeader className="border-b bg-slate-50/50">
                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                    <Camera className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                    <Camera className="h-5 w-5 text-primary" />
                     Galería de Fotos
                 </CardTitle>
                 <CardDescription>

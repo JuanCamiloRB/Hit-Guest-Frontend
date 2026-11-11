@@ -409,7 +409,7 @@ export function AutomationOverrideModal({
             <DialogContent className={cn("max-h-[88vh] overflow-y-auto", isContract ? "sm:max-w-3xl" : "sm:max-w-lg")}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-base">
-                        <Building2 size={16} className="text-[var(--color-brand-purple)]" />
+                        <Building2 size={16} className="text-primary" />
                         {isEdit ? "Editar override" : "Configurar override"}
                         {listingName && (
                             <span className="text-xs font-normal text-slate-400">· {listingName}</span>
@@ -488,7 +488,7 @@ export function AutomationOverrideModal({
                         <Switch
                             checked={isActive}
                             onCheckedChange={setIsActive}
-                            className="data-[state=checked]:bg-[var(--color-brand-purple)]"
+                            className="data-[state=checked]:bg-primary"
                         />
                     </div>
                     )}
@@ -570,7 +570,7 @@ export function AutomationOverrideModal({
                     <Button
                         onClick={handleSave}
                         disabled={saving || (!isEdit && !selectedPaUuid)}
-                        className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white"
+                        className="bg-primary hover:bg-primary/90 text-white"
                     >
                         {saving && <Loader2 size={16} className="animate-spin mr-2" />}
                         Guardar

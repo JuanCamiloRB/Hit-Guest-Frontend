@@ -18,7 +18,7 @@ export function FormInput({ label, value, onChange, placeholder, type = "text", 
                 {label}
                 {required && <span className="text-red-400 ml-0.5">*</span>}
             </label>
-            <input type={type} value={value ?? ""} onChange={(e) => onChange(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" placeholder={placeholder} />
+            <input type={type} value={value ?? ""} onChange={(e) => onChange(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder={placeholder} />
         </div>
     )
 }

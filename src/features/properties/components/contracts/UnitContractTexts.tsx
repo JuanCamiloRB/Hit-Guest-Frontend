@@ -391,7 +391,7 @@ export function UnitContractTexts({
                                                 size="sm"
                                                 disabled={busy || !editing.text.replace(/<[^>]*>/g, "").trim()}
                                                 onClick={() => void saveRow(row, editing.text)}
-                                                className="bg-[var(--color-brand-purple)] text-white hover:bg-[var(--color-brand-purple)]/90"
+                                                className="bg-primary text-white hover:bg-primary/90"
                                             >
                                                 {busyKey === row.key && <Loader2 size={14} className="mr-1 animate-spin" />}
                                                 Guardar texto

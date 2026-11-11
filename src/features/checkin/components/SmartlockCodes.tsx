@@ -13,7 +13,7 @@ export function SmartlockCodes({ codes }: SmartlockCodesProps) {
     const getIcon = (type: string) => {
         switch (type) {
             case 'building_entrance': return <Building2 size={20} className="text-amber-500" />
-            case 'unit_entrance': return <DoorOpen size={20} className="text-brand-purple" />
+            case 'unit_entrance': return <DoorOpen size={20} className="text-primary" />
             default: return <Key size={20} className="text-slate-400" />
         }
     }

@@ -636,8 +636,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     return (
         <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
             <div className="flex items-start gap-3">
-                <div className="rounded-xl bg-[var(--color-brand-purple)]/10 p-2.5">
-                    <FileSignature className="h-6 w-6 text-[var(--color-brand-purple)]" />
+                <div className="rounded-xl bg-primary/10 p-2.5">
+                    <FileSignature className="h-6 w-6 text-primary" />
                 </div>
                 <div>
                     <h3 className="text-xl font-bold text-slate-900">Contratos por canal</h3>
@@ -780,7 +780,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                                     onClick={() => handleTextModeChange(value)}
                                     disabled={saving}
                                     className={textMode === value
-                                        ? "rounded-lg border border-[var(--color-brand-purple)] bg-[var(--color-brand-purple)]/5 px-3 py-2 text-left"
+                                        ? "rounded-lg border border-primary bg-primary/5 px-3 py-2 text-left"
                                         : "rounded-lg border border-slate-200 px-3 py-2 text-left hover:border-slate-300"}
                                 >
                                     <span className="block text-sm font-semibold text-slate-800">{label}</span>
@@ -877,7 +877,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     type="button"
                     onClick={handleSave}
                     disabled={saving || routingBlocked || orphansPendingDecision || !hasUnsavedChanges}
-                    className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold"
+                    className="bg-primary hover:bg-primary/90 text-white font-bold"
                 >
                     {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Guardar contrato y firma

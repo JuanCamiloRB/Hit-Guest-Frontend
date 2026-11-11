@@ -42,7 +42,7 @@ interface PropertyCardProps {
 
 /** Tono visual por clase de insignia — presentación, la derivación vive en `property-badges.ts`. */
 const BADGE_STYLES: Record<PropertyBadge["kind"], string> = {
-    identity: "bg-brand-purple/10 text-brand-purple border-brand-purple/20",
+    identity: "bg-primary/10 text-primary border-primary/20",
     contract: "bg-blue-50 text-blue-700 border-blue-200",
     ops: "bg-emerald-50 text-emerald-700 border-emerald-200",
     absent: "bg-slate-100 text-slate-500 border-slate-200",
@@ -124,7 +124,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
     }
 
     return (
-        <Card className="overflow-hidden group hover:shadow-2xl hover:shadow-brand-purple/10 transition-all duration-500 border-[var(--color-brand-purple)]/10 hover:border-[var(--color-brand-purple)]/30 rounded-2xl bg-white/50 backdrop-blur-sm">
+        <Card className="overflow-hidden group hover:shadow-2xl hover:shadow-brand-purple/10 transition-all duration-500 border-primary/10 hover:border-primary/30 rounded-2xl bg-white/50 backdrop-blur-sm">
             <div className="relative aspect-video bg-slate-100">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -157,11 +157,11 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
             <CardHeader className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div className="grid gap-1">
-                        <h3 className="font-extrabold text-lg leading-tight text-[var(--color-brand-navy)] group-hover:text-[var(--color-brand-purple)] transition-colors duration-300">
+                        <h3 className="font-extrabold text-lg leading-tight text-ink group-hover:text-primary transition-colors duration-300">
                             {property.name}
                         </h3>
-                        <div className="flex items-center text-xs text-[var(--color-brand-navy)]/60 font-medium">
-                            <MapPin className="mr-1 h-3.3 w-3.3 text-[var(--color-brand-blue)]" />
+                        <div className="flex items-center text-xs text-ink/60 font-medium">
+                            <MapPin className="mr-1 h-3.3 w-3.3 text-secondary" />
                             {property.address?.city || "Ciudad"}, {property.address?.country || "País"}
                         </div>
                     </div>
@@ -199,7 +199,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 {/* Alojamientos activos + automatizaciones encendidas (del BFF agregado) */}
                 <div className="space-y-2">
                     <div className="flex items-baseline gap-1.5">
-                        <span className="text-xl font-extrabold text-[var(--color-brand-navy)] tabular-nums">
+                        <span className="text-xl font-extrabold text-ink tabular-nums">
                             {activeListings ?? "—"}
                         </span>
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
@@ -226,7 +226,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 {/* Status switch */}
                 <div className="flex items-center justify-between px-1 py-2 bg-slate-50 rounded-xl border border-slate-100">
                     <div className="flex flex-col">
-                        <span className="text-xs font-bold text-[var(--color-brand-navy)]">Estado de la propiedad</span>
+                        <span className="text-xs font-bold text-ink">Estado de la propiedad</span>
                         <span className={cn(
                             "text-[10px] font-semibold transition-colors duration-300",
                             isActive ? "text-emerald-500" : "text-slate-400"
@@ -249,7 +249,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 </div>
             </CardHeader>
             <CardFooter className="p-4 pt-0">
-                <Button variant="outline" className="w-full border-[var(--color-brand-purple)]/20 text-[var(--color-brand-navy)] hover:bg-[var(--color-brand-purple)] hover:text-white hover:border-transparent transition-all duration-300 font-bold rounded-xl shadow-sm hover:shadow-lg hover:shadow-brand-purple/20" asChild>
+                <Button variant="outline" className="w-full border-primary/20 text-ink hover:bg-primary hover:text-white hover:border-transparent transition-all duration-300 font-bold rounded-xl shadow-sm hover:shadow-lg hover:shadow-brand-purple/20" asChild>
                     <Link href={`/dashboard/properties/${propertyId}`}>Gestionar</Link>
                 </Button>
             </CardFooter>

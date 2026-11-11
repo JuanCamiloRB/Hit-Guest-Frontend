@@ -135,7 +135,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                     onChange={e => onChange(e.target.value)}
                     placeholder={schema.placeholder}
                     rows={4}
-                    className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-purple)]/20 focus:border-[var(--color-brand-purple)]/40 resize-y"
+                    className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 resize-y"
                 />
             </div>
         )

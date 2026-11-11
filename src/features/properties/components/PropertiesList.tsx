@@ -117,14 +117,14 @@ export function PropertiesList() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <h2 className="text-3xl font-extrabold tracking-tight text-[var(--color-brand-navy)] drop-shadow-sm">Propiedades y Alojamientos</h2>
+                        <h2 className="text-3xl font-extrabold tracking-tight text-ink drop-shadow-sm">Propiedades y Alojamientos</h2>
                         {/* Lo cargado sigue a la vista mientras se relee (p. ej. tras activar una propiedad). */}
                         <RefreshIndicator
                             active={hasProperties && (light.status === "refreshing" || portfolio.status === "refreshing")}
                             label="Actualizando propiedades…"
                         />
                     </div>
-                    <p className="text-[var(--color-brand-navy)]/60 text-sm font-medium">
+                    <p className="text-ink/60 text-sm font-medium">
                         {properties.length > 0
                             ? `${properties.length} ${properties.length === 1 ? "propiedad" : "propiedades"}${overviewByProperty
                                 ? ` · ${Object.values(overviewByProperty).reduce((sum, o) => sum + o.activeListings, 0)} alojamientos activos`
@@ -132,7 +132,7 @@ export function PropertiesList() {
                             : "Gestiona tus propiedades, unidades y configuraciones de automatización."}
                     </p>
                 </div>
-                <Button asChild className="bg-gradient-to-r from-[var(--color-brand-purple)] to-[var(--color-brand-blue)] hover:opacity-90 text-white shadow-lg shadow-brand-purple/20 border-none px-6 h-11 transition-all duration-300 transform hover:scale-[1.02]">
+                <Button asChild className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white shadow-lg shadow-brand-purple/20 border-none px-6 h-11 transition-all duration-300 transform hover:scale-[1.02]">
                     <Link href="/dashboard/properties/new">
                         <Plus className="mr-2 h-5 w-5" /> Añadir Propiedad
                     </Link>
@@ -140,17 +140,17 @@ export function PropertiesList() {
             </div>
 
             <Tabs defaultValue="properties" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-2 rounded-2xl border-[1.5px] border-[var(--color-brand-purple)]/20 shadow-xl shadow-brand-purple/5">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-2 rounded-2xl border-[1.5px] border-primary/20 shadow-xl shadow-brand-purple/5">
                     <TabsList className="grid grid-cols-2 w-full md:w-[400px] bg-slate-100/50 p-1.5 h-12">
                         <TabsTrigger
                             value="properties"
-                            className="gap-2 rounded-lg data-[state=active]:bg-[var(--color-brand-navy)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
+                            className="gap-2 rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
                         >
                             <Home className="h-4 w-4" /> Propiedades
                         </TabsTrigger>
                         <TabsTrigger
                             value="units"
-                            className="gap-2 rounded-lg data-[state=active]:bg-[var(--color-brand-navy)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
+                            className="gap-2 rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
                         >
                             <List className="h-4 w-4" /> Alojamientos
                         </TabsTrigger>
@@ -158,12 +158,12 @@ export function PropertiesList() {
 
                     <div className="flex flex-1 items-center gap-3 px-2">
                         <div className="relative flex-1 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--color-brand-purple)]/50" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/50" />
                             <Input
                                 placeholder="Buscar por nombre o número..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 h-10 border-[var(--color-brand-purple)]/10 bg-white focus:border-[var(--color-brand-purple)] focus:ring-[var(--color-brand-purple)] transition-all"
+                                className="pl-9 h-10 border-primary/10 bg-white focus:border-primary focus:ring-primary transition-all"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -310,9 +310,9 @@ export function PropertiesList() {
                                             const property = properties.find((p: Property) => p.id === unit.propertyId)
                                             return (
                                                 <TableRow key={unit.id}>
-                                                    <TableCell className="font-bold text-[var(--color-brand-purple)]">{unit.number}</TableCell>
-                                                    <TableCell className="font-bold text-[var(--color-brand-navy)]">{unit.name}</TableCell>
-                                                    <TableCell className="text-[var(--color-brand-navy)]/60 text-sm font-medium">{property?.name}</TableCell>
+                                                    <TableCell className="font-bold text-primary">{unit.number}</TableCell>
+                                                    <TableCell className="font-bold text-ink">{unit.name}</TableCell>
+                                                    <TableCell className="text-ink/60 text-sm font-medium">{property?.name}</TableCell>
                                                     <TableCell>
                                                         <div className={cn(
                                                             "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
@@ -323,8 +323,8 @@ export function PropertiesList() {
                                                             {unit.status === "ACTIVE" ? "Activo" : "Inactivo"}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-sm font-medium text-[var(--color-brand-navy)]/70">{unit.capacity} Huéspedes</TableCell>
-                                                    <TableCell className="text-right font-extrabold text-[var(--color-brand-navy)]">
+                                                    <TableCell className="text-sm font-medium text-ink/70">{unit.capacity} Huéspedes</TableCell>
+                                                    <TableCell className="text-right font-extrabold text-ink">
                                                         ${unit.pricePerNight?.toLocaleString()}
                                                     </TableCell>
                                                 </TableRow>

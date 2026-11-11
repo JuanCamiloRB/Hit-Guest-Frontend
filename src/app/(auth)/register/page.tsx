@@ -37,7 +37,7 @@ export default function RegisterPage() {
                     </div>
                     <RegisterForm />
                     <p className="px-8 text-center text-xs text-ink-3 mt-8 uppercase tracking-widest">
-                        Powered by <span className="font-bold text-brand-blue">HIT Guest</span> ©{" "}
+                        Powered by <span className="font-bold text-secondary">HIT Guest</span> ©{" "}
                         {new Date().getFullYear()}
                     </p>
                 </div>

@@ -95,7 +95,7 @@ export function TransactionHistory() {
     return (
         <div className="rounded-2xl border border-slate-200 bg-white">
             <div className="flex items-center gap-2 border-b border-slate-100 px-5 py-4">
-                <Receipt className="h-4 w-4 text-[var(--color-brand-purple)]" />
+                <Receipt className="h-4 w-4 text-primary" />
                 <h3 className="text-sm font-bold text-slate-800">Historial de transacciones</h3>
             </div>
 
@@ -113,7 +113,7 @@ export function TransactionHistory() {
                     <p className="text-sm text-slate-500">Failed to load transactions.</p>
                     <button
                         onClick={() => setPage((p) => p)}
-                        className="text-xs font-semibold text-[var(--color-brand-purple)] underline"
+                        className="text-xs font-semibold text-primary underline"
                     >
                         Retry
                     </button>

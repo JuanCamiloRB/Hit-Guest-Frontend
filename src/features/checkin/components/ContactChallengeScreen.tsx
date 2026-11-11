@@ -225,7 +225,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
     if (!sessionLoaded) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 size={32} className="animate-spin text-brand-purple" />
+                <Loader2 size={32} className="animate-spin text-primary" />
             </div>
         )
     }
@@ -242,7 +242,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 </div>
                 <button
                     onClick={handleBackToIdentify}
-                    className="flex items-center gap-2 h-12 px-6 bg-brand-purple text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
+                    className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
                     <RotateCcw size={18} />
                     Volver a identificarme
@@ -255,7 +255,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
                 <p className="text-slate-500 text-sm">Sesión expirada. Vuelve a identificarte.</p>
-                <Link href={`${basePath}/identify`} className="text-brand-purple font-semibold underline">
+                <Link href={`${basePath}/identify`} className="text-primary font-semibold underline">
                     Volver al inicio
                 </Link>
             </div>
@@ -297,8 +297,8 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
 
             <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-5">
                 <div className="flex items-center gap-3">
-                    <div className="bg-brand-purple/10 w-12 h-12 rounded-xl flex items-center justify-center border border-brand-purple/20 shrink-0">
-                        <Mail size={20} className="text-brand-purple" />
+                    <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center border border-primary/20 shrink-0">
+                        <Mail size={20} className="text-primary" />
                     </div>
                     <p className="text-xs text-slate-500">
                         {challenge.alreadyVerified
@@ -318,7 +318,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                         value={code}
                         disabled={inputDisabled}
                         onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                        className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-center text-2xl font-bold tracking-[0.5em] text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all disabled:opacity-50 ${error ? "border-red-400" : "border-slate-200"}`}
+                        className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-center text-2xl font-bold tracking-[0.5em] text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50 ${error ? "border-red-400" : "border-slate-200"}`}
                         placeholder="······"
                         maxLength={6}
                     />
@@ -337,7 +337,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                     type="button"
                     onClick={handleResend}
                     disabled={!canResend}
-                    className="text-xs font-semibold text-brand-purple hover:underline disabled:text-slate-300 disabled:no-underline disabled:cursor-not-allowed"
+                    className="text-xs font-semibold text-primary hover:underline disabled:text-slate-300 disabled:no-underline disabled:cursor-not-allowed"
                 >
                     {resending
                         ? "Enviando..."
@@ -352,7 +352,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                     <button
                         onClick={handleVerify}
                         disabled={inputDisabled || code.length !== 6}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {submitting ? (
                             <><Loader2 className="animate-spin" size={20} /> Verificando...</>

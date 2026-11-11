@@ -37,7 +37,7 @@ export function StepIndicator({
                 ${isCompleted || isPast
                   ? "bg-green-500 text-white shadow-sm shadow-green-500/20"
                   : isCurrent
-                  ? "bg-brand-purple text-white shadow-md shadow-brand-purple/20 scale-110"
+                  ? "bg-primary text-white shadow-md shadow-brand-purple/20 scale-110"
                   : "bg-slate-200 text-slate-400"
                 }
               `}

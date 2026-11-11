@@ -94,7 +94,7 @@ export function IdentityOverrideSelector({
                             isDisabled
                                 ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-70"
                                 : checked
-                                    ? "cursor-pointer border-brand-purple bg-brand-purple/5"
+                                    ? "cursor-pointer border-primary bg-primary/5"
                                     : "cursor-pointer border-slate-200 hover:border-slate-300",
                         )}
                     >
@@ -105,7 +105,7 @@ export function IdentityOverrideSelector({
                             checked={checked}
                             disabled={isDisabled}
                             onChange={() => onChange(choice)}
-                            className="mt-1 accent-[var(--color-brand-purple)]"
+                            className="mt-1 accent-primary"
                         />
                         <span className="min-w-0 flex-1">
                             <span className="block text-sm font-semibold text-slate-900">{OPTION_COPY[choice].label}</span>

@@ -152,7 +152,7 @@ export function CheckinLinkDeliveryCard({
     }
 
     return (
-        <Card className="group overflow-hidden border-slate-200/60 transition-all duration-300 hover:border-[var(--color-brand-purple)]/30 hover:shadow-md">
+        <Card className="group overflow-hidden border-slate-200/60 transition-all duration-300 hover:border-primary/30 hover:shadow-md">
             <CardContent className="p-0">
                 <div className="flex flex-col items-stretch md:flex-row">
                     <div className="flex w-full items-center justify-center bg-emerald-50 py-4 md:w-20 md:py-0">
@@ -237,7 +237,7 @@ export function CheckinLinkDeliveryCard({
                                 size="sm"
                                 onClick={() => void handleSave()}
                                 disabled={!dirty || saving || !canConfigure}
-                                className="gap-2 bg-[var(--color-brand-purple)] text-white hover:bg-[var(--color-brand-purple)]/90"
+                                className="gap-2 bg-primary text-white hover:bg-primary/90"
                             >
                                 {saving && <Loader2 size={14} className="animate-spin" />}
                                 Guardar

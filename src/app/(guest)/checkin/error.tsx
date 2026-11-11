@@ -71,7 +71,7 @@ export default function CheckinError({ error, reset }: CheckinErrorProps) {
                 <button
                     type="button"
                     onClick={reset}
-                    className="flex h-12 items-center justify-center gap-2 rounded-xl bg-brand-purple font-bold text-white"
+                    className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary font-bold text-white"
                 >
                     <RefreshCw size={17} /> Reintentar
                 </button>

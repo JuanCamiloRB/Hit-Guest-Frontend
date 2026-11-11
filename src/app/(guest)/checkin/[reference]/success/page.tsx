@@ -30,7 +30,7 @@ export default async function CheckinSuccessByUuidPage({ params }: { params: Pro
                     Intenta cargar de nuevo en un momento.
                 </p>
                 {/* href="" recarga esta misma URL, query incluida. */}
-                <a href="" className="h-12 px-6 flex items-center justify-center rounded-xl bg-brand-purple font-bold text-white">
+                <a href="" className="h-12 px-6 flex items-center justify-center rounded-xl bg-primary font-bold text-white">
                     Reintentar
                 </a>
             </div>

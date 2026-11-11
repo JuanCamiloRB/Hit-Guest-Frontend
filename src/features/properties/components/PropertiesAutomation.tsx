@@ -258,8 +258,8 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             <Card className="border-none shadow-none bg-transparent">
                 <CardHeader className="px-0 pt-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <div className="p-2 bg-[var(--color-brand-purple)]/10 rounded-lg">
-                            <Sparkles className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                            <Sparkles className="h-5 w-5 text-primary" />
                         </div>
                         <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
                             Reglas de Automatización
@@ -356,7 +356,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             <Card className="bg-slate-50 border-dashed border-2 border-slate-200">
                 <CardContent className="p-8 text-center flex flex-col items-center justify-center space-y-3">
                     <div className="p-3 bg-white rounded-full shadow-sm">
-                        <Sparkles className="h-6 w-6 text-[var(--color-brand-purple)]" />
+                        <Sparkles className="h-6 w-6 text-primary" />
                     </div>
                     <div>
                         <h4 className="font-bold text-slate-900">¿Necesitas una regla personalizada?</h4>

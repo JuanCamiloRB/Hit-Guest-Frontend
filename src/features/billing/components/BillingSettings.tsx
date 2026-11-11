@@ -101,7 +101,7 @@ export function BillingSettings() {
             {/* ── Balance + Recharge ── */}
             <div className="rounded-2xl border border-slate-200 bg-white p-6">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
-                    <Wallet className="h-4 w-4 text-[var(--color-brand-purple)]" />
+                    <Wallet className="h-4 w-4 text-primary" />
                     Saldo disponible
                 </div>
                 <div className="mt-2 flex items-baseline gap-2">
@@ -151,12 +151,12 @@ export function BillingSettings() {
                                         onClick={() => selectPackage(pkg)}
                                         className={`rounded-xl border-2 px-3 py-3 text-left transition-all ${
                                             active
-                                                ? "border-[var(--color-brand-purple)] bg-[var(--color-brand-purple)]/5"
+                                                ? "border-primary bg-primary/5"
                                                 : "border-slate-200 hover:border-slate-300"
                                         }`}
                                     >
                                         <div
-                                            className={`text-lg font-black ${active ? "text-[var(--color-brand-purple)]" : "text-slate-800"}`}
+                                            className={`text-lg font-black ${active ? "text-primary" : "text-slate-800"}`}
                                         >
                                             {pkg.label}
                                         </div>
@@ -182,7 +182,7 @@ export function BillingSettings() {
                                     value={custom}
                                     onChange={(e) => onCustomChange(e.target.value)}
                                     placeholder={`Custom amount (min ${formatUsd(minimum)})`}
-                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-7 pr-3 font-semibold text-slate-900 focus:border-[var(--color-brand-purple)] focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-purple)]/20"
+                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-7 pr-3 font-semibold text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                                 />
                             </div>
                             {amountError && <p className="text-xs font-medium text-red-500">{amountError}</p>}
@@ -191,7 +191,7 @@ export function BillingSettings() {
                         <button
                             onClick={handleAddCredits}
                             disabled={isSubmitting || effectiveAmount == null}
-                            className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--color-brand-purple)] px-6 font-bold text-white transition-colors hover:bg-[#8b3ee0] disabled:opacity-50"
+                            className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 font-bold text-white transition-colors hover:bg-primary disabled:opacity-50"
                         >
                             {isSubmitting ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />

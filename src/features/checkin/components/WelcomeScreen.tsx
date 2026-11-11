@@ -19,7 +19,7 @@ interface WelcomeScreenProps {
 // the same size/shape — only the color changes — so "Principal" next to
 // "Pendiente" doesn't look like two different design systems.
 const BADGE_BASE = "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold leading-5"
-const BADGE_MAIN = `${BADGE_BASE} bg-brand-purple/10 text-brand-purple`
+const BADGE_MAIN = `${BADGE_BASE} bg-primary/10 text-primary`
 const BADGE_DONE = `${BADGE_BASE} bg-green-50 text-green-600`
 const BADGE_PENDING = `${BADGE_BASE} bg-slate-100 text-slate-500`
 
@@ -106,8 +106,8 @@ function GuestRowActions({
                 href={href}
                 className={`inline-flex h-9 flex-1 items-center justify-center gap-1 rounded-lg text-xs font-bold transition-colors active:scale-[0.98] ${
                     emphasis === "solid"
-                        ? "bg-brand-blue text-white hover:bg-brand-blue/90"
-                        : "bg-brand-blue/10 text-brand-blue hover:bg-brand-blue/20"
+                        ? "bg-secondary text-white hover:bg-secondary/90"
+                        : "bg-secondary/10 text-secondary hover:bg-secondary/20"
                 }`}
             >
                 Registrar <ArrowRight size={13} />
@@ -117,7 +117,7 @@ function GuestRowActions({
                 onClick={onShare}
                 aria-label={shareLabel}
                 title={shareLabel}
-                className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-brand-purple/15 bg-white text-brand-purple transition-colors hover:bg-brand-purple/5"
+                className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-white text-primary transition-colors hover:bg-primary/5"
             >
                 <Share2 size={14} />
             </button>
@@ -300,11 +300,11 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
                 <div className="flex gap-3">
                     <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100/50 flex items-center gap-2">
-                        <Calendar size={16} className="text-brand-blue" />
+                        <Calendar size={16} className="text-secondary" />
                         <span className="text-sm font-medium text-slate-700">{nights} {nights === 1 ? "Noche" : "Noches"}</span>
                     </div>
                     <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100/50 flex items-center gap-2">
-                        <Users size={16} className="text-brand-blue" />
+                        <Users size={16} className="text-secondary" />
                         <span className="text-sm font-medium text-slate-700">{res.totalGuestsAllowed} {res.totalGuestsAllowed === 1 ? "Huésped" : "Huéspedes"}</span>
                     </div>
                 </div>
@@ -349,13 +349,13 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                 <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
                         <span className="text-slate-500 font-medium">Progreso del registro</span>
-                        <span className="font-bold text-brand-purple">
+                        <span className="font-bold text-primary">
                             {completedCount}/{res.totalGuestsAllowed} completados
                         </span>
                     </div>
                     <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                         <div
-                            className="h-full bg-brand-purple transition-all duration-500"
+                            className="h-full bg-primary transition-all duration-500"
                             style={{ width: `${res.totalGuestsAllowed > 0
                                 ? Math.min(100, (completedCount / res.totalGuestsAllowed) * 100)
                                 : 0}%` }}
@@ -434,7 +434,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
                     {/* Re-send the link so companions can register themselves. */}
                     {hasPendingCompanions && (
-                        <div className="mt-3 rounded-xl border border-brand-purple/15 bg-brand-purple/5 p-3">
+                        <div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3">
                             <p className="text-xs font-medium text-slate-600 mb-2">
                                 ¿Viajas acompañado? Envíales el link para que hagan su registro.
                             </p>
@@ -442,7 +442,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                 <button
                                     type="button"
                                     onClick={() => handleShareLink()}
-                                    className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-brand-purple text-white text-sm font-bold hover:bg-brand-purple/90 transition-colors active:scale-[0.98]"
+                                    className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors active:scale-[0.98]"
                                 >
                                     <Share2 size={15} />
                                     Compartir link
@@ -468,15 +468,15 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
             {/* Info Box */}
             {!isFullyCompleted && (
-                <div className="bg-brand-blue/5 rounded-2xl p-5 border border-brand-blue/10">
-                    <div className="flex items-center gap-3 mb-4 text-brand-blue">
+                <div className="bg-secondary/5 rounded-2xl p-5 border border-secondary/10">
+                    <div className="flex items-center gap-3 mb-4 text-secondary">
                         <Clock size={20} />
                         <span className="font-semibold">Tomará aproximadamente 3 minutos</span>
                     </div>
                     <p className="text-sm text-slate-600 mb-4 font-medium">Requisitos para completar el registro:</p>
                     <ul className="space-y-4">
                         <li className="flex items-start gap-3">
-                            <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100 text-brand-purple">
+                            <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100 text-primary">
                                 <IdCard size={18} />
                             </div>
                             <div>
@@ -485,7 +485,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                             </div>
                         </li>
                         <li className="flex items-start gap-3">
-                            <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100 text-brand-purple">
+                            <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100 text-primary">
                                 <CreditCard size={18} />
                             </div>
                             <div>
@@ -528,7 +528,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     <div className={BOTTOM_BAR_INNER}>
                         <Link
                             href={primaryCtaHref}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-base shadow-lg shadow-brand-purple/25 transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg shadow-brand-purple/25 transition-all active:scale-[0.98]"
                         >
                             {primaryCtaLabel}
                             <ArrowRight size={20} />

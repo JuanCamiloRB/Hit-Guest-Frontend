@@ -27,11 +27,11 @@ export function ContractModeToggle({ value, onChange, disabled }: Props) {
                 className={cn(
                     "rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                     value === "all_sources"
-                        ? "border-[var(--color-brand-purple)] bg-[var(--color-brand-purple)]/5 ring-1 ring-[var(--color-brand-purple)]/20"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                         : "border-slate-200 bg-white hover:border-slate-300",
                 )}
             >
-                <span className={cn("block text-sm font-bold", value === "all_sources" ? "text-[var(--color-brand-purple)]" : "text-slate-800")}>
+                <span className={cn("block text-sm font-bold", value === "all_sources" ? "text-primary" : "text-slate-800")}>
                     Un mismo contrato para todos
                 </span>
                 <span className="mt-1 block text-xs font-medium leading-relaxed text-slate-500">
@@ -47,11 +47,11 @@ export function ContractModeToggle({ value, onChange, disabled }: Props) {
                 className={cn(
                     "rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                     value === "per_source"
-                        ? "border-[var(--color-brand-purple)] bg-[var(--color-brand-purple)]/5 ring-1 ring-[var(--color-brand-purple)]/20"
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
                         : "border-slate-200 bg-white hover:border-slate-300",
                 )}
             >
-                <span className={cn("block text-sm font-bold", value === "per_source" ? "text-[var(--color-brand-purple)]" : "text-slate-800")}>
+                <span className={cn("block text-sm font-bold", value === "per_source" ? "text-primary" : "text-slate-800")}>
                     Un contrato para cada canal
                 </span>
                 <span className="mt-1 block text-xs font-medium leading-relaxed text-slate-500">

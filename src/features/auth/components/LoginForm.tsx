@@ -117,7 +117,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             />
                             <Button
                                 disabled={isLoading}
-                                className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300 h-11"
+                                className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 h-11"
                             >
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                 Continuar con el acceso
@@ -146,7 +146,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                             <button
                                                 type="button"
                                                 onClick={resetFlow}
-                                                className="text-[12px] text-brand-blue font-semibold hover:underline"
+                                                className="text-xs text-secondary font-semibold hover:underline"
                                             >
                                                 Cambiar correo
                                             </button>
@@ -175,7 +175,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             <div className="flex flex-col gap-3">
                                 <Button
                                     disabled={isLoading}
-                                    className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300 h-11 w-full"
+                                    className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 h-11 w-full"
                                 >
                                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                     Verificar e Iniciar Sesión
@@ -194,7 +194,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                         <Button
                                             type="button"
                                             variant="ghost"
-                                            className="text-xs text-brand-purple hover:text-brand-purple/90 hover:bg-brand-purple/10 h-auto py-2"
+                                            className="text-xs text-primary hover:text-primary/90 hover:bg-primary/10 h-auto py-2"
                                             onClick={onResendOtp}
                                             disabled={isLoading || !canResend}
                                         >
@@ -212,7 +212,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                     ¿No tienes cuenta?{" "}
                     <Link
                         href="/register"
-                        className="font-semibold text-brand-blue hover:text-brand-blue/80 transition-colors underline-offset-4 hover:underline"
+                        className="font-semibold text-secondary hover:text-secondary/80 transition-colors underline-offset-4 hover:underline"
                     >
                         Regístrate aquí
                     </Link>

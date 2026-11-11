@@ -129,7 +129,7 @@ export function DocumentFormModal({
                 <DialogContent className="sm:max-w-3xl max-h-[92vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <FileText className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                            <FileText className="h-5 w-5 text-primary" />
                             {isEdit ? "Editar documento" : "Nuevo documento"}
                         </DialogTitle>
                         <DialogDescription>
@@ -208,7 +208,7 @@ export function DocumentFormModal({
                             type="button"
                             onClick={handleSave}
                             disabled={saving}
-                            className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold"
+                            className="bg-primary hover:bg-primary/90 text-white font-bold"
                         >
                             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             {isEdit ? "Guardar cambios" : "Crear documento"}

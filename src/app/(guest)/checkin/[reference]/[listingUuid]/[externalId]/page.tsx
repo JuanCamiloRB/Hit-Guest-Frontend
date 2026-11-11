@@ -27,7 +27,7 @@ export default async function CheckinByExternalPage({
                     <p className="text-slate-500">Espera un momento y vuelve a intentarlo.</p>
                     <a
                         href=""
-                        className="mt-6 inline-flex h-12 items-center rounded-xl bg-brand-purple px-6 font-semibold text-white"
+                        className="mt-6 inline-flex h-12 items-center rounded-xl bg-primary px-6 font-semibold text-white"
                     >
                         Reintentar
                     </a>

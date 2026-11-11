@@ -507,7 +507,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                 ref={containerRef}
                 hidden={isPending}
                 data-testid="stripe-card-container"
-                className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-3 py-3.5 focus-within:border-[var(--color-brand-purple)] focus-within:ring-2 focus-within:ring-[var(--color-brand-purple)]/20 transition-all"
+                className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-3 py-3.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all"
             />
 
             {isPending ? (
@@ -515,7 +515,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                     <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
                         {pollTimedOut
                             ? <CreditCard size={16} className="text-slate-400" />
-                            : <Loader2 size={16} className="animate-spin text-[var(--color-brand-purple)]" />}
+                            : <Loader2 size={16} className="animate-spin text-primary" />}
                         {pollTimedOut
                             ? "Tu tarjeta sigue sin confirmarse."
                             : /* La frase avanza con la espera (máx. 60 s de sondeo):
@@ -532,7 +532,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                             <button
                                 type="button"
                                 onClick={() => void handleRecheck()}
-                                className="text-xs font-semibold text-[var(--color-brand-purple)] hover:underline"
+                                className="text-xs font-semibold text-primary hover:underline"
                             >
                                 Volver a comprobar
                             </button>
@@ -561,7 +561,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                         <button
                             type="button"
                             onClick={handleRetry}
-                            className="text-xs font-semibold text-[var(--color-brand-purple)] hover:underline"
+                            className="text-xs font-semibold text-primary hover:underline"
                         >
                             Intentar con otra tarjeta
                         </button>
@@ -574,7 +574,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                         <button
                             type="button"
                             onClick={handleRetry}
-                            className="text-xs font-semibold text-[var(--color-brand-purple)] hover:underline"
+                            className="text-xs font-semibold text-primary hover:underline"
                         >
                             Intentar de nuevo
                         </button>
@@ -584,7 +584,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                         type="button"
                         onClick={() => void handleSubmit()}
                         disabled={!cardMounted || !cardComplete || submitting}
-                        className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-[var(--color-brand-purple)] text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                        className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
                     >
                         {submitting ? (
                             <Loader2 size={16} className="animate-spin" />

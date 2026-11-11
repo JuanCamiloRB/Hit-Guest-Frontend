@@ -126,7 +126,7 @@ export function KunasConnectForm({ onConnect }: Props) {
             <Button
                 type="submit"
                 disabled={!canSubmit}
-                className="gap-2 bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-white font-bold"
+                className="gap-2 bg-primary hover:bg-primary text-white font-bold"
             >
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />}
                 Conectar KunasPMS

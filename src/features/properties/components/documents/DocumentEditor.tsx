@@ -45,7 +45,7 @@ function ToolbarButton({
             onClick={onClick}
             className={cn(
                 "h-8 w-8 inline-flex items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40 disabled:cursor-not-allowed",
-                active && "bg-[var(--color-brand-purple)]/10 text-[var(--color-brand-purple)]",
+                active && "bg-primary/10 text-primary",
             )}
         >
             {children}

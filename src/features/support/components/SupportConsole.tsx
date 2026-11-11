@@ -211,7 +211,7 @@ function UsersCountPill({ count }: { count: number | null }) {
 function ClientRow({ client, opened, onOpen }: { client: SupportClient; opened: boolean; onOpen: (opener: HTMLElement) => void }) {
     const empty = client.usersCount === 0
     return (
-        <tr className={cn("border-b border-slate-100 last:border-b-0", opened && "bg-brand-purple/5")}>
+        <tr className={cn("border-b border-slate-100 last:border-b-0", opened && "bg-primary/5")}>
             <td className="px-5 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
                     <span

@@ -57,7 +57,7 @@ export function ReservationPriceCard({
                     <button
                         type="button"
                         onClick={onCorrect}
-                        className="text-xs font-semibold text-[var(--color-brand-purple)] underline underline-offset-2 hover:opacity-80"
+                        className="text-xs font-semibold text-primary underline underline-offset-2 hover:opacity-80"
                     >
                         Corregir valor
                     </button>

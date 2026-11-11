@@ -57,6 +57,15 @@ const rules = [
         pattern: /\bbg-gradient-[\w-]+/g,
     },
     {
+        // El morado y el azul de marca son para logo e ilustración. Como texto o
+        // como relleno de un control con texto no llegan a AA (brand-purple con
+        // blanco da 4,42:1): la interacción va con primary / secondary.
+        id: "brand-color-interaction",
+        description: "usa un color de marca como interacción; la interacción va con primary o secondary",
+        pattern: /(?<![\w-])(?:text|bg|border|ring|outline|fill|stroke|decoration|divide)-brand-(?:purple|blue)(?:\/[0-9]+)?(?![\w-])/g,
+        ignore: (path) => path === "src/components/ui/Logo.tsx" || path.startsWith("src/components/brand/"),
+    },
+    {
         id: "arbitrary-font",
         description: "usa una fuente fuera de los tokens tipográficos",
         pattern: /\bfont-\[[^\]]+\]/g,
@@ -93,7 +102,9 @@ function filesUnder(dir) {
 function inspect() {
     const result = {}
     const files = filesUnder(srcRoot).filter(
-        (path) => /\.(?:ts|tsx)$/.test(path) && !/\.(?:test|spec)\.(?:ts|tsx)$/.test(path),
+        // Fuera: pruebas y las copias de Finder («Archivo 2.tsx»), que .gitignore
+        // ya excluye y no son código del proyecto.
+        (path) => /\.(?:ts|tsx)$/.test(path) && !/\.(?:test|spec)\.(?:ts|tsx)$/.test(path) && !/ \d+\.(?:ts|tsx)$/.test(path),
     )
     for (const absolute of files) {
         const path = relative(root, absolute).replaceAll("\\", "/")
@@ -111,6 +122,11 @@ function inspect() {
 
         function visit(node) {
             if (ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
+                strings.push(node.text)
+            }
+            // Los trozos fijos de un template con variables (`text-x ${y}`) también
+            // son clases: sin esto se escapaban del control.
+            if (ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
                 strings.push(node.text)
             }
             if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {

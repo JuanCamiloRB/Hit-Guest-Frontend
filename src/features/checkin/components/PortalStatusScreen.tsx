@@ -69,7 +69,7 @@ export function PortalStatusScreen({ status, message }: PortalStatusScreenProps)
                    se renderiza en el servidor. */
                 <a
                     href=""
-                    className="mt-6 inline-flex h-12 items-center gap-2 rounded-xl bg-brand-purple px-6 font-semibold text-white transition-all active:scale-[0.98]"
+                    className="mt-6 inline-flex h-12 items-center gap-2 rounded-xl bg-primary px-6 font-semibold text-white transition-all active:scale-[0.98]"
                 >
                     Reintentar
                 </a>

@@ -42,7 +42,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Resumen de Estadía</h3>
                 
                 <div className="flex items-start gap-3">
-                    <MapPin className="h-5 w-5 text-brand-purple shrink-0" />
+                    <MapPin className="h-5 w-5 text-primary shrink-0" />
                     <div>
                         <p className="text-sm font-semibold text-slate-900">Tu alojamiento</p>
                         <p className="text-xs text-slate-500">{res.uuid.slice(0, 8)}...</p>
@@ -50,7 +50,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 </div>
 
                 <div className="flex items-start gap-3">
-                    <CalendarDays className="h-5 w-5 text-brand-purple shrink-0" />
+                    <CalendarDays className="h-5 w-5 text-primary shrink-0" />
                     <div>
                         <p className="text-sm font-semibold text-slate-900">
                             {res.arrivalDate} — {res.departureDate}

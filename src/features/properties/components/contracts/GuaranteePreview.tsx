@@ -60,7 +60,7 @@ export function GuaranteePreview() {
     return (
         <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                <ShieldCheck size={14} className="text-[var(--color-brand-purple)]" />
+                <ShieldCheck size={14} className="text-primary" />
                 Garantía de daños y consumos
                 <span className="font-normal text-slate-400">— mantenida por HitGuest, no editable aquí</span>
             </div>

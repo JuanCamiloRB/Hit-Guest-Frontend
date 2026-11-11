@@ -198,7 +198,7 @@ export function UserManagement() {
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
                     <DialogTrigger asChild>
-                        <Button className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300">
+                        <Button className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300">
                             <UserPlus className="mr-2 h-4 w-4" />
                             Nuevo Usuario
                         </Button>
@@ -284,7 +284,7 @@ export function UserManagement() {
                                     <Button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold"
+                                        className="bg-primary hover:bg-primary text-primary-foreground font-bold"
                                     >
                                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                         Crear Usuario

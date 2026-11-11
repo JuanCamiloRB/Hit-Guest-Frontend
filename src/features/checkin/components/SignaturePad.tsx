@@ -31,7 +31,7 @@ export function SignaturePad({ onSignatureChange }: SignaturePadProps) {
                 Firma Digital<span className="text-red-400 ml-0.5">*</span>
             </label>
             <div
-                className="relative border-2 border-dashed border-slate-200 rounded-xl overflow-hidden bg-slate-50 focus-within:border-brand-purple focus-within:ring-2 focus-within:ring-brand-purple/20 transition-all"
+                className="relative border-2 border-dashed border-slate-200 rounded-xl overflow-hidden bg-slate-50 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all"
                 style={{ touchAction: "none" }}
             >
                 <SignatureCanvas

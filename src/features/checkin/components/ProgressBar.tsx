@@ -27,7 +27,7 @@ export function ProgressBar({ currentStep, totalSteps, isSuccess = false }: Prog
             <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
                 <div
                     className={`h-full rounded-full transition-all duration-700 ease-out ${
-                        isSuccess ? "bg-green-400" : "bg-brand-purple"
+                        isSuccess ? "bg-green-400" : "bg-primary"
                     }`}
                     style={{ width: `${pct}%` }}
                 />

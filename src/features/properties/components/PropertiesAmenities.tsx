@@ -45,7 +45,7 @@ export function PropertiesAmenities() {
         <Card>
             <CardHeader className="border-b bg-slate-50/50">
                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                    <Sparkles className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                    <Sparkles className="h-5 w-5 text-primary" />
                     Amenidades de la Propiedad
                 </CardTitle>
                 <CardDescription>Selecciona las características y servicios incluidos en este alojamiento.</CardDescription>

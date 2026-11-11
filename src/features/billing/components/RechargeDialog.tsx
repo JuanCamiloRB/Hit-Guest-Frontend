@@ -114,7 +114,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <CreditCard className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                        <CreditCard className="h-5 w-5 text-primary" />
                         Recargar bolsa
                     </DialogTitle>
                     <DialogDescription>
@@ -144,7 +144,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                                 onClick={() => setAmount(preset)}
                                 className={`flex-1 rounded-xl border-2 py-2.5 text-sm font-bold transition-all ${
                                     amount === preset
-                                        ? "border-[var(--color-brand-purple)] bg-[var(--color-brand-purple)]/5 text-[var(--color-brand-purple)]"
+                                        ? "border-primary bg-primary/5 text-primary"
                                         : "border-slate-200 text-slate-500 hover:border-slate-300"
                                 }`}
                             >
@@ -184,7 +184,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                     <Button
                         onClick={handleRecharge}
                         disabled={isSubmitting || packagesStatus === "loading" || belowMinimum || invalidAmount}
-                        className="w-full gap-2 bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-white font-bold"
+                        className="w-full gap-2 bg-primary hover:bg-primary text-white font-bold"
                     >
                         {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
                         Continuar al pago

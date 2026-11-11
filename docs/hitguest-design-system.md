@@ -141,6 +141,22 @@ al código y no puede convertirse en un patrón visual alternativo.
 base en `scripts/design-system-baseline.json` describe únicamente deuda
 preexistente; no es una lista de estilos aprobados.
 
+Qué rechaza (cada regla tiene su `id` en el reporte):
+
+| Regla | Ejemplo prohibido | Qué usar |
+|---|---|---|
+| `tailwind-palette-color` | `text-slate-500`, `bg-amber-50` | `text-ink-3`, `bg-warning-sunk` |
+| `arbitrary-color`, `raw-color-literal` | `bg-[#8b3ee0]`, `text-[var(--x)]` | la utilidad del token |
+| `brand-color-interaction` | `bg-brand-purple`, `text-brand-blue` | `primary`, `secondary` (los de marca, solo logo e ilustración) |
+| `arbitrary-type-size`, `arbitrary-font` | `text-[13px]` | la escala (`text-xs`, `text-sm`…) |
+| `arbitrary-radius`, `arbitrary-shadow`, `gradient` | `rounded-[13px]`, `bg-gradient-to-r` | los radios y sombras del §4; sin degradados |
+| `native-control`, `native-label` | `<button>`, `<label>` fuera de `components/ui` | `Button`, `Label` y demás primitivas |
+| `nonstandard-icon-library` | `react-icons` | `lucide-react` |
+
+Revisa los textos fijos y también los trozos fijos de los template literals
+(`` `p-2 ${x}` ``). Las pruebas y las copias de Finder («Archivo 2.tsx») quedan
+fuera.
+
 La migración termina cuando esa línea base llega a cero. Una excepción legítima
 (por ejemplo, el color oficial de una OTA) se centraliza en una primitiva y se
 documenta; no se aumenta silenciosamente la línea base.

@@ -467,8 +467,8 @@ export function AutomationCard({
     return (
         <>
             <Card className={cn(
-                "group overflow-hidden border-slate-200/60 hover:border-[var(--color-brand-purple)]/30 hover:shadow-md transition-all duration-300",
-                isActive && "border-[var(--color-brand-purple)]/20"
+                "group overflow-hidden border-slate-200/60 hover:border-primary/30 hover:shadow-md transition-all duration-300",
+                isActive && "border-primary/20"
             )}>
                 <CardContent className="p-0">
                     <div className="flex flex-col md:flex-row items-stretch">
@@ -502,7 +502,7 @@ export function AutomationCard({
                                 </div>
                                 <div className="shrink-0">
                                     {toggling
-                                        ? <Loader2 size={20} className="animate-spin text-[var(--color-brand-purple)]" />
+                                        ? <Loader2 size={20} className="animate-spin text-primary" />
                                         : <Switch
                                             checked={isActive}
                                             onCheckedChange={handleToggle}
@@ -510,7 +510,7 @@ export function AutomationCard({
                                             // el PM sí puede activar y desactivar las verificaciones
                                             // de identidad. Nada se bloquea.
                                             aria-label={definition.title}
-                                            className="data-[state=checked]:bg-[var(--color-brand-purple)]"
+                                            className="data-[state=checked]:bg-primary"
                                         />
                                     }
                                 </div>
@@ -681,9 +681,9 @@ export function AutomationCard({
                                         size="sm"
                                         onClick={onNavigateToDocuments}
                                         className={cn(
-                                            "h-8 text-xs font-bold gap-1.5 px-3 hover:bg-[var(--color-brand-purple)]/5",
+                                            "h-8 text-xs font-bold gap-1.5 px-3 hover:bg-primary/5",
                                             routingSummary
-                                                ? "text-[var(--color-brand-purple)]"
+                                                ? "text-primary"
                                                 : "text-amber-600 hover:text-amber-700",
                                         )}
                                     >
@@ -699,10 +699,10 @@ export function AutomationCard({
                                         size="sm"
                                         onClick={() => setConfigOpen(true)}
                                         className={cn(
-                                            "h-8 text-xs font-bold gap-1.5 px-3 hover:bg-[var(--color-brand-purple)]/5",
+                                            "h-8 text-xs font-bold gap-1.5 px-3 hover:bg-primary/5",
                                             needsConfig
                                                 ? "text-amber-600 hover:text-amber-700"
-                                                : "text-[var(--color-brand-purple)] hover:text-[var(--color-brand-purple)]"
+                                                : "text-primary hover:text-primary"
                                         )}
                                     >
                                         {needsConfig && <AlertCircle size={13} />}

@@ -167,8 +167,8 @@ export function PropertiesDocuments() {
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                         <div>
                             <div className="flex items-center gap-2 mb-1">
-                                <div className="p-2 bg-[var(--color-brand-purple)]/10 rounded-lg">
-                                    <FileText className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                                <div className="p-2 bg-primary/10 rounded-lg">
+                                    <FileText className="h-5 w-5 text-primary" />
                                 </div>
                                 <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
                                     Documentos
@@ -183,7 +183,7 @@ export function PropertiesDocuments() {
                             <Button
                                 type="button"
                                 onClick={openCreate}
-                                className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold gap-1.5"
+                                className="bg-primary hover:bg-primary/90 text-white font-bold gap-1.5"
                             >
                                 <Plus size={16} /> Nuevo documento
                             </Button>
@@ -247,7 +247,7 @@ export function PropertiesDocuments() {
                                         )}
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="p-2.5 bg-slate-50 rounded-xl text-[var(--color-brand-purple)] shrink-0">
+                                            <div className="p-2.5 bg-slate-50 rounded-xl text-primary shrink-0">
                                                 <FileText size={18} />
                                             </div>
                                             <div className="min-w-0">
@@ -300,7 +300,7 @@ export function PropertiesDocuments() {
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => setPreviewDoc(doc)}
-                                                        className="gap-1.5 text-[var(--color-brand-purple)]"
+                                                        className="gap-1.5 text-primary"
                                                     >
                                                         <Eye size={14} />
                                                     </Button>

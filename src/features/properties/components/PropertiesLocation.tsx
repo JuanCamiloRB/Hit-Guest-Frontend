@@ -145,7 +145,7 @@ export function PropertiesLocation() {
         <Card className="border-slate-200 shadow-sm">
             <CardHeader className="border-b bg-slate-50/50">
                 <CardTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                    <MapPin className="h-5 w-5 text-primary" />
                     Ubicación de la Propiedad
                 </CardTitle>
                 <CardDescription>
@@ -233,7 +233,7 @@ export function PropertiesLocation() {
                         onChange={handleMapChange}
                     />
                     <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Badge className="bg-white/90 text-[var(--color-brand-purple)] border border-[var(--color-brand-purple)]/20 shadow-sm backdrop-blur-sm px-3 py-1 font-bold">
+                        <Badge className="bg-white/90 text-primary border border-primary/20 shadow-sm backdrop-blur-sm px-3 py-1 font-bold">
                             Arrastra el pin para ajustar
                         </Badge>
                     </div>
@@ -312,7 +312,7 @@ export function PropertiesLocation() {
                                                             value={tzSearch}
                                                             onChange={(e) => setTzSearch(e.target.value)}
                                                             onKeyDown={(e) => e.stopPropagation()}
-                                                            className="h-8 pl-8 text-sm focus-visible:ring-1 focus-visible:ring-[var(--color-brand-purple)]"
+                                                            className="h-8 pl-8 text-sm focus-visible:ring-1 focus-visible:ring-primary"
                                                         />
                                                     </div>
                                                 </div>
@@ -323,7 +323,7 @@ export function PropertiesLocation() {
                                                 ) : (
                                                     filteredTimezoneGroups.map((tg, gIdx) => (
                                                         <SelectGroup key={`tg-${tg.group}-${gIdx}`}>
-                                                            <SelectLabel className="px-2 py-1.5 text-xs font-bold text-[var(--color-brand-purple)] uppercase tracking-wider bg-[var(--color-brand-purple)]/5">
+                                                            <SelectLabel className="px-2 py-1.5 text-xs font-bold text-primary uppercase tracking-wider bg-primary/5">
                                                                 {tg.group}
                                                             </SelectLabel>
                                                             {tg.options.map((tz, tIdx) => (
@@ -344,8 +344,8 @@ export function PropertiesLocation() {
                     />
                 </div>
 
-                <div className="bg-[var(--color-brand-purple)]/5 p-4 rounded-xl border border-[var(--color-brand-purple)]/10 space-y-3">
-                    <p className="text-xs font-bold text-[var(--color-brand-purple)] uppercase tracking-widest">Coordenadas Exactas</p>
+                <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 space-y-3">
+                    <p className="text-xs font-bold text-primary uppercase tracking-widest">Coordenadas Exactas</p>
                     <div className="grid grid-cols-2 gap-4">
                         <FormField
                             control={form.control}

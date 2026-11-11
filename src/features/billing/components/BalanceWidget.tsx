@@ -51,7 +51,7 @@ export function BalanceWidget() {
                 <AlertTriangle className="h-4 w-4 shrink-0" />
             )}
             <span className="tabular-nums">{formatUsd(amount)}</span>
-            <span className="hidden md:inline text-xs font-semibold opacity-70">USD</span>
+            <span className="hidden md:inline text-xs font-semibold text-ink-3">USD</span>
         </Link>
     )
 }

@@ -63,15 +63,15 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
                             <Link
                                 key={document.uuid}
                                 href={`/checkin/${portal.reservation.uuid}/documents/${document.uuid}`}
-                                className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 transition-colors hover:border-brand-purple/20 hover:bg-brand-purple/5"
+                                className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 transition-colors hover:border-primary/20 hover:bg-primary/5"
                             >
                                 <span className="flex min-w-0 items-center gap-3">
-                                    <FileText size={17} className="shrink-0 text-brand-purple" />
+                                    <FileText size={17} className="shrink-0 text-primary" />
                                     <span className="truncate text-sm font-semibold text-slate-700">
                                         {document.type || "Instrucciones"}
                                     </span>
                                 </span>
-                                <span className="shrink-0 text-xs font-bold text-brand-purple">Ver</span>
+                                <span className="shrink-0 text-xs font-bold text-primary">Ver</span>
                             </Link>
                         ))}
 

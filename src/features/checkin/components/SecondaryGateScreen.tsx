@@ -50,7 +50,7 @@ export function SecondaryGateScreen({ status, basePath }: SecondaryGateScreenPro
             </p>
             
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 w-full max-w-sm mb-8 flex items-start gap-3 text-left">
-                <AlertCircle className="h-5 w-5 text-brand-purple shrink-0 mt-0.5" />
+                <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                 <div className="text-sm text-slate-700">
                     <span className="font-semibold block mb-1">¿Qué debes hacer?</span>
                     Pídele al titular que finalice su registro. Una vez lo haga, esta página te permitirá ingresar tus datos.

@@ -235,7 +235,7 @@ export function AirbnbIcalPanel() {
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => void openTemplate(feed)}
-                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--color-brand-purple)] hover:underline disabled:opacity-50"
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline disabled:opacity-50"
                                 >
                                     <FileText size={13} /> Plantilla de mensaje
                                 </button>

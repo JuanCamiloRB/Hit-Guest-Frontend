@@ -482,7 +482,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
     if (isLoadingSchema) {
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in">
-                <Loader2 className="w-8 h-8 animate-spin text-brand-purple" />
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 <p className="text-sm font-medium text-slate-500">Preparando formulario...</p>
             </div>
         )
@@ -503,7 +503,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                         Paso 4 de 6
                     </div>
                 </div>
-                <div className="text-xs font-semibold px-2 py-1 bg-brand-purple/10 text-brand-purple rounded-lg">
+                <div className="text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-lg">
                     Huésped Titular
                 </div>
             </div>
@@ -630,13 +630,13 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                             {isFieldVisible('arrivalTime') && (
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-semibold text-slate-700">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-red-400 ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.arrivalTime ?? ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" />
+                                    <input type="time" value={form.arrivalTime ?? ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                             {isFieldVisible('departureTime') && (
                                 <div className="space-y-1.5">
                                     <label className="text-sm font-semibold text-slate-700">Hora de salida{isFieldRequired('departureTime') && <span className="text-red-400 ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.departureTime ?? ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" />
+                                    <input type="time" value={form.departureTime ?? ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                         </div>
@@ -699,7 +699,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                     ) : isFormValid ? (
                         <button 
                             onClick={handleSubmit} 
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
                         >
                             <CheckCircle2 size={20} />
                             Continuar

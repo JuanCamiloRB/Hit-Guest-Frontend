@@ -164,7 +164,7 @@ export function DocumentPreviewModal({
                         className={cn(
                             "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
                             mode === "sample"
-                                ? "border-[var(--color-brand-purple)]/30 bg-[var(--color-brand-purple)]/10 text-[var(--color-brand-purple)]"
+                                ? "border-primary/30 bg-primary/10 text-primary"
                                 : "border-slate-200 text-slate-500 hover:bg-slate-50",
                         )}
                     >
@@ -176,7 +176,7 @@ export function DocumentPreviewModal({
                         className={cn(
                             "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
                             mode === "real"
-                                ? "border-[var(--color-brand-purple)]/30 bg-[var(--color-brand-purple)]/10 text-[var(--color-brand-purple)]"
+                                ? "border-primary/30 bg-primary/10 text-primary"
                                 : "border-slate-200 text-slate-500 hover:bg-slate-50",
                         )}
                     >

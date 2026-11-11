@@ -243,7 +243,7 @@ function DrawerBody({
                                             !u.canOpenSession
                                                 ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-70"
                                                 : checked
-                                                    ? "cursor-pointer border-brand-purple bg-brand-purple/5"
+                                                    ? "cursor-pointer border-primary bg-primary/5"
                                                     : "cursor-pointer border-slate-200 hover:border-slate-300",
                                         )}
                                     >
@@ -254,7 +254,7 @@ function DrawerBody({
                                             checked={checked}
                                             disabled={!u.canOpenSession || busy}
                                             onChange={() => { setSelectedUuid(u.uuid); setError(null) }}
-                                            className="mt-1 accent-[var(--color-brand-purple)]"
+                                            className="mt-1 accent-primary"
                                         />
                                         <span className="min-w-0 flex-1">
                                             <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">

@@ -37,7 +37,7 @@ export function ProgressRing({
             <circle
                 className={cn(
                     "transition-all duration-500 ease-in-out",
-                    progress === 100 ? "text-green-500" : "text-[var(--color-brand-blue)]"
+                    progress === 100 ? "text-green-500" : "text-secondary"
                 )}
                 strokeWidth={strokeWidth}
                 strokeDasharray={circumference}

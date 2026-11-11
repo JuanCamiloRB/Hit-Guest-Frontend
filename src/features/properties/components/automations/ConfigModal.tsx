@@ -45,7 +45,7 @@ export function ConfigModal({
             <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Settings2 size={18} className="text-[var(--color-brand-purple)]" />
+                        <Settings2 size={18} className="text-primary" />
                         Configurar: {definition.title}
                     </DialogTitle>
                     <DialogDescription className="text-sm text-slate-500 mt-1">
@@ -84,7 +84,7 @@ export function ConfigModal({
                     <Button
                         onClick={() => onSave(params)}
                         disabled={isSaving}
-                        className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white"
+                        className="bg-primary hover:bg-primary/90 text-white"
                     >
                         {isSaving && <Loader2 size={16} className="animate-spin mr-2" />}
                         Guardar Configuración

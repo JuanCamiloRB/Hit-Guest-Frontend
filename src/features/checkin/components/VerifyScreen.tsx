@@ -875,7 +875,7 @@ export function VerifyScreen({
     if (!sessionLoaded) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 size={32} className="animate-spin text-brand-purple" />
+                <Loader2 size={32} className="animate-spin text-primary" />
             </div>
         )
     }
@@ -896,11 +896,11 @@ export function VerifyScreen({
                     <ProgressBar currentStep={2} totalSteps={isSecondary ? 3 : 5} />
                 </div>
                 <div className="relative mt-8">
-                    <div className="absolute inset-0 bg-brand-purple blur-3xl opacity-20 rounded-full" />
-                    <div className="bg-brand-purple/10 w-24 h-24 rounded-full flex items-center justify-center shadow-xl shadow-brand-purple/10 relative z-10 border border-brand-purple/20">
+                    <div className="absolute inset-0 bg-primary blur-3xl opacity-20 rounded-full" />
+                    <div className="bg-primary/10 w-24 h-24 rounded-full flex items-center justify-center shadow-xl shadow-brand-purple/10 relative z-10 border border-primary/20">
                         {progress >= 100
                             ? <CheckCircle2 size={40} className="text-green-500" />
-                            : <Loader2 size={40} className="text-brand-purple animate-spin" />
+                            : <Loader2 size={40} className="text-primary animate-spin" />
                         }
                     </div>
                 </div>
@@ -925,7 +925,7 @@ export function VerifyScreen({
                     {verificationState === "polling" && (
                         <>
                             <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden mt-6">
-                                <div className="h-full bg-brand-purple transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
+                                <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
                             </div>
                             <p className="text-xs text-slate-400 font-medium text-right mt-1">{progress}%</p>
                         </>
@@ -953,22 +953,22 @@ export function VerifyScreen({
 
                 <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                        <FileText size={20} className="text-brand-purple" />
+                        <FileText size={20} className="text-primary" />
                         <h2 className="font-bold text-slate-800">Datos Extraídos</h2>
                     </div>
                     
                     <div className="space-y-4">
                         <div className="space-y-1.5">
                             <label className="text-sm font-semibold text-slate-700">Nombres</label>
-                            <input type="text" value={editOcr.firstName} onChange={e => setEditOcr({...editOcr, firstName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" />
+                            <input type="text" value={editOcr.firstName} onChange={e => setEditOcr({...editOcr, firstName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-sm font-semibold text-slate-700">Apellidos</label>
-                            <input type="text" value={editOcr.lastName} onChange={e => setEditOcr({...editOcr, lastName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" />
+                            <input type="text" value={editOcr.lastName} onChange={e => setEditOcr({...editOcr, lastName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-sm font-semibold text-slate-700">Número de Documento</label>
-                            <input type="text" value={editOcr.documentNumber} onChange={e => setEditOcr({...editOcr, documentNumber: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all" />
+                            <input type="text" value={editOcr.documentNumber} onChange={e => setEditOcr({...editOcr, documentNumber: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                         </div>
                         {/* Segmentadas (DD/MM/AAAA): son fechas que el huésped está
                             LEYENDO del documento — se teclean, no se navegan por un
@@ -1001,7 +1001,7 @@ export function VerifyScreen({
                                 !isValidDateValue(editOcr.dateOfBirth, localDateValue())
                                 || (!!editOcr.expirationDate && !isValidDateValue(editOcr.expirationDate))
                             }
-                            className="flex-[2] flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="flex-[2] flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             <CheckCircle2 size={20} /> Continuar
                         </button>
@@ -1034,7 +1034,7 @@ export function VerifyScreen({
                 <button
                     type="button"
                     onClick={handleResetVerification}
-                    className="flex items-center gap-2 h-12 px-6 bg-brand-purple text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
+                    className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
                     <RotateCcw size={18} />
                     Continuar verificación
@@ -1081,7 +1081,7 @@ export function VerifyScreen({
                 </div>
                 <button
                     onClick={handleResetVerification}
-                    className="flex items-center gap-2 h-12 px-6 bg-brand-purple text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
+                    className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
                     <RotateCcw size={18} />
                     Reiniciar verificación
@@ -1130,7 +1130,7 @@ export function VerifyScreen({
                         // Sin sesión local (retorno desde otro navegador) tampoco hay
                         // directiva que repetir acá: /identify la vuelve a emitir.
                         onClick={verification?.type === "session" || !verification ? handleResetVerification : handleRetry}
-                        className="flex items-center gap-2 h-12 px-6 bg-brand-purple text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
+                        className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                     >
                         <RotateCcw size={18} />
                         Repetir verificación
@@ -1145,7 +1145,7 @@ export function VerifyScreen({
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
                 <p className="text-slate-500 text-sm">Sesión expirada. Vuelve a identificarte.</p>
-                <Link href={`${basePath}/identify`} className="text-brand-purple font-semibold underline">
+                <Link href={`${basePath}/identify`} className="text-primary font-semibold underline">
                     Volver al inicio
                 </Link>
             </div>
@@ -1224,7 +1224,7 @@ export function VerifyScreen({
                         <button
                             type="button"
                             onClick={handleResetVerification}
-                            className="text-xs text-slate-400 underline hover:text-brand-purple transition-colors"
+                            className="text-xs text-slate-400 underline hover:text-primary transition-colors"
                         >
                             ¿La ventana aparece como &quot;sesión expirada&quot;? Reinicia tu verificación
                         </button>
@@ -1270,8 +1270,8 @@ export function VerifyScreen({
                                         <button onClick={() => setFrontFile(null)} className="text-xs text-red-400 font-medium">Quitar</button>
                                     </div>
                                 ) : (
-                                    <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-brand-purple/50 hover:bg-brand-purple/5 transition-all text-slate-500 cursor-pointer group">
-                                        <div className="bg-slate-100 p-3 rounded-full group-hover:bg-brand-purple/10 group-hover:text-brand-purple transition-colors">
+                                    <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-slate-500 cursor-pointer group">
+                                        <div className="bg-slate-100 p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                             <Camera size={24} />
                                         </div>
                                         <span className="text-sm font-medium">Tomar foto o seleccionar</span>
@@ -1301,8 +1301,8 @@ export function VerifyScreen({
                                             <button onClick={() => setBackFile(null)} className="text-xs text-red-400 font-medium">Quitar</button>
                                         </div>
                                     ) : (
-                                        <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-brand-purple/50 hover:bg-brand-purple/5 transition-all text-slate-500 cursor-pointer group">
-                                            <div className="bg-slate-100 p-3 rounded-full group-hover:bg-brand-purple/10 group-hover:text-brand-purple transition-colors">
+                                        <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-slate-500 cursor-pointer group">
+                                            <div className="bg-slate-100 p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                                 <Upload size={24} />
                                             </div>
                                             <span className="text-sm font-medium">Subir reverso</span>
@@ -1331,7 +1331,7 @@ export function VerifyScreen({
                                 <button
                                     type="button"
                                     onClick={() => { setFailureMessage(null); setDocErrorType(null); setCaptureStep("documents") }}
-                                    className="text-xs font-medium text-slate-400 hover:text-brand-purple transition-colors"
+                                    className="text-xs font-medium text-slate-400 hover:text-primary transition-colors"
                                 >
                                     ← Documentos
                                 </button>
@@ -1349,8 +1349,8 @@ export function VerifyScreen({
                                     <button onClick={() => setSelfieFile(null)} className="text-xs text-red-400 font-medium">Quitar</button>
                                 </div>
                             ) : (
-                                <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-brand-purple/50 hover:bg-brand-purple/5 transition-all text-slate-500 cursor-pointer group">
-                                    <div className="bg-slate-100 p-3 rounded-full group-hover:bg-brand-purple/10 group-hover:text-brand-purple transition-colors">
+                                <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-slate-500 cursor-pointer group">
+                                    <div className="bg-slate-100 p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                         <Camera size={24} />
                                     </div>
                                     <span className="text-sm font-medium">Tomar selfie</span>
@@ -1381,7 +1381,7 @@ export function VerifyScreen({
                     {verification.type === "session" ? (
                         <button
                             onClick={handleSessionVerification}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
                         >
                             {diditCopy[verification.sessionType].button}
                         </button>
@@ -1389,7 +1389,7 @@ export function VerifyScreen({
                         <button
                             onClick={handleDocumentsContinue}
                             disabled={!frontFile || (requiresBackImage && !backFile)}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {isCaptureMode ? "Enviar fotos" : "Continuar"}
                         </button>
@@ -1397,7 +1397,7 @@ export function VerifyScreen({
                         <button
                             onClick={handleDocumentUpload}
                             disabled={!selfieFile}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             Analizar Documento
                         </button>

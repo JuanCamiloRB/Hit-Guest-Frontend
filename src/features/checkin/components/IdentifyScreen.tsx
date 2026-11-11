@@ -508,7 +508,7 @@ export function IdentifyScreen({
                             type="text"
                             value={form.name}
                             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all ${fieldErrors.name ? "border-red-400" : "border-slate-200"}`}
+                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.name ? "border-red-400" : "border-slate-200"}`}
                             placeholder="Ej. Juan Carlos"
                             maxLength={120}
                         />
@@ -522,7 +522,7 @@ export function IdentifyScreen({
                             type="text"
                             value={form.lastname}
                             onChange={e => setForm(f => ({ ...f, lastname: e.target.value }))}
-                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all ${fieldErrors.lastname ? "border-red-400" : "border-slate-200"}`}
+                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.lastname ? "border-red-400" : "border-slate-200"}`}
                             placeholder="Ej. Rodríguez Barrera"
                             maxLength={60}
                         />
@@ -583,7 +583,7 @@ export function IdentifyScreen({
                                     const text = (e.clipboardData.getData("text") || "").replace(/[^a-zA-Z0-9]/g, "")
                                     setForm(f => ({ ...f, identificationNumber: text }))
                                 }}
-                                className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all ${fieldErrors.identificationNumber ? "border-red-400" : "border-slate-200"}`}
+                                className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.identificationNumber ? "border-red-400" : "border-slate-200"}`}
                                 placeholder="Ej. 1234567890"
                                 maxLength={30}
                                 inputMode="text"
@@ -609,7 +609,7 @@ export function IdentifyScreen({
                             maxLength={2}
                             value={guestCount}
                             onChange={e => setGuestCount(e.target.value.replace(/\D/g, ""))}
-                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all ${fieldErrors.totalGuests ? "border-red-400" : "border-slate-200"}`}
+                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.totalGuests ? "border-red-400" : "border-slate-200"}`}
                             placeholder="Ej. 2"
                         />
                         {fieldErrors.totalGuests && <p className="text-xs text-red-500">{fieldErrors.totalGuests}</p>}
@@ -642,7 +642,7 @@ export function IdentifyScreen({
                             value={priceInput}
                             onChange={e => setPriceInput(e.target.value)}
                             aria-invalid={priceInput.trim() !== "" && declaredPrice == null ? true : undefined}
-                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-brand-purple/30 focus:border-brand-purple transition-all ${fieldErrors.totalPrice || (priceInput.trim() !== "" && declaredPrice == null) ? "border-red-400" : "border-slate-200"}`}
+                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.totalPrice || (priceInput.trim() !== "" && declaredPrice == null) ? "border-red-400" : "border-slate-200"}`}
                             placeholder="Ej. 850.000"
                         />
                         {priceInput.trim() !== "" && (
@@ -670,13 +670,13 @@ export function IdentifyScreen({
                 </p>
             </div>
 
-            <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:border-brand-purple/30 transition-colors">
+            <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:border-primary/30 transition-colors">
                 <div className="relative flex items-center justify-center mt-0.5">
                     <input
                         type="checkbox"
                         checked={acceptedTerms}
                         onChange={(e) => setAcceptedTerms(e.target.checked)}
-                        className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-2 focus:ring-brand-purple/20 checked:bg-brand-purple checked:border-brand-purple transition-all"
+                        className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
                     />
                     <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
                 </div>
@@ -687,7 +687,7 @@ export function IdentifyScreen({
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="text-brand-purple underline hover:no-underline"
+                        className="text-primary underline hover:no-underline"
                     >
                         Ver términos y condiciones
                     </a>
@@ -699,7 +699,7 @@ export function IdentifyScreen({
                     <button
                         onClick={handleVerify}
                         disabled={!isValid || isSubmitting || isLoadingCatalogs}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {isSubmitting ? (
                             <><Loader2 className="animate-spin" size={20} /> Verificando...</>

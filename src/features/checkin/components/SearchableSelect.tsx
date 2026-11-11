@@ -93,7 +93,7 @@ export function SearchableSelect({
             flex items-center justify-between gap-2
             transition-all
             ${isOpen
-              ? "border-brand-purple ring-2 ring-brand-purple/30"
+              ? "border-primary ring-2 ring-primary/30"
               : "border-slate-200 hover:border-slate-300"
             }
           `}
@@ -119,7 +119,7 @@ export function SearchableSelect({
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-brand-purple/30 focus:border-brand-purple transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary transition-all"
                   placeholder="Buscar..."
                 />
               </div>
@@ -143,8 +143,8 @@ export function SearchableSelect({
                     }}
                     className={`
                       w-full text-left px-4 py-2.5 text-sm flex items-center justify-between
-                      transition-colors hover:bg-brand-purple/5
-                      ${value === option.id ? "bg-brand-purple/5 text-brand-purple font-medium" : "text-slate-700"}
+                      transition-colors hover:bg-primary/5
+                      ${value === option.id ? "bg-primary/5 text-primary font-medium" : "text-slate-700"}
                     `}
                   >
                     <div>
@@ -153,7 +153,7 @@ export function SearchableSelect({
                         <span className="text-xs text-slate-400 ml-2">{option.sublabel}</span>
                       )}
                     </div>
-                    {value === option.id && <Check size={16} className="text-brand-purple" />}
+                    {value === option.id && <Check size={16} className="text-primary" />}
                   </button>
                 ))
               )}

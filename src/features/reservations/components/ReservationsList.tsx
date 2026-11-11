@@ -424,7 +424,7 @@ export default function ReservationsList() {
                                     className={cn(
                                         "flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
                                         dateField === f
-                                            ? "bg-brand-purple text-white"
+                                            ? "bg-primary text-white"
                                             : "text-slate-500 hover:bg-slate-100"
                                     )}
                                 >

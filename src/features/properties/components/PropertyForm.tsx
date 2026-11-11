@@ -379,32 +379,32 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     )}>
                         <TabsTrigger
                             value="details"
-                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
                             <Info className={cn(
                                 "mr-2 h-4 w-4 transition-colors",
-                                activeTab === "details" ? "text-white" : "text-[var(--color-brand-purple)]"
+                                activeTab === "details" ? "text-white" : "text-primary"
                             )} />
                             <span className="font-bold">Detalles</span>
                         </TabsTrigger>
                         <TabsTrigger
                             value="units"
-                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
                             <Building className={cn(
                                 "mr-2 h-4 w-4 transition-colors",
-                                activeTab === "units" ? "text-white" : "text-[var(--color-brand-purple)]"
+                                activeTab === "units" ? "text-white" : "text-primary"
                             )} />
                             <span className="font-bold">Alojamientos</span>
                         </TabsTrigger>
                         {initialData && (
                             <TabsTrigger
                                 value="automations"
-                                className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                                className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
                             >
                                 <Sparkles className={cn(
                                     "mr-2 h-4 w-4 transition-colors",
-                                    activeTab === "automations" ? "text-white" : "text-[var(--color-brand-purple)]"
+                                    activeTab === "automations" ? "text-white" : "text-primary"
                                 )} />
                                 <span className="font-bold">Automatización</span>
                             </TabsTrigger>
@@ -412,32 +412,32 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         {initialData && (
                             <TabsTrigger
                                 value="documents"
-                                className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                                className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
                             >
                                 <FileText className={cn(
                                     "mr-2 h-4 w-4 transition-colors",
-                                    activeTab === "documents" ? "text-white" : "text-[var(--color-brand-purple)]"
+                                    activeTab === "documents" ? "text-white" : "text-primary"
                                 )} />
                                 <span className="font-bold">Documentos</span>
                             </TabsTrigger>
                         )}
                         <TabsTrigger
                             value="location"
-                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
                             <MapPin className={cn(
                                 "mr-2 h-4 w-4 transition-colors",
-                                activeTab === "location" ? "text-white" : "text-[var(--color-brand-purple)]"
+                                activeTab === "location" ? "text-white" : "text-primary"
                             )} />
                             <span className="font-bold">Ubicación</span>
                         </TabsTrigger>
                         <TabsTrigger
                             value="photos"
-                            className="data-[state=active]:bg-[var(--color-brand-purple)] data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
                             <Camera className={cn(
                                 "mr-2 h-4 w-4 transition-colors",
-                                activeTab === "photos" ? "text-white" : "text-[var(--color-brand-purple)]"
+                                activeTab === "photos" ? "text-white" : "text-primary"
                             )} />
                             <span className="font-bold">Fotos</span>
                         </TabsTrigger>
@@ -447,7 +447,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         <Card>
                             <CardHeader className="border-b bg-slate-50/50">
                                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                                    <LayoutDashboard className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                                    <LayoutDashboard className="h-5 w-5 text-primary" />
                                     Detalles de la Propiedad
                                 </CardTitle>
                                 <CardDescription>
@@ -627,7 +627,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         <Card>
                             <CardHeader className="border-b bg-slate-50/50">
                                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                                    <Link2 className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                                    <Link2 className="h-5 w-5 text-primary" />
                                     Identificación Externa
                                 </CardTitle>
                                 <CardDescription>
@@ -728,7 +728,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     <Button
                         type="submit"
                         disabled={isLoading}
-                        className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold h-11 px-8 rounded-lg shadow-sm transition-all"
+                        className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-8 rounded-lg shadow-sm transition-all"
                     >
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         {initialData ? "Actualizar Propiedad" : "Crear Propiedad"}

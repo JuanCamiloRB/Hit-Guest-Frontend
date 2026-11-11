@@ -260,8 +260,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 esperar a que el estado se persista. Cuando el portal lo confirma,
                 lo reemplaza la tarjeta de "esperando la firma" de abajo. */}
             {contractPending && contractState === "awaiting_guest" && (
-                <div className="bg-brand-purple/5 border border-brand-purple/15 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
-                    <Mail size={18} className="text-brand-purple flex-shrink-0 mt-0.5" />
+                <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
+                    <Mail size={18} className="text-primary flex-shrink-0 mt-0.5" />
                     <div>
                         <p className="text-sm font-bold text-slate-800">Falta firmar el contrato</p>
                         <p className="text-xs text-slate-500 mt-0.5">
@@ -377,8 +377,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
 
             <div className="bg-white border border-slate-100 rounded-2xl p-4 w-full max-w-sm space-y-3 shadow-sm">
                 <div className="flex items-center gap-3 text-left">
-                    <div className="bg-brand-purple/10 p-2 rounded-xl">
-                        <MapPin size={18} className="text-brand-purple" />
+                    <div className="bg-primary/10 p-2 rounded-xl">
+                        <MapPin size={18} className="text-primary" />
                     </div>
                     <div>
                         <h3 className="font-bold text-slate-800 text-sm">Tu alojamiento</h3>
@@ -411,8 +411,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 <div className="w-full max-w-sm space-y-2">
                     {documents.map((doc) => (
                         <div key={doc.uuid} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 text-left">
-                            <div className="bg-brand-purple/10 p-3 rounded-xl flex-shrink-0">
-                                <FileText className="text-brand-purple" size={20} />
+                            <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
+                                <FileText className="text-primary" size={20} />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <h3 className="font-bold text-slate-800 text-sm truncate">{doc.typeName}</h3>
@@ -421,7 +421,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                             <button
                                 onClick={() => handleDownloadPdf(doc.uuid)}
                                 disabled={downloadingDoc === doc.uuid}
-                                className="text-sm font-bold text-brand-purple hover:underline disabled:opacity-50 flex-shrink-0"
+                                className="text-sm font-bold text-primary hover:underline disabled:opacity-50 flex-shrink-0"
                             >
                                 {downloadingDoc === doc.uuid ? (
                                     <Loader2 size={16} className="animate-spin" />
@@ -434,8 +434,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 </div>
             ) : (
                 <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 text-left w-full max-w-sm">
-                    <div className="bg-brand-purple/10 p-3 rounded-xl">
-                        <Download className="text-brand-purple" size={24} />
+                    <div className="bg-primary/10 p-3 rounded-xl">
+                        <Download className="text-primary" size={24} />
                     </div>
                     <div className="flex-1">
                         <h3 className="font-bold text-slate-800 text-sm">
@@ -448,8 +448,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
 
 
             <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 text-left w-full max-w-sm mt-2">
-                <div className="bg-brand-purple/10 p-3 rounded-xl flex-shrink-0">
-                    <Home className="text-brand-purple" size={24} />
+                <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
+                    <Home className="text-primary" size={24} />
                 </div>
                 <div>
                     <h3 className="font-bold text-slate-800 text-sm">Todo Listo</h3>
@@ -460,7 +460,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg flex flex-col gap-2">
                     {hasPendingSecondaries && (
-                        <Link href={welcomeHref} className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]">
+                        <Link href={welcomeHref} className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]">
                             <Users size={18} />
                             Ver inicio para acompañantes
                         </Link>

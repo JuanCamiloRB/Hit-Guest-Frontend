@@ -82,7 +82,7 @@ function MultiSelectFilter({
                     onClick={onClear}
                     className={cn(
                         "w-full rounded px-2 py-1.5 text-left text-sm font-semibold transition-colors hover:bg-slate-50",
-                        selected.size === 0 ? "text-brand-purple" : "text-slate-600",
+                        selected.size === 0 ? "text-primary" : "text-slate-600",
                     )}
                 >
                     {allLabel}
@@ -253,7 +253,7 @@ export function ReservationsCalendar() {
             <div className="relative grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden border">
                 {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
-                        <Loader2 className="h-6 w-6 animate-spin text-brand-purple" />
+                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
                 )}
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (

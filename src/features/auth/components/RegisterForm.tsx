@@ -118,7 +118,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                     {/* Un enlace, no un botón con `window.location`: el alta no deja
                         sesión iniciada, así que esto es una navegación normal y el
                         usuario puede abrirla en otra pestaña si quiere. */}
-                    <Button asChild className="h-12 bg-brand-blue font-bold text-primary-foreground shadow-sm hover:bg-brand-blue/90">
+                    <Button asChild className="h-12 bg-secondary font-bold text-primary-foreground shadow-sm hover:bg-secondary/90">
                         <Link href="/login">Iniciar sesión</Link>
                     </Button>
                     {/* El código de acceso lo emite el login, no el registro. Decirlo
@@ -128,7 +128,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                     </p>
                 </div>
 
-                <p className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-[var(--color-brand-purple)]">
+                <p className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-primary">
                     <Gift className="h-4 w-4" />
                     Tu cuenta inicia con USD 10 de saldo de bienvenida.
                 </p>
@@ -143,16 +143,16 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
             <Form {...form}>
                 <form onSubmit={onRegister}>
                     <Honeypot {...honeypotProps} />
-                    <div className="grid gap-5 bg-card/80 backdrop-blur-sm border border-[var(--color-brand-blue)]/10 rounded-xl p-6 shadow-lg shadow-[var(--color-brand-blue)]/5 relative">
-                        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--color-brand-blue)]/40 to-transparent rounded-t-xl" />
+                    <div className="grid gap-5 bg-card/80 backdrop-blur-sm border border-secondary/10 rounded-xl p-6 shadow-lg shadow-secondary/5 relative">
+                        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-secondary/40 to-transparent rounded-t-xl" />
 
                         {/* Welcome credit — the backend credits USD 10 to every new account. */}
-                        <div className="flex items-center gap-3 rounded-lg border border-[var(--color-brand-purple)]/20 bg-[var(--color-brand-purple)]/5 px-4 py-3">
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-purple)]/10">
-                                <Gift className="h-4 w-4 text-[var(--color-brand-purple)]" />
+                        <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+                                <Gift className="h-4 w-4 text-primary" />
                             </span>
                             <p className="text-sm text-slate-700">
-                                <span className="font-bold text-[var(--color-brand-purple)]">USD 10 de regalo</span> — tu cuenta inicia con saldo de bienvenida para ejecutar tus primeras automatizaciones.
+                                <span className="font-bold text-primary">USD 10 de regalo</span> — tu cuenta inicia con saldo de bienvenida para ejecutar tus primeras automatizaciones.
                             </p>
                         </div>
 
@@ -195,12 +195,12 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <div className="relative group">
                                                 <Building2 className={cn(
                                                     "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                    form.formState.errors.companyName ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
+                                                    form.formState.errors.companyName ? "text-destructive" : "text-secondary/60 group-focus-within:text-secondary"
                                                 )} />
                                                 <Input
                                                     placeholder="Ej: Apartamentos del Mar SAS"
                                                     disabled={isLoading}
-                                                    className="pl-9 h-11 focus-visible:ring-[var(--color-brand-blue)]/30"
+                                                    className="pl-9 h-11 focus-visible:ring-secondary/30"
                                                     {...field}
                                                 />
                                             </div>
@@ -225,12 +225,12 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <div className="relative group">
                                                 <User className={cn(
                                                     "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                    form.formState.errors.name ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
+                                                    form.formState.errors.name ? "text-destructive" : "text-secondary/60 group-focus-within:text-secondary"
                                                 )} />
                                                 <Input
                                                     placeholder="Ej: Juan"
                                                     disabled={isLoading}
-                                                    className="pl-9 h-11 focus-visible:ring-[var(--color-brand-blue)]/30"
+                                                    className="pl-9 h-11 focus-visible:ring-secondary/30"
                                                     {...field}
                                                 />
                                             </div>
@@ -252,12 +252,12 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <div className="relative group">
                                                 <User className={cn(
                                                     "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                    form.formState.errors.lastname ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
+                                                    form.formState.errors.lastname ? "text-destructive" : "text-secondary/60 group-focus-within:text-secondary"
                                                 )} />
                                                 <Input
                                                     placeholder="Ej: Pérez"
                                                     disabled={isLoading}
-                                                    className="pl-9 h-11 focus-visible:ring-[var(--color-brand-blue)]/30"
+                                                    className="pl-9 h-11 focus-visible:ring-secondary/30"
                                                     {...field}
                                                 />
                                             </div>
@@ -280,7 +280,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             value={field.value}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all">
+                                                <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-secondary/20 shadow-sm transition-all">
                                                     <SelectValue placeholder="Selecciona el tipo" />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -306,7 +306,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <Input
                                                 placeholder="Ej: 12345678"
                                                 disabled={isLoading}
-                                                className="h-11 rounded-lg border-slate-200 focus-visible:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all"
+                                                className="h-11 rounded-lg border-slate-200 focus-visible:ring-secondary/20 shadow-sm transition-all"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -326,13 +326,13 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                         <div className="relative group">
                                             <Mail className={cn(
                                                 "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                form.formState.errors.email ? "text-destructive" : "text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)]"
+                                                form.formState.errors.email ? "text-destructive" : "text-secondary/60 group-focus-within:text-secondary"
                                             )} />
                                             <Input
                                                 placeholder="nombre@empresa.com"
                                                 type="email"
                                                 disabled={isLoading}
-                                                className="pl-9 h-11 focus-visible:ring-[var(--color-brand-blue)]/30"
+                                                className="pl-9 h-11 focus-visible:ring-secondary/30"
                                                 {...field}
                                             />
                                         </div>
@@ -384,7 +384,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             value={field.value}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-[var(--color-brand-blue)]/20 shadow-sm transition-all">
+                                                <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-secondary/20 shadow-sm transition-all">
                                                     <SelectValue placeholder="Selecciona un país" />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -399,7 +399,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     ) : (
                                         <FormControl>
                                             <div className="relative group">
-                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-[var(--color-brand-blue)]/60 group-focus-within:text-[var(--color-brand-blue)] transition-colors" />
+                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-secondary/60 group-focus-within:text-secondary transition-colors" />
                                                 <Input
                                                     placeholder="Ej: Colombia"
                                                     disabled={isLoading}
@@ -453,13 +453,13 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             />
                         </div>
 
-                        <label className="flex items-start gap-3 p-3 bg-muted/40 rounded-xl border border-border/60 cursor-pointer hover:border-[var(--color-brand-purple)]/30 transition-colors">
+                        <label className="flex items-start gap-3 p-3 bg-muted/40 rounded-xl border border-border/60 cursor-pointer hover:border-primary/30 transition-colors">
                             <div className="relative flex items-center justify-center mt-0.5">
                                 <input
                                     type="checkbox"
                                     checked={acceptedTerms}
                                     onChange={(e) => setAcceptedTerms(e.target.checked)}
-                                    className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-2 focus:ring-[var(--color-brand-purple)]/20 checked:bg-[var(--color-brand-purple)] checked:border-[var(--color-brand-purple)] transition-all"
+                                    className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
                                 />
                                 <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
                             </div>
@@ -470,7 +470,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="text-[var(--color-brand-purple)] underline hover:no-underline"
+                                    className="text-primary underline hover:no-underline"
                                 >
                                     Ver términos y condiciones
                                 </a>
@@ -481,7 +481,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             <Button
                                 type="submit"
                                 disabled={isLoading || !acceptedTerms}
-                                className="w-full bg-[var(--color-brand-purple)] hover:bg-[#8b3ee0] text-primary-foreground font-bold shadow-md shadow-[var(--color-brand-purple)]/20 hover:shadow-lg hover:shadow-[var(--color-brand-purple)]/30 transition-all duration-300 h-11 rounded-lg"
+                                className="w-full bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 h-11 rounded-lg"
                             >
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                 Crear Cuenta

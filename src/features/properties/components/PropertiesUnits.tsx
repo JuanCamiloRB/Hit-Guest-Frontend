@@ -634,7 +634,7 @@ export function PropertiesUnits() {
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
                         <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                            <Building className="h-5 w-5 text-[var(--color-brand-purple)]" />
+                            <Building className="h-5 w-5 text-primary" />
                             Alojamientos
                         </CardTitle>
                         <CardDescription>
@@ -645,7 +645,7 @@ export function PropertiesUnits() {
                         type="button"
                         size="sm"
                         onClick={handleOpenAddDialog}
-                        className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold px-4 rounded-lg shadow-sm transition-all"
+                        className="bg-primary hover:bg-primary/90 text-white font-bold px-4 rounded-lg shadow-sm transition-all"
                     >
                         <Plus className="mr-2 h-4 w-4" /> Añadir Unidad
                     </Button>
@@ -943,7 +943,7 @@ export function PropertiesUnits() {
                                             <div className="space-y-4">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <Clock className="h-4 w-4 text-[var(--color-brand-purple)]" />
+                                                        <Clock className="h-4 w-4 text-primary" />
                                                         <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">Horarios</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -1001,7 +1001,7 @@ export function PropertiesUnits() {
                                             <div className="space-y-4 pt-4 border-t">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <Settings2 className="h-4 w-4 text-[var(--color-brand-purple)]" />
+                                                        <Settings2 className="h-4 w-4 text-primary" />
                                                         <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">WiFi Especial</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -1059,7 +1059,7 @@ export function PropertiesUnits() {
                                             <div className="space-y-4 pt-4 border-t">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <Sparkles className="h-4 w-4 text-[var(--color-brand-purple)]" />
+                                                        <Sparkles className="h-4 w-4 text-primary" />
                                                         <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">Amenidades</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -1179,7 +1179,7 @@ export function PropertiesUnits() {
                                             <div className="space-y-4 pt-2">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <Shield className="h-4 w-4 text-[var(--color-brand-purple)]" />
+                                                        <Shield className="h-4 w-4 text-primary" />
                                                         <h4 className="text-sm font-bold uppercase tracking-wider text-slate-500">Políticas</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -1195,11 +1195,11 @@ export function PropertiesUnits() {
                                                 </div>
 
                                                 {unitForm.extra.inheritPolicies ? (
-                                                    <div className="bg-[var(--color-brand-purple)]/5 border border-[var(--color-brand-purple)]/10 rounded-xl p-4 flex gap-3">
-                                                        <Shield className="h-5 w-5 text-[var(--color-brand-purple)] shrink-0 mt-0.5" />
+                                                    <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex gap-3">
+                                                        <Shield className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                                                         <div className="space-y-1">
-                                                            <p className="text-sm font-bold text-[var(--color-brand-purple)]">Políticas del Tipo de Alojamiento</p>
-                                                            <p className="text-xs text-[var(--color-brand-purple)]/80 leading-relaxed">
+                                                            <p className="text-sm font-bold text-primary">Políticas del Tipo de Alojamiento</p>
+                                                            <p className="text-xs text-primary/80 leading-relaxed">
                                                                 Este tipo de habitación heredará las políticas generales de la propiedad. Puedes definir políticas específicas o excepciones en la integración final.
                                                             </p>
                                                         </div>
@@ -1361,7 +1361,7 @@ export function PropertiesUnits() {
                                     type="button"
                                     onClick={() => void handleSaveUnit()}
                                     disabled={isSavingUnit || roomTypesLoading || roomTypes.length === 0}
-                                    className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold"
+                                    className="bg-primary hover:bg-primary/90 text-white font-bold"
                                 >
                                     {isSavingUnit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     {editingIndex !== null ? "Guardar Cambios" : "Añadir Unidad"}
@@ -1431,7 +1431,7 @@ export function PropertiesUnits() {
                         ) : (
                             fields.map((field: any, index) => (
                                 <TableRow key={field.id}>
-                                    <TableCell className="font-bold text-[var(--color-brand-purple)]">{field.internalName || field.internal_name || '-'}</TableCell>
+                                    <TableCell className="font-bold text-primary">{field.internalName || field.internal_name || '-'}</TableCell>
                                     <TableCell className="font-medium text-slate-900">{field.name || 'Unidad sin nombre'}</TableCell>
                                     <TableCell className="text-sm">
                                         {field.extra?.maxOccupancy || field.extra?.max_occupancy || 0} Huéspedes

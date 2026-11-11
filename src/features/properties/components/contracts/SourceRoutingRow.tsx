@@ -87,7 +87,7 @@ export function SourceRoutingRow({
                             className={cn(
                                 "rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors",
                                 routing.contract_type === type
-                                    ? "border-[var(--color-brand-purple)] bg-[var(--color-brand-purple)]/5 text-[var(--color-brand-purple)]"
+                                    ? "border-primary bg-primary/5 text-primary"
                                     : "border-slate-200 text-slate-600 hover:border-slate-300",
                             )}
                         >

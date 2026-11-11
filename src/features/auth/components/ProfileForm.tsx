@@ -69,9 +69,9 @@ interface ProfileFormProps {
 }
 
 const inputClass =
-    "h-11 bg-slate-50/50 border-slate-200 focus-visible:ring-[var(--color-brand-purple)]/20 focus-visible:border-[var(--color-brand-purple)] transition-all rounded-xl"
+    "h-11 bg-slate-50/50 border-slate-200 focus-visible:ring-primary/20 focus-visible:border-primary transition-all rounded-xl"
 const selectClass =
-    "h-11 bg-slate-50/50 border-slate-200 focus:ring-[var(--color-brand-purple)]/20 rounded-xl"
+    "h-11 bg-slate-50/50 border-slate-200 focus:ring-primary/20 rounded-xl"
 
 export function ProfileForm({ user }: ProfileFormProps) {
     const [isLoading, setIsLoading] = useState(false)
@@ -211,7 +211,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     if (isHydrating) {
         return (
             <div className="flex items-center justify-center py-16">
-                <Loader2 className="h-6 w-6 animate-spin text-[var(--color-brand-purple)]" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
             </div>
         )
     }
@@ -479,7 +479,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                     <Button
                         type="submit"
                         disabled={isLoading}
-                        className="bg-[var(--color-brand-purple)] hover:bg-[var(--color-brand-purple)]/90 text-white font-bold h-11 px-8 rounded-xl shadow-md shadow-[var(--color-brand-purple)]/20 transition-all duration-300"
+                        className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-8 rounded-xl shadow-md shadow-primary/20 transition-all duration-300"
                     >
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         GUARDAR CAMBIOS

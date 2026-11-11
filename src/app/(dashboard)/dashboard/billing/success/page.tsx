@@ -46,7 +46,7 @@ function BillingSuccessContent() {
             </div>
             <Link
                 href={BILLING_HREF}
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-[var(--color-brand-purple)] px-6 font-bold text-white transition-colors hover:bg-[#8b3ee0]"
+                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 font-bold text-white transition-colors hover:bg-primary"
             >
                 Go to Billing <ArrowRight className="h-4 w-4" />
             </Link>

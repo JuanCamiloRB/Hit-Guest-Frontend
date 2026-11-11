@@ -24,7 +24,7 @@ export function GuaranteeInfoCard({ onContinue }: GuaranteeInfoCardProps) {
     return (
         <div className="space-y-4">
             <div className="space-y-1.5">
-                <span className="text-[11px] font-bold tracking-wider text-brand-blue uppercase">Antes de continuar</span>
+                <span className="text-[11px] font-bold tracking-wider text-secondary uppercase">Antes de continuar</span>
                 <p className="text-sm text-slate-500">
                     Para tu check-in, solo necesitamos registrar una tarjeta como respaldo del contrato de garantía que acabas de aceptar.
                 </p>
@@ -46,7 +46,7 @@ export function GuaranteeInfoCard({ onContinue }: GuaranteeInfoCardProps) {
                         <p className="text-[10px] leading-tight text-white/65 max-w-[88px]">Guardada de forma segura y tokenizada</p>
                     </div>
                     <div className="flex-1 flex flex-col items-center text-center relative z-10">
-                        <div className="w-[26px] h-[26px] rounded-full flex items-center justify-center mb-2 bg-gradient-to-br from-brand-purple to-brand-blue ring-4 ring-brand-purple/25">
+                        <div className="w-[26px] h-[26px] rounded-full flex items-center justify-center mb-2 bg-gradient-to-br from-brand-purple to-brand-blue ring-4 ring-primary/25">
                             <Lock size={12} className="text-white" />
                         </div>
                         <p className="text-[11.5px] font-bold text-white mb-0.5">Protegida</p>

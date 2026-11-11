@@ -29,7 +29,7 @@ export default function LoginPage() {
                 <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
                     <LoginForm />
                     <p className="px-8 text-center text-xs text-ink-3 mt-8 uppercase tracking-widest">
-                        Powered by <span className="font-bold text-brand-blue">HIT Guest</span> ©{" "}
+                        Powered by <span className="font-bold text-secondary">HIT Guest</span> ©{" "}
                         {new Date().getFullYear()}
                     </p>
                 </div>

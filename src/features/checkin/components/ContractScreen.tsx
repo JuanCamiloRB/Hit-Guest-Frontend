@@ -736,7 +736,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">
-                <Loader2 size={40} className="text-brand-purple animate-spin" />
+                <Loader2 size={40} className="text-primary animate-spin" />
                 <p className="text-sm text-slate-500 mt-4">Cargando contrato...</p>
             </div>
         )
@@ -771,13 +771,13 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     className={`rounded-2xl border p-6 space-y-3 ${
                         isRejected
                             ? "border-red-200 bg-red-50"
-                            : "border-brand-purple/15 bg-brand-purple/5"
+                            : "border-primary/15 bg-primary/5"
                     }`}
                 >
                     <div className="flex items-center gap-2.5">
                         {isRejected
                             ? <XCircle size={22} className="text-red-400 flex-shrink-0" />
-                            : <Mail size={22} className="text-brand-purple flex-shrink-0" />}
+                            : <Mail size={22} className="text-primary flex-shrink-0" />}
                         <h1 className={`text-lg font-bold ${isRejected ? "text-red-800" : "text-slate-900"}`}>
                             {isRejected ? "Tu contrato no pudo firmarse" : "Revisa tu correo"}
                         </h1>
@@ -803,7 +803,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                     setIsLoading(true)
                                     loadDocuments()
                                 }}
-                                className="w-full flex items-center justify-center gap-2 h-12 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-base shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
+                                className="w-full flex items-center justify-center gap-2 h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
                             >
                                 <RefreshCw size={16} /> Ya firmé, actualizar
                             </button>
@@ -964,7 +964,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                 className="w-full flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
                             >
                                 <div className="flex items-center gap-2">
-                                    <FileText size={18} className="text-brand-purple" />
+                                    <FileText size={18} className="text-primary" />
                                     <h2 className="font-bold text-slate-800 text-sm">{doc.typeName}</h2>
                                 </div>
                                 {expandedDoc === doc.uuid
@@ -986,7 +986,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             ) : (
                 <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-                        <FileText size={20} className="text-brand-purple" />
+                        <FileText size={20} className="text-primary" />
                         <h2 className="font-bold text-slate-800">Contrato</h2>
                     </div>
                     <p className="text-sm text-slate-400 text-center py-4">
@@ -1028,8 +1028,8 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 )}
 
                 {signingProvider === "tufirma" && (
-                    <div className="flex items-start gap-3 p-4 bg-brand-purple/5 border border-brand-purple/15 rounded-xl">
-                        <Mail size={18} className="text-brand-purple flex-shrink-0 mt-0.5" />
+                    <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/15 rounded-xl">
+                        <Mail size={18} className="text-primary flex-shrink-0 mt-0.5" />
                         <p className="text-sm text-slate-600">
                             Recibirás un correo de <strong>TuFirma</strong> para completar la firma digital de tu
                             contrato. No necesitas firmar aquí.
@@ -1037,13 +1037,13 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     </div>
                 )}
 
-                <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:border-brand-purple/30 transition-colors">
+                <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:border-primary/30 transition-colors">
                     <div className="relative flex items-center justify-center mt-0.5">
                         <input 
                             type="checkbox" 
                             checked={accepted}
                             onChange={(e) => setAccepted(e.target.checked)}
-                            className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-2 focus:ring-brand-purple/20 checked:bg-brand-purple checked:border-brand-purple transition-all"
+                            className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
                         />
                         <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
                     </div>
@@ -1062,7 +1062,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     <button
                         onClick={isContractPhaseCta ? handleContractContinue : handleComplete}
                         disabled={(isContractPhaseCta ? !contractPartValid : !isFormValid) || isSubmitting}
-                        className="w-full flex flex-col items-center justify-center gap-1 h-14 bg-brand-purple hover:bg-brand-purple/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex flex-col items-center justify-center gap-1 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {isSubmitting ? (
                             <>

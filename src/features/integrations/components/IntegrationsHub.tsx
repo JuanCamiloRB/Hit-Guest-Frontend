@@ -56,7 +56,7 @@ export function IntegrationsHub() {
         <div className="space-y-12">
             <section aria-labelledby="pms-integrations" className="space-y-5">
                 <div className="flex items-start gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-purple)]/10 text-[var(--color-brand-purple)]">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                         <RefreshCw size={19} />
                     </span>
                     <div>
@@ -78,7 +78,7 @@ export function IntegrationsHub() {
                     <ProviderCard
                         name="Kunas PMS"
                         description="Sincroniza tus propiedades y reservas de Kunas."
-                        icon={<Building2 className="h-6 w-6 text-[var(--color-brand-purple)]" />}
+                        icon={<Building2 className="h-6 w-6 text-primary" />}
                         badge="Configurable"
                         badgeClassName="bg-emerald-50 text-emerald-600"
                     />
@@ -104,7 +104,7 @@ export function IntegrationsHub() {
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/60 p-5 sm:p-6">
                     <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-4">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-[var(--color-brand-purple)] shadow-sm">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-primary shadow-sm">
                             <Building2 size={17} />
                         </span>
                         <div>

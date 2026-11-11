@@ -49,7 +49,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in">
-                <Loader2 className="w-8 h-8 animate-spin text-brand-purple" />
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 <p className="text-sm font-medium text-slate-500">Cargando documento...</p>
             </div>
         )
@@ -65,7 +65,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
                 <p className="text-slate-500 text-sm max-w-sm">{error}</p>
                 <button
                     onClick={() => router.push(basePath)}
-                    className="mt-2 px-5 py-2.5 bg-brand-purple text-white rounded-xl font-semibold text-sm"
+                    className="mt-2 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold text-sm"
                 >
                     Volver al check-in
                 </button>
@@ -83,7 +83,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
                     <ArrowLeft size={20} />
                     <span className="text-sm font-semibold">Volver</span>
                 </button>
-                <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-brand-purple/10 text-brand-purple rounded-lg">
+                <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-lg">
                     <FileText size={14} />
                     Documento
                 </div>
@@ -99,7 +99,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
                     <button
                         onClick={handleDownloadPdf}
                         disabled={isDownloading}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-brand-purple hover:bg-brand-purple/90 disabled:opacity-60 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 disabled:opacity-60 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
                     >
                         {isDownloading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
                         Descargar PDF

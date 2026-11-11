@@ -143,7 +143,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
     return (
         <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
             <div className="flex items-center gap-2">
-                <Zap size={15} className="text-[var(--color-brand-purple)]" />
+                <Zap size={15} className="text-primary" />
                 <h4 className="text-sm font-bold text-slate-800">Disparador</h4>
                 <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
                     {required ? "Requerido" : "Opcional"}
@@ -169,7 +169,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                                     checked={checked}
                                     onChange={() => toggleTrigger(t.key)}
                                     disabled={t.needsInternalPredecessorId}
-                                    className="h-4 w-4 rounded border-slate-300 text-[var(--color-brand-purple)] focus:ring-[var(--color-brand-purple)]/30"
+                                    className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30"
                                 />
                                 <span className="text-sm text-slate-700">{t.label}</span>
                             </label>
@@ -196,7 +196,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                                                 setTriggerConfigValue(t.key, "delay_minutes", e.target.value === "" ? undefined : Number(e.target.value))
                                             }
                                             placeholder="0"
-                                            className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-purple)]/30"
+                                            className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
                                         />
                                         <span className="text-xs text-slate-500">min</span>
                                     </div>
@@ -222,7 +222,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                                 className={
                                     "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors " +
                                     (active
-                                        ? "border-[var(--color-brand-purple)] bg-[var(--color-brand-purple)]/10 text-[var(--color-brand-purple)]"
+                                        ? "border-primary bg-primary/10 text-primary"
                                         : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")
                                 }
                             >
@@ -256,7 +256,7 @@ function ScheduledConfig({
     onChange: (field: string, value: string | number | undefined) => void
 }) {
     const selectCls =
-        "bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-purple)]/30"
+        "bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
 
     // Backend stores HH:MM:SS; the native time input works in HH:MM.
     const timeValue = ((config.time_of_day as string) ?? "").slice(0, 5)
@@ -294,7 +294,7 @@ function ScheduledConfig({
                         onChange("offset_days", e.target.value === "" ? undefined : parseInt(e.target.value, 10))
                     }
                     placeholder="0"
-                    className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-brand-purple)]/30"
+                    className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 <span className="text-xs text-slate-500">días (− antes · + después)</span>
             </div>

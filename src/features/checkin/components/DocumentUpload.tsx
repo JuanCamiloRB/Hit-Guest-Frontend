@@ -78,8 +78,8 @@ export function DocumentUpload({
           ${state === "done"
             ? "border-green-300 bg-green-50/50"
             : state === "scanning"
-            ? "border-brand-blue/40 bg-brand-blue/5"
-            : "border-slate-200 bg-slate-50 hover:border-brand-purple/30 hover:bg-brand-purple/5"
+            ? "border-secondary/40 bg-secondary/5"
+            : "border-slate-200 bg-slate-50 hover:border-primary/30 hover:bg-primary/5"
           }
         `}
       >
@@ -114,8 +114,8 @@ export function DocumentUpload({
                 }
               }}
             />
-            <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 group-hover:bg-brand-purple/5 group-hover:border-brand-purple/20 transition-all">
-              <Camera size={28} className="text-brand-purple" />
+            <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 group-hover:bg-primary/5 group-hover:border-primary/20 transition-all">
+              <Camera size={28} className="text-primary" />
             </div>
             <div className="text-center">
               <p className="text-sm font-semibold text-slate-700">
@@ -132,24 +132,24 @@ export function DocumentUpload({
         {state === "scanning" && (
           <div className="p-6 flex flex-col items-center gap-4">
             {/* Scanner visual */}
-            <div className="relative w-36 h-24 bg-white/60 rounded-xl border border-brand-blue/20 flex items-center justify-center overflow-hidden">
+            <div className="relative w-36 h-24 bg-white/60 rounded-xl border border-secondary/20 flex items-center justify-center overflow-hidden">
               <IdCardPlaceholder />
-              <div className="absolute inset-0 bg-brand-blue/10 flex items-center justify-center">
-                <ScanLine className="text-brand-blue animate-pulse w-8 h-8" />
+              <div className="absolute inset-0 bg-secondary/10 flex items-center justify-center">
+                <ScanLine className="text-secondary animate-pulse w-8 h-8" />
               </div>
               <div
-                className="absolute bottom-0 left-0 bg-brand-blue/30 w-full transition-all duration-300"
+                className="absolute bottom-0 left-0 bg-secondary/30 w-full transition-all duration-300"
                 style={{ height: `${progress}%` }}
               />
             </div>
 
             <div className="w-full space-y-2">
-              <p className="text-sm font-semibold text-brand-blue text-center animate-pulse">
+              <p className="text-sm font-semibold text-secondary text-center animate-pulse">
                 Procesando documento...
               </p>
               <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                 <div
-                  className="bg-brand-blue h-full transition-all duration-300 rounded-full"
+                  className="bg-secondary h-full transition-all duration-300 rounded-full"
                   style={{ width: `${progress}%` }}
                 />
               </div>

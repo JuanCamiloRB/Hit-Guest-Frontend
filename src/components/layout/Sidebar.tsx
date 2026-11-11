@@ -63,7 +63,7 @@ function NavItem({ item }: { item: NavEntry }) {
                     item.active
                         // Se quitó `shadow-lg shadow-black/20`: una sombra negra
                         // sobre el navy del sidebar no se ve, solo ensucia el borde.
-                        ? "bg-brand-purple font-semibold text-white"
+                        ? "bg-primary font-semibold text-white"
                         // Antes TODO era font-bold, activo e inactivo por igual,
                         // así que el peso no distinguía nada.
                         : "font-medium text-white/70 hover:bg-white/5 hover:text-white",
@@ -78,7 +78,7 @@ function NavItem({ item }: { item: NavEntry }) {
                 />
                 <span className="flex-1">{item.label}</span>
                 {item.badge && (
-                    <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-brand-purple">
+                    <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-primary">
                         {item.badge}
                     </span>
                 )}
@@ -207,7 +207,7 @@ export function Sidebar({ className }: { className?: string }) {
                         hace nada ponía dos moradas compitiendo, con la que no se
                         puede pulsar gritando igual de fuerte. Ahora es un simple
                         antetítulo apagado sobre una regla que separa el grupo. */}
-                    <p className="border-t border-white/10 px-4 pt-4 text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                    <p className="border-t border-white/10 px-4 pt-4 text-xs font-semibold uppercase tracking-wider text-white/70">
                         Sistema
                     </p>
                     <ul className="space-y-1">
@@ -245,7 +245,7 @@ export function Sidebar({ className }: { className?: string }) {
                                     no viaja en UserResource (auth-service cae a "PRINCIPAL"
                                     por defecto), así que mostramos lo único verificable:
                                     el flag isAccountOwner de GET /user, y si no, el correo. */}
-                                <p className="text-xs font-medium text-white/50 truncate">
+                                <p className="text-xs font-medium text-white/70 truncate">
                                     {!isMounted
                                         ? "Cargando…"
                                         : user?.isAccountOwner
