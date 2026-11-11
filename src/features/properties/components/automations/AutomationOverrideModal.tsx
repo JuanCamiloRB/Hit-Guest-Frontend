@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Building2, Info, Loader2 } from "lucide-react"
+import { Building2, Loader2 } from "lucide-react"
 import {
     Dialog,
     DialogContent,
@@ -48,6 +48,7 @@ import {
     type IdentityChoice,
     type OverrideOperation,
 } from "../../lib/identity-listing-override"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 /** Minimal listing info needed to identify and label a unit. */
 export interface ListingMeta {
@@ -428,12 +429,9 @@ export function AutomationOverrideModal({
                         <div className="grid gap-1.5">
                             <Label className="text-sm font-semibold text-slate-700">Automatización de la propiedad</Label>
                             {availableAutomations.length === 0 ? (
-                                <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-lg p-3">
-                                    <Info size={13} className="text-amber-500 shrink-0" />
-                                    <p className="text-xs text-amber-700">
-                                        No hay automatizaciones sobrescribibles disponibles para esta unidad.
-                                    </p>
-                                </div>
+                                <FeedbackBanner tone="info" density="compact">
+                                    No hay automatizaciones sobrescribibles disponibles para esta unidad.
+                                </FeedbackBanner>
                             ) : (
                                 <Select value={selectedPaUuid} onValueChange={setSelectedPaUuid}>
                                     <SelectTrigger className="bg-slate-50 border-slate-200">
@@ -530,13 +528,10 @@ export function AutomationOverrideModal({
                                 <div className="h-px flex-1 bg-slate-200" />
                             </div>
 
-                            <div className="flex items-start gap-2 bg-blue-50 border border-blue-100 rounded-lg p-3">
-                                <Info size={13} className="text-blue-500 shrink-0 mt-0.5" />
-                                <p className="text-xs text-blue-700">
-                                    Son los mismos campos que configuras en la propiedad. Completa solo lo que cambia
-                                    en esta unidad — lo que dejes vacío hereda el valor de la propiedad.
-                                </p>
-                            </div>
+                            <FeedbackBanner tone="info" density="compact">
+                                Son los mismos campos que configuras en la propiedad. Completa solo lo que cambia
+                                en esta unidad — lo que dejes vacío hereda el valor de la propiedad.
+                            </FeedbackBanner>
 
                             {fieldSchema.map(field => {
                                 const baseHint = baseParams?.[field.key]

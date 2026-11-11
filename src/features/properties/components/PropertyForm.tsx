@@ -64,6 +64,7 @@ import { DeactivationConfirmDialog } from "./DeactivationConfirmDialog"
 import { invalidatePropertiesCaches } from "../lib/properties-cache"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { COMMUNICATION_LOCALES, LOCALE_LABELS, DEFAULT_COMMUNICATION_LOCALE } from "@/lib/locales"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface PropertyFormProps {
     initialData?: any
@@ -653,12 +654,12 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                             {(initialData?.externalPmsIds?.length ?? 0) > 0
                                                 && form.formState.dirtyFields.externalPmsIds
                                                 && (field.value ?? []).length === 0 && (
-                                                <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                                                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
+                                                // Aparece al vaciar el campo: dinámico, se anuncia sin interrumpir.
+                                                <FeedbackBanner tone="warning" mode="dynamic" className="mt-3">
                                                     Al guardar se eliminarán los vínculos con el PMS/canal
                                                     y las reservas externas de esos orígenes dejarán de
                                                     asociarse a esta propiedad.
-                                                </p>
+                                                </FeedbackBanner>
                                             )}
                                         </FormItem>
                                     )}

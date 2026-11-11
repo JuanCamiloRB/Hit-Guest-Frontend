@@ -11,7 +11,6 @@ import {
     Pencil,
     Trash2,
     RotateCcw,
-    Info,
     Filter,
     Eye,
 } from "lucide-react"
@@ -53,6 +52,7 @@ import {
 import { DocumentFormModal } from "./DocumentFormModal"
 import { DocumentPreviewModal } from "./DocumentPreviewModal"
 import { ContractRoutingSection } from "../contracts/ContractRoutingSection"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 export function PropertiesDocuments() {
     const { watch } = useFormContext()
@@ -191,12 +191,7 @@ export function PropertiesDocuments() {
             </Card>
 
             {!propertyUuid ? (
-                <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-                    <Info size={18} className="text-amber-500 shrink-0" />
-                    <p className="text-sm text-amber-700">
-                        Guarda la propiedad primero para gestionar sus documentos.
-                    </p>
-                </div>
+                <FeedbackBanner tone="info">Guarda la propiedad primero para gestionar sus documentos.</FeedbackBanner>
             ) : (
                 <>
                     <ContractRoutingSection propertyUuid={propertyUuid} />

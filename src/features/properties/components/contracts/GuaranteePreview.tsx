@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { AlertTriangle, ShieldCheck, Loader2 } from "lucide-react"
+import { ShieldCheck, Loader2 } from "lucide-react"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import {
     systemDocumentService,
@@ -9,6 +9,7 @@ import {
     GUARANTEE_DOCUMENT_SLUG,
     type SystemDocument,
 } from "../../services/system-document-service"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 /**
  * Read-only preview of the HitGuest-maintained damage/consumption guarantee
@@ -43,9 +44,9 @@ export function GuaranteePreview() {
 
     if (error || !doc) {
         return (
-            <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <FeedbackBanner tone="danger" mode="blocking">
                 No se pudo cargar el texto de garantía. Intenta de nuevo más tarde.
-            </div>
+            </FeedbackBanner>
         )
     }
 
@@ -69,10 +70,9 @@ export function GuaranteePreview() {
             {/* Sin decir que «aparecerán igual en el PDF»: HitGuest las vuelve a
                 resolver al generarlo. Solo falta el dato para esta vista. */}
             {missing.length > 0 && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                    <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-                    <span>No pudimos cargar toda la configuración de garantía para esta previsualización.</span>
-                </div>
+                <FeedbackBanner tone="warning" density="compact">
+                    No pudimos cargar toda la configuración de garantía para esta previsualización.
+                </FeedbackBanner>
             )}
 
             <div

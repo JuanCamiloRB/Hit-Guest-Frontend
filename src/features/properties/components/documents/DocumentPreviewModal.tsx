@@ -24,6 +24,7 @@ import { reservationsService } from "@/features/reservations/services/reservatio
 import type { Reservation } from "@/types"
 import { propertyDocumentService } from "../../services/property-document-service"
 import { normalizeShortcodes } from "../../types/document"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface DocumentPreviewModalProps {
     onClose: () => void
@@ -188,9 +189,7 @@ export function DocumentPreviewModal({
                 {mode === "real" && (
                     <div className="space-y-2">
                         {!documentUuid ? (
-                            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                                Guarda el documento primero para previsualizarlo con una reserva real.
-                            </p>
+                            <FeedbackBanner tone="info">Guarda el documento primero para previsualizarlo con una reserva real.</FeedbackBanner>
                         ) : loadingReservations ? (
                             <div className="flex items-center gap-2 text-slate-400 text-sm py-2">
                                 <Loader2 size={16} className="animate-spin" /> Cargando reservas...

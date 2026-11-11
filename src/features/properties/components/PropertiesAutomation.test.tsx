@@ -138,14 +138,19 @@ describe("PropertiesAutomation — Avanzada guardada no bloquea la Esencial (Did
 
         renderTab()
 
-        const alert = await screen.findByRole("alert")
-        expect(alert).toHaveTextContent("No pudimos cargar todos los proveedores de identidad")
+        // Datos parciales: advertencia que se anuncia sin interrumpir (status), no
+        // `alert` (escala de la Fase 2.2: una advertencia nunca interrumpe).
+        const notice = (await screen.findByText(/No pudimos cargar todos los proveedores de identidad/)).closest("[data-slot=feedback-banner]")!
+        expect(notice).toHaveAttribute("data-tone", "warning")
+        expect(notice).toHaveAttribute("role", "status")
+        expect(screen.queryByRole("alert")).toBeNull()
+        expect(notice).toContainElement(screen.getByRole("button", { name: "Reintentar" }))
         // La pestaña sigue: la tarjeta de identidad está, con el proveedor guardado.
         expect(screen.getByText("Verificación de Identidad (Principal)")).toBeInTheDocument()
 
         await userEvent.setup().click(screen.getByRole("button", { name: "Reintentar" }))
 
-        await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument())
+        await waitFor(() => expect(screen.queryByText(/No pudimos cargar todos los proveedores de identidad/)).not.toBeInTheDocument())
         await openIdentitySelector()
         expect(await screen.findByRole("option", { name: /verificación esencial/i })).toBeInTheDocument()
     })

@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 const MapComponent = dynamic(() => import("./MapComponent"), {
     ssr: false,
@@ -219,14 +220,10 @@ export function PropertiesLocation() {
                   * un mapa azul que parecía estar cargando.
                   */}
                 {!mapView.hasCoordinates && (
-                    <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                        <MapPin size={16} className="mt-0.5 shrink-0 text-amber-500" />
-                        <p className="text-xs leading-relaxed text-amber-800">
-                            <span className="font-bold">Esta propiedad todavía no tiene ubicación en el mapa.</span>{" "}
-                            Elige una sugerencia en la dirección, o arrastra el pin hasta el punto exacto.
-                            Sin esto no podremos mostrar la propiedad ni calcular distancias.
-                        </p>
-                    </div>
+                    <FeedbackBanner tone="warning" density="compact" title="Esta propiedad todavía no tiene ubicación en el mapa.">
+                        Elige una sugerencia en la dirección, o arrastra el pin hasta el punto exacto.
+                        Sin esto no podremos mostrar la propiedad ni calcular distancias.
+                    </FeedbackBanner>
                 )}
 
                 <div className="aspect-video w-full rounded-xl bg-slate-100 border-2 border-slate-200 relative overflow-hidden shadow-inner group">

@@ -2,7 +2,7 @@
 
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import { useEffect, useId, useMemo, useState } from "react"
-import { Link2, Plus, Trash2, TriangleAlert } from "lucide-react"
+import { Link2, Plus, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -20,6 +20,7 @@ import { catalogService, CatalogOption } from "@/features/auth/services/catalog-
 import { cn } from "@/lib/utils"
 import { EXTERNAL_ID_MAX_LENGTH } from "../lib/external-pms-ids"
 import type { ExternalPmsId } from "../types"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 /** Per-row validation messages, in the same order as `value`. */
 export interface ExternalPmsIdRowError {
@@ -122,11 +123,10 @@ export function ExternalPmsIdsField({
     return (
         <div className={cn("space-y-3", className)}>
             {catalogUnavailable && (
-                <p className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
-                    <TriangleAlert className="mt-px h-4 w-4 shrink-0" />
+                <FeedbackBanner tone="warning" density="compact">
                     No se pudo cargar el catálogo de orígenes. Los vínculos ya guardados se
                     conservan; para crear uno nuevo, vuelve a intentarlo más tarde.
-                </p>
+                </FeedbackBanner>
             )}
 
             {rows.length === 0 ? (

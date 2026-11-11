@@ -27,6 +27,7 @@ import {
     type OptionalDeliveryChannel,
 } from "../../lib/checkin-link-delivery"
 import type { ListingMeta } from "./AutomationOverrideModal"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 /**
  * Estado de carga por unidad. Se distingue «falló» de «no cargado» a propósito:
@@ -139,14 +140,18 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
             {expanded && (
                 <div className="mt-2 space-y-1.5 pl-1">
                     {failedCount > 0 && !loading && (
-                        <div className="flex items-center justify-between gap-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                            <span>
-                                No se pudo cargar la configuración de {failedCount === 1 ? "una unidad" : `${failedCount} unidades`}.
-                            </span>
-                            <Button type="button" size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={() => void loadPending()}>
-                                <RefreshCw size={12} /> Reintentar
-                            </Button>
-                        </div>
+                        <FeedbackBanner
+                            tone="warning"
+                            mode="dynamic"
+                            density="compact"
+                            action={
+                                <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => void loadPending()}>
+                                    <RefreshCw size={12} aria-hidden /> Reintentar
+                                </Button>
+                            }
+                        >
+                            No se pudo cargar la configuración de {failedCount === 1 ? "una unidad" : `${failedCount} unidades`}.
+                        </FeedbackBanner>
                     )}
                     <ul className="space-y-1.5">
                         {listings.map((listing) => {
@@ -338,9 +343,9 @@ function ListingDeliveryRow({
             </fieldset>
 
             {errors.length > 0 && (
-                <div className="space-y-0.5 rounded bg-red-50 px-2 py-1 text-[11px] text-red-700" role="alert">
+                <FeedbackBanner tone="danger" mode="blocking" density="compact" className="[&_[data-slot=feedback-banner-description]]:space-y-0.5">
                     {errors.map((message) => <p key={message}>{message}</p>)}
-                </div>
+                </FeedbackBanner>
             )}
 
             {dirty && (

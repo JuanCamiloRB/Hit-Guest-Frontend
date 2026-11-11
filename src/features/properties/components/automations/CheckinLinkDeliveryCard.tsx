@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { MessageCircle, Loader2, Info, AlertCircle } from "lucide-react"
+import { MessageCircle, Loader2, Info } from "lucide-react"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -28,6 +28,7 @@ import {
 import { CHECKIN_LINK_DELIVERY_TITLE } from "../../lib/automation-display"
 import { CheckinLinkDeliveryOverrides } from "./CheckinLinkDeliveryOverrides"
 import type { ListingMeta } from "./AutomationOverrideModal"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface Props {
     propertyUuid: string
@@ -206,16 +207,15 @@ export function CheckinLinkDeliveryCard({
                         </fieldset>
 
                         {otaWithoutPms && (
-                            <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800" role="status">
-                                <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                            <FeedbackBanner tone="warning" mode="dynamic" density="compact">
                                 Esta propiedad no tiene registrada una integración con Kunas o Calry: el mensaje en la
                                 OTA no se podrá enviar. Desmárcalo para dejar de usarlo.
-                            </p>
+                            </FeedbackBanner>
                         )}
                         {channelErrors.length > 0 && (
-                            <div className="space-y-1 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700" role="alert">
+                            <FeedbackBanner tone="danger" mode="blocking" density="compact" className="[&_[data-slot=feedback-banner-description]]:space-y-1">
                                 {channelErrors.map((message) => <p key={message}>{message}</p>)}
-                            </div>
+                            </FeedbackBanner>
                         )}
 
                         <p className="flex items-start gap-2 text-xs text-slate-500">
@@ -225,11 +225,10 @@ export function CheckinLinkDeliveryCard({
                         </p>
 
                         {!canConfigure && (
-                            <p className="flex items-start gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                                <AlertCircle size={14} className="mt-0.5 shrink-0" />
+                            <FeedbackBanner tone="info" density="compact">
                                 Los canales adicionales todavía no están habilitados en tu cuenta. Mientras tanto el link
                                 sale solo por email.
-                            </p>
+                            </FeedbackBanner>
                         )}
 
                         <div className="flex items-center justify-end border-t border-slate-100 pt-3">

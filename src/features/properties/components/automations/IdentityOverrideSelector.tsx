@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import type { IdentityCatalogState } from "../../hooks/useIdentityProviderCatalog"
 import { IDENTITY_LEVEL_LABEL } from "../../lib/identity-providers"
 import type { IdentityChoice } from "../../lib/identity-listing-override"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface Props {
     value: IdentityChoice
@@ -65,12 +66,18 @@ export function IdentityOverrideSelector({
             <legend className="mb-1 text-sm font-semibold text-slate-700">Verificación en esta unidad</legend>
 
             {catalog.status === "error" && canOverrideLevel && (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                    <span>No pudimos cargar los proveedores. Avanzada y Esencial no se pueden elegir hasta reintentar.</span>
-                    <Button type="button" variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={catalog.retry}>
-                        <RefreshCw size={12} aria-hidden /> Reintentar
-                    </Button>
-                </div>
+                <FeedbackBanner
+                    tone="warning"
+                    mode="dynamic"
+                    density="compact"
+                    action={
+                        <Button type="button" variant="outline" size="sm" className="gap-1" onClick={catalog.retry}>
+                            <RefreshCw size={12} aria-hidden /> Reintentar
+                        </Button>
+                    }
+                >
+                    No pudimos cargar los proveedores. Avanzada y Esencial no se pueden elegir hasta reintentar.
+                </FeedbackBanner>
             )}
 
             {OPTION_ORDER.map((choice) => {

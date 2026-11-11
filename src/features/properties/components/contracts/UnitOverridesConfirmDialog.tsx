@@ -11,6 +11,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import type { AffectedUnit, UnitOverridesConfirmationRequest } from "../../lib/unit-overrides-confirmation"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 /** Respaldo si el backend no mandó las frases: se arman desde `meta.affectedUnits`. */
 function describeUnit(unit: AffectedUnit): string {
@@ -57,9 +58,9 @@ export function UnitOverridesConfirmDialog({ request, partial, onDecision }: Pro
                     </ul>
                 )}
                 {partial && (
-                    <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    <FeedbackBanner tone="warning" density="compact">
                         Parte de este guardado ya se aplicó. Si cancelas, eso queda guardado y este paso no.
-                    </p>
+                    </FeedbackBanner>
                 )}
                 <AlertDialogFooter>
                     <AlertDialogCancel onClick={() => onDecision(false)}>Cancelar</AlertDialogCancel>

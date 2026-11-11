@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { AlertCircle, AlertTriangle, Eye, Loader2, RefreshCw } from "lucide-react"
+import { Eye, Loader2, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { validationMessages } from "@/lib/notify-error"
@@ -22,6 +22,7 @@ import { describeRowSigning, planUnitTexts, type UnitTextRow } from "../../lib/u
 import { DocumentEditor } from "../documents/DocumentEditor"
 import { DocumentPreviewModal } from "../documents/DocumentPreviewModal"
 import { ReservationSourceIdentity, reservationSourceSlug } from "./ReservationSourceIdentity"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface Props {
     propertyUuid: string
@@ -230,9 +231,7 @@ export function UnitContractTexts({
 
     if (loadError) {
         return (
-            <p role="alert" className="flex items-center gap-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                <AlertCircle size={14} className="shrink-0" /> {loadError}
-            </p>
+            <FeedbackBanner tone="danger" mode="blocking">{loadError}</FeedbackBanner>
         )
     }
     if (!loaded || !plan) {
@@ -258,23 +257,28 @@ export function UnitContractTexts({
             </div>
 
             {staleNotice && (
-                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                    <span>{staleNotice}</span>
-                    <Button type="button" variant="outline" size="sm" className="h-7 bg-white text-xs" disabled={refreshing} onClick={() => void retryRefresh()}>
-                        <RefreshCw size={12} className={refreshing ? "mr-1 animate-spin" : "mr-1"} /> Volver a cargar
-                    </Button>
-                </div>
+                <FeedbackBanner
+                    tone="warning"
+                    mode="dynamic"
+                    density="compact"
+                    action={
+                        <Button type="button" variant="outline" size="sm" disabled={refreshing} onClick={() => void retryRefresh()}>
+                            <RefreshCw size={12} aria-hidden className={refreshing ? "animate-spin" : undefined} /> Volver a cargar
+                        </Button>
+                    }
+                >
+                    {staleNotice}
+                </FeedbackBanner>
             )}
 
             {replacedTexts.length > 0 && (
-                <div role="status" className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
-                    <p className="flex items-start gap-2">
-                        <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                        <span>
-                            {unitRouting?.replacedTextsLabel
-                                || "Algunos textos propios de esta unidad ya no aplican porque la propiedad cambió cómo organiza sus textos."}
-                        </span>
-                    </p>
+                <FeedbackBanner
+                    tone="warning"
+                    mode="dynamic"
+                    title={unitRouting?.replacedTextsLabel
+                        || "Algunos textos propios de esta unidad ya no aplican porque la propiedad cambió cómo organiza sus textos."}
+                    className="[&_[data-slot=feedback-banner-description]]:space-y-2"
+                >
                     <p className="text-xs">Mientras sigan guardados, no se pueden crear textos nuevos en esta unidad.</p>
                     <ul className="space-y-1">
                         {replacedTexts.map((text) => (
@@ -295,9 +299,9 @@ export function UnitContractTexts({
                         ))}
                     </ul>
                     {rowError?.key.startsWith("replaced:") && (
-                        <p role="alert" className="whitespace-pre-line text-xs text-red-700">{rowError.messages.join("\n")}</p>
+                        <p role="alert" className="whitespace-pre-line text-xs text-danger">{rowError.messages.join("\n")}</p>
                     )}
-                </div>
+                </FeedbackBanner>
             )}
 
             {plan.textMode === null ? (
@@ -398,9 +402,9 @@ export function UnitContractTexts({
                                 )}
 
                                 {error && (
-                                    <p role="alert" className="mt-2 whitespace-pre-line rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">
+                                    <FeedbackBanner tone="danger" mode="blocking" density="compact" className="mt-2 whitespace-pre-line">
                                         {error.join("\n")}
-                                    </p>
+                                    </FeedbackBanner>
                                 )}
                             </li>
                         )

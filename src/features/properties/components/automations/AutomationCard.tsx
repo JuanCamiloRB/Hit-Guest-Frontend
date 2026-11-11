@@ -33,6 +33,7 @@ import { isIdentityPropertyAutomation } from "../../lib/identity-listing-overrid
 import { describeAutomationCost } from "../../lib/automation-cost"
 import type { ListingMeta } from "./AutomationOverrideModal"
 import { ReservationSourceIdentity, reservationSourceName, reservationSourceSlug } from "../contracts/ReservationSourceIdentity"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 const BACKEND_PENDING_MSG = "El backend aún no tiene este endpoint implementado. Contacta al equipo de desarrollo."
 
@@ -582,16 +583,16 @@ export function AutomationCard({
                                     {routingView ? (
                                         <div className="space-y-2">
                                             {routingView.needsAttention && (
-                                                <div className="space-y-1 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                                                <FeedbackBanner tone="warning" density="compact" className="[&_[data-slot=feedback-banner-description]]:space-y-1">
                                                     {routingView.channels
                                                         .filter((channel) => channel.status !== "ready")
                                                         .map((channel) => (
                                                             <p key={channel.key}>
-                                                                <span className="font-semibold">{channel.channel.name}:</span>{" "}
+                                                                <span className="font-semibold text-ink">{channel.channel.name}:</span>{" "}
                                                                 {channel.statusLabel || "Revisa la configuración de este canal."}
                                                             </p>
                                                         ))}
-                                                </div>
+                                                </FeedbackBanner>
                                             )}
                                             {routingView.channels.map((channel) => (
                                                 <div key={channel.key} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5">

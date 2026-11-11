@@ -88,6 +88,9 @@ describe("ContractRoutingSection — configuración guardada con claves que no s
         render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
 
         const alert = await screen.findByRole("alert")
+        // Bloquea editar: aviso compartido de error bloqueante (era ámbar con `alert`).
+        expect(alert).toHaveAttribute("data-slot", "feedback-banner")
+        expect(alert).toHaveAttribute("data-tone", "danger")
         expect(alert).toHaveTextContent("No pudimos identificar los canales de la configuración guardada.")
         expect(alert).toHaveTextContent("la edición está bloqueada temporalmente")
         // El «Canal 0» ya no está a la vista: va plegado como información técnica.
@@ -140,7 +143,10 @@ describe("ContractRoutingSection — contrato 2026-10-19", () => {
         render(<ContractRoutingSection propertyUuid="p-1" />, { wrapper: Wrapper })
         const user = userEvent.setup()
 
-        expect(await screen.findByText("Hay configuración guardada para un canal que ya no existe.")).toBeInTheDocument()
+        const orphans = (await screen.findByText("Hay configuración guardada para un canal que ya no existe.")).closest("[data-slot=feedback-banner]")
+        // Su texto cambia al confirmar o deshacer: advertencia dinámica (status).
+        expect(orphans).toHaveAttribute("data-tone", "warning")
+        expect(orphans).toHaveAttribute("role", "status")
         expect(screen.queryByText(/No pudimos identificar los canales/)).toBeNull()
         expect(document.querySelector("[inert]")).toBeNull()
 

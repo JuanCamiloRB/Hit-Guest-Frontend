@@ -69,7 +69,11 @@ describe("ListingOverridesPanel — caída parcial al cargar overrides", () => {
         expect(await screen.findByText("Desactivada en esta unidad")).toBeInTheDocument()
         // La que falló lo dice y no ofrece abrir el modal con un override inventado.
         expect(await screen.findByText("No se pudo cargar")).toBeInTheDocument()
-        expect(screen.getByText(/No se pudo cargar la configuración de una unidad/)).toBeInTheDocument()
+        const partial = screen.getByText(/No se pudo cargar la configuración de una unidad/).closest("[data-slot=feedback-banner]")
+        // Datos parciales con Reintentar: advertencia dinámica y compacta.
+        expect(partial).toHaveAttribute("data-tone", "warning")
+        expect(partial).toHaveAttribute("role", "status")
+        expect(partial).toHaveAttribute("data-density", "compact")
         expect(screen.queryByRole("button", { name: /Unidad 2/ })).toBeNull()
 
         // Reintento por fila: ahora responde.

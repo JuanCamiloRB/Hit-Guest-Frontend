@@ -61,6 +61,9 @@ describe("GuaranteePreview — valores de la DB, sin advertencia falsa (2026-10-
     it("si el endpoint falla, conserva el mensaje de carga fallida", async () => {
         mocks.getBySlug.mockRejectedValue(new Error("red"))
         render(<GuaranteePreview />)
-        expect(await screen.findByText(/No se pudo cargar el texto de garantía/)).toBeInTheDocument()
+        const error = (await screen.findByText(/No se pudo cargar el texto de garantía/)).closest("[data-slot=feedback-banner]")
+        // Error al cargar: bloqueante (escala de la Fase 2.2), nunca un vacío.
+        expect(error).toHaveAttribute("data-tone", "danger")
+        expect(error).toHaveAttribute("role", "alert")
     })
 })

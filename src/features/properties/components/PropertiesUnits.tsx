@@ -84,6 +84,7 @@ import {
 import { buttonVariants } from "@/components/ui/button"
 import type { ExternalPmsId } from "../types"
 import { invalidatePropertiesCaches } from "../lib/properties-cache"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 const defaultUnit = {
     name: "",
@@ -791,12 +792,12 @@ export function PropertiesUnits() {
                                                     propiedad, antes de pulsar guardar. */}
                                                 {initialExternalPmsIdsRef.current.length > 0
                                                     && (unitForm.externalPmsIds ?? []).length === 0 && (
-                                                    <p className="mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                                                        <TriangleAlert size={16} className="mt-0.5 shrink-0" />
+                                                    // Aparece al vaciar el campo: dinámico, se anuncia sin interrumpir.
+                                                    <FeedbackBanner tone="warning" mode="dynamic" className="mt-3">
                                                         Al guardar se eliminarán los vínculos con el PMS/canal
                                                         y las reservas externas de esos orígenes dejarán de
                                                         asociarse a este alojamiento.
-                                                    </p>
+                                                    </FeedbackBanner>
                                                 )}
                                             </div>
 
@@ -1077,11 +1078,11 @@ export function PropertiesUnits() {
                                                             <Loader2 className="h-4 w-4 animate-spin" /> Cargando amenidades…
                                                         </div>
                                                     ) : amenityCatalogFailed ? (
-                                                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800">
+                                                        <FeedbackBanner tone="warning" density="compact">
                                                             No se pudo cargar el catálogo de amenidades. Cierra y reabre el
                                                             diálogo para reintentar; la herencia de la propiedad no se ve
                                                             afectada.
-                                                        </div>
+                                                        </FeedbackBanner>
                                                     ) : amenityOptions.length === 0 ? (
                                                         <div className="rounded-xl border bg-slate-50 p-4 text-xs text-slate-400">
                                                             El catálogo de amenidades está vacío.

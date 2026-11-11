@@ -32,6 +32,7 @@ import {
 } from "../../types/document"
 import { DocumentEditor } from "./DocumentEditor"
 import { DocumentPreviewModal } from "./DocumentPreviewModal"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface DocumentFormModalProps {
     onClose: () => void
@@ -185,9 +186,7 @@ export function DocumentFormModal({
                         <DocumentEditor value={content} onChange={setContent} shortcodes={shortcodes} />
 
                         {fieldError && (
-                            <p role="alert" className="whitespace-pre-line text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                                {fieldError}
-                            </p>
+                            <FeedbackBanner tone="danger" mode="blocking" className="whitespace-pre-line">{fieldError}</FeedbackBanner>
                         )}
                     </div>
 

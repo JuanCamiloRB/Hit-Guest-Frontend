@@ -84,7 +84,10 @@ describe("CheckinLinkDeliveryCard — canal «mensaje en la OTA» (contrato 2026
         renderCard({ automation: automationWith(["email", "ota_inbox"]), pmsConnected: false })
         const ota = screen.getByRole("checkbox", { name: /Mensaje en la OTA/ })
         expect(ota).toBeChecked()
-        expect(screen.getByRole("status")).toHaveTextContent(/no tiene registrada una integración con Kunas o Calry/)
+        const status = screen.getByRole("status")
+        expect(status).toHaveTextContent(/no tiene registrada una integración con Kunas o Calry/)
+        expect(status).toHaveAttribute("data-slot", "feedback-banner")
+        expect(status).toHaveAttribute("data-tone", "warning")
 
         fireEvent.click(ota)
         expect(screen.queryByRole("status")).toBeNull()

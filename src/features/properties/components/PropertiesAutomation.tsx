@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useFormContext } from "react-hook-form"
-import { Sparkles, Loader2, AlertCircle } from "lucide-react"
+import { Sparkles, Loader2 } from "lucide-react"
 import {
     Card,
     CardContent,
@@ -26,6 +26,7 @@ import { catalogService } from "@/features/auth/services/catalog-service"
 import type { PropertyAutomation, Provider } from "../types/automation"
 import { EMPTY_IDENTITY_CATALOG, resolveIdentityProviders, type IdentityProviderCatalog } from "../lib/identity-providers"
 import { AutomationCard, CheckinLinkDeliveryCard, type ListingMeta } from "./automations"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface CountryCatalogItem {
     id: string | number
@@ -270,32 +271,26 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
 
             {/* Guard: property not saved yet */}
             {!propertyUuid && (
-                <div className="flex items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-                    <AlertCircle size={18} className="text-amber-500 shrink-0" />
-                    <p className="text-sm text-amber-700">
-                        Guarda la propiedad primero para poder gestionar las automatizaciones.
-                    </p>
-                </div>
+                <FeedbackBanner tone="info">
+                    Guarda la propiedad primero para poder gestionar las automatizaciones.
+                </FeedbackBanner>
             )}
 
             {/* Automation cards grid */}
             {loadError && (
-                <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-xl px-4 py-3">
-                    <AlertCircle size={18} className="text-red-500 shrink-0" />
-                    <p className="text-sm text-red-700">{loadError}</p>
-                </div>
+                <FeedbackBanner tone="danger" mode="blocking">{loadError}</FeedbackBanner>
             )}
 
             {!loading && !loadError && identityCatalogFailed && (
-                <div role="alert" className="flex flex-wrap items-center gap-3 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-                    <AlertCircle size={18} className="text-amber-500 shrink-0" />
-                    <p className="flex-1 text-sm text-amber-700">
-                        No pudimos cargar todos los proveedores de identidad. Reintenta antes de cambiar el nivel de verificación.
-                    </p>
-                    <Button type="button" variant="outline" size="sm" onClick={() => setReloadCount((n) => n + 1)}>
-                        Reintentar
-                    </Button>
-                </div>
+                // Datos parciales que aparecen tras cargar: advertencia dinámica (status).
+                // Era `alert`; una advertencia no interrumpe (escala de la Fase 2.2).
+                <FeedbackBanner
+                    tone="warning"
+                    mode="dynamic"
+                    action={<Button type="button" variant="outline" size="sm" onClick={() => setReloadCount((n) => n + 1)}>Reintentar</Button>}
+                >
+                    No pudimos cargar todos los proveedores de identidad. Reintenta antes de cambiar el nivel de verificación.
+                </FeedbackBanner>
             )}
 
             {loading ? (

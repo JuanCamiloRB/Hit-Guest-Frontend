@@ -56,6 +56,7 @@ import {
 import { ContractModeToggle } from "./ContractModeToggle"
 import { SourceRoutingRow } from "./SourceRoutingRow"
 import { ContractChannelCard, type ContractChannelStatus } from "./ContractChannelCard"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 const DEFAULT_ROUTING: SourceRouting = {
     contract_type: "agreement_only",
@@ -630,10 +631,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
 
     if (loadError) {
         return (
-            <div className="flex items-center gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
-                <AlertCircle size={18} className="text-red-500 shrink-0" />
-                <p className="text-sm text-red-700">{loadError}</p>
-            </div>
+            <FeedbackBanner tone="danger" mode="blocking">{loadError}</FeedbackBanner>
         )
     }
 
@@ -652,15 +650,18 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             </div>
 
             {routingBlocked && (
-                <div role="alert" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
-                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                    <div className="space-y-1.5">
-                        <p className="font-semibold">No pudimos identificar los canales de la configuración guardada.</p>
+                // Impide editar hasta que soporte corrija la configuración: error bloqueante.
+                <FeedbackBanner
+                    tone="danger"
+                    mode="blocking"
+                    title="No pudimos identificar los canales de la configuración guardada."
+                    className="[&_[data-slot=feedback-banner-description]]:space-y-1.5"
+                >
                         <p>
                             Para evitar asignar un contrato al canal equivocado, la edición está bloqueada
                             temporalmente. Contacta a soporte para corregir la configuración.
                         </p>
-                        <details className="text-xs text-amber-800">
+                        <details className="text-xs text-ink-3">
                             <summary className="cursor-pointer font-medium">Información técnica</summary>
                             <ul className="mt-1 space-y-0.5">
                                 {orphanRouting.map(({ sourceKey, routing }) => (
@@ -675,15 +676,17 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                                 (`by_source` de la automatización de Contrato).
                             </p>
                         </details>
-                    </div>
-                </div>
+                </FeedbackBanner>
             )}
 
             {removableOrphans.length > 0 && (
-                <div role="status" className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900">
-                    <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                    <div className="space-y-1">
-                        <p className="font-semibold">Hay configuración guardada para un canal que ya no existe.</p>
+                // Su texto cambia al confirmar o deshacer: dinámico (status).
+                <FeedbackBanner
+                    tone="warning"
+                    mode="dynamic"
+                    title="Hay configuración guardada para un canal que ya no existe."
+                    className="[&_[data-slot=feedback-banner-description]]:space-y-1"
+                >
                         <ul className="space-y-0.5 text-xs">
                             {removableOrphans.map(({ sourceKey, routing }) => (
                                 <li key={sourceKey}>
@@ -705,24 +708,20 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                                     Para guardar cualquier cambio en los contratos hay que quitarla: al guardar se
                                     reemplaza la configuración de todos los canales.
                                 </p>
-                                <Button type="button" variant="outline" size="sm" className="h-8 bg-white text-xs" onClick={() => setOrphanRemovalConfirmed(true)} disabled={saving}>
+                                <Button type="button" variant="outline" size="sm" className="text-xs" onClick={() => setOrphanRemovalConfirmed(true)} disabled={saving}>
                                     Quitar configuración desconocida
                                 </Button>
                             </div>
                         )}
-                    </div>
-                </div>
+                </FeedbackBanner>
             )}
 
             {showsUnsavedInference && (
-                <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                    <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                    <p>
-                        Hay textos de contrato guardados, pero la automatización de Contrato
-                        todavía no tiene guardado qué se firma ni quién firma por canal — las
-                        reservas no generan contrato hasta que guardes esta configuración.
-                    </p>
-                </div>
+                <FeedbackBanner tone="warning">
+                    Hay textos de contrato guardados, pero la automatización de Contrato
+                    todavía no tiene guardado qué se firma ni quién firma por canal — las
+                    reservas no generan contrato hasta que guardes esta configuración.
+                </FeedbackBanner>
             )}
 
             <section className="space-y-2" aria-labelledby="contract-mode-heading">
@@ -861,9 +860,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             />
 
             {saveError && (
-                <p role="alert" className="flex items-start gap-2 whitespace-pre-line text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-                    <AlertCircle size={14} className="mt-0.5 shrink-0" /> <span>{saveError}</span>
-                </p>
+                <FeedbackBanner tone="danger" mode="blocking" className="whitespace-pre-line">{saveError}</FeedbackBanner>
             )}
 
             <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">

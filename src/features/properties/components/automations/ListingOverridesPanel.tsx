@@ -11,6 +11,7 @@ import type { PropertyAutomation, ListingAutomationOverride } from "../../types/
 import { AutomationOverrideModal, type ListingMeta } from "./AutomationOverrideModal"
 import { useIdentityProviderCatalog } from "../../hooks/useIdentityProviderCatalog"
 import { identityOverrideSummary, isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 /**
  * Estado de carga por unidad. «Falló» se distingue de «no cargado» a propósito:
@@ -127,14 +128,18 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                     ) : (
                         <>
                             {failedCount > 0 && !loading && (
-                                <div className="flex items-center justify-between gap-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                                    <span>
-                                        No se pudo cargar la configuración de {failedCount === 1 ? "una unidad" : `${failedCount} unidades`}.
-                                    </span>
-                                    <Button type="button" size="sm" variant="ghost" className="h-7 gap-1 text-xs" onClick={() => void loadPending()}>
-                                        <RefreshCw size={12} /> Reintentar
-                                    </Button>
-                                </div>
+                                <FeedbackBanner
+                                    tone="warning"
+                                    mode="dynamic"
+                                    density="compact"
+                                    action={
+                                        <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => void loadPending()}>
+                                            <RefreshCw size={12} aria-hidden /> Reintentar
+                                        </Button>
+                                    }
+                                >
+                                    No se pudo cargar la configuración de {failedCount === 1 ? "una unidad" : `${failedCount} unidades`}.
+                                </FeedbackBanner>
                             )}
                             {listings.map(listing => {
                                 const entry = entries[listing.uuid]

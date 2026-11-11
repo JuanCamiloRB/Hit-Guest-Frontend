@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Settings2, Loader2, AlertCircle } from "lucide-react"
+import { Settings2, Loader2 } from "lucide-react"
 import {
     Dialog,
     DialogContent,
@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import type { AutomationDefinition, ProviderOption } from "../../types/automation"
 import { ParameterField } from "./ParameterField"
 import { TriggerConfigSection } from "./TriggerConfigSection"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface Props {
     open: boolean
@@ -54,12 +55,9 @@ export function ConfigModal({
 
                 <div className="space-y-4 py-2">
                     {provider.parametersSchema.length === 0 ? (
-                        <div className="flex items-center gap-3 bg-green-50 border border-green-100 rounded-xl p-4">
-                            <AlertCircle size={18} className="text-green-500 shrink-0" />
-                            <p className="text-sm text-green-700">
-                                Este proveedor no requiere configuración adicional. Las credenciales son administradas por el equipo de HIT.
-                            </p>
-                        </div>
+                        <FeedbackBanner tone="info">
+                            Este proveedor no requiere configuración adicional. Las credenciales son administradas por el equipo de HIT.
+                        </FeedbackBanner>
                     ) : (
                         provider.parametersSchema.map(schema => (
                             <ParameterField
