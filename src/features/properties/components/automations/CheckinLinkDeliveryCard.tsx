@@ -239,7 +239,6 @@ export function CheckinLinkDeliveryCard({
                                 size="sm"
                                 onClick={() => void handleSave()}
                                 disabled={!dirty || saving || !canConfigure}
-                                className="gap-2 bg-primary text-white hover:bg-primary/90"
                             >
                                 {saving && <Icon icon={Loader2} className="animate-spin" />}
                                 Guardar

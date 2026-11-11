@@ -169,6 +169,26 @@ const rules = [
         ignore: (path) => path.startsWith("src/components/ui/"),
     },
     {
+        // Color, forma, alto, relleno, tipografía y transición de un botón son
+        // de su variante y su tamaño. Desde la pantalla solo layout: ancho,
+        // márgenes, posición, alineación del contenido, visibilidad.
+        id: "button-override",
+        description: "pisa la apariencia de un Button; elige variant/size (solo se permite layout)",
+        pattern: /(?<![\w-])(?:[a-z-]+:)*(?:bg|border|rounded|shadow|ring|outline|font|h|min-h|max-h|size|p|px|py|pt|pb|pl|pr|gap|transition|duration|opacity|leading|tracking|decoration|underline)(?:-[\w/\[\].%()-]+)?(?![\w-])|(?<![\w-])(?:[a-z-]+:)*text-(?!left\b|center\b|right\b|wrap\b|nowrap\b)[\w/\[\].-]+/g,
+        input: "buttonClasses",
+        ignore: UI_ONLY,
+    },
+    {
+        // Un pulsable con relleno sólido ES un botón: va con Button y su variante
+        // (un enlace, con `Button asChild`). La navegación lateral es la única
+        // excepción: su ítem activo es un estado de navegación, no una acción.
+        id: "pressable-fill",
+        description: "rellena un UnstyledButton, Link o <a> como si fuera un botón; usa Button (asChild para enlaces)",
+        pattern: /(?<![\w-])(?:[a-z-]+:)*bg-(?:primary|secondary|success|destructive|danger|warning|info|ink|black|brand-[a-z]+)(?![\w/-])/g,
+        input: "pressableClasses",
+        ignore: (path) => UI_ONLY(path) || path === "src/components/layout/Sidebar.tsx",
+    },
+    {
         // Un ícono se pinta con la primitiva Icon (escala de tamaños, trazo y
         // aria-hidden comunes): `<Icon icon={Mail} />`, nunca `<Mail />`.
         id: "icon-direct",
@@ -224,6 +244,8 @@ function inspect() {
         const fieldClasses = []
         const lucideElements = []
         const iconClasses = []
+        const buttonClasses = []
+        const pressableClasses = []
         const lucideNames = new Set()
         for (const statement of sourceFile.statements) {
             if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
@@ -283,6 +305,8 @@ function inspect() {
                 // Un componente de lucide importado, o uno elegido por dato (`<item.icon />`).
                 if (lucideNames.has(tag) || /\.icon$/i.test(tag)) lucideElements.push(`<${tag}>`)
                 if (tag === "Icon") iconClasses.push(...classTexts(node))
+                if (tag === "Button") buttonClasses.push(...classTexts(node))
+                if (tag === "UnstyledButton" || tag === "Link" || tag === "a") pressableClasses.push(...classTexts(node))
             }
             // Claves de los objetos en `style={{…}}`.
             if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === "style" && node.initializer
@@ -306,6 +330,8 @@ function inspect() {
             fieldClasses: fieldClasses.join("\n"),
             lucideElements: lucideElements.join("\n"),
             iconClasses: iconClasses.join("\n"),
+            buttonClasses: buttonClasses.join("\n"),
+            pressableClasses: pressableClasses.join("\n"),
         }
         for (const rule of rules) {
             if (rule.ignore?.(path)) continue

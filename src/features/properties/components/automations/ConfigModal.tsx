@@ -85,7 +85,6 @@ export function ConfigModal({
                     <Button
                         onClick={() => onSave(params)}
                         disabled={isSaving}
-                        className="bg-primary hover:bg-primary/90 text-white"
                     >
                         {isSaving && <Icon icon={Loader2} className="animate-spin mr-2" />}
                         Guardar Configuración

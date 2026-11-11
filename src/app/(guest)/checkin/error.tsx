@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { AlertTriangle, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Button } from "@/components/ui/button"
 
 interface CheckinErrorProps {
     error: Error & { digest?: string }
@@ -70,19 +70,20 @@ export default function CheckinError({ error, reset }: CheckinErrorProps) {
                 )}
             </div>
             <div className="flex w-full max-w-sm flex-col gap-3">
-                <UnstyledButton
+                <Button size="xl"
                     type="button"
                     onClick={reset}
-                    className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary font-bold text-white"
+                    className="flex items-center justify-center"
                 >
                     <Icon icon={RefreshCw} /> Reintentar
-                </UnstyledButton>
-                <Link
-                    href={checkinHome}
-                    className="flex h-12 items-center justify-center rounded-xl bg-sunk font-semibold text-ink-2"
-                >
-                    Volver al inicio
-                </Link>
+                </Button>
+                <Button asChild variant="outline" size="xl">
+                    <Link
+                        href={checkinHome}
+                    >
+                        Volver al inicio
+                    </Link>
+                </Button>
             </div>
         </main>
     )

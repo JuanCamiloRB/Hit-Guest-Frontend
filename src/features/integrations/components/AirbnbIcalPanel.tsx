@@ -188,7 +188,7 @@ export function AirbnbIcalPanel() {
                     código de la reserva: el link de check-in le llega al huésped por la mensajería
                     de Airbnb con la plantilla de mensaje de cada calendario.
                 </p>
-                <Button size="sm" className="shrink-0 gap-1.5" onClick={() => setCreateOpen(true)}>
+                <Button size="sm" className="shrink-0" onClick={() => setCreateOpen(true)}>
                     <Icon icon={Plus} /> Agregar calendario
                 </Button>
             </div>
@@ -198,9 +198,9 @@ export function AirbnbIcalPanel() {
             ) : loadError ? (
                 <div className="flex items-center justify-between gap-2 rounded-lg border border-warning/30 bg-warning-sunk px-3 py-2 text-sm text-warning">
                     <span>No se pudieron cargar los calendarios.</span>
-                    <UnstyledButton type="button" onClick={() => void loadFeeds()} className="font-semibold underline underline-offset-2">
+                    <Button variant="link-inherit" size="inline" type="button" onClick={() => void loadFeeds()}>
                         Reintentar
-                    </UnstyledButton>
+                    </Button>
                 </div>
             ) : feeds.length === 0 ? (
                 <EmptyState
@@ -233,14 +233,14 @@ export function AirbnbIcalPanel() {
                                 </p>
                             )}
                             <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-rule pt-3">
-                                <UnstyledButton
+                                <Button variant="link" size="inline"
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => void openTemplate(feed)}
-                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                                    className="inline-flex items-center"
                                 >
                                     <Icon icon={FileText} size="sm" /> Plantilla de mensaje
-                                </UnstyledButton>
+                                </Button>
                                 <UnstyledButton
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
@@ -461,9 +461,9 @@ function CreateFeedDialog({
                         {listingsFailed && (
                             <p role="alert" className="text-xs text-warning">
                                 No pudimos cargar tus alojamientos.{" "}
-                                <UnstyledButton type="button" onClick={onRetryListings} className="font-semibold underline underline-offset-2">
+                                <Button variant="link-inherit" size="inline" type="button" onClick={onRetryListings}>
                                     Reintentar
-                                </UnstyledButton>
+                                </Button>
                             </p>
                         )}
                     </div>
@@ -571,7 +571,7 @@ function TemplateDialog({
                         El mensaje va en el idioma configurado para tus huéspedes — puede no coincidir
                         con el idioma en que ves este panel. No modifiques la URL.
                     </p>
-                    <Button size="sm" className="gap-1.5" onClick={() => void copy()}>
+                    <Button size="sm" onClick={() => void copy()}>
                         <Icon icon={Copy} /> Copiar mensaje
                     </Button>
 

@@ -14,6 +14,7 @@ import {
     type BillingPackage,
     type PackagesInfo,
 } from "../types"
+import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -123,9 +124,9 @@ export function BillingSettings() {
                             <span className="text-4xl font-bold tabular-nums text-ink-3">— USD</span>
                             <p className="mt-1 text-xs font-medium text-warning">
                                 Saldo no disponible ·{" "}
-                                <UnstyledButton type="button" onClick={() => void refresh()} className="font-semibold underline underline-offset-2">
+                                <Button variant="link-inherit" size="inline" type="button" onClick={() => void refresh()}>
                                     Reintentar
-                                </UnstyledButton>
+                                </Button>
                             </p>
                         </div>
                     ) : (
@@ -192,10 +193,10 @@ export function BillingSettings() {
                             {amountError && <p className="text-xs font-medium text-danger">{amountError}</p>}
                         </div>
 
-                        <UnstyledButton
+                        <Button type="button" size="lg"
                             onClick={handleAddCredits}
                             disabled={isSubmitting || effectiveAmount == null}
-                            className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 font-bold text-white transition-colors hover:bg-primary disabled:opacity-50"
+                            className="inline-flex items-center"
                         >
                             {isSubmitting ? (
                                 <Icon icon={Loader2} className="animate-spin" />
@@ -203,7 +204,7 @@ export function BillingSettings() {
                                 <Icon icon={Plus} />
                             )}
                             Add Credits
-                        </UnstyledButton>
+                        </Button>
                     </div>
                 )}
             </div>

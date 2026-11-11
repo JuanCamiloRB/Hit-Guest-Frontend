@@ -196,7 +196,6 @@ export function DocumentFormModal({
                             type="button"
                             variant="outline"
                             onClick={() => setPreviewOpen(true)}
-                            className="gap-1.5"
                         >
                             <Icon icon={Eye} />
                             Vista previa
@@ -209,7 +208,6 @@ export function DocumentFormModal({
                             type="button"
                             onClick={handleSave}
                             disabled={saving}
-                            className="bg-primary hover:bg-primary/90 text-white font-bold"
                         >
                             {saving && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                             {isEdit ? "Guardar cambios" : "Crear documento"}

@@ -9,6 +9,7 @@ import {
     mergeTypedAddress,
     type GeocodePlaceDetails,
 } from "@/lib/geocoding/address"
+import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Input } from "@/components/ui/input"
 
@@ -271,15 +272,15 @@ export function AddressAutocomplete({
                 </p>
             )}
             {manualSearchAvailable && (
-                <UnstyledButton
+                <Button variant="outline" size="sm"
                     type="button"
                     onClick={() => void handleManualSearch()}
                     disabled={loading || resolving || value.trim().length < 3}
-                    className="mt-2 inline-flex h-9 items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-2 inline-flex items-center"
                 >
                     {loading ? <Icon icon={Loader2} size="sm" className="animate-spin" /> : <Icon icon={Search} size="sm" />}
                     Buscar dirección
-                </UnstyledButton>
+                </Button>
             )}
             {noResults && !loading && (
                 <p className="mt-1.5 text-xs text-ink-3" role="status">

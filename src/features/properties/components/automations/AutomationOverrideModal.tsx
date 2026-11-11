@@ -562,7 +562,7 @@ export function AutomationOverrideModal({
                             variant="ghost"
                             onClick={() => void handleRestoreInheritance()}
                             disabled={saving}
-                            className="sm:mr-auto text-ink-2"
+                            className="sm:mr-auto"
                         >
                             Volver a heredar
                         </Button>
@@ -571,7 +571,6 @@ export function AutomationOverrideModal({
                     <Button
                         onClick={handleSave}
                         disabled={saving || (!isEdit && !selectedPaUuid)}
-                        className="bg-primary hover:bg-primary/90 text-white"
                     >
                         {saving && <Icon icon={Loader2} className="animate-spin mr-2" />}
                         Guardar

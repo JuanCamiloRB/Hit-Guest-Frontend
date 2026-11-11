@@ -134,7 +134,6 @@ export function TransferOwnershipDialog({
                     <Button
                         onClick={handleConfirm}
                         disabled={submitting || !selectedUuid || !clientUuid}
-                        className="bg-primary hover:bg-primary text-white font-bold"
                     >
                         {submitting && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                         Transferir

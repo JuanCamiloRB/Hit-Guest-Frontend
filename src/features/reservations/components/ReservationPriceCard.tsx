@@ -6,7 +6,7 @@ import { SectionCard } from "@/components/ui/section-card"
 import { StatusPill } from "@/components/ui/status-pill"
 import { formatMoney } from "@/lib/money"
 import { formatDeclaredAt, type GuestPriceDeclaration } from "../lib/guest-price-declaration"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Button } from "@/components/ui/button"
 
 interface Props {
     totalPrice: number
@@ -56,13 +56,12 @@ export function ReservationPriceCard({
             {priceDeclaredByGuest && (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                     <StatusPill tone="warning">Valor declarado por el huésped</StatusPill>
-                    <UnstyledButton
+                    <Button variant="link" size="inline"
                         type="button"
                         onClick={onCorrect}
-                        className="text-xs font-semibold text-primary underline underline-offset-2 hover:opacity-80"
                     >
                         Corregir valor
-                    </UnstyledButton>
+                    </Button>
                 </div>
             )}
             {guestPriceDeclaration && (

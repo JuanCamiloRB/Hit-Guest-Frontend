@@ -282,7 +282,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                 <div className="flex shrink-0 items-center gap-2">
                     {/* La ficha sigue a la vista mientras se relee (editar, volver a la pestaña). */}
                     <RefreshIndicator active={status === "refreshing"} label="Actualizando reserva…" />
-                    <Button onClick={() => window.print()} variant="outline" className="gap-2">
+                    <Button onClick={() => window.print()} variant="outline">
                         <Icon icon={Printer} />
                         Imprimir
                     </Button>
@@ -309,7 +309,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                              * reserva sincronizada, su error se muestra tal cual. Adivinarlo
                              * acá solo podía equivocarse en los dos sentidos.
                              */
-                            <Button className="gap-2" title="Editar los detalles de la reserva">
+                            <Button title="Editar los detalles de la reserva">
                                 <Icon icon={Edit} />
                                 Editar reserva
                             </Button>
@@ -535,11 +535,11 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             <div className="mt-4 space-y-2">
                                 <Dialog open={sendDialogOpen} onOpenChange={openSendDialog}>
                                     <DialogTrigger asChild>
-                                        <Button
-                                            variant="secondary"
+                                        <Button size="lg"
+                                            variant="inverse"
                                             disabled={!canUseCheckinLink}
                                             title={linkDisabledReason}
-                                            className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 focus-visible:outline-white disabled:bg-white/5 disabled:text-white/60"
+                                            className="group w-full justify-between"
                                         >
                                             <span className="flex items-center gap-3">
                                                 <Icon icon={Send} className="text-white/70 transition-colors group-hover:text-white" />
@@ -602,7 +602,6 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                             <Button
                                                 onClick={handleSendCheckinLink}
                                                 disabled={isSendingLink || !isValidEmail}
-                                                className="bg-primary hover:bg-primary text-white"
                                             >
                                                 {isSendingLink && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                                                 {isSendingLink ? "Enviando..." : "Enviar"}
@@ -610,12 +609,12 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                         </DialogFooter>
                                     </DialogContent>
                                 </Dialog>
-                                <Button
+                                <Button size="lg"
                                     onClick={handleCopyCheckinLink}
-                                    variant="secondary"
+                                    variant="inverse"
                                     disabled={!canUseCheckinLink}
                                     title={linkDisabledReason}
-                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 focus-visible:outline-white disabled:bg-white/5 disabled:text-white/60"
+                                    className="group w-full justify-between"
                                 >
                                     <span className="flex items-center gap-3">
                                         <Icon icon={Copy} className="text-white/70 transition-colors group-hover:text-white" />
@@ -623,12 +622,12 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     </span>
                                     <Icon icon={ChevronRight} className="text-white/50" />
                                 </Button>
-                                <Button
+                                <Button size="lg"
                                     onClick={handleMessageGuest}
-                                    variant="secondary"
+                                    variant="inverse"
                                     disabled={!data.email || !isActionable}
                                     title={!data.email ? "El huésped no tiene correo registrado" : disabledReason}
-                                    className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 focus-visible:outline-white disabled:bg-white/5 disabled:text-white/60"
+                                    className="group w-full justify-between"
                                 >
                                     <span className="flex items-center gap-3">
                                         <Icon icon={MessageSquare} className="text-white/70 transition-colors group-hover:text-white" />

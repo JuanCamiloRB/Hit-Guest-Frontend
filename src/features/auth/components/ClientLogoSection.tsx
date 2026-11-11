@@ -152,7 +152,6 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
                             size="sm"
                             onClick={pickFile}
                             disabled={disabled}
-                            className="gap-1.5"
                         >
                             {busy ? <Icon icon={Loader2} className="animate-spin" /> : <Icon icon={Upload} />}
                             {logoUrl ? "Reemplazar" : "Subir logo"}
@@ -160,11 +159,10 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
                         {logoUrl && (
                             <Button
                                 type="button"
-                                variant="ghost"
+                                variant="ghost-destructive"
                                 size="sm"
                                 onClick={handleDelete}
                                 disabled={disabled}
-                                className="gap-1.5 text-danger hover:text-danger hover:bg-danger-sunk"
                             >
                                 <Icon icon={Trash2} />
                                 Eliminar

@@ -156,7 +156,6 @@ export function GuestVerificationActions({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs"
                     disabled={busy !== null}
                     onClick={() => void handleReset()}
                 >
@@ -170,9 +169,8 @@ export function GuestVerificationActions({
             {actions.showWaive && (
                 <Button
                     type="button"
-                    variant="outline"
+                    variant="outline-warning"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs text-warning border-warning/40 hover:text-warning"
                     disabled={busy !== null}
                     onClick={() => setWaiveOpen(true)}
                 >
@@ -186,7 +184,6 @@ export function GuestVerificationActions({
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-8 gap-1.5 text-xs"
                     disabled={busy !== null}
                     onClick={() => setRevokeOpen(true)}
                 >

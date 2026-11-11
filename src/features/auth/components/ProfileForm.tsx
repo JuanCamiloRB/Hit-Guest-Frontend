@@ -478,10 +478,9 @@ export function ProfileForm({ user }: ProfileFormProps) {
                 </div>
 
                 <div className="pt-4">
-                    <Button
+                    <Button size="lg"
                         type="submit"
                         disabled={isLoading}
-                        className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-8 rounded-xl shadow-sm transition-all duration-300"
                     >
                         {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                         GUARDAR CAMBIOS

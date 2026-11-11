@@ -9,7 +9,7 @@ import { useAuthStore } from "@/lib/store/auth-store"
 import { ApiError } from "@/types/api"
 import { supportService } from "../services/support-service"
 import { exitSupportSession, leaveEndedSupportSession } from "../lib/support-session"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Button } from "@/components/ui/button"
 
 /**
  * Franja fija del modo soporte (contrato §6): de quién es la cuenta, como quién
@@ -67,15 +67,15 @@ export function SupportSessionBanner() {
                     <span className="text-xs text-ink">· Se cierra tras {idleMinutes} min sin actividad</span>
                 )}
             </p>
-            <UnstyledButton
+            <Button
                 type="button"
                 onClick={() => void leave()}
                 disabled={leaving}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-70"
+                className="inline-flex items-center"
             >
                 {leaving ? <Icon icon={Loader2} className="animate-spin" /> : <Icon icon={LogOut} />}
                 Salir
-            </UnstyledButton>
+            </Button>
         </div>
     )
 }

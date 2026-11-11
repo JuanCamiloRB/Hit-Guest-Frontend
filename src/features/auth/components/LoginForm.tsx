@@ -21,7 +21,6 @@ import { Logo } from "@/components/ui/Logo"
 import { useTranslation } from "@/hooks/useTranslation"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import { AVAILABLE_LANGUAGES } from "@/lib/i18n/dictionaries"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 type UserAuthFormProps = React.HTMLAttributes<HTMLDivElement>
 
@@ -68,7 +67,6 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             variant="ghost"
                             size="sm"
                             onClick={toggleLanguage}
-                            className="text-xs font-semibold text-muted-foreground hover:text-foreground"
                         >
                             {alternateLanguage.toUpperCase()}
                         </Button>
@@ -116,9 +114,8 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                     </FormItem>
                                 )}
                             />
-                            <Button
+                            <Button size="lg"
                                 disabled={isLoading}
-                                className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300 h-11"
                             >
                                 {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin text-white" />}
                                 Continuar con el acceso
@@ -144,13 +141,12 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                     <FormItem id="otp-form-item">
                                         <div className="flex justify-between items-center mb-2">
                                             <FormLabel className="m-0">Código OTP <span className="text-destructive">*</span></FormLabel>
-                                            <UnstyledButton
+                                            <Button variant="link" size="inline"
                                                 type="button"
                                                 onClick={resetFlow}
-                                                className="text-xs text-secondary font-semibold hover:underline"
                                             >
                                                 Cambiar correo
-                                            </UnstyledButton>
+                                            </Button>
                                         </div>
                                             <div className="relative">
                                                 <Icon icon={Lock} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -174,9 +170,9 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             />
 
                             <div className="flex flex-col gap-3">
-                                <Button
+                                <Button size="lg"
                                     disabled={isLoading}
-                                    className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300 h-11 w-full"
+                                    className="w-full"
                                 >
                                     {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin text-white" />}
                                     Verificar e Iniciar Sesión
@@ -194,8 +190,8 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                     ) : (
                                         <Button
                                             type="button"
-                                            variant="ghost"
-                                            className="text-xs text-primary hover:text-primary hover:bg-primary/10 h-auto py-2"
+                                            variant="link"
+                                            size="sm"
                                             onClick={onResendOtp}
                                             disabled={isLoading || !canResend}
                                         >

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card"
 import { Upload, Trash2, Camera, Loader2, ImageIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Button } from "@/components/ui/button"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -32,7 +33,6 @@ import {
     ALLOWED_IMAGE_FORMATS_LABEL,
 } from "../lib/property-image-validation"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { FileInput } from "@/components/ui/file-input"
 
 /**
@@ -161,16 +161,16 @@ export function PropertiesPhotos() {
                                     className="object-cover w-full h-full"
                                 />
                                 {/* Siempre visible: con teclado y en pantallas táctiles no
-                                    hay «pasar el mouse». 36 px de área táctil. */}
-                                <UnstyledButton
+                                    hay «pasar el mouse». 32 px, la densidad compacta. */}
+                                <Button variant="overlay" size="icon-sm"
                                     type="button"
                                     onClick={() => setPhotoToDelete({ url, position: index + 1, total: picturesUrl.length })}
                                     disabled={isUploading}
-                                    className="absolute top-1.5 right-1.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/60 disabled:opacity-40"
+                                    className="absolute top-1.5 right-1.5"
                                     aria-label={`Eliminar ${photoLabel(index + 1, picturesUrl.length)}`}
                                 >
                                     <Icon icon={Trash2} />
-                                </UnstyledButton>
+                                </Button>
                             </div>
                         ))}
 

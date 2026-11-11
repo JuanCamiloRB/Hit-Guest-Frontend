@@ -646,7 +646,6 @@ export function PropertiesUnits() {
                         type="button"
                         size="sm"
                         onClick={handleOpenAddDialog}
-                        className="bg-primary hover:bg-primary/90 text-white font-bold px-4 rounded-lg shadow-sm transition-all"
                     >
                         <Icon icon={Plus} className="mr-2" /> Añadir Unidad
                     </Button>
@@ -1362,7 +1361,6 @@ export function PropertiesUnits() {
                                     type="button"
                                     onClick={() => void handleSaveUnit()}
                                     disabled={isSavingUnit || roomTypesLoading || roomTypes.length === 0}
-                                    className="bg-primary hover:bg-primary/90 text-white font-bold"
                                 >
                                     {isSavingUnit && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                                     {editingIndex !== null ? "Guardar Cambios" : "Añadir Unidad"}
@@ -1451,15 +1449,15 @@ export function PropertiesUnits() {
                                         ${Number(field.price || field.extra?.startPrice || field.extra?.price || 0).toLocaleString()}
                                     </TableCell>
                                     <TableCell className="text-right space-x-1 flex justify-end">
-                                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleOpenEditDialog(index)}>
+                                        <Button type="button" variant="ghost" size="icon-sm" className="w-8" onClick={() => handleOpenEditDialog(index)}>
                                             <Icon icon={Edit2} />
                                         </Button>
                                         <Button
                                             type="button"
-                                            variant="ghost"
-                                            size="icon"
+                                            variant="ghost-destructive"
+                                            size="icon-sm"
                                             aria-label={`Eliminar ${unitDisplayName(field, "alojamiento")}`}
-                                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                                            className="w-8"
                                             onClick={() => handleRemoveUnit(index)}
                                         >
                                             <Icon icon={Trash2} />

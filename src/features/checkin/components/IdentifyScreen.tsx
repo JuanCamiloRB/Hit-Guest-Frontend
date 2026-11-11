@@ -31,7 +31,7 @@ import {
     parseDeclaredPrice,
 } from "@/features/checkin/lib/declared-price"
 import { readCurrencyCode } from "@/lib/money"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -694,17 +694,17 @@ export function IdentifyScreen({
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
-                    <UnstyledButton
+                    <Button type="button" size="xl"
                         onClick={handleVerify}
                         disabled={!isValid || isSubmitting || isLoadingCatalogs}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center"
                     >
                         {isSubmitting ? (
                             <><Icon icon={Loader2} size="lg" className="animate-spin" /> Verificando...</>
                         ) : (
                             isLoadingCatalogs ? "Cargando..." : "Continuar"
                         )}
-                    </UnstyledButton>
+                    </Button>
                 </div>
             </div>
         </div>

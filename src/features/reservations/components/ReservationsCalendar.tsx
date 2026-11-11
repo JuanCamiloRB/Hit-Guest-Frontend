@@ -73,7 +73,7 @@ function MultiSelectFilter({
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className="h-9 min-w-42.5 justify-between gap-2 text-xs font-medium">
+                <Button variant="field" className="min-w-42.5">
                     <span className="truncate">{triggerText}</span>
                     <Icon icon={ChevronDown} className="text-ink-3" />
                 </Button>

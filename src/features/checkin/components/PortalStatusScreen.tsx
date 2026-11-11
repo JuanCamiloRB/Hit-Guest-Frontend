@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button"
 import { XCircle, Trash2, Clock, PauseCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import type { PortalStatus } from "../types/checkin"
@@ -68,12 +69,14 @@ export function PortalStatusScreen({ status, message }: PortalStatusScreenProps)
             {status === "pending_sync" && (
                 /* <a href=""> recarga la misma URL sin necesitar JS: esta pantalla
                    se renderiza en el servidor. */
-                <a
-                    href=""
-                    className="mt-6 inline-flex h-12 items-center gap-2 rounded-xl bg-primary px-6 font-semibold text-white transition-all active:scale-[0.98]"
-                >
-                    Reintentar
-                </a>
+                <Button asChild size="xl">
+                    <a
+                        href=""
+                        className="mt-6"
+                    >
+                        Reintentar
+                    </a>
+                </Button>
             )}
             <p className="text-xs text-ink-3 mt-8">
                 Si crees que esto es un error, contacta a tu anfitrión.

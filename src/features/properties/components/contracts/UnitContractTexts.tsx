@@ -288,7 +288,6 @@ export function UnitContractTexts({
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    className="h-7 bg-white text-xs"
                                     disabled={busy}
                                     onClick={() => void removeDocument(`replaced:${text.uuid}`, text.uuid, "Texto reemplazado borrado")}
                                 >
@@ -346,9 +345,8 @@ export function UnitContractTexts({
                                             {row.unitDocument && (
                                                 <Button
                                                     type="button"
-                                                    variant="ghost"
+                                                    variant="ghost-destructive"
                                                     size="sm"
-                                                    className="text-ink-3 hover:text-danger"
                                                     disabled={busy}
                                                     onClick={() => void removeDocument(row.key, row.unitDocument!.uuid, "La unidad vuelve a usar el texto de la propiedad")}
                                                 >
@@ -392,7 +390,6 @@ export function UnitContractTexts({
                                                 size="sm"
                                                 disabled={busy || !editing.text.replace(/<[^>]*>/g, "").trim()}
                                                 onClick={() => void saveRow(row, editing.text)}
-                                                className="bg-primary text-white hover:bg-primary/90"
                                             >
                                                 {busyKey === row.key && <Icon icon={Loader2} className="mr-1 animate-spin" />}
                                                 Guardar texto

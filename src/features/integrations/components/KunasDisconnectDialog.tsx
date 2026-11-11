@@ -56,7 +56,7 @@ export function KunasDisconnectDialog({ trigger, onConfirm }: Props) {
                     <Button variant="outline" onClick={() => setOpen(false)} disabled={isDeleting}>
                         Cancelar
                     </Button>
-                    <Button variant="destructive" onClick={handleConfirm} disabled={isDeleting} className="gap-2">
+                    <Button variant="destructive" onClick={handleConfirm} disabled={isDeleting}>
                         {isDeleting && <Icon icon={Loader2} className="animate-spin" />}
                         Desconectar
                     </Button>

@@ -136,7 +136,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                     mode="dynamic"
                                     density="compact"
                                     action={
-                                        <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => void loadPending()}>
+                                        <Button type="button" size="sm" variant="outline" onClick={() => void loadPending()}>
                                             <Icon icon={RefreshCw} /> Reintentar
                                         </Button>
                                     }
@@ -180,7 +180,6 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                 type="button"
                                                 size="sm"
                                                 variant="outline"
-                                                className="h-7 gap-1 text-xs"
                                                 onClick={() => void loadListings([listing])}
                                             >
                                                 <Icon icon={RefreshCw} /> Reintentar

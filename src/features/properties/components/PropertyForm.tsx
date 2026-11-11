@@ -688,7 +688,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     {initialData ? (
                         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                             <DialogTrigger asChild>
-                                <Button type="button" variant="outline" className="text-destructive border-destructive hover:bg-destructive/10">
+                                <Button type="button" variant="outline-destructive">
                                     <Icon icon={Trash2} className="mr-2" />
                                     Eliminar Propiedad
                                 </Button>
@@ -714,10 +714,9 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         </Dialog>
                     ) : <div />}
 
-                    <Button
+                    <Button size="lg"
                         type="submit"
                         disabled={isLoading}
-                        className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-8 rounded-lg shadow-sm transition-all"
                     >
                         {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                         {initialData ? "Actualizar Propiedad" : "Crear Propiedad"}
@@ -766,7 +765,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     </div>
                     <DialogFooter>
                         <Button 
-                            className="w-full bg-primary hover:bg-primary"
+                            className="w-full"
                             onClick={() => {
                                 setIsValidationErrorOpen(false)
                                 // Jump to the tab of the first missing field

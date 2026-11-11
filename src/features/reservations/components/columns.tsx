@@ -279,7 +279,6 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
                                 variant="ghost"
                                 size="icon-sm"
                                 aria-label={`Acciones de la reserva de ${reservation.guestName}`}
-                                className="text-ink-4 hover:text-primary"
                             >
                                 <Icon icon={MoreVertical} />
                             </Button>

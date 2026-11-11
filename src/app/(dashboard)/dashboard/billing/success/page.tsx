@@ -1,5 +1,6 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
 import { Suspense, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -45,12 +46,13 @@ function BillingSuccessContent() {
                     <p className="text-xs text-ink-4">Ref: {sessionId}</p>
                 )}
             </div>
-            <Link
-                href={BILLING_HREF}
-                className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 font-bold text-white transition-colors hover:bg-primary"
-            >
-                Go to Billing <Icon icon={ArrowRight} />
-            </Link>
+            <Button asChild size="lg">
+                <Link
+                    href={BILLING_HREF}
+                >
+                    Go to Billing <Icon icon={ArrowRight} />
+                </Link>
+            </Button>
         </div>
     )
 }

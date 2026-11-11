@@ -106,7 +106,7 @@ export function CheckinLinkDeliveryCard({
                                 mode="edit"
                                 reservationUuid={reservationUuid}
                                 trigger={
-                                    <Button type="button" size="sm" variant="outline" className="gap-1.5 text-xs">
+                                    <Button type="button" size="sm" variant="outline">
                                         <Icon icon={Phone} /> {phone ? "Corregir teléfono" : "Agregar teléfono"}
                                     </Button>
                                 }

@@ -255,7 +255,6 @@ export function DocumentPreviewModal({
                             variant="outline"
                             onClick={handleDownloadPdf}
                             disabled={downloadingPdf}
-                            className="gap-1.5"
                         >
                             {downloadingPdf ? <Icon icon={Loader2} className="animate-spin" /> : <Icon icon={Download} />}
                             Descargar PDF

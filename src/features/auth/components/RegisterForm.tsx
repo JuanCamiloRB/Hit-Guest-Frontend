@@ -121,7 +121,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                     {/* Un enlace, no un botón con `window.location`: el alta no deja
                         sesión iniciada, así que esto es una navegación normal y el
                         usuario puede abrirla en otra pestaña si quiere. */}
-                    <Button asChild className="h-12 bg-secondary font-bold text-primary-foreground shadow-sm hover:bg-secondary/90">
+                    <Button variant="secondary" size="lg" asChild>
                         <Link href="/login">Iniciar sesión</Link>
                     </Button>
                     {/* El código de acceso lo emite el login, no el registro. Decirlo
@@ -465,10 +465,10 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                         </Label>
 
                         <div className="pt-2">
-                            <Button
+                            <Button size="lg"
                                 type="submit"
                                 disabled={isLoading || !acceptedTerms}
-                                className="w-full bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300 h-11 rounded-lg"
+                                className="w-full"
                             >
                                 {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin text-white" />}
                                 Crear Cuenta

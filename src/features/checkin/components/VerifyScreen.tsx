@@ -24,6 +24,7 @@ import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { diditCompletionAction } from "@/features/checkin/lib/didit-completion"
 import type { VerificationResult } from "@didit-protocol/sdk-web"
 import { guestFormDraftKey } from "@/features/checkin/lib/guest-form-draft"
+import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -997,19 +998,19 @@ export function VerifyScreen({
 
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center gap-3">
                     <div className="w-full max-w-lg flex gap-3">
-                        <UnstyledButton onClick={handleRetry} className="flex-1 h-14 bg-sunk hover:bg-sunk text-ink-2 rounded-xl font-bold text-lg transition-all active:scale-[0.98]">
+                        <Button type="button" variant="outline" size="xl" onClick={handleRetry} className="flex-1">
                             Reintentar
-                        </UnstyledButton>
-                        <UnstyledButton
+                        </Button>
+                        <Button type="button" size="xl"
                             onClick={handleOcrConfirm}
                             disabled={
                                 !isValidDateValue(editOcr.dateOfBirth, localDateValue())
                                 || (!!editOcr.expirationDate && !isValidDateValue(editOcr.expirationDate))
                             }
-                            className="flex-[2] flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="flex-[2] flex items-center justify-center"
                         >
                             <Icon icon={CheckCircle2} size="lg" /> Continuar
-                        </UnstyledButton>
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -1036,33 +1037,34 @@ export function VerifyScreen({
                         contacta al anfitrión.
                     </p>
                 </div>
-                <UnstyledButton
+                <Button size="xl"
                     type="button"
                     onClick={handleResetVerification}
-                    className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
+                    className="flex items-center"
                 >
                     <Icon icon={RotateCcw} size="lg" />
                     Continuar verificación
-                </UnstyledButton>
-                <Link
-                    href={basePath}
-                    onClick={() => {
-                        // Sin esto, "Volver al inicio" era un loop: el marcador
-                        // `checkin-pending-didit` sobrevive a la navegación, la
-                        // reentrada al paso de verificación reanuda el sondeo, y el
-                        // huésped cae otra vez en la misma espera → mismo stale
-                        // (reportado por Didier el 2026-09-02). Limpiarlo hace que
-                        // la reentrada muestre la tarjeta de Didit —con su salida de
-                        // "Reinicia tu verificación"— en vez de la espera automática.
-                        // Solo se borra el marcador local: la decisión sobre la
-                        // sesión en sí sigue siendo del backend.
-                        try { localStorage.removeItem("checkin-pending-didit") } catch {}
-                    }}
-                    className="flex items-center gap-2 h-12 px-6 bg-sunk hover:bg-sunk text-ink-2 rounded-xl font-semibold transition-all active:scale-[0.98]"
-                >
-                    <Icon icon={ArrowLeft} size="lg" />
-                    Volver al inicio
-                </Link>
+                </Button>
+                <Button asChild variant="outline" size="xl">
+                    <Link
+                        href={basePath}
+                        onClick={() => {
+                            // Sin esto, "Volver al inicio" era un loop: el marcador
+                            // `checkin-pending-didit` sobrevive a la navegación, la
+                            // reentrada al paso de verificación reanuda el sondeo, y el
+                            // huésped cae otra vez en la misma espera → mismo stale
+                            // (reportado por Didier el 2026-09-02). Limpiarlo hace que
+                            // la reentrada muestre la tarjeta de Didit —con su salida de
+                            // "Reinicia tu verificación"— en vez de la espera automática.
+                            // Solo se borra el marcador local: la decisión sobre la
+                            // sesión en sí sigue siendo del backend.
+                            try { localStorage.removeItem("checkin-pending-didit") } catch {}
+                        }}
+                    >
+                        <Icon icon={ArrowLeft} size="lg" />
+                        Volver al inicio
+                    </Link>
+                </Button>
             </div>
         )
     }
@@ -1084,13 +1086,13 @@ export function VerifyScreen({
                         Si el problema persiste, contacta al anfitrión.
                     </p>
                 </div>
-                <UnstyledButton
+                <Button type="button" size="xl"
                     onClick={handleResetVerification}
-                    className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
+                    className="flex items-center"
                 >
                     <Icon icon={RotateCcw} size="lg" />
                     Reiniciar verificación
-                </UnstyledButton>
+                </Button>
             </div>
         )
     }
@@ -1119,15 +1121,16 @@ export function VerifyScreen({
                     )}
                 </div>
                 {isHardStop ? (
-                    <Link
-                        href={basePath}
-                        className="flex items-center gap-2 h-12 px-6 bg-sunk hover:bg-sunk text-ink-2 rounded-xl font-semibold transition-all active:scale-[0.98]"
-                    >
-                        <Icon icon={ArrowLeft} size="lg" />
-                        Volver al inicio
-                    </Link>
+                    <Button asChild variant="outline" size="xl">
+                        <Link
+                            href={basePath}
+                        >
+                            <Icon icon={ArrowLeft} size="lg" />
+                            Volver al inicio
+                        </Link>
+                    </Button>
                 ) : (
-                    <UnstyledButton
+                    <Button type="button" size="xl"
                         // Sesión Didit: SIEMPRE via reset → /identify, que emite la
                         // sesión nueva. La `verificationUrl` de un rechazo apunta a
                         // la sesión ya resuelta — reabrirla no hace nada (trampa §4
@@ -1135,11 +1138,11 @@ export function VerifyScreen({
                         // Sin sesión local (retorno desde otro navegador) tampoco hay
                         // directiva que repetir acá: /identify la vuelve a emitir.
                         onClick={verification?.type === "session" || !verification ? handleResetVerification : handleRetry}
-                        className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
+                        className="flex items-center"
                     >
                         <Icon icon={RotateCcw} size="lg" />
                         Repetir verificación
-                    </UnstyledButton>
+                    </Button>
                 )}
             </div>
         )
@@ -1226,13 +1229,12 @@ export function VerifyScreen({
                         <p className="text-xs text-ink-3">
                             El resultado se detecta automáticamente al completar la verificación.
                         </p>
-                        <UnstyledButton
+                        <Button variant="link" size="inline"
                             type="button"
                             onClick={handleResetVerification}
-                            className="text-xs text-ink-3 underline hover:text-primary transition-colors"
                         >
                             ¿La ventana aparece como &quot;sesión expirada&quot;? Reinicia tu verificación
-                        </UnstyledButton>
+                        </Button>
                     </div>
                 )
             })()}
@@ -1384,28 +1386,28 @@ export function VerifyScreen({
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     {verification.type === "session" ? (
-                        <UnstyledButton
+                        <Button type="button" size="xl"
                             onClick={handleSessionVerification}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center"
                         >
                             {diditCopy[verification.sessionType].button}
-                        </UnstyledButton>
+                        </Button>
                     ) : captureStep === "documents" ? (
-                        <UnstyledButton
+                        <Button type="button" size="xl"
                             onClick={handleDocumentsContinue}
                             disabled={!frontFile || (requiresBackImage && !backFile)}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center"
                         >
                             {isCaptureMode ? "Enviar fotos" : "Continuar"}
-                        </UnstyledButton>
+                        </Button>
                     ) : (
-                        <UnstyledButton
+                        <Button type="button" size="xl"
                             onClick={handleDocumentUpload}
                             disabled={!selfieFile}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center"
                         >
                             Analizar Documento
-                        </UnstyledButton>
+                        </Button>
                     )}
                 </div>
             </div>

@@ -74,9 +74,9 @@ export function Header() {
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                                 <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     aria-label="Idioma de la interfaz"
-                                    className="hidden sm:inline-flex h-10 w-auto px-3 gap-2 text-ink-2 bg-sunk/50 hover:bg-sunk rounded-lg border border-rule text-xs font-bold"
+                                    className="hidden sm:inline-flex w-auto"
                                 >
                                     <Icon icon={Languages} />
                                     {isMounted ? language : DEFAULT_LANGUAGE}
@@ -99,7 +99,7 @@ export function Header() {
                     {/* Profile Button / Dropdown */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button className="rounded-lg bg-primary hover:bg-primary/90 text-white gap-2 h-10 px-4">
+                            <Button>
                                 <Icon icon={CircleUserRound} />
                                 <span className="hidden sm:inline font-medium text-sm text-sm">
                                     {isMounted ? user?.firstName : t('common.loading')}

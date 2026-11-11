@@ -168,7 +168,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon-sm" className="-mt-1 rounded-full" aria-label={`Acciones de ${property.name}`}>
+                            <Button variant="ghost" size="icon-sm" className="-mt-1" aria-label={`Acciones de ${property.name}`}>
                                 <Icon icon={MoreHorizontal} />
                             </Button>
                         </DropdownMenuTrigger>
@@ -249,7 +249,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 </div>
             </CardHeader>
             <CardFooter className="p-4 pt-0">
-                <Button variant="outline" className="w-full border-primary/20 text-ink hover:bg-primary hover:text-white hover:border-transparent transition-all duration-300 font-bold rounded-xl shadow-sm hover:shadow-sm" asChild>
+                <Button variant="outline" className="w-full" asChild>
                     <Link href={`/dashboard/properties/${propertyId}`}>Gestionar</Link>
                 </Button>
             </CardFooter>

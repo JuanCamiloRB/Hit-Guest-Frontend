@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import Link from "next/link"
 import { Wallet, AlertTriangle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { useBalanceStore } from "../hooks/useBalanceStore"
 import { formatUsd, getBalanceState } from "../types"
 
@@ -30,29 +30,20 @@ export function BalanceWidget() {
     if (amount === null) return null
 
     const state = getBalanceState(amount)
-    const styles =
-        state === "depleted"
-            ? "bg-danger-sunk border-danger/30 text-danger hover:bg-danger-sunk"
-            : state === "low"
-              ? "bg-warning-sunk border-warning/30 text-warning hover:bg-warning-sunk"
-              : "bg-sunk/50 border-rule text-ink-2 hover:bg-sunk"
+    const variant =
+        state === "depleted" ? "outline-destructive" : state === "low" ? "outline-warning" : "outline"
 
     return (
-        <Link
-            href={BILLING_HREF}
-            className={cn(
-                "inline-flex h-10 items-center gap-2 rounded-lg border px-3 text-sm font-bold transition-colors",
-                styles,
-            )}
-            aria-label="Ver saldo y recargar"
-        >
-            {state === "normal" ? (
-                <Icon icon={Wallet} />
-            ) : (
-                <Icon icon={AlertTriangle} />
-            )}
-            <span className="tabular-nums">{formatUsd(amount)}</span>
-            <span className="hidden md:inline text-xs font-semibold text-ink-3">USD</span>
-        </Link>
+        <Button asChild variant={variant}>
+            <Link href={BILLING_HREF} aria-label="Ver saldo y recargar">
+                {state === "normal" ? (
+                    <Icon icon={Wallet} />
+                ) : (
+                    <Icon icon={AlertTriangle} />
+                )}
+                <span className="tabular-nums">{formatUsd(amount)}</span>
+                <span className="hidden md:inline text-xs font-semibold text-ink-3">USD</span>
+            </Link>
+        </Button>
     )
 }

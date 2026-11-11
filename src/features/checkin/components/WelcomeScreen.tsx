@@ -10,7 +10,7 @@ import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 import { isMainGuestCompleted } from "@/features/checkin/types/checkin"
 import { resolveContractSigningState } from "@/features/checkin/lib/contract-signing"
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Button } from "@/components/ui/button"
 
 interface WelcomeScreenProps {
     portal: CheckinPortalResponse
@@ -104,25 +104,20 @@ function GuestRowActions({
 }) {
     return (
         <>
-            <Link
-                href={href}
-                className={`inline-flex h-9 flex-1 items-center justify-center gap-1 rounded-lg text-xs font-bold transition-colors active:scale-[0.98] ${
-                    emphasis === "solid"
-                        ? "bg-secondary text-white hover:bg-secondary/90"
-                        : "bg-secondary/10 text-secondary hover:bg-secondary/20"
-                }`}
-            >
-                Registrar <Icon icon={ArrowRight} size="sm" />
-            </Link>
-            <UnstyledButton
+            <Button asChild size="sm" variant={emphasis === "solid" ? "secondary" : "outline"} className="flex-1">
+                <Link href={href}>
+                    Registrar <Icon icon={ArrowRight} size="sm" />
+                </Link>
+            </Button>
+            <Button variant="outline" size="icon-sm"
                 type="button"
                 onClick={onShare}
                 aria-label={shareLabel}
                 title={shareLabel}
-                className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-white text-primary transition-colors hover:bg-primary/5"
+                className="shrink-0"
             >
                 <Icon icon={Share2} size="sm" />
-            </UnstyledButton>
+            </Button>
         </>
     )
 }
@@ -441,21 +436,21 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                 ¿Viajas acompañado? Envíales el link para que hagan su registro.
                             </p>
                             <div className="flex gap-2">
-                                <UnstyledButton
+                                <Button
                                     type="button"
                                     onClick={() => handleShareLink()}
-                                    className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors active:scale-[0.98]"
+                                    className="flex-1 inline-flex items-center justify-center"
                                 >
                                     <Icon icon={Share2} />
                                     Compartir link
-                                </UnstyledButton>
-                                <UnstyledButton
+                                </Button>
+                                <Button variant="outline"
                                     type="button"
                                     onClick={() => handleCopyLink()}
-                                    className="inline-flex items-center justify-center h-10 px-3 rounded-lg border border-rule text-ink-2 text-sm font-semibold hover:bg-sunk/50 transition-colors"
+                                    className="inline-flex items-center justify-center"
                                 >
                                     Copiar
-                                </UnstyledButton>
+                                </Button>
                             </div>
                         </div>
                     )}
@@ -517,24 +512,28 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
             {isFullyCompleted ? (
                 <div className={BOTTOM_BAR}>
                     <div className={BOTTOM_BAR_INNER}>
-                        <Link
-                            href={`${basePath}/success`}
-                            className="w-full flex items-center justify-center h-14 bg-success hover:bg-success/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
-                        >
-                            Ver Resumen de Check-in
-                        </Link>
+                        <Button asChild size="xl">
+                            <Link
+                                href={`${basePath}/success`}
+                                className="w-full"
+                            >
+                                Ver Resumen de Check-in
+                            </Link>
+                        </Button>
                     </div>
                 </div>
             ) : primaryCtaHref ? (
                 <div className={BOTTOM_BAR}>
                     <div className={BOTTOM_BAR_INNER}>
-                        <Link
-                            href={primaryCtaHref}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
-                        >
-                            {primaryCtaLabel}
-                            <Icon icon={ArrowRight} size="lg" />
-                        </Link>
+                        <Button asChild size="xl">
+                            <Link
+                                href={primaryCtaHref}
+                                className="w-full"
+                            >
+                                {primaryCtaLabel}
+                                <Icon icon={ArrowRight} size="lg" />
+                            </Link>
+                        </Button>
                     </div>
                 </div>
             ) : null}

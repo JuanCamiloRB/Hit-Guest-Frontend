@@ -149,7 +149,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                             mode="dynamic"
                             density="compact"
                             action={
-                                <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => void loadPending()}>
+                                <Button type="button" size="sm" variant="outline" onClick={() => void loadPending()}>
                                     <Icon icon={RefreshCw} /> Reintentar
                                 </Button>
                             }
@@ -168,7 +168,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                                             <p className="truncate text-xs font-semibold text-ink-2">{listing.name}</p>
                                             <p className="text-xs text-warning">No se pudo cargar</p>
                                         </div>
-                                        <Button type="button" size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => void loadListings([listing])}>
+                                        <Button type="button" size="sm" variant="outline" onClick={() => void loadListings([listing])}>
                                             <Icon icon={RefreshCw} /> Reintentar
                                         </Button>
                                     </li>
@@ -354,7 +354,7 @@ function ListingDeliveryRow({
 
             {dirty && (
                 <div className="flex justify-end">
-                    <Button type="button" size="sm" className="h-7 gap-1 text-xs" onClick={() => void save()} disabled={saving}>
+                    <Button type="button" size="sm" onClick={() => void save()} disabled={saving}>
                         {saving && <Icon icon={Loader2} className="animate-spin" />}
                         Guardar
                     </Button>

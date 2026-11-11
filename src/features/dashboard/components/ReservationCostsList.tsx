@@ -131,7 +131,6 @@ export function ReservationCostsList({
                             size="sm"
                             aria-pressed={onlyBilled}
                             onClick={toggleOnlyBilled}
-                            className={cn(onlyBilled && "border-primary bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary")}
                         >
                             {/* Un solo texto: el nombre accesible queda «Solo con consumo (N)». */}
                             <span className="tabular-nums">Solo con consumo ({billedCount})</span>

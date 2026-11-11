@@ -369,7 +369,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                         asChild
                         variant="outline"
                         size="sm"
-                        className="mt-2 font-bold flex items-center gap-2"
+                        className="mt-2 flex items-center"
                     >
                         <a href={`mailto:soporte@hitguest.com?subject=${encodeURIComponent("Solicitud de automatización personalizada")}&body=${encodeURIComponent("Hola equipo HiTGuest,\n\nMe gustaría solicitar una automatización personalizada para mi propiedad.\n\nDescripción de lo que necesito:\n")}`}>
                             Solicitar Automatización personalizada

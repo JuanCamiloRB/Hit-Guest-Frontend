@@ -184,7 +184,6 @@ export function PropertiesDocuments() {
                             <Button
                                 type="button"
                                 onClick={openCreate}
-                                className="bg-primary hover:bg-primary/90 text-white font-bold gap-1.5"
                             >
                                 <Icon icon={Plus} /> Nuevo documento
                             </Button>
@@ -227,7 +226,7 @@ export function PropertiesDocuments() {
                             icon={FileText}
                             title="Aún no hay documentos para esta propiedad."
                             action={
-                                <Button type="button" variant="outline" size="sm" onClick={openCreate} className="gap-1.5">
+                                <Button type="button" variant="outline" size="sm" onClick={openCreate}>
                                     <Icon icon={Plus} /> Crear el primero
                                 </Button>
                             }
@@ -290,7 +289,6 @@ export function PropertiesDocuments() {
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() => handleRestore(doc)}
-                                                    className="gap-1.5 text-success border-success/30 hover:bg-success-sunk"
                                                 >
                                                     <Icon icon={RotateCcw} /> Restaurar
                                                 </Button>
@@ -301,7 +299,6 @@ export function PropertiesDocuments() {
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => setPreviewDoc(doc)}
-                                                        className="gap-1.5 text-primary"
                                                     >
                                                         <Icon icon={Eye} />
                                                     </Button>
@@ -310,16 +307,14 @@ export function PropertiesDocuments() {
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => openEdit(doc)}
-                                                        className="gap-1.5 text-ink-2"
                                                     >
                                                         <Icon icon={Pencil} /> Editar
                                                     </Button>
                                                     <Button
                                                         type="button"
-                                                        variant="ghost"
+                                                        variant="ghost-destructive"
                                                         size="sm"
                                                         onClick={() => setDeleteTarget(doc)}
-                                                        className="gap-1.5 text-danger hover:text-danger hover:bg-danger-sunk"
                                                     >
                                                         <Icon icon={Trash2} />
                                                     </Button>

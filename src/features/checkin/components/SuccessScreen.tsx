@@ -13,7 +13,7 @@ import { isMainGuestCompleted, pendingGuestsCount, type CheckinPortalResponse, t
 import { resolveContractSigningState, isContractTransitional } from "@/features/checkin/lib/contract-signing"
 import { completedEntryCopy, resolveCompletedEntryReason } from "@/features/checkin/lib/success-entry"
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Button } from "@/components/ui/button"
 
 interface ReservationDocument {
     uuid: string
@@ -286,16 +286,16 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                             </p>
                         </div>
                     </div>
-                    <UnstyledButton
+                    <Button type="button" size="lg"
                         onClick={handleDownloadSignedContract}
                         disabled={downloadingContract}
-                        className="w-full flex items-center justify-center gap-2 h-11 bg-success hover:bg-success/90 text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center"
                     >
                         {downloadingContract
                             ? <Icon icon={Loader2} className="animate-spin" />
                             : <Icon icon={Download} />}
                         Descargar contrato firmado
-                    </UnstyledButton>
+                    </Button>
                 </div>
             )}
 
@@ -329,17 +329,17 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                         </div>
                     </div>
                     {pollStalled && (
-                        <UnstyledButton
+                        <Button variant="outline-warning"
                             type="button"
                             onClick={handleRefreshContract}
                             disabled={refreshing}
-                            className="w-full flex items-center justify-center gap-2 h-10 bg-warning-sunk hover:bg-warning-sunk text-warning rounded-xl font-bold text-xs transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center"
                         >
                             {refreshing
                                 ? <Icon icon={Loader2} size="sm" className="animate-spin" />
                                 : <Icon icon={RefreshCw} size="sm" />}
                             Ya firmé, actualizar estado
-                        </UnstyledButton>
+                        </Button>
                     )}
                 </div>
             )}
@@ -420,17 +420,17 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                                 <h3 className="font-bold text-ink text-sm truncate">{doc.typeName}</h3>
                                 <p className="text-xs text-ink-3">Descarga tu copia aquí.</p>
                             </div>
-                            <UnstyledButton
+                            <Button type="button" variant="link" size="inline"
                                 onClick={() => handleDownloadPdf(doc.uuid)}
                                 disabled={downloadingDoc === doc.uuid}
-                                className="text-sm font-bold text-primary hover:underline disabled:opacity-50 flex-shrink-0"
+                                className="flex-shrink-0"
                             >
                                 {downloadingDoc === doc.uuid ? (
                                     <Icon icon={Loader2} className="animate-spin" />
                                 ) : (
                                     "Descargar"
                                 )}
-                            </UnstyledButton>
+                            </Button>
                         </div>
                     ))}
                 </div>
@@ -462,17 +462,21 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg flex flex-col gap-2">
                     {hasPendingSecondaries && (
-                        <Link href={welcomeHref} className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]">
-                            <Icon icon={Users} size="lg" />
-                            Ver inicio para acompañantes
-                        </Link>
+                        <Button asChild size="xl">
+                            <Link href={welcomeHref} className="w-full">
+                                <Icon icon={Users} size="lg" />
+                                Ver inicio para acompañantes
+                            </Link>
+                        </Button>
                     )}
-                    <Link
-                        href={hasPendingSecondaries ? welcomeHref : "/"}
-                        className="w-full flex items-center justify-center gap-2 h-12 bg-ink hover:bg-ink/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
-                    >
-                        {hasPendingSecondaries ? "Cerrar y volver al inicio" : "Cerrar"}
-                    </Link>
+                    <Button asChild variant="outline" size="xl">
+                        <Link
+                            href={hasPendingSecondaries ? welcomeHref : "/"}
+                            className="w-full"
+                        >
+                            {hasPendingSecondaries ? "Cerrar y volver al inicio" : "Cerrar"}
+                        </Link>
+                    </Button>
                 </div>
             </div>
         </div>

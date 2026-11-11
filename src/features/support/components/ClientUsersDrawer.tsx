@@ -326,14 +326,14 @@ function DrawerBody({
                             </div>
                         ) : (
                             <div className="flex min-w-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                                <Button type="button" variant="outline" className="h-11" onClick={onClose} disabled={busy}>
+                                <Button size="lg" type="button" variant="outline" onClick={onClose} disabled={busy}>
                                     Cancelar
                                 </Button>
                                 {/* Un nombre largo se corta con «…» dentro del botón (que no
                                     parte líneas); el nombre completo queda en aria-label y title. */}
-                                <Button
+                                <Button size="lg"
                                     type="submit"
-                                    className="h-11 min-w-0 max-w-full"
+                                    className="min-w-0 max-w-full"
                                     disabled={busy || !selectedUser}
                                     aria-label={selectedUser ? `Entrar como ${selectedUser.name}` : undefined}
                                     title={selectedUser ? `Entrar como ${selectedUser.name}` : undefined}

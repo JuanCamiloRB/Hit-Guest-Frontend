@@ -74,7 +74,7 @@ export function IdentityOverrideSelector({
                     mode="dynamic"
                     density="compact"
                     action={
-                        <Button type="button" variant="outline" size="sm" className="gap-1" onClick={catalog.retry}>
+                        <Button type="button" variant="outline" size="sm" onClick={catalog.retry}>
                             <Icon icon={RefreshCw} /> Reintentar
                         </Button>
                     }

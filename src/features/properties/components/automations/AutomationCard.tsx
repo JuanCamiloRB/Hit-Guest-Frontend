@@ -678,15 +678,9 @@ export function AutomationCard({
                                 {isContractRouting && onNavigateToDocuments && (
                                     <Button
                                         type="button"
-                                        variant="ghost"
+                                        variant={routingSummary ? "ghost" : "outline-warning"}
                                         size="sm"
                                         onClick={onNavigateToDocuments}
-                                        className={cn(
-                                            "h-8 text-xs font-bold gap-1.5 px-3 hover:bg-primary/5",
-                                            routingSummary
-                                                ? "text-primary"
-                                                : "text-warning hover:text-warning",
-                                        )}
                                     >
                                         {!routingSummary && <Icon icon={AlertCircle} />}
                                         <Icon icon={FileSignature} />
@@ -696,15 +690,9 @@ export function AutomationCard({
                                 {!isContractRouting && selectedProviderNeedsConfig && selectedProvider && (
                                     <Button
                                         type="button"
-                                        variant="ghost"
+                                        variant={needsConfig ? "outline-warning" : "ghost"}
                                         size="sm"
                                         onClick={() => setConfigOpen(true)}
-                                        className={cn(
-                                            "h-8 text-xs font-bold gap-1.5 px-3 hover:bg-primary/5",
-                                            needsConfig
-                                                ? "text-warning hover:text-warning"
-                                                : "text-primary hover:text-primary"
-                                        )}
                                     >
                                         {needsConfig && <Icon icon={AlertCircle} />}
                                         <Icon icon={Settings2} />

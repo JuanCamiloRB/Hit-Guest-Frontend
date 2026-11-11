@@ -698,7 +698,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                         {orphanRemovalConfirmed ? (
                             <div className="flex flex-wrap items-center gap-2 text-xs">
                                 <span>Se quitará cuando guardes. Los demás canales no cambian.</span>
-                                <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setOrphanRemovalConfirmed(false)} disabled={saving}>
+                                <Button type="button" variant="ghost" size="sm" onClick={() => setOrphanRemovalConfirmed(false)} disabled={saving}>
                                     Deshacer
                                 </Button>
                             </div>
@@ -708,7 +708,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                                     Para guardar cualquier cambio en los contratos hay que quitarla: al guardar se
                                     reemplaza la configuración de todos los canales.
                                 </p>
-                                <Button type="button" variant="outline" size="sm" className="text-xs" onClick={() => setOrphanRemovalConfirmed(true)} disabled={saving}>
+                                <Button type="button" variant="outline" size="sm" onClick={() => setOrphanRemovalConfirmed(true)} disabled={saving}>
                                     Quitar configuración desconocida
                                 </Button>
                             </div>
@@ -879,7 +879,6 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     type="button"
                     onClick={handleSave}
                     disabled={saving || routingBlocked || orphansPendingDecision || !hasUnsavedChanges}
-                    className="bg-primary hover:bg-primary/90 text-white font-bold"
                 >
                     {saving && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                     Guardar contrato y firma

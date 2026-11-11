@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button"
 import { WelcomeScreen } from "@/features/checkin/components/WelcomeScreen"
 import { PortalStatusScreen } from "@/features/checkin/components/PortalStatusScreen"
 import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
@@ -25,12 +26,14 @@ export default async function CheckinByExternalPage({
                 <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
                     <h1 className="text-2xl font-bold text-ink mb-2">Demasiados intentos</h1>
                     <p className="text-ink-3">Espera un momento y vuelve a intentarlo.</p>
-                    <a
-                        href=""
-                        className="mt-6 inline-flex h-12 items-center rounded-xl bg-primary px-6 font-semibold text-white"
-                    >
-                        Reintentar
-                    </a>
+                    <Button asChild size="xl">
+                        <a
+                            href=""
+                            className="mt-6"
+                        >
+                            Reintentar
+                        </a>
+                    </Button>
                 </div>
             )
         }

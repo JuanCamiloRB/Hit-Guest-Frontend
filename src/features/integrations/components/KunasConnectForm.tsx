@@ -129,7 +129,6 @@ export function KunasConnectForm({ onConnect }: Props) {
             <Button
                 type="submit"
                 disabled={!canSubmit}
-                className="gap-2 bg-primary hover:bg-primary text-white font-bold"
             >
                 {isSubmitting ? <Icon icon={Loader2} className="animate-spin" /> : <Icon icon={Plug} />}
                 Conectar KunasPMS

@@ -226,7 +226,7 @@ function CreateAgentForm({ onCreated }: { onCreated: () => void }) {
                     />
                     {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
                 </div>
-                <Button type="submit" className="h-11 sm:mt-5.5" disabled={saving}>
+                <Button size="lg" type="submit" className="sm:mt-5.5" disabled={saving}>
                     {saving ? <Icon icon={Loader2} className="mr-1.5 animate-spin" /> : <Icon icon={UserPlus} className="mr-1.5" />}
                     Dar de alta
                 </Button>

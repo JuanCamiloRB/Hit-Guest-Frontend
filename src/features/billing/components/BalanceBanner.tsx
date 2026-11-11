@@ -1,5 +1,6 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
 import { useEffect } from "react"
 import Link from "next/link"
 import { AlertTriangle, X } from "lucide-react"
@@ -37,12 +38,13 @@ export function BalanceBanner() {
                     <Icon icon={AlertTriangle} />
                     <span>Your automations are paused. Your account has no credits left.</span>
                 </div>
-                <Link
-                    href={BILLING_HREF}
-                    className="rounded-lg bg-destructive px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-destructive-hover"
-                >
-                    Add Credits
-                </Link>
+                <Button asChild size="sm">
+                    <Link
+                        href={BILLING_HREF}
+                    >
+                        Add Credits
+                    </Link>
+                </Button>
             </div>
         )
     }
@@ -58,12 +60,13 @@ export function BalanceBanner() {
                 </span>
             </div>
             <div className="flex items-center gap-2">
-                <Link
-                    href={BILLING_HREF}
-                    className="rounded-lg bg-warning px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-warning/90"
-                >
-                    Add Credits
-                </Link>
+                <Button asChild size="sm">
+                    <Link
+                        href={BILLING_HREF}
+                    >
+                        Add Credits
+                    </Link>
+                </Button>
                 <UnstyledButton
                     type="button"
                     onClick={dismissLowBanner}

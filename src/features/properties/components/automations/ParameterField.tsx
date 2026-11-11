@@ -71,7 +71,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                     variant="outline"
                     size="sm"
                     onClick={addItem}
-                    className="w-full gap-1.5 border-dashed"
+                    className="w-full"
                 >
                     <Icon icon={Plus} /> Agregar {schema.label}
                 </Button>
@@ -117,7 +117,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                     variant="outline"
                     size="sm"
                     onClick={addItem}
-                    className="w-full gap-1.5 border-dashed"
+                    className="w-full"
                 >
                     <Icon icon={Plus} /> Agregar {schema.label.toLowerCase()}
                 </Button>

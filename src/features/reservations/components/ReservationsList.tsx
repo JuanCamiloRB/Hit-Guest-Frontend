@@ -30,7 +30,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { format, isValid, isWithinInterval, startOfDay, endOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import type { DateRange } from "react-day-picker"
-import { cn } from "@/lib/utils"
 import { reservationsService } from "../services/reservations-service"
 import { useAutomationStatusLoader, type StatusSnapshot } from "../hooks/useAutomationStatusLoader"
 import { reservationsCache, useReservations } from "../hooks/useReservations"
@@ -86,7 +85,6 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 
 
@@ -399,11 +397,9 @@ export default function ReservationsList() {
                 <Popover>
                     <PopoverTrigger asChild>
                         <Button
-                            variant="outline"
-                            className={cn(
-                                "w-full sm:w-auto justify-start gap-2 font-normal",
-                                !dateRange?.from && "text-ink-3"
-                            )}
+                            variant="field"
+                            data-placeholder={!dateRange?.from || undefined}
+                            className="w-full sm:w-auto justify-start"
                         >
                             <Icon icon={CalendarIcon} />
                             {dateRange?.from ? (
@@ -420,19 +416,17 @@ export default function ReservationsList() {
                         {/* Which date column the range applies to */}
                         <div className="flex gap-1 border-b border-rule p-2">
                             {(Object.keys(DATE_FIELD_LABELS) as DateField[]).map((f) => (
-                                <UnstyledButton
+                                <Button
                                     key={f}
                                     type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    aria-pressed={dateField === f}
                                     onClick={() => setDateField(f)}
-                                    className={cn(
-                                        "flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
-                                        dateField === f
-                                            ? "bg-primary text-white"
-                                            : "text-ink-3 hover:bg-sunk"
-                                    )}
+                                    className="flex-1"
                                 >
                                     {DATE_FIELD_LABELS[f]}
-                                </UnstyledButton>
+                                </Button>
                             ))}
                         </div>
                         <Calendar
@@ -449,7 +443,7 @@ export default function ReservationsList() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setDateRange(undefined)}
-                                    className="w-full text-ink-3 gap-1.5"
+                                    className="w-full"
                                 >
                                     <Icon icon={X} />
                                     Quitar fechas
@@ -459,7 +453,7 @@ export default function ReservationsList() {
                     </PopoverContent>
                 </Popover>
                 {hasActiveFilters && (
-                    <Button variant="ghost" onClick={clearFilters} className="text-ink-3 gap-1.5">
+                    <Button variant="ghost" onClick={clearFilters}>
                         <Icon icon={X} />
                         Limpiar
                     </Button>
@@ -482,9 +476,9 @@ export default function ReservationsList() {
             {preparing ? (
                 <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-sunk px-3 py-2 text-sm text-ink-2">
                     <span>Preparando todos los estados para ordenar… {settled} de {filtered.length}</span>
-                    <UnstyledButton type="button" onClick={cancelPreparingSort} className="text-sm font-semibold text-primary underline-offset-2 hover:underline">
+                    <Button variant="link" size="inline" type="button" onClick={cancelPreparingSort}>
                         Cancelar orden
-                    </UnstyledButton>
+                    </Button>
                 </div>
             ) : failedInStatusSort > 0 ? (
                 <FeedbackBanner tone="warning" mode="dynamic">

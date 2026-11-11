@@ -95,7 +95,7 @@ export function KunasStatusCard({
                     currentEmail={integration.parameters.email ?? ""}
                     onSave={onUpdateCredentials}
                     trigger={
-                        <Button variant="outline" size="sm" className="gap-1.5">
+                        <Button variant="outline" size="sm">
                             <Icon icon={Pencil} /> Editar credenciales
                         </Button>
                     }
@@ -106,7 +106,6 @@ export function KunasStatusCard({
                     size="sm"
                     onClick={handleToggle}
                     disabled={isToggling}
-                    className="gap-1.5"
                 >
                     {isToggling ? (
                         <Icon icon={Loader2} className="animate-spin" />
@@ -122,9 +121,8 @@ export function KunasStatusCard({
                     onConfirm={onDisconnect}
                     trigger={
                         <Button
-                            variant="ghost"
+                            variant="ghost-destructive"
                             size="sm"
-                            className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
                             <Icon icon={Unplug} /> Desconectar
                         </Button>

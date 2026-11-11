@@ -90,7 +90,6 @@ import { reservationsService } from "@/features/reservations/services/reservatio
 import { createReservationWithFollowUp } from "@/features/reservations/lib/create-reservation-followup"
 import { readGuestNameParts } from "@/features/reservations/lib/guest-name"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 // ── Zod Schema ──────────────────────────────────────────────
 const reservationSchema = z.object({
@@ -641,7 +640,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                 {trigger ? trigger : (
                     // Botón principal estándar: el morado de marca con texto blanco
                     // daba 4,42:1 (no AA); `primary` es su versión de interacción.
-                    <Button className="gap-2">
+                    <Button>
                         <Icon icon={Plus} />
                         Nueva reserva
                     </Button>
@@ -897,7 +896,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                 {mode === "create" && " Sin canal no se puede crear la reserva."}
                                                 {mode === "edit" && editSource && " Se conserva el canal actual."}{" "}
                                                 {/* `aria-disabled`, no `disabled`: el foco se queda en el botón mientras reintenta. */}
-                                                <UnstyledButton
+                                                <Button variant="link" size="inline"
                                                     type="button"
                                                     aria-disabled={loadingSources}
                                                     onClick={async () => {
@@ -906,10 +905,9 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                             requestAnimationFrame(() => channelTriggerRef.current?.focus())
                                                         }
                                                     }}
-                                                    className="font-semibold text-primary underline-offset-2 hover:underline aria-disabled:opacity-60"
                                                 >
                                                     {loadingSources ? "Reintentando…" : "Reintentar"}
-                                                </UnstyledButton>
+                                                </Button>
                                             </p>
                                         )}
                                         <FormMessage />
@@ -938,11 +936,9 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                         <PopoverTrigger asChild>
                                             <FormControl>
                                                 <Button
-                                                    variant="outline"
-                                                    className={cn(
-                                                        "w-full pl-3 text-left font-normal justify-between rounded-xl h-11 bg-sunk/50 border-rule hover:bg-sunk transition-colors text-ink-2 hover:text-ink",
-                                                        !field.value?.from && "text-ink-3 hover:text-ink-2"
-                                                    )}
+                                                    variant="field"
+                                                    data-placeholder={!field.value?.from || undefined}
+                                                    className="w-full"
                                                 >
                                                     {field.value?.from ? (
                                                         field.value.to ? (
@@ -1138,7 +1134,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             <Button
                                 type="submit"
                                 disabled={isLoading || (mode === "create" && (sourcesFailed || loadingSources))}
-                                className="bg-primary hover:bg-primary/90 text-white gap-2 font-semibold min-w-40"
+                                className="min-w-40"
                             >
                                 {isLoading ? (
                                     <>

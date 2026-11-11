@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button"
 import { Metadata } from "next"
 import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
 import { SecondarySuccessScreen } from "@/features/checkin/components/SecondarySuccessScreen"
@@ -36,9 +37,11 @@ export default async function SecondarySuccessPage({
                     Intenta cargar de nuevo en un momento.
                 </p>
                 {/* href="" recarga esta misma URL, query incluida. */}
-                <a href="" className="h-12 px-6 flex items-center justify-center rounded-xl bg-primary font-bold text-white">
-                    Reintentar
-                </a>
+                <Button asChild size="xl">
+                    <a href="">
+                        Reintentar
+                    </a>
+                </Button>
             </div>
         )
     }

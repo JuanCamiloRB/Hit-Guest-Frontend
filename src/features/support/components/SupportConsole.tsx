@@ -108,7 +108,7 @@ export function SupportConsole() {
                         className="h-11 pl-9"
                     />
                 </div>
-                <Button type="submit" className="h-11">Buscar</Button>
+                <Button size="lg" type="submit">Buscar</Button>
             </form>
 
             {summary && (

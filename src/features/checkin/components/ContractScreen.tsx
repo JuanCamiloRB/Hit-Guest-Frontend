@@ -31,6 +31,7 @@ import type {
     SigningProvider,
     GuaranteeStatus,
 } from "@/features/checkin/types/checkin"
+import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -801,23 +802,25 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                     <div className="w-full max-w-lg flex flex-col gap-2">
                         {!isRejected && (
-                            <UnstyledButton
+                            <Button size="xl"
                                 type="button"
                                 onClick={() => {
                                     setIsLoading(true)
                                     loadDocuments()
                                 }}
-                                className="w-full flex items-center justify-center gap-2 h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
+                                className="w-full flex items-center justify-center"
                             >
                                 <Icon icon={RefreshCw} /> Ya firmé, actualizar
-                            </UnstyledButton>
+                            </Button>
                         )}
-                        <Link
-                            href={basePath}
-                            className="w-full flex items-center justify-center h-12 bg-ink hover:bg-ink/90 text-white rounded-xl font-bold text-base transition-all active:scale-[0.98]"
-                        >
-                            Volver al inicio
-                        </Link>
+                        <Button asChild variant="outline" size="xl">
+                            <Link
+                                href={basePath}
+                                className="w-full"
+                            >
+                                Volver al inicio
+                            </Link>
+                        </Button>
                     </div>
                 </div>
             </div>
@@ -1056,10 +1059,10 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 <div className="w-full max-w-lg">
                     {/* Un solo botón primario en pantalla, siempre. Antes convivían
                         el CTA de la tarjeta y el de finalizar, y competían entre sí. */}
-                    <UnstyledButton
+                    <Button type="button" size="xl"
                         onClick={isContractPhaseCta ? handleContractContinue : handleComplete}
                         disabled={(isContractPhaseCta ? !contractPartValid : !isFormValid) || isSubmitting}
-                        className="w-full flex flex-col items-center justify-center gap-1 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex flex-col items-center justify-center"
                     >
                         {isSubmitting ? (
                             <>
@@ -1084,7 +1087,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                     ? "Firmar y Completar"
                                     : "Aceptar y Completar"
                         )}
-                    </UnstyledButton>
+                    </Button>
                 </div>
             </div>
             )}

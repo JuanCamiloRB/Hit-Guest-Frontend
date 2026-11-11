@@ -109,7 +109,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
         <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
                 {trigger ?? (
-                    <Button size="sm" className="gap-1.5">
+                    <Button size="sm">
                         <Icon icon={Plus} /> Recargar
                     </Button>
                 )}
@@ -133,9 +133,9 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                     {packagesStatus === "unavailable" && (
                         <div role="alert" className="rounded-lg bg-warning-sunk px-3 py-2 text-sm text-warning">
                             <p>No pudimos cargar los montos sugeridos. Puedes ingresar otro monto o reintentar.</p>
-                            <UnstyledButton type="button" onClick={loadPackages} className="mt-1 font-semibold underline">
+                            <Button variant="link-inherit" size="inline" type="button" onClick={loadPackages} className="mt-1">
                                 Reintentar
-                            </UnstyledButton>
+                            </Button>
                         </div>
                     )}
                     {presets.length > 0 && (
@@ -187,7 +187,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                     <Button
                         onClick={handleRecharge}
                         disabled={isSubmitting || packagesStatus === "loading" || belowMinimum || invalidAmount}
-                        className="w-full gap-2 bg-primary hover:bg-primary text-white font-bold"
+                        className="w-full"
                     >
                         {isSubmitting && <Icon icon={Loader2} className="animate-spin" />}
                         Continuar al pago

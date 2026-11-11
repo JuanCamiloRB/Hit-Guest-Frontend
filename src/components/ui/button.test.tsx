@@ -6,7 +6,10 @@ import { Button, buttonVariants } from "./button"
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn(), prefetch: vi.fn() }), usePathname: () => "/" }))
 
-const VARIANTS = ["default", "destructive", "outline", "secondary", "ghost", "link"] as const
+const VARIANTS = [
+    "default", "destructive", "outline", "secondary", "ghost", "link",
+    "outline-destructive", "outline-warning", "ghost-destructive", "link-inherit", "inverse", "overlay", "field",
+] as const
 
 describe("Button — estados", () => {
     it("ninguna variante escala ni desplaza; hover y active usan color explícito, no opacidad", () => {
@@ -26,9 +29,16 @@ describe("Button — estados", () => {
         for (const cls of ["focus-visible:outline-solid", "focus-visible:outline-2", "focus-visible:outline-offset-2", "focus-visible:outline-ring"]) {
             expect(classes).toContain(cls)
         }
-        for (const variant of ["default", "secondary", "destructive", "outline", "ghost", "link"] as const) {
+        for (const variant of VARIANTS) {
             expect(buttonVariants({ variant })).not.toMatch(/focus-visible:ring-/)
         }
+    })
+
+    it.each(["inverse", "overlay"] as const)("%s: sobre fondo oscuro el foco es blanco y reemplaza al morado", (variant) => {
+        render(<Button variant={variant}>Copiar</Button>)
+        const button = screen.getByRole("button", { name: "Copiar" })
+        expect(button).toHaveClass("focus-visible:outline-white", "focus-visible:outline-solid")
+        expect(button).not.toHaveClass("focus-visible:outline-ring")
     })
 
     it("deshabilitado: legible (sunk + ink-3), cursor not-allowed y sin eventos", () => {
@@ -200,3 +210,37 @@ describe("Button — estados", () => {
     })
 })
 
+describe("Button — variantes de DS-6", () => {
+    it.each(["outline", "ghost"] as const)("%s con aria-pressed pinta el estado activo de un conmutador", (variant) => {
+        render(<Button variant={variant} aria-pressed>Solo con consumo</Button>)
+        const button = screen.getByRole("button", { name: "Solo con consumo", pressed: true })
+        expect(button).toHaveClass("aria-pressed:bg-primary/10", "aria-pressed:text-primary")
+    })
+
+    it("field: forma de campo y tinta de marcador mientras no hay valor", () => {
+        render(<Button variant="field" data-placeholder>Fechas</Button>)
+        const button = screen.getByRole("button", { name: "Fechas" })
+        expect(button).toHaveClass("border-input", "hover:border-input-hover", "data-placeholder:text-ink-3", "font-normal")
+        expect(button).not.toHaveClass("font-medium")
+        expect(button).toHaveAttribute("data-placeholder")
+    })
+
+    it("inline toma el tamaño del texto que lo rodea", () => {
+        render(<p className="text-xs">¿No llegó? <Button variant="link" size="inline">Reenviar</Button></p>)
+        const button = screen.getByRole("button", { name: "Reenviar" })
+        expect(button).toHaveClass("[font-size:inherit]", "[line-height:inherit]", "p-0")
+        expect(button).not.toHaveClass("h-10")
+    })
+
+    it("xl es la acción del portal: 48 px", () => {
+        render(<Button size="xl">Continuar</Button>)
+        expect(screen.getByRole("button", { name: "Continuar" })).toHaveClass("h-12")
+    })
+
+    it("los destructivos y el de aviso usan los tokens de estado, nunca rojo o ámbar de paleta", () => {
+        expect(buttonVariants({ variant: "outline-destructive" })).toMatch(/text-danger/)
+        expect(buttonVariants({ variant: "ghost-destructive" })).toMatch(/hover:bg-danger-sunk/)
+        expect(buttonVariants({ variant: "outline-warning" })).toMatch(/text-warning/)
+        for (const variant of VARIANTS) expect(buttonVariants({ variant })).not.toMatch(/-(?:red|amber|orange)-\d/)
+    })
+})

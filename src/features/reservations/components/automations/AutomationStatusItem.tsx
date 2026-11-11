@@ -162,14 +162,16 @@ export function AutomationStatusItem({
             )}
 
             {hasSignedContract && (
-                <a
-                    href={signedContractUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-success-sunk px-3 py-1.5 text-xs font-semibold text-success transition-opacity hover:opacity-80"
-                >
-                    <Icon icon={FileText} size="sm" /> Ver contrato firmado
-                </a>
+                <Button asChild variant="outline" size="sm">
+                    <a
+                        href={signedContractUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-fit"
+                    >
+                        <Icon icon={FileText} size="sm" /> Ver contrato firmado
+                    </a>
+                </Button>
             )}
 
             <div className="mt-auto flex items-center justify-between gap-2 pt-1">
@@ -186,10 +188,9 @@ export function AutomationStatusItem({
                     {canManual && !perGuest && item.canRedispatch ? (
                         <Button
                             size="sm"
-                            variant="outline"
+                            variant="outline-destructive"
                             disabled={retryDisabled}
                             onClick={() => onRedispatch(item)}
-                            className="h-8 gap-1.5 border-danger/30 text-danger hover:bg-danger-sunk hover:text-danger"
                         >
                             {isRedispatching ? (
                                 <><Icon icon={Loader2} className="animate-spin" /> Reenviando...</>
@@ -205,7 +206,6 @@ export function AutomationStatusItem({
                             variant="outline"
                             disabled={isDispatching || inCooldown}
                             onClick={() => onDispatch(item)}
-                            className="h-8 gap-1.5 border-primary/20 text-primary hover:bg-primary/10 hover:text-primary"
                         >
                             {isDispatching ? (
                                 <><Icon icon={Loader2} className="animate-spin" /> Disparando...</>
@@ -226,7 +226,7 @@ export function AutomationStatusItem({
                     {canResendPdf && (
                         <Button
                             size="sm"
-                            variant="outline"
+                            variant={confirmingResend ? "outline-warning" : "outline"}
                             disabled={isDispatching || inCooldown}
                             onClick={() => {
                                 if (confirmingResend) {
@@ -237,12 +237,6 @@ export function AutomationStatusItem({
                                 }
                             }}
                             onBlur={() => setConfirmingResend(false)}
-                            className={cn(
-                                "h-8 gap-1.5",
-                                confirmingResend
-                                    ? "border-warning/40 text-warning hover:bg-warning-sunk hover:text-warning"
-                                    : "border-primary/20 text-primary hover:bg-primary/10 hover:text-primary",
-                            )}
                         >
                             {isDispatching ? (
                                 <><Icon icon={Loader2} className="animate-spin" /> Enviando...</>
@@ -319,11 +313,10 @@ function GuestRow({
                     {canManual && guest.canRedispatch ? (
                         <Button
                             size="sm"
-                            variant="outline"
+                            variant="outline-destructive"
                             disabled={isRedispatching || inCooldown}
                             onClick={() => onRedispatch(item, guest)}
                             aria-label={`Reintentar para ${guest.name}`}
-                            className="h-7 gap-1 border-danger/30 px-2 text-xs text-danger hover:bg-danger-sunk hover:text-danger"
                         >
                             {isRedispatching ? <Icon icon={Loader2} className="animate-spin" /> : inCooldown ? formatCooldown(cooldownLeft) : <><Icon icon={RotateCcw} /> Reintentar</>}
                         </Button>
@@ -334,7 +327,6 @@ function GuestRow({
                             disabled={isDispatching || inCooldown}
                             onClick={() => onDispatch(item, guest)}
                             aria-label={`Despachar para ${guest.name}`}
-                            className="h-7 gap-1 border-primary/20 px-2 text-xs text-primary hover:bg-primary/10 hover:text-primary"
                         >
                             {isDispatching ? <Icon icon={Loader2} className="animate-spin" /> : inCooldown ? formatCooldown(cooldownLeft) : <><Icon icon={Play} /> Despachar</>}
                         </Button>

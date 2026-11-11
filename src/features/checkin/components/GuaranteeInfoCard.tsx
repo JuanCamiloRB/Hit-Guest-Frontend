@@ -1,6 +1,6 @@
 import { Check, CreditCard, Lock, Trash2, ArrowRight } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Button } from "@/components/ui/button"
 
 interface GuaranteeInfoCardProps {
     onContinue: () => void
@@ -142,14 +142,14 @@ export function GuaranteeInfoCard({ onContinue }: GuaranteeInfoCardProps) {
             </div>
 
             <div className="pt-1">
-                <UnstyledButton
+                <Button size="xl"
                     type="button"
                     onClick={onContinue}
-                    className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-primary text-primary-foreground text-sm font-bold transition-colors hover:bg-primary-hover"
+                    className="w-full flex items-center justify-center"
                 >
                     Continuar con confianza
                     <Icon icon={ArrowRight} />
-                </UnstyledButton>
+                </Button>
                 <p className="flex items-center justify-center gap-1.5 text-xs text-ink-3 mt-2.5">
                     <Icon icon={Lock} size="xs" /> Se elimina automáticamente 2 días después de tu check-out
                 </p>

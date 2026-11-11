@@ -61,7 +61,7 @@ export function ContractChannelCard({
                 </div>
                 <div className="flex shrink-0 items-center justify-end gap-2">
                     {onRemove && status !== "unconfigured" && (
-                        <Button type="button" variant="ghost" size="sm" onClick={onRemove} className="text-ink-3 hover:text-danger">
+                        <Button type="button" variant="ghost-destructive" size="sm" onClick={onRemove}>
                             Quitar configuración
                         </Button>
                     )}

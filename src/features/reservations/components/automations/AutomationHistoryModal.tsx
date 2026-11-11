@@ -1,5 +1,6 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import { FileText } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
@@ -159,14 +160,16 @@ function HistoryRow({
             )}
 
             {record.responsePayload?.pdf_path != null && (
-                <a
-                    href={`${API_BASE}/checkin/${reservationUuid}/contract/signed`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-lg bg-success-sunk px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-success transition-opacity hover:opacity-80"
-                >
-                    <Icon icon={FileText} size="sm" /> Ver contrato firmado
-                </a>
+                <Button asChild variant="outline" size="sm">
+                    <a
+                        href={`${API_BASE}/checkin/${reservationUuid}/contract/signed`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 w-fit"
+                    >
+                        <Icon icon={FileText} size="sm" /> Ver contrato firmado
+                    </a>
+                </Button>
             )}
         </li>
     )

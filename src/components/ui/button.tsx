@@ -1,3 +1,7 @@
+"use client"
+
+// Cliente: el botón maneja `onClickCapture` (bloqueo de `loading`/`aria-disabled`),
+// y las páginas de servidor del portal lo usan con `asChild` sobre un enlace.
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { Loader2 } from "lucide-react"
@@ -23,10 +27,19 @@ import { cn } from "@/lib/utils"
  * - loading: ver `Button`. Se ve con su color (los estilos de no disponible
  *   excluyen `data-loading`).
  *
+ * Variantes (DS-6): una por intención, nunca colores desde la pantalla.
+ * `outline-destructive`/`ghost-destructive` eliminan o desconectan;
+ * `outline-warning` pide atención sin destruir (exonerar, «requerido»);
+ * `link-inherit` es la acción de texto dentro de un aviso (toma su color);
+ * `inverse` va sobre superficies oscuras; `overlay`, sobre una foto; `field`
+ * es un disparador con forma de campo. `outline` y `ghost` con
+ * `aria-pressed` pintan el estado activo de un conmutador.
+ *
  * Densidades (paso 4.5):
  * - Predeterminada — formularios y acciones principales: `default`/`icon` 40 px,
  *   `lg`/`icon-lg` 44 px.
  * - Compacta — tablas y barras densas: `sm`/`icon-sm` 32 px, nunca menos.
+ * - Portal del huésped — `xl` 48 px para la acción principal de cada paso.
  *   (Se retiraron `xs`/`icon-xs`, de 24 px: nadie los usaba.)
  */
 const buttonVariants = cva(
@@ -38,23 +51,44 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-white hover:bg-destructive-hover active:bg-destructive-hover disabled:bg-sunk aria-disabled:not-data-loading:bg-sunk",
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground active:bg-accent dark:bg-input/30 dark:border-input dark:hover:bg-input/50 disabled:bg-transparent",
+          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground active:bg-accent dark:bg-input/30 dark:border-input dark:hover:bg-input/50 disabled:bg-transparent aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary",
+        "outline-destructive":
+          "border border-danger/30 bg-background text-danger shadow-xs hover:bg-danger-sunk active:bg-danger-sunk disabled:border-rule disabled:bg-transparent",
+        "outline-warning":
+          "border border-warning/40 bg-background text-warning shadow-xs hover:bg-warning-sunk active:bg-warning-sunk disabled:border-rule disabled:bg-transparent",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary-hover active:bg-secondary-hover disabled:bg-sunk aria-disabled:not-data-loading:bg-sunk",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground active:bg-accent dark:hover:bg-accent/50 disabled:bg-transparent",
+          "hover:bg-accent hover:text-accent-foreground active:bg-accent dark:hover:bg-accent/50 disabled:bg-transparent aria-pressed:bg-primary/10 aria-pressed:text-primary",
+        "ghost-destructive":
+          "text-danger hover:bg-danger-sunk active:bg-danger-sunk disabled:bg-transparent",
+        // Sobre una superficie oscura o de color (panel de Acciones rápidas).
+        inverse:
+          "bg-white/10 text-white hover:bg-white/20 active:bg-white/20 focus-visible:outline-white disabled:bg-white/5 disabled:text-white/60 aria-disabled:not-data-loading:bg-white/5 aria-disabled:not-data-loading:text-white/60",
+        // Sobre una foto: necesita su propio fondo para leerse sobre cualquier imagen.
+        overlay:
+          "bg-ink/70 text-white hover:bg-ink/85 active:bg-ink/85 focus-visible:outline-white disabled:bg-ink/40 disabled:text-white/70",
+        // Disparador con forma de campo (fecha, mes): mismo borde, alto y foco
+        // que Input y SelectTrigger. `data-placeholder` mientras no hay valor.
+        field:
+          "justify-between border border-input bg-background font-normal text-ink shadow-xs hover:border-input-hover aria-expanded:border-ring data-placeholder:text-ink-3 disabled:bg-sunk",
         link: "text-primary underline-offset-4 hover:underline disabled:no-underline aria-disabled:no-underline",
+        // Acción dentro de un aviso: toma el color del aviso y va subrayada.
+        "link-inherit": "text-current underline underline-offset-2 hover:no-underline disabled:no-underline aria-disabled:no-underline",
       },
       size: {
         default: "h-10 px-4 py-2 has-[>svg]:px-3",
         sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
         lg: "h-11 rounded-md px-6 has-[>svg]:px-4",
+        // Acción principal del portal del huésped (móvil): 48 px.
+        xl: "h-12 rounded-md px-6 text-base has-[>svg]:px-5",
         icon: "size-10",
         "icon-sm": "size-8",
         "icon-lg": "size-11",
         // Acción de texto dentro de una frase («Reenviar código»): sin alto ni
-        // relleno, con `variant="link"`. El área de toque la da el texto.
-        inline: "h-auto gap-1 p-0 has-[>svg]:px-0",
+        // relleno, con `variant="link"` o `"link-inherit"`. Toma el tamaño y el
+        // interlineado del texto que la rodea; el área de toque la da el texto.
+        inline: "h-auto gap-1 p-0 has-[>svg]:px-0 [font-size:inherit] [line-height:inherit]",
       },
     },
     defaultVariants: {

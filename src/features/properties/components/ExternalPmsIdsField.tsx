@@ -237,10 +237,10 @@ export function ExternalPmsIdsField({
 
                                     <Button
                                         type="button"
-                                        variant="ghost"
+                                        variant="ghost-destructive"
                                         size="icon"
                                         aria-label={`Quitar origen ${index + 1}`}
-                                        className="justify-self-start text-ink-3 hover:text-destructive sm:justify-self-center"
+                                        className="justify-self-start sm:justify-self-center"
                                         onClick={() => removeRow(index)}
                                         disabled={disabled}
                                     >

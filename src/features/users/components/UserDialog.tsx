@@ -154,7 +154,7 @@ export function UserDialog({ trigger }: UserDialogProps) {
                             )}
                         />
                         <DialogFooter>
-                            <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300">
+                            <Button type="submit" disabled={isLoading}>
                                 {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                                 Crear Usuario
                             </Button>

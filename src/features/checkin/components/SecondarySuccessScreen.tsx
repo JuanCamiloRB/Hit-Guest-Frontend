@@ -1,5 +1,6 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
@@ -69,13 +70,15 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
-                    <Link
-                        href={`/checkin/${reservationUuid}`}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-ink hover:bg-ink/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
-                    >
-                        <Icon icon={Home} size="lg" />
-                        Volver al inicio
-                    </Link>
+                    <Button asChild size="xl">
+                        <Link
+                            href={`/checkin/${reservationUuid}`}
+                            className="w-full"
+                        >
+                            <Icon icon={Home} size="lg" />
+                            Volver al inicio
+                        </Link>
+                    </Button>
                 </div>
             </div>
         </div>

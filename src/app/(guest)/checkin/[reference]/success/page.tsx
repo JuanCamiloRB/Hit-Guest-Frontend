@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button"
 import { SuccessScreen } from "@/features/checkin/components/SuccessScreen"
 import { PortalStatusScreen } from "@/features/checkin/components/PortalStatusScreen"
 import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
@@ -30,9 +31,11 @@ export default async function CheckinSuccessByUuidPage({ params }: { params: Pro
                     Intenta cargar de nuevo en un momento.
                 </p>
                 {/* href="" recarga esta misma URL, query incluida. */}
-                <a href="" className="h-12 px-6 flex items-center justify-center rounded-xl bg-primary font-bold text-white">
-                    Reintentar
-                </a>
+                <Button asChild size="xl">
+                    <a href="">
+                        Reintentar
+                    </a>
+                </Button>
             </div>
         )
     }

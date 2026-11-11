@@ -47,7 +47,7 @@ import {
     mockGenders,
 } from "@/features/checkin/data/mock-guest-data"
 import { emptyGuestForm } from "@/features/checkin/types/checkin"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 
@@ -697,21 +697,21 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     {documentExpired ? (
-                        <UnstyledButton disabled className="w-full flex items-center justify-center h-14 bg-sunk text-ink-3 rounded-xl font-bold text-lg cursor-not-allowed">
+                        <Button type="button" size="xl" disabled className="w-full flex items-center justify-center">
                             Documento vencido
-                        </UnstyledButton>
+                        </Button>
                     ) : isFormValid ? (
-                        <UnstyledButton
+                        <Button type="button" size="xl"
                             onClick={handleSubmit} 
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center"
                         >
                             <Icon icon={CheckCircle2} size="lg" />
                             Continuar
-                        </UnstyledButton>
+                        </Button>
                     ) : (
-                        <UnstyledButton disabled className="w-full flex items-center justify-center h-14 bg-sunk text-ink-3 rounded-xl font-bold text-lg cursor-not-allowed">
+                        <Button type="button" size="xl" disabled className="w-full flex items-center justify-center">
                             Completa los campos requeridos
-                        </UnstyledButton>
+                        </Button>
                     )}
                 </div>
             </div>

@@ -47,7 +47,7 @@ export default function UserList() {
                     </p>
                 </div>
                 <UserDialog trigger={
-                    <Button className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300">
+                    <Button>
                         <Icon icon={Plus} className="mr-2" /> Add Member
                     </Button>
                 } />

@@ -58,7 +58,6 @@ import { z } from "zod"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 /**
  * Team users = CREATE + DELETE only. Editing a user is intentionally NOT offered:
@@ -200,7 +199,7 @@ export function UserManagement() {
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
                     <DialogTrigger asChild>
-                        <Button className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300">
+                        <Button>
                             <Icon icon={UserPlus} className="mr-2" />
                             Nuevo Usuario
                         </Button>
@@ -286,7 +285,6 @@ export function UserManagement() {
                                     <Button
                                         type="submit"
                                         disabled={isSubmitting}
-                                        className="bg-primary hover:bg-primary text-primary-foreground font-bold"
                                     >
                                         {isSubmitting && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                                         Crear Usuario
@@ -302,9 +300,9 @@ export function UserManagement() {
                 // Mismo aviso que las demás listas, fuera del borde de la tabla: se ve la última cargada.
                 <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-sm text-ink-2">
                     <span>No pudimos actualizar la lista. Se muestra la última cargada.</span>
-                    <UnstyledButton type="button" onClick={fetchUsers} className="text-sm font-semibold text-primary underline-offset-2 hover:underline">
+                    <Button variant="link" size="inline" type="button" onClick={fetchUsers}>
                         Reintentar
-                    </UnstyledButton>
+                    </Button>
                 </div>
             )}
 

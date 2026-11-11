@@ -164,7 +164,6 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                     <Button
                         onClick={handleSave}
                         disabled={!canSave}
-                        className="gap-2 bg-primary hover:bg-primary text-white font-bold"
                     >
                         {isSaving && <Icon icon={Loader2} className="animate-spin" />}
                         Guardar

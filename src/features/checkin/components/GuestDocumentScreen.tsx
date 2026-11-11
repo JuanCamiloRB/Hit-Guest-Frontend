@@ -6,6 +6,7 @@ import { ArrowLeft, Download, FileText, Loader2, XCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
+import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface GuestDocumentScreenProps {
@@ -65,12 +66,12 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
                 </div>
                 <h2 className="text-xl font-semibold text-ink">Documento no disponible</h2>
                 <p className="text-ink-3 text-sm max-w-sm">{error}</p>
-                <UnstyledButton
+                <Button type="button"
                     onClick={() => router.push(basePath)}
-                    className="mt-2 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold text-sm"
+                    className="mt-2"
                 >
                     Volver al check-in
-                </UnstyledButton>
+                </Button>
             </div>
         )
     }
@@ -98,14 +99,14 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
-                    <UnstyledButton
+                    <Button type="button" size="xl"
                         onClick={handleDownloadPdf}
                         disabled={isDownloading}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 disabled:opacity-60 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]"
+                        className="w-full flex items-center justify-center"
                     >
                         {isDownloading ? <Icon icon={Loader2} size="lg" className="animate-spin" /> : <Icon icon={Download} size="lg" />}
                         Descargar PDF
-                    </UnstyledButton>
+                    </Button>
                 </div>
             </div>
         </div>

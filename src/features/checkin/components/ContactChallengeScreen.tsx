@@ -12,7 +12,7 @@ import { setVerificationToken } from "@/features/checkin/lib/verification-token"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import type { IdentifySessionData, ContactChallengeDirective } from "@/features/checkin/types/checkin"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 
@@ -244,13 +244,13 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                     <h2 className="text-xl font-bold text-ink">Sesión de verificación no encontrada</h2>
                     <p className="text-ink-3 text-sm max-w-xs">Vuelve a identificarte para recibir un nuevo código.</p>
                 </div>
-                <UnstyledButton
+                <Button type="button" size="xl"
                     onClick={handleBackToIdentify}
-                    className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
+                    className="flex items-center"
                 >
                     <Icon icon={RotateCcw} size="lg" />
                     Volver a identificarme
-                </UnstyledButton>
+                </Button>
             </div>
         )
     }
@@ -337,33 +337,32 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                     )}
                 </div>
 
-                <UnstyledButton
+                <Button variant="link" size="inline"
                     type="button"
                     onClick={handleResend}
                     disabled={!canResend}
-                    className="text-xs font-semibold text-primary hover:underline disabled:text-ink-4 disabled:no-underline disabled:cursor-not-allowed"
                 >
                     {resending
                         ? "Enviando..."
                         : resendCountdown > 0
                             ? `Reenviar código (${resendCountdown}s)`
                             : "Reenviar código"}
-                </UnstyledButton>
+                </Button>
             </div>
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
-                    <UnstyledButton
+                    <Button type="button" size="xl"
                         onClick={handleVerify}
                         disabled={inputDisabled || code.length !== 6}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center"
                     >
                         {submitting ? (
                             <><Icon icon={Loader2} size="lg" className="animate-spin" /> Verificando...</>
                         ) : (
                             <><Icon icon={ShieldCheck} size="lg" /> Verificar código</>
                         )}
-                    </UnstyledButton>
+                    </Button>
                 </div>
             </div>
         </div>
