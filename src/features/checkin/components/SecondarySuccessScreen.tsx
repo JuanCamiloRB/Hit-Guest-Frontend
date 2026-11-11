@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation"
 import { completedEntryCopy, resolveCompletedEntryReason } from "@/features/checkin/lib/success-entry"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
+import { IconBadge } from "@/components/ui/icon-badge"
 
 interface SecondarySuccessScreenProps {
     portal: CheckinPortalResponse
@@ -31,9 +32,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
             <ProgressBar currentStep={3} totalSteps={3} isSuccess />
 
             <div className="flex flex-col items-center justify-center text-center mt-6 space-y-4">
-                <div className="h-20 w-20 bg-success-sunk rounded-full flex items-center justify-center mb-2">
-                    <Icon icon={CheckCircle2} size="3xl" className="text-success" />
-                </div>
+                <IconBadge icon={CheckCircle2} tone="success" size="xl" className="mb-2" />
                 <Heading level={1}>
                     {completedCopy?.title ?? "¡Registro Exitoso!"}
                 </Heading>

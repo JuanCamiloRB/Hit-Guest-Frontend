@@ -132,7 +132,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                     onError={() => setImgError(true)}
                     className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
-                <div className="absolute inset-0 bg-ink/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-ink/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                 {typeLabel && (
                     <div className="absolute top-2 left-2 flex gap-1">

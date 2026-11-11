@@ -9,6 +9,7 @@ import { AirbnbIcalPanel } from "./AirbnbIcalPanel"
 import { Badge } from "@/components/ui/badge"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
+import { IconBadge } from "@/components/ui/icon-badge"
 
 interface ProviderCardProps {
     name: string
@@ -28,9 +29,7 @@ function ProviderCard({
     return (
         <Surface as="article" className="flex min-h-36 flex-col justify-between p-5 transition-shadow">
             <div className="flex items-start justify-between gap-4">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sunk/50 text-ink-2">
-                    {icon}
-                </span>
+                <IconBadge tone="neutral" size="md" shape="square">{icon}</IconBadge>
                 <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${badgeClassName}`}>
                     {badge}
                 </span>
@@ -53,9 +52,7 @@ export function IntegrationsHub() {
         <div className="space-y-12">
             <section aria-labelledby="pms-integrations" className="space-y-5">
                 <div className="flex items-start gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                        <Icon icon={RefreshCw} size="lg" />
-                    </span>
+                    <IconBadge icon={RefreshCw} tone="primary" size="md" shape="square" />
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
                             <Heading level={3} id="pms-integrations">
@@ -99,11 +96,9 @@ export function IntegrationsHub() {
                     />
                 </div>
 
-                <div className="rounded-xl border border-rule bg-sunk/60 p-5 sm:p-6">
+                <div className="rounded-xl border border-rule bg-sunk/50 p-5 sm:p-6">
                     <div className="mb-5 flex items-center gap-3 border-b border-rule pb-4">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-primary shadow-sm">
-                            <Icon icon={Building2} />
-                        </span>
+                        <IconBadge icon={Building2} tone="primary" size="sm" shape="square" />
                         <div>
                             <Heading level={4} size="section">Configurar Kunas PMS</Heading>
                             <p className="text-xs text-ink-3">Conexión disponible actualmente.</p>
@@ -115,9 +110,7 @@ export function IntegrationsHub() {
 
             <section aria-labelledby="ota-integrations" className="space-y-5">
                 <div className="flex items-start gap-3">
-                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-info-sunk text-info">
-                        <Icon icon={RadioTower} size="lg" />
-                    </span>
+                    <IconBadge icon={RadioTower} tone="info" size="md" shape="square" />
                     <div>
                         <Heading level={3} id="ota-integrations">
                             Con OTAs directas

@@ -32,6 +32,7 @@ import { Heading } from "@/components/ui/heading"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Surface } from "@/components/ui/card"
 import { LoadingState, Spinner } from "@/components/ui/loading-state"
+import { IconBadge } from "@/components/ui/icon-badge"
 
 interface VerifyScreenProps {
     reservationUuid: string
@@ -904,12 +905,9 @@ export function VerifyScreen({
                 </div>
                 <div className="relative mt-8">
                     <div className="absolute inset-0 bg-primary blur-3xl opacity-20 rounded-full" />
-                    <div className="bg-primary/10 w-24 h-24 rounded-full flex items-center justify-center shadow-sm relative z-10 border border-primary/20">
-                        {progress >= 100
-                            ? <Icon icon={CheckCircle2} size="3xl" className="text-success" />
-                            : <Spinner size="3xl" tone="primary" />
-                        }
-                    </div>
+                    <IconBadge tone={progress >= 100 ? "success" : "primary"} size="xl" className="relative z-10">
+                        {progress >= 100 ? <Icon icon={CheckCircle2} size="3xl" /> : <Spinner size="3xl" />}
+                    </IconBadge>
                 </div>
                 <div className="space-y-3 w-full max-w-xs">
                     <Heading level={2} size="page">{loadingTitle}</Heading>
@@ -1021,9 +1019,7 @@ export function VerifyScreen({
     if (verificationState === "stale") {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
-                <div className="bg-warning-sunk w-24 h-24 rounded-full flex items-center justify-center border border-warning/20">
-                    <Icon icon={Clock} size="3xl" className="text-warning" />
-                </div>
+                <IconBadge icon={Clock} tone="warning" size="xl" />
                 <div className="space-y-2">
                     <Heading level={2}>No pudimos confirmar tu identidad</Heading>
                     {/* En este estado el backend no reporta la causa (`isStale` llega
@@ -1076,9 +1072,7 @@ export function VerifyScreen({
     if (verificationState === "expired") {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
-                <div className="bg-warning-sunk w-24 h-24 rounded-full flex items-center justify-center border border-warning/20">
-                    <Icon icon={RotateCcw} size="3xl" className="text-warning" />
-                </div>
+                <IconBadge icon={RotateCcw} tone="warning" size="xl" />
                 <div className="space-y-2">
                     <Heading level={2}>Tu sesión de verificación expiró</Heading>
                     <p className="text-ink-3 text-sm max-w-xs">
@@ -1108,9 +1102,7 @@ export function VerifyScreen({
         const attemptsNotice = attemptsRemainingNotice(failureAttemptsRemaining)
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
-                <div className="bg-danger-sunk w-24 h-24 rounded-full flex items-center justify-center border border-danger/20">
-                    <Icon icon={XCircle} size="3xl" className="text-danger" />
-                </div>
+                <IconBadge icon={XCircle} tone="danger" size="xl" />
                 <div className="space-y-2">
                     <Heading level={2}>Verificación no exitosa</Heading>
                     <p className="text-ink-3 text-sm max-w-xs">

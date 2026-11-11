@@ -361,7 +361,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)} className="space-y-6">
                     <TabsList className={cn(
-                        "grid w-full h-auto bg-sunk/50 p-1 border border-rule/60 rounded-xl shadow-sm",
+                        "grid w-full h-auto bg-sunk/50 p-1 border border-rule/50 rounded-xl shadow-sm",
                         initialData
                             ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-6"
                             : "grid-cols-2 md:grid-cols-2 lg:grid-cols-4"

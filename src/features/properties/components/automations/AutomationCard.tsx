@@ -470,7 +470,7 @@ export function AutomationCard({
     return (
         <>
             <Card className={cn(
-                "group overflow-hidden border-rule/60 hover:border-primary/30 hover:shadow-sm transition-all duration-300",
+                "group overflow-hidden border-rule/50 hover:border-primary/30 hover:shadow-sm transition-all duration-300",
                 isActive && "border-primary/20"
             )}>
                 <CardContent className="p-0">

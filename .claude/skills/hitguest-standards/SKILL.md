@@ -68,9 +68,15 @@ copiarlo, no reinventarlo:
   secundaria `[reference]/s/[guestToken]`) — mirroreando el wrapper exacto que
   ya existe para pantallas hermanas (ver `contact-challenge/page.tsx` × 3,
   copiado línea por línea de `verify/page.tsx` × 3).
-- **Primitivos de UI**: `StatusPill`, `SectionCard`, `EmptyState`, `LoadingState`,
-  `RefreshIndicator`, `FeedbackBanner` en `components/ui/` — no reinventar
-  spinners, avisos ni pastillas de estado a mano.
+- **Primitivos de UI** (`components/ui/`, catálogo completo en
+  `docs/hitguest-design-system.md` §5): pantalla `Page`/`PageHeader`/
+  `PageBreadcrumb`; título `Heading`; superficie `Surface`/`Card`/`SectionCard`;
+  aviso `FeedbackBanner`; estado y etiqueta `StatusPill`/`Badge`; espera
+  `Button loading`/`LoadingState`/`RefreshIndicator`/`Spinner`/`Skeleton`;
+  campo `Input`/`PasswordInput`/`FieldError`/`FieldHint`; enlace de dato
+  `TextLink`; ícono `Icon`/`IconBadge`; persona `Avatar`; tabla `Table`/
+  `DataTable`; modal `Dialog`/`Sheet`. No se rehacen a mano:
+  `npm run design:check` lo rechaza (DS-7, 2026-11-12).
 - **Escala de estados (Fase 2.2)**: cada estado de una pantalla tiene UNA forma.
 
   | Estado | Cómo se muestra |

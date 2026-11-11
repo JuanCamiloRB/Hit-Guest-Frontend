@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/icon"
 import { useTranslation } from "@/hooks/useTranslation"
 import { useBalanceStore } from "@/features/billing/hooks/useBalanceStore"
 import { Heading } from "@/components/ui/heading"
+import { IconBadge } from "@/components/ui/icon-badge"
 
 const BILLING_HREF = "/dashboard/settings?tab=billing"
 const AUTO_REDIRECT_MS = 4000
@@ -36,9 +37,7 @@ function BillingSuccessContent() {
 
     return (
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 px-4 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-success/20 bg-success-sunk">
-                <Icon icon={CheckCircle2} size="3xl" className="text-success" />
-            </div>
+            <IconBadge icon={CheckCircle2} tone="success" size="xl" />
             <div className="space-y-2">
                 <Heading level={1}>{t("billing.success.title")}</Heading>
                 <p className="max-w-sm text-sm text-ink-3">{t("billing.success.body")}</p>

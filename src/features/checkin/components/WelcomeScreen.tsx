@@ -42,7 +42,7 @@ const BADGE_PENDING = `${BADGE_BASE} bg-sunk text-ink-3`
  * home indicator. Adding it back only makes sense together with the viewport
  * meta AND the same padding on the other 11 checkin bottom bars.
  */
-const BOTTOM_BAR = "fixed bottom-0 left-0 right-0 z-10 flex justify-center border-t border-rule/70 bg-white/95 py-4 backdrop-blur-md"
+const BOTTOM_BAR = "fixed bottom-0 left-0 right-0 z-10 flex justify-center border-t border-rule/70 bg-white/80 py-4 backdrop-blur-md"
 const BOTTOM_BAR_INNER = "w-full max-w-lg px-4"
 
 /**
@@ -430,7 +430,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
                     {/* Re-send the link so companions can register themselves. */}
                     {hasPendingCompanions && (
-                        <div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3">
+                        <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
                             <p className="text-xs font-medium text-ink-2 mb-2">
                                 ¿Viajas acompañado? Envíales el link para que hagan su registro.
                             </p>

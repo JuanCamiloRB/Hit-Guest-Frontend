@@ -1266,7 +1266,7 @@ export function PropertiesUnits() {
                                                             <div key={automation.uuid} className={cn(
                                                                 "border rounded-xl p-4 flex items-center justify-between gap-3 transition-all duration-200",
                                                                 isInactive
-                                                                    ? "border-danger/30 bg-danger-sunk/40"
+                                                                    ? "border-danger/30 bg-danger-sunk/30"
                                                                     : hasParams
                                                                         ? "border-primary/20 bg-primary/5"
                                                                         : "border-rule bg-sunk/30"

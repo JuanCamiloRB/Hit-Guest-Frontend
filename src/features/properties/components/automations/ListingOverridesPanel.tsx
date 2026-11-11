@@ -196,7 +196,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                         className={cn(
                                             "w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all hover:shadow-sm disabled:cursor-wait disabled:opacity-70",
                                             isDisabledHere
-                                                ? "border-danger/30 bg-danger-sunk/60 hover:border-danger/40"
+                                                ? "border-danger/30 bg-danger-sunk/50 hover:border-danger/30"
                                                 : hasParams
                                                     ? "border-primary/20 bg-primary/5 hover:border-primary/20"
                                                     : "border-rule bg-white hover:border-rule"

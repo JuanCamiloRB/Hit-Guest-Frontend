@@ -10,15 +10,10 @@ import { SectionCard } from "@/components/ui/section-card"
 import { StatusPill } from "@/components/ui/status-pill"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import {
-    FileText,
-    Image as ImageIcon,
-    RefreshCw,
-    Upload,
-    X,
-} from "lucide-react"
+import { FileText, Image as ImageIcon, RefreshCw, Upload } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AuthenticatedImage } from "./AuthenticatedImage"
 import {
     describeDocumentOrigin,
@@ -174,37 +169,24 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
                 </div>
             </SectionCard>
 
-            {/* Image Preview Modal */}
-            {preview && (
-                <div
-                    className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4"
-                    onClick={() => setPreview(null)}
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label={`Documento de ${preview.guest.name} — ${preview.sideLabel}`}
-                >
-                    <div className="relative max-w-3xl max-h-[90vh] w-full">
-                        <Button
-                            type="button"
-                            variant="inverse"
-                            size="icon"
-                            onClick={() => setPreview(null)}
-                            aria-label="Cerrar"
-                            className="absolute -top-12 right-0"
-                        >
-                            <Icon icon={X} />
-                        </Button>
-                        <div onClick={(e) => e.stopPropagation()} className="space-y-2">
+            {/* Vista ampliada: Dialog (foco atrapado, Esc y foco de vuelta al cerrar). */}
+            <Dialog open={preview !== null} onOpenChange={(open) => { if (!open) setPreview(null) }}>
+                <DialogContent className="sm:max-w-3xl">
+                    {preview && (
+                        <>
+                            <DialogHeader>
+                                <DialogTitle>Documento de {preview.guest.name} — {preview.sideLabel}</DialogTitle>
+                            </DialogHeader>
                             <AuthenticatedImage
                                 src={preview.url}
                                 alt={`Documento de ${preview.guest.name} — ${preview.sideLabel}`}
-                                className="w-full h-auto max-h-[80vh] object-contain rounded-lg shadow-sm"
+                                className="w-full h-auto max-h-[70vh] object-contain rounded-lg"
                             />
                             <DocumentOriginNotice guest={preview.guest} />
-                        </div>
-                    </div>
-                </div>
-            )}
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
         </>
     )
 }
@@ -251,8 +233,8 @@ function GuestDocumentRow({
             {/* Guest header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex min-w-0 items-center gap-3">
-                    <Avatar className="h-9 w-9 bg-primary/10">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                    <Avatar size="lg" tone="primary">
+                        <AvatarFallback>
                             {initials}
                         </AvatarFallback>
                     </Avatar>
@@ -392,14 +374,14 @@ function DocumentThumbnail({
     return (
         <UnstyledButton
             onClick={onClick}
-            className="group relative aspect-3/2 overflow-hidden rounded-lg border border-rule bg-sunk transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="group relative aspect-3/2 overflow-hidden rounded-lg border border-rule bg-sunk transition-colors hover:border-primary/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
             <AuthenticatedImage
                 src={url}
                 alt={label}
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+            <div className="absolute inset-0 bg-transparent group-hover:bg-black/10 transition-colors" />
             <span className="absolute bottom-1.5 left-2 text-xs font-bold text-white bg-black/50 px-1.5 py-0.5 rounded-xs">
                 {label}
             </span>

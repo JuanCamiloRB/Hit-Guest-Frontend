@@ -209,7 +209,7 @@ export function DataTable<TData, TValue>({
                                                         <Icon icon={ArrowDown} size="sm" />
                                                     ) : (
                                                         <Icon icon={ChevronsUpDown} size="sm"
-                                                            className="text-ink-4 opacity-60 transition-opacity group-hover:opacity-100" />
+                                                            className="text-ink-4 opacity-50 transition-opacity group-hover:opacity-100" />
                                                     )}
                                                 </UnstyledButton>
                                             </TableHead>

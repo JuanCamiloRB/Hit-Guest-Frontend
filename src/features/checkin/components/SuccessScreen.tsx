@@ -18,6 +18,7 @@ import { Heading } from "@/components/ui/heading"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Surface } from "@/components/ui/card"
 import { LoadingState } from "@/components/ui/loading-state"
+import { IconBadge } from "@/components/ui/icon-badge"
 
 interface ReservationDocument {
     uuid: string
@@ -236,14 +237,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
 
             <div className="relative mt-4">
                 <div className={`absolute inset-0 ${awaitingSignature ? "bg-warning" : "bg-success"} blur-3xl opacity-20 rounded-full`} />
-                <div className={`w-24 h-24 rounded-full flex items-center justify-center relative z-10 ${awaitingSignature
-                    ? "bg-warning"
-                    : "bg-success"}`}
-                >
-                    {awaitingSignature
-                        ? <Icon icon={Mail} size="4xl" className="text-white" />
-                        : <Icon icon={CheckCircle2} size="4xl" className="text-white" />}
-                </div>
+                <IconBadge icon={awaitingSignature ? Mail : CheckCircle2} tone={awaitingSignature ? "warning" : "success"} size="xl" className="relative z-10" />
             </div>
 
             <div className="space-y-3">
@@ -266,7 +260,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 esperar a que el estado se persista. Cuando el portal lo confirma,
                 lo reemplaza la tarjeta de "esperando la firma" de abajo. */}
             {contractPending && contractState === "awaiting_guest" && (
-                <div className="bg-primary/5 border border-primary/15 rounded-xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
                     <Icon icon={Mail} size="lg" className="text-primary flex-shrink-0 mt-0.5" />
                     <div>
                         <p className="text-sm font-bold text-ink">Falta firmar el contrato</p>

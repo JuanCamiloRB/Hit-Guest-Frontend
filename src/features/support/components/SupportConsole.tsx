@@ -18,6 +18,8 @@ import type { PageMeta, SupportClient } from "../lib/support-readers"
 import { initialsOf } from "../lib/support-display"
 import { ClientUsersDrawer } from "./ClientUsersDrawer"
 import { Label } from "@/components/ui/label"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 
 type ClientsState =
     | { kind: "loading" }
@@ -141,17 +143,17 @@ export function SupportConsole() {
                     <>
                         {/* Desde md, tabla; en pantallas angostas, tarjetas (sin scroll horizontal). */}
                         <div className="hidden md:block">
-                            <table className="w-full table-fixed text-sm">
-                                <thead>
-                                    <tr className="border-b border-rule text-left text-xs text-ink-3">
-                                        <th scope="col" className="w-[34%] px-5 py-3 font-semibold">Cliente</th>
-                                        <th scope="col" className="px-5 py-3 font-semibold">Correo</th>
-                                        <th scope="col" className="hidden w-[14%] px-5 py-3 font-semibold lg:table-cell">Identificación</th>
-                                        <th scope="col" className="w-[13%] px-5 py-3 font-semibold">Usuarios</th>
-                                        <th scope="col" className="w-[15%] px-5 py-3"><span className="sr-only">Acción</span></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                            <Table className="table-fixed">
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead scope="col" className="w-[34%] px-5 py-3">Cliente</TableHead>
+                                        <TableHead scope="col" className="px-5 py-3">Correo</TableHead>
+                                        <TableHead scope="col" className="hidden w-[14%] px-5 py-3 lg:table-cell">Identificación</TableHead>
+                                        <TableHead scope="col" className="w-[13%] px-5 py-3">Usuarios</TableHead>
+                                        <TableHead scope="col" className="w-[15%] px-5 py-3"><span className="sr-only">Acción</span></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
                                     {clients.items.map((client) => (
                                         <ClientRow
                                             key={client.uuid}
@@ -160,8 +162,8 @@ export function SupportConsole() {
                                             onOpen={(opener) => open(client, opener)}
                                         />
                                     ))}
-                                </tbody>
-                            </table>
+                                </TableBody>
+                            </Table>
                         </div>
                         <ul className="divide-y divide-rule md:hidden">
                             {clients.items.map((client) => (
@@ -213,26 +215,23 @@ function UsersCountPill({ count }: { count: number | null }) {
 function ClientRow({ client, opened, onOpen }: { client: SupportClient; opened: boolean; onOpen: (opener: HTMLElement) => void }) {
     const empty = client.usersCount === 0
     return (
-        <tr className={cn("border-b border-rule last:border-b-0", opened && "bg-primary/5")}>
-            <td className="px-5 py-3.5">
+        <TableRow data-state={opened ? "selected" : undefined}>
+            <TableCell className="px-5 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
-                    <span
-                        aria-hidden
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sunk text-xs font-bold text-ink-2"
-                    >
-                        {initialsOf(client.name)}
-                    </span>
+                    <Avatar aria-hidden>
+                        <AvatarFallback>{initialsOf(client.name)}</AvatarFallback>
+                    </Avatar>
                     {/* Truncado solo a la vista: el texto completo sigue en el DOM. */}
                     <p className={cn("truncate font-semibold", empty ? "text-ink-2" : "text-ink")} title={client.name}>
                         {client.name}
                     </p>
                 </div>
-            </td>
-            <td className="truncate px-5 py-3.5 text-ink-2" title={client.email ?? undefined}>{client.email ?? "—"}</td>
-            <td className="hidden px-5 py-3.5 tabular-nums text-ink-2 lg:table-cell">{client.identificationNumber ?? "—"}</td>
-            <td className="px-5 py-3.5"><UsersCountPill count={client.usersCount} /></td>
-            <td className="px-5 py-3.5 text-right"><OpenUsersButton client={client} onOpen={onOpen} /></td>
-        </tr>
+            </TableCell>
+            <TableCell className="truncate px-5 py-3.5 text-ink-2" title={client.email ?? undefined}>{client.email ?? "—"}</TableCell>
+            <TableCell className="hidden px-5 py-3.5 tabular-nums text-ink-2 lg:table-cell">{client.identificationNumber ?? "—"}</TableCell>
+            <TableCell className="px-5 py-3.5"><UsersCountPill count={client.usersCount} /></TableCell>
+            <TableCell className="px-5 py-3.5 text-right"><OpenUsersButton client={client} onOpen={onOpen} /></TableCell>
+        </TableRow>
     )
 }
 

@@ -228,7 +228,7 @@ export function PropertiesDocuments() {
                                 const isDeleted = !!doc.deletedAt
                                 const isActive = doc.statusRecord?.id === DOCUMENT_STATUS.ACTIVE
                                 return (
-                                    <Surface flat className={cn("flex items-center justify-between gap-4 p-4 transition-all", isDeleted && "bg-sunk/60 opacity-70")} key={doc.uuid}>
+                                    <Surface flat className={cn("flex items-center justify-between gap-4 p-4 transition-all", isDeleted && "bg-sunk/50 opacity-70")} key={doc.uuid}>
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="p-2.5 bg-sunk/50 rounded-xl text-primary shrink-0">
                                                 <Icon icon={FileText} size="lg" />

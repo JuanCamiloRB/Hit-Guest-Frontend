@@ -7,6 +7,7 @@ import type { CheckinPortalResponse, PortalDocument } from "@/features/checkin/t
 import { SmartlockCodes } from "./SmartlockCodes"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
+import { IconBadge } from "@/components/ui/icon-badge"
 
 interface AccessInstructionsPanelProps {
     portal: CheckinPortalResponse
@@ -45,9 +46,7 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
         <section aria-labelledby="access-instructions-title" className="w-full max-w-sm space-y-4 text-left">
             <Surface className="p-5">
                 <div className="flex items-start gap-3">
-                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${unlocked ? "bg-success-sunk text-success" : "bg-sunk text-ink-3"}`}>
-                        {unlocked ? <Icon icon={MapPinned} size="lg" /> : <Icon icon={LockKeyhole} size="lg" />}
-                    </span>
+                    <IconBadge icon={unlocked ? MapPinned : LockKeyhole} tone={unlocked ? "success" : "neutral"} size="md" shape="square" />
                     <div>
                         <Heading level={2} size="section" id="access-instructions-title">
                             Instrucciones de acceso

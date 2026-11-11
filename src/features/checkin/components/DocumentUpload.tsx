@@ -81,9 +81,9 @@ export function DocumentUpload({
           relative w-full rounded-xl border-2 border-dashed overflow-hidden
           transition-all duration-300
           ${state === "done"
-            ? "border-success/40 bg-success-sunk/50"
+            ? "border-success/30 bg-success-sunk/50"
             : state === "scanning"
-            ? "border-secondary/40 bg-secondary/5"
+            ? "border-secondary/30 bg-secondary/5"
             : "border-rule bg-sunk/50 hover:border-primary/30 hover:bg-primary/5"
           }
         `}
@@ -137,7 +137,7 @@ export function DocumentUpload({
         {state === "scanning" && (
           <div className="p-6 flex flex-col items-center gap-4">
             {/* Scanner visual */}
-            <div className="relative w-36 h-24 bg-white/60 rounded-xl border border-secondary/20 flex items-center justify-center overflow-hidden">
+            <div className="relative w-36 h-24 bg-white/50 rounded-xl border border-secondary/20 flex items-center justify-center overflow-hidden">
               <IdCardPlaceholder />
               <div className="absolute inset-0 bg-secondary/10 flex items-center justify-center">
                 <Icon icon={ScanLine} size="2xl" className="text-secondary animate-pulse" />

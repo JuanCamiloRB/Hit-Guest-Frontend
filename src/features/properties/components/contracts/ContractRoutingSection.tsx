@@ -735,7 +735,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
 
             {/* `inert`: bloquea también el editor de texto (contenteditable), que un
                 `fieldset disabled` no alcanza. */}
-            <div inert={routingBlocked || undefined} aria-disabled={routingBlocked || undefined} className={routingBlocked ? "space-y-4 opacity-60" : "space-y-4"}>
+            <div inert={routingBlocked || undefined} aria-disabled={routingBlocked || undefined} className={routingBlocked ? "space-y-4 opacity-50" : "space-y-4"}>
             {mode === "all_sources" ? (
                 <ContractChannelCard
                     fallbackName="Todos los canales"
@@ -864,7 +864,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 <FeedbackBanner tone="danger" mode="blocking" className="whitespace-pre-line">{saveError}</FeedbackBanner>
             )}
 
-            <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-xl border border-rule bg-white/95 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+            <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-xl border border-rule bg-white/80 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 text-sm">
                     {routingBlocked ? (
                         <><Icon icon={AlertTriangle} className="text-warning" /><span className="font-semibold text-warning">Edición bloqueada hasta corregir los canales no identificados.</span></>

@@ -207,7 +207,7 @@ export function ReservationCostsList({
                             pageRows.map((row) => !isCost(row) ? (
                                 <TableRow
                                     key={row.reservationId}
-                                    className="bg-warning-sunk/40 hover:bg-warning-sunk/60"
+                                    className="bg-warning-sunk/30 hover:bg-warning-sunk/50"
                                 >
                                     <TableCell className="py-2.5">
                                         <GuestCell row={row} />

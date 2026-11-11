@@ -44,7 +44,7 @@ export function ContractChannelCard({
     const sourceName = source ? reservationSourceName(source) : fallbackName || "Canal"
 
     return (
-        <Surface as="article" flat className={cn("overflow-hidden transition-colors", status === "dirty" ? "border-warning/40" : status === "incomplete" ? "border-danger/30" : undefined)}>
+        <Surface as="article" flat className={cn("overflow-hidden transition-colors", status === "dirty" ? "border-warning/30" : status === "incomplete" ? "border-danger/30" : undefined)}>
             <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2.5">
@@ -68,7 +68,7 @@ export function ContractChannelCard({
                 </div>
             </div>
             {expanded && children && (
-                <div className="border-t border-rule bg-sunk/40 p-4 sm:p-5" aria-label={`Configuración de ${sourceName}`}>
+                <div className="border-t border-rule bg-sunk/30 p-4 sm:p-5" aria-label={`Configuración de ${sourceName}`}>
                     {children}
                 </div>
             )}

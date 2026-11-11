@@ -5,19 +5,28 @@ import { Avatar as AvatarPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Iniciales o foto de una persona o cuenta. `size`: sm 24, default 32, lg 40,
+ * xl 56 (el titular de una ficha). `tone`: `neutral` (sunk), `primary` (el
+ * huésped o cliente protagonista de la pantalla) o `inverse` (sobre el navy de
+ * la navegación). Desde la pantalla, solo layout.
+ */
 function Avatar({
   className,
   size = "default",
+  tone = "neutral",
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Root> & {
-  size?: "default" | "sm" | "lg"
+  size?: "default" | "sm" | "lg" | "xl"
+  tone?: "neutral" | "primary" | "inverse"
 }) {
   return (
     <AvatarPrimitive.Root
       data-slot="avatar"
       data-size={size}
+      data-tone={tone}
       className={cn(
-        "group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none data-[size=lg]:size-10 data-[size=sm]:size-6",
+        "group/avatar relative flex size-8 shrink-0 overflow-hidden rounded-full select-none data-[size=lg]:size-10 data-[size=sm]:size-6 data-[size=xl]:size-14",
         className
       )}
       {...props}
@@ -46,7 +55,7 @@ function AvatarFallback({
     <AvatarPrimitive.Fallback
       data-slot="avatar-fallback"
       className={cn(
-        "bg-sunk text-ink-3 flex size-full items-center justify-center rounded-full text-sm group-data-[size=sm]/avatar:text-xs",
+        "bg-sunk text-ink-3 flex size-full items-center justify-center rounded-full text-sm font-bold group-data-[size=sm]/avatar:text-xs group-data-[size=lg]/avatar:text-xs group-data-[size=xl]/avatar:text-base group-data-[tone=primary]/avatar:bg-primary/10 group-data-[tone=primary]/avatar:text-primary group-data-[tone=inverse]/avatar:bg-white/20 group-data-[tone=inverse]/avatar:text-white",
         className
       )}
       {...props}

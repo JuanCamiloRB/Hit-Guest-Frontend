@@ -76,7 +76,7 @@ export function GuaranteePreview() {
             )}
 
             <div
-                className="prose prose-sm max-w-none rounded-xl border border-rule bg-sunk/60 px-4 py-3 text-sm text-ink-2 [&_strong]:font-bold [&_p]:my-2"
+                className="prose prose-sm max-w-none rounded-xl border border-rule bg-sunk/50 px-4 py-3 text-sm text-ink-2 [&_strong]:font-bold [&_p]:my-2"
                 // Content comes from HitGuest's own system-documents endpoint, not
                 // user input — same trust boundary as the rendered contract preview
                 // elsewhere in the app (DocumentPreviewModal).

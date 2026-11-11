@@ -50,8 +50,8 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
                         <div className="relative flex-1 min-w-0">
                             {/* Gridlines sit behind the marks and stop at the baseline. */}
                             <div className="absolute inset-x-0 top-0 h-48 pb-6 flex flex-col justify-between pointer-events-none">
-                                <div className="border-t border-rule/60" />
-                                <div className="border-t border-rule/60" />
+                                <div className="border-t border-rule/50" />
+                                <div className="border-t border-rule/50" />
                                 <div className="border-t border-rule" />
                             </div>
 
@@ -77,7 +77,7 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
                                                     <span className="capitalize">
                                                         {format(point.date, "MMMM yyyy", { locale: es })}
                                                     </span>
-                                                    <span className="mx-1 text-white/40">·</span>
+                                                    <span className="mx-1 text-white/30">·</span>
                                                     <span className="tabular-nums">
                                                         {formatUsd(point.total)}
                                                     </span>

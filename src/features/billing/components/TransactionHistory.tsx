@@ -12,6 +12,7 @@ import { useTranslation } from "@/hooks/useTranslation"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 
 /** «10 jul 2026, 2:32 p. m.» en la zona horaria local del PM. */
 function formatDate(iso: string, locale: string): string {
@@ -131,38 +132,36 @@ export function TransactionHistory() {
                 </div>
             ) : (
                 <>
-                    <div className="overflow-x-auto">
-                        <table className="w-full min-w-180 text-sm">
-                            <thead>
-                                <tr className="border-b border-rule text-left text-xs font-bold text-ink-3">
-                                    <th className="px-5 py-2.5">{t("billing.history.columns.date")}</th>
-                                    <th className="px-3 py-2.5">{t("billing.history.columns.description")}</th>
-                                    <th className="px-3 py-2.5">{t("billing.history.columns.type")}</th>
-                                    <th className="px-3 py-2.5">{t("billing.history.columns.source")}</th>
-                                    <th className="px-3 py-2.5 text-right">{t("billing.history.columns.amount")}</th>
-                                    <th className="px-3 py-2.5 text-right">{t("billing.history.columns.balance")}</th>
-                                    <th className="px-5 py-2.5">{t("billing.history.columns.status")}</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-rule">
+                    <Table className="min-w-180">
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead className="px-5 py-2.5">{t("billing.history.columns.date")}</TableHead>
+                                    <TableHead className="px-3 py-2.5">{t("billing.history.columns.description")}</TableHead>
+                                    <TableHead className="px-3 py-2.5">{t("billing.history.columns.type")}</TableHead>
+                                    <TableHead className="px-3 py-2.5">{t("billing.history.columns.source")}</TableHead>
+                                    <TableHead className="px-3 py-2.5 text-right">{t("billing.history.columns.amount")}</TableHead>
+                                    <TableHead className="px-3 py-2.5 text-right">{t("billing.history.columns.balance")}</TableHead>
+                                    <TableHead className="px-5 py-2.5">{t("billing.history.columns.status")}</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
                                 {data.data.map((tx) => (
-                                    <tr key={tx.uuid} className="hover:bg-sunk/50">
-                                        <td className="whitespace-nowrap px-5 py-3 text-ink-3">
+                                    <TableRow key={tx.uuid}>
+                                        <TableCell className="whitespace-nowrap px-5 py-3 text-ink-3">
                                             {formatDate(tx.createdAt, t("common.dateLocale"))}
-                                        </td>
-                                        <td className="px-3 py-3 text-ink-2">{tx.description}</td>
-                                        <td className="px-3 py-3"><TypeBadge type={tx.type} /></td>
-                                        <td className="px-3 py-3"><SourceBadge source={tx.source} /></td>
-                                        <td className="px-3 py-3 text-right"><AmountCell tx={tx} /></td>
-                                        <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-ink-3">
+                                        </TableCell>
+                                        <TableCell className="px-3 py-3 whitespace-normal text-ink-2">{tx.description}</TableCell>
+                                        <TableCell className="px-3 py-3"><TypeBadge type={tx.type} /></TableCell>
+                                        <TableCell className="px-3 py-3"><SourceBadge source={tx.source} /></TableCell>
+                                        <TableCell className="px-3 py-3 text-right"><AmountCell tx={tx} /></TableCell>
+                                        <TableCell className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-ink-3">
                                             {formatUsd(tx.balanceAfter)}
-                                        </td>
-                                        <td className="px-5 py-3"><StatusBadge status={tx.status} /></td>
-                                    </tr>
+                                        </TableCell>
+                                        <TableCell className="px-5 py-3"><StatusBadge status={tx.status} /></TableCell>
+                                    </TableRow>
                                 ))}
-                            </tbody>
-                        </table>
-                    </div>
+                            </TableBody>
+                        </Table>
 
                     {/* Pagination */}
                     <div className="flex items-center justify-between border-t border-rule px-5 py-3">

@@ -115,6 +115,10 @@ Sin `rounded` suelto, `rounded-sm`, `rounded-2xl` ni `rounded-3xl`.
   medidas relativas a la pantalla (`max-h-[90vh]`, `w-[95vw]`, `%`) se permiten
   porque no tienen equivalente en la escala.
 - Las tablas y secciones de datos no llevan sombras decorativas.
+- **Opacidad (DS-7f):** solo `5`, `10`, `20`, `30`, `50`, `70` y `80` (y `0`/`100`
+  en `opacity-`). 5–10 para tintes de selección (`bg-primary/5`), 20–30 para
+  bordes de estado (`border-warning/30`), 50 para superficies hundidas y hover
+  (`bg-sunk/50`), 70–80 para texto y vidrio sobre oscuro (`text-white/70`).
 
 No se permiten `rounded-[…]`, `shadow-[…]`, gradientes ni transformaciones de
 escala en hover.
@@ -142,6 +146,8 @@ escala en hover.
 | Vacío | `EmptyState` (`empty` o `no-results`; `icon` recibe el componente de lucide y lo pinta en `2xl` light) |
 | Tabla | `Table` para composición especial; `DataTable` para ordenar/paginar |
 | Ícono | `Icon icon={…}` (escala `xs`…`4xl`, trazo `light`/`regular`/`bold`, decorativo salvo `label`) |
+| Ícono con fondo | `IconBadge icon tone size shape`: el círculo que encabeza una pantalla de resultado o el recuadro de una categoría. `size` sm 32 · md 44 · lg 64 · xl 96; `shape` `circle` (estado) o `square` (categoría); sin borde |
+| Persona o cuenta | `Avatar size tone` (`sm`, `default`, `lg`, `xl`; `neutral`, `primary`, `inverse` sobre la navegación) con `AvatarFallback` |
 | Marca | `Logo`, `ChannelLogo` |
 
 No se crean botones, inputs, selects, textareas, avisos, spinners o pastillas a
@@ -228,6 +234,11 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `handmade-field-error` | `<p className="text-xs text-danger">` | `FieldError`, `FieldHint invalid`, `FormMessage` |
 | `text-link` | `<Link className="text-primary underline">` | `Button variant="link" asChild`, `TextLink` |
 | `text-action` | `<UnstyledButton className="text-danger">Eliminar` | `Button variant="ghost-destructive"` (el morado de selección sí se permite) |
+| `opacity-scale` | `bg-sunk/60`, `opacity-40` | la escala del §4 |
+| `type-scale-max` | `text-4xl` | `text-3xl` (el máximo) |
+| `native-table` | `<table>`, `<td>` | `Table`, `DataTable` |
+| `handmade-overlay` | `<div className="fixed inset-0 bg-black/70">` | `Dialog`, `AlertDialog`, `Sheet` |
+| `handmade-icon-badge` | `<div className="flex size-16 items-center justify-center rounded-full bg-success-sunk"><Icon … /></div>` | `IconBadge` |
 | `legacy-token` | `text-muted-foreground`, `text-destructive`, `bg-muted`, `border-border` | `text-ink-3`, `text-danger`, `bg-sunk`, `border-rule` |
 
 Revisa los textos fijos y también los trozos fijos de los template literals

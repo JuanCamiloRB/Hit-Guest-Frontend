@@ -127,7 +127,7 @@ export function BillingSettings() {
                     ) : amount === null ? (
                         // Sin saldo conocido se dice; «0,00 USD» en rojo sería un dato inventado.
                         <div>
-                            <span className="text-4xl font-bold tabular-nums text-ink-3">— USD</span>
+                            <span className="text-3xl font-bold tabular-nums text-ink-3">— USD</span>
                             <p className="mt-1 text-xs font-medium text-warning">
                                 Saldo no disponible ·{" "}
                                 <Button variant="link-inherit" size="inline" type="button" onClick={() => void refresh()}>
@@ -137,7 +137,7 @@ export function BillingSettings() {
                         </div>
                     ) : (
                         <div>
-                            <span className={`text-4xl font-bold tabular-nums ${balanceColor}`}>
+                            <span className={`text-3xl font-bold tabular-nums ${balanceColor}`}>
                                 {formatUsd(amount)}
                             </span>
                             {balanceError && (

@@ -76,8 +76,8 @@ function PhotoField({
                 htmlFor={id}
                 className={cn(
                     "flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed bg-sunk/50 text-sm text-ink-3 transition-colors hover:bg-sunk",
-                    error ? "border-danger/40" : "border-rule",
-                    disabled && "cursor-not-allowed opacity-60",
+                    error ? "border-danger/30" : "border-rule",
+                    disabled && "cursor-not-allowed opacity-50",
                 )}
             >
                 {photo

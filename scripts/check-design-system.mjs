@@ -181,7 +181,7 @@ const rules = [
     {
         // Badge (etiqueta) y StatusPill (estado) traen forma y color por `tone`.
         id: "label-override",
-        description: "pisa la apariencia de un Badge o StatusPill; elige `tone` (solo se permite layout)",
+        description: "pisa la apariencia de un Badge, StatusPill, Avatar o IconBadge; elige `tone`/`size` (solo se permite layout)",
         pattern: /(?<![\w-])(?:[a-z-]+:)*(?:bg|border|rounded|shadow|ring|outline|font|h|min-h|max-h|size|p|px|py|pt|pb|pl|pr|gap|transition|duration|opacity|leading|tracking|decoration|underline)(?:-[\w/\[\].%()-]+)?(?![\w-])|(?<![\w-])(?:[a-z-]+:)*text-(?!left\b|center\b|right\b|wrap\b|nowrap\b)[\w/\[\].-]+/g,
         input: "labelClasses",
         ignore: UI_ONLY,
@@ -314,6 +314,51 @@ const rules = [
         ignore: UI_ONLY,
     },
     {
+        // DS-7f: había 16 opacidades distintas. Escala: 5, 10, 20, 30, 50, 70, 80
+        // (y 0/100 en `opacity-`). 5–10 tintes de selección, 20–30 bordes de
+        // estado, 50 superficies hundidas y hover, 70–80 texto y vidrio sobre
+        // oscuro.
+        id: "opacity-scale",
+        description: "usa una opacidad fuera de la escala (5, 10, 20, 30, 50, 70, 80)",
+        pattern: /(?<![\w/-])(?:[a-z-]+:)*(?:(?:bg|border|text|ring|outline|divide|from|to|shadow|fill|stroke)-[a-z][a-z0-9-]*\/(?!(?:5|10|20|30|50|70|80)(?![\w%]))\d+|opacity-(?!(?:0|5|10|20|30|50|70|80|100)(?!\w))\d+)(?![\w%])/g,
+        ignore: UI_ONLY,
+    },
+    {
+        // La escala de texto llega a 3xl (manual §3): una cifra protagonista
+        // también. Más grande es un tamaño de display que el sistema no tiene.
+        id: "type-scale-max",
+        description: "usa un texto mayor que 3xl; la escala termina en text-3xl",
+        pattern: /(?<![\w-])(?:[a-z-]+:)*text-[4-9]xl(?![\w-])/g,
+        ignore: UI_ONLY,
+    },
+    {
+        // DS-7f: una tabla es `Table` (o `DataTable` para ordenar y paginar): el
+        // encabezado, el separador y el hover de fila son del sistema.
+        id: "native-table",
+        description: "usa una tabla nativa (<table>, <tr>, <td>…); usa Table o DataTable",
+        pattern: /<(?:table|thead|tbody|tfoot|tr|th|td)(?=\s|$)/gm,
+        input: "elements",
+        ignore: UI_ONLY,
+    },
+    {
+        // DS-7f: el visor de documentos era una capa `fixed inset-0` sin foco
+        // atrapado, sin Esc y sin devolver el foco. Un modal es Dialog o Sheet.
+        id: "handmade-overlay",
+        description: "arma una capa modal a mano (fixed inset-0); usa Dialog, AlertDialog o Sheet",
+        pattern: /^.+$/gm,
+        input: "overlayElements",
+        ignore: UI_ONLY,
+    },
+    {
+        // DS-7f: el círculo o recuadro con un ícono estaba a mano 21 veces, con
+        // cinco tamaños y bordes distintos.
+        id: "handmade-icon-badge",
+        description: "centra un ícono en una forma con fondo a mano; usa IconBadge",
+        pattern: /^.+$/gm,
+        input: "iconBadgeElements",
+        ignore: UI_ONLY,
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,
@@ -363,6 +408,8 @@ function inspect() {
         const cardElements = []
         const skeletonElements = []
         const fieldErrorElements = []
+        const overlayElements = []
+        const iconBadgeElements = []
         const lucideNames = new Set()
         for (const statement of sourceFile.statements) {
             if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
@@ -428,6 +475,7 @@ function inspect() {
                 if (tag === "UnstyledButton") unstyledClasses.push(...classTexts(node))
                 if (tag === "Badge" || tag === "StatusPill") labelClasses.push(...classTexts(node))
                 if (tag === "Heading") headingClasses.push(...classTexts(node))
+                if (tag === "Avatar" || tag === "AvatarFallback" || tag === "IconBadge") labelClasses.push(...classTexts(node))
                 if (/^(?:div|p|span|section|aside|li|article|header|form)$/.test(tag)) {
                     const joined = ` ${classTexts(node).join(" ")} `
                     // Aviso: fondo de estado pleno (sin opacidad) con borde. Las filas
@@ -440,6 +488,10 @@ function inspect() {
                     if ((tag === "p" || tag === "span") && /\stext-danger\s/.test(joined) && /\stext-(?:xs|sm)\s/.test(joined)
                         && !/\sbg-/.test(joined)) {
                         fieldErrorElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
+                    }
+                    // Capa a pantalla completa armada a mano (sin foco atrapado ni Esc).
+                    if (/\sfixed\s/.test(joined) && /\sinset-0\s/.test(joined)) {
+                        overlayElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
                     }
                     // Skeleton: bloque gris que pulsa.
                     if (/\sanimate-pulse\s/.test(joined) && /\sbg-(?:sunk|accent|muted|rule)(?:\/\d+)?\s/.test(joined)) {
@@ -457,6 +509,19 @@ function inspect() {
                         && /\sbg-(?:(?:success|warning|danger|info|neutral)-sunk|primary\/10|sunk|white)\s/.test(joined)) {
                         pillElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
                     }
+                }
+            }
+            // Un ícono solo, centrado en una forma con fondo: es un IconBadge.
+            if (ts.isJsxElement(node) && /^(?:div|span)$/.test(node.openingElement.tagName.getText(sourceFile))) {
+                const joined = ` ${classTexts(node.openingElement).join(" ")} `
+                const kids = node.children.filter((k) => !(ts.isJsxText(k) && !k.getText(sourceFile).trim()))
+                const onlyGlyph = kids.length > 0 && kids.every((k) => ts.isJsxSelfClosingElement(k) && /^(?:Icon|Spinner)$/.test(k.tagName.getText(sourceFile)))
+                if (onlyGlyph && /\sitems-center\s/.test(joined) && /\sjustify-center\s/.test(joined) && /\sbg-/.test(joined)
+                    && /\srounded-(?:full|xl|lg)\s/.test(joined)
+                    // Desde 32 px, donde empieza la escala de IconBadge; los nodos de una
+                    // línea de tiempo (26 px, la garantía) son otra pieza.
+                    && /\s(?:size|h|w)-(?:8|9|10|11|12|14|16|20|24)\s/.test(joined)) {
+                    iconBadgeElements.push(`<${node.openingElement.tagName.getText(sourceFile)} class="${joined.trim().slice(0, 60)}">`)
                 }
             }
             // Claves de los objetos en `style={{…}}`.
@@ -492,6 +557,8 @@ function inspect() {
             cardElements: cardElements.join("\n"),
             skeletonElements: skeletonElements.join("\n"),
             fieldErrorElements: fieldErrorElements.join("\n"),
+            overlayElements: overlayElements.join("\n"),
+            iconBadgeElements: iconBadgeElements.join("\n"),
         }
         for (const rule of rules) {
             if (rule.ignore?.(path)) continue

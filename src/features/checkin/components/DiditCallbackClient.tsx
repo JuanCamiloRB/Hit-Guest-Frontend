@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { XCircle } from "lucide-react"
-import { Icon } from "@/components/ui/icon"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { Heading } from "@/components/ui/heading"
 import { Spinner } from "@/components/ui/loading-state"
+import { IconBadge } from "@/components/ui/icon-badge"
 
 interface DiditCallbackClientProps {
     verificationSessionId: string
@@ -206,9 +206,7 @@ export function DiditCallbackClient({
             <div className="text-center max-w-sm mx-auto">
                 {state === "redirecting" && (
                     <>
-                        <div className="w-16 h-16 rounded-full bg-info-sunk flex items-center justify-center mx-auto mb-5">
-                            <Spinner size="2xl" className="text-info" />
-                        </div>
+                        <IconBadge tone="info" size="lg" className="mx-auto mb-5"><Spinner size="2xl" /></IconBadge>
                         <Heading level={2} className="mb-2">
                             Verificación recibida
                         </Heading>
@@ -220,9 +218,7 @@ export function DiditCallbackClient({
 
                 {state === "no_context" && (
                     <>
-                        <div className="w-16 h-16 rounded-full bg-warning-sunk flex items-center justify-center mx-auto mb-5">
-                            <Icon icon={XCircle} size="2xl" className="text-warning" />
-                        </div>
+                        <IconBadge icon={XCircle} tone="warning" size="lg" className="mx-auto mb-5" />
                         <Heading level={2} className="mb-2">
                             Sesión expirada
                         </Heading>
@@ -234,9 +230,7 @@ export function DiditCallbackClient({
 
                 {state === "secondary_context_missing" && (
                     <>
-                        <div className="w-16 h-16 rounded-full bg-warning-sunk flex items-center justify-center mx-auto mb-5">
-                            <Icon icon={XCircle} size="2xl" className="text-warning" />
-                        </div>
+                        <IconBadge icon={XCircle} tone="warning" size="lg" className="mx-auto mb-5" />
                         <Heading level={2} className="mb-2">
                             Vuelve a tu enlace de invitación
                         </Heading>

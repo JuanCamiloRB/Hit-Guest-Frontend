@@ -7,6 +7,7 @@ import { AlertTriangle, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { Heading } from "@/components/ui/heading"
+import { IconBadge } from "@/components/ui/icon-badge"
 
 interface CheckinErrorProps {
     error: Error & { digest?: string }
@@ -54,9 +55,7 @@ export default function CheckinError({ error, reset }: CheckinErrorProps) {
 
     return (
         <main className="flex min-h-[70vh] flex-col items-center justify-center gap-6 px-6 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-warning/20 bg-warning-sunk">
-                <Icon icon={AlertTriangle} size="2xl" className="text-warning" />
-            </div>
+            <IconBadge icon={AlertTriangle} tone="warning" size="xl" />
             <div className="max-w-sm space-y-2">
                 <Heading level={1} size="title">No pudimos mostrar este paso</Heading>
                 <p className="text-sm text-ink-3">

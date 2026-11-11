@@ -30,6 +30,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
+import { IconBadge } from "@/components/ui/icon-badge"
 
 /** PM/Client account terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
 const ACCOUNT_TERMS_URL = "https://hitguest.com/terminos-condiciones/"
@@ -97,9 +98,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
         return (
             <div className="grid gap-6 text-center animate-in fade-in zoom-in duration-300">
                 <div className="flex flex-col items-center gap-3">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success-sunk" aria-hidden="true">
-                        <Icon icon={CheckCircle2} size="xl" className="text-success" />
-                    </span>
+                    <IconBadge icon={CheckCircle2} tone="success" size="md" />
                     <div className="space-y-1">
                         <Heading level={2} size="page" className="outline-none" ref={successHeadingRef} tabIndex={-1}>
                             ¡Bienvenido a HIT Guest!
@@ -147,9 +146,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
 
                         {/* Welcome credit — the backend credits USD 10 to every new account. */}
                         <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                                <Icon icon={Gift} className="text-primary" />
-                            </span>
+                            <IconBadge icon={Gift} tone="primary" size="sm" />
                             <p className="text-sm text-ink-2">
                                 <span className="font-bold text-primary">USD 10 de regalo</span> — tu cuenta inicia con saldo de bienvenida para ejecutar tus primeras automatizaciones.
                             </p>
@@ -444,7 +441,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             />
                         </div>
 
-                        <Label variant="plain" className="flex items-start gap-3 p-3 bg-sunk/40 rounded-xl border border-rule/60 cursor-pointer hover:border-primary/30 transition-colors">
+                        <Label variant="plain" className="flex items-start gap-3 p-3 bg-sunk/30 rounded-xl border border-rule/50 cursor-pointer hover:border-primary/30 transition-colors">
                             {/* La casilla del sistema (estados, foco y contraste propios). */}
                             <Checkbox checked={acceptedTerms} onCheckedChange={(value) => setAcceptedTerms(value === true)} className="mt-0.5 size-5" />
                             <span className="text-sm text-ink-3 font-medium select-none">
@@ -466,7 +463,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             </Button>
                         </div>
 
-                        <div className="pt-4 border-t border-rule/40 text-center">
+                        <div className="pt-4 border-t border-rule/30 text-center">
                             <Button asChild variant="ghost" size="sm">
                                 <Link href="/login">
                                     <Icon icon={ArrowLeft} />

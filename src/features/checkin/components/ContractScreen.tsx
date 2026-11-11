@@ -1018,7 +1018,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 )}
 
                 {signingProvider === "tufirma" && (
-                    <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/15 rounded-xl">
+                    <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl">
                         <Icon icon={Mail} size="lg" className="text-primary flex-shrink-0 mt-0.5" />
                         <p className="text-sm text-ink-2">
                             Recibirás un correo de <strong>TuFirma</strong> para completar la firma digital de tu

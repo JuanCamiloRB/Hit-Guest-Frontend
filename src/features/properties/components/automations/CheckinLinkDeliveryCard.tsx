@@ -154,7 +154,7 @@ export function CheckinLinkDeliveryCard({
     }
 
     return (
-        <Card className="group overflow-hidden border-rule/60 transition-all duration-300 hover:border-primary/30 hover:shadow-sm">
+        <Card className="group overflow-hidden border-rule/50 transition-all duration-300 hover:border-primary/30 hover:shadow-sm">
             <CardContent className="p-0">
                 <div className="flex flex-col items-stretch md:flex-row">
                     {/* Columna de ícono como las demás automatizaciones: el verde es solo para estado. */}

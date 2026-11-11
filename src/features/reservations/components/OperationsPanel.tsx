@@ -305,8 +305,8 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             {/* Top row: Guest & Status */}
                             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
                                 <div className="flex min-w-0 items-center gap-4">
-                                    <Avatar className="size-14 shrink-0">
-                                        <AvatarFallback className="bg-primary/10 text-base font-bold text-primary">
+                                    <Avatar size="xl" tone="primary">
+                                        <AvatarFallback>
                                             {guestInitials(guestName)}
                                         </AvatarFallback>
                                     </Avatar>

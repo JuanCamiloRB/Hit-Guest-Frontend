@@ -78,7 +78,7 @@ function NavItem({ item }: { item: NavEntry }) {
                     size="lg"
                     className={cn(
                         "transition-colors",
-                        item.active ? "text-white" : "text-white/60 group-hover:text-white",
+                        item.active ? "text-white" : "text-white/50 group-hover:text-white",
                     )}
                 />
                 <span className="flex-1">{item.label}</span>
@@ -235,8 +235,8 @@ export function Sidebar({ className }: { className?: string }) {
                             // al pasar el mouse.
                             title={isMounted ? displayName : undefined}
                         >
-                            <UiAvatar className="size-9 shrink-0 border border-white/20">
-                                <AvatarFallback className="bg-white/20 font-bold text-white">
+                            <UiAvatar size="lg" tone="inverse">
+                                <AvatarFallback>
                                     {isMounted ? initials : "H"}
                                 </AvatarFallback>
                             </UiAvatar>
@@ -256,7 +256,7 @@ export function Sidebar({ className }: { className?: string }) {
                                           : (user?.email ?? "")}
                                 </p>
                             </div>
-                            <Icon icon={MoreVertical} className="text-white/40" />
+                            <Icon icon={MoreVertical} className="text-white/30" />
                         </UnstyledButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56" side="top">

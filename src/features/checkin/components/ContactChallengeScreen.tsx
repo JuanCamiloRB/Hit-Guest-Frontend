@@ -19,6 +19,7 @@ import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
 import { LoadingState } from "@/components/ui/loading-state"
 import { FieldError } from "@/components/ui/form"
+import { IconBadge } from "@/components/ui/icon-badge"
 
 interface ContactChallengeScreenProps {
     reservationUuid: string
@@ -239,9 +240,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
     if (notFound) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
-                <div className="bg-danger-sunk w-24 h-24 rounded-full flex items-center justify-center border border-danger/20">
-                    <Icon icon={XCircle} size="3xl" className="text-danger" />
-                </div>
+                <IconBadge icon={XCircle} tone="danger" size="xl" />
                 <div className="space-y-2">
                     <Heading level={2}>Sesión de verificación no encontrada</Heading>
                     <p className="text-ink-3 text-sm max-w-xs">Vuelve a identificarte para recibir un nuevo código.</p>
@@ -303,9 +302,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
 
             <Surface className="p-6 space-y-5">
                 <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center border border-primary/20 shrink-0">
-                        <Icon icon={Mail} size="lg" className="text-primary" />
-                    </div>
+                    <IconBadge icon={Mail} tone="primary" size="md" shape="square" />
                     <p className="text-xs text-ink-3">
                         {challenge.alreadyVerified
                             // En este modo el countdown es la ventana de sesión, no

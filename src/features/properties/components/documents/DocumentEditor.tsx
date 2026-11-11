@@ -49,7 +49,7 @@ function ToolbarButton({
             disabled={disabled}
             onClick={onClick}
             className={cn(
-                "h-8 w-8 inline-flex items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-sunk hover:text-ink disabled:opacity-40 disabled:cursor-not-allowed",
+                "h-8 w-8 inline-flex items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-sunk hover:text-ink disabled:opacity-30 disabled:cursor-not-allowed",
                 active && "bg-primary/10 text-primary",
             )}
         >
@@ -96,7 +96,7 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
         <div className="space-y-3">
             <Surface flat className="overflow-hidden">
                 {/* Toolbar */}
-                <div className="flex items-center gap-0.5 border-b border-rule bg-sunk/60 px-2 py-1.5 flex-wrap">
+                <div className="flex items-center gap-0.5 border-b border-rule bg-sunk/50 px-2 py-1.5 flex-wrap">
                     <ToolbarButton title="Negrita" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
                         <Icon icon={Bold} />
                     </ToolbarButton>

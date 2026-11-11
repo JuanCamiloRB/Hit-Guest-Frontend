@@ -256,7 +256,7 @@ export function ReservationsCalendar() {
 
             <div className="relative grid grid-cols-7 gap-px bg-sunk rounded-lg overflow-hidden border">
                 {isLoading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-xs">
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/50 backdrop-blur-xs">
                         <Spinner size="xl" tone="primary" />
                     </div>
                 )}

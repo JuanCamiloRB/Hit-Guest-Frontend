@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Heading } from "@/components/ui/heading"
 import { LoadingState } from "@/components/ui/loading-state"
+import { IconBadge } from "@/components/ui/icon-badge"
 
 interface GuestDocumentScreenProps {
     reservationUuid: string
@@ -61,9 +62,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4 text-center animate-in fade-in px-4">
-                <div className="w-16 h-16 rounded-full bg-danger-sunk flex items-center justify-center">
-                    <Icon icon={XCircle} size="2xl" className="text-danger" />
-                </div>
+                <IconBadge icon={XCircle} tone="danger" size="lg" />
                 <Heading level={2}>Documento no disponible</Heading>
                 <p className="text-ink-3 text-sm max-w-sm">{error}</p>
                 <Button type="button"

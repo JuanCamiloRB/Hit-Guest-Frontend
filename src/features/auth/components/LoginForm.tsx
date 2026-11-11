@@ -79,7 +79,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                 </p>
             </div>
             {isMounted && error && (
-                <div className="bg-destructive/15 text-danger text-sm p-3 rounded-md flex items-center gap-2 border border-danger/20 animate-in fade-in zoom-in duration-200">
+                <div className="bg-destructive/20 text-danger text-sm p-3 rounded-md flex items-center gap-2 border border-danger/20 animate-in fade-in zoom-in duration-200">
                     <Icon icon={AlertCircle} />
                     <span>{error}</span>
                 </div>

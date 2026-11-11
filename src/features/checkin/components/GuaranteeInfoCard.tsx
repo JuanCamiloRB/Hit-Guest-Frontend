@@ -40,27 +40,27 @@ export function GuaranteeInfoCard({ onContinue }: GuaranteeInfoCardProps) {
                     <span className="text-xs font-bold text-white">Qué pasa con tu tarjeta</span>
                 </div>
                 <div className="flex items-start relative">
-                    <div className="absolute top-3.25 left-[16.66%] right-[16.66%] h-0.5 bg-white/25" />
+                    <div className="absolute top-3.25 left-[16.66%] right-[16.66%] h-0.5 bg-white/20" />
                     <div className="flex-1 flex flex-col items-center text-center relative z-10">
                         <div className="w-6.5 h-6.5 rounded-full bg-white flex items-center justify-center mb-2">
                             <Icon icon={Check} size="sm" weight="bold" className="text-brand-navy" />
                         </div>
                         <p className="text-xs font-bold text-white mb-0.5">Registrada</p>
-                        <p className="text-xs leading-tight text-white/65 max-w-22">Guardada de forma segura y tokenizada</p>
+                        <p className="text-xs leading-tight text-white/70 max-w-22">Guardada de forma segura y tokenizada</p>
                     </div>
                     <div className="flex-1 flex flex-col items-center text-center relative z-10">
-                        <div className="w-6.5 h-6.5 rounded-full flex items-center justify-center mb-2 bg-primary ring-4 ring-primary/25">
+                        <div className="w-6.5 h-6.5 rounded-full flex items-center justify-center mb-2 bg-primary ring-4 ring-primary/20">
                             <Icon icon={Lock} size="xs" className="text-white" />
                         </div>
                         <p className="text-xs font-bold text-white mb-0.5">Protegida</p>
-                        <p className="text-xs leading-tight text-white/65 max-w-22">Nadie ve tu número completo, ni nuestro equipo</p>
+                        <p className="text-xs leading-tight text-white/70 max-w-22">Nadie ve tu número completo, ni nuestro equipo</p>
                     </div>
                     <div className="flex-1 flex flex-col items-center text-center relative z-10">
-                        <div className="w-6.5 h-6.5 rounded-full bg-white/10 border-2 border-white/35 flex items-center justify-center mb-2">
+                        <div className="w-6.5 h-6.5 rounded-full bg-white/10 border-2 border-white/30 flex items-center justify-center mb-2">
                             <Icon icon={Trash2} size="xs" className="text-white" />
                         </div>
                         <p className="text-xs font-bold text-white mb-0.5">Eliminada</p>
-                        <p className="text-xs leading-tight text-white/65 max-w-22">2 días después de tu check-out, automático</p>
+                        <p className="text-xs leading-tight text-white/70 max-w-22">2 días después de tu check-out, automático</p>
                     </div>
                 </div>
             </div>
