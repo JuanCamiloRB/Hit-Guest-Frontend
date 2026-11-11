@@ -286,6 +286,34 @@ const rules = [
         ignore: UI_ONLY,
     },
     {
+        // DS-7e: un enlace que se pinta como acción («Regístrate aquí») es
+        // `Button variant="link" asChild`; un dato que navega, `TextLink`.
+        id: "text-link",
+        description: "pinta un Link/<a> como acción (color o subrayado); usa Button variant=\"link\" asChild o TextLink",
+        pattern: /(?<=^|[\s"'`])(?:text-(?:primary|secondary|danger)|underline)(?![\w/-])/gm,
+        input: "linkClasses",
+        ignore: (path) => UI_ONLY(path) || path === "src/components/layout/Sidebar.tsx",
+    },
+    {
+        // Un UnstyledButton con texto subrayado, rojo o azul es un Button
+        // (`link`, `ghost-destructive`). El morado sí se permite: marca la opción
+        // elegida en tarjetas y chips seleccionables.
+        id: "text-action",
+        description: "pinta un UnstyledButton como acción de texto; usa Button (link, ghost, ghost-destructive)",
+        pattern: /(?<=^|[\s"'`])(?:text-(?:secondary|danger)|underline)(?![\w/-])/gm,
+        input: "unstyledClasses",
+        ignore: UI_ONLY,
+    },
+    {
+        // DS-7e: 32 errores de campo a mano en tres variantes. `FieldError`
+        // (o `FormMessage` con react-hook-form) los pinta igual.
+        id: "handmade-field-error",
+        description: "pinta un texto de error a mano; usa FieldError (o FormMessage con react-hook-form)",
+        pattern: /^.+$/gm,
+        input: "fieldErrorElements",
+        ignore: UI_ONLY,
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,
@@ -326,12 +354,15 @@ function inspect() {
         const iconClasses = []
         const buttonClasses = []
         const pressableClasses = []
+        const linkClasses = []
+        const unstyledClasses = []
         const labelClasses = []
         const headingClasses = []
         const pillElements = []
         const noticeElements = []
         const cardElements = []
         const skeletonElements = []
+        const fieldErrorElements = []
         const lucideNames = new Set()
         for (const statement of sourceFile.statements) {
             if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
@@ -393,6 +424,8 @@ function inspect() {
                 if (tag === "Icon") iconClasses.push(...classTexts(node))
                 if (tag === "Button") buttonClasses.push(...classTexts(node))
                 if (tag === "UnstyledButton" || tag === "Link" || tag === "a") pressableClasses.push(...classTexts(node))
+                if (tag === "Link" || tag === "a") linkClasses.push(...classTexts(node))
+                if (tag === "UnstyledButton") unstyledClasses.push(...classTexts(node))
                 if (tag === "Badge" || tag === "StatusPill") labelClasses.push(...classTexts(node))
                 if (tag === "Heading") headingClasses.push(...classTexts(node))
                 if (/^(?:div|p|span|section|aside|li|article|header|form)$/.test(tag)) {
@@ -402,6 +435,11 @@ function inspect() {
                     if (/\sbg-(?:success|warning|danger|info)-sunk\s/.test(joined) && /\sborder(?:-[a-z]+\/\d+)?\s/.test(joined)
                         && !/\srounded-full\s/.test(joined)) {
                         noticeElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
+                    }
+                    // Error de campo: texto chico en rojo, sin fondo de aviso.
+                    if ((tag === "p" || tag === "span") && /\stext-danger\s/.test(joined) && /\stext-(?:xs|sm)\s/.test(joined)
+                        && !/\sbg-/.test(joined)) {
+                        fieldErrorElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
                     }
                     // Skeleton: bloque gris que pulsa.
                     if (/\sanimate-pulse\s/.test(joined) && /\sbg-(?:sunk|accent|muted|rule)(?:\/\d+)?\s/.test(joined)) {
@@ -445,12 +483,15 @@ function inspect() {
             iconClasses: iconClasses.join("\n"),
             buttonClasses: buttonClasses.join("\n"),
             pressableClasses: pressableClasses.join("\n"),
+            linkClasses: linkClasses.join("\n"),
+            unstyledClasses: unstyledClasses.join("\n"),
             labelClasses: labelClasses.join("\n"),
             headingClasses: headingClasses.join("\n"),
             pillElements: pillElements.join("\n"),
             noticeElements: noticeElements.join("\n"),
             cardElements: cardElements.join("\n"),
             skeletonElements: skeletonElements.join("\n"),
+            fieldErrorElements: fieldErrorElements.join("\n"),
         }
         for (const rule of rules) {
             if (rule.ignore?.(path)) continue

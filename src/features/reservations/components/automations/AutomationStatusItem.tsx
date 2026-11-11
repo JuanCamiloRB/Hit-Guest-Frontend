@@ -26,9 +26,9 @@ import {
 } from "./automation-status-meta"
 import { API_BASE } from "@/lib/config"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
+import { FieldError } from "@/components/ui/form"
 
 interface AutomationStatusItemProps {
     item: AutomationStatusItemType
@@ -177,14 +177,10 @@ export function AutomationStatusItem({
             )}
 
             <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-                <UnstyledButton
-                    type="button"
-                    onClick={() => onViewHistory(item)}
-                    className="inline-flex items-center gap-1.5 rounded-xs text-xs font-medium text-ink-3 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                >
-                    <Icon icon={History} size="sm" />
+                <Button type="button" variant="ghost" size="sm" onClick={() => onViewHistory(item)}>
+                    <Icon icon={History} />
                     Ver historial
-                </UnstyledButton>
+                </Button>
 
                 <div className="flex items-center gap-2">
                     {canManual && !perGuest && item.canRedispatch ? (
@@ -301,7 +297,7 @@ function GuestRow({
                     ) : null}
                 </div>
             </div>
-            {failure && <p className="break-words text-xs text-danger">{failure}</p>}
+            {failure && <FieldError compact className="break-words">{failure}</FieldError>}
         </li>
     )
 }

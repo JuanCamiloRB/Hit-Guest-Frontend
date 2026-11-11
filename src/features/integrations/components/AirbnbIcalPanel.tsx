@@ -34,9 +34,9 @@ import { usePortfolio } from "@/features/properties/hooks/usePortfolio"
 import { icalFeedService } from "../services/ical-feed-service"
 import { AIRBNB_SOURCE_PMS_ID, extractAirbnbListingId, maskIcalUrl } from "../lib/ical"
 import type { IcalFeed, IcalMessageTemplate } from "../types/ical"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Surface } from "@/components/ui/card"
+import { FieldError } from "@/components/ui/form"
 
 const FEED_ACTIVE = 6
 const FEED_INACTIVE = 7
@@ -244,30 +244,34 @@ export function AirbnbIcalPanel() {
                                 >
                                     <Icon icon={FileText} size="sm" /> Plantilla de mensaje
                                 </Button>
-                                <UnstyledButton
+                                <Button
                                     type="button"
+                                    variant="ghost"
+                                    size="sm"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => void handleSync(feed)}
-                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-3 hover:text-ink-2 disabled:opacity-50"
                                 >
-                                    <Icon icon={RefreshCw} size="sm" /> Sincronizar ahora
-                                </UnstyledButton>
-                                <UnstyledButton
+                                    <Icon icon={RefreshCw} /> Sincronizar ahora
+                                </Button>
+                                <Button
                                     type="button"
+                                    variant="ghost"
+                                    size="sm"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => setEditTarget(feed)}
-                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-3 hover:text-ink-2 disabled:opacity-50"
                                 >
                                     Editar URL
-                                </UnstyledButton>
-                                <UnstyledButton
+                                </Button>
+                                <Button
                                     type="button"
+                                    variant="ghost-destructive"
+                                    size="sm"
+                                    className="ml-auto"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => setDeleteTarget(feed)}
-                                    className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-danger hover:text-danger disabled:opacity-50"
                                 >
-                                    <Icon icon={Trash2} size="sm" /> Eliminar
-                                </UnstyledButton>
+                                    <Icon icon={Trash2} /> Eliminar
+                                </Button>
                             </div>
                         </Surface>
                     ))}
@@ -480,7 +484,7 @@ function CreateFeedDialog({
                             placeholder="https://www.airbnb.com/calendar/ical/12345678.ics?s=…"
                             aria-invalid={errors.icalUrl ? true : undefined}
                         />
-                        {errors.icalUrl && <p className="text-xs text-danger">{errors.icalUrl}</p>}
+                        {errors.icalUrl && <FieldError>{errors.icalUrl}</FieldError>}
                     </div>
 
                     <div className="space-y-1.5">
@@ -500,11 +504,11 @@ function CreateFeedDialog({
                         {errors.externalListingId && (
                             /* No es un detalle de validación: es la defensa contra pegar el
                                calendario de OTRO apartamento e importar reservas ajenas. */
-                            <p className="rounded-lg bg-danger-sunk px-3 py-2 text-xs text-danger">
+                            <FeedbackBanner tone="danger" mode="dynamic" density="compact">
                                 {errors.externalListingId} Verifica que la URL y el ID sean del mismo
                                 anuncio: con el calendario equivocado importarías las reservas de otro
                                 alojamiento.
-                            </p>
+                            </FeedbackBanner>
                         )}
                     </div>
 
@@ -660,7 +664,7 @@ function EditUrlDialog({
                         onChange={(e) => setUrl(e.target.value)}
                         aria-invalid={error ? true : undefined}
                     />
-                    {error && <p className="text-xs text-danger">{error}</p>}
+                    {error && <FieldError>{error}</FieldError>}
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>

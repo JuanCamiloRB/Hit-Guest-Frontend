@@ -10,10 +10,10 @@ import { ActivitySummary } from "./ActivitySummary"
 import { ConsumptionHistoryChart } from "./ConsumptionHistoryChart"
 import { MonthSelector } from "./MonthSelector"
 import { TopNodesPanel } from "./TopNodesPanel"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
 import { RefreshIndicator } from "@/components/ui/loading-state"
+import { Button } from "@/components/ui/button"
 
 interface Props {
     status: ConsumptionStatus
@@ -174,13 +174,9 @@ function ActivityMessage({
 
 function RetryButton({ onRetry, className }: { onRetry: () => void; className?: string }) {
     return (
-        <UnstyledButton
-            type="button"
-            onClick={onRetry}
-            className={cn("shrink-0 text-sm font-semibold text-primary underline-offset-2 hover:underline", className)}
-        >
+        <Button type="button" variant="link" size="inline" onClick={onRetry} className={cn("shrink-0", className)}>
             Reintentar
-        </UnstyledButton>
+        </Button>
     )
 }
 

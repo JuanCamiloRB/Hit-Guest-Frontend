@@ -22,6 +22,7 @@ import { useTranslation } from "@/hooks/useTranslation"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { FieldError } from "@/components/ui/form"
 
 /** Balance card + recharge (packages/custom) + transaction history. */
 export function BillingSettings() {
@@ -195,7 +196,7 @@ export function BillingSettings() {
                                     className="w-full py-2.5 pl-7 pr-3 font-semibold text-ink"
                                 />
                             </div>
-                            {amountError && <p className="text-xs font-medium text-danger">{amountError}</p>}
+                            {amountError && <FieldError>{amountError}</FieldError>}
                         </div>
 
                         <Button type="button" size="lg" onClick={handleAddCredits} disabled={effectiveAmount == null} className="inline-flex items-center" loading={isSubmitting}>

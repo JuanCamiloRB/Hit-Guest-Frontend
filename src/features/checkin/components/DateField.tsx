@@ -9,6 +9,7 @@ import {
     type DateSegments,
 } from "../lib/date-field"
 import { Input } from "@/components/ui/input"
+import { FieldError } from "@/components/ui/form"
 
 interface DateFieldProps {
     label: string
@@ -122,9 +123,9 @@ export function DateField({ label, required, value, onChange, max, autoCompleteK
                 ))}
             </div>
             {error && (
-                <p id={errorId} role="alert" className="text-xs font-medium text-danger">
+                <FieldError id={errorId} role="alert">
                     {error}
-                </p>
+                </FieldError>
             )}
         </fieldset>
     )

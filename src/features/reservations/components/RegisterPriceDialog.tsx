@@ -19,6 +19,7 @@ import { automationService } from "@/features/properties/services/automation-ser
 import { classifyRecord } from "@/features/billing/lib/pricing"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
+import { FieldError } from "@/components/ui/form"
 
 /**
  * ¿Ya salió el reporte a TRA con el valor anterior? (contrato 2026-09-27 §2.2)
@@ -180,8 +181,8 @@ export function RegisterPriceDialog({
                         Un valor de 0 también cuenta como confirmado (cortesías o estadías del
                         propietario).
                     </p>
-                    {scaleError && <p className="text-xs text-danger">{scaleError}</p>}
-                    {error && <p className="text-xs text-danger">{error}</p>}
+                    {scaleError && <FieldError>{scaleError}</FieldError>}
+                    {error && <FieldError>{error}</FieldError>}
                 </div>
 
                 <DialogFooter>

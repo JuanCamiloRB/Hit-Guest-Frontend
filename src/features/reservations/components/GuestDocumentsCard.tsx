@@ -184,13 +184,16 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
                     aria-label={`Documento de ${preview.guest.name} — ${preview.sideLabel}`}
                 >
                     <div className="relative max-w-3xl max-h-[90vh] w-full">
-                        <UnstyledButton
+                        <Button
+                            type="button"
+                            variant="inverse"
+                            size="icon"
                             onClick={() => setPreview(null)}
                             aria-label="Cerrar"
-                            className="absolute -top-10 right-0 text-white hover:text-ink-4 transition-colors"
+                            className="absolute -top-12 right-0"
                         >
-                            <Icon icon={X} size="xl" />
-                        </UnstyledButton>
+                            <Icon icon={X} />
+                        </Button>
                         <div onClick={(e) => e.stopPropagation()} className="space-y-2">
                             <AuthenticatedImage
                                 src={preview.url}

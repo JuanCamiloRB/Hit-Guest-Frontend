@@ -11,6 +11,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Radio } from "@/components/ui/radio"
 import { Label } from "@/components/ui/label"
 import { Spinner } from "@/components/ui/loading-state"
+import { FieldError } from "@/components/ui/form"
 
 interface Props {
     value: IdentityChoice
@@ -126,7 +127,7 @@ export function IdentityOverrideSelector({
             })}
 
             {error && (
-                <p id="identity-override-error" role="alert" className="text-xs font-medium text-danger">{error}</p>
+                <FieldError compact id="identity-override-error" role="alert">{error}</FieldError>
             )}
         </fieldset>
     )

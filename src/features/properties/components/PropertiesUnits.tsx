@@ -90,6 +90,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Heading } from "@/components/ui/heading"
+import { FieldError } from "@/components/ui/form"
 
 const defaultUnit = {
     name: "",
@@ -122,20 +123,6 @@ const defaultUnit = {
         inheritPolicies: true,
     },
     price: "",
-}
-
-/**
- * Mensaje de error bajo un input. Aparece cinco veces en el tab General, así que
- * se extrae — no antes: es el tercer uso lo que lo justifica, no el primero.
- * Devuelve `null` sin mensaje para poder llamarlo sin envolverlo en un `&&`.
- */
-function FieldError({ message }: { message?: string }) {
-    if (!message) return null
-    return (
-        <p role="alert" className="text-xs text-danger">
-            {message}
-        </p>
-    )
 }
 
 /** A draft override is worth persisting only if it changes something vs. inheriting. */
@@ -752,7 +739,7 @@ export function PropertiesUnits() {
                                                         value={unitForm.name ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, name: e.target.value })}
                                                     />
-                                                    <FieldError message={fieldErrors.name} />
+                                                    <FieldError role="alert">{fieldErrors.name}</FieldError>
                                                 </div>
                                                 <div className="grid gap-2">
                                                     <Label htmlFor="internalName">Nombre Interno / Número</Label>
@@ -766,7 +753,7 @@ export function PropertiesUnits() {
                                                         value={unitForm.internalName ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, internalName: e.target.value })}
                                                     />
-                                                    <FieldError message={fieldErrors.internalName} />
+                                                    <FieldError role="alert">{fieldErrors.internalName}</FieldError>
                                                 </div>
                                             </div>
 
@@ -822,7 +809,7 @@ export function PropertiesUnits() {
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
-                                                    <FieldError message={fieldErrors.roomTypeId} />
+                                                    <FieldError role="alert">{fieldErrors.roomTypeId}</FieldError>
                                                     {!roomTypesLoading && roomTypes.length === 0 && (
                                                         <p className="flex items-start gap-1.5 text-xs text-warning">
                                                             <Icon icon={TriangleAlert} size="sm" className="mt-0.5" />
@@ -844,7 +831,7 @@ export function PropertiesUnits() {
                                                             extra: { ...unitForm.extra, maxOccupancy: parseInt(e.target.value) || 0 } 
                                                         })}
                                                     />
-                                                    <FieldError message={fieldErrors.maxOccupancy} />
+                                                    <FieldError role="alert">{fieldErrors.maxOccupancy}</FieldError>
                                                 </div>
                                             </div>
 
@@ -891,7 +878,7 @@ export function PropertiesUnits() {
                                                         value={unitForm.price ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, price: e.target.value })}
                                                     />
-                                                    <FieldError message={fieldErrors.price} />
+                                                    <FieldError role="alert">{fieldErrors.price}</FieldError>
                                                 </div>
                                             </div>
 
@@ -906,7 +893,7 @@ export function PropertiesUnits() {
                                                         value={unitForm.contactName ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, contactName: e.target.value })}
                                                     />
-                                                    <FieldError message={fieldErrors.contactName} />
+                                                    <FieldError role="alert">{fieldErrors.contactName}</FieldError>
                                                 </div>
                                                 <div className="grid gap-2">
                                                     <Label htmlFor="contactPhone">Teléfono de Contacto</Label>
@@ -918,7 +905,7 @@ export function PropertiesUnits() {
                                                         value={unitForm.contactPhone ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, contactPhone: e.target.value })}
                                                     />
-                                                    <FieldError message={fieldErrors.contactPhone} />
+                                                    <FieldError role="alert">{fieldErrors.contactPhone}</FieldError>
                                                 </div>
                                             </div>
 
@@ -934,7 +921,7 @@ export function PropertiesUnits() {
                                                         value={unitForm.contactEmail ?? ""}
                                                         onChange={(e) => setUnitForm({ ...unitForm, contactEmail: e.target.value })}
                                                     />
-                                                    <FieldError message={fieldErrors.contactEmail} />
+                                                    <FieldError role="alert">{fieldErrors.contactEmail}</FieldError>
                                                 </div>
                                             </div>
 
@@ -1143,7 +1130,7 @@ export function PropertiesUnits() {
                                                                     extra: { ...unitForm.extra, bedRoom: parseInt(e.target.value) || 1 }
                                                                 })}
                                                             />
-                                                            <FieldError message={fieldErrors.bedRoom} />
+                                                            <FieldError role="alert">{fieldErrors.bedRoom}</FieldError>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1168,7 +1155,7 @@ export function PropertiesUnits() {
                                                                     extra: { ...unitForm.extra, bathRoom: parseInt(e.target.value) || 1 }
                                                                 })}
                                                             />
-                                                            <FieldError message={fieldErrors.bathRoom} />
+                                                            <FieldError role="alert">{fieldErrors.bathRoom}</FieldError>
                                                         </div>
                                                     </div>
                                                 </div>

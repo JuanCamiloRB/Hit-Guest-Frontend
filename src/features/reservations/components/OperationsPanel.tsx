@@ -59,6 +59,8 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { RefreshIndicator } from "@/components/ui/loading-state"
 import { Heading } from "@/components/ui/heading"
 import { PageBreadcrumb, PageHeader } from "@/components/ui/page"
+import { FieldError } from "@/components/ui/form"
+import { TextLink } from "@/components/ui/text-link"
 
 export function OperationsPanel({ reservationId }: { reservationId: string }) {
     // Si la fila se precargó al pasar el cursor, la ficha se ve al instante y
@@ -551,7 +553,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                                     </p>
                                                 )}
                                                 {!isValidEmail && (
-                                                    <p className="text-xs text-danger">Ingresa un correo válido o deja el campo vacío.</p>
+                                                    <FieldError compact>Ingresa un correo válido o deja el campo vacío.</FieldError>
                                                 )}
                                             </div>
                                             <div className="space-y-1.5">
@@ -709,12 +711,9 @@ function ContactRow({
             <div className="min-w-0">
                 <dt className="text-xs text-ink-3">{label}</dt>
                 <dd>
-                    <a
-                        href={href}
-                        className="block truncate rounded-xs text-sm font-medium text-ink transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                    >
+                    <TextLink href={href} className="block truncate text-sm">
                         {value}
-                    </a>
+                    </TextLink>
                 </dd>
             </div>
         </div>

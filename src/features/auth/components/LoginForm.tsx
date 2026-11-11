@@ -201,12 +201,9 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
             <div className="mt-4 text-center text-sm">
                 <p className="text-ink-3">
                     ¿No tienes cuenta?{" "}
-                    <Link
-                        href="/register"
-                        className="font-semibold text-secondary hover:text-secondary transition-colors underline-offset-4 hover:underline"
-                    >
-                        Regístrate aquí
-                    </Link>
+                    <Button asChild variant="link" size="inline">
+                        <Link href="/register">Regístrate aquí</Link>
+                    </Button>
                 </p>
             </div>
         </Surface>

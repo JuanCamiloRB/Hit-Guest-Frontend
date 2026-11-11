@@ -124,8 +124,10 @@ escala en hover.
 | Necesidad | Componente |
 |---|---|
 | Acción | `Button`, eligiendo la variante por intención: `default` (principal, una por vista), `secondary`, `outline`, `ghost`, `link`; `destructive`, `outline-destructive` y `ghost-destructive` para eliminar o desconectar; `outline-warning` para lo que pide atención sin destruir («Configurar (requerido)», exonerar); `link-inherit` para la acción dentro de un aviso; `inverse` sobre superficies oscuras; `overlay` sobre una foto; `field` para un disparador con forma de campo (fecha, mes) con `data-placeholder` sin valor. `outline`/`ghost` con `aria-pressed` son conmutadores. Tamaños: `sm` 32, `default` 40, `lg` 44 y `xl` 48 (solo portal del huésped); `icon-sm`/`icon`/`icon-lg`; `inline` toma el tamaño del texto. Un enlace con forma de botón es `Button asChild` sobre `Link`. Desde la pantalla, `className` solo lleva layout (ancho, márgenes, posición, alineación). |
+| Enlace de dato | `TextLink`: un dato que navega (nombre del huésped, contacto, reserva), en tinta y morado al pasar. Una acción con forma de enlace es `Button variant="link" asChild` |
 | Pulsable sin forma de botón | `UnstyledButton` (tarjetas seleccionables, filas, ítems de menú, encabezados que ordenan): `type="button"` y el foco del sistema; la forma, con tokens. Nunca con relleno sólido: eso es un `Button` |
-| Campo | `Input`, `Textarea`, `Select`, `PhoneInputField`, `FileInput` (oculto; lo abre un Button o una zona de carga) |
+| Campo | `Input`, `PasswordInput` (contraseña o secreto, con mostrar/ocultar accesible), `Textarea`, `Select`, `PhoneInputField`, `FileInput` (oculto; lo abre un Button o una zona de carga) |
+| Error y ayuda de campo | `FormMessage` con react-hook-form; sin él, `FieldError` (error; `compact` en filas densas) y `FieldHint` (la ayuda que pasa a error con `invalid`, mismo nodo y mismo `id`) |
 | Etiqueta de campo | `Label` asociada mediante `htmlFor`; `Label variant="plain"` cuando envuelve otra cosa (casilla + texto largo, zona de carga); texto auxiliar con `FormDescription` |
 | Selección | `Checkbox`, `Radio` (nativo, grupo por `name`), `Switch`, `Tabs` |
 | Superficie | `SectionCard` (sección con título), `Card` (encabezado y cuerpo estándar) o `Surface` (la superficie sola; el interior lo arma la pantalla). `Surface as=` para la etiqueta semántica, `flat` sin sombra (cuadrículas densas, dentro de otra superficie), `floating` para un panel flotante propio (radio y sombra `md`, como `Select`) |
@@ -223,6 +225,9 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `handmade-card` | `<div className="rounded-xl border border-rule bg-white p-5 shadow-sm">` | `Surface className="p-5"`, `Card`, `SectionCard` |
 | `handmade-spinner` | `<Icon icon={Loader2} className="animate-spin" />` | `Button loading`, `LoadingState`, `RefreshIndicator`, `Spinner` |
 | `handmade-skeleton` | `<div className="h-4 animate-pulse bg-sunk" />` | `Skeleton` |
+| `handmade-field-error` | `<p className="text-xs text-danger">` | `FieldError`, `FieldHint invalid`, `FormMessage` |
+| `text-link` | `<Link className="text-primary underline">` | `Button variant="link" asChild`, `TextLink` |
+| `text-action` | `<UnstyledButton className="text-danger">Eliminar` | `Button variant="ghost-destructive"` (el morado de selección sí se permite) |
 | `legacy-token` | `text-muted-foreground`, `text-destructive`, `bg-muted`, `border-border` | `text-ink-3`, `text-danger`, `bg-sunk`, `border-rule` |
 
 Revisa los textos fijos y también los trozos fijos de los template literals

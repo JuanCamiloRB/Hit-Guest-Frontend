@@ -156,7 +156,40 @@ function FormMessage({ className, ...props }: React.ComponentProps<"p">) {
   )
 }
 
+/**
+ * El texto de error junto a un control, para lo que no usa react-hook-form
+ * (el portal, los diálogos de integraciones). Mismo estilo que `FormMessage`;
+ * `compact` en filas y tarjetas densas. Sin contenido no pinta nada. Quien lo
+ * usa lo asocia al campo con `id` + `aria-describedby`.
+ */
+function FieldError({ className, compact = false, children, ...props }: React.ComponentProps<"p"> & { compact?: boolean }) {
+  if (children == null || children === "" || children === false) return null
+  return (
+    <p data-slot="field-error" className={cn("text-danger", compact ? "text-xs" : "text-sm", className)} {...props}>
+      {children}
+    </p>
+  )
+}
+
+/**
+ * La ayuda bajo un campo que pasa a ser su error cuando el valor no sirve
+ * («El monto mínimo es 10 USD»): un solo nodo, con el mismo `id` para
+ * `aria-describedby`, que cambia de tinta. Misma escala que `FieldError`.
+ */
+function FieldHint({ className, invalid = false, compact = false, ...props }: React.ComponentProps<"p"> & { invalid?: boolean; compact?: boolean }) {
+  return (
+    <p
+      data-slot="field-hint"
+      data-invalid={invalid || undefined}
+      className={cn(invalid ? "text-danger" : "text-ink-3", compact ? "text-xs" : "text-sm", className)}
+      {...props}
+    />
+  )
+}
+
 export {
+  FieldError,
+  FieldHint,
   useFormField,
   Form,
   FormItem,

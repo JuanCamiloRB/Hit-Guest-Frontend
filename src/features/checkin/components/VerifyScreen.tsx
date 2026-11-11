@@ -25,7 +25,6 @@ import { diditCompletionAction } from "@/features/checkin/lib/didit-completion"
 import type { VerificationResult } from "@didit-protocol/sdk-web"
 import { guestFormDraftKey } from "@/features/checkin/lib/guest-form-draft"
 import { Button } from "@/components/ui/button"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { FileInput } from "@/components/ui/file-input"
@@ -1154,9 +1153,9 @@ export function VerifyScreen({
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
                 <p className="text-ink-3 text-sm">Sesión expirada. Vuelve a identificarte.</p>
-                <Link href={`${basePath}/identify`} className="text-primary font-semibold underline">
-                    Volver al inicio
-                </Link>
+                <Button asChild variant="link" size="inline">
+                    <Link href={`${basePath}/identify`}>Volver al inicio</Link>
+                </Button>
             </div>
         )
     }
@@ -1327,13 +1326,14 @@ export function VerifyScreen({
                                 <Label variant="plain" className="text-sm font-semibold text-ink-2">
                                     Selfie<span className="text-danger ml-0.5">*</span>
                                 </Label>
-                                <UnstyledButton
+                                <Button
                                     type="button"
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => { setFailureMessage(null); setDocErrorType(null); setCaptureStep("documents") }}
-                                    className="text-xs font-medium text-ink-3 hover:text-primary transition-colors"
                                 >
                                     ← Documentos
-                                </UnstyledButton>
+                                </Button>
                             </div>
                             <p className="text-xs text-ink-3 -mt-1">
                                 Tómate una selfie de frente, con buena luz y sin gafas ni gorra, para confirmar que eres la persona del documento.

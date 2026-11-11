@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils"
 import { EXTERNAL_ID_MAX_LENGTH } from "../lib/external-pms-ids"
 import type { ExternalPmsId } from "../types"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { FieldError } from "@/components/ui/form"
 
 /** Per-row validation messages, in the same order as `value`. */
 export interface ExternalPmsIdRowError {
@@ -249,9 +250,9 @@ export function ExternalPmsIdsField({
                                 </div>
 
                                 {(error?.sourcePmsId || error?.externalId) && (
-                                    <p className="text-xs font-medium text-danger">
+                                    <FieldError>
                                         {error.sourcePmsId ?? error.externalId}
-                                    </p>
+                                    </FieldError>
                                 )}
                             </div>
                         )

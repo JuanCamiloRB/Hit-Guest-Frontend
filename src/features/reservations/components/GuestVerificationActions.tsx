@@ -28,6 +28,7 @@ import {
     type ReservationGuest,
 } from "../services/reservations-service"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { FieldError } from "@/components/ui/form"
 
 /**
  * Acciones del PM sobre la verificación de UN huésped — contrato 2026-09-08/15
@@ -212,7 +213,7 @@ export function GuestVerificationActions({
                             maxLength={1000}
                         />
                         {reasonTouched && reasonProblem && (
-                            <p className="text-xs text-danger">{reasonProblem}</p>
+                            <FieldError compact>{reasonProblem}</FieldError>
                         )}
                     </div>
 

@@ -19,6 +19,7 @@ import type { SupportClient, SupportClientUser } from "../lib/support-readers"
 import { roleLabel } from "../lib/support-display"
 import { Radio } from "@/components/ui/radio"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { FieldHint } from "@/components/ui/form"
 
 type UsersState =
     | { kind: "loading" }
@@ -302,9 +303,9 @@ function DrawerBody({
                                         aria-invalid={reasonMessage ? true : undefined}
                                         aria-describedby="support-reason-help"
                                     />
-                                    <p id="support-reason-help" className={reasonMessage ? "text-xs text-danger" : "text-xs text-ink-3"}>
+                                    <FieldHint id="support-reason-help" compact invalid={Boolean(reasonMessage)}>
                                         {reasonMessage ?? "Queda registrado en la sesión de soporte."}
-                                    </p>
+                                    </FieldHint>
                                 </div>
                                 <p className="text-sm text-ink-2">
                                     Entrarás como <strong>{selectedUser.name}</strong> en <strong>{client.name}</strong>.

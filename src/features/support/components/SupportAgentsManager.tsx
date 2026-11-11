@@ -26,6 +26,7 @@ import { ApiError } from "@/types/api"
 import { supportService } from "../services/support-service"
 import type { PageMeta, SupportAgent } from "../lib/support-readers"
 import { shortDate } from "../lib/support-display"
+import { FieldError } from "@/components/ui/form"
 
 type AgentsState =
     | { kind: "loading" }
@@ -212,7 +213,7 @@ function CreateAgentForm({ onCreated }: { onCreated: () => void }) {
                         aria-invalid={errors.name ? true : undefined}
                         className="h-11"
                     />
-                    {errors.name && <p className="text-xs text-danger">{errors.name}</p>}
+                    {errors.name && <FieldError>{errors.name}</FieldError>}
                 </div>
                 <div className="space-y-1.5">
                     <Label htmlFor="agent-email">Correo</Label>
@@ -224,7 +225,7 @@ function CreateAgentForm({ onCreated }: { onCreated: () => void }) {
                         aria-invalid={errors.email ? true : undefined}
                         className="h-11"
                     />
-                    {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
+                    {errors.email && <FieldError>{errors.email}</FieldError>}
                 </div>
                 <Button size="lg" type="submit" className="sm:mt-5.5" loading={saving}>
                     <Icon icon={UserPlus} className="mr-1.5" />

@@ -23,6 +23,7 @@ import { rechargeErrorDescription } from "../lib/recharge-error"
 import type { PackagesInfo } from "../types"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
+import { FieldHint } from "@/components/ui/form"
 
 /**
  * "Recargar bolsa" flow. Collects an amount and hands off to the hosted payment
@@ -176,9 +177,9 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                             />
                         </div>
                         {minimum !== null && (
-                            <p className={`text-xs ${belowMinimum ? "font-medium text-danger" : "text-ink-3"}`}>
+                            <FieldHint compact invalid={belowMinimum}>
                                 El monto mínimo de recarga es ${minimum} USD.
-                            </p>
+                            </FieldHint>
                         )}
                     </div>
                 </div>

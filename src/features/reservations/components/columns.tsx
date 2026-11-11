@@ -25,6 +25,7 @@ import { getReservationStatusMeta } from "./reservation-status-meta"
 import { getAutomationCellMeta, getCheckinCellMeta, REPORT_LIGHTS } from "./automation-cell-meta"
 import { compareText, compareDates, compareStatus, compareLight } from "./reservation-sorting"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { TextLink } from "@/components/ui/text-link"
 
 export interface ColumnsOptions {
     onDelete?: (reservation: Reservation) => void
@@ -111,9 +112,9 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             // «Huésped 26») y hacía cada fila de 85 px. Dos líneas: quién y dónde.
             return (
                 <div className="flex min-w-0 max-w-64 flex-col py-0.5">
-                    <Link
+                    <TextLink
                         href={`/dashboard/reservations/${reservation.id}`}
-                        className="truncate rounded-xs text-sm font-semibold text-ink transition-colors hover:text-primary hover:underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        className="truncate text-sm"
                         // Quedarse sobre la fila (o enfocarla) precarga la ficha.
                         onMouseEnter={() => startDetailPrefetch(reservation.id)}
                         onMouseLeave={() => cancelDetailPrefetch(reservation.id)}
@@ -121,7 +122,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
                         onBlur={() => cancelDetailPrefetch(reservation.id)}
                     >
                         {reservation.guestName}
-                    </Link>
+                    </TextLink>
                     {/* Alojamiento primero y propiedad después: el PM identifica la
                         unidad concreta, no el edificio. La propiedad queda vacía
                         mientras el portafolio no responde: sin texto que parezca un

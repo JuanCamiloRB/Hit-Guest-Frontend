@@ -38,6 +38,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Heading } from "@/components/ui/heading"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Surface } from "@/components/ui/card"
+import { FieldError } from "@/components/ui/form"
 
 /** Guest-facing terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
 const GUEST_TERMS_URL = "https://hitguest.com/terminos-servicio1/"
@@ -520,7 +521,7 @@ export function IdentifyScreen({
                             placeholder="Ej. Juan Carlos"
                             maxLength={120}
                         />
-                        {fieldErrors.name && <p className="text-xs text-danger">{fieldErrors.name}</p>}
+                        {fieldErrors.name && <FieldError>{fieldErrors.name}</FieldError>}
                     </div>
                     <div className="space-y-1.5">
                         <Label variant="plain" className="text-sm font-semibold text-ink-2">
@@ -534,7 +535,7 @@ export function IdentifyScreen({
                             placeholder="Ej. Rodríguez Barrera"
                             maxLength={60}
                         />
-                        {fieldErrors.lastname && <p className="text-xs text-danger">{fieldErrors.lastname}</p>}
+                        {fieldErrors.lastname && <FieldError>{fieldErrors.lastname}</FieldError>}
                     </div>
                 </div>
 
@@ -597,7 +598,7 @@ export function IdentifyScreen({
                                 inputMode="text"
                                 pattern="[A-Za-z0-9]*"
                             />
-                            {fieldErrors.identificationNumber && <p className="text-xs text-danger">{fieldErrors.identificationNumber}</p>}
+                            {fieldErrors.identificationNumber && <FieldError>{fieldErrors.identificationNumber}</FieldError>}
                         </div>
                     </div>
                 )}
@@ -620,7 +621,7 @@ export function IdentifyScreen({
                             aria-invalid={!!(fieldErrors.totalGuests) || undefined} className={`w-full px-4 py-3 text-ink`}
                             placeholder="Ej. 2"
                         />
-                        {fieldErrors.totalGuests && <p className="text-xs text-danger">{fieldErrors.totalGuests}</p>}
+                        {fieldErrors.totalGuests && <FieldError>{fieldErrors.totalGuests}</FieldError>}
                     </div>
                 )}
 
@@ -656,9 +657,9 @@ export function IdentifyScreen({
                         {priceInput.trim() !== "" && (
                             declaredPrice != null
                                 ? <p className="text-xs text-ink-3">Vas a declarar: <span className="font-semibold text-ink-2">{formatDeclaredPrice(declaredPrice, priceCurrency)}</span></p>
-                                : <p className="text-xs text-danger">{declaredPriceError(priceInput, priceCurrency)}</p>
+                                : <FieldError>{declaredPriceError(priceInput, priceCurrency)}</FieldError>
                         )}
-                        {fieldErrors.totalPrice && <p className="text-xs text-danger">{fieldErrors.totalPrice}</p>}
+                        {fieldErrors.totalPrice && <FieldError>{fieldErrors.totalPrice}</FieldError>}
                     </div>
                 )}
 
@@ -683,15 +684,14 @@ export function IdentifyScreen({
                 <Checkbox checked={acceptedTerms} onCheckedChange={(value) => setAcceptedTerms(value === true)} className="mt-0.5 size-5" />
                 <span className="text-sm text-ink-2 font-medium select-none">
                     Acepto los Términos y Condiciones de HIT —{" "}
-                    <a
+                    <Button asChild variant="link" size="inline"><a
                         href={GUEST_TERMS_URL}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        className="text-primary underline hover:no-underline"
                     >
                         Ver términos y condiciones
-                    </a>
+                    </a></Button>
                 </span>
             </Label>
 

@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Eye, EyeOff, KeyRound } from "lucide-react"
+import { PasswordInput } from "@/components/ui/password-input"
+import { KeyRound } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { notifyError } from "@/lib/notify-error"
 import type { KunasConfigurationPayload } from "../types"
@@ -22,9 +23,9 @@ import {
     isCredentialError,
     type IntegrationFieldErrors,
 } from "../lib/integration-errors"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { FieldError } from "@/components/ui/form"
 
 interface Props {
     /** Current account email (prefills the field; password never prefilled). */
@@ -45,7 +46,6 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
     // Token is never returned by the API, so the field starts blank and only
     // travels in the payload when the PM actually types a new one.
     const [token, setToken] = useState("")
-    const [showPassword, setShowPassword] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [errors, setErrors] = useState<IntegrationFieldErrors>({})
 
@@ -56,7 +56,6 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
             setPassword("")
             setToken("")
             setErrors({})
-            setShowPassword(false)
         }
         setOpen(next)
     }
@@ -115,30 +114,18 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                             placeholder="pm@empresa.com"
                             autoComplete="email"
                         />
-                        {errors.email && <p className="text-xs font-medium text-danger">{errors.email}</p>}
+                        {errors.email && <FieldError>{errors.email}</FieldError>}
                     </div>
 
                     <div className="space-y-1.5">
                         <Label variant="plain" className="text-sm font-semibold text-ink-2">Nueva contraseña</Label>
-                        <div className="relative">
-                            <Input
-                                type={showPassword ? "text" : "password"}
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                autoComplete="off"
-                                className="pr-10"
-                            />
-                            <UnstyledButton
-                                type="button"
-                                onClick={() => setShowPassword((s) => !s)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
-                                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                            >
-                                {showPassword ? <Icon icon={EyeOff} /> : <Icon icon={Eye} />}
-                            </UnstyledButton>
-                        </div>
-                        {errors.password && <p className="text-xs font-medium text-danger">{errors.password}</p>}
+                        <PasswordInput
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="••••••••"
+                            autoComplete="off"
+                        />
+                        {errors.password && <FieldError>{errors.password}</FieldError>}
                     </div>
 
                     <div className="space-y-1.5">
@@ -152,7 +139,7 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                             placeholder="Dejar en blanco para no cambiarlo"
                             autoComplete="off"
                         />
-                        {errors.token && <p className="text-xs font-medium text-danger">{errors.token}</p>}
+                        {errors.token && <FieldError>{errors.token}</FieldError>}
                     </div>
                 </div>
 

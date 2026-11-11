@@ -18,9 +18,9 @@ import type { ReservationGuest } from "../services/reservations-service"
 import { reservationsService } from "../services/reservations-service"
 import { describeWaiverUploadError, type WaiverUploadErrorView } from "../lib/waiver-document-upload"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { FileInput } from "@/components/ui/file-input"
+import { FieldHint } from "@/components/ui/form"
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"]
 const NO_ERRORS: WaiverUploadErrorView = { front: null, back: null, form: null, refresh: false }
@@ -61,14 +61,15 @@ function PhotoField({
             <div className="flex items-center justify-between gap-2">
                 <Label variant="plain" htmlFor={id} className="text-sm font-semibold text-ink">{label}</Label>
                 {onRemove && photo && (
-                    <UnstyledButton
+                    <Button
                         type="button"
+                        variant="ghost-destructive"
+                        size="sm"
                         onClick={onRemove}
                         disabled={disabled}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-ink-3 hover:text-danger disabled:opacity-50"
                     >
-                        <Icon icon={X} size="xs" /> Quitar
-                    </UnstyledButton>
+                        <Icon icon={X} /> Quitar
+                    </Button>
                 )}
             </div>
             <Label variant="plain"
@@ -99,13 +100,9 @@ function PhotoField({
                 }}
             />
             {/* `role="alert"` solo con error: el lector de pantalla lo anuncia al aparecer. */}
-            <p
-                id={`${id}-help`}
-                role={error ? "alert" : undefined}
-                className={error ? "text-xs text-danger" : "text-xs text-ink-3"}
-            >
+            <FieldHint id={`${id}-help`} role={error ? "alert" : undefined} compact invalid={Boolean(error)}>
                 {error ?? hint}
-            </p>
+            </FieldHint>
         </div>
     )
 }

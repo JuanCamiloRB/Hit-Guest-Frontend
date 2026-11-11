@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
 import { LoadingState } from "@/components/ui/loading-state"
+import { FieldError } from "@/components/ui/form"
 
 interface ContactChallengeScreenProps {
     reservationUuid: string
@@ -260,9 +261,9 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
                 <p className="text-ink-3 text-sm">Sesión expirada. Vuelve a identificarte.</p>
-                <Link href={`${basePath}/identify`} className="text-primary font-semibold underline">
-                    Volver al inicio
-                </Link>
+                <Button asChild variant="link" size="inline">
+                    <Link href={`${basePath}/identify`}>Volver al inicio</Link>
+                </Button>
             </div>
         )
     }
@@ -327,7 +328,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                         placeholder="······"
                         maxLength={6}
                     />
-                    {error && <p className="text-xs text-danger">{error}</p>}
+                    {error && <FieldError>{error}</FieldError>}
                     {phase === "idle" && !isBlocked && attemptsRemaining !== null && attemptsRemaining < 5 && (
                         <p className="text-xs text-ink-3">Intentos restantes: {attemptsRemaining}</p>
                     )}

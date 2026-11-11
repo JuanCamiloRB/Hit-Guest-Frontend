@@ -4,7 +4,8 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { KeyRound, Mail, Lock, Tag, Plug, Eye, EyeOff } from "lucide-react"
+import { PasswordInput } from "@/components/ui/password-input"
+import { KeyRound, Mail, Lock, Tag, Plug } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { notifyError } from "@/lib/notify-error"
 import type { KunasConnectPayload } from "../types"
@@ -13,9 +14,9 @@ import {
     isCredentialError,
     type IntegrationFieldErrors,
 } from "../lib/integration-errors"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { FieldError } from "@/components/ui/form"
 
 interface Props {
     /** Connects with the given payload; rejects on failure (form shows errors). */
@@ -28,7 +29,6 @@ export function KunasConnectForm({ onConnect }: Props) {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [name, setName] = useState("")
-    const [showPassword, setShowPassword] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [errors, setErrors] = useState<IntegrationFieldErrors>({})
 
@@ -97,24 +97,12 @@ export function KunasConnectForm({ onConnect }: Props) {
             </Field>
 
             <Field label="Contraseña" icon={<Icon icon={Lock} />} required error={errors.password}>
-                <div className="relative">
-                    <Input
-                        type={showPassword ? "text" : "password"}
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Contraseña de tu cuenta KunasPMS"
-                        autoComplete="off"
-                        className="pr-10"
-                    />
-                    <UnstyledButton
-                        type="button"
-                        onClick={() => setShowPassword((s) => !s)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
-                        aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-                    >
-                        {showPassword ? <Icon icon={EyeOff} /> : <Icon icon={Eye} />}
-                    </UnstyledButton>
-                </div>
+                <PasswordInput
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Contraseña de tu cuenta KunasPMS"
+                    autoComplete="off"
+                />
             </Field>
 
             <Field label="Nombre (opcional)" icon={<Icon icon={Tag} />} error={errors.name}>
@@ -159,7 +147,7 @@ function Field({
                 {required && <span className="text-danger">*</span>}
             </Label>
             {children}
-            {error && <p className="text-xs font-medium text-danger">{error}</p>}
+            {error && <FieldError>{error}</FieldError>}
         </div>
     )
 }

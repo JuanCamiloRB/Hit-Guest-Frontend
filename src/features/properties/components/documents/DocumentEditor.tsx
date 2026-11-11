@@ -13,8 +13,10 @@ import {
     Undo2,
     Redo2,
     Code,
+    Plus,
 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { SHORTCODE_LABELS } from "../../types/document"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -153,16 +155,17 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                         {shortcodes.map((key) => (
-                            <UnstyledButton
+                            <Button
                                 key={key}
                                 type="button"
+                                variant="outline"
+                                size="sm"
                                 onClick={() => insertShortcode(key)}
                                 title={`Inserta {{${key}}}`}
-                                className="inline-flex items-center gap-1 rounded-lg border border-primary/20 bg-white px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hover:border-primary/20"
                             >
-                                <span className="font-mono text-primary leading-none">+</span>
+                                <Icon icon={Plus} />
                                 {SHORTCODE_LABELS[key] ?? key}
-                            </UnstyledButton>
+                            </Button>
                         ))}
                     </div>
                 </div>

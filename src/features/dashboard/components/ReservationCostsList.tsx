@@ -23,6 +23,7 @@ import { Icon } from "@/components/ui/icon"
 import { COST_CATEGORIES } from "@/features/billing/lib/pricing"
 import { formatUsd, type ReservationCost, type ReservationCostFailure } from "@/features/billing/types"
 import { cn } from "@/lib/utils"
+import { TextLink } from "@/components/ui/text-link"
 
 interface Props {
     costs: ReservationCost[]
@@ -314,16 +315,9 @@ function GuestCell({ row, muted = false }: { row: ReservationCost | ReservationC
         : null
     return (
         <div className="min-w-0">
-            <Link
-                href={`/dashboard/reservations/${row.reservationId}`}
-                className={cn(
-                    "block truncate rounded-xs font-medium transition-colors hover:text-primary hover:underline underline-offset-2",
-                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                    muted ? "text-ink-2" : "text-ink",
-                )}
-            >
+            <TextLink href={`/dashboard/reservations/${row.reservationId}`} tone={muted ? "muted" : "ink"} className="block truncate">
                 {row.guestName}
-            </Link>
+            </TextLink>
             <p className="truncate text-xs text-ink-3">
                 {row.unitName}
                 {checkIn && <> · <span className="whitespace-nowrap">check-in {checkIn}</span></>}

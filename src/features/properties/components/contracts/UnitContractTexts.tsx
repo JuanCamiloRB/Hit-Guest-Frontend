@@ -27,6 +27,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
+import { FieldError } from "@/components/ui/form"
 
 interface Props {
     propertyUuid: string
@@ -293,7 +294,7 @@ export function UnitContractTexts({
                         ))}
                     </ul>
                     {rowError?.key.startsWith("replaced:") && (
-                        <p role="alert" className="whitespace-pre-line text-xs text-danger">{rowError.messages.join("\n")}</p>
+                        <FieldError compact className="whitespace-pre-line" role="alert">{rowError.messages.join("\n")}</FieldError>
                     )}
                 </FeedbackBanner>
             )}

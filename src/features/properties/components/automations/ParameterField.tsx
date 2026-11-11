@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { Plus, Trash2, Eye, EyeOff } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import {
     Select,
@@ -11,10 +10,10 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import type { ParameterFieldSchema } from "../../types/automation"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Textarea } from "@/components/ui/textarea"
 
 interface Props {
@@ -24,7 +23,6 @@ interface Props {
 }
 
 export function ParameterField({ schema, value, onChange }: Props) {
-    const [showPwd, setShowPwd] = useState(false)
 
     if (schema.type === "array") {
         const items: any[] = Array.isArray(value) ? value : []
@@ -48,13 +46,9 @@ export function ParameterField({ schema, value, onChange }: Props) {
                             <span className="text-xs font-semibold text-ink-3">
                                 Elemento {i + 1}
                             </span>
-                            <UnstyledButton
-                                type="button"
-                                onClick={() => removeItem(i)}
-                                className="text-danger hover:text-danger transition-colors"
-                            >
-                                <Icon icon={Trash2} size="sm" />
-                            </UnstyledButton>
+                            <Button type="button" variant="ghost-destructive" size="icon-sm" onClick={() => removeItem(i)} aria-label="Quitar">
+                                <Icon icon={Trash2} />
+                            </Button>
                         </div>
                         {schema.arrayItemSchema?.map(sub => (
                             <ParameterField
@@ -103,13 +97,9 @@ export function ParameterField({ schema, value, onChange }: Props) {
                             onChange={e => updateItem(i, e.target.value)}
                             placeholder={schema.placeholder}
                         />
-                        <UnstyledButton
-                            type="button"
-                            onClick={() => removeItem(i)}
-                            className="text-danger hover:text-danger transition-colors shrink-0"
-                        >
+                        <Button type="button" variant="ghost-destructive" size="icon-sm" onClick={() => removeItem(i)} aria-label="Quitar" className="shrink-0">
                             <Icon icon={Trash2} />
-                        </UnstyledButton>
+                        </Button>
                     </div>
                 ))}
                 <Button
@@ -171,24 +161,20 @@ export function ParameterField({ schema, value, onChange }: Props) {
                 {schema.label}
                 {schema.required && <span className="text-danger ml-0.5">*</span>}
             </Label>
-            <div className="relative">
-                <Input
-                    type={isPassword && !showPwd ? "password" : "text"}
+            {isPassword ? (
+                <PasswordInput
                     value={value ?? ""}
                     onChange={e => onChange(e.target.value)}
                     placeholder={schema.placeholder}
-                    className="pr-10"
                 />
-                {isPassword && (
-                    <UnstyledButton
-                        type="button"
-                        onClick={() => setShowPwd(p => !p)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
-                    >
-                        {showPwd ? <Icon icon={EyeOff} /> : <Icon icon={Eye} />}
-                    </UnstyledButton>
-                )}
-            </div>
+            ) : (
+                <Input
+                    type="text"
+                    value={value ?? ""}
+                    onChange={e => onChange(e.target.value)}
+                    placeholder={schema.placeholder}
+                />
+            )}
         </div>
     )
 }

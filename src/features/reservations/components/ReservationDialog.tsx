@@ -29,6 +29,7 @@ import {
     FormItem,
     FormLabel,
     FormMessage,
+    FieldError,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import {
@@ -877,7 +878,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                             </SelectContent>
                                         </Select>
                                         {sourcesFailed && (
-                                            <p role="alert" className="text-sm text-danger">
+                                            <FieldError role="alert">
                                                 No pudimos cargar los canales de reserva.
                                                 {mode === "create" && " Sin canal no se puede crear la reserva."}
                                                 {mode === "edit" && editSource && " Se conserva el canal actual."}{" "}
@@ -894,7 +895,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                 >
                                                     {loadingSources ? "Reintentando…" : "Reintentar"}
                                                 </Button>
-                                            </p>
+                                            </FieldError>
                                         )}
                                         <FormMessage />
                                     </FormItem>

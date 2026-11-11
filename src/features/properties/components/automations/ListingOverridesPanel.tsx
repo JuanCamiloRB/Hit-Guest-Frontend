@@ -1,9 +1,10 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Building2, Ban, ChevronDown, ChevronUp, Settings2, Lock, RefreshCw } from "lucide-react"
+import { Building2, ChevronDown, ChevronUp, Settings2, Lock, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Badge } from "@/components/ui/badge"
+import { StatusPill } from "@/components/ui/status-pill"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { automationService } from "../../services/automation-service"
@@ -226,21 +227,11 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                             {!isLoaded ? (
                                                 <span className="text-xs text-ink-3">Cargando...</span>
                                             ) : identity ? (
-                                                <span className={cn(
-                                                    "text-xs font-medium",
-                                                    identity.tone === "disabled" ? "text-danger"
-                                                        : identity.tone === "custom" ? "text-primary"
-                                                            : "text-ink-3",
-                                                )}>
+                                                <StatusPill tone={identity.tone === "disabled" ? "danger" : identity.tone === "custom" ? "accent" : "idle"} className="mt-0.5">
                                                     {identity.label}
-                                                </span>
+                                                </StatusPill>
                                             ) : isDisabledHere ? (
-                                                <div className="flex items-center gap-1 mt-0.5">
-                                                    <Icon icon={Ban} size="xs" className="text-danger" />
-                                                    <span className="text-xs text-danger font-medium">
-                                                        Desactivada en esta unidad
-                                                    </span>
-                                                </div>
+                                                <StatusPill tone="danger" className="mt-0.5">Desactivada en esta unidad</StatusPill>
                                             ) : override?.contractRouting?.replacedTexts.length ? (
                                                 <span className="text-xs font-medium text-warning">Textos propios sin aplicar · revisar</span>
                                             ) : ownContract ? (

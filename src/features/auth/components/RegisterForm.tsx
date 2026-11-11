@@ -449,15 +449,14 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             <Checkbox checked={acceptedTerms} onCheckedChange={(value) => setAcceptedTerms(value === true)} className="mt-0.5 size-5" />
                             <span className="text-sm text-ink-3 font-medium select-none">
                                 Acepto los Términos y Condiciones de HIT —{" "}
-                                <a
+                                <Button asChild variant="link" size="inline"><a
                                     href={ACCOUNT_TERMS_URL}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="text-primary underline hover:no-underline"
                                 >
                                     Ver términos y condiciones
-                                </a>
+                                </a></Button>
                             </span>
                         </Label>
 
@@ -468,10 +467,12 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                         </div>
 
                         <div className="pt-4 border-t border-rule/40 text-center">
-                            <Link href="/login" className="inline-flex items-center justify-center text-sm font-medium text-ink-3 hover:text-primary transition-colors hover:underline">
-                                <Icon icon={ArrowLeft} className="mr-2" />
-                                Volver al inicio de sesión
-                            </Link>
+                            <Button asChild variant="ghost" size="sm">
+                                <Link href="/login">
+                                    <Icon icon={ArrowLeft} />
+                                    Volver al inicio de sesión
+                                </Link>
+                            </Button>
                         </div>
                     </Surface>
                 </form>
