@@ -61,7 +61,7 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
         immediatelyRender: false,
         editorProps: {
             attributes: {
-                class: "min-h-[260px] px-4 py-3 focus:outline-none",
+                class: "min-h-65 px-4 py-3 focus:outline-none",
             },
         },
         onUpdate: ({ editor }) => onChange(editor.getHTML()),
@@ -84,7 +84,7 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
 
     if (!editor) {
         return (
-            <Skeleton className="min-h-[320px] rounded-xl" />
+            <Skeleton className="min-h-80 rounded-xl" />
         )
     }
 
@@ -129,7 +129,7 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
                     editor={editor}
                     className={cn(
                         "text-sm text-ink-2 leading-relaxed",
-                        "[&_.ProseMirror]:min-h-[260px]",
+                        "[&_.ProseMirror]:min-h-65",
                         "[&_h2]:text-lg [&_h2]:font-bold [&_h2]:my-2",
                         "[&_p]:my-2",
                         "[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2",
@@ -143,7 +143,7 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
             {/* Shortcode panel */}
             {shortcodes.length > 0 && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
-                    <p className="text-xs font-bold uppercase tracking-wider text-primary mb-2">
+                    <p className="text-xs font-bold text-primary mb-2">
                         Variables disponibles
                     </p>
                     <p className="text-xs text-primary mb-2.5">

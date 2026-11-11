@@ -126,7 +126,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                     <Building2 size={13} className="text-ink-3 group-hover:text-ink-2" />
                     <span>Por unidad</span>
                     {overrideCount > 0 && (
-                        <Badge variant="outline" className="h-4 border-primary/20 bg-primary/10 text-xs font-bold uppercase text-primary">
+                        <Badge variant="outline" className="h-4 border-primary/20 bg-primary/10 text-xs font-bold text-primary">
                             {overrideCount} distinta{overrideCount > 1 ? "s" : ""}
                         </Badge>
                     )}

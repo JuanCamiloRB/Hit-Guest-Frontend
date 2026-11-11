@@ -255,7 +255,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             <li>
                                 <Link
                                     href="/dashboard/reservations"
-                                    className="rounded transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                                    className="rounded-xs transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                                 >
                                     Reservas
                                 </Link>
@@ -546,7 +546,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                             <ChevronRight size={16} aria-hidden className="text-white/50" />
                                         </Button>
                                     </DialogTrigger>
-                                    <DialogContent className="sm:max-w-[440px]">
+                                    <DialogContent className="sm:max-w-110">
                                         <DialogHeader>
                                             <DialogTitle>Enviar link de check-in</DialogTitle>
                                             <DialogDescription>
@@ -738,7 +738,7 @@ function ContactRow({
                 <dd>
                     <a
                         href={href}
-                        className="block truncate rounded text-sm font-medium text-ink transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        className="block truncate rounded-xs text-sm font-medium text-ink transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                     >
                         {value}
                     </a>

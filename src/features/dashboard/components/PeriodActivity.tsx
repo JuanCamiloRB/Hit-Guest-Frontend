@@ -165,7 +165,7 @@ function ActivityMessage({
     onRetry: () => void
 }) {
     return (
-        <div role={role} className="flex min-h-[18rem] flex-col items-center justify-center gap-2 text-center">
+        <div role={role} className="flex min-h-72 flex-col items-center justify-center gap-2 text-center">
             {icon}
             <p className="text-sm font-semibold text-ink">{title}</p>
             {description && <p className="text-sm text-ink-3">{description}</p>}

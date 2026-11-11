@@ -276,7 +276,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                     <ArrowLeft size={20} />
                 </Link>
-                <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">
+                <div className="text-sm font-bold text-ink-3">
                     {isSecondary ? "Paso 2 de 4" : "Paso 3 de 6"}
                 </div>
             </div>
@@ -298,7 +298,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 </p>
             </div>
 
-            <div className="bg-white border border-rule rounded-2xl p-6 shadow-sm space-y-5">
+            <div className="bg-white border border-rule rounded-xl p-6 shadow-sm space-y-5">
                 <div className="flex items-center gap-3">
                     <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center border border-primary/20 shrink-0">
                         <Mail size={20} className="text-primary" />
@@ -321,7 +321,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                         value={code}
                         disabled={inputDisabled}
                         onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                        className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-center text-2xl font-bold tracking-[0.5em] text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50 ${error ? "border-danger" : "border-rule"}`}
+                        aria-invalid={!!(error) || undefined} className={`w-full px-4 py-3 text-center text-2xl font-bold tracking-widest text-ink disabled:opacity-50`}
                         placeholder="······"
                         maxLength={6}
                     />
@@ -355,7 +355,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                     <UnstyledButton
                         onClick={handleVerify}
                         disabled={inputDisabled || code.length !== 6}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {submitting ? (
                             <><Loader2 className="animate-spin" size={20} /> Verificando...</>

@@ -69,7 +69,7 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
                                             tabIndex={0}
                                             role="img"
                                             aria-label={`${format(point.date, "MMMM yyyy", { locale: es })}: ${formatUsd(point.total)}${isRef ? " (mes seleccionado)" : ""}`}
-                                            className="group relative flex-1 flex flex-col justify-end items-center h-full pb-6 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                            className="group relative flex-1 flex flex-col justify-end items-center h-full pb-6 rounded-xs focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                         >
                                             {/* Tooltip — hit target is the whole column; also on keyboard focus. */}
                                             <div className="pointer-events-none absolute bottom-full mb-1 z-10 hidden group-hover:block group-focus-visible:block">
@@ -92,7 +92,8 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
                                             )}
 
                                             <div
-                                                className={`w-full max-w-[3rem] rounded-t transition-colors ${
+                                                data-slot="history-bar"
+                                                className={`w-full max-w-12 rounded-t-xs transition-colors ${
                                                     // Datos en el morado de la marca: el mes elegido sólido; el
                                                     // resto al 20 % con un borde superior al 70 % (~3,4:1) que
                                                     // define la forma de la barra (WCAG 1.4.11).

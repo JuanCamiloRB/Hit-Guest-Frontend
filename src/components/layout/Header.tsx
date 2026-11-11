@@ -75,7 +75,7 @@ export function Header() {
                                 <Button
                                     variant="ghost"
                                     aria-label="Idioma de la interfaz"
-                                    className="hidden sm:inline-flex h-10 w-auto px-3 gap-2 text-ink-2 bg-sunk/50 hover:bg-sunk rounded-lg border border-rule uppercase text-xs font-bold tracking-wider"
+                                    className="hidden sm:inline-flex h-10 w-auto px-3 gap-2 text-ink-2 bg-sunk/50 hover:bg-sunk rounded-lg border border-rule text-xs font-bold"
                                 >
                                     <Languages className="h-4 w-4" aria-hidden />
                                     {isMounted ? language : DEFAULT_LANGUAGE}

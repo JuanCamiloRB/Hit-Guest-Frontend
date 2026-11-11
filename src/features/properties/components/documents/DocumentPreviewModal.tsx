@@ -205,7 +205,7 @@ export function DocumentPreviewModal({
                                     handleRender(v)
                                 }}
                             >
-                                <SelectTrigger className="bg-sunk/50 border-rule">
+                                <SelectTrigger>
                                     <SelectValue placeholder="Selecciona una reserva de prueba" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -221,7 +221,7 @@ export function DocumentPreviewModal({
                 )}
 
                 {/* Rendered document */}
-                <div className="rounded-xl border border-rule bg-white p-6 min-h-[240px]">
+                <div className="rounded-xl border border-rule bg-white p-6 min-h-60">
                     {rendering ? (
                         <div className="flex items-center justify-center py-16 gap-2 text-ink-3">
                             <Loader2 size={20} className="animate-spin" /> Generando vista previa...

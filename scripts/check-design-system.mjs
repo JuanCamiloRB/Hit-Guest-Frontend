@@ -27,6 +27,7 @@ const PALETTE = "slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|gree
  * - lib/design-tokens.ts: espejo JS de globals.css para lo que no lee CSS
  *   (Stripe); su prueba falla si se desalinea.
  */
+const UI_ONLY = (path) => path.startsWith("src/components/ui/") || path.startsWith("src/components/brand/")
 const COLOR_EXCEPTIONS = (path) => path.startsWith("src/components/brand/") || path === "src/lib/design-tokens.ts"
 
 const rules = [
@@ -121,6 +122,53 @@ const rules = [
         ignore: COLOR_EXCEPTIONS,
     },
     {
+        // Cuatro radios (decisión 2026-11-11): md controles, lg avisos y piezas
+        // dentro de tarjetas, xl tarjetas/tablas/diálogos, full pastillas y
+        // avatares; xs para microcontroles. Sin `rounded` suelto, sm, 2xl, 3xl.
+        id: "radius-scale",
+        description: "usa un radio fuera de la escala (xs, md, lg, xl, full)",
+        pattern: /(?<![\w-])rounded(?:-[trblse]{1,2})?(?:-(?:sm|2xl|3xl|4xl))?(?![\w-])/g,
+        ignore: UI_ONLY,
+    },
+    {
+        id: "shadow-scale",
+        description: "usa una sombra alta fuera de un overlay (lg, xl, 2xl)",
+        pattern: /(?<![\w-])shadow-(?:lg|xl|2xl)(?![\w/-])/g,
+        ignore: UI_ONLY,
+    },
+    {
+        id: "arbitrary-length",
+        description: "usa una medida en px/rem fuera de la escala de espaciado (`w-45`, no `w-[180px]`)",
+        pattern: /-\[[0-9.]+(?:px|rem|em)\]/g,
+        ignore: UI_ONLY,
+    },
+    {
+        id: "font-weight-scale",
+        description: "usa un peso fuera de la escala (medium, semibold, bold)",
+        pattern: /(?<![\w-])font-(?:black|extrabold|thin|extralight|light)(?![\w-])/g,
+        ignore: UI_ONLY,
+    },
+    {
+        // La interfaz va en caso de oración. Las mayúsculas solo existen en la
+        // primitiva Overline (rótulos de grupo de navegación).
+        id: "uppercase-text",
+        description: "pone texto en mayúsculas; usa caso de oración o la primitiva Overline",
+        // El tracking de la escala sí se permite (dígitos de un código de acceso).
+        pattern: /(?<![\w-])(?:uppercase|tracking-\[[^\]]+\])(?![\w-])/g,
+        ignore: UI_ONLY,
+    },
+    {
+        // Fondo, borde, radio, sombra, anillo y foco de un campo son de la
+        // primitiva (borde 3:1, hover y foco comunes). Desde la pantalla solo
+        // layout: alto de densidad, ancho, relleno para un ícono.
+        id: "primitive-override",
+        description: "pisa la apariencia de un campo (Input, Textarea, SelectTrigger, PhoneInputField); solo se permite layout",
+        pattern: /(?<![\w-])(?:[a-z-]+:)*(?:bg|border|rounded|shadow|ring|outline)(?:-[\w/\[\].%-]+)?(?![\w-])/g,
+        input: "fieldClasses",
+        // Las primitivas que componen otras (PhoneInputField sobre Input) sí ajustan.
+        ignore: (path) => path.startsWith("src/components/ui/"),
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,
@@ -156,6 +204,7 @@ function inspect() {
         const elements = []
         const imports = []
         const styles = []
+        const fieldClasses = []
 
         function visit(node) {
             if (ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
@@ -169,6 +218,20 @@ function inspect() {
             if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
                 const tag = node.tagName.getText(sourceFile)
                 if (/^[a-z]/.test(tag)) elements.push(`<${tag}`)
+            }
+            // `className` de los campos: su apariencia es de la primitiva.
+            if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
+                && /^(?:Input|Textarea|SelectTrigger|PhoneInputField)$/.test(node.tagName.getText(sourceFile))) {
+                for (const attr of node.attributes.properties) {
+                    if (!ts.isJsxAttribute(attr) || attr.name.getText(sourceFile) !== "className" || !attr.initializer) continue
+                    const init = attr.initializer
+                    if (ts.isStringLiteral(init)) fieldClasses.push(init.text)
+                    else if (ts.isJsxExpression(init) && init.expression) {
+                        const e = init.expression
+                        if (ts.isStringLiteralLike(e) || ts.isNoSubstitutionTemplateLiteral(e)) fieldClasses.push(e.text)
+                        else if (ts.isTemplateExpression(e)) fieldClasses.push(e.head.text, ...e.templateSpans.map((sp) => sp.literal.text))
+                    }
+                }
             }
             // Claves de los objetos en `style={{…}}`.
             if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === "style" && node.initializer
@@ -189,6 +252,7 @@ function inspect() {
             elements: elements.join("\n"),
             imports: imports.join("\n"),
             styles: styles.join("\n"),
+            fieldClasses: fieldClasses.join("\n"),
         }
         for (const rule of rules) {
             if (rule.ignore?.(path)) continue

@@ -96,7 +96,7 @@ export function SupportConsole() {
         <div className="space-y-4">
             <form onSubmit={search} className="flex max-w-3xl flex-wrap gap-3" role="search">
                 <Label variant="plain" htmlFor="support-client-search" className="sr-only">Buscar cliente</Label>
-                <div className="relative min-w-[220px] flex-1">
+                <div className="relative min-w-55 flex-1">
                     <Search size={16} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
                     <Input
                         id="support-client-search"
@@ -142,7 +142,7 @@ export function SupportConsole() {
                         <div className="hidden md:block">
                             <table className="w-full table-fixed text-sm">
                                 <thead>
-                                    <tr className="border-b border-rule text-left text-xs uppercase tracking-wide text-ink-3">
+                                    <tr className="border-b border-rule text-left text-xs text-ink-3">
                                         <th scope="col" className="w-[34%] px-5 py-3 font-semibold">Cliente</th>
                                         <th scope="col" className="px-5 py-3 font-semibold">Correo</th>
                                         <th scope="col" className="hidden w-[14%] px-5 py-3 font-semibold lg:table-cell">Identificación</th>

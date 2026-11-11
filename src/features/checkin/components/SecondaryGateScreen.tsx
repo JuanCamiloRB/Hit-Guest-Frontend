@@ -59,7 +59,7 @@ export function SecondaryGateScreen({ status, basePath }: SecondaryGateScreenPro
 
             <Button 
                 onClick={handleRefresh}
-                className="w-full max-w-xs h-12 bg-brand-navy hover:bg-brand-navy/90 text-white rounded-xl font-semibold shadow-lg shadow-brand-navy/20"
+                className="w-full max-w-xs h-12 bg-brand-navy hover:bg-brand-navy/90 text-white rounded-xl font-semibold shadow-sm shadow-brand-navy/20"
                 disabled={isRefreshing}
             >
                 {isRefreshing ? "Comprobando..." : "Ya lo completó, recargar página"}

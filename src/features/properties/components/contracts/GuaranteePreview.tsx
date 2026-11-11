@@ -97,6 +97,6 @@ function highlightMissing(html: string, missing: string[]): string {
     return html.replace(
         new RegExp(`(href=["'][^"']*)?\\{\\{\\s*(${keys})\\s*\\}\\}`, "gi"),
         (token, insideHref?: string) =>
-            insideHref ? token : `<mark class="bg-warning-sunk rounded px-0.5">${token}</mark>`,
+            insideHref ? token : `<mark class="bg-warning-sunk rounded-xs px-0.5">${token}</mark>`,
     )
 }

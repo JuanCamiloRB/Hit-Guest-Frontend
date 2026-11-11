@@ -646,7 +646,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
+            <DialogContent className="sm:max-w-170 max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
                 <DialogHeader className="pb-2">
                     <DialogTitle className="text-2xl font-bold text-ink">
                         {mode === "edit" ? "Editar Reserva Manual" : "Crear Reserva Manual"}
@@ -670,7 +670,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Section: Guest Info ─── */}
                         <div className="space-y-1">
-                            <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-ink-3 flex items-center gap-2">
+                            <h3 className="text-xs font-bold text-ink-3 flex items-center gap-2">
                                 <User size={14} />
                                 Datos del Huésped
                             </h3>
@@ -688,7 +688,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                             <Input
                                                 placeholder="Ej: María"
                                                 autoComplete="given-name"
-                                                className="bg-sunk/50 border-rule focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
+                                                className="h-11"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -710,7 +710,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                             <Input
                                                 placeholder="Ej: González Pérez"
                                                 autoComplete="family-name"
-                                                className="bg-sunk/50 border-rule focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
+                                                className="h-11"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -726,11 +726,11 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                         <FormLabel className="font-semibold text-ink-2">País / Nacionalidad *</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value} disabled={loadingCountries}>
                                             <FormControl>
-                                                <SelectTrigger className="bg-sunk/50 border-rule focus:ring-primary/30 focus:border-primary rounded-xl h-11 transition-colors">
+                                                <SelectTrigger className="h-11">
                                                     <SelectValue placeholder={loadingCountries ? "Cargando..." : "Selecciona un país"} />
                                                 </SelectTrigger>
                                             </FormControl>
-                                            <SelectContent position="popper" className="z-[100] max-h-[300px]">
+                                            <SelectContent position="popper" className="z-[100] max-h-75">
                                                 {countries.map((c) => (
                                                     <SelectItem key={c.id} value={c.name}>
                                                         {c.extra?.emoji ? `${c.extra.emoji} ` : ""}{c.name}
@@ -750,7 +750,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Section: Property & Source ─── */}
                         <div className="space-y-1.5 pt-2">
-                            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-secondary flex items-center gap-2">
+                            <h3 className="text-xs font-bold text-secondary flex items-center gap-2">
                                 <Home size={14} />
                                 Alojamiento y Canal
                             </h3>
@@ -782,7 +782,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                             disabled={loadingProperties}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="bg-sunk/50 border-rule focus:ring-secondary/30 focus:border-secondary rounded-xl h-11 transition-colors">
+                                                <SelectTrigger className="h-11">
                                                     <SelectValue placeholder={loadingProperties ? "Cargando..." : "Selecciona..."} />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -822,8 +822,8 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                         >
                                             <FormControl>
                                                 <SelectTrigger className={cn(
-                                                    "bg-sunk/50 border-rule focus:ring-secondary/30 focus:border-secondary rounded-xl h-11 transition-colors",
-                                                    !!selectedPropertyUuid && !loadingListings && listings.length === 0 && "bg-primary/5 disabled:bg-primary/5 disabled:text-primary data-[placeholder]:text-primary border-primary/30 text-primary font-medium placeholder:text-primary"
+                                                    "h-11",
+                                                    !!selectedPropertyUuid && !loadingListings && listings.length === 0 && "disabled:text-primary data-[placeholder]:text-primary text-primary font-medium placeholder:text-primary"
                                                 )}>
                                                     <SelectValue className="text-primary" placeholder={
                                                         !selectedPropertyUuid
@@ -875,7 +875,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                         <FormLabel className="font-semibold text-ink-2">Canal de Reserva *</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value} disabled={loadingSources || sourcesFailed}>
                                             <FormControl>
-                                                <SelectTrigger ref={channelTriggerRef} className="bg-sunk/50 border-rule focus:ring-secondary/30 focus:border-secondary rounded-xl h-11 transition-colors">
+                                                <SelectTrigger ref={channelTriggerRef} className="h-11">
                                                     <SelectValue placeholder={loadingSources ? "Cargando..." : "Selecciona..."} />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -920,7 +920,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Section: Dates ─── */}
                         <div className="space-y-1.5 pt-2">
-                            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                            <h3 className="text-xs font-bold text-primary flex items-center gap-2">
                                 <CalendarIcon size={14} />
                                 Fechas y Huéspedes
                             </h3>
@@ -994,7 +994,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                 type="number"
                                                 min={1}
                                                 placeholder="1"
-                                                className="bg-sunk/50 border-rule focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
+                                                className="h-11"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -1012,7 +1012,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                             Precio total *
                                         </FormLabel>
                                         <FormControl>
-                                            <Input type="number" min={0} step="0.01" className="bg-sunk/50 border-rule focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors" placeholder="0.00" {...field} />
+                                            <Input type="number" min={0} step="0.01" className="h-11" placeholder="0.00" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -1026,11 +1026,11 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                         <FormLabel className="font-semibold text-ink-2">Moneda *</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value} disabled={loadingCurrencies}>
                                             <FormControl>
-                                                <SelectTrigger className="bg-sunk/50 border-rule focus:ring-primary/30 focus:border-primary rounded-xl h-11 transition-colors">
+                                                <SelectTrigger className="h-11">
                                                     <SelectValue placeholder={loadingCurrencies ? "Cargando..." : "Moneda"} />
                                                 </SelectTrigger>
                                             </FormControl>
-                                            <SelectContent position="popper" className="z-[100] max-h-[300px]">
+                                            <SelectContent position="popper" className="z-[100] max-h-75">
                                                 {currencies.map((c) => (
                                                     <SelectItem key={c.id} value={c.id}>
                                                         {c.name}
@@ -1049,7 +1049,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Contact Info ─── */}
                         <div className="space-y-1.5 pt-2">
-                            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                            <h3 className="text-xs font-bold text-primary flex items-center gap-2">
                                 <Phone size={14} />
                                 Contacto y Enlace Móvil
                             </h3>
@@ -1085,7 +1085,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                             <Input 
                                                 type="email" 
                                                 placeholder="huesped@email.com" 
-                                                className="bg-sunk/50 border-rule focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
+                                                className="h-11"
                                                 {...field} 
                                             />
                                         </FormControl>
@@ -1137,7 +1137,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             <Button
                                 type="submit"
                                 disabled={isLoading || (mode === "create" && (sourcesFailed || loadingSources))}
-                                className="bg-primary hover:bg-primary/90 text-white gap-2 font-semibold min-w-[160px]"
+                                className="bg-primary hover:bg-primary/90 text-white gap-2 font-semibold min-w-40"
                             >
                                 {isLoading ? (
                                     <>

@@ -30,7 +30,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 <div className="h-20 w-20 bg-success-sunk rounded-full flex items-center justify-center mb-2">
                     <CheckCircle2 className="h-10 w-10 text-success" />
                 </div>
-                <h1 className="text-3xl font-black text-ink tracking-tight">
+                <h1 className="text-3xl font-bold text-ink tracking-tight">
                     {completedCopy?.title ?? "¡Registro Exitoso!"}
                 </h1>
                 <p className="text-ink-3 text-sm max-w-sm">
@@ -38,8 +38,8 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 </p>
             </div>
 
-            <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
-                <h3 className="font-bold text-ink text-sm uppercase tracking-wider">Resumen de Estadía</h3>
+            <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
+                <h3 className="font-bold text-ink text-sm">Resumen de Estadía</h3>
                 
                 <div className="flex items-start gap-3">
                     <MapPin className="h-5 w-5 text-primary shrink-0" />
@@ -60,7 +60,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 </div>
             </div>
 
-            <div className="bg-brand-navy/5 border border-brand-navy/10 rounded-2xl p-5 text-center">
+            <div className="bg-brand-navy/5 border border-brand-navy/10 rounded-xl p-5 text-center">
                 <p className="text-sm text-brand-navy font-medium">
                     El huésped titular tiene acceso a las instrucciones de llegada y códigos de cerradura.
                 </p>
@@ -70,7 +70,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 <div className="w-full max-w-lg">
                     <Link
                         href={`/checkin/${reservationUuid}`}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-ink hover:bg-ink/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-2 h-14 bg-ink hover:bg-ink/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
                     >
                         <Home size={18} />
                         Volver al inicio

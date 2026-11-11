@@ -22,6 +22,7 @@ import {
 import { useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Overline } from "@/components/ui/overline"
 
 const SETTINGS_TABS = [
     { id: "profile", label: "Mi cuenta", icon: User },
@@ -52,10 +53,10 @@ export function SettingsContent() {
         return (
             <div className="flex flex-col md:flex-row gap-8 items-start animate-in fade-in duration-500">
                 {/* Sidebar Skeleton */}
-                <div className="w-full md:w-64 h-[320px] bg-sunk/60 rounded-3xl animate-pulse motion-reduce:animate-none" />
+                <div className="w-full md:w-64 h-80 bg-sunk/60 rounded-xl animate-pulse motion-reduce:animate-none" />
                 
                 {/* Content Skeleton */}
-                <div className="flex-1 h-[600px] bg-sunk/60 rounded-3xl animate-pulse motion-reduce:animate-none" />
+                <div className="flex-1 h-150 bg-sunk/60 rounded-xl animate-pulse motion-reduce:animate-none" />
             </div>
         )
     }
@@ -68,9 +69,9 @@ export function SettingsContent() {
         <div className="flex flex-col md:flex-row gap-8 items-start">
             {/* Vertical Sidebar Navigation */}
             <aside className="w-full md:w-64 space-y-2 flex-shrink-0">
-                <p className="px-4 text-xs font-bold uppercase tracking-wider text-ink-3 mb-4">
+                <Overline className="mb-4 px-4">
                     CONFIGURACIÓN
-                </p>
+                </Overline>
                 <div className="flex flex-col space-y-1">
                     {filteredTabs.map((tab) => (
                         <UnstyledButton
@@ -98,7 +99,7 @@ export function SettingsContent() {
 
             {/* Content Area */}
             <main className="flex-1 w-full min-w-0">
-                <Card className="border-none shadow-sm shadow-black/5 bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden">
+                <Card className="border-none shadow-sm shadow-black/5 bg-white/80 backdrop-blur-sm rounded-xl overflow-hidden">
                     <CardHeader className="border-b border-rule pb-6">
                         <CardTitle className="text-2xl font-bold">
                             {filteredTabs.find(t => t.id === activeTab)?.label}

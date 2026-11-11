@@ -502,7 +502,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                     <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                         <ArrowLeft size={20} />
                     </Link>
-                    <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">
+                    <div className="text-sm font-bold text-ink-3">
                         Paso 4 de 6
                     </div>
                 </div>
@@ -633,13 +633,13 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                             {isFieldVisible('arrivalTime') && (
                                 <div className="space-y-1.5">
                                     <Label variant="plain" className="text-sm font-semibold text-ink-2">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-danger ml-0.5">*</span>}</Label>
-                                    <Input type="time" value={form.arrivalTime ?? ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                                    <Input type="time" value={form.arrivalTime ?? ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full px-4 py-3 text-ink" />
                                 </div>
                             )}
                             {isFieldVisible('departureTime') && (
                                 <div className="space-y-1.5">
                                     <Label variant="plain" className="text-sm font-semibold text-ink-2">Hora de salida{isFieldRequired('departureTime') && <span className="text-danger ml-0.5">*</span>}</Label>
-                                    <Input type="time" value={form.departureTime ?? ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                                    <Input type="time" value={form.departureTime ?? ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full px-4 py-3 text-ink" />
                                 </div>
                             )}
                         </div>
@@ -702,7 +702,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                     ) : isFormValid ? (
                         <UnstyledButton
                             onClick={handleSubmit} 
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]"
                         >
                             <CheckCircle2 size={20} />
                             Continuar

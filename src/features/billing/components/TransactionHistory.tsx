@@ -94,7 +94,7 @@ export function TransactionHistory() {
     }, [page])
 
     return (
-        <div className="rounded-2xl border border-rule bg-white">
+        <div className="rounded-xl border border-rule bg-white">
             <div className="flex items-center gap-2 border-b border-rule px-5 py-4">
                 <Receipt className="h-4 w-4 text-primary" />
                 <h3 className="text-sm font-bold text-ink">Historial de transacciones</h3>
@@ -104,8 +104,8 @@ export function TransactionHistory() {
                 <div className="divide-y divide-rule">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <div key={i} className="flex items-center gap-4 px-5 py-3.5">
-                            <div className="h-4 flex-1 animate-pulse rounded bg-sunk" />
-                            <div className="h-4 w-16 animate-pulse rounded bg-sunk" />
+                            <div className="h-4 flex-1 animate-pulse rounded-xs bg-sunk" />
+                            <div className="h-4 w-16 animate-pulse rounded-xs bg-sunk" />
                         </div>
                     ))}
                 </div>
@@ -126,9 +126,9 @@ export function TransactionHistory() {
             ) : (
                 <>
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[720px] text-sm">
+                        <table className="w-full min-w-180 text-sm">
                             <thead>
-                                <tr className="border-b border-rule text-left text-xs font-bold uppercase tracking-wide text-ink-3">
+                                <tr className="border-b border-rule text-left text-xs font-bold text-ink-3">
                                     <th className="px-5 py-2.5">Date</th>
                                     <th className="px-3 py-2.5">Description</th>
                                     <th className="px-3 py-2.5">Type</th>

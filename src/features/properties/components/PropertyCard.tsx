@@ -124,7 +124,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
     }
 
     return (
-        <Card className="overflow-hidden group hover:shadow-2xl transition-all duration-500 border-primary/10 hover:border-primary/30 rounded-2xl bg-white/50 backdrop-blur-sm">
+        <Card className="overflow-hidden group hover:shadow-sm transition-all duration-500 border-primary/10 hover:border-primary/30 rounded-xl bg-white/50 backdrop-blur-sm">
             <div className="relative aspect-video bg-sunk">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -139,7 +139,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                     <div className="absolute top-2 left-2 flex gap-1">
                         <Badge className="bg-white/90 text-ink border-none shadow-sm backdrop-blur-sm flex gap-1.5 items-center px-2 py-0.5">
                             <TypeIcon label={hasType ? typeLabel : null} />
-                            <span className="text-xs font-bold uppercase tracking-wider">{typeLabel}</span>
+                            <span className="text-xs font-bold">{typeLabel}</span>
                         </Badge>
                     </div>
                 )}
@@ -157,7 +157,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
             <CardHeader className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div className="grid gap-1">
-                        <h3 className="font-extrabold text-lg leading-tight text-ink group-hover:text-primary transition-colors duration-300">
+                        <h3 className="font-bold text-lg leading-tight text-ink group-hover:text-primary transition-colors duration-300">
                             {property.name}
                         </h3>
                         <div className="flex items-center text-xs text-ink-2 font-medium">
@@ -171,7 +171,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                                 <MoreHorizontal className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[180px]">
+                        <DropdownMenuContent align="end" className="w-45">
                             <DropdownMenuLabel>Gestión</DropdownMenuLabel>
                             <DropdownMenuItem asChild>
                                 <Link href={`/dashboard/properties/${propertyId}`} className="flex items-center">
@@ -199,10 +199,10 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 {/* Alojamientos activos + automatizaciones encendidas (del BFF agregado) */}
                 <div className="space-y-2">
                     <div className="flex items-baseline gap-1.5">
-                        <span className="text-xl font-extrabold text-ink tabular-nums">
+                        <span className="text-xl font-bold text-ink tabular-nums">
                             {activeListings ?? "—"}
                         </span>
-                        <span className="text-xs font-bold uppercase tracking-wider text-ink-3">
+                        <span className="text-xs font-bold text-ink-3">
                             {activeListings === 1 ? "Alojamiento activo" : "Alojamientos activos"}
                         </span>
                     </div>
@@ -248,7 +248,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 </div>
             </CardHeader>
             <CardFooter className="p-4 pt-0">
-                <Button variant="outline" className="w-full border-primary/20 text-ink hover:bg-primary hover:text-white hover:border-transparent transition-all duration-300 font-bold rounded-xl shadow-sm hover:shadow-lg" asChild>
+                <Button variant="outline" className="w-full border-primary/20 text-ink hover:bg-primary hover:text-white hover:border-transparent transition-all duration-300 font-bold rounded-xl shadow-sm hover:shadow-sm" asChild>
                     <Link href={`/dashboard/properties/${propertyId}`}>Gestionar</Link>
                 </Button>
             </CardFooter>

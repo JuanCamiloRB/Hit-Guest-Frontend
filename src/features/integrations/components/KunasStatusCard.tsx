@@ -45,7 +45,7 @@ export function KunasStatusCard({
     }
 
     return (
-        <div className="max-w-lg rounded-2xl border border-rule bg-white shadow-sm">
+        <div className="max-w-lg rounded-xl border border-rule bg-white shadow-sm">
             {/* Header: title + status badge */}
             <div className="flex items-center justify-between border-b border-rule px-5 py-4">
                 <h3 className="text-lg font-bold text-ink">Kunas PMS</h3>

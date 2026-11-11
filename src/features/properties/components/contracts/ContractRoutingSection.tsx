@@ -635,7 +635,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     }
 
     return (
-        <div className="space-y-6 rounded-2xl border border-rule bg-white p-4 sm:p-5">
+        <div className="space-y-6 rounded-xl border border-rule bg-white p-4 sm:p-5">
             <div className="flex items-start gap-3">
                 <div className="rounded-xl bg-primary/10 p-2.5">
                     <FileSignature className="h-6 w-6 text-primary" />
@@ -862,7 +862,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 <FeedbackBanner tone="danger" mode="blocking" className="whitespace-pre-line">{saveError}</FeedbackBanner>
             )}
 
-            <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-xl border border-rule bg-white/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+            <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-xl border border-rule bg-white/95 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 text-sm">
                     {routingBlocked ? (
                         <><AlertTriangle className="h-4 w-4 text-warning" /><span className="font-semibold text-warning">Edición bloqueada hasta corregir los canales no identificados.</span></>

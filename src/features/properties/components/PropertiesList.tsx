@@ -117,7 +117,7 @@ export function PropertiesList() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <h2 className="text-3xl font-extrabold tracking-tight text-ink drop-shadow-sm">Propiedades y Alojamientos</h2>
+                        <h2 className="text-3xl font-bold tracking-tight text-ink drop-shadow-sm">Propiedades y Alojamientos</h2>
                         {/* Lo cargado sigue a la vista mientras se relee (p. ej. tras activar una propiedad). */}
                         <RefreshIndicator
                             active={hasProperties && (light.status === "refreshing" || portfolio.status === "refreshing")}
@@ -141,17 +141,17 @@ export function PropertiesList() {
             </div>
 
             <Tabs defaultValue="properties" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-2 rounded-2xl border-[1.5px] border-primary/20 shadow-xl">
-                    <TabsList className="grid grid-cols-2 w-full md:w-[400px] bg-sunk/50 p-1.5 h-12">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-2 rounded-xl border border-rule shadow-sm">
+                    <TabsList className="grid grid-cols-2 w-full md:w-100 bg-sunk/50 p-1.5 h-12">
                         <TabsTrigger
                             value="properties"
-                            className="gap-2 rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
+                            className="gap-2 rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white data-[state=active]:shadow-sm transition-all font-bold"
                         >
                             <Home className="h-4 w-4" /> Propiedades
                         </TabsTrigger>
                         <TabsTrigger
                             value="units"
-                            className="gap-2 rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
+                            className="gap-2 rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white data-[state=active]:shadow-sm transition-all font-bold"
                         >
                             <List className="h-4 w-4" /> Alojamientos
                         </TabsTrigger>
@@ -165,11 +165,11 @@ export function PropertiesList() {
                                 aria-label="Buscar propiedades y alojamientos"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 h-10 border-primary/10 bg-white focus:border-primary focus:ring-primary transition-all"
+                                className="pl-9 h-10"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px] shrink-0 h-10 border-rule" aria-label="Filtrar por estado">
+                            <SelectTrigger className="w-45 shrink-0 h-10" aria-label="Filtrar por estado">
                                 <div className="flex items-center gap-2 pointer-events-none min-w-0">
                                     <Filter className="h-3 w-3 shrink-0 text-ink-3" />
                                     <SelectValue placeholder="Estado" />
@@ -204,7 +204,7 @@ export function PropertiesList() {
                             Revisa tu conexión e intenta de nuevo.
                         </FeedbackBanner>
                     ) : filteredProperties.length === 0 ? (
-                        <div className="rounded-2xl border-2 border-dashed border-rule bg-white">
+                        <div className="rounded-xl border-2 border-dashed border-rule bg-white">
                             {properties.length === 0 ? (
                                 <EmptyState
                                     icon={<Home className="h-8 w-8" />}
@@ -263,7 +263,7 @@ export function PropertiesList() {
                             title="Listado de Alojamientos"
                             actions={
                                 <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-                                    <SelectTrigger className="w-[200px] h-9 text-xs" aria-label="Filtrar por propiedad">
+                                    <SelectTrigger className="w-50 h-9 text-xs" aria-label="Filtrar por propiedad">
                                         <SelectValue placeholder="Propiedad" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -280,7 +280,7 @@ export function PropertiesList() {
                                     la primitiva; antes iba en 10 px, mayúsculas y navy. */}
                                 <TableHeader>
                                     <TableRow className="hover:bg-transparent">
-                                        <TableHead className="w-[100px]">Número</TableHead>
+                                        <TableHead className="w-25">Número</TableHead>
                                         <TableHead>Nombre del alojamiento</TableHead>
                                         <TableHead>Propiedad</TableHead>
                                         <TableHead>Estado</TableHead>
@@ -317,7 +317,7 @@ export function PropertiesList() {
                                                     <TableCell className="text-ink-2 text-sm font-medium">{property?.name}</TableCell>
                                                     <TableCell>
                                                         <div className={cn(
-                                                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider",
+                                                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold",
                                                             unit.status === "ACTIVE"
                                                                 ? "bg-success-sunk text-success border border-success/20"
                                                                 : "bg-sunk text-ink-3 border border-rule"
@@ -326,7 +326,7 @@ export function PropertiesList() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-sm font-medium text-ink-2">{unit.capacity} Huéspedes</TableCell>
-                                                    <TableCell className="text-right font-extrabold text-ink">
+                                                    <TableCell className="text-right font-bold text-ink">
                                                         ${unit.pricePerNight?.toLocaleString()}
                                                     </TableCell>
                                                 </TableRow>

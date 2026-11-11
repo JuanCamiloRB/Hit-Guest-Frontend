@@ -51,7 +51,7 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
         <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
                 <div className="flex items-baseline gap-2">
-                    {/* Era `text-xs uppercase tracking-[0.2em]` en gris claro:
+                    {/* Era `text-xs` en gris claro:
                         el mismo tratamiento que las etiquetas de dato de arriba,
                         así que el encabezado de la sección más importante del
                         panel no se distinguía de un metadato. */}
@@ -63,7 +63,7 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                     type="button"
                     onClick={() => void handleRefresh()}
                     disabled={isLoading || refreshing}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded text-xs font-medium text-ink-3 transition-colors hover:text-primary disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xs text-xs font-medium text-ink-3 transition-colors hover:text-primary disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                     <RefreshCw size={13} aria-hidden className={cn((isLoading || refreshing) && "animate-spin")} />
                     Refrescar
@@ -76,7 +76,7 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                         centrado hacía saltar el layout al llegar los datos. */}
                     <span className="sr-only" role="status">Cargando automatizaciones…</span>
                     {Array.from({ length: 4 }).map((_, i) => (
-                        <Skeleton key={i} aria-hidden className="h-[104px] rounded-xl" />
+                        <Skeleton key={i} aria-hidden className="h-26 rounded-xl" />
                     ))}
                 </div>
             ) : error ? (

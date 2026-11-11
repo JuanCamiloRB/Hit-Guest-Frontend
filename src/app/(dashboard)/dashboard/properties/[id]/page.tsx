@@ -77,7 +77,7 @@ export default function EditPropertyPage() {
 
     if (!property) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+            <div className="flex flex-col items-center justify-center min-h-100 space-y-4">
                 <h2 className="text-2xl font-bold">Propiedad no encontrada</h2>
                 <p className="text-muted-foreground">La propiedad que buscas no existe o ha sido eliminada.</p>
             </div>

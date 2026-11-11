@@ -59,7 +59,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
     }
 
     return (
-        <div className={cn("grid gap-8 bg-white p-8 rounded-2xl shadow-xl border border-border/50", className)} {...props}>
+        <div className={cn("grid gap-8 bg-white p-8 rounded-xl shadow-sm border border-border/50", className)} {...props}>
             <div className="flex flex-col items-center gap-2 text-center mb-2">
                 {alternateLanguage && (
                     <div className="absolute top-4 right-4 z-50">
@@ -117,7 +117,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             />
                             <Button
                                 disabled={isLoading}
-                                className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md hover:shadow-lg transition-all duration-300 h-11"
+                                className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300 h-11"
                             >
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                 Continuar con el acceso
@@ -162,7 +162,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                                     pattern="[0-9]*"
                                                     maxLength={6}
                                                     disabled={isLoading}
-                                                    className="pl-9 text-center tracking-[1em] font-mono text-lg"
+                                                    className="pl-9 text-center tracking-widest font-mono text-lg"
                                                     {...field}
                                                 />
                                                 </FormControl>
@@ -175,7 +175,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             <div className="flex flex-col gap-3">
                                 <Button
                                     disabled={isLoading}
-                                    className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md hover:shadow-lg transition-all duration-300 h-11 w-full"
+                                    className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300 h-11 w-full"
                                 >
                                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                     Verificar e Iniciar Sesión

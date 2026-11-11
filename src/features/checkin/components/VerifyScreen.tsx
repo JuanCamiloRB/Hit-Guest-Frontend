@@ -901,7 +901,7 @@ export function VerifyScreen({
                 </div>
                 <div className="relative mt-8">
                     <div className="absolute inset-0 bg-primary blur-3xl opacity-20 rounded-full" />
-                    <div className="bg-primary/10 w-24 h-24 rounded-full flex items-center justify-center shadow-xl relative z-10 border border-primary/20">
+                    <div className="bg-primary/10 w-24 h-24 rounded-full flex items-center justify-center shadow-sm relative z-10 border border-primary/20">
                         {progress >= 100
                             ? <CheckCircle2 size={40} className="text-success" />
                             : <Loader2 size={40} className="text-primary animate-spin" />
@@ -955,7 +955,7 @@ export function VerifyScreen({
                     </p>
                 </div>
 
-                <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 border-b border-rule pb-3">
                         <FileText size={20} className="text-primary" />
                         <h2 className="font-bold text-ink">Datos Extraídos</h2>
@@ -964,15 +964,15 @@ export function VerifyScreen({
                     <div className="space-y-4">
                         <div className="space-y-1.5">
                             <Label variant="plain" className="text-sm font-semibold text-ink-2">Nombres</Label>
-                            <Input type="text" value={editOcr.firstName} onChange={e => setEditOcr({...editOcr, firstName: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                            <Input type="text" value={editOcr.firstName} onChange={e => setEditOcr({...editOcr, firstName: e.target.value})} className="w-full px-4 py-3 text-ink" />
                         </div>
                         <div className="space-y-1.5">
                             <Label variant="plain" className="text-sm font-semibold text-ink-2">Apellidos</Label>
-                            <Input type="text" value={editOcr.lastName} onChange={e => setEditOcr({...editOcr, lastName: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                            <Input type="text" value={editOcr.lastName} onChange={e => setEditOcr({...editOcr, lastName: e.target.value})} className="w-full px-4 py-3 text-ink" />
                         </div>
                         <div className="space-y-1.5">
                             <Label variant="plain" className="text-sm font-semibold text-ink-2">Número de Documento</Label>
-                            <Input type="text" value={editOcr.documentNumber} onChange={e => setEditOcr({...editOcr, documentNumber: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                            <Input type="text" value={editOcr.documentNumber} onChange={e => setEditOcr({...editOcr, documentNumber: e.target.value})} className="w-full px-4 py-3 text-ink" />
                         </div>
                         {/* Segmentadas (DD/MM/AAAA): son fechas que el huésped está
                             LEYENDO del documento — se teclean, no se navegan por un
@@ -1005,7 +1005,7 @@ export function VerifyScreen({
                                 !isValidDateValue(editOcr.dateOfBirth, localDateValue())
                                 || (!!editOcr.expirationDate && !isValidDateValue(editOcr.expirationDate))
                             }
-                            className="flex-[2] flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="flex-[2] flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             <CheckCircle2 size={20} /> Continuar
                         </UnstyledButton>
@@ -1167,7 +1167,7 @@ export function VerifyScreen({
                 <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                     <ArrowLeft size={20} />
                 </Link>
-                <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">
+                <div className="text-sm font-bold text-ink-3">
                     {isSecondary ? "Paso 2 de 4" : "Paso 3 de 6"}
                 </div>
             </div>
@@ -1214,9 +1214,9 @@ export function VerifyScreen({
             {verification.type === "session" && (() => {
                 const copy = diditCopy[verification.sessionType]
                 return (
-                    <div className="bg-white border border-rule rounded-2xl p-6 shadow-sm text-center space-y-6">
-                        <div className="bg-sunk/50 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto border border-rule shadow-inner">
-                            <span className="text-2xl font-black text-ink tracking-tighter">Didit.</span>
+                    <div className="bg-white border border-rule rounded-xl p-6 shadow-sm text-center space-y-6">
+                        <div className="bg-sunk/50 w-20 h-20 rounded-xl flex items-center justify-center mx-auto border border-rule shadow-inner">
+                            <span className="text-2xl font-bold text-ink tracking-tighter">Didit.</span>
                         </div>
                         <div className="space-y-2">
                             <h3 className="font-bold text-ink">{copy.title}</h3>
@@ -1259,7 +1259,7 @@ export function VerifyScreen({
                     )}
 
                     {captureStep === "documents" ? (
-                        <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
+                        <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
                             {/* Front photo */}
                             <div className="space-y-2">
                                 <Label variant="plain" className="text-sm font-semibold text-ink-2">
@@ -1269,7 +1269,7 @@ export function VerifyScreen({
                                     <div className="flex items-center justify-between bg-success-sunk border border-success/30 rounded-xl px-4 py-3">
                                         <div className="flex items-center gap-2">
                                             <CheckCircle2 size={18} className="text-success" />
-                                            <span className="text-sm text-ink-2 truncate max-w-[180px]">{frontFile.name}</span>
+                                            <span className="text-sm text-ink-2 truncate max-w-45">{frontFile.name}</span>
                                         </div>
                                         <UnstyledButton onClick={() => setFrontFile(null)} className="text-xs text-danger font-medium">Quitar</UnstyledButton>
                                     </div>
@@ -1300,7 +1300,7 @@ export function VerifyScreen({
                                         <div className="flex items-center justify-between bg-success-sunk border border-success/30 rounded-xl px-4 py-3">
                                             <div className="flex items-center gap-2">
                                                 <CheckCircle2 size={18} className="text-success" />
-                                                <span className="text-sm text-ink-2 truncate max-w-[180px]">{backFile.name}</span>
+                                                <span className="text-sm text-ink-2 truncate max-w-45">{backFile.name}</span>
                                             </div>
                                             <UnstyledButton onClick={() => setBackFile(null)} className="text-xs text-danger font-medium">Quitar</UnstyledButton>
                                         </div>
@@ -1327,7 +1327,7 @@ export function VerifyScreen({
                             )}
                         </div>
                     ) : (
-                        <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
+                        <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
                             <div className="flex items-center justify-between">
                                 <Label variant="plain" className="text-sm font-semibold text-ink-2">
                                     Selfie<span className="text-danger ml-0.5">*</span>
@@ -1348,7 +1348,7 @@ export function VerifyScreen({
                                 <div className="flex items-center justify-between bg-success-sunk border border-success/30 rounded-xl px-4 py-3">
                                     <div className="flex items-center gap-2">
                                         <CheckCircle2 size={18} className="text-success" />
-                                        <span className="text-sm text-ink-2 truncate max-w-[180px]">{selfieFile.name}</span>
+                                        <span className="text-sm text-ink-2 truncate max-w-45">{selfieFile.name}</span>
                                     </div>
                                     <UnstyledButton onClick={() => setSelfieFile(null)} className="text-xs text-danger font-medium">Quitar</UnstyledButton>
                                 </div>
@@ -1385,7 +1385,7 @@ export function VerifyScreen({
                     {verification.type === "session" ? (
                         <UnstyledButton
                             onClick={handleSessionVerification}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]"
                         >
                             {diditCopy[verification.sessionType].button}
                         </UnstyledButton>
@@ -1393,7 +1393,7 @@ export function VerifyScreen({
                         <UnstyledButton
                             onClick={handleDocumentsContinue}
                             disabled={!frontFile || (requiresBackImage && !backFile)}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {isCaptureMode ? "Enviar fotos" : "Continuar"}
                         </UnstyledButton>
@@ -1401,7 +1401,7 @@ export function VerifyScreen({
                         <UnstyledButton
                             onClick={handleDocumentUpload}
                             disabled={!selfieFile}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             Analizar Documento
                         </UnstyledButton>

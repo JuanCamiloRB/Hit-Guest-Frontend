@@ -157,7 +157,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                     )}
 
                     <div className="space-y-1.5">
-                        <Label variant="plain" className="text-xs font-semibold uppercase tracking-wide text-ink-3">
+                        <Label variant="plain" className="text-xs font-semibold text-ink-3">
                             Otro monto (USD)
                         </Label>
                         <div className="relative">

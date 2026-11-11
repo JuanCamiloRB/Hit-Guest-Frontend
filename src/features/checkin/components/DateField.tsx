@@ -116,7 +116,7 @@ export function DateField({ label, required, value, onChange, max, autoCompleteK
                             value={segments[key]}
                             onChange={(e) => handleInput(key, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(key, e)}
-                            className={`${width} bg-sunk/50 border border-rule rounded-xl px-3 py-3 text-center text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all`}
+                            className={`${width} px-3 py-3 text-center text-ink`}
                         />
                     </div>
                 ))}

@@ -72,22 +72,38 @@ compartido que las representa (`ChannelLogo`).
   `text-2xl`, `text-3xl`). No hay tamaños intermedios: lo que era 9–11 px es
   `text-xs` y lo que era 13 px es `text-sm`. No se agregan `text-[Npx]`.
 - Pesos: `medium` para controles, `semibold` para énfasis y `bold` para títulos
-  o cifras. Un párrafo completo no se presenta en bold.
+  o cifras. Un párrafo completo no se presenta en bold. Sin `black`,
+  `extrabold`, `light` ni `thin`.
+- **Caso de oración en toda la interfaz** (decisión 2026-11-11): datos,
+  estados, insignias, encabezados de tabla y botones. Las mayúsculas solo
+  existen en la primitiva `Overline`, para rótulos de grupo de navegación de
+  una o dos palabras («Sistema»). El tracking de la escala se permite para
+  dígitos de un código; no el arbitrario.
 - Cada pantalla tiene un solo `h1`; las secciones usan niveles consecutivos.
 
 ## 4. Espaciado, bordes y elevación
 
 - Se usa la escala de espaciado de Tailwind; no se inventan valores arbitrarios
   para corregir una pantalla aislada.
+Radios (cuatro, decisión 2026-11-11), y `xs` para microcontroles:
+
 - `rounded-xs`: casillas y microcontroles de 16 px.
-- `rounded-md`: controles.
+- `rounded-md`: controles (botones, campos, selectores).
+- `rounded-lg`: avisos y piezas dentro de una tarjeta.
 - `rounded-xl`: tarjetas, tablas, paneles y diálogos.
 - `rounded-full`: avatar, indicador o pastilla; no contenedores generales.
+
+Sin `rounded` suelto, `rounded-sm`, `rounded-2xl` ni `rounded-3xl`.
 - `border-input`: campos editables.
 - `border-rule`: divisores y superficies.
 - `shadow-xs`: control elevado.
 - `shadow-sm`: tarjeta estándar.
-- Sombra alta: solo overlays (`Dialog`, `AlertDialog`, `Sheet`).
+- `shadow-md`: un panel flotante propio (lista desplegable), nunca una tarjeta.
+- Sombra alta (`lg`, `xl`, `2xl`): solo overlays de `components/ui`
+  (`Dialog`, `AlertDialog`, `Sheet`, `Popover`).
+- Medidas: la escala de espaciado (`w-45` = 180 px, `max-w-12` = 3 rem). Las
+  medidas relativas a la pantalla (`max-h-[90vh]`, `w-[95vw]`, `%`) se permiten
+  porque no tienen equivalente en la escala.
 - Las tablas y secciones de datos no llevan sombras decorativas.
 
 No se permiten `rounded-[…]`, `shadow-[…]`, gradientes ni transformaciones de
@@ -105,6 +121,7 @@ escala en hover.
 | Superficie | `Card` o `SectionCard` |
 | Modal | `Dialog`, `AlertDialog` o `Sheet` |
 | Estado corto | `StatusPill` |
+| Rótulo de grupo | `Overline` (único uso de mayúsculas) |
 | Aviso | `FeedbackBanner` |
 | Carga | `LoadingState`, `Skeleton`, `RefreshIndicator` o `Button loading` |
 | Vacío | `EmptyState` (`empty` o `no-results`) |
@@ -155,6 +172,11 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `native-control`, `native-label` | `<button>`, `<label>` fuera de `components/ui` | `Button`, `Label` y demás primitivas |
 | `color-function-literal` | `"rgb(0 0 0 / .1)"` en código | un token |
 | `inline-visual-style` | `style={{ color: … }}`, `style={{ borderRadius: 8 }}` | clases con tokens (se permiten medidas dinámicas como `width`) |
+| `radius-scale` | `rounded`, `rounded-2xl` | `rounded-xs`, `md`, `lg`, `xl`, `full` |
+| `shadow-scale` | `shadow-lg` en una tarjeta | `shadow-sm` (`md` si flota) |
+| `arbitrary-length` | `w-[180px]`, `h-[2.5rem]` | `w-45`, `h-10` |
+| `font-weight-scale` | `font-black` | `font-bold` |
+| `uppercase-text` | `uppercase`, `tracking-[0.2em]` | caso de oración; `Overline` para rótulos de grupo |
 | `nonstandard-icon-library` | `react-icons` | `lucide-react` |
 
 Revisa los textos fijos y también los trozos fijos de los template literals

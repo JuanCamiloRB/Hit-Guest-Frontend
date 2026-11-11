@@ -77,7 +77,7 @@ export function SourceRoutingRow({
         <div className="space-y-5">
             {/* contract_type */}
             <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Qué se firma</Label>
+                <Label className="text-xs font-semibold text-ink-2">Qué se firma</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {CONTRACT_TYPES.map((type) => (
                         <UnstyledButton
@@ -103,12 +103,12 @@ export function SourceRoutingRow({
 
             {/* provider_slug */}
             <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Quién firma</Label>
+                <Label className="text-xs font-semibold text-ink-2">Quién firma</Label>
                 <Select
                     value={routing.provider_slug || undefined}
                     onValueChange={(slug) => onChange({ ...routing, provider_slug: slug })}
                 >
-                    <SelectTrigger className="bg-sunk/50 border-rule max-w-xs">
+                    <SelectTrigger className="max-w-xs">
                         <SelectValue placeholder="Selecciona el proveedor de firma" />
                     </SelectTrigger>
                     <SelectContent>
@@ -132,7 +132,7 @@ export function SourceRoutingRow({
             )}
             {needsAgreement && showText && (
                 <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-ink-2 uppercase tracking-wide">
+                    <Label className="text-xs font-semibold text-ink-2">
                         Texto del contrato
                     </Label>
                     {hasTextGap && (

@@ -357,7 +357,7 @@ export default function ReservationsList() {
             {/* `flex-wrap`: a 768 px los filtros pasan a otra línea en vez de
                 desbordar la página (Fase 3). La búsqueda nunca baja de 16rem. */}
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="relative min-w-0 flex-1 sm:min-w-[16rem] sm:max-w-sm">
+                <div className="relative min-w-0 flex-1 sm:min-w-64 sm:max-w-sm">
                     <Search aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-4" />
                     <Input
                         value={search}
@@ -368,7 +368,7 @@ export default function ReservationsList() {
                     />
                 </div>
                 <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
-                    <SelectTrigger className="w-full sm:w-[180px]" aria-label="Filtrar por estado">
+                    <SelectTrigger className="w-full sm:w-45" aria-label="Filtrar por estado">
                         <SelectValue placeholder="Estado" />
                     </SelectTrigger>
                     <SelectContent>
@@ -379,7 +379,7 @@ export default function ReservationsList() {
                     </SelectContent>
                 </Select>
                 <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                    <SelectTrigger className="w-full sm:w-[200px]" aria-label="Filtrar por origen">
+                    <SelectTrigger className="w-full sm:w-50" aria-label="Filtrar por origen">
                         <SelectValue placeholder="Origen" />
                     </SelectTrigger>
                     <SelectContent>

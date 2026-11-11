@@ -26,16 +26,16 @@ export function SmartlockCodes({ codes }: SmartlockCodesProps) {
             </h3>
             <div className="grid gap-3">
                 {codes.map((code, idx) => (
-                    <div key={idx} className="bg-white border border-rule rounded-2xl p-4 shadow-sm flex items-center gap-4 text-left">
+                    <div key={idx} className="bg-white border border-rule rounded-xl p-4 shadow-sm flex items-center gap-4 text-left">
                         <div className="bg-sunk/50 p-3 rounded-xl border border-rule">
                             {getIcon(code.type)}
                         </div>
                         <div className="flex-1">
                             <p className="text-xs text-ink-3 font-medium">{code.name}</p>
-                            <p className="text-2xl font-black text-ink tracking-widest mt-0.5">{code.code}</p>
+                            <p className="text-2xl font-bold text-ink tracking-widest mt-0.5">{code.code}</p>
                         </div>
                         <div className="text-right">
-                            <span className="text-xs font-semibold uppercase tracking-wider text-success bg-success-sunk px-2 py-1 rounded">Activo</span>
+                            <span className="text-xs font-semibold text-success bg-success-sunk px-2 py-1 rounded-xs">Activo</span>
                         </div>
                     </div>
                 ))}

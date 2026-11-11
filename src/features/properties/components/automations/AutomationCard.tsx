@@ -467,7 +467,7 @@ export function AutomationCard({
     return (
         <>
             <Card className={cn(
-                "group overflow-hidden border-rule/60 hover:border-primary/30 hover:shadow-md transition-all duration-300",
+                "group overflow-hidden border-rule/60 hover:border-primary/30 hover:shadow-sm transition-all duration-300",
                 isActive && "border-primary/20"
             )}>
                 <CardContent className="p-0">
@@ -490,7 +490,7 @@ export function AutomationCard({
                                             {definition.title}
                                         </h3>
                                         {isActive && (
-                                            <Badge variant="outline" className="bg-success-sunk text-success border-success/30 text-xs uppercase tracking-wider font-bold h-5">
+                                            <Badge variant="outline" className="bg-success-sunk text-success border-success/30 text-xs font-bold h-5">
                                                 Activo
                                             </Badge>
                                         )}
@@ -519,14 +519,14 @@ export function AutomationCard({
                             {/* Provider selector (multi-option) */}
                             {!isContractRouting && definition.providerOptions.length > 1 && (
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-semibold text-ink-3 uppercase tracking-wider">
+                                    <Label className="text-xs font-semibold text-ink-3">
                                         Proveedor {requiresProviderToActivate && !isActive && "requerido para activar"}
                                     </Label>
                                     <Select
                                         value={effectiveProviderName ?? ""}
                                         onValueChange={(v) => { setOptimisticProvider(v); handleProviderChange(v) }}
                                     >
-                                        <SelectTrigger className="h-9 text-sm bg-sunk/50 border-rule max-w-xs">
+                                        <SelectTrigger className="h-9 text-sm max-w-xs">
                                             {/* Render only the label in the trigger. Otherwise radix clones the
                                                 option's two-line (label + description) markup into the value slot,
                                                 which is flex + line-clamp-1 — clipping the text and breaking the
@@ -575,7 +575,7 @@ export function AutomationCard({
                             {/* Digital Contract: espejo de solo lectura del routing */}
                             {isContractRouting && (
                                 <div className="space-y-1">
-                                    <Label className="text-xs font-semibold text-ink-3 uppercase tracking-wider">
+                                    <Label className="text-xs font-semibold text-ink-3">
                                         {routingView?.needsAttention
                                             ? "Requiere atención"
                                             : routingView || routingSummary ? "Contrato configurado" : "Sin configurar"}

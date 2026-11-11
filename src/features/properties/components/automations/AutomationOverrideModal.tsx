@@ -434,7 +434,7 @@ export function AutomationOverrideModal({
                                 </FeedbackBanner>
                             ) : (
                                 <Select value={selectedPaUuid} onValueChange={setSelectedPaUuid}>
-                                    <SelectTrigger className="bg-sunk/50 border-rule">
+                                    <SelectTrigger>
                                         <SelectValue placeholder="Selecciona una automatización" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -522,7 +522,7 @@ export function AutomationOverrideModal({
                         <div className="space-y-4">
                             <div className="flex items-center gap-2">
                                 <div className="h-px flex-1 bg-sunk" />
-                                <p className="text-xs font-bold text-ink-3 uppercase tracking-wider">
+                                <p className="text-xs font-bold text-ink-3">
                                     Parámetros de la unidad
                                 </p>
                                 <div className="h-px flex-1 bg-sunk" />

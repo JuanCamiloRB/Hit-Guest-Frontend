@@ -73,17 +73,17 @@ function MultiSelectFilter({
     return (
         <Popover>
             <PopoverTrigger asChild>
-                <Button variant="outline" className="h-9 min-w-[170px] justify-between gap-2 text-xs font-medium">
+                <Button variant="outline" className="h-9 min-w-42.5 justify-between gap-2 text-xs font-medium">
                     <span className="truncate">{triggerText}</span>
                     <ChevronDown className="h-3.5 w-3.5 shrink-0 text-ink-3" />
                 </Button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-[240px] p-1">
+            <PopoverContent align="start" className="w-60 p-1">
                 <UnstyledButton
                     type="button"
                     onClick={onClear}
                     className={cn(
-                        "w-full rounded px-2 py-1.5 text-left text-sm font-semibold transition-colors hover:bg-sunk/50",
+                        "w-full rounded-xs px-2 py-1.5 text-left text-sm font-semibold transition-colors hover:bg-sunk/50",
                         selected.size === 0 ? "text-primary" : "text-ink-2",
                     )}
                 >
@@ -96,7 +96,7 @@ function MultiSelectFilter({
                         options.map((o) => (
                             <Label variant="plain"
                                 key={o.id}
-                                className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-ink-2 hover:bg-sunk/50"
+                                className="flex cursor-pointer items-center gap-2 rounded-xs px-2 py-1.5 text-sm text-ink-2 hover:bg-sunk/50"
                             >
                                 <Checkbox checked={selected.has(o.id)} onCheckedChange={() => onToggle(o.id)} />
                                 <span className="truncate">{o.name}</span>
@@ -202,13 +202,13 @@ export function ReservationsCalendar() {
             <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-4 text-xs font-medium text-ink-2">
                     <span className="inline-flex items-center gap-1.5">
-                        <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-success-sunk text-success">
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-xs bg-success-sunk text-success">
                             <LogIn size={11} />
                         </span>
                         Entrada (Check-in)
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                        <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-warning-sunk text-warning">
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded-xs bg-warning-sunk text-warning">
                             <LogOut size={11} />
                         </span>
                         Salida (Checkout)
@@ -254,7 +254,7 @@ export function ReservationsCalendar() {
 
             <div className="relative grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden border">
                 {isLoading && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-[1px]">
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-xs">
                         <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
                 )}
@@ -276,7 +276,7 @@ export function ReservationsCalendar() {
                         <div
                             key={day.toString()}
                             className={cn(
-                                "bg-background min-h-[100px] p-2 flex flex-col space-y-1 hover:bg-muted/50 transition-colors",
+                                "bg-background min-h-25 p-2 flex flex-col space-y-1 hover:bg-muted/50 transition-colors",
                                 !isSameMonth(day, currentMonth) && "text-muted-foreground bg-muted/20"
                             )}
                         >
@@ -295,7 +295,7 @@ export function ReservationsCalendar() {
                                     onMouseLeave={() => cancelDetailPrefetch(res.id)}
                                     onFocus={() => startDetailPrefetch(res.id)}
                                     onBlur={() => cancelDetailPrefetch(res.id)}
-                                    className="flex items-center gap-1 text-xs truncate bg-success-sunk text-success border border-success/30 px-1 py-0.5 rounded cursor-pointer hover:bg-success-sunk"
+                                    className="flex items-center gap-1 text-xs truncate bg-success-sunk text-success border border-success/30 px-1 py-0.5 rounded-xs cursor-pointer hover:bg-success-sunk"
                                     title={`Entrada · ${res.guestName} · ${res.propertyName}`}
                                 >
                                     <LogIn size={11} className="shrink-0" />
@@ -311,7 +311,7 @@ export function ReservationsCalendar() {
                                     onMouseLeave={() => cancelDetailPrefetch(res.id)}
                                     onFocus={() => startDetailPrefetch(res.id)}
                                     onBlur={() => cancelDetailPrefetch(res.id)}
-                                    className="flex items-center gap-1 text-xs truncate bg-warning-sunk text-warning border border-warning/30 px-1 py-0.5 rounded cursor-pointer hover:bg-warning-sunk"
+                                    className="flex items-center gap-1 text-xs truncate bg-warning-sunk text-warning border border-warning/30 px-1 py-0.5 rounded-xs cursor-pointer hover:bg-warning-sunk"
                                     title={`Salida · ${res.guestName} · ${res.propertyName}`}
                                 >
                                     <LogOut size={11} className="shrink-0" />

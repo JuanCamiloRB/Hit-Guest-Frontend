@@ -19,7 +19,7 @@ describe("ConsumptionHistoryChart — datos legibles sin mouse y con la marca", 
         render(<ConsumptionHistoryChart monthly={monthly} refMonth={new Date(2026, 10, 1)} />)
         const selected = screen.getByRole("img", { name: /mes seleccionado/ })
         const other = screen.getByRole("img", { name: /octubre 2026/ })
-        const bar = (col: HTMLElement) => col.querySelector<HTMLElement>(".rounded-t")!
+        const bar = (col: HTMLElement) => col.querySelector<HTMLElement>("[data-slot=history-bar]")!
         expect(bar(selected)).toHaveClass("bg-primary")
         expect(bar(other)).toHaveClass("bg-primary/20", "border-t-2", "border-primary/70")
         expect(bar(other).className).not.toMatch(/ink-4/)

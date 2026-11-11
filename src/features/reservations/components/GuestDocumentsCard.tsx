@@ -193,7 +193,7 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
                             <AuthenticatedImage
                                 src={preview.url}
                                 alt={`Documento de ${preview.guest.name} — ${preview.sideLabel}`}
-                                className="w-full h-auto max-h-[80vh] object-contain rounded-lg shadow-2xl"
+                                className="w-full h-auto max-h-[80vh] object-contain rounded-lg shadow-sm"
                             />
                             <DocumentOriginNotice guest={preview.guest} />
                         </div>
@@ -395,7 +395,7 @@ function DocumentThumbnail({
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-            <span className="absolute bottom-1.5 left-2 text-xs font-bold text-white bg-black/50 px-1.5 py-0.5 rounded">
+            <span className="absolute bottom-1.5 left-2 text-xs font-bold text-white bg-black/50 px-1.5 py-0.5 rounded-xs">
                 {label}
             </span>
         </UnstyledButton>

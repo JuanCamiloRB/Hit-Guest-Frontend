@@ -43,7 +43,7 @@ export function MonthSelector({ value, onChange }: Props) {
                 <ChevronLeft className="h-4 w-4" />
             </Button>
 
-            <span className="min-w-[8.5rem] text-center text-sm font-semibold capitalize text-ink">
+            <span className="min-w-34 text-center text-sm font-semibold capitalize text-ink">
                 {hydrated ? label : <span aria-hidden className="inline-block h-4 w-24 animate-pulse rounded-md bg-accent align-middle" />}
             </span>
 

@@ -102,7 +102,7 @@ export function BillingSettings() {
     return (
         <div className="max-w-3xl space-y-6">
             {/* ── Balance + Recharge ── */}
-            <div className="rounded-2xl border border-rule bg-white p-6">
+            <div className="rounded-xl border border-rule bg-white p-6">
                 <div className="flex items-center gap-2 text-sm font-semibold text-ink-3">
                     <Wallet className="h-4 w-4 text-primary" />
                     Saldo disponible
@@ -115,11 +115,11 @@ export function BillingSettings() {
                     ) : amount === null && (balanceLoading || !balanceLoaded) ? (
                         // También antes de la primera consulta: sin esto el primer
                         // render decía «no disponible» un instante.
-                        <div className="h-10 w-32 animate-pulse rounded bg-sunk" />
+                        <div className="h-10 w-32 animate-pulse rounded-xs bg-sunk" />
                     ) : amount === null ? (
                         // Sin saldo conocido se dice; «0,00 USD» en rojo sería un dato inventado.
                         <div>
-                            <span className="text-4xl font-black tabular-nums text-ink-3">— USD</span>
+                            <span className="text-4xl font-bold tabular-nums text-ink-3">— USD</span>
                             <p className="mt-1 text-xs font-medium text-warning">
                                 Saldo no disponible ·{" "}
                                 <UnstyledButton type="button" onClick={() => void refresh()} className="font-semibold underline underline-offset-2">
@@ -129,7 +129,7 @@ export function BillingSettings() {
                         </div>
                     ) : (
                         <div>
-                            <span className={`text-4xl font-black tabular-nums ${balanceColor}`}>
+                            <span className={`text-4xl font-bold tabular-nums ${balanceColor}`}>
                                 {formatUsd(amount)}
                             </span>
                             {balanceError && (
@@ -159,7 +159,7 @@ export function BillingSettings() {
                                         }`}
                                     >
                                         <div
-                                            className={`text-lg font-black ${active ? "text-primary" : "text-ink"}`}
+                                            className={`text-lg font-bold ${active ? "text-primary" : "text-ink"}`}
                                         >
                                             {pkg.label}
                                         </div>
@@ -171,7 +171,7 @@ export function BillingSettings() {
 
                         {/* Custom amount */}
                         <div className="space-y-1.5">
-                            <Label variant="plain" className="text-xs font-semibold uppercase tracking-wide text-ink-3">
+                            <Label variant="plain" className="text-xs font-semibold text-ink-3">
                                 Monto personalizado
                             </Label>
                             <div className="relative max-w-xs">
@@ -185,7 +185,7 @@ export function BillingSettings() {
                                     value={custom}
                                     onChange={(e) => onCustomChange(e.target.value)}
                                     placeholder={`Custom amount (min ${formatUsd(minimum)})`}
-                                    className="w-full rounded-xl border border-rule bg-sunk/50 py-2.5 pl-7 pr-3 font-semibold text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    className="w-full py-2.5 pl-7 pr-3 font-semibold text-ink"
                                 />
                             </div>
                             {amountError && <p className="text-xs font-medium text-danger">{amountError}</p>}

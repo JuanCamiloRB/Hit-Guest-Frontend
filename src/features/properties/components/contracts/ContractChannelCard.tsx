@@ -43,18 +43,18 @@ export function ContractChannelCard({
 
     return (
         <article className={cn(
-            "overflow-hidden rounded-2xl border bg-white transition-colors",
+            "overflow-hidden rounded-xl border bg-white transition-colors",
             status === "dirty" ? "border-warning/40" : status === "incomplete" ? "border-danger/30" : "border-rule",
         )}>
             <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2.5">
                         <ReservationSourceIdentity name={sourceName} slug={source ? reservationSourceSlug(source) : null} />
-                        <Badge variant="outline" className={cn("h-6 rounded-full px-2.5 text-xs font-bold uppercase tracking-wide", statusCopy.className)}>
+                        <Badge variant="outline" className={cn("h-6 rounded-full px-2.5 text-xs font-bold", statusCopy.className)}>
                             {statusCopy.label}
                         </Badge>
                     </div>
-                    <p className={cn("pl-0 text-sm sm:pl-[60px]", status === "unconfigured" ? "text-ink-3" : "font-medium text-ink-2")}>
+                    <p className={cn("pl-0 text-sm sm:pl-15", status === "unconfigured" ? "text-ink-3" : "font-medium text-ink-2")}>
                         {summary}
                     </p>
                 </div>

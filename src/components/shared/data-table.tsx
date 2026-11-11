@@ -191,7 +191,7 @@ export function DataTable<TData, TValue>({
                                                                 : "Clic para ordenar por esta columna."
                                                     }
                                                     className={cn(
-                                                        "group -mx-1 inline-flex items-center gap-1.5 rounded px-1 py-0.5 transition-colors",
+                                                        "group -mx-1 inline-flex items-center gap-1.5 rounded-xs px-1 py-0.5 transition-colors",
                                                         "hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                                                         sorted && "text-primary",
                                                     )}

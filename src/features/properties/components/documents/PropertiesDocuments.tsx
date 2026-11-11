@@ -203,7 +203,7 @@ export function PropertiesDocuments() {
                         <div className="flex items-center gap-2">
                             <Filter size={15} className="text-ink-3" />
                             <Select value={typeFilter} onValueChange={setTypeFilter}>
-                                <SelectTrigger className="h-9 w-56 text-sm bg-white border-rule">
+                                <SelectTrigger className="h-9 w-56 text-sm">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -256,14 +256,14 @@ export function PropertiesDocuments() {
                                                         {documentTypeLabel(doc.documentType)}
                                                     </h4>
                                                     {isDeleted ? (
-                                                        <Badge variant="outline" className="h-5 text-xs uppercase font-bold bg-sunk text-ink-3 border-rule">
+                                                        <Badge variant="outline" className="h-5 text-xs font-bold bg-sunk text-ink-3 border-rule">
                                                             Eliminado
                                                         </Badge>
                                                     ) : (
                                                         <Badge
                                                             variant="outline"
                                                             className={cn(
-                                                                "h-5 text-xs uppercase font-bold",
+                                                                "h-5 text-xs font-bold",
                                                                 isActive
                                                                     ? "bg-success-sunk text-success border-success/30"
                                                                     : "bg-sunk text-ink-3 border-rule",
@@ -347,7 +347,7 @@ export function PropertiesDocuments() {
 
             {/* Delete confirmation */}
             <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-                <DialogContent className="sm:max-w-[420px]">
+                <DialogContent className="sm:max-w-105">
                     <DialogHeader>
                         <DialogTitle>¿Eliminar documento?</DialogTitle>
                         <DialogDescription>

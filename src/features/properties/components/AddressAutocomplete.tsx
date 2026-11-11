@@ -227,8 +227,8 @@ export function AddressAutocomplete({
                     placeholder={placeholder}
                     autoComplete="off"
                     className={cn(
-                        "w-full pl-9 pr-9 h-11 rounded-md border border-rule bg-white text-sm",
-                        "focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none",
+                        "w-full pl-9 pr-9 h-11 text-sm",
+                        "",
                         className,
                     )}
                 />
@@ -238,7 +238,7 @@ export function AddressAutocomplete({
             </div>
 
             {open && suggestions.length > 0 && (
-                <ul className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-rule bg-white shadow-lg">
+                <ul className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-rule bg-white shadow-md">
                     {suggestions.map((s) => (
                         <li key={s.placeId}>
                             <UnstyledButton

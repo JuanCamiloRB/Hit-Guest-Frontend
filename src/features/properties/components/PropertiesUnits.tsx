@@ -663,7 +663,7 @@ export function PropertiesUnits() {
                           * futura del scroll se ve como contenido cortado (evidente) en
                           * vez de campos flotando fuera del modal.
                           */}
-                        <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden p-0 sm:max-w-[600px]">
+                        <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden p-0 sm:max-w-150">
                             <DialogHeader className="p-6 pb-2 shrink-0">
                                 <DialogTitle>{editingIndex !== null ? "Editar Unidad" : "Añadir Unidad"}</DialogTitle>
                                 <DialogDescription>
@@ -726,12 +726,12 @@ export function PropertiesUnits() {
                                         {/* AUTOM tab only exists once the property is saved — mirrors the
                                             property-level Automatización tab behavior */}
                                         <TabsList className={cn("grid mb-4", propertyUuid ? "grid-cols-5" : "grid-cols-4")}>
-                                            <TabsTrigger value="general" className="text-xs uppercase font-bold">General</TabsTrigger>
-                                            <TabsTrigger value="amenities" className="text-xs uppercase font-bold">Operación</TabsTrigger>
-                                            <TabsTrigger value="rooms" className="text-xs uppercase font-bold">Distribución</TabsTrigger>
-                                            <TabsTrigger value="policies" className="text-xs uppercase font-bold">Políticas</TabsTrigger>
+                                            <TabsTrigger value="general" className="text-xs font-bold">General</TabsTrigger>
+                                            <TabsTrigger value="amenities" className="text-xs font-bold">Operación</TabsTrigger>
+                                            <TabsTrigger value="rooms" className="text-xs font-bold">Distribución</TabsTrigger>
+                                            <TabsTrigger value="policies" className="text-xs font-bold">Políticas</TabsTrigger>
                                             {propertyUuid && (
-                                                <TabsTrigger value="automations" className="text-xs uppercase font-bold flex items-center gap-1">
+                                                <TabsTrigger value="automations" className="text-xs font-bold flex items-center gap-1">
                                                     <Zap className="h-3 w-3" />
                                                     Autom.
                                                 </TabsTrigger>
@@ -944,10 +944,10 @@ export function PropertiesUnits() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <Clock className="h-4 w-4 text-primary" />
-                                                        <h4 className="text-sm font-bold uppercase tracking-wider text-ink-3">Horarios</h4>
+                                                        <h4 className="text-sm font-bold text-ink-3">Horarios</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-muted-foreground uppercase font-bold">Heredar de Propiedad</span>
+                                                        <span className="text-xs text-muted-foreground font-bold">Heredar de Propiedad</span>
                                                         <Switch
                                                             checked={unitForm.extra.inheritSchedule}
                                                             onCheckedChange={(checked) => setUnitForm({ 
@@ -961,7 +961,7 @@ export function PropertiesUnits() {
                                                 {!unitForm.extra.inheritSchedule && (
                                                     <div className="grid grid-cols-1 gap-6 rounded-xl border bg-sunk/50 p-4 sm:grid-cols-2">
                                                         <div className="space-y-3">
-                                                            <p className="text-xs font-bold text-ink-3 uppercase">Check-in</p>
+                                                            <p className="text-xs font-bold text-ink-3">Check-in</p>
                                                             <div className="grid grid-cols-1 gap-2">
                                                                 <div className="space-y-1">
                                                                     <Label className="text-xs">Hora</Label>
@@ -978,7 +978,7 @@ export function PropertiesUnits() {
                                                             </div>
                                                         </div>
                                                         <div className="space-y-3 border-l pl-6">
-                                                            <p className="text-xs font-bold text-ink-3 uppercase">Check-out</p>
+                                                            <p className="text-xs font-bold text-ink-3">Check-out</p>
                                                             <div className="grid grid-cols-1 gap-2">
                                                                 <div className="space-y-1">
                                                                     <Label className="text-xs">Hora</Label>
@@ -1002,10 +1002,10 @@ export function PropertiesUnits() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <Settings2 className="h-4 w-4 text-primary" />
-                                                        <h4 className="text-sm font-bold uppercase tracking-wider text-ink-3">WiFi Especial</h4>
+                                                        <h4 className="text-sm font-bold text-ink-3">WiFi Especial</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-muted-foreground uppercase font-bold">Heredar de Propiedad</span>
+                                                        <span className="text-xs text-muted-foreground font-bold">Heredar de Propiedad</span>
                                                         <Switch
                                                             checked={unitForm.extra.inheritWifi}
                                                             onCheckedChange={(checked) => setUnitForm({ 
@@ -1060,10 +1060,10 @@ export function PropertiesUnits() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <Sparkles className="h-4 w-4 text-primary" />
-                                                        <h4 className="text-sm font-bold uppercase tracking-wider text-ink-3">Amenidades</h4>
+                                                        <h4 className="text-sm font-bold text-ink-3">Amenidades</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-muted-foreground uppercase font-bold">Heredar de Propiedad</span>
+                                                        <span className="text-xs text-muted-foreground font-bold">Heredar de Propiedad</span>
                                                         <Switch
                                                             checked={unitForm.extra.inheritAmenities}
                                                             onCheckedChange={(checked) => setUnitForm({
@@ -1126,7 +1126,7 @@ export function PropertiesUnits() {
                                                 <div className="space-y-4 p-4 border rounded-xl bg-sunk/30">
                                                     <div className="flex items-center gap-2">
                                                         <BedDouble className="h-4 w-4 text-primary" />
-                                                        <h4 className="text-xs font-bold uppercase text-ink-2">Dormitorios</h4>
+                                                        <h4 className="text-xs font-bold text-ink-2">Dormitorios</h4>
                                                     </div>
                                                     <div className="grid grid-cols-1 gap-3">
                                                         <div className="space-y-1">
@@ -1151,7 +1151,7 @@ export function PropertiesUnits() {
                                                 <div className="space-y-4 p-4 border rounded-xl bg-sunk/30">
                                                     <div className="flex items-center gap-2">
                                                         <Bath className="h-4 w-4 text-primary" />
-                                                        <h4 className="text-xs font-bold uppercase text-ink-2">Baños</h4>
+                                                        <h4 className="text-xs font-bold text-ink-2">Baños</h4>
                                                     </div>
                                                     <div className="grid grid-cols-1 gap-3">
                                                         <div className="space-y-1">
@@ -1180,10 +1180,10 @@ export function PropertiesUnits() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <Shield className="h-4 w-4 text-primary" />
-                                                        <h4 className="text-sm font-bold uppercase tracking-wider text-ink-3">Políticas</h4>
+                                                        <h4 className="text-sm font-bold text-ink-3">Políticas</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-muted-foreground uppercase font-bold">Heredar de Propiedad</span>
+                                                        <span className="text-xs text-muted-foreground font-bold">Heredar de Propiedad</span>
                                                         <Switch
                                                             checked={unitForm.extra.inheritPolicies}
                                                             onCheckedChange={(checked) => setUnitForm({ 
@@ -1297,17 +1297,17 @@ export function PropertiesUnits() {
                                                                             </Badge>
                                                                         )}
                                                                         {isInactive && (
-                                                                            <Badge variant="outline" className="text-xs h-4 bg-danger-sunk text-danger border-danger/30 uppercase font-bold">
+                                                                            <Badge variant="outline" className="text-xs h-4 bg-danger-sunk text-danger border-danger/30 font-bold">
                                                                                 Desactivada aquí
                                                                             </Badge>
                                                                         )}
                                                                         {hasParams && (
-                                                                            <Badge variant="outline" className="text-xs h-4 bg-primary/10 text-primary border-primary/20 uppercase font-bold">
+                                                                            <Badge variant="outline" className="text-xs h-4 bg-primary/10 text-primary border-primary/20 font-bold">
                                                                                 Personalizada
                                                                             </Badge>
                                                                         )}
                                                                         {hasToken && (
-                                                                            <Badge variant="outline" className="text-xs h-4 bg-sunk text-ink-2 border-rule uppercase font-bold">
+                                                                            <Badge variant="outline" className="text-xs h-4 bg-sunk text-ink-2 border-rule font-bold">
                                                                                 Token
                                                                             </Badge>
                                                                         )}
@@ -1413,12 +1413,12 @@ export function PropertiesUnits() {
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-[120px]">ID / Núm</TableHead>
+                            <TableHead className="w-30">ID / Núm</TableHead>
                             <TableHead>Nombre / Alojamiento</TableHead>
                             <TableHead>Capacidad</TableHead>
                             <TableHead>Estado</TableHead>
                             <TableHead className="text-right">Precio</TableHead>
-                            <TableHead className="w-[100px] text-right">Acciones</TableHead>
+                            <TableHead className="w-25 text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1438,7 +1438,7 @@ export function PropertiesUnits() {
                                     </TableCell>
                                     <TableCell>
                                         <div className={cn(
-                                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider",
+                                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold",
                                             field.isActive !== false
                                                 ? "bg-success-sunk text-success border border-success/20"
                                                 : "bg-sunk text-ink-3 border border-rule"

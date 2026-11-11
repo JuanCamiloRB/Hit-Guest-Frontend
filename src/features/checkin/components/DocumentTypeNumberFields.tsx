@@ -43,7 +43,7 @@ export function DocumentTypeNumberFields({
                     inputMode="numeric"
                     value={documentNumber}
                     onChange={(e) => onDocumentNumberChange(e.target.value)}
-                    className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    className="w-full px-4 py-3 text-ink"
                     placeholder="Ej. 1234567890"
                 />
             </div>

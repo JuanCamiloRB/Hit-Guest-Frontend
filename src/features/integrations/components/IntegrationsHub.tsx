@@ -22,12 +22,12 @@ function ProviderCard({
     badgeClassName = "bg-primary/5 text-primary",
 }: ProviderCardProps) {
     return (
-        <article className="flex min-h-36 flex-col justify-between rounded-2xl border border-rule bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+        <article className="flex min-h-36 flex-col justify-between rounded-xl border border-rule bg-white p-5 shadow-sm transition-shadow hover:shadow-sm">
             <div className="flex items-start justify-between gap-4">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sunk/50 text-ink-2">
                     {icon}
                 </span>
-                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${badgeClassName}`}>
+                <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${badgeClassName}`}>
                     {badge}
                 </span>
             </div>
@@ -57,7 +57,7 @@ export function IntegrationsHub() {
                             <h3 id="pms-integrations" className="text-lg font-bold text-ink">
                                 Con PMS
                             </h3>
-                            <span className="rounded-full bg-primary/5 px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-primary">
+                            <span className="rounded-full bg-primary/5 px-2.5 py-1 text-xs font-bold text-primary">
                                 Conectividad Calry.app
                             </span>
                         </div>
@@ -95,7 +95,7 @@ export function IntegrationsHub() {
                     />
                 </div>
 
-                <div className="rounded-2xl border border-rule bg-sunk/60 p-5 sm:p-6">
+                <div className="rounded-xl border border-rule bg-sunk/60 p-5 sm:p-6">
                     <div className="mb-5 flex items-center gap-3 border-b border-rule pb-4">
                         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-primary shadow-sm">
                             <Building2 size={17} />
@@ -127,7 +127,7 @@ export function IntegrationsHub() {
                 {/* Una sola tarjeta de Airbnb, con los calendarios adentro. Antes había
                     una `ProviderCard` decorativa (sin acción) y debajo el panel real con el
                     mismo nombre: el PM veía «dos Airbnb» y no sabía cuál usar (2026-09-22). */}
-                <article className="rounded-2xl border border-rule bg-white p-5 shadow-sm">
+                <article className="rounded-xl border border-rule bg-white p-5 shadow-sm">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sunk/50">
@@ -140,7 +140,7 @@ export function IntegrationsHub() {
                                 </p>
                             </div>
                         </div>
-                        <span className="shrink-0 rounded-full bg-danger-sunk px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-danger">
+                        <span className="shrink-0 rounded-full bg-danger-sunk px-2.5 py-1 text-xs font-bold text-danger">
                             iCal
                         </span>
                     </div>

@@ -84,7 +84,7 @@ export function TransferOwnershipDialog({
 
     return (
         <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-[440px]">
+            <DialogContent className="sm:max-w-110">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Crown className="h-5 w-5 text-warning" />

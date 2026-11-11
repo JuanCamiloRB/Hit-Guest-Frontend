@@ -91,7 +91,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
             </div>
 
             <div
-                className="bg-white border border-rule rounded-2xl p-6 prose prose-sm prose-slate max-w-none [&_p]:my-2"
+                className="bg-white border border-rule rounded-xl p-6 prose prose-sm prose-slate max-w-none [&_p]:my-2"
                 dangerouslySetInnerHTML={{ __html: rendered }}
             />
 
@@ -100,7 +100,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
                     <UnstyledButton
                         onClick={handleDownloadPdf}
                         disabled={isDownloading}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 disabled:opacity-60 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 disabled:opacity-60 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]"
                     >
                         {isDownloading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
                         Descargar PDF

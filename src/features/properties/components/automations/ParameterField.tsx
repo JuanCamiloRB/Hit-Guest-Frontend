@@ -44,7 +44,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                 {items.map((item, i) => (
                     <div key={i} className="border border-rule rounded-xl p-3 space-y-2 bg-sunk/50">
                         <div className="flex justify-between items-center">
-                            <span className="text-xs font-semibold text-ink-3 uppercase tracking-wide">
+                            <span className="text-xs font-semibold text-ink-3">
                                 Elemento {i + 1}
                             </span>
                             <UnstyledButton
@@ -101,7 +101,6 @@ export function ParameterField({ schema, value, onChange }: Props) {
                             value={item}
                             onChange={e => updateItem(i, e.target.value)}
                             placeholder={schema.placeholder}
-                            className="bg-sunk/50 border-rule"
                         />
                         <UnstyledButton
                             type="button"
@@ -137,7 +136,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                     onChange={e => onChange(e.target.value)}
                     placeholder={schema.placeholder}
                     rows={4}
-                    className="w-full rounded-md border border-rule bg-sunk/50 px-3 py-2 text-sm placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 resize-y"
+                    className="w-full px-3 py-2 text-sm placeholder:text-ink-3 resize-y"
                 />
             </div>
         )
@@ -151,7 +150,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                     {schema.required && <span className="text-danger ml-0.5">*</span>}
                 </Label>
                 <Select value={value ?? ""} onValueChange={onChange}>
-                    <SelectTrigger className="bg-sunk/50 border-rule">
+                    <SelectTrigger>
                         <SelectValue placeholder={schema.placeholder ?? `Selecciona ${schema.label}`} />
                     </SelectTrigger>
                     <SelectContent>
@@ -177,7 +176,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                     value={value ?? ""}
                     onChange={e => onChange(e.target.value)}
                     placeholder={schema.placeholder}
-                    className="bg-sunk/50 border-rule pr-10"
+                    className="pr-10"
                 />
                 {isPassword && (
                     <UnstyledButton

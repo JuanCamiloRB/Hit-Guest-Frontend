@@ -27,9 +27,9 @@ export default function LoginPage() {
                 </div>
             </div>
             <div className="lg:p-8 flex items-center bg-background">
-                <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
+                <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-100">
                     <LoginForm />
-                    <p className="px-8 text-center text-xs text-ink-3 mt-8 uppercase tracking-widest">
+                    <p className="px-8 text-center text-xs text-ink-3 mt-8">
                         Powered by <span className="font-bold text-secondary">HIT Guest</span> ©{" "}
                         {new Date().getFullYear()}
                     </p>

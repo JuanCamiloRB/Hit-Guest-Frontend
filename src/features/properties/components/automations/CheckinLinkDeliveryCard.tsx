@@ -152,7 +152,7 @@ export function CheckinLinkDeliveryCard({
     }
 
     return (
-        <Card className="group overflow-hidden border-rule/60 transition-all duration-300 hover:border-primary/30 hover:shadow-md">
+        <Card className="group overflow-hidden border-rule/60 transition-all duration-300 hover:border-primary/30 hover:shadow-sm">
             <CardContent className="p-0">
                 <div className="flex flex-col items-stretch md:flex-row">
                     {/* Columna de ícono como las demás automatizaciones: el verde es solo para estado. */}
@@ -167,7 +167,7 @@ export function CheckinLinkDeliveryCard({
                                     {CHECKIN_LINK_DELIVERY_TITLE}
                                 </h3>
                                 {automation?.isActive && (
-                                    <Badge variant="outline" className="h-5 border-success/30 bg-success-sunk text-xs font-bold uppercase tracking-wider text-success">
+                                    <Badge variant="outline" className="h-5 border-success/30 bg-success-sunk text-xs font-bold text-success">
                                         Activo
                                     </Badge>
                                 )}
@@ -179,7 +179,7 @@ export function CheckinLinkDeliveryCard({
                         </div>
 
                         <fieldset className="space-y-3" disabled={saving || !canConfigure}>
-                            <legend className="text-xs font-semibold uppercase tracking-wider text-ink-3">
+                            <legend className="text-xs font-semibold text-ink-3">
                                 ¿Cómo le llega el link al huésped?
                             </legend>
 

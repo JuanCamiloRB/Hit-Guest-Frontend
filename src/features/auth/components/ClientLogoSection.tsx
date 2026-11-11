@@ -108,7 +108,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
     }
 
     return (
-        <div className="rounded-2xl border border-rule bg-white p-5 space-y-4">
+        <div className="rounded-xl border border-rule bg-white p-5 space-y-4">
             <div className="space-y-1">
                 <h3 className="text-sm font-bold text-ink">Logo de la cuenta</h3>
                 <p className="text-xs text-ink-3">

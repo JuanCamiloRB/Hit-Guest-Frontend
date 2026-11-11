@@ -40,7 +40,7 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
 
     return (
         <section aria-labelledby="access-instructions-title" className="w-full max-w-sm space-y-4 text-left">
-            <div className="rounded-2xl border border-rule bg-white p-5 shadow-sm">
+            <div className="rounded-xl border border-rule bg-white p-5 shadow-sm">
                 <div className="flex items-start gap-3">
                     <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${unlocked ? "bg-success-sunk text-success" : "bg-sunk text-ink-3"}`}>
                         {unlocked ? <MapPinned size={21} /> : <LockKeyhole size={21} />}

@@ -37,7 +37,7 @@ export function StepIndicator({
                 ${isCompleted || isPast
                   ? "bg-success text-white shadow-sm"
                   : isCurrent
-                  ? "bg-primary text-white shadow-md scale-110"
+                  ? "bg-primary text-white shadow-sm scale-110"
                   : "bg-sunk text-ink-3"
                 }
               `}

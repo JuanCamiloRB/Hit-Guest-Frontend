@@ -25,40 +25,40 @@ export function GuaranteeInfoCard({ onContinue }: GuaranteeInfoCardProps) {
     return (
         <div className="space-y-4">
             <div className="space-y-1.5">
-                <span className="text-xs font-bold tracking-wider text-secondary uppercase">Antes de continuar</span>
+                <span className="text-xs font-bold text-secondary">Antes de continuar</span>
                 <p className="text-sm text-ink-3">
                     Para tu check-in, solo necesitamos registrar una tarjeta como respaldo del contrato de garantía que acabas de aceptar.
                 </p>
             </div>
 
             {/* Lifecycle */}
-            <div className="rounded-2xl p-5 bg-brand-navy relative overflow-hidden">
+            <div className="rounded-xl p-5 bg-brand-navy relative overflow-hidden">
                 <div className="flex items-center gap-2 mb-4 relative">
                     <CreditCard size={14} className="text-white" />
-                    <span className="text-xs font-bold tracking-wide text-white uppercase">Qué pasa con tu tarjeta</span>
+                    <span className="text-xs font-bold text-white">Qué pasa con tu tarjeta</span>
                 </div>
                 <div className="flex items-start relative">
-                    <div className="absolute top-[13px] left-[16.66%] right-[16.66%] h-0.5 bg-white/25" />
+                    <div className="absolute top-3.25 left-[16.66%] right-[16.66%] h-0.5 bg-white/25" />
                     <div className="flex-1 flex flex-col items-center text-center relative z-10">
-                        <div className="w-[26px] h-[26px] rounded-full bg-white flex items-center justify-center mb-2">
+                        <div className="w-6.5 h-6.5 rounded-full bg-white flex items-center justify-center mb-2">
                             <Check size={13} className="text-brand-navy" strokeWidth={3} />
                         </div>
                         <p className="text-xs font-bold text-white mb-0.5">Registrada</p>
-                        <p className="text-xs leading-tight text-white/65 max-w-[88px]">Guardada de forma segura y tokenizada</p>
+                        <p className="text-xs leading-tight text-white/65 max-w-22">Guardada de forma segura y tokenizada</p>
                     </div>
                     <div className="flex-1 flex flex-col items-center text-center relative z-10">
-                        <div className="w-[26px] h-[26px] rounded-full flex items-center justify-center mb-2 bg-primary ring-4 ring-primary/25">
+                        <div className="w-6.5 h-6.5 rounded-full flex items-center justify-center mb-2 bg-primary ring-4 ring-primary/25">
                             <Lock size={12} className="text-white" />
                         </div>
                         <p className="text-xs font-bold text-white mb-0.5">Protegida</p>
-                        <p className="text-xs leading-tight text-white/65 max-w-[88px]">Nadie ve tu número completo, ni nuestro equipo</p>
+                        <p className="text-xs leading-tight text-white/65 max-w-22">Nadie ve tu número completo, ni nuestro equipo</p>
                     </div>
                     <div className="flex-1 flex flex-col items-center text-center relative z-10">
-                        <div className="w-[26px] h-[26px] rounded-full bg-white/10 border-2 border-white/35 flex items-center justify-center mb-2">
+                        <div className="w-6.5 h-6.5 rounded-full bg-white/10 border-2 border-white/35 flex items-center justify-center mb-2">
                             <Trash2 size={12} className="text-white" />
                         </div>
                         <p className="text-xs font-bold text-white mb-0.5">Eliminada</p>
-                        <p className="text-xs leading-tight text-white/65 max-w-[88px]">2 días después de tu check-out, automático</p>
+                        <p className="text-xs leading-tight text-white/65 max-w-22">2 días después de tu check-out, automático</p>
                     </div>
                 </div>
             </div>

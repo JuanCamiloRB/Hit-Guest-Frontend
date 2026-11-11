@@ -199,12 +199,12 @@ export function UserManagement() {
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
                     <DialogTrigger asChild>
-                        <Button className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md hover:shadow-lg transition-all duration-300">
+                        <Button className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300">
                             <UserPlus className="mr-2 h-4 w-4" />
                             Nuevo Usuario
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[440px]">
+                    <DialogContent className="sm:max-w-110">
                         <DialogHeader>
                             <DialogTitle>Invitar Usuario</DialogTitle>
                             <DialogDescription>

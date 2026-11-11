@@ -317,7 +317,7 @@ function GuestCell({ row, muted = false }: { row: ReservationCost | ReservationC
             <Link
                 href={`/dashboard/reservations/${row.reservationId}`}
                 className={cn(
-                    "block truncate rounded font-medium transition-colors hover:text-primary hover:underline underline-offset-2",
+                    "block truncate rounded-xs font-medium transition-colors hover:text-primary hover:underline underline-offset-2",
                     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                     muted ? "text-ink-2" : "text-ink",
                 )}

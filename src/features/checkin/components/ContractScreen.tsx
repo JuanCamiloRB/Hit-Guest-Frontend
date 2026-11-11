@@ -766,12 +766,12 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                         <ArrowLeft size={20} />
                     </Link>
-                    <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">Paso 5 de 6</div>
+                    <div className="text-sm font-bold text-ink-3">Paso 5 de 6</div>
                 </div>
 
                 <div
                     role={isRejected ? "alert" : "status"}
-                    className={`rounded-2xl border p-6 space-y-3 ${
+                    className={`rounded-xl border p-6 space-y-3 ${
                         isRejected
                             ? "border-danger/30 bg-danger-sunk"
                             : "border-primary/15 bg-primary/5"
@@ -806,7 +806,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                     setIsLoading(true)
                                     loadDocuments()
                                 }}
-                                className="w-full flex items-center justify-center gap-2 h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
+                                className="w-full flex items-center justify-center gap-2 h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
                             >
                                 <RefreshCw size={16} /> Ya firmé, actualizar
                             </UnstyledButton>
@@ -874,7 +874,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 <Link href={`${basePath}/guest?guest_uuid=${guestUuid}`} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                     <ArrowLeft size={20} />
                 </Link>
-                <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">Paso 5 de 6</div>
+                <div className="text-sm font-bold text-ink-3">Paso 5 de 6</div>
             </div>
 
             <div className="space-y-2">
@@ -908,7 +908,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             {showGuaranteePhase ? (
                 <div
                     role="status"
-                    className="flex items-center gap-2.5 rounded-2xl border border-success/30 bg-success-sunk px-5 py-4 text-sm text-success"
+                    className="flex items-center gap-2.5 rounded-xl border border-success/30 bg-success-sunk px-5 py-4 text-sm text-success"
                 >
                     <CheckCircle2 size={18} className="flex-shrink-0" />
                     <p className="font-bold">
@@ -920,7 +920,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             ) : signatureRecorded ? (
                 <div
                     role="status"
-                    className="rounded-2xl border border-success/30 bg-success-sunk p-5 text-sm text-success"
+                    className="rounded-xl border border-success/30 bg-success-sunk p-5 text-sm text-success"
                 >
                     <p className="font-bold">Firma guardada correctamente</p>
                     <p className="mt-1">
@@ -930,7 +930,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             ) : configurationError ? (
                 <div
                     role="alert"
-                    className={`rounded-2xl border p-5 text-sm ${
+                    className={`rounded-xl border p-5 text-sm ${
                         isRetryable
                             ? "border-warning/30 bg-warning-sunk text-warning"
                             : "border-danger/30 bg-danger-sunk text-danger"
@@ -954,13 +954,13 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     )}
                 </div>
             ) : signingProvider === null ? (
-                <div className="rounded-2xl border border-rule bg-white p-5 text-sm text-ink-2 shadow-sm">
+                <div className="rounded-xl border border-rule bg-white p-5 text-sm text-ink-2 shadow-sm">
                     Puedes completar el check-in sin firmar un contrato digital.
                 </div>
             ) : hasDocuments ? (
                 <div className="space-y-3">
                     {documents.map((doc) => (
-                        <div key={doc.uuid} className="bg-white border border-rule rounded-2xl shadow-sm overflow-hidden">
+                        <div key={doc.uuid} className="bg-white border border-rule rounded-xl shadow-sm overflow-hidden">
                             <UnstyledButton
                                 type="button"
                                 onClick={() => setExpandedDoc(expandedDoc === doc.uuid ? null : doc.uuid)}
@@ -987,7 +987,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     ))}
                 </div>
             ) : (
-                <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 border-b border-rule pb-3">
                         <FileText size={20} className="text-primary" />
                         <h2 className="font-bold text-ink">Contrato</h2>
@@ -1004,7 +1004,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 contract but never registered the card, so this must still be
                 reachable during that recovery path. */}
             {!configurationError && showGuaranteePhase && (
-                <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm">
+                <div className="bg-white border border-rule rounded-xl p-5 shadow-sm">
                     <GuaranteeCardForm
                         reservationUuid={reservationUuid}
                         guestUuid={guestUuid}
@@ -1015,7 +1015,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             )}
 
             {!configurationError && !contractAlreadyCompleted && !nativeSignatureAlreadySaved && !showGuaranteePhase && (
-            <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-5">
+            <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-5">
                 {needsSignature && (
                     <>
                         {hasNativeSignature && (
@@ -1058,7 +1058,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     <UnstyledButton
                         onClick={isContractPhaseCta ? handleContractContinue : handleComplete}
                         disabled={(isContractPhaseCta ? !contractPartValid : !isFormValid) || isSubmitting}
-                        className="w-full flex flex-col items-center justify-center gap-1 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex flex-col items-center justify-center gap-1 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {isSubmitting ? (
                             <>

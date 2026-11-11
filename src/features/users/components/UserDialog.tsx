@@ -79,7 +79,7 @@ export function UserDialog({ trigger }: UserDialogProps) {
             <DialogTrigger asChild>
                 {trigger || <Button>Add User</Button>}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-106.25">
                 <DialogHeader>
                     <DialogTitle>Agregar Miembro del Equipo</DialogTitle>
                     <DialogDescription>
@@ -153,7 +153,7 @@ export function UserDialog({ trigger }: UserDialogProps) {
                             )}
                         />
                         <DialogFooter>
-                            <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md hover:shadow-lg transition-all duration-300">
+                            <Button type="submit" disabled={isLoading} className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300">
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Crear Usuario
                             </Button>

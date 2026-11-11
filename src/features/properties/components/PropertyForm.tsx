@@ -379,7 +379,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     )}>
                         <TabsTrigger
                             value="details"
-                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
                             <Info className={cn(
                                 "mr-2 h-4 w-4 transition-colors",
@@ -389,7 +389,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         </TabsTrigger>
                         <TabsTrigger
                             value="units"
-                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
                             <Building className={cn(
                                 "mr-2 h-4 w-4 transition-colors",
@@ -400,7 +400,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         {initialData && (
                             <TabsTrigger
                                 value="automations"
-                                className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                                className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                             >
                                 <Sparkles className={cn(
                                     "mr-2 h-4 w-4 transition-colors",
@@ -412,7 +412,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         {initialData && (
                             <TabsTrigger
                                 value="documents"
-                                className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                                className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                             >
                                 <FileText className={cn(
                                     "mr-2 h-4 w-4 transition-colors",
@@ -423,7 +423,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         )}
                         <TabsTrigger
                             value="location"
-                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
                             <MapPin className={cn(
                                 "mr-2 h-4 w-4 transition-colors",
@@ -433,7 +433,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         </TabsTrigger>
                         <TabsTrigger
                             value="photos"
-                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300 rounded-lg py-2.5 h-full"
+                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
                             <Camera className={cn(
                                 "mr-2 h-4 w-4 transition-colors",
@@ -615,7 +615,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                         <FormItem>
                                             <FormLabel>Descripción</FormLabel>
                                             <FormControl>
-                                                <Textarea placeholder="Una hermosa propiedad..." className="min-h-[100px]" {...field} />
+                                                <Textarea placeholder="Una hermosa propiedad..." className="min-h-25" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -747,7 +747,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             />
 
             <Dialog open={isValidationErrorOpen} onOpenChange={setIsValidationErrorOpen}>
-                <DialogContent className="sm:max-w-[440px]">
+                <DialogContent className="sm:max-w-110">
                     <DialogHeader>
                         <div className="flex items-center gap-3 text-destructive mb-2">
                             <AlertCircle className="h-6 w-6" />
@@ -765,7 +765,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     <div className="min-w-0">
                                         <p className="text-sm font-semibold text-ink leading-tight">
                                             {err.label}
-                                            <span className="ml-2 text-xs font-bold uppercase tracking-wide text-ink-3 bg-sunk border border-rule rounded px-1.5 py-0.5">
+                                            <span className="ml-2 text-xs font-bold text-ink-3 bg-sunk border border-rule rounded-xs px-1.5 py-0.5">
                                                 {err.tab}
                                             </span>
                                         </p>

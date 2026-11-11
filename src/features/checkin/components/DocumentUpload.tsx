@@ -76,7 +76,7 @@ export function DocumentUpload({
       <div
         id={id}
         className={`
-          relative w-full rounded-2xl border-2 border-dashed overflow-hidden
+          relative w-full rounded-xl border-2 border-dashed overflow-hidden
           transition-all duration-300
           ${state === "done"
             ? "border-success/40 bg-success-sunk/50"

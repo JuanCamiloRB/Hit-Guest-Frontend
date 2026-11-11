@@ -145,7 +145,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
             <Form {...form}>
                 <form onSubmit={onRegister}>
                     <Honeypot {...honeypotProps} />
-                    <div className="grid gap-5 bg-card/80 backdrop-blur-sm border border-secondary/10 rounded-xl p-6 shadow-lg shadow-secondary/5 relative">
+                    <div className="grid gap-5 bg-card/80 backdrop-blur-sm border border-secondary/10 rounded-xl p-6 shadow-sm shadow-secondary/5 relative">
 
                         {/* Welcome credit — the backend credits USD 10 to every new account. */}
                         <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
@@ -201,7 +201,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                                     <Input
                                                     placeholder="Ej: Apartamentos del Mar SAS"
                                                     disabled={isLoading}
-                                                    className="pl-9 h-11 focus-visible:ring-secondary/30"
+                                                    className="pl-9 h-11"
                                                     {...field}
                                                 />
                                                 </FormControl>
@@ -231,7 +231,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                                     <Input
                                                     placeholder="Ej: Juan"
                                                     disabled={isLoading}
-                                                    className="pl-9 h-11 focus-visible:ring-secondary/30"
+                                                    className="pl-9 h-11"
                                                     {...field}
                                                 />
                                                 </FormControl>
@@ -258,7 +258,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                                     <Input
                                                     placeholder="Ej: Pérez"
                                                     disabled={isLoading}
-                                                    className="pl-9 h-11 focus-visible:ring-secondary/30"
+                                                    className="pl-9 h-11"
                                                     {...field}
                                                 />
                                                 </FormControl>
@@ -281,11 +281,11 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             value={field.value}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="w-full h-11 rounded-lg border-rule focus:ring-secondary/20 shadow-sm transition-all">
+                                                <SelectTrigger className="w-full h-11">
                                                     <SelectValue placeholder="Selecciona el tipo" />
                                                 </SelectTrigger>
                                             </FormControl>
-                                            <SelectContent className="rounded-xl shadow-xl border-rule">
+                                            <SelectContent className="rounded-xl shadow-sm border-rule">
                                                 {identificationTypes.map((type) => (
                                                     <SelectItem key={type.id} value={type.id} className="cursor-pointer">
                                                         {type.name}
@@ -307,7 +307,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <Input
                                                 placeholder="Ej: 12345678"
                                                 disabled={isLoading}
-                                                className="h-11 rounded-lg border-rule focus-visible:ring-secondary/20 shadow-sm transition-all"
+                                                className="h-11"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -333,7 +333,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                                 placeholder="nombre@empresa.com"
                                                 type="email"
                                                 disabled={isLoading}
-                                                className="pl-9 h-11 focus-visible:ring-secondary/30"
+                                                className="pl-9 h-11"
                                                 {...field}
                                             />
                                             </FormControl>
@@ -385,11 +385,11 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             value={field.value}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="w-full h-11 rounded-lg border-rule focus:ring-secondary/20 shadow-sm transition-all">
+                                                <SelectTrigger className="w-full h-11">
                                                     <SelectValue placeholder="Selecciona un país" />
                                                 </SelectTrigger>
                                             </FormControl>
-                                            <SelectContent className="rounded-xl shadow-xl border-rule max-h-[200px]">
+                                            <SelectContent className="rounded-xl shadow-sm border-rule max-h-50">
                                                 {countries.map((country) => (
                                                     <SelectItem key={country.id} value={country.id}>
                                                         {country.name}
@@ -404,7 +404,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                                     <Input
                                                     placeholder="Ej: Colombia"
                                                     disabled={isLoading}
-                                                    className="pl-9 h-11 rounded-lg border-rule shadow-sm"
+                                                    className="pl-9 h-11"
                                                     {...field}
                                                 />
                                                 </FormControl>
@@ -426,7 +426,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <Input
                                                 placeholder="Ej: Valle del Cauca"
                                                 disabled={isLoading}
-                                                className="h-11 rounded-lg border-rule shadow-sm"
+                                                className="h-11"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -444,7 +444,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <Input
                                                 placeholder="Ej: Cali"
                                                 disabled={isLoading}
-                                                className="h-11 rounded-lg border-rule shadow-sm"
+                                                className="h-11"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -475,7 +475,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             <Button
                                 type="submit"
                                 disabled={isLoading || !acceptedTerms}
-                                className="w-full bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md hover:shadow-lg transition-all duration-300 h-11 rounded-lg"
+                                className="w-full bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300 h-11 rounded-lg"
                             >
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                 Crear Cuenta

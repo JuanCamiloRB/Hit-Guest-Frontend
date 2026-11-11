@@ -109,10 +109,10 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             // Sin avatar de iniciales: repetía el nombre de al lado («H2» por
             // «Huésped 26») y hacía cada fila de 85 px. Dos líneas: quién y dónde.
             return (
-                <div className="flex min-w-0 max-w-[16rem] flex-col py-0.5">
+                <div className="flex min-w-0 max-w-64 flex-col py-0.5">
                     <Link
                         href={`/dashboard/reservations/${reservation.id}`}
-                        className="truncate rounded text-sm font-semibold text-ink transition-colors hover:text-primary hover:underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        className="truncate rounded-xs text-sm font-semibold text-ink transition-colors hover:text-primary hover:underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                         // Quedarse sobre la fila (o enfocarla) precarga la ficha.
                         onMouseEnter={() => startDetailPrefetch(reservation.id)}
                         onMouseLeave={() => cancelDetailPrefetch(reservation.id)}
@@ -271,7 +271,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             const reservation = row.original
 
             return (
-                <div className="flex justify-center min-w-[100px]">
+                <div className="flex justify-center min-w-25">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button

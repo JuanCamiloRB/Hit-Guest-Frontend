@@ -193,7 +193,7 @@ export function ExternalPmsIdsField({
                                             <SelectTrigger
                                                 id={sourceId}
                                                 aria-invalid={Boolean(error?.sourcePmsId)}
-                                                className={cn(error?.sourcePmsId && "border-destructive")}
+                                                className={cn(error?.sourcePmsId && "")}
                                             >
                                                 <SelectValue placeholder="Seleccionar origen" />
                                             </SelectTrigger>
@@ -230,7 +230,7 @@ export function ExternalPmsIdsField({
                                             onChange={(e) => updateRow(index, { externalId: e.target.value })}
                                             disabled={disabled}
                                             aria-invalid={Boolean(error?.externalId)}
-                                            className={cn(error?.externalId && "border-destructive")}
+                                            className={cn(error?.externalId && "")}
                                         />
                                     </div>
 

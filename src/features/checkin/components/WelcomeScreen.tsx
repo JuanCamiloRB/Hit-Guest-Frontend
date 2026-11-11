@@ -287,14 +287,14 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
             </div>
 
             {/* Reservation Card */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-rule space-y-4">
+            <div className="bg-white rounded-xl p-5 shadow-sm border border-rule space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <span className="text-xs font-bold tracking-wider text-ink-3 uppercase">Llegada</span>
+                        <span className="text-xs font-bold text-ink-3">Llegada</span>
                         <p className="font-medium mt-0.5 text-ink">{formatDate(res.arrivalDate)}</p>
                     </div>
                     <div>
-                        <span className="text-xs font-bold tracking-wider text-ink-3 uppercase">Salida</span>
+                        <span className="text-xs font-bold text-ink-3">Salida</span>
                         <p className="font-medium mt-0.5 text-ink">{formatDate(res.departureDate)}</p>
                     </div>
                 </div>
@@ -367,7 +367,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                 {/* Lista: solo con el titular terminado, que es cuando sirve. Sin
                     círculos (parecían una selección): check verde o la persona. */}
                 <div className="space-y-2 pt-1">
-                    <h2 id="guest-list-heading" className="text-xs font-bold tracking-wider text-ink-3 uppercase">Huéspedes de la reserva</h2>
+                    <h2 id="guest-list-heading" className="text-xs font-bold text-ink-3">Huéspedes de la reserva</h2>
 
                     <ul aria-labelledby="guest-list-heading" className="space-y-2">
                     {mainGuest && (
@@ -469,7 +469,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
             {/* Info Box */}
             {!isFullyCompleted && (
-                <div className="bg-secondary/5 rounded-2xl p-5 border border-secondary/10">
+                <div className="bg-secondary/5 rounded-xl p-5 border border-secondary/10">
                     <div className="flex items-center gap-3 mb-4 text-secondary">
                         <Clock size={20} />
                         <span className="font-semibold">Tomará aproximadamente 3 minutos</span>
@@ -500,12 +500,12 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
             {/* Security */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col items-center justify-center text-center bg-white border border-rule p-4 rounded-2xl shadow-sm">
+                <div className="flex flex-col items-center justify-center text-center bg-white border border-rule p-4 rounded-xl shadow-sm">
                     <ShieldCheck size={28} className="text-success mb-2" />
                     <span className="text-xs font-semibold text-ink">Cifrado Seguro</span>
                     <span className="text-xs text-ink-3 mt-0.5">Datos protegidos</span>
                 </div>
-                <div className="flex flex-col items-center justify-center text-center bg-white border border-rule p-4 rounded-2xl shadow-sm">
+                <div className="flex flex-col items-center justify-center text-center bg-white border border-rule p-4 rounded-xl shadow-sm">
                     <Key size={28} className="text-warning mb-2" />
                     <span className="text-xs font-semibold text-ink">Acceso Rápido</span>
                     <span className="text-xs text-ink-3 mt-0.5">Evita la recepción</span>
@@ -518,7 +518,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     <div className={BOTTOM_BAR_INNER}>
                         <Link
                             href={`${basePath}/success`}
-                            className="w-full flex items-center justify-center h-14 bg-success hover:bg-success/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center h-14 bg-success hover:bg-success/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
                         >
                             Ver Resumen de Check-in
                         </Link>
@@ -529,7 +529,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     <div className={BOTTOM_BAR_INNER}>
                         <Link
                             href={primaryCtaHref}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
                         >
                             {primaryCtaLabel}
                             <ArrowRight size={20} />

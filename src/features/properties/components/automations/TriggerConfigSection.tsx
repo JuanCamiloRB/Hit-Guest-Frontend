@@ -150,7 +150,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
             <div className="flex items-center gap-2">
                 <Zap size={15} className="text-primary" />
                 <h4 className="text-sm font-bold text-ink">Disparador</h4>
-                <span className="text-xs font-semibold text-ink-3 uppercase tracking-wide">
+                <span className="text-xs font-semibold text-ink-3">
                     {required ? "Requerido" : "Opcional"}
                 </span>
             </div>
@@ -199,7 +199,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                                                 setTriggerConfigValue(t.key, "delay_minutes", e.target.value === "" ? undefined : Number(e.target.value))
                                             }
                                             placeholder="0"
-                                            className="w-20 bg-sunk/50 border border-rule rounded-lg px-2 py-1 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                            className="w-20 px-2 py-1 text-sm text-ink"
                                         />
                                         <span className="text-xs text-ink-3">min</span>
                                     </div>
@@ -296,7 +296,7 @@ function ScheduledConfig({
                         onChange("offset_days", e.target.value === "" ? undefined : parseInt(e.target.value, 10))
                     }
                     placeholder="0"
-                    className="w-20 bg-sunk/50 border border-rule rounded-lg px-2 py-1 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-20 px-2 py-1 text-sm text-ink"
                 />
                 <span className="text-xs text-ink-3">días (− antes · + después)</span>
             </div>

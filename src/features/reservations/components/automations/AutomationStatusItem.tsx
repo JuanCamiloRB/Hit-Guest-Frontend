@@ -175,7 +175,7 @@ export function AutomationStatusItem({
                 <UnstyledButton
                     type="button"
                     onClick={() => onViewHistory(item)}
-                    className="inline-flex items-center gap-1.5 rounded text-xs font-medium text-ink-3 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    className="inline-flex items-center gap-1.5 rounded-xs text-xs font-medium text-ink-3 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                     <History size={14} />
                     Ver historial

@@ -20,7 +20,7 @@ export function FormInput({ label, value, onChange, placeholder, type = "text", 
                 {label}
                 {required && <span className="text-danger ml-0.5">*</span>}
             </Label>
-            <Input type={type} value={value ?? ""} onChange={(e) => onChange(e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder={placeholder} />
+            <Input type={type} value={value ?? ""} onChange={(e) => onChange(e.target.value)} className="w-full px-4 py-3 text-ink" placeholder={placeholder} />
         </div>
     )
 }

@@ -69,9 +69,9 @@ interface ProfileFormProps {
 }
 
 const inputClass =
-    "h-11 bg-sunk/50 border-rule focus-visible:ring-primary/20 focus-visible:border-primary transition-all rounded-xl"
+    "h-11"
 const selectClass =
-    "h-11 bg-sunk/50 border-rule focus:ring-primary/20 rounded-xl"
+    "h-11"
 
 export function ProfileForm({ user }: ProfileFormProps) {
     const [isLoading, setIsLoading] = useState(false)
@@ -365,7 +365,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                                         placeholder="nombre@ejemplo.com"
                                         {...field}
                                         disabled
-                                        className="h-11 bg-sunk/50 border-rule text-ink-3 cursor-not-allowed rounded-xl"
+                                        className="h-11 text-ink-3 cursor-not-allowed"
                                     />
                                 </FormControl>
                                 <FormDescription className="text-xs italic">
@@ -480,7 +480,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                     <Button
                         type="submit"
                         disabled={isLoading}
-                        className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-8 rounded-xl shadow-md transition-all duration-300"
+                        className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-8 rounded-xl shadow-sm transition-all duration-300"
                     >
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         GUARDAR CAMBIOS

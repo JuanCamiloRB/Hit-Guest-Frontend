@@ -33,6 +33,7 @@ import { useHasHydrated } from "@/hooks/useHasHydrated"
 import { useIsSupportAgentOnly } from "@/features/support/hooks/useIsSupportAgentOnly"
 import { Avatar as UiAvatar, AvatarFallback } from "@/components/ui/avatar"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Overline } from "@/components/ui/overline"
 
 interface NavEntry {
     label: string
@@ -62,7 +63,7 @@ function NavItem({ item }: { item: NavEntry }) {
                     "group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-colors",
                     "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
                     item.active
-                        // Se quitó `shadow-lg shadow-black/20`: una sombra negra
+                        // Se quitó `shadow-sm shadow-black/20`: una sombra negra
                         // sobre el navy del sidebar no se ve, solo ensucia el borde.
                         ? "bg-primary font-semibold text-white"
                         // Antes TODO era font-bold, activo e inactivo por igual,
@@ -173,7 +174,7 @@ export function Sidebar({ className }: { className?: string }) {
                     <Link
                         href="/dashboard"
                         aria-label="HIT Guest — ir al tablero"
-                        className="rounded focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                        className="rounded-xs focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
                     >
                         {/* Marca HIT (hit.tools), un poco MAYOR que el logo de
                             HIT GUEST del header interno (pedido 2026-08-27). */}
@@ -208,9 +209,9 @@ export function Sidebar({ className }: { className?: string }) {
                         hace nada ponía dos moradas compitiendo, con la que no se
                         puede pulsar gritando igual de fuerte. Ahora es un simple
                         antetítulo apagado sobre una regla que separa el grupo. */}
-                    <p className="border-t border-white/10 px-4 pt-4 text-xs font-semibold uppercase tracking-wider text-white/70">
+                    <Overline className="border-t border-white/10 px-4 pt-4 text-white/70">
                         Sistema
-                    </p>
+                    </Overline>
                     <ul className="space-y-1">
                         {systemMenu.map((item) => (
                             <NavItem key={item.href} item={item} />

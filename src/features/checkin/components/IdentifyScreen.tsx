@@ -482,7 +482,7 @@ export function IdentifyScreen({
                 <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                     <ArrowLeft size={20} />
                 </Link>
-                <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">
+                <div className="text-sm font-bold text-ink-3">
                     {isSecondary ? "Paso 1 de 4" : "Paso 2 de 6"}
                 </div>
             </div>
@@ -500,7 +500,7 @@ export function IdentifyScreen({
                 </p>
             </div>
 
-            <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
 
                 {/* Name + Lastname */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -512,7 +512,7 @@ export function IdentifyScreen({
                             type="text"
                             value={form.name}
                             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                            className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.name ? "border-danger" : "border-rule"}`}
+                            aria-invalid={!!(fieldErrors.name) || undefined} className={`w-full px-4 py-3 text-ink`}
                             placeholder="Ej. Juan Carlos"
                             maxLength={120}
                         />
@@ -526,7 +526,7 @@ export function IdentifyScreen({
                             type="text"
                             value={form.lastname}
                             onChange={e => setForm(f => ({ ...f, lastname: e.target.value }))}
-                            className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.lastname ? "border-danger" : "border-rule"}`}
+                            aria-invalid={!!(fieldErrors.lastname) || undefined} className={`w-full px-4 py-3 text-ink`}
                             placeholder="Ej. Rodríguez Barrera"
                             maxLength={60}
                         />
@@ -587,7 +587,7 @@ export function IdentifyScreen({
                                     const text = (e.clipboardData.getData("text") || "").replace(/[^a-zA-Z0-9]/g, "")
                                     setForm(f => ({ ...f, identificationNumber: text }))
                                 }}
-                                className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.identificationNumber ? "border-danger" : "border-rule"}`}
+                                aria-invalid={!!(fieldErrors.identificationNumber) || undefined} className={`w-full px-4 py-3 text-ink`}
                                 placeholder="Ej. 1234567890"
                                 maxLength={30}
                                 inputMode="text"
@@ -613,7 +613,7 @@ export function IdentifyScreen({
                             maxLength={2}
                             value={guestCount}
                             onChange={e => setGuestCount(e.target.value.replace(/\D/g, ""))}
-                            className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.totalGuests ? "border-danger" : "border-rule"}`}
+                            aria-invalid={!!(fieldErrors.totalGuests) || undefined} className={`w-full px-4 py-3 text-ink`}
                             placeholder="Ej. 2"
                         />
                         {fieldErrors.totalGuests && <p className="text-xs text-danger">{fieldErrors.totalGuests}</p>}
@@ -646,7 +646,7 @@ export function IdentifyScreen({
                             value={priceInput}
                             onChange={e => setPriceInput(e.target.value)}
                             aria-invalid={priceInput.trim() !== "" && declaredPrice == null ? true : undefined}
-                            className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.totalPrice || (priceInput.trim() !== "" && declaredPrice == null) ? "border-danger" : "border-rule"}`}
+                            className={`w-full px-4 py-3 text-ink`}
                             placeholder="Ej. 850.000"
                         />
                         {priceInput.trim() !== "" && (
@@ -696,7 +696,7 @@ export function IdentifyScreen({
                     <UnstyledButton
                         onClick={handleVerify}
                         disabled={!isValid || isSubmitting || isLoadingCatalogs}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {isSubmitting ? (
                             <><Loader2 className="animate-spin" size={20} /> Verificando...</>

@@ -242,12 +242,12 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             </div>
 
             <div className="space-y-3">
-                <h1 className="text-3xl font-extrabold tracking-tight text-ink leading-tight">
+                <h1 className="text-3xl font-bold tracking-tight text-ink leading-tight">
                     {completedCopy?.title ?? (awaitingSignature
                         ? "Tu registro quedó guardado"
                         : isMainDone ? "¡Tu Registro Está Listo!" : "¡Check-in Completado!")}
                 </h1>
-                <p className="text-ink-3 text-base max-w-[300px] mx-auto">
+                <p className="text-ink-3 text-base max-w-75 mx-auto">
                     {completedCopy?.description ?? (awaitingSignature
                         ? "Tu check-in se completará cuando firmes el contrato. Te llegará un correo de TuFirma para hacerlo."
                         : isMainDone
@@ -261,7 +261,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 esperar a que el estado se persista. Cuando el portal lo confirma,
                 lo reemplaza la tarjeta de "esperando la firma" de abajo. */}
             {contractPending && contractState === "awaiting_guest" && (
-                <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
+                <div className="bg-primary/5 border border-primary/15 rounded-xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
                     <Mail size={18} className="text-primary flex-shrink-0 mt-0.5" />
                     <div>
                         <p className="text-sm font-bold text-ink">Falta firmar el contrato</p>
@@ -275,7 +275,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
 
             {/* Contract ready → download the SIGNED PDF (with legal evidence page). */}
             {contractReady && (
-                <div className="bg-success-sunk border border-success/20 rounded-2xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
+                <div className="bg-success-sunk border border-success/20 rounded-xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
                     <div className="flex items-start gap-3">
                         <CheckCircle2 size={18} className="text-success flex-shrink-0 mt-0.5" />
                         <div>
@@ -309,7 +309,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
               * mirarse es mentirle al huésped.
               */}
             {isContractTransitional(contractState) && (
-                <div className="bg-warning-sunk border border-warning/20 rounded-2xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
+                <div className="bg-warning-sunk border border-warning/20 rounded-xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
                     <div className="flex items-start gap-3">
                         {pollStalled
                             ? <Clock size={18} className="text-warning flex-shrink-0 mt-0.5" />
@@ -350,7 +350,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
               * completado" y el huésped se iba creyendo que estaba todo en orden.
               */}
             {contractState === "rejected" && (
-                <div className="bg-danger-sunk border border-danger/20 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
+                <div className="bg-danger-sunk border border-danger/20 rounded-xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
                     <XCircle size={18} className="text-danger flex-shrink-0 mt-0.5" />
                     <div>
                         <p className="text-sm font-bold text-danger">Tu contrato no pudo firmarse</p>
@@ -363,7 +363,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             )}
 
             {isMainDone && pendingGuests > 0 && (
-                <div className="bg-warning-sunk border border-warning/30 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
+                <div className="bg-warning-sunk border border-warning/30 rounded-xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
                     <Clock size={18} className="text-warning flex-shrink-0 mt-0.5" />
                     <div>
                         <p className="text-sm font-bold text-warning">
@@ -376,7 +376,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 </div>
             )}
 
-            <div className="bg-white border border-rule rounded-2xl p-4 w-full max-w-sm space-y-3 shadow-sm">
+            <div className="bg-white border border-rule rounded-xl p-4 w-full max-w-sm space-y-3 shadow-sm">
                 <div className="flex items-center gap-3 text-left">
                     <div className="bg-primary/10 p-2 rounded-xl">
                         <MapPin size={18} className="text-primary" />
@@ -404,14 +404,14 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             )}
 
             {docsLoading ? (
-                <div className="bg-sunk/50 border border-rule p-4 rounded-2xl flex items-center gap-3 w-full max-w-sm">
+                <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-3 w-full max-w-sm">
                     <Loader2 size={18} className="animate-spin text-ink-3" />
                     <span className="text-xs text-ink-3">Cargando documentos...</span>
                 </div>
             ) : documents.length > 0 ? (
                 <div className="w-full max-w-sm space-y-2">
                     {documents.map((doc) => (
-                        <div key={doc.uuid} className="bg-sunk/50 border border-rule p-4 rounded-2xl flex items-center gap-4 text-left">
+                        <div key={doc.uuid} className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left">
                             <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
                                 <FileText className="text-primary" size={20} />
                             </div>
@@ -434,7 +434,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                     ))}
                 </div>
             ) : (
-                <div className="bg-sunk/50 border border-rule p-4 rounded-2xl flex items-center gap-4 text-left w-full max-w-sm">
+                <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left w-full max-w-sm">
                     <div className="bg-primary/10 p-3 rounded-xl">
                         <Download className="text-primary" size={24} />
                     </div>
@@ -448,7 +448,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             )}
 
 
-            <div className="bg-sunk/50 border border-rule p-4 rounded-2xl flex items-center gap-4 text-left w-full max-w-sm mt-2">
+            <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left w-full max-w-sm mt-2">
                 <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
                     <Home className="text-primary" size={24} />
                 </div>
@@ -461,14 +461,14 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg flex flex-col gap-2">
                     {hasPendingSecondaries && (
-                        <Link href={welcomeHref} className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]">
+                        <Link href={welcomeHref} className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]">
                             <Users size={18} />
                             Ver inicio para acompañantes
                         </Link>
                     )}
                     <Link
                         href={hasPendingSecondaries ? welcomeHref : "/"}
-                        className="w-full flex items-center justify-center gap-2 h-12 bg-ink hover:bg-ink/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-2 h-12 bg-ink hover:bg-ink/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
                     >
                         {hasPendingSecondaries ? "Cerrar y volver al inicio" : "Cerrar"}
                     </Link>
