@@ -223,7 +223,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
         return (
             <div role="alert" className="flex flex-col items-center gap-2 py-16 text-center">
                 <p className="text-sm font-semibold text-ink">No pudimos cargar la cuenta</p>
-                <p className="text-xs text-muted-foreground">{accountError}</p>
+                <p className="text-xs text-ink-3">{accountError}</p>
                 <Button
                     variant="outline"
                     size="sm"

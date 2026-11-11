@@ -193,7 +193,7 @@ export function UserManagement() {
             <div className="flex justify-between items-center">
                 <div>
                     <h3 className="text-lg font-medium">Usuarios de la Cuenta</h3>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-ink-3">
                         Gestiona quién accede a esta cuenta y con qué rol.
                     </p>
                 </div>
@@ -321,7 +321,7 @@ export function UserManagement() {
                         {isLoading ? (
                             <TableRow>
                                 <TableCell colSpan={3} className="h-24 text-center">
-                                    <Icon icon={Loader2} size="xl" className="animate-spin mx-auto text-muted-foreground" />
+                                    <Icon icon={Loader2} size="xl" className="animate-spin mx-auto text-ink-3" />
                                 </TableCell>
                             </TableRow>
                         ) : status === "error" ? (
@@ -330,13 +330,13 @@ export function UserManagement() {
                                 <TableCell colSpan={3} className="h-24 text-center">
                                     <p className="text-sm font-semibold text-ink">No pudimos cargar los usuarios</p>
                                     {/* El motivo del servidor (p. ej. un 403 por permisos), tal cual. */}
-                                    {errorMessage && <p className="mt-1 text-xs text-muted-foreground">{errorMessage}</p>}
+                                    {errorMessage && <p className="mt-1 text-xs text-ink-3">{errorMessage}</p>}
                                     <Button variant="outline" size="sm" className="mt-2" onClick={fetchUsers}>Reintentar</Button>
                                 </TableCell>
                             </TableRow>
                         ) : users.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                                <TableCell colSpan={3} className="h-24 text-center text-ink-3">
                                     No hay usuarios registrados en esta cuenta.
                                 </TableCell>
                             </TableRow>
@@ -346,7 +346,7 @@ export function UserManagement() {
                                     <TableCell>
                                         <div className="flex flex-col">
                                             <span className="font-medium text-ink">{user.firstName}</span>
-                                            <span className="text-xs text-muted-foreground">{user.email}</span>
+                                            <span className="text-xs text-ink-3">{user.email}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
@@ -376,7 +376,7 @@ export function UserManagement() {
                                                     )}
                                                     {canDelete(user) && (
                                                         <DropdownMenuItem
-                                                            className="text-destructive"
+                                                            className="text-danger"
                                                             onClick={() => handleDelete(user)}
                                                         >
                                                             <Icon icon={Trash2} className="mr-2" /> Eliminar
@@ -385,7 +385,7 @@ export function UserManagement() {
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
                                         ) : (
-                                            <span className="text-xs text-muted-foreground">—</span>
+                                            <span className="text-xs text-ink-3">—</span>
                                         )}
                                     </TableCell>
                                 </TableRow>

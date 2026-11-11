@@ -181,7 +181,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
-                                className={cn("font-medium", isActive ? "text-destructive" : "text-success")}
+                                className={cn("font-medium", isActive ? "text-danger" : "text-success")}
                                 // Diferido: abrir el diálogo mientras el menú se cierra deja
                                 // `pointer-events: none` en el body (fallo conocido de Radix).
                                 onSelect={() => window.setTimeout(() => requestStatusChange(!isActive), 0)}

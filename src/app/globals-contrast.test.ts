@@ -16,6 +16,13 @@ function block(selector: string): Record<string, string> {
     const body = css.slice(start, css.indexOf("\n}", start))
     const vars: Record<string, string> = {}
     for (const match of body.matchAll(/--([\w-]+):\s*([^;]+);/g)) vars[match[1]] = match[2].replace(/\/\*.*?\*\//g, "").trim()
+    // Un alias (`--destructive: var(--danger)`) se mide con el valor al que apunta.
+    const resolve = (value: string, depth = 0): string => {
+        const ref = value.match(/^var\(--([\w-]+)\)$/)
+        if (!ref || depth > 5) return value
+        return resolve(vars[ref[1]] ?? value, depth + 1)
+    }
+    for (const key of Object.keys(vars)) vars[key] = resolve(vars[key])
     return vars
 }
 

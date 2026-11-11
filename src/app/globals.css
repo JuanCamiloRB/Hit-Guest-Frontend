@@ -80,7 +80,10 @@
 :root {
   --radius: 0.75rem;
   --background: #F9FBFA;
-  --foreground: #1a1a1a;
+  /* Alias de shadcn → tokens HIT (DS-7a). Las pantallas y primitivas usan los
+     nombres HIT; estos quedan para librerías que lean las variables de shadcn,
+     con el MISMO valor para que no aparezca un segundo gris o negro. */
+  --foreground: var(--ink);
 
   /* Marca ≠ interacción. La marca sigue en --color-brand-purple (#9D4CF2) y
      --color-brand-blue (#5467FA): logos, ilustraciones, detalles. Los colores
@@ -104,7 +107,7 @@
      neutro claro que shadcn espera, teñido hacia el navy para que pertenezca
      a la marca. */
   --accent: #EEF0F6;
-  --accent-foreground: #222755;
+  --accent-foreground: var(--ink);
 
   /* ── Tinta ──────────────────────────────────────────────────────────
      Cuatro pasos derivados del navy de marca, un trabajo cada uno, en vez
@@ -146,19 +149,20 @@
   --neutral-sunk: #EEF0F6;
 
   --card: #ffffff;
-  --card-foreground: #1a1a1a;
+  --card-foreground: var(--ink);
   --popover: #ffffff;
-  --popover-foreground: #1a1a1a;
+  --popover-foreground: var(--ink);
 
-  --muted: #f4f4f5;
-  --muted-foreground: #71717a;
+  --muted: var(--sunk);
+  --muted-foreground: var(--ink-3);
 
-  /* Relleno del BOTÓN destructivo (separado de --danger a propósito, ver
-     arriba). #ef4444 daba 3.76:1 con texto blanco; #C81E1E da 5.74:1, y 5.04:1
-     en hover (bg-destructive/90): los dos pasan AA (4.5:1). */
-  --destructive: #C81E1E;
-  --destructive-hover: #B01818; /* 7.02:1 */
-  --border: #e4e4e7;
+  /* Relleno del BOTÓN destructivo. Es otro trabajo que --danger (tinta de
+     estado), por eso conserva su nombre, pero el MISMO rojo: antes #C81E1E
+     junto a #BF2E1B dejaba dos rojos en pantalla (DS-7a). 5.8:1 con blanco;
+     hover #A02614, 7.55:1. */
+  --destructive: var(--danger);
+  --destructive-hover: #A02614;
+  --border: var(--rule);
   /* Borde de un CAMPO (Input, Textarea, Select, calendario): es la señal que lo
      identifica, así que necesita 3:1 (WCAG 1.4.11). #e4e4e7 daba 1.27:1; #8188A6
      da 3.50 card / 3.36 fondo / 3.15 sunk. El hover usa su propio token (ink-3,
@@ -226,11 +230,11 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-rule outline-ring/50;
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-ink;
   }
 
   html {

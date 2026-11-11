@@ -76,7 +76,7 @@ export const columns: ColumnDef<User>[] = [
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem>Edit details</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">Delete user</DropdownMenuItem>
+                        <DropdownMenuItem className="text-danger">Delete user</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             )

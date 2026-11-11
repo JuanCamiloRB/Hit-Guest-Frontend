@@ -43,7 +43,7 @@ import { cn } from "@/lib/utils"
  *   (Se retiraron `xs`/`icon-xs`, de 24 px: nadie los usaba.)
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-invalid:border-destructive disabled:cursor-not-allowed disabled:text-ink-3 disabled:shadow-none aria-disabled:not-data-loading:cursor-not-allowed aria-disabled:not-data-loading:text-ink-3 aria-disabled:not-data-loading:shadow-none data-loading:cursor-progress",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-invalid:border-danger disabled:cursor-not-allowed disabled:text-ink-3 disabled:shadow-none aria-disabled:not-data-loading:cursor-not-allowed aria-disabled:not-data-loading:text-ink-3 aria-disabled:not-data-loading:shadow-none data-loading:cursor-progress",
   {
     variants: {
       variant: {
@@ -51,7 +51,7 @@ const buttonVariants = cva(
         destructive:
           "bg-destructive text-white hover:bg-destructive-hover active:bg-destructive-hover disabled:bg-sunk aria-disabled:not-data-loading:bg-sunk",
         outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground active:bg-accent dark:bg-input/30 dark:border-input dark:hover:bg-input/50 disabled:bg-transparent aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary",
+          "border bg-background shadow-xs hover:bg-accent hover:text-ink active:bg-accent dark:bg-input/30 dark:border-input dark:hover:bg-input/50 disabled:bg-transparent aria-pressed:border-primary aria-pressed:bg-primary/10 aria-pressed:text-primary",
         "outline-destructive":
           "border border-danger/30 bg-background text-danger shadow-xs hover:bg-danger-sunk active:bg-danger-sunk disabled:border-rule disabled:bg-transparent",
         "outline-warning":
@@ -59,7 +59,7 @@ const buttonVariants = cva(
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary-hover active:bg-secondary-hover disabled:bg-sunk aria-disabled:not-data-loading:bg-sunk",
         ghost:
-          "hover:bg-accent hover:text-accent-foreground active:bg-accent dark:hover:bg-accent/50 disabled:bg-transparent aria-pressed:bg-primary/10 aria-pressed:text-primary",
+          "hover:bg-accent hover:text-ink active:bg-accent dark:hover:bg-accent/50 disabled:bg-transparent aria-pressed:bg-primary/10 aria-pressed:text-primary",
         "ghost-destructive":
           "text-danger hover:bg-danger-sunk active:bg-danger-sunk disabled:bg-transparent",
         // Sobre una superficie oscura o de color (panel de Acciones rápidas).

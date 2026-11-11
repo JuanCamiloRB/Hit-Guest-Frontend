@@ -59,7 +59,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
     }
 
     return (
-        <div className={cn("grid gap-8 bg-white p-8 rounded-xl shadow-sm border border-border/50", className)} {...props}>
+        <div className={cn("grid gap-8 bg-white p-8 rounded-xl shadow-sm border border-rule/50", className)} {...props}>
             <div className="flex flex-col items-center gap-2 text-center mb-2">
                 {alternateLanguage && (
                     <div className="absolute top-4 right-4 z-50">
@@ -73,12 +73,12 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                     </div>
                 )}
                 <Logo variant="icon" className="h-12 w-auto" />
-                <p className="text-sm text-muted-foreground font-secondary mt-1">
+                <p className="text-sm text-ink-3 font-secondary mt-1">
                     {t('common.welcome')} - Gestión inteligente para hospitalidad
                 </p>
             </div>
             {isMounted && error && (
-                <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md flex items-center gap-2 border border-destructive/20 animate-in fade-in zoom-in duration-200">
+                <div className="bg-destructive/15 text-danger text-sm p-3 rounded-md flex items-center gap-2 border border-danger/20 animate-in fade-in zoom-in duration-200">
                     <Icon icon={AlertCircle} />
                     <span>{error}</span>
                 </div>
@@ -94,9 +94,9 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                 name="email"
                                 render={({ field }) => (
                                     <FormItem id="email-form-item">
-                                        <FormLabel>Correo electrónico <span className="text-destructive">*</span></FormLabel>
+                                        <FormLabel>Correo electrónico <span className="text-danger">*</span></FormLabel>
                                             <div className="relative">
-                                                <Icon icon={Mail} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                                <Icon icon={Mail} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
                                                 <FormControl>
                                                     <Input
                                                     placeholder="nombre@hitguest.com"
@@ -128,8 +128,8 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                     <form onSubmit={onVerifyOtp}>
                         <Honeypot {...honeypotProps} />
                         <div className="grid gap-4">
-                            <div className="bg-muted/50 p-4 rounded-lg text-center">
-                                <p className="text-sm text-muted-foreground mb-1">
+                            <div className="bg-sunk/50 p-4 rounded-lg text-center">
+                                <p className="text-sm text-ink-3 mb-1">
                                     Hemos enviado un código a:
                                 </p>
                                 <p className="text-sm font-semibold">{email}</p>
@@ -140,7 +140,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                 render={({ field }) => (
                                     <FormItem id="otp-form-item">
                                         <div className="flex justify-between items-center mb-2">
-                                            <FormLabel className="m-0">Código OTP <span className="text-destructive">*</span></FormLabel>
+                                            <FormLabel className="m-0">Código OTP <span className="text-danger">*</span></FormLabel>
                                             <Button variant="link" size="inline"
                                                 type="button"
                                                 onClick={resetFlow}
@@ -149,7 +149,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                             </Button>
                                         </div>
                                             <div className="relative">
-                                                <Icon icon={Lock} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                                                <Icon icon={Lock} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
                                                 <FormControl>
                                                     <Input
                                                     id="otp"
@@ -180,9 +180,9 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
 
                                 <div className="text-center">
                                     {timer > 0 ? (
-                                        <p className="text-xs text-muted-foreground">
+                                        <p className="text-xs text-ink-3">
                                             Podrás solicitar un nuevo código en{" "}
-                                            <span className="font-medium text-foreground">
+                                            <span className="font-medium text-ink">
                                                 {Math.floor(timer / 60)}:
                                                 {(timer % 60).toString().padStart(2, "0")}
                                             </span>
@@ -205,7 +205,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                 </Form>
             )}
             <div className="mt-4 text-center text-sm">
-                <p className="text-muted-foreground">
+                <p className="text-ink-3">
                     ¿No tienes cuenta?{" "}
                     <Link
                         href="/register"

@@ -160,7 +160,7 @@ export function PropertiesLocation() {
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel className="text-ink-2 font-semibold">
-                                Dirección Principal <span className="text-destructive">*</span>
+                                Dirección Principal <span className="text-danger">*</span>
                             </FormLabel>
                             <FormControl>
                                 <AddressAutocomplete
@@ -203,7 +203,7 @@ export function PropertiesLocation() {
                         name="state"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-ink-2 font-semibold">Estado/Depto <span className="text-destructive">*</span></FormLabel>
+                                <FormLabel className="text-ink-2 font-semibold">Estado/Depto <span className="text-danger">*</span></FormLabel>
                                 <FormControl>
                                     <Input className="h-11" placeholder="Bolívar" {...field} />
                                 </FormControl>
@@ -246,7 +246,7 @@ export function PropertiesLocation() {
                         name="city"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-ink-2 font-semibold">Ciudad <span className="text-destructive">*</span></FormLabel>
+                                <FormLabel className="text-ink-2 font-semibold">Ciudad <span className="text-danger">*</span></FormLabel>
                                 <FormControl>
                                     <Input
                                         className="h-11"
@@ -263,7 +263,7 @@ export function PropertiesLocation() {
                          name="countryId"
                          render={({ field }) => (
                              <FormItem>
-                                 <FormLabel className="text-ink-2 font-semibold">País <span className="text-destructive">*</span></FormLabel>
+                                 <FormLabel className="text-ink-2 font-semibold">País <span className="text-danger">*</span></FormLabel>
                                  <Select
                                          onValueChange={(val) => field.onChange(parseInt(val))}
                                          value={String(field.value || "")}

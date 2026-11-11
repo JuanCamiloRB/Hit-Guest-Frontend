@@ -232,7 +232,7 @@ export function ReservationsCalendar() {
                         onClear={() => setSelectedUnits(new Set())}
                     />
 
-                    <div className="inline-flex rounded-lg bg-muted p-0.5">
+                    <div className="inline-flex rounded-lg bg-sunk p-0.5">
                         {FILTER_OPTIONS.map((opt) => (
                             <UnstyledButton
                                 key={opt.value}
@@ -252,7 +252,7 @@ export function ReservationsCalendar() {
                 </div>
             </div>
 
-            <div className="relative grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden border">
+            <div className="relative grid grid-cols-7 gap-px bg-sunk rounded-lg overflow-hidden border">
                 {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-xs">
                         <Icon icon={Loader2} size="xl" className="animate-spin text-primary" />
@@ -276,8 +276,8 @@ export function ReservationsCalendar() {
                         <div
                             key={day.toString()}
                             className={cn(
-                                "bg-background min-h-25 p-2 flex flex-col space-y-1 hover:bg-muted/50 transition-colors",
-                                !isSameMonth(day, currentMonth) && "text-muted-foreground bg-muted/20"
+                                "bg-background min-h-25 p-2 flex flex-col space-y-1 hover:bg-sunk/50 transition-colors",
+                                !isSameMonth(day, currentMonth) && "text-ink-3 bg-sunk/20"
                             )}
                         >
                             <span className={cn(

@@ -575,7 +575,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                                     </p>
                                                 )}
                                                 {!isValidEmail && (
-                                                    <p className="text-xs text-destructive">Ingresa un correo válido o deja el campo vacío.</p>
+                                                    <p className="text-xs text-danger">Ingresa un correo válido o deja el campo vacío.</p>
                                                 )}
                                             </div>
                                             <div className="space-y-1.5">

@@ -176,8 +176,8 @@ export function PropertiesPhotos() {
 
                         {/* Upload tile */}
                         <div
-                            className={`flex aspect-video items-center justify-center rounded-md border border-dashed bg-muted/20 transition-colors ${
-                                isUploading ? "cursor-wait opacity-70" : "hover:bg-muted/50 cursor-pointer"
+                            className={`flex aspect-video items-center justify-center rounded-md border border-dashed bg-sunk/20 transition-colors ${
+                                isUploading ? "cursor-wait opacity-70" : "hover:bg-sunk/50 cursor-pointer"
                             }`}
                             onClick={() => !isUploading && fileInputRef.current?.click()}
                         >
@@ -190,7 +190,7 @@ export function PropertiesPhotos() {
                                 onChange={handleFileChange}
                                 disabled={isUploading}
                             />
-                            <div className="flex flex-col items-center gap-2 text-muted-foreground pointer-events-none">
+                            <div className="flex flex-col items-center gap-2 text-ink-3 pointer-events-none">
                                 {isUploading ? (
                                     <>
                                         <Icon icon={Loader2} size="2xl" className="animate-spin" />

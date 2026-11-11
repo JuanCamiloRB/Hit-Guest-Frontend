@@ -281,7 +281,7 @@ export function Sidebar({ className }: { className?: string }) {
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer" onClick={logout}>
+                        <DropdownMenuItem className="text-danger focus:text-danger cursor-pointer" onClick={logout}>
                             <Icon icon={LogOut} className="mr-2" />
                             <span>{isInSupportSession ? "Salir del modo soporte" : "Cerrar Sesión"}</span>
                         </DropdownMenuItem>

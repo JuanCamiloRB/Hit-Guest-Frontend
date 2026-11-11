@@ -131,7 +131,7 @@ const defaultUnit = {
 function FieldError({ message }: { message?: string }) {
     if (!message) return null
     return (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="text-xs text-danger">
             {message}
         </p>
     )
@@ -701,10 +701,10 @@ export function PropertiesUnits() {
                               */}
                             <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2">
                                 <div className="space-y-6 pb-6">
-                                    <div className="flex items-center justify-between p-3 bg-muted/20 rounded-lg border">
+                                    <div className="flex items-center justify-between p-3 bg-sunk/20 rounded-lg border">
                                         <div className="space-y-0.5">
                                             <Label className="text-sm font-medium">Estado del Alojamiento</Label>
-                                            <p className={cn("text-xs", propertyInactive && !unitForm.isActive ? "font-medium text-warning" : "text-muted-foreground")}>
+                                            <p className={cn("text-xs", propertyInactive && !unitForm.isActive ? "font-medium text-warning" : "text-ink-3")}>
                                                 {propertyInactive && !unitForm.isActive
                                                     ? "La propiedad está inactiva: actívala para poder activar este alojamiento."
                                                     : "Activar o desactivar esta unidad específica."}
@@ -742,7 +742,7 @@ export function PropertiesUnits() {
                                         <TabsContent value="general" className="space-y-4">
                                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="name">Nombre de Unidad <span className="text-destructive">*</span></Label>
+                                                    <Label htmlFor="name">Nombre de Unidad <span className="text-danger">*</span></Label>
                                                     <Input
                                                         id="name"
                                                         placeholder="Suite Junior"
@@ -772,7 +772,7 @@ export function PropertiesUnits() {
                                             <div className="grid gap-2 border-t border-rule pt-4">
                                                 <div className="space-y-0.5">
                                                     <Label className="text-sm font-medium">Identificación Externa</Label>
-                                                    <p className="text-xs text-muted-foreground">
+                                                    <p className="text-xs text-ink-3">
                                                         Si este alojamiento ya existe en tu PMS o canal, registra su
                                                         origen y el ID que tiene allí.
                                                     </p>
@@ -923,7 +923,7 @@ export function PropertiesUnits() {
 
                                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="contactEmail">Correo Electrónico <span className="text-destructive">*</span></Label>
+                                                    <Label htmlFor="contactEmail">Correo Electrónico <span className="text-danger">*</span></Label>
                                                     <Input
                                                         id="contactEmail"
                                                         type="email"
@@ -948,7 +948,7 @@ export function PropertiesUnits() {
                                                         <h4 className="text-sm font-bold text-ink-3">Horarios</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-muted-foreground font-bold">Heredar de Propiedad</span>
+                                                        <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>
                                                         <Switch
                                                             checked={unitForm.extra.inheritSchedule}
                                                             onCheckedChange={(checked) => setUnitForm({ 
@@ -1006,7 +1006,7 @@ export function PropertiesUnits() {
                                                         <h4 className="text-sm font-bold text-ink-3">WiFi Especial</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-muted-foreground font-bold">Heredar de Propiedad</span>
+                                                        <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>
                                                         <Switch
                                                             checked={unitForm.extra.inheritWifi}
                                                             onCheckedChange={(checked) => setUnitForm({ 
@@ -1064,7 +1064,7 @@ export function PropertiesUnits() {
                                                         <h4 className="text-sm font-bold text-ink-3">Amenidades</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-muted-foreground font-bold">Heredar de Propiedad</span>
+                                                        <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>
                                                         <Switch
                                                             checked={unitForm.extra.inheritAmenities}
                                                             onCheckedChange={(checked) => setUnitForm({
@@ -1184,7 +1184,7 @@ export function PropertiesUnits() {
                                                         <h4 className="text-sm font-bold text-ink-3">Políticas</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-muted-foreground font-bold">Heredar de Propiedad</span>
+                                                        <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>
                                                         <Switch
                                                             checked={unitForm.extra.inheritPolicies}
                                                             onCheckedChange={(checked) => setUnitForm({ 
@@ -1351,7 +1351,7 @@ export function PropertiesUnits() {
                               * quedar en su propia banda. Con esto, el que cede es el área
                               * de scroll, que para eso está.
                               */}
-                            <DialogFooter className="p-6 border-t bg-muted/5 shrink-0">
+                            <DialogFooter className="p-6 border-t bg-sunk/5 shrink-0">
                                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSavingUnit}>Cancelar</Button>
                                 <Button
                                     type="button"
@@ -1419,7 +1419,7 @@ export function PropertiesUnits() {
                     <TableBody>
                         {fields.length === 0 ? (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center py-6 text-muted-foreground">
+                                <TableCell colSpan={6} className="text-center py-6 text-ink-3">
                                     Aún no hay unidades. Haz clic en "Añadir Unidad" para crear una.
                                 </TableCell>
                             </TableRow>

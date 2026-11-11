@@ -114,7 +114,7 @@ export function PhoneInputField({
                                 <div className="flex items-center gap-2">
                                     <span className="text-sm">{c.extra.emoji ? `${c.extra.emoji} ` : ""}</span>
                                     <span className="text-sm font-medium">{c.extra.phone_prefix ? `+${c.extra.phone_prefix}` : ""}</span>
-                                    <span className="text-xs text-muted-foreground ml-1 truncate max-w-[100px]">{c.name}</span>
+                                    <span className="text-xs text-ink-3 ml-1 truncate max-w-[100px]">{c.name}</span>
                                 </div>
                             </SelectItem>
                         ))}

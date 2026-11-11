@@ -46,7 +46,7 @@ function TableFooter({ className, ...props }: React.ComponentProps<"tfoot">) {
     <tfoot
       data-slot="table-footer"
       className={cn(
-        "bg-muted/50 border-t font-medium [&>tr]:last:border-b-0",
+        "bg-sunk/50 border-t font-medium [&>tr]:last:border-b-0",
         className
       )}
       {...props}
@@ -105,7 +105,7 @@ function TableCaption({
   return (
     <caption
       data-slot="table-caption"
-      className={cn("text-muted-foreground mt-4 text-sm", className)}
+      className={cn("text-ink-3 mt-4 text-sm", className)}
       {...props}
     />
   )

@@ -19,7 +19,7 @@ export const fieldStates = [
   "text-ink placeholder:text-ink-3 border-input",
   "[&:not([readonly],[aria-invalid=true],:focus):enabled]:hover:border-input-hover",
   "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]",
-  "aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "aria-invalid:ring-danger/20 dark:aria-invalid:ring-danger/40 aria-invalid:border-danger",
   "disabled:cursor-not-allowed disabled:bg-sunk disabled:text-ink-3 disabled:shadow-none",
   "[&[readonly]]:bg-sunk [&[readonly]]:shadow-none",
 ].join(" ")
@@ -30,7 +30,7 @@ function Input({ className, type, ...props }: React.ComponentProps<"input">) {
       type={type}
       data-slot="input"
       className={cn(
-        "file:text-foreground selection:bg-primary selection:text-primary-foreground dark:bg-input/30 h-10 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow,border-color] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium md:text-sm",
+        "file:text-ink selection:bg-primary selection:text-primary-foreground dark:bg-input/30 h-10 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow,border-color] outline-none file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium md:text-sm",
         fieldStates,
         className
       )}

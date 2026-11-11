@@ -112,7 +112,7 @@ export function Header() {
                                     <p className="text-sm font-medium leading-none">
                                         {isMounted ? user?.firstName : t('common.loading')}
                                     </p>
-                                    <p className="text-xs leading-none text-muted-foreground">
+                                    <p className="text-xs leading-none text-ink-3">
                                         {isMounted ? user?.email : ""}
                                     </p>
                                 </div>
@@ -136,7 +136,7 @@ export function Header() {
                                 </>
                             )}
                             <DropdownMenuItem
-                                className="text-destructive focus:text-destructive cursor-pointer"
+                                className="text-danger focus:text-danger cursor-pointer"
                                 onClick={logout}
                             >
                                 <Icon icon={LogOut} className="mr-2" />

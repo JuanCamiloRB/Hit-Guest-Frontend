@@ -32,7 +32,7 @@ export default function RegisterPage() {
                         <h1 className="text-3xl font-sans font-bold tracking-tight text-primary">
                             Crea tu cuenta
                         </h1>
-                        <p className="text-base text-muted-foreground font-secondary leading-relaxed">
+                        <p className="text-base text-ink-3 font-secondary leading-relaxed">
                             Gestiona tus propiedades con nuestra infraestructura confiable y profesional.
                         </p>
                     </div>

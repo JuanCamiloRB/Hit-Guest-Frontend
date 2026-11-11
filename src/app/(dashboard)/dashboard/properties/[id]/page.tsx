@@ -79,7 +79,7 @@ export default function EditPropertyPage() {
         return (
             <div className="flex flex-col items-center justify-center min-h-100 space-y-4">
                 <h2 className="text-2xl font-bold">Propiedad no encontrada</h2>
-                <p className="text-muted-foreground">La propiedad que buscas no existe o ha sido eliminada.</p>
+                <p className="text-ink-3">La propiedad que buscas no existe o ha sido eliminada.</p>
             </div>
         )
     }
@@ -88,7 +88,7 @@ export default function EditPropertyPage() {
         <div className="space-y-6">
             <div>
                 <h2 className="text-3xl font-bold tracking-tight">Gestionar Propiedad</h2>
-                <p className="text-muted-foreground">
+                <p className="text-ink-3">
                     Edita los detalles, unidades y configuraciones de {property.name}.
                 </p>
             </div>

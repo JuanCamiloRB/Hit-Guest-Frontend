@@ -41,7 +41,7 @@ local para resolverla.
 |---|---|
 | `primary` / `primary-hover` | Acción principal, enlaces, selección y foco |
 | `secondary` / `secondary-hover` | Acción secundaria con relleno |
-| `destructive` / `destructive-hover` | Acción destructiva, no mensajes de error |
+| `destructive` / `destructive-hover` | Relleno del botón destructivo. Mismo rojo que `danger` (un solo rojo en pantalla); el texto de error va siempre en `danger` |
 | `accent` | Hover neutro de controles ghost, menús y opciones |
 
 Nunca se usa `brand-purple` como relleno de un botón con texto: `primary` es la
@@ -58,6 +58,13 @@ variante que cumple contraste.
 - `card` / `background`: superficies base.
 - `success`, `warning`, `info`, `danger` y sus pares `*-sunk`: estados. No son
   colores decorativos ni series de gráficos.
+
+**Un solo juego de tokens (DS-7a, 2026-11-12).** Los nombres heredados de
+shadcn (`muted-foreground`, `foreground`, `muted`, `border`, `card-foreground`,
+`popover-foreground`, `accent-foreground`) son alias de los HIT en
+`globals.css` y no se escriben en el código: antes tenían otros valores y
+dejaban dos grises (#71717a y `ink-3`) y dos rojos. En su lugar: `text-ink-3`,
+`text-ink`, `bg-sunk`, `border-rule`, `text-danger`.
 
 Los valores hexadecimales solo se declaran en `globals.css`. Las marcas de
 terceros pueden conservar su color oficial únicamente dentro del componente
@@ -205,6 +212,7 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `icon-direct` | `<Mail />`, `<item.icon />` | `<Icon icon={Mail} />` |
 | `icon-size-override` | `<Icon className="h-5 w-5" />` | `<Icon size="lg" />` |
 | `nonstandard-icon-library` | `react-icons` | `lucide-react` |
+| `legacy-token` | `text-muted-foreground`, `text-destructive`, `bg-muted`, `border-border` | `text-ink-3`, `text-danger`, `bg-sunk`, `border-rule` |
 
 Revisa los textos fijos y también los trozos fijos de los template literals
 (`` `p-2 ${x}` ``). Las pruebas y las copias de Finder («Archivo 2.tsx») quedan

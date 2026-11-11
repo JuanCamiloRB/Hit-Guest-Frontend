@@ -454,7 +454,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     name="name"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Nombre de la Propiedad <span className="text-destructive">*</span></FormLabel>
+                                            <FormLabel>Nombre de la Propiedad <span className="text-danger">*</span></FormLabel>
                                             <FormControl>
                                                 <Input placeholder="Hotel Oasis" {...field} />
                                             </FormControl>
@@ -470,7 +470,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                         name="email"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Email de Contacto <span className="text-destructive">*</span></FormLabel>
+                                                <FormLabel>Email de Contacto <span className="text-danger">*</span></FormLabel>
                                                 <FormControl>
                                                     <Input placeholder="info@hotel.com" {...field} />
                                                 </FormControl>
@@ -499,7 +499,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                         name="propertyTypeId"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Tipo de Propiedad <span className="text-destructive">*</span></FormLabel>
+                                                <FormLabel>Tipo de Propiedad <span className="text-danger">*</span></FormLabel>
                                                 <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value ? String(field.value) : ""}>
                                                     <FormControl>
                                                         <SelectTrigger>
@@ -533,7 +533,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                         name="statusRecordId"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Estado <span className="text-destructive">*</span></FormLabel>
+                                                <FormLabel>Estado <span className="text-danger">*</span></FormLabel>
                                                 <Select onValueChange={(v) => field.onChange(parseInt(v))} value={String(field.value)}>
                                                     <FormControl>
                                                         <SelectTrigger>
@@ -737,7 +737,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             <Dialog open={isValidationErrorOpen} onOpenChange={setIsValidationErrorOpen}>
                 <DialogContent className="sm:max-w-110">
                     <DialogHeader>
-                        <div className="flex items-center gap-3 text-destructive mb-2">
+                        <div className="flex items-center gap-3 text-danger mb-2">
                             <Icon icon={AlertCircle} size="xl" />
                             <DialogTitle className="text-xl">Información Faltante</DialogTitle>
                         </div>

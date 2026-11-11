@@ -249,7 +249,7 @@ export function ExternalPmsIdsField({
                                 </div>
 
                                 {(error?.sourcePmsId || error?.externalId) && (
-                                    <p className="text-xs font-medium text-destructive">
+                                    <p className="text-xs font-medium text-danger">
                                         {error.sourcePmsId ?? error.externalId}
                                     </p>
                                 )}

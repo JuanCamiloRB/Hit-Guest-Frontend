@@ -223,6 +223,16 @@ const rules = [
         ignore: UI_ONLY,
     },
     {
+        // Un solo juego de tokens (DS-7a): los nombres de shadcn tenían otros
+        // valores (#71717a frente a ink-3, #C81E1E frente a danger) y dejaban dos
+        // grises y dos rojos. En globals.css quedan como alias de los HIT para
+        // librerías de terceros; el código usa ink/sunk/rule/danger. `dark:` se
+        // ignora: el tema oscuro es infraestructura sin contrato todavía.
+        id: "legacy-token",
+        description: "usa un token heredado de shadcn; usa ink-3, ink, sunk, rule o danger",
+        pattern: /(?<=^|[\s"'`])(?:(?!dark:)[^\s:"'`]+:)*(?:text-(?:muted-foreground|foreground|popover-foreground|card-foreground|accent-foreground|destructive)|bg-(?:muted|foreground|border)|border-(?:border|destructive)|ring-destructive)(?:\/\d+)?(?![\w-])/gm,
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,
