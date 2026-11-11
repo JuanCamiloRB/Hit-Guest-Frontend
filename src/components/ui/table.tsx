@@ -23,7 +23,9 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b", className)}
+      // Encabezado en `sunk`: se separa de las filas sin otra línea ni sombra.
+      // Su fila no reacciona al hover (no es un dato que se pueda abrir).
+      className={cn("bg-sunk [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
       {...props}
     />
   )
@@ -57,7 +59,10 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors",
+        // Lenguaje de tabla compartido (Fase 3): separador y hover con tokens.
+        // Hover con el morado de interacción al 5 %: se nota sin cambiar el
+        // contraste de ningún texto de la fila (ink-3 sigue en 4,85:1).
+        "hover:bg-primary/5 data-[state=selected]:bg-primary/5 border-b border-rule transition-colors",
         className
       )}
       {...props}
@@ -70,7 +75,9 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "text-foreground h-10 px-2 text-left align-middle font-medium whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        // Encabezado en caso de oración (sin mayúsculas forzadas), 12 px, ink-2:
+        // se lee como rótulo y no compite con los datos.
+        "text-ink h-10 px-2 text-left align-middle text-xs font-semibold whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props}

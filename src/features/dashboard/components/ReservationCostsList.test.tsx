@@ -144,13 +144,18 @@ describe("ReservationCostsList — jerarquía: quién costó y cuánto", () => {
         expect(within(row).getAllByText("No se ejecutó")).toHaveLength(COST_CATEGORIES.length - 2)
     })
 
-    it("la que facturó lleva el acento de marca y el total en navy; la de cero, apagada", () => {
+    it("la que facturó destaca por su total en navy, sin franja lateral; la de cero, apagada", () => {
         render(<ReservationCostsList costs={[{ ...cost(1), total: 0 }, { ...cost(2), total: 0.75 }]} isLoading={false} />)
         const [billed, zero] = screen.getAllByRole("row").slice(1)
-        expect(within(billed).getAllByRole("cell")[0].className).toMatch(/inset_3px_0_0_var\(--color-brand-purple\)/)
-        expect(within(billed).getByText("0,75 USD")).toHaveClass("font-bold", "text-brand-navy")
+        // La franja morada se repetía en cada fila y se leía como decoración.
+        for (const row of [billed, zero]) {
+            expect(within(row).getAllByRole("cell")[0].className).not.toMatch(/inset|brand-purple/)
+        }
+        const billedTotal = within(billed).getByText("0,75 USD")
+        expect(billedTotal).toHaveClass("font-bold", "text-brand-navy")
+        // La columna Total, apenas teñida del morado de interacción.
+        expect(billedTotal).toHaveClass("bg-primary/[0.03]")
         expect(within(zero).getByText("0,00 USD")).toHaveClass("text-ink-3")
-        expect(within(zero).getAllByRole("cell")[0].className).not.toMatch(/brand-purple/)
     })
 
     it("el huésped lleva a su reserva y debajo va el alojamiento con el check-in", () => {

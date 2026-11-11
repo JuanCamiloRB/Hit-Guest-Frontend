@@ -104,8 +104,9 @@ describe("ExternalPmsIdsField", () => {
     it("says the catalog is unavailable and blocks new links rather than guessing an id", async () => {
         setup([], { sources: [] })
 
-        expect(await screen.findByText(/no se pudo cargar el catálogo de orígenes/i))
-            .toBeInTheDocument()
+        const notice = (await screen.findByText(/no se pudo cargar el catálogo de orígenes/i)).closest("[data-slot=feedback-banner]")
+        // Llega al terminar la carga: se anuncia sin interrumpir.
+        expect(notice).toHaveAttribute("role", "status")
         expect(screen.getByRole("button", { name: /vincular origen/i })).toBeDisabled()
     })
 

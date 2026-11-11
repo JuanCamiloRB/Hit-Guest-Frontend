@@ -40,7 +40,8 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
                 ) : (
                     <div className="flex gap-3">
                         {/* Y axis — three recessive ticks, enough to read magnitude. */}
-                        <div className="flex flex-col justify-between h-48 pb-6 text-[11px] tabular-nums text-ink-4 text-right shrink-0">
+                        {/* Marcas del eje en ink-3: son texto real (ink-4 daba 2,35:1). */}
+                        <div aria-hidden className="flex flex-col justify-between h-48 pb-6 text-[11px] tabular-nums text-ink-3 text-right shrink-0">
                             <span>{tick(ceiling)}</span>
                             <span>{tick(ceiling / 2)}</span>
                             <span>{tick(0)}</span>
@@ -54,19 +55,24 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
                                 <div className="border-t border-rule" />
                             </div>
 
-                            <div className="relative flex items-end justify-between gap-2 h-48">
+                            <div role="group" aria-label="Consumo por mes" className="relative flex items-end justify-between gap-2 h-48">
                                 {monthly.map((point) => {
                                     const isRef = isSameMonth(point.date, refMonth)
                                     // Reserve the 24px label strip under the baseline.
                                     const heightPct = (point.total / ceiling) * 100
 
                                     return (
+                                        // Cada mes se puede enfocar y dice su valor: antes solo el
+                                        // mouse (tooltip) daba el de los meses no seleccionados.
                                         <div
                                             key={point.date.toISOString()}
-                                            className="group relative flex-1 flex flex-col justify-end items-center h-full pb-6"
+                                            tabIndex={0}
+                                            role="img"
+                                            aria-label={`${format(point.date, "MMMM yyyy", { locale: es })}: ${formatUsd(point.total)}${isRef ? " (mes seleccionado)" : ""}`}
+                                            className="group relative flex-1 flex flex-col justify-end items-center h-full pb-6 rounded focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                         >
-                                            {/* Tooltip — hit target is the whole column. */}
-                                            <div className="pointer-events-none absolute bottom-full mb-1 z-10 hidden group-hover:block">
+                                            {/* Tooltip — hit target is the whole column; also on keyboard focus. */}
+                                            <div className="pointer-events-none absolute bottom-full mb-1 z-10 hidden group-hover:block group-focus-visible:block">
                                                 <div className="whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] font-medium text-white">
                                                     <span className="capitalize">
                                                         {format(point.date, "MMMM yyyy", { locale: es })}
@@ -87,9 +93,12 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
 
                                             <div
                                                 className={`w-full max-w-[3rem] rounded-t transition-colors ${
+                                                    // Datos en el morado de la marca: el mes elegido sólido; el
+                                                    // resto al 20 % con un borde superior al 70 % (~3,4:1) que
+                                                    // define la forma de la barra (WCAG 1.4.11).
                                                     isRef
                                                         ? "bg-primary"
-                                                        : "bg-ink-4/40 group-hover:bg-ink-4/70"
+                                                        : "border-t-2 border-primary/70 bg-primary/20 group-hover:bg-primary/30"
                                                 }`}
                                                 // A zero month still draws a 2px stub: present, and empty.
                                                 style={{ height: `max(${heightPct}%, 2px)` }}
@@ -99,7 +108,7 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
                                                 className={`absolute bottom-0 text-[11px] capitalize ${
                                                     isRef
                                                         ? "font-semibold text-ink"
-                                                        : "text-ink-4"
+                                                        : "text-ink-3"
                                                 }`}
                                             >
                                                 {format(point.date, "MMM", { locale: es })}

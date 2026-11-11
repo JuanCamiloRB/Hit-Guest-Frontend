@@ -274,14 +274,16 @@ export function PropertiesList() {
                             }
                         >
                             <Table>
-                                <TableHeader className="bg-slate-50/50">
-                                    <TableRow className="hover:bg-transparent border-b-[var(--color-brand-purple)]/10">
-                                        <TableHead className="w-[100px] font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Número</TableHead>
-                                        <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Nombre Alojamiento</TableHead>
-                                        <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Propiedad</TableHead>
-                                        <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Estado</TableHead>
-                                        <TableHead className="font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Capacidad</TableHead>
-                                        <TableHead className="text-right font-bold text-[var(--color-brand-navy)] uppercase text-[10px] tracking-widest">Precio</TableHead>
+                                {/* Lenguaje de tabla compartido (Fase 3): el encabezado lo pone
+                                    la primitiva; antes iba en 10 px, mayúsculas y navy. */}
+                                <TableHeader>
+                                    <TableRow className="hover:bg-transparent">
+                                        <TableHead className="w-[100px]">Número</TableHead>
+                                        <TableHead>Nombre del alojamiento</TableHead>
+                                        <TableHead>Propiedad</TableHead>
+                                        <TableHead>Estado</TableHead>
+                                        <TableHead>Capacidad</TableHead>
+                                        <TableHead className="text-right">Precio</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -307,7 +309,7 @@ export function PropertiesList() {
                                         filteredUnits.map((unit: Unit) => {
                                             const property = properties.find((p: Property) => p.id === unit.propertyId)
                                             return (
-                                                <TableRow key={unit.id} className="hover:bg-[var(--color-brand-purple)]/[0.02] transition-colors border-b-[var(--color-brand-purple)]/5">
+                                                <TableRow key={unit.id}>
                                                     <TableCell className="font-bold text-[var(--color-brand-purple)]">{unit.number}</TableCell>
                                                     <TableCell className="font-bold text-[var(--color-brand-navy)]">{unit.name}</TableCell>
                                                     <TableCell className="text-[var(--color-brand-navy)]/60 text-sm font-medium">{property?.name}</TableCell>

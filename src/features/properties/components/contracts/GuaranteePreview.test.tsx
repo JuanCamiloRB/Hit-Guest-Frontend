@@ -54,7 +54,9 @@ describe("GuaranteePreview — valores de la DB, sin advertencia falsa (2026-10-
         mocks.getBySlug.mockResolvedValue(doc({ guarantee_mechanism: "Tarjeta en Garantía", guarantee_amount: null }))
         render(<GuaranteePreview />)
 
-        expect(await screen.findByText("No pudimos cargar toda la configuración de garantía para esta previsualización.")).toBeInTheDocument()
+        const notice = (await screen.findByText("No pudimos cargar toda la configuración de garantía para esta previsualización.")).closest("[data-slot=feedback-banner]")
+        // Llega al terminar la carga: se anuncia sin interrumpir.
+        expect(notice).toHaveAttribute("role", "status")
         expect(screen.getByText("{{guarantee_amount}}").tagName).toBe("MARK")
     })
 

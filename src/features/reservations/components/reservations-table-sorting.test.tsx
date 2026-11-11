@@ -190,7 +190,7 @@ describe("columnas de estado — el primer clic ordena hacia arriba aunque haya 
             makeReservation("r2", "Ana Torres", "2026-08-05", { automationStatus: { link: "none", checkin: "none", contract: "pending", code: "none", tra: "none", sireIn: "none", sireOut: "none" } }),
         ]
         render(<DataTable columns={getColumns()} data={data} />)
-        fireEvent.click(screen.getByRole("button", { name: /CONTRATO/ }))
-        expect(screen.getByRole("columnheader", { name: /CONTRATO/ })).toHaveAttribute("aria-sort", "ascending")
+        fireEvent.click(screen.getByRole("button", { name: /CONTRATO/i }))
+        expect(screen.getByRole("columnheader", { name: /CONTRATO/i })).toHaveAttribute("aria-sort", "ascending")
     })
 })

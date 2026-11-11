@@ -123,7 +123,8 @@ export function ExternalPmsIdsField({
     return (
         <div className={cn("space-y-3", className)}>
             {catalogUnavailable && (
-                <FeedbackBanner tone="warning" density="compact">
+                // Aparece cuando termina la carga del catálogo: se anuncia (status).
+                <FeedbackBanner tone="warning" mode="dynamic" density="compact">
                     No se pudo cargar el catálogo de orígenes. Los vínculos ya guardados se
                     conservan; para crear uno nuevo, vuelve a intentarlo más tarde.
                 </FeedbackBanner>

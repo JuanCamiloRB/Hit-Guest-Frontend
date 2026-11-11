@@ -637,9 +637,11 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 {trigger ? trigger : (
-                    <Button className="bg-brand-purple hover:bg-brand-purple/90 text-white shadow-md gap-2 font-semibold">
-                        <Plus size={18} />
-                        Nueva Reserva
+                    // Botón principal estándar: el morado de marca con texto blanco
+                    // daba 4,42:1 (no AA); `primary` es su versión de interacción.
+                    <Button className="gap-2">
+                        <Plus size={18} aria-hidden />
+                        Nueva reserva
                     </Button>
                 )}
             </DialogTrigger>

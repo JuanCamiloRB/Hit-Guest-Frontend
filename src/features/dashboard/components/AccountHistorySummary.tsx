@@ -18,7 +18,9 @@ export function AccountHistorySummary({ summary, isLoading }: { summary: Consump
     return (
         <section
             aria-labelledby="account-history-title"
-            className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-1 text-[13px] text-ink-2"
+            // Banda plana con el morado de interacción al 5 %: una unidad entre las
+            // dos superficies, sin borde ni sombra. Los divisores son `rule`.
+            className="flex flex-wrap items-baseline gap-x-6 gap-y-2 rounded-lg bg-primary/5 px-4 py-3 text-[13px] text-ink-2 sm:[&>p]:border-l sm:[&>p]:border-rule sm:[&>p]:pl-6"
         >
             <h2 id="account-history-title" className="w-full font-secondary font-medium tracking-normal text-ink-2 sm:w-auto">
                 Desde el inicio de la cuenta

@@ -55,7 +55,8 @@ export function TopNodesPanel({ topNodes, refMonth }: Props) {
                                 </div>
                                 <div className="h-1.5 w-full rounded-full bg-sunk">
                                     <div
-                                        className="h-full rounded-full bg-ink-4/70 transition-colors group-hover:bg-ink-3"
+                                        // Progreso en el morado de interacción sobre pista `sunk` (4,89:1).
+                                        className="h-full rounded-full bg-primary transition-colors group-hover:bg-primary-hover"
                                         style={{ width: `max(${(node.runs / maxRuns) * 100}%, 2px)` }}
                                     />
                                 </div>
@@ -63,7 +64,7 @@ export function TopNodesPanel({ topNodes, refMonth }: Props) {
                         ))}
 
                         {hidden > 0 && (
-                            <p className="pt-1 text-xs text-ink-4">
+                            <p className="pt-1 text-xs text-ink-3">
                                 +{hidden} {hidden === 1 ? "nodo más" : "nodos más"}
                             </p>
                         )}

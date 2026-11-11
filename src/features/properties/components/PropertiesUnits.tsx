@@ -1078,7 +1078,8 @@ export function PropertiesUnits() {
                                                     amenityOptions === null ? (
                                                         <LoadingState variant="spinner" label="Cargando amenidades…" className="rounded-xl border border-rule py-6" />
                                                     ) : amenityCatalogFailed ? (
-                                                        <FeedbackBanner tone="warning" density="compact">
+                                                        // Llega después de pedir el catálogo: dinámico.
+                                                        <FeedbackBanner tone="warning" mode="dynamic" density="compact">
                                                             No se pudo cargar el catálogo de amenidades. Cierra y reabre el
                                                             diálogo para reintentar; la herencia de la propiedad no se ve
                                                             afectada.

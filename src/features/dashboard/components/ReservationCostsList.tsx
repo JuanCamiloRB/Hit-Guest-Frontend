@@ -153,19 +153,20 @@ export function ReservationCostsList({
                 <Table>
                     <TableHeader>
                         <TableRow className="hover:bg-transparent">
-                            <TableHead className="text-xs font-semibold text-ink-2">
+                            {/* El estilo del encabezado lo pone la primitiva (navy sobre sunk). */}
+                            <TableHead>
                                 Huésped / Alojamiento
                             </TableHead>
                             {COST_CATEGORIES.map((c) => (
                                 <TableHead
                                     key={c.key}
-                                    className="text-right text-xs font-semibold text-ink-2"
+                                    className="text-right"
                                 >
                                     {c.label}
                                 </TableHead>
                             ))}
                             {/* La columna que responde «cuánto costó»: ancla visual de la tabla. */}
-                            <TableHead className="bg-sunk text-right text-xs font-bold text-brand-navy">
+                            <TableHead className="text-right font-bold">
                                 Total
                             </TableHead>
                         </TableRow>
@@ -255,7 +256,8 @@ export function ReservationCostsList({
 
 /**
  * Una reserva con su desglose. La jerarquía responde «quién costó y cuánto»:
- * - facturó (total > 0): acento morado de marca al borde y total en navy;
+ * - facturó (total > 0): total en navy y en negrita (sin franja lateral: al
+ *   repetirse en cada fila no señalaba nada y se leía como decoración);
  * - no corrió ningún nodo: una sola leyenda en vez de una fila de guiones;
  * - corrió gratis (firma nativa): «Sin cargo» como estado, no como dato muerto.
  */
@@ -263,7 +265,7 @@ function CostRow({ row }: { row: ReservationCost }) {
     const billed = row.total > 0
     return (
         <TableRow className="hover:bg-sunk/50">
-            <TableCell className={cn("py-2.5", billed && "shadow-[inset_3px_0_0_var(--color-brand-purple)]")}>
+            <TableCell className="py-2.5">
                 <GuestCell row={row} muted={!billed} />
             </TableCell>
             {ranAny(row) ? row.lineItems.map((item) => (
@@ -294,7 +296,8 @@ function CostRow({ row }: { row: ReservationCost }) {
             )}
             <TableCell
                 className={cn(
-                    "bg-sunk py-2.5 text-right tabular-nums",
+                    // La columna Total, apenas teñida del morado de interacción (3 %).
+                    "bg-primary/[0.03] py-2.5 text-right tabular-nums",
                     billed ? "font-bold text-brand-navy" : "text-ink-3",
                 )}
             >

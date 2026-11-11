@@ -43,7 +43,7 @@ import { ReservationDialog } from "./ReservationDialog"
 async function openDialog() {
     const user = userEvent.setup()
     render(<ReservationDialog />)
-    await user.click(screen.getByRole("button", { name: /Nueva Reserva/ }))
+    await user.click(screen.getByRole("button", { name: /Nueva reserva/i }))
     return user
 }
 

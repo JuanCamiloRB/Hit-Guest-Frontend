@@ -16,12 +16,11 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { StatusPill } from "@/components/ui/status-pill"
 import { Reservation } from "@/types"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { ReservationStatusIcon } from "./ReservationStatusIcon"
+import { getReservationStatusMeta } from "./reservation-status-meta"
 import { getAutomationCellMeta, getCheckinCellMeta, REPORT_LIGHTS } from "./automation-cell-meta"
 import { compareText, compareDates, compareStatus, compareLight } from "./reservation-sorting"
 
@@ -33,10 +32,10 @@ export interface ColumnsOptions {
 
 /** Column headers for the per-automation status columns. */
 const AUTOMATION_HEADERS = {
-    link: "LINK",
-    checkin: "CHECK-IN",
-    contract: "CONTRATO",
-    code: "ACCESO",
+    link: "Link",
+    checkin: "Check-in",
+    contract: "Contrato",
+    code: "Acceso",
 } as const
 
 // Los comparadores viven en reservation-sorting.ts (puros y testeados); aquí
@@ -102,57 +101,42 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
   return [
     {
         accessorKey: "guestName",
-        header: "HUÉSPED / ALOJAMIENTO",
+        header: "Huésped / Alojamiento",
         sortingFn: sortByGuest,
         cell: ({ row }) => {
             const reservation = row.original
-            const guestName = reservation.guestName
-            const initials = guestName
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .toUpperCase()
-                .slice(0, 2)
-
+            // Sin avatar de iniciales: repetía el nombre de al lado («H2» por
+            // «Huésped 26») y hacía cada fila de 85 px. Dos líneas: quién y dónde.
             return (
-                <div className="flex items-center gap-3 py-1">
-                    <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                            {initials}
-                        </AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col min-w-0">
-                        <Link
-                            href={`/dashboard/reservations/${reservation.id}`}
-                            className="font-bold text-sm text-ink hover:text-primary transition-colors truncate"
-                            // Quedarse sobre la fila (o enfocarla) precarga la ficha.
-                            onMouseEnter={() => startDetailPrefetch(reservation.id)}
-                            onMouseLeave={() => cancelDetailPrefetch(reservation.id)}
-                            onFocus={() => startDetailPrefetch(reservation.id)}
-                            onBlur={() => cancelDetailPrefetch(reservation.id)}
-                        >
-                            {guestName}
-                        </Link>
-                        {/* Alojamiento primero y propiedad debajo: el PM identifica la
-                            unidad concreta, no el edificio. */}
-                        <span className="text-xs text-ink-2 truncate">
-                            {reservation.unitName}
-                        </span>
-                        {/* Vacío mientras el portafolio no responde: sin texto que
-                            parezca un fallo mientras solo está cargando. */}
+                <div className="flex min-w-0 max-w-[16rem] flex-col py-0.5">
+                    <Link
+                        href={`/dashboard/reservations/${reservation.id}`}
+                        className="truncate rounded text-sm font-semibold text-ink transition-colors hover:text-primary hover:underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                        // Quedarse sobre la fila (o enfocarla) precarga la ficha.
+                        onMouseEnter={() => startDetailPrefetch(reservation.id)}
+                        onMouseLeave={() => cancelDetailPrefetch(reservation.id)}
+                        onFocus={() => startDetailPrefetch(reservation.id)}
+                        onBlur={() => cancelDetailPrefetch(reservation.id)}
+                    >
+                        {reservation.guestName}
+                    </Link>
+                    {/* Alojamiento primero y propiedad después: el PM identifica la
+                        unidad concreta, no el edificio. La propiedad queda vacía
+                        mientras el portafolio no responde: sin texto que parezca un
+                        fallo mientras solo está cargando. */}
+                    <span className="truncate text-xs text-ink-3">
+                        <span className="text-ink-2">{reservation.unitName}</span>
                         {reservation.propertyName && reservation.unitName !== reservation.propertyName && (
-                            <span className="text-xs text-ink-3 truncate">
-                                {reservation.propertyName}
-                            </span>
+                            <> · {reservation.propertyName}</>
                         )}
-                    </div>
+                    </span>
                 </div>
             )
         }
     },
     {
         accessorKey: "checkIn",
-        header: "FECHAS",
+        header: "Fechas",
         sortingFn: sortByCheckIn,
         cell: ({ row }) => {
             const checkIn = new Date(row.original.checkIn)
@@ -173,7 +157,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
     },
     {
         accessorKey: "source",
-        header: "ORIGEN",
+        header: "Origen",
         sortingFn: sortBySource,
         cell: ({ row }) => {
             const { source, sourceSlug } = row.original
@@ -184,7 +168,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             return (
                 <div className="flex items-center gap-2">
                     {icon}
-                    <span className="text-slate-700">{source}</span>
+                    <span className="text-sm text-ink-2">{source}</span>
                 </div>
             )
         }
@@ -193,13 +177,19 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         accessorKey: "status",
         // Texto plano, no un <div> centrado: ahora el encabezado va dentro del
         // botón de orden, y un bloque centrado ahí dentro no centra nada.
-        header: "ESTADO",
+        header: "Estado",
         sortingFn: sortByStatus,
-        cell: ({ row }) => (
-            <div className="flex">
-                <ReservationStatusIcon status={row.original.status} backendLabel={row.original.statusLabel} statusId={row.original.statusId} />
-            </div>
-        ),
+        // Palabra + punto de color (StatusPill), como en la ficha: antes era solo
+        // un ícono con el texto en un `aria-label` sobre un <span> sin rol, que
+        // el lector no siempre anuncia y que el ojo no distingue sin leyenda.
+        // Solo el estado: «automatizaciones activas» no se puede afirmar desde la
+        // reserva (propiedad, alojamiento o la automatización pueden estar
+        // apagados); el estado real de cada una está en sus columnas.
+        cell: ({ row }) => {
+            const { status, statusLabel, statusId } = row.original
+            const meta = getReservationStatusMeta(status, statusLabel, statusId)
+            return <StatusPill tone={meta.tone}>{meta.label}</StatusPill>
+        },
     },
     // Una columna por automatización, en vez de una celda de ~700px con siete
     // pastillas en mayúsculas compitiendo con el mismo peso. Cada encabezado
@@ -245,7 +235,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
     })),
     {
         id: "reports",
-        header: "REPORTES",
+        header: "Reportes",
         // Tres luces distintas en una celda: no hay un único criterio por el
         // que ordenarla, así que no se ofrece el control.
         enableSorting: false,
@@ -254,11 +244,16 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             if (row.original.automationStatusFailed) return <StatusUnavailable />
             if (status === undefined) return <StatusLoading />
             return (
-                <div className="flex flex-wrap items-center gap-1">
+                // En una línea: apiladas, las tres pastillas hacían cada fila de 85 px.
+                // La tabla ya tiene su propio scroll horizontal.
+                <div className="flex flex-nowrap items-center gap-1">
                     {REPORT_LIGHTS.map(({ key, short }) => {
                         const { tone } = getAutomationCellMeta(key, status)
                         return (
-                            <StatusPill key={key} tone={tone} emptyLabel={short}>
+                            // Sin reporte la pastilla sigue diciendo cuál es («TRA»):
+                            // es texto real, no el guion decorativo de `ink-4`
+                            // (2,35:1), así que va en `ink-3` (AA).
+                            <StatusPill key={key} tone={tone} emptyLabel={short} className={tone === "none" ? "text-ink-3" : undefined}>
                                 {short}
                             </StatusPill>
                         )
@@ -269,7 +264,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
     },
     {
         id: "actions",
-        header: () => <div className="text-center">ACCIONES</div>,
+        header: () => <div className="text-center">Acciones</div>,
         enableSorting: false,
         cell: ({ row }) => {
             const reservation = row.original
@@ -313,7 +308,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
                                 <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
-                                        className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                        className="text-danger focus:bg-danger-sunk focus:text-danger"
                                         onClick={() => onDelete(reservation)}
                                     >
                                         <Trash2 className="h-4 w-4 mr-2" />

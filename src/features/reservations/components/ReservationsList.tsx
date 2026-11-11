@@ -353,9 +353,11 @@ export default function ReservationsList() {
     return (
         <div className="space-y-4">
             {/* Filter toolbar */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="relative flex-1 max-w-sm">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            {/* `flex-wrap`: a 768 px los filtros pasan a otra línea en vez de
+                desbordar la página (Fase 3). La búsqueda nunca baja de 16rem. */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                <div className="relative min-w-0 flex-1 sm:min-w-[16rem] sm:max-w-sm">
+                    <Search aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-4" />
                     <Input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -375,7 +377,7 @@ export default function ReservationsList() {
                     </SelectContent>
                 </Select>
                 <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                    <SelectTrigger className="w-full sm:w-[160px]" aria-label="Filtrar por origen">
+                    <SelectTrigger className="w-full sm:w-[200px]" aria-label="Filtrar por origen">
                         <SelectValue placeholder="Origen" />
                     </SelectTrigger>
                     <SelectContent>

@@ -139,7 +139,7 @@ export function DataTable<TData, TValue>({
                     />
                 </div>
             )}
-            <div className="rounded-md border bg-card overflow-hidden">
+            <div className="rounded-xl border border-rule bg-card overflow-hidden">
                 <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
@@ -245,8 +245,11 @@ export function DataTable<TData, TValue>({
                     </Table>
                 </div>
             </div>
+            {/* Con una sola página (o ninguna fila) no hay nada que paginar: antes
+                decía «Página 1 de 0». Mismo criterio que el detalle del Tablero. */}
+            {table.getPageCount() > 1 && (
             <div className="flex items-center justify-between space-x-2 py-4">
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-ink-3">
                     Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
                 </div>
                 <div className="flex items-center space-x-2">
@@ -270,6 +273,7 @@ export function DataTable<TData, TValue>({
                     </Button>
                 </div>
             </div>
+            )}
         </div>
     )
 }

@@ -68,7 +68,8 @@ export function GuaranteePreview() {
             {/* Sin decir que «aparecerán igual en el PDF»: HitGuest las vuelve a
                 resolver al generarlo. Solo falta el dato para esta vista. */}
             {missing.length > 0 && (
-                <FeedbackBanner tone="warning" density="compact">
+                // Aparece cuando termina la carga: se anuncia sin interrumpir.
+                <FeedbackBanner tone="warning" mode="dynamic" density="compact">
                     No pudimos cargar toda la configuración de garantía para esta previsualización.
                 </FeedbackBanner>
             )}
