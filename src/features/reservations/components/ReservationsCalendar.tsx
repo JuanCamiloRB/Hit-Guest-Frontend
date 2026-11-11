@@ -73,7 +73,7 @@ function MultiSelectFilter({
             <PopoverTrigger asChild>
                 <Button variant="outline" className="h-9 min-w-[170px] justify-between gap-2 text-xs font-medium">
                     <span className="truncate">{triggerText}</span>
-                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-ink-3" />
                 </Button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-[240px] p-1">
@@ -81,20 +81,20 @@ function MultiSelectFilter({
                     type="button"
                     onClick={onClear}
                     className={cn(
-                        "w-full rounded px-2 py-1.5 text-left text-sm font-semibold transition-colors hover:bg-slate-50",
-                        selected.size === 0 ? "text-primary" : "text-slate-600",
+                        "w-full rounded px-2 py-1.5 text-left text-sm font-semibold transition-colors hover:bg-sunk/50",
+                        selected.size === 0 ? "text-primary" : "text-ink-2",
                     )}
                 >
                     {allLabel}
                 </button>
-                <div className="mt-0.5 max-h-64 overflow-y-auto border-t border-slate-100 pt-1">
+                <div className="mt-0.5 max-h-64 overflow-y-auto border-t border-rule pt-1">
                     {options.length === 0 ? (
-                        <p className="px-2 py-2 text-xs text-slate-400">Sin opciones</p>
+                        <p className="px-2 py-2 text-xs text-ink-3">Sin opciones</p>
                     ) : (
                         options.map((o) => (
                             <label
                                 key={o.id}
-                                className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+                                className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-ink-2 hover:bg-sunk/50"
                             >
                                 <Checkbox checked={selected.has(o.id)} onCheckedChange={() => onToggle(o.id)} />
                                 <span className="truncate">{o.name}</span>
@@ -198,15 +198,15 @@ export function ReservationsCalendar() {
 
             {/* Legend + filters */}
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-4 text-xs font-medium text-slate-600">
+                <div className="flex items-center gap-4 text-xs font-medium text-ink-2">
                     <span className="inline-flex items-center gap-1.5">
-                        <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-emerald-100 text-emerald-600">
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-success-sunk text-success">
                             <LogIn size={11} />
                         </span>
                         Entrada (Check-in)
                     </span>
                     <span className="inline-flex items-center gap-1.5">
-                        <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-amber-100 text-amber-600">
+                        <span className="inline-flex h-4 w-4 items-center justify-center rounded bg-warning-sunk text-warning">
                             <LogOut size={11} />
                         </span>
                         Salida (Checkout)
@@ -239,8 +239,8 @@ export function ReservationsCalendar() {
                                 className={cn(
                                     "px-3 py-1.5 text-xs font-semibold rounded-md transition-colors",
                                     filter === opt.value
-                                        ? "bg-background text-slate-900 shadow-sm"
-                                        : "text-slate-500 hover:text-slate-700"
+                                        ? "bg-background text-ink shadow-sm"
+                                        : "text-ink-3 hover:text-ink-2"
                                 )}
                             >
                                 {opt.label}
@@ -293,7 +293,7 @@ export function ReservationsCalendar() {
                                     onMouseLeave={() => cancelDetailPrefetch(res.id)}
                                     onFocus={() => startDetailPrefetch(res.id)}
                                     onBlur={() => cancelDetailPrefetch(res.id)}
-                                    className="flex items-center gap-1 text-xs truncate bg-emerald-50 text-emerald-700 border border-emerald-200 px-1 py-0.5 rounded cursor-pointer hover:bg-emerald-100"
+                                    className="flex items-center gap-1 text-xs truncate bg-success-sunk text-success border border-success/30 px-1 py-0.5 rounded cursor-pointer hover:bg-success-sunk"
                                     title={`Entrada · ${res.guestName} · ${res.propertyName}`}
                                 >
                                     <LogIn size={11} className="shrink-0" />
@@ -309,7 +309,7 @@ export function ReservationsCalendar() {
                                     onMouseLeave={() => cancelDetailPrefetch(res.id)}
                                     onFocus={() => startDetailPrefetch(res.id)}
                                     onBlur={() => cancelDetailPrefetch(res.id)}
-                                    className="flex items-center gap-1 text-xs truncate bg-amber-50 text-amber-700 border border-amber-200 px-1 py-0.5 rounded cursor-pointer hover:bg-amber-100"
+                                    className="flex items-center gap-1 text-xs truncate bg-warning-sunk text-warning border border-warning/30 px-1 py-0.5 rounded cursor-pointer hover:bg-warning-sunk"
                                     title={`Salida · ${res.guestName} · ${res.propertyName}`}
                                 >
                                     <LogOut size={11} className="shrink-0" />

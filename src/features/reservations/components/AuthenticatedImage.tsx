@@ -98,16 +98,16 @@ export function AuthenticatedImage({ src, alt, className }: AuthenticatedImagePr
 
     if (!imageRequest) {
         return (
-            <div className={`flex items-center justify-center bg-slate-50 ${className ?? ""}`}>
-                <ImageOff size={18} className="text-slate-300" />
+            <div className={`flex items-center justify-center bg-sunk/50 ${className ?? ""}`}>
+                <ImageOff size={18} className="text-ink-4" />
             </div>
         )
     }
 
     if (!result || result.src !== src) {
         return (
-            <div className={`flex items-center justify-center bg-slate-50 ${className ?? ""}`}>
-                <Loader2 size={18} className="animate-spin text-slate-300" />
+            <div className={`flex items-center justify-center bg-sunk/50 ${className ?? ""}`}>
+                <Loader2 size={18} className="animate-spin text-ink-4" />
             </div>
         )
     }
@@ -116,10 +116,10 @@ export function AuthenticatedImage({ src, alt, className }: AuthenticatedImagePr
         const { short, detail } = describeImageError(result.httpStatus)
         return (
             <div
-                className={`flex flex-col items-center justify-center gap-1 bg-slate-50 p-2 text-center ${className ?? ""}`}
+                className={`flex flex-col items-center justify-center gap-1 bg-sunk/50 p-2 text-center ${className ?? ""}`}
                 title={detail}
             >
-                <ImageOff size={18} aria-hidden className="text-slate-300" />
+                <ImageOff size={18} aria-hidden className="text-ink-4" />
                 <span className="text-[11px] leading-tight text-ink-3">{short}</span>
             </div>
         )

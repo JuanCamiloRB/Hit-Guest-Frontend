@@ -30,8 +30,8 @@ export function BalanceBanner() {
 
     if (state === "depleted") {
         return (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-red-200 bg-red-50 px-4 py-3 sm:px-6 md:px-10">
-                <div className="flex items-center gap-2.5 text-sm font-medium text-red-700">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-danger/30 bg-danger-sunk px-4 py-3 sm:px-6 md:px-10">
+                <div className="flex items-center gap-2.5 text-sm font-medium text-danger">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
                     <span>Your automations are paused. Your account has no credits left.</span>
                 </div>
@@ -47,8 +47,8 @@ export function BalanceBanner() {
 
     // Low balance (dismissible).
     return (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 sm:px-6 md:px-10">
-            <div className="flex items-center gap-2.5 text-sm font-medium text-amber-800">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-warning/30 bg-warning-sunk px-4 py-3 sm:px-6 md:px-10">
+            <div className="flex items-center gap-2.5 text-sm font-medium text-warning">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 <span>
                     Your balance is running low ({formatUsd(amount)} remaining). Top up to avoid
@@ -66,7 +66,7 @@ export function BalanceBanner() {
                     type="button"
                     onClick={dismissLowBanner}
                     aria-label="Descartar"
-                    className="rounded-md p-1 text-amber-500 transition-colors hover:bg-amber-100 hover:text-amber-700"
+                    className="rounded-md p-1 text-warning transition-colors hover:bg-warning-sunk hover:text-warning"
                 >
                     <X className="h-4 w-4" />
                 </button>

@@ -10,7 +10,7 @@ interface AutomationTrafficLightProps {
 }
 
 export function AutomationTrafficLight({ status }: AutomationTrafficLightProps) {
-    if (!status) return <div className="flex gap-1 text-slate-300">{"-".repeat(6)}</div>
+    if (!status) return <div className="flex gap-1 text-ink-4">{"-".repeat(6)}</div>
 
     const indicators = [
         { key: "link" as keyof AutomationStatus, label: "LINK", icon: Send, title: "Link de Reserva" },

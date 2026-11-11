@@ -567,7 +567,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                                     placeholder="huesped@correo.com"
                                                 />
                                                 {trimmedRecipient === "" && (
-                                                    <p className="text-xs text-slate-400">
+                                                    <p className="text-xs text-ink-3">
                                                         Si lo dejas vacío, se usa el correo registrado del huésped y los
                                                         demás canales configurados.
                                                     </p>

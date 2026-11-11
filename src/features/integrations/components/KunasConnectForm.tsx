@@ -60,12 +60,12 @@ export function KunasConnectForm({ onConnect }: Props) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-5 max-w-lg">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-ink-3">
                 Conecta tu cuenta de KunasPMS para sincronizar propiedades y reservas.
             </p>
 
             {errors.credentials && (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                <div className="rounded-xl border border-danger/30 bg-danger-sunk px-4 py-3 text-sm font-medium text-danger">
                     {errors.credentials}
                 </div>
             )}
@@ -107,7 +107,7 @@ export function KunasConnectForm({ onConnect }: Props) {
                     <button
                         type="button"
                         onClick={() => setShowPassword((s) => !s)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
                         aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                     >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -155,13 +155,13 @@ function Field({
 }) {
     return (
         <div className="space-y-1.5">
-            <label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-                <span className="text-slate-400">{icon}</span>
+            <label className="flex items-center gap-1.5 text-sm font-semibold text-ink-2">
+                <span className="text-ink-3">{icon}</span>
                 {label}
-                {required && <span className="text-red-400">*</span>}
+                {required && <span className="text-danger">*</span>}
             </label>
             {children}
-            {error && <p className="text-xs font-medium text-red-500">{error}</p>}
+            {error && <p className="text-xs font-medium text-danger">{error}</p>}
         </div>
     )
 }

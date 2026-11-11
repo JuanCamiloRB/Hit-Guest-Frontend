@@ -99,13 +99,13 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
 
                 <div className="space-y-4 py-2">
                     {errors.credentials && (
-                        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+                        <div className="rounded-xl border border-danger/30 bg-danger-sunk px-4 py-3 text-sm font-medium text-danger">
                             {errors.credentials}
                         </div>
                     )}
 
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-slate-700">Email</label>
+                        <label className="text-sm font-semibold text-ink-2">Email</label>
                         <Input
                             type="email"
                             value={email}
@@ -113,11 +113,11 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                             placeholder="pm@empresa.com"
                             autoComplete="email"
                         />
-                        {errors.email && <p className="text-xs font-medium text-red-500">{errors.email}</p>}
+                        {errors.email && <p className="text-xs font-medium text-danger">{errors.email}</p>}
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-slate-700">Nueva contraseña</label>
+                        <label className="text-sm font-semibold text-ink-2">Nueva contraseña</label>
                         <div className="relative">
                             <Input
                                 type={showPassword ? "text" : "password"}
@@ -130,18 +130,18 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                             <button
                                 type="button"
                                 onClick={() => setShowPassword((s) => !s)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
                                 aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                             >
                                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </button>
                         </div>
-                        {errors.password && <p className="text-xs font-medium text-red-500">{errors.password}</p>}
+                        {errors.password && <p className="text-xs font-medium text-danger">{errors.password}</p>}
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
-                            <KeyRound className="h-4 w-4 text-slate-400" />
+                        <label className="flex items-center gap-1.5 text-sm font-semibold text-ink-2">
+                            <KeyRound className="h-4 w-4 text-ink-3" />
                             Token KunasPMS
                         </label>
                         <Input
@@ -150,7 +150,7 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                             placeholder="Dejar en blanco para no cambiarlo"
                             autoComplete="off"
                         />
-                        {errors.token && <p className="text-xs font-medium text-red-500">{errors.token}</p>}
+                        {errors.token && <p className="text-xs font-medium text-danger">{errors.token}</p>}
                     </div>
                 </div>
 

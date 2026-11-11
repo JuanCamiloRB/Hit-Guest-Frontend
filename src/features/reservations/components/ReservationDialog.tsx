@@ -647,10 +647,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             </DialogTrigger>
             <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
                 <DialogHeader className="pb-2">
-                    <DialogTitle className="text-2xl font-bold text-slate-900">
+                    <DialogTitle className="text-2xl font-bold text-ink">
                         {mode === "edit" ? "Editar Reserva Manual" : "Crear Reserva Manual"}
                     </DialogTitle>
-                    <DialogDescription className="text-slate-500">
+                    <DialogDescription className="text-ink-3">
                         {mode === "edit" 
                             ? "Edita los detalles de la reserva seleccionada." 
                             : "Registra una nueva reserva. El huésped recibirá el link para completar su check-in online."}
@@ -669,11 +669,11 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Section: Guest Info ─── */}
                         <div className="space-y-1">
-                            <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-slate-400 flex items-center gap-2">
+                            <h3 className="text-xs font-bold uppercase tracking-[0.15em] text-ink-3 flex items-center gap-2">
                                 <User size={14} />
                                 Datos del Huésped
                             </h3>
-                            <div className="h-px bg-slate-100" />
+                            <div className="h-px bg-sunk" />
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -682,12 +682,12 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="guestName"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700">Nombres del huésped *</FormLabel>
+                                        <FormLabel className="font-semibold text-ink-2">Nombres del huésped *</FormLabel>
                                         <FormControl>
                                             <Input
                                                 placeholder="Ej: María"
                                                 autoComplete="given-name"
-                                                className="bg-slate-50 border-slate-200 focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
+                                                className="bg-sunk/50 border-rule focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -704,12 +704,12 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="guestLastname"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700">Apellidos del huésped *</FormLabel>
+                                        <FormLabel className="font-semibold text-ink-2">Apellidos del huésped *</FormLabel>
                                         <FormControl>
                                             <Input
                                                 placeholder="Ej: González Pérez"
                                                 autoComplete="family-name"
-                                                className="bg-slate-50 border-slate-200 focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
+                                                className="bg-sunk/50 border-rule focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -722,10 +722,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="guestCountry"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700">País / Nacionalidad *</FormLabel>
+                                        <FormLabel className="font-semibold text-ink-2">País / Nacionalidad *</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value} disabled={loadingCountries}>
                                             <FormControl>
-                                                <SelectTrigger className="bg-slate-50 border-slate-200 focus:ring-primary/30 focus:border-primary rounded-xl h-11 transition-colors">
+                                                <SelectTrigger className="bg-sunk/50 border-rule focus:ring-primary/30 focus:border-primary rounded-xl h-11 transition-colors">
                                                     <SelectValue placeholder={loadingCountries ? "Cargando..." : "Selecciona un país"} />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -736,7 +736,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                     </SelectItem>
                                                 ))}
                                                 {countries.length === 0 && !loadingCountries && (
-                                                    <div className="px-3 py-2 text-xs text-slate-400">No hay países disponibles</div>
+                                                    <div className="px-3 py-2 text-xs text-ink-3">No hay países disponibles</div>
                                                 )}
                                             </SelectContent>
                                         </Select>
@@ -757,8 +757,8 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                         </div>
 
                         {isCreate && (
-                            <p className="flex items-start gap-2 text-xs text-slate-500">
-                                <AlertCircle size={14} className="mt-0.5 shrink-0 text-slate-400" /> {BOOKING_RULE}
+                            <p className="flex items-start gap-2 text-xs text-ink-3">
+                                <AlertCircle size={14} className="mt-0.5 shrink-0 text-ink-3" /> {BOOKING_RULE}
                             </p>
                         )}
 
@@ -771,7 +771,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="propertyUuid"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700">Propiedad *</FormLabel>
+                                        <FormLabel className="font-semibold text-ink-2">Propiedad *</FormLabel>
                                         <Select 
                                             onValueChange={(val) => {
                                                 field.onChange(val);
@@ -781,7 +781,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                             disabled={loadingProperties}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="bg-slate-50 border-slate-200 focus:ring-secondary/30 focus:border-secondary rounded-xl h-11 transition-colors">
+                                                <SelectTrigger className="bg-sunk/50 border-rule focus:ring-secondary/30 focus:border-secondary rounded-xl h-11 transition-colors">
                                                     <SelectValue placeholder={loadingProperties ? "Cargando..." : "Selecciona..."} />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -790,17 +790,17 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                     const tag = statusTag(p.status, true)
                                                     return (
                                                         <SelectItem key={p.uuid} value={p.uuid} disabled={!!tag && !isOriginal("propertyUuid", p.uuid)}>
-                                                            {p.name}{tag && <>{" "}<span className="text-xs text-slate-400">· {tag}</span></>}
+                                                            {p.name}{tag && <>{" "}<span className="text-xs text-ink-3">· {tag}</span></>}
                                                         </SelectItem>
                                                     )
                                                 })}
                                                 {properties.length === 0 && !loadingProperties && (
-                                                    <div className="px-3 py-2 text-xs text-slate-400">No hay opciones</div>
+                                                    <div className="px-3 py-2 text-xs text-ink-3">No hay opciones</div>
                                                 )}
                                             </SelectContent>
                                         </Select>
                                         {noActiveProperties && (
-                                            <p role="alert" className="text-xs font-medium text-amber-700">{NO_ACTIVE_PROPERTIES}</p>
+                                            <p role="alert" className="text-xs font-medium text-warning">{NO_ACTIVE_PROPERTIES}</p>
                                         )}
                                         <FormMessage />
                                     </FormItem>
@@ -813,7 +813,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="listingId"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700">Alojamiento *</FormLabel>
+                                        <FormLabel className="font-semibold text-ink-2">Alojamiento *</FormLabel>
                                         <Select
                                             onValueChange={handleListingChange}
                                             value={field.value}
@@ -821,7 +821,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                         >
                                             <FormControl>
                                                 <SelectTrigger className={cn(
-                                                    "bg-slate-50 border-slate-200 focus:ring-secondary/30 focus:border-secondary rounded-xl h-11 transition-colors",
+                                                    "bg-sunk/50 border-rule focus:ring-secondary/30 focus:border-secondary rounded-xl h-11 transition-colors",
                                                     !!selectedPropertyUuid && !loadingListings && listings.length === 0 && "bg-primary/5 disabled:bg-primary/5 disabled:text-primary data-[placeholder]:text-primary border-primary/30 text-primary font-medium placeholder:text-primary"
                                                 )}>
                                                     <SelectValue className="text-primary" placeholder={
@@ -840,22 +840,22 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                     const tag = statusTag(l.status, false)
                                                     return (
                                                         <SelectItem key={l.uuid} value={l.uuid} disabled={!!tag && !isOriginal("listingId", l.uuid)}>
-                                                            {l.name}{tag && <>{" "}<span className="text-xs text-slate-400">· {tag}</span></>}
+                                                            {l.name}{tag && <>{" "}<span className="text-xs text-ink-3">· {tag}</span></>}
                                                         </SelectItem>
                                                     )
                                                 })}
                                                 {listings.length === 0 && !loadingListings && selectedPropertyUuid && (
-                                                    <div className="px-3 py-2 text-xs text-slate-400">No hay alojamientos</div>
+                                                    <div className="px-3 py-2 text-xs text-ink-3">No hay alojamientos</div>
                                                 )}
                                             </SelectContent>
                                         </Select>
                                         {noActiveListings && (
-                                            <p role="alert" className="text-xs font-medium text-amber-700">{NO_ACTIVE_LISTINGS}</p>
+                                            <p role="alert" className="text-xs font-medium text-warning">{NO_ACTIVE_LISTINGS}</p>
                                         )}
                                         {/* En edición se conserva el alojamiento aunque esté inactivo,
                                             pero se avisa: sus automatizaciones no corren. */}
                                         {!isCreate && selectionBlock && (
-                                            <p className="text-xs font-medium text-amber-700">
+                                            <p className="text-xs font-medium text-warning">
                                                 {selectionBlock.startsWith("property")
                                                     ? "La propiedad de esta reserva está inactiva: sus automatizaciones están detenidas."
                                                     : "El alojamiento de esta reserva está inactivo: sus automatizaciones están detenidas."}
@@ -871,10 +871,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="reservationSourceId"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700">Canal de Reserva *</FormLabel>
+                                        <FormLabel className="font-semibold text-ink-2">Canal de Reserva *</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value} disabled={loadingSources || sourcesFailed}>
                                             <FormControl>
-                                                <SelectTrigger ref={channelTriggerRef} className="bg-slate-50 border-slate-200 focus:ring-secondary/30 focus:border-secondary rounded-xl h-11 transition-colors">
+                                                <SelectTrigger ref={channelTriggerRef} className="bg-sunk/50 border-rule focus:ring-secondary/30 focus:border-secondary rounded-xl h-11 transition-colors">
                                                     <SelectValue placeholder={loadingSources ? "Cargando..." : "Selecciona..."} />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -931,15 +931,15 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             name="dates"
                             render={({ field }) => (
                                 <FormItem className="flex flex-col">
-                                    <FormLabel className="font-semibold text-slate-700">Fechas de estancia *</FormLabel>
+                                    <FormLabel className="font-semibold text-ink-2">Fechas de estancia *</FormLabel>
                                     <Popover>
                                         <PopoverTrigger asChild>
                                             <FormControl>
                                                 <Button
                                                     variant="outline"
                                                     className={cn(
-                                                        "w-full pl-3 text-left font-normal justify-between rounded-xl h-11 bg-slate-50 border-slate-200 hover:bg-slate-100 transition-colors text-slate-700 hover:text-slate-900",
-                                                        !field.value?.from && "text-slate-400 hover:text-slate-600"
+                                                        "w-full pl-3 text-left font-normal justify-between rounded-xl h-11 bg-sunk/50 border-rule hover:bg-sunk transition-colors text-ink-2 hover:text-ink",
+                                                        !field.value?.from && "text-ink-3 hover:text-ink-2"
                                                     )}
                                                 >
                                                     {field.value?.from ? (
@@ -984,7 +984,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="totalGuests"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700 flex items-center gap-1.5">
+                                        <FormLabel className="font-semibold text-ink-2 flex items-center gap-1.5">
                                             <Users size={13} className="text-primary" />
                                             Huéspedes *
                                         </FormLabel>
@@ -993,7 +993,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                 type="number"
                                                 min={1}
                                                 placeholder="1"
-                                                className="bg-slate-50 border-slate-200 focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
+                                                className="bg-sunk/50 border-rule focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -1006,12 +1006,12 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="totalPrice"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700 flex items-center gap-1.5">
+                                        <FormLabel className="font-semibold text-ink-2 flex items-center gap-1.5">
                                             <DollarSign size={13} className="text-primary" />
                                             Precio total *
                                         </FormLabel>
                                         <FormControl>
-                                            <Input type="number" min={0} step="0.01" className="bg-slate-50 border-slate-200 focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors" placeholder="0.00" {...field} />
+                                            <Input type="number" min={0} step="0.01" className="bg-sunk/50 border-rule focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors" placeholder="0.00" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -1022,10 +1022,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="currency"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700">Moneda *</FormLabel>
+                                        <FormLabel className="font-semibold text-ink-2">Moneda *</FormLabel>
                                         <Select onValueChange={field.onChange} value={field.value} disabled={loadingCurrencies}>
                                             <FormControl>
-                                                <SelectTrigger className="bg-slate-50 border-slate-200 focus:ring-primary/30 focus:border-primary rounded-xl h-11 transition-colors">
+                                                <SelectTrigger className="bg-sunk/50 border-rule focus:ring-primary/30 focus:border-primary rounded-xl h-11 transition-colors">
                                                     <SelectValue placeholder={loadingCurrencies ? "Cargando..." : "Moneda"} />
                                                 </SelectTrigger>
                                             </FormControl>
@@ -1036,7 +1036,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                     </SelectItem>
                                                 ))}
                                                 {currencies.length === 0 && !loadingCurrencies && (
-                                                    <div className="px-3 py-2 text-xs text-slate-400">No hay opciones</div>
+                                                    <div className="px-3 py-2 text-xs text-ink-3">No hay opciones</div>
                                                 )}
                                             </SelectContent>
                                         </Select>
@@ -1061,7 +1061,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="guestPhone"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700">WhatsApp / Teléfono *</FormLabel>
+                                        <FormLabel className="font-semibold text-ink-2">WhatsApp / Teléfono *</FormLabel>
                                         <FormControl>
                                             <PhoneInputField 
                                                 value={field.value} 
@@ -1079,12 +1079,12 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 name="emailGuest"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="font-semibold text-slate-700">Email (Se enviará el link ahora) *</FormLabel>
+                                        <FormLabel className="font-semibold text-ink-2">Email (Se enviará el link ahora) *</FormLabel>
                                         <FormControl>
                                             <Input 
                                                 type="email" 
                                                 placeholder="huesped@email.com" 
-                                                className="bg-slate-50 border-slate-200 focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
+                                                className="bg-sunk/50 border-rule focus-visible:ring-primary/30 focus-visible:border-primary rounded-xl h-11 transition-colors"
                                                 {...field} 
                                             />
                                         </FormControl>
@@ -1104,11 +1104,11 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 render={({ field }) => (
                                     <FormItem className="flex items-center justify-between gap-4">
                                         <div className="space-y-0.5">
-                                            <FormLabel className="text-sm font-semibold text-slate-800 flex items-center gap-2 cursor-pointer">
+                                            <FormLabel className="text-sm font-semibold text-ink flex items-center gap-2 cursor-pointer">
                                                 <Send size={15} className="text-primary" />
                                                 Enviar link de check-in ahora
                                             </FormLabel>
-                                            <FormDescription className="text-[11px] text-slate-500">
+                                            <FormDescription className="text-[11px] text-ink-3">
                                                 Se enviará un email a <span className="font-medium">{form.watch("emailGuest") || "..."}</span> con el link para completar el check-in online
                                             </FormDescription>
                                         </div>

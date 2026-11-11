@@ -399,7 +399,7 @@ export default function ReservationsList() {
                             variant="outline"
                             className={cn(
                                 "w-full sm:w-auto justify-start gap-2 font-normal",
-                                !dateRange?.from && "text-slate-500"
+                                !dateRange?.from && "text-ink-3"
                             )}
                         >
                             <CalendarIcon className="h-4 w-4 shrink-0" />
@@ -415,7 +415,7 @@ export default function ReservationsList() {
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
                         {/* Which date column the range applies to */}
-                        <div className="flex gap-1 border-b border-slate-100 p-2">
+                        <div className="flex gap-1 border-b border-rule p-2">
                             {(Object.keys(DATE_FIELD_LABELS) as DateField[]).map((f) => (
                                 <button
                                     key={f}
@@ -425,7 +425,7 @@ export default function ReservationsList() {
                                         "flex-1 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors",
                                         dateField === f
                                             ? "bg-primary text-white"
-                                            : "text-slate-500 hover:bg-slate-100"
+                                            : "text-ink-3 hover:bg-sunk"
                                     )}
                                 >
                                     {DATE_FIELD_LABELS[f]}
@@ -441,12 +441,12 @@ export default function ReservationsList() {
                             initialFocus
                         />
                         {dateRange?.from && (
-                            <div className="border-t border-slate-100 p-2">
+                            <div className="border-t border-rule p-2">
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setDateRange(undefined)}
-                                    className="w-full text-slate-500 gap-1.5"
+                                    className="w-full text-ink-3 gap-1.5"
                                 >
                                     <X className="h-4 w-4" />
                                     Quitar fechas
@@ -456,7 +456,7 @@ export default function ReservationsList() {
                     </PopoverContent>
                 </Popover>
                 {hasActiveFilters && (
-                    <Button variant="ghost" onClick={clearFilters} className="text-slate-500 gap-1.5">
+                    <Button variant="ghost" onClick={clearFilters} className="text-ink-3 gap-1.5">
                         <X className="h-4 w-4" />
                         Limpiar
                     </Button>

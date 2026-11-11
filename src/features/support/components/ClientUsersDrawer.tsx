@@ -188,10 +188,10 @@ function DrawerBody({
 
     return (
         <div className="flex h-full flex-col">
-            <header className="flex items-start gap-3 border-b border-slate-100 px-6 py-5">
+            <header className="flex items-start gap-3 border-b border-rule px-6 py-5">
                 <div className="min-w-0 flex-1">
-                    <SheetTitle className="truncate text-lg font-bold text-slate-900" title={client.name}>{client.name}</SheetTitle>
-                    <SheetDescription className="mt-0.5 text-[13px] text-slate-600">
+                    <SheetTitle className="truncate text-lg font-bold text-ink" title={client.name}>{client.name}</SheetTitle>
+                    <SheetDescription className="mt-0.5 text-[13px] text-ink-2">
                         {[client.email, client.identificationNumber ? `ID ${client.identificationNumber}` : null]
                             .filter(Boolean).join(" · ") || "Cliente"}
                     </SheetDescription>
@@ -201,7 +201,7 @@ function DrawerBody({
                 </Button>
             </header>
 
-            <p className="flex items-start gap-2 border-b border-amber-100 bg-amber-50 px-6 py-3 text-[13px] text-amber-900">
+            <p className="flex items-start gap-2 border-b border-warning/20 bg-warning-sunk px-6 py-3 text-[13px] text-warning">
                 <ShieldAlert size={15} aria-hidden className="mt-0.5 shrink-0" />
                 Entrarás con los mismos permisos del usuario. Todo lo que hagas quedará a su nombre.
             </p>
@@ -211,8 +211,8 @@ function DrawerBody({
                     {state.kind === "loading" && <LoadingState rows={3} label="Cargando usuarios" />}
 
                     {state.kind === "error" && (
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm">
-                            <span className="text-red-700">{state.message}</span>
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger/20 bg-danger-sunk px-4 py-3 text-sm">
+                            <span className="text-danger">{state.message}</span>
                             <Button type="button" variant="outline" size="sm" onClick={reload}>
                                 <RefreshCw size={14} className="mr-1.5" /> Reintentar
                             </Button>
@@ -229,7 +229,7 @@ function DrawerBody({
 
                     {state.kind === "ready" && users.length > 0 && (
                         <fieldset className="space-y-2">
-                            <legend className="mb-2 text-sm font-semibold text-slate-700">
+                            <legend className="mb-2 text-sm font-semibold text-ink-2">
                                 {users.length === 1 ? "Usuario" : `Elige el usuario (${users.length})`}
                             </legend>
                             {users.map((u) => {
@@ -241,10 +241,10 @@ function DrawerBody({
                                         className={cn(
                                             "flex items-start gap-3 rounded-xl border px-4 py-3 transition-colors",
                                             !u.canOpenSession
-                                                ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-70"
+                                                ? "cursor-not-allowed border-rule bg-sunk/50 opacity-70"
                                                 : checked
                                                     ? "cursor-pointer border-primary bg-primary/5"
-                                                    : "cursor-pointer border-slate-200 hover:border-slate-300",
+                                                    : "cursor-pointer border-rule hover:border-slate-300",
                                         )}
                                     >
                                         <input
@@ -257,15 +257,15 @@ function DrawerBody({
                                             className="mt-1 accent-primary"
                                         />
                                         <span className="min-w-0 flex-1">
-                                            <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+                                            <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink">
                                                 <span className="truncate" title={u.name}>{u.name}</span>
                                                 {u.isAccountOwner && <StatusPill tone="info">Dueño</StatusPill>}
                                             </span>
-                                            <span className="block truncate text-[13px] text-slate-600">
+                                            <span className="block truncate text-[13px] text-ink-2">
                                                 {[u.email, role].filter(Boolean).join(" · ")}
                                             </span>
                                             {!u.canOpenSession && (
-                                                <span className="block text-xs text-amber-700">{BLOCKED_USER_HINT}</span>
+                                                <span className="block text-xs text-warning">{BLOCKED_USER_HINT}</span>
                                             )}
                                         </span>
                                     </label>
@@ -276,7 +276,7 @@ function DrawerBody({
                 </div>
 
                 {state.kind === "ready" && users.length > 0 && (
-                    <div className="space-y-3 border-t border-slate-100 bg-white px-6 py-5">
+                    <div className="space-y-3 border-t border-rule bg-white px-6 py-5">
                         {selectedUser ? (
                             <>
                                 <div className="space-y-1.5">
@@ -295,27 +295,27 @@ function DrawerBody({
                                         aria-invalid={reasonMessage ? true : undefined}
                                         aria-describedby="support-reason-help"
                                     />
-                                    <p id="support-reason-help" className={reasonMessage ? "text-xs text-red-600" : "text-xs text-slate-500"}>
+                                    <p id="support-reason-help" className={reasonMessage ? "text-xs text-danger" : "text-xs text-ink-3"}>
                                         {reasonMessage ?? "Queda registrado en la sesión de soporte."}
                                     </p>
                                 </div>
-                                <p className="text-[13px] text-slate-700">
+                                <p className="text-[13px] text-ink-2">
                                     Entrarás como <strong>{selectedUser.name}</strong> en <strong>{client.name}</strong>.
                                     Las acciones quedarán registradas a su nombre.
                                 </p>
                             </>
                         ) : (
-                            <p className="text-[13px] text-slate-600">Elige el usuario como el que quieres entrar.</p>
+                            <p className="text-[13px] text-ink-2">Elige el usuario como el que quieres entrar.</p>
                         )}
 
                         {error?.field === null && (
-                            <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                            <p role="alert" className="rounded-lg bg-danger-sunk px-3 py-2 text-sm text-danger">
                                 {error.message}
                             </p>
                         )}
 
                         {confirmDiscard ? (
-                            <div role="alert" className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+                            <div role="alert" className="space-y-3 rounded-lg border border-warning/30 bg-warning-sunk px-3 py-3 text-sm text-warning">
                                 <p>Ya escribiste un motivo. ¿Cerrar sin entrar y descartarlo?</p>
                                 <div className="flex flex-wrap justify-end gap-2">
                                     <Button type="button" variant="outline" size="sm" onClick={onKeepEditing}>Seguir aquí</Button>

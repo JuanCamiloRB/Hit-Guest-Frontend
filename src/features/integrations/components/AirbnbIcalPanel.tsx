@@ -181,7 +181,7 @@ export function AirbnbIcalPanel() {
     return (
         <div className="space-y-4">
             <div className="flex items-start justify-between gap-3">
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-ink-3">
                     Conecta el calendario iCal de cada anuncio. El calendario solo trae fechas y el
                     código de la reserva: el link de check-in le llega al huésped por la mensajería
                     de Airbnb con la plantilla de mensaje de cada calendario.
@@ -194,7 +194,7 @@ export function AirbnbIcalPanel() {
             {feeds === null ? (
                 <LoadingState rows={2} label="Cargando calendarios" />
             ) : loadError ? (
-                <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-warning/30 bg-warning-sunk px-3 py-2 text-sm text-warning">
                     <span>No se pudieron cargar los calendarios.</span>
                     <button type="button" onClick={() => void loadFeeds()} className="font-semibold underline underline-offset-2">
                         Reintentar
@@ -208,11 +208,11 @@ export function AirbnbIcalPanel() {
             ) : (
                 <ul className="space-y-2">
                     {feeds.map((feed) => (
-                        <li key={feed.uuid} className="rounded-xl border border-slate-200 bg-white p-4">
+                        <li key={feed.uuid} className="rounded-xl border border-rule bg-white p-4">
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-slate-900">{listingName(feed.listingUuid)}</p>
-                                    <p className="max-w-md truncate text-xs text-slate-400">{maskIcalUrl(feed.icalUrl)}</p>
+                                    <p className="text-sm font-semibold text-ink">{listingName(feed.listingUuid)}</p>
+                                    <p className="max-w-md truncate text-xs text-ink-3">{maskIcalUrl(feed.icalUrl)}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <FeedHealth feed={feed} />
@@ -225,12 +225,12 @@ export function AirbnbIcalPanel() {
                                 </div>
                             </div>
                             {feed.lastSyncError !== null && (
-                                <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning">
                                     <AlertTriangle size={13} className="mt-0.5 shrink-0" />
                                     <span className="break-words">{feed.lastSyncError}</span>
                                 </p>
                             )}
-                            <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-3">
+                            <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-rule pt-3">
                                 <button
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
@@ -243,7 +243,7 @@ export function AirbnbIcalPanel() {
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => void handleSync(feed)}
-                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-3 hover:text-ink-2 disabled:opacity-50"
                                 >
                                     <RefreshCw size={13} /> Sincronizar ahora
                                 </button>
@@ -251,7 +251,7 @@ export function AirbnbIcalPanel() {
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => setEditTarget(feed)}
-                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-50"
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-3 hover:text-ink-2 disabled:opacity-50"
                                 >
                                     Editar URL
                                 </button>
@@ -259,7 +259,7 @@ export function AirbnbIcalPanel() {
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => setDeleteTarget(feed)}
-                                    className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-600 disabled:opacity-50"
+                                    className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-danger hover:text-danger disabled:opacity-50"
                                 >
                                     <Trash2 size={13} /> Eliminar
                                 </button>
@@ -475,7 +475,7 @@ function CreateFeedDialog({
                             placeholder="https://www.airbnb.com/calendar/ical/12345678.ics?s=…"
                             aria-invalid={errors.icalUrl ? true : undefined}
                         />
-                        {errors.icalUrl && <p className="text-xs text-red-500">{errors.icalUrl}</p>}
+                        {errors.icalUrl && <p className="text-xs text-danger">{errors.icalUrl}</p>}
                     </div>
 
                     <div className="space-y-1.5">
@@ -488,14 +488,14 @@ function CreateFeedDialog({
                             inputMode="numeric"
                             aria-invalid={errors.externalListingId ? true : undefined}
                         />
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-ink-3">
                             Son los dígitos dentro del enlace del calendario, y los mismos de la URL
                             pública del anuncio (airbnb.com/rooms/<strong>12345678</strong>).
                         </p>
                         {errors.externalListingId && (
                             /* No es un detalle de validación: es la defensa contra pegar el
                                calendario de OTRO apartamento e importar reservas ajenas. */
-                            <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                            <p className="rounded-lg bg-danger-sunk px-3 py-2 text-xs text-danger">
                                 {errors.externalListingId} Verifica que la URL y el ID sean del mismo
                                 anuncio: con el calendario equivocado importarías las reservas de otro
                                 alojamiento.
@@ -504,7 +504,7 @@ function CreateFeedDialog({
                     </div>
 
                     {needsIntegration && (
-                        <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        <div className="space-y-2 rounded-lg border border-warning/30 bg-warning-sunk px-3 py-2 text-sm text-warning">
                             <p>{needsIntegration}</p>
                             <Button size="sm" variant="outline" disabled={connecting} onClick={() => void connectAndRetry()}>
                                 {connecting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
@@ -559,13 +559,13 @@ function TemplateDialog({
                 </DialogHeader>
 
                 <div className="space-y-3">
-                    <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-3 font-mono text-xs text-slate-700">
+                    <pre className="max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl border border-rule bg-sunk/50 p-3 font-mono text-xs text-ink-2">
                         {template.data.message}
                     </pre>
                     {/* El mensaje va en el idioma configurado para los huéspedes de la
                         property; puede no coincidir con el idioma del panel y ESO ES
                         CORRECTO — sin este aviso, el PM lo "corrige" a mano. */}
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-ink-3">
                         El mensaje va en el idioma configurado para tus huéspedes — puede no coincidir
                         con el idioma en que ves este panel. No modifiques la URL.
                     </p>
@@ -577,7 +577,7 @@ function TemplateDialog({
                         ese texto decía «Menú > Mensajes > Mensajes programados», y en el
                         Airbnb actual no existe esa ruta (Didier, 2026-09-22). Quien ve la
                         interfaz de Airbnb es quien puede mantener los pasos al día. */}
-                    <div className="space-y-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
+                    <div className="space-y-2 rounded-lg bg-sunk/50 p-3 text-xs text-ink-2">
                         <p>
                             En Airbnb ve a <strong>Mensajes</strong>, abre la configuración (ícono de
                             engranaje) y entra a <strong>Administra tus respuestas rápidas</strong> →{" "}
@@ -585,7 +585,7 @@ function TemplateDialog({
                             <strong>Hora personalizada</strong>, elige el evento{" "}
                             <strong>Reservación confirmada</strong> y guarda.
                         </p>
-                        <p className="font-semibold text-amber-700">
+                        <p className="font-semibold text-warning">
                             ⚠️ «[código de confirmación]» no es texto literal: reemplázalo con el menú
                             Shortcodes del editor de Airbnb, o el link no funcionará para nadie.
                         </p>
@@ -654,7 +654,7 @@ function EditUrlDialog({
                         onChange={(e) => setUrl(e.target.value)}
                         aria-invalid={error ? true : undefined}
                     />
-                    {error && <p className="text-xs text-red-500">{error}</p>}
+                    {error && <p className="text-xs text-danger">{error}</p>}
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>

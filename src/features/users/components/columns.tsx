@@ -46,7 +46,7 @@ export const columns: ColumnDef<User>[] = [
         cell: ({ row }) => {
             const status = row.getValue("status") as string
             return (
-                <div className={status === "ACTIVE" ? "text-green-600 font-medium" : "text-muted-foreground"}>
+                <div className={status === "ACTIVE" ? "text-success font-medium" : "text-muted-foreground"}>
                     {status}
                 </div>
             )

@@ -151,7 +151,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
                                 <Gift className="h-4 w-4 text-primary" />
                             </span>
-                            <p className="text-sm text-slate-700">
+                            <p className="text-sm text-ink-2">
                                 <span className="font-bold text-primary">USD 10 de regalo</span> — tu cuenta inicia con saldo de bienvenida para ejecutar tus primeras automatizaciones.
                             </p>
                         </div>
@@ -280,11 +280,11 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             value={field.value}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-secondary/20 shadow-sm transition-all">
+                                                <SelectTrigger className="w-full h-11 rounded-lg border-rule focus:ring-secondary/20 shadow-sm transition-all">
                                                     <SelectValue placeholder="Selecciona el tipo" />
                                                 </SelectTrigger>
                                             </FormControl>
-                                            <SelectContent className="rounded-xl shadow-xl border-slate-100">
+                                            <SelectContent className="rounded-xl shadow-xl border-rule">
                                                 {identificationTypes.map((type) => (
                                                     <SelectItem key={type.id} value={type.id} className="cursor-pointer">
                                                         {type.name}
@@ -306,7 +306,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <Input
                                                 placeholder="Ej: 12345678"
                                                 disabled={isLoading}
-                                                className="h-11 rounded-lg border-slate-200 focus-visible:ring-secondary/20 shadow-sm transition-all"
+                                                className="h-11 rounded-lg border-rule focus-visible:ring-secondary/20 shadow-sm transition-all"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -384,11 +384,11 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             value={field.value}
                                         >
                                             <FormControl>
-                                                <SelectTrigger className="w-full h-11 rounded-lg border-slate-200 focus:ring-secondary/20 shadow-sm transition-all">
+                                                <SelectTrigger className="w-full h-11 rounded-lg border-rule focus:ring-secondary/20 shadow-sm transition-all">
                                                     <SelectValue placeholder="Selecciona un país" />
                                                 </SelectTrigger>
                                             </FormControl>
-                                            <SelectContent className="rounded-xl shadow-xl border-slate-100 max-h-[200px]">
+                                            <SelectContent className="rounded-xl shadow-xl border-rule max-h-[200px]">
                                                 {countries.map((country) => (
                                                     <SelectItem key={country.id} value={country.id}>
                                                         {country.name}
@@ -403,7 +403,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                                 <Input
                                                     placeholder="Ej: Colombia"
                                                     disabled={isLoading}
-                                                    className="pl-9 h-11 rounded-lg border-slate-200 shadow-sm"
+                                                    className="pl-9 h-11 rounded-lg border-rule shadow-sm"
                                                     {...field}
                                                 />
                                             </div>
@@ -425,7 +425,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <Input
                                                 placeholder="Ej: Valle del Cauca"
                                                 disabled={isLoading}
-                                                className="h-11 rounded-lg border-slate-200 shadow-sm"
+                                                className="h-11 rounded-lg border-rule shadow-sm"
                                                 {...field}
                                             />
                                         </FormControl>
@@ -443,7 +443,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <Input
                                                 placeholder="Ej: Cali"
                                                 disabled={isLoading}
-                                                className="h-11 rounded-lg border-slate-200 shadow-sm"
+                                                className="h-11 rounded-lg border-rule shadow-sm"
                                                 {...field}
                                             />
                                         </FormControl>

@@ -96,7 +96,7 @@ export function SupportConsole() {
             <form onSubmit={search} className="flex max-w-3xl flex-wrap gap-3" role="search">
                 <label htmlFor="support-client-search" className="sr-only">Buscar cliente</label>
                 <div className="relative min-w-[220px] flex-1">
-                    <Search size={16} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Search size={16} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
                     <Input
                         id="support-client-search"
                         type="search"
@@ -110,8 +110,8 @@ export function SupportConsole() {
             </form>
 
             {summary && (
-                <p className="text-sm text-slate-600" aria-live="polite">
-                    {summary}{query ? <> para «<strong className="font-semibold text-slate-800">{query}</strong>»</> : null}
+                <p className="text-sm text-ink-2" aria-live="polite">
+                    {summary}{query ? <> para «<strong className="font-semibold text-ink">{query}</strong>»</> : null}
                 </p>
             )}
 
@@ -120,7 +120,7 @@ export function SupportConsole() {
 
                 {clients.kind === "error" && (
                     <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-6 text-sm">
-                        <span className="text-red-700">{clients.message}</span>
+                        <span className="text-danger">{clients.message}</span>
                         <Button variant="outline" size="sm" onClick={() => { setClients({ kind: "loading" }); setReloadKey((k) => k + 1) }}>
                             <RefreshCw size={14} className="mr-1.5" /> Reintentar
                         </Button>
@@ -141,7 +141,7 @@ export function SupportConsole() {
                         <div className="hidden md:block">
                             <table className="w-full table-fixed text-sm">
                                 <thead>
-                                    <tr className="border-b border-slate-100 text-left text-xs uppercase tracking-wide text-slate-500">
+                                    <tr className="border-b border-rule text-left text-xs uppercase tracking-wide text-ink-3">
                                         <th scope="col" className="w-[34%] px-5 py-3 font-semibold">Cliente</th>
                                         <th scope="col" className="px-5 py-3 font-semibold">Correo</th>
                                         <th scope="col" className="hidden w-[14%] px-5 py-3 font-semibold lg:table-cell">Identificación</th>
@@ -161,13 +161,13 @@ export function SupportConsole() {
                                 </tbody>
                             </table>
                         </div>
-                        <ul className="divide-y divide-slate-100 md:hidden">
+                        <ul className="divide-y divide-rule md:hidden">
                             {clients.items.map((client) => (
                                 <ClientCard key={client.uuid} client={client} onOpen={(opener) => open(client, opener)} />
                             ))}
                         </ul>
                         {clients.meta.lastPage > 1 && (
-                            <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-xs text-slate-600">
+                            <div className="flex items-center justify-between border-t border-rule px-5 py-3 text-xs text-ink-2">
                                 <span>Página {clients.meta.currentPage} de {clients.meta.lastPage}</span>
                                 <div className="flex gap-2">
                                     <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => goTo(page - 1)}>
@@ -211,23 +211,23 @@ function UsersCountPill({ count }: { count: number | null }) {
 function ClientRow({ client, opened, onOpen }: { client: SupportClient; opened: boolean; onOpen: (opener: HTMLElement) => void }) {
     const empty = client.usersCount === 0
     return (
-        <tr className={cn("border-b border-slate-100 last:border-b-0", opened && "bg-primary/5")}>
+        <tr className={cn("border-b border-rule last:border-b-0", opened && "bg-primary/5")}>
             <td className="px-5 py-3.5">
                 <div className="flex min-w-0 items-center gap-3">
                     <span
                         aria-hidden
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-xs font-bold text-slate-600"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sunk text-xs font-bold text-ink-2"
                     >
                         {initialsOf(client.name)}
                     </span>
                     {/* Truncado solo a la vista: el texto completo sigue en el DOM. */}
-                    <p className={cn("truncate font-semibold", empty ? "text-slate-600" : "text-slate-900")} title={client.name}>
+                    <p className={cn("truncate font-semibold", empty ? "text-ink-2" : "text-ink")} title={client.name}>
                         {client.name}
                     </p>
                 </div>
             </td>
-            <td className="truncate px-5 py-3.5 text-slate-700" title={client.email ?? undefined}>{client.email ?? "—"}</td>
-            <td className="hidden px-5 py-3.5 tabular-nums text-slate-700 lg:table-cell">{client.identificationNumber ?? "—"}</td>
+            <td className="truncate px-5 py-3.5 text-ink-2" title={client.email ?? undefined}>{client.email ?? "—"}</td>
+            <td className="hidden px-5 py-3.5 tabular-nums text-ink-2 lg:table-cell">{client.identificationNumber ?? "—"}</td>
             <td className="px-5 py-3.5"><UsersCountPill count={client.usersCount} /></td>
             <td className="px-5 py-3.5 text-right"><OpenUsersButton client={client} onOpen={onOpen} /></td>
         </tr>
@@ -240,11 +240,11 @@ function ClientCard({ client, onOpen }: { client: SupportClient; onOpen: (opener
     return (
         <li className="space-y-2 px-5 py-4">
             <div className="min-w-0">
-                <p className={cn("truncate font-semibold", empty ? "text-slate-600" : "text-slate-900")} title={client.name}>
+                <p className={cn("truncate font-semibold", empty ? "text-ink-2" : "text-ink")} title={client.name}>
                     {client.name}
                 </p>
-                {client.email && <p className="truncate text-[13px] text-slate-600">{client.email}</p>}
-                <p className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-slate-600">
+                {client.email && <p className="truncate text-[13px] text-ink-2">{client.email}</p>}
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-ink-2">
                     {client.identificationNumber && <span className="tabular-nums">ID {client.identificationNumber}</span>}
                     <UsersCountPill count={client.usersCount} />
                 </p>

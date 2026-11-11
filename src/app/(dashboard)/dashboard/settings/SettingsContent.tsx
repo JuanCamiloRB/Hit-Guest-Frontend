@@ -51,10 +51,10 @@ export function SettingsContent() {
         return (
             <div className="flex flex-col md:flex-row gap-8 items-start animate-in fade-in duration-500">
                 {/* Sidebar Skeleton */}
-                <div className="w-full md:w-64 h-[320px] bg-slate-200/60 rounded-[2.5rem] animate-pulse shadow-sm shadow-black/5" />
+                <div className="w-full md:w-64 h-[320px] bg-sunk/60 rounded-[2.5rem] animate-pulse shadow-sm shadow-black/5" />
                 
                 {/* Content Skeleton */}
-                <div className="flex-1 h-[600px] bg-slate-200/60 rounded-[2.5rem] animate-pulse shadow-sm shadow-black/5" />
+                <div className="flex-1 h-[600px] bg-sunk/60 rounded-[2.5rem] animate-pulse shadow-sm shadow-black/5" />
             </div>
         )
     }
@@ -78,13 +78,13 @@ export function SettingsContent() {
                             className={cn(
                                 "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-xl group relative text-left w-full",
                                 activeTab === tab.id
-                                    ? "bg-white text-primary shadow-sm border border-slate-100"
-                                    : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+                                    ? "bg-white text-primary shadow-sm border border-rule"
+                                    : "text-ink-3 hover:text-ink hover:bg-sunk/50"
                             )}
                         >
                             <tab.icon className={cn(
                                 "h-4 w-4 transition-colors",
-                                activeTab === tab.id ? "text-primary" : "text-slate-400 group-hover:text-slate-600"
+                                activeTab === tab.id ? "text-primary" : "text-ink-3 group-hover:text-ink-2"
                             )} />
                             <span>{tab.label}</span>
                             {activeTab === tab.id && (
@@ -98,7 +98,7 @@ export function SettingsContent() {
             {/* Content Area */}
             <main className="flex-1 w-full min-w-0">
                 <Card className="border-none shadow-sm shadow-black/5 bg-white/80 backdrop-blur-sm rounded-2xl overflow-hidden">
-                    <CardHeader className="border-b border-slate-100 pb-6">
+                    <CardHeader className="border-b border-rule pb-6">
                         <CardTitle className="text-2xl font-bold">
                             {filteredTabs.find(t => t.id === activeTab)?.label}
                         </CardTitle>

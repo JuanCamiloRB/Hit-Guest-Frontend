@@ -179,12 +179,12 @@ export function RegisterPriceDialog({
                             La reserva no informa su moneda: el valor se guarda sin moneda conocida.
                         </p>
                     )}
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-ink-3">
                         Un valor de 0 también cuenta como confirmado (cortesías o estadías del
                         propietario).
                     </p>
-                    {scaleError && <p className="text-xs text-red-500">{scaleError}</p>}
-                    {error && <p className="text-xs text-red-500">{error}</p>}
+                    {scaleError && <p className="text-xs text-danger">{scaleError}</p>}
+                    {error && <p className="text-xs text-danger">{error}</p>}
                 </div>
 
                 <DialogFooter>

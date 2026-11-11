@@ -328,7 +328,7 @@ export function UserManagement() {
                             // Un fallo se dice: «no hay usuarios» sería falso.
                             <TableRow>
                                 <TableCell colSpan={3} className="h-24 text-center">
-                                    <p className="text-sm font-semibold text-slate-900">No pudimos cargar los usuarios</p>
+                                    <p className="text-sm font-semibold text-ink">No pudimos cargar los usuarios</p>
                                     {/* El motivo del servidor (p. ej. un 403 por permisos), tal cual. */}
                                     {errorMessage && <p className="mt-1 text-xs text-muted-foreground">{errorMessage}</p>}
                                     <Button variant="outline" size="sm" className="mt-2" onClick={fetchUsers}>Reintentar</Button>
@@ -345,17 +345,17 @@ export function UserManagement() {
                                 <TableRow key={user.id}>
                                     <TableCell>
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-slate-900">{user.firstName}</span>
+                                            <span className="font-medium text-ink">{user.firstName}</span>
                                             <span className="text-xs text-muted-foreground">{user.email}</span>
                                         </div>
                                     </TableCell>
                                     <TableCell>
                                         {user.isAccountOwner ? (
-                                            <Badge className="gap-1 bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50">
+                                            <Badge className="gap-1 bg-warning-sunk text-warning border-warning/30 hover:bg-warning-sunk">
                                                 <Crown className="h-3 w-3" /> Dueño de la cuenta
                                             </Badge>
                                         ) : (
-                                            <Badge variant="outline" className="text-slate-500">Miembro</Badge>
+                                            <Badge variant="outline" className="text-ink-3">Miembro</Badge>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">

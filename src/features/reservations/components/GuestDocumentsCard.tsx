@@ -184,7 +184,7 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
                         <button
                             onClick={() => setPreview(null)}
                             aria-label="Cerrar"
-                            className="absolute -top-10 right-0 text-white hover:text-slate-200 transition-colors"
+                            className="absolute -top-10 right-0 text-white hover:text-ink-4 transition-colors"
                         >
                             <X size={24} />
                         </button>

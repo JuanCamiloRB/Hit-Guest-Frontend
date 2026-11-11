@@ -125,10 +125,10 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
 
                 <div className="space-y-4 py-2">
                     {packagesStatus === "loading" && (
-                        <p role="status" className="text-sm text-slate-500">Cargando montos disponibles…</p>
+                        <p role="status" className="text-sm text-ink-3">Cargando montos disponibles…</p>
                     )}
                     {packagesStatus === "unavailable" && (
-                        <div role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                        <div role="alert" className="rounded-lg bg-warning-sunk px-3 py-2 text-sm text-warning">
                             <p>No pudimos cargar los montos sugeridos. Puedes ingresar otro monto o reintentar.</p>
                             <button type="button" onClick={loadPackages} className="mt-1 font-semibold underline">
                                 Reintentar
@@ -145,7 +145,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                                 className={`flex-1 rounded-xl border-2 py-2.5 text-sm font-bold transition-all ${
                                     amount === preset
                                         ? "border-primary bg-primary/5 text-primary"
-                                        : "border-slate-200 text-slate-500 hover:border-slate-300"
+                                        : "border-rule text-ink-3 hover:border-slate-300"
                                 }`}
                             >
                                 ${preset}
@@ -155,11 +155,11 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                     )}
 
                     <div className="space-y-1.5">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        <label className="text-xs font-semibold uppercase tracking-wide text-ink-3">
                             Otro monto (USD)
                         </label>
                         <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3 font-medium">
                                 $
                             </span>
                             <Input
@@ -173,7 +173,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                             />
                         </div>
                         {minimum !== null && (
-                            <p className={`text-xs ${belowMinimum ? "font-medium text-danger" : "text-slate-400"}`}>
+                            <p className={`text-xs ${belowMinimum ? "font-medium text-danger" : "text-ink-3"}`}>
                                 El monto mínimo de recarga es ${minimum} USD.
                             </p>
                         )}

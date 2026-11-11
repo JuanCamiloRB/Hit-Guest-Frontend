@@ -12,7 +12,7 @@ export default function SupportAgentsPage() {
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
             <div>
                 <h2 className="text-3xl font-bold tracking-tight">Agentes de soporte</h2>
-                <p className="text-sm text-slate-500">Quién puede entrar a las cuentas de los clientes.</p>
+                <p className="text-sm text-ink-3">Quién puede entrar a las cuentas de los clientes.</p>
             </div>
             <SupportAccessGate requires="agents">
                 <SupportAgentsManager />

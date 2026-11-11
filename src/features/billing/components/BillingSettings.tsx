@@ -91,33 +91,33 @@ export function BillingSettings() {
     const state = getBalanceState(amount)
     const balanceColor =
         state === "depleted"
-            ? "text-red-600"
+            ? "text-danger"
             : state === "low"
-              ? "text-amber-600"
-              : "text-slate-900"
+              ? "text-warning"
+              : "text-ink"
 
     return (
         <div className="max-w-3xl space-y-6">
             {/* ── Balance + Recharge ── */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-6">
-                <div className="flex items-center gap-2 text-sm font-semibold text-slate-500">
+            <div className="rounded-2xl border border-rule bg-white p-6">
+                <div className="flex items-center gap-2 text-sm font-semibold text-ink-3">
                     <Wallet className="h-4 w-4 text-primary" />
                     Saldo disponible
                 </div>
                 <div className="mt-2 flex items-baseline gap-2">
                     {pending ? (
-                        <span className="text-sm text-slate-400">
+                        <span className="text-sm text-ink-3">
                             El backend de pagos aún no está disponible.
                         </span>
                     ) : amount === null && (balanceLoading || !balanceLoaded) ? (
                         // También antes de la primera consulta: sin esto el primer
                         // render decía «no disponible» un instante.
-                        <div className="h-10 w-32 animate-pulse rounded bg-slate-100" />
+                        <div className="h-10 w-32 animate-pulse rounded bg-sunk" />
                     ) : amount === null ? (
                         // Sin saldo conocido se dice; «0,00 USD» en rojo sería un dato inventado.
                         <div>
-                            <span className="text-4xl font-black tabular-nums text-slate-400">— USD</span>
-                            <p className="mt-1 text-xs font-medium text-amber-600">
+                            <span className="text-4xl font-black tabular-nums text-ink-3">— USD</span>
+                            <p className="mt-1 text-xs font-medium text-warning">
                                 Saldo no disponible ·{" "}
                                 <button type="button" onClick={() => void refresh()} className="font-semibold underline underline-offset-2">
                                     Reintentar
@@ -130,15 +130,15 @@ export function BillingSettings() {
                                 {formatUsd(amount)}
                             </span>
                             {balanceError && (
-                                <p className="mt-1 text-xs font-medium text-amber-600">No se pudo actualizar el saldo</p>
+                                <p className="mt-1 text-xs font-medium text-warning">No se pudo actualizar el saldo</p>
                             )}
                         </div>
                     )}
                 </div>
 
                 {!pending && (
-                    <div className="mt-6 space-y-4 border-t border-slate-100 pt-5">
-                        <h3 className="text-sm font-bold text-slate-800">Recargar créditos</h3>
+                    <div className="mt-6 space-y-4 border-t border-rule pt-5">
+                        <h3 className="text-sm font-bold text-ink">Recargar créditos</h3>
 
                         {/* Preset packages */}
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -152,15 +152,15 @@ export function BillingSettings() {
                                         className={`rounded-xl border-2 px-3 py-3 text-left transition-all ${
                                             active
                                                 ? "border-primary bg-primary/5"
-                                                : "border-slate-200 hover:border-slate-300"
+                                                : "border-rule hover:border-slate-300"
                                         }`}
                                     >
                                         <div
-                                            className={`text-lg font-black ${active ? "text-primary" : "text-slate-800"}`}
+                                            className={`text-lg font-black ${active ? "text-primary" : "text-ink"}`}
                                         >
                                             {pkg.label}
                                         </div>
-                                        <div className="text-[11px] text-slate-400">{pkg.description}</div>
+                                        <div className="text-[11px] text-ink-3">{pkg.description}</div>
                                     </button>
                                 )
                             })}
@@ -168,11 +168,11 @@ export function BillingSettings() {
 
                         {/* Custom amount */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            <label className="text-xs font-semibold uppercase tracking-wide text-ink-3">
                                 Monto personalizado
                             </label>
                             <div className="relative max-w-xs">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-medium text-slate-400">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-medium text-ink-3">
                                     $
                                 </span>
                                 <input
@@ -182,10 +182,10 @@ export function BillingSettings() {
                                     value={custom}
                                     onChange={(e) => onCustomChange(e.target.value)}
                                     placeholder={`Custom amount (min ${formatUsd(minimum)})`}
-                                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-7 pr-3 font-semibold text-slate-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                    className="w-full rounded-xl border border-rule bg-sunk/50 py-2.5 pl-7 pr-3 font-semibold text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
                                 />
                             </div>
-                            {amountError && <p className="text-xs font-medium text-red-500">{amountError}</p>}
+                            {amountError && <p className="text-xs font-medium text-danger">{amountError}</p>}
                         </div>
 
                         <button

@@ -31,17 +31,17 @@ function BillingSuccessContent() {
 
     return (
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 px-4 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-emerald-100 bg-emerald-50">
-                <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-success/20 bg-success-sunk">
+                <CheckCircle2 className="h-10 w-10 text-success" />
             </div>
             <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-slate-900">Payment successful!</h1>
-                <p className="max-w-sm text-sm text-slate-500">
+                <h1 className="text-2xl font-bold text-ink">Payment successful!</h1>
+                <p className="max-w-sm text-sm text-ink-3">
                     Payment received — your balance will update shortly. Redirecting you to
                     billing…
                 </p>
                 {sessionId && (
-                    <p className="text-[11px] text-slate-300">Ref: {sessionId}</p>
+                    <p className="text-[11px] text-ink-4">Ref: {sessionId}</p>
                 )}
             </div>
             <Link

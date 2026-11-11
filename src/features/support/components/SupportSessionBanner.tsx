@@ -52,7 +52,7 @@ export function SupportSessionBanner() {
         <div
             role="region"
             aria-label="Modo soporte"
-            className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 bg-amber-400 px-4 py-2.5 text-slate-900"
+            className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 bg-amber-400 px-4 py-2.5 text-ink"
         >
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                 <Headset size={16} aria-hidden className="shrink-0" />
@@ -62,7 +62,7 @@ export function SupportSessionBanner() {
                     {userEmail ? ` (${userEmail})` : ""}
                 </span>
                 {idleMinutes != null && (
-                    <span className="text-xs text-slate-800">· Se cierra tras {idleMinutes} min sin actividad</span>
+                    <span className="text-xs text-ink">· Se cierra tras {idleMinutes} min sin actividad</span>
                 )}
             </p>
             <button

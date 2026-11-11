@@ -45,15 +45,15 @@ export function KunasStatusCard({
     }
 
     return (
-        <div className="max-w-lg rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="max-w-lg rounded-2xl border border-rule bg-white shadow-sm">
             {/* Header: title + status badge */}
-            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                <h3 className="text-lg font-bold text-slate-900">Kunas PMS</h3>
+            <div className="flex items-center justify-between border-b border-rule px-5 py-4">
+                <h3 className="text-lg font-bold text-ink">Kunas PMS</h3>
                 <span
                     className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
                         active
-                            ? "bg-emerald-50 text-emerald-600"
-                            : "bg-amber-50 text-amber-600"
+                            ? "bg-success-sunk text-success"
+                            : "bg-warning-sunk text-warning"
                     }`}
                 >
                     <span className={`h-2 w-2 rounded-full ${active ? "bg-emerald-500" : "bg-amber-500"}`} />
@@ -63,33 +63,33 @@ export function KunasStatusCard({
 
             {/* Body: account + sync info */}
             <div className="space-y-3 px-5 py-4">
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <Mail className="h-4 w-4 text-slate-400" />
-                    <span className="font-medium text-slate-800">{email}</span>
+                <div className="flex items-center gap-2 text-sm text-ink-2">
+                    <Mail className="h-4 w-4 text-ink-3" />
+                    <span className="font-medium text-ink">{email}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <Building2 className="h-4 w-4 text-slate-400" />
+                <div className="flex items-center gap-2 text-sm text-ink-2">
+                    <Building2 className="h-4 w-4 text-ink-3" />
                     {isSyncing ? (
-                        <span className="inline-flex items-center gap-1.5 font-medium text-slate-500">
+                        <span className="inline-flex items-center gap-1.5 font-medium text-ink-3">
                             <Loader2 className="h-3.5 w-3.5 animate-spin" />
                             Sincronizando…
                         </span>
                     ) : (
                         <span>
                             Propiedades sincronizadas:{" "}
-                            <span className="font-bold text-slate-900">{properties.length}</span>
+                            <span className="font-bold text-ink">{properties.length}</span>
                         </span>
                     )}
                 </div>
                 {!active && (
-                    <p className="text-sm text-amber-600">
+                    <p className="text-sm text-warning">
                         Integración pausada — los webhooks de KunasPMS se rechazan mientras esté inactiva.
                     </p>
                 )}
             </div>
 
             {/* Actions */}
-            <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 px-5 py-4">
+            <div className="flex flex-wrap items-center gap-2 border-t border-rule px-5 py-4">
                 <KunasCredentialsDialog
                     currentEmail={integration.parameters.email ?? ""}
                     onSave={onUpdateCredentials}

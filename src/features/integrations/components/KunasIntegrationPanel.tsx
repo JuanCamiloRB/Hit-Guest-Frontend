@@ -36,8 +36,8 @@ export function KunasIntegrationPanel() {
     if (loadError) {
         return (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
-                <AlertTriangle className="h-8 w-8 text-amber-400" />
-                <p className="text-sm text-slate-500">
+                <AlertTriangle className="h-8 w-8 text-warning" />
+                <p className="text-sm text-ink-3">
                     No se pudo cargar el estado de la integración.
                 </p>
                 <Button variant="outline" size="sm" onClick={refetch}>

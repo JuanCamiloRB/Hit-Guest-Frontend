@@ -78,7 +78,7 @@ export function GuestVerificationActions({
 
     if (!actions.showReset && !actions.showWaive && !actions.showRevoke) {
         const waiting = describeVerificationWait(guest.verificationSignals)
-        return waiting ? <p className="text-xs text-slate-500">{waiting}</p> : null
+        return waiting ? <p className="text-xs text-ink-3">{waiting}</p> : null
     }
 
     const reasonProblem = waiverReasonError(reason)

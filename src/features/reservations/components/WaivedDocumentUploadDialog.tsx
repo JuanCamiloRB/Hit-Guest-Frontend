@@ -55,13 +55,13 @@ function PhotoField({
     return (
         <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
-                <label htmlFor={id} className="text-sm font-semibold text-slate-800">{label}</label>
+                <label htmlFor={id} className="text-sm font-semibold text-ink">{label}</label>
                 {onRemove && photo && (
                     <button
                         type="button"
                         onClick={onRemove}
                         disabled={disabled}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-red-600 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-ink-3 hover:text-danger disabled:opacity-50"
                     >
                         <X size={12} aria-hidden /> Quitar
                     </button>
@@ -70,8 +70,8 @@ function PhotoField({
             <label
                 htmlFor={id}
                 className={cn(
-                    "flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed bg-slate-50 text-sm text-slate-500 transition-colors hover:bg-slate-100",
-                    error ? "border-red-300" : "border-slate-200",
+                    "flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed bg-sunk/50 text-sm text-ink-3 transition-colors hover:bg-sunk",
+                    error ? "border-danger/40" : "border-rule",
                     disabled && "cursor-not-allowed opacity-60",
                 )}
             >
@@ -98,7 +98,7 @@ function PhotoField({
             <p
                 id={`${id}-help`}
                 role={error ? "alert" : undefined}
-                className={error ? "text-xs text-red-600" : "text-xs text-slate-500"}
+                className={error ? "text-xs text-danger" : "text-xs text-ink-3"}
             >
                 {error ?? hint}
             </p>
@@ -231,7 +231,7 @@ export function WaivedDocumentUploadDialog({
                         />
                     </div>
 
-                    <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                    <p className="rounded-lg bg-sunk/50 px-3 py-2 text-xs text-ink-2">
                         Sube cada cara en su propia imagen, JPG o PNG. Si te mandaron un PDF o una sola imagen con
                         las dos caras, toma un pantallazo de cada una.
                     </p>

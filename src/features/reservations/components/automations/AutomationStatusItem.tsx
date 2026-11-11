@@ -238,7 +238,7 @@ export function AutomationStatusItem({
                             className={cn(
                                 "h-8 gap-1.5",
                                 confirmingResend
-                                    ? "border-amber-300 text-amber-700 hover:bg-amber-50 hover:text-amber-800"
+                                    ? "border-warning/40 text-warning hover:bg-warning-sunk hover:text-warning"
                                     : "border-primary/20 text-primary hover:bg-primary/10 hover:text-primary",
                             )}
                         >

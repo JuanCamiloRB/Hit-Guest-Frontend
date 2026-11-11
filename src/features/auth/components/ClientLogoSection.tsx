@@ -107,10 +107,10 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
     }
 
     return (
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+        <div className="rounded-2xl border border-rule bg-white p-5 space-y-4">
             <div className="space-y-1">
-                <h3 className="text-sm font-bold text-slate-800">Logo de la cuenta</h3>
-                <p className="text-xs text-slate-500">
+                <h3 className="text-sm font-bold text-ink">Logo de la cuenta</h3>
+                <p className="text-xs text-ink-3">
                     Aparecerá como membrete en los documentos que genera HIT Guest (reportes,
                     contratos, etc.). Se ajusta automáticamente para verse bien. PNG o JPEG, máx. 2 MB.
                 </p>
@@ -125,7 +125,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
             />
 
             <div className="flex items-center gap-4">
-                <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50">
+                <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-rule bg-sunk/50">
                     {logoUrl ? (
                         // Backend host is allow-listed in next.config; unoptimized keeps
                         // it simple for an arbitrary stored URL.
@@ -138,7 +138,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
                             className="h-full w-full object-contain"
                         />
                     ) : (
-                        <ImageIcon className="h-8 w-8 text-slate-300" />
+                        <ImageIcon className="h-8 w-8 text-ink-4" />
                     )}
                 </div>
 
@@ -162,7 +162,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
                                 size="sm"
                                 onClick={handleDelete}
                                 disabled={disabled}
-                                className="gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                className="gap-1.5 text-danger hover:text-danger hover:bg-danger-sunk"
                             >
                                 <Trash2 className="h-4 w-4" />
                                 Eliminar
@@ -170,7 +170,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
                         )}
                     </div>
                     {!clientUuid && (
-                        <p className="text-[11px] text-amber-600">
+                        <p className="text-[11px] text-warning">
                             No se pudo identificar la cuenta; recarga la página para subir un logo.
                         </p>
                     )}
@@ -178,7 +178,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
             </div>
 
             {error && (
-                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                <p className="text-sm text-danger bg-danger-sunk border border-danger/20 rounded-lg px-3 py-2">
                     {error}
                 </p>
             )}

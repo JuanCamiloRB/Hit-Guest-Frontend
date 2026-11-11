@@ -96,7 +96,7 @@ export function SupportAgentsManager() {
                 {state.kind === "loading" && <LoadingState rows={4} label="Cargando agentes" />}
                 {state.kind === "error" && (
                     <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-6 text-sm">
-                        <span className="text-red-700">{state.message}</span>
+                        <span className="text-danger">{state.message}</span>
                         <Button variant="outline" size="sm" onClick={reload}>
                             <RefreshCw size={14} className="mr-1.5" /> Reintentar
                         </Button>
@@ -107,15 +107,15 @@ export function SupportAgentsManager() {
                 )}
                 {state.kind === "ready" && state.items.length > 0 && (
                     <>
-                        <ul className="divide-y divide-slate-100">
+                        <ul className="divide-y divide-rule">
                             {state.items.map((agent) => {
                                 const since = shortDate(agent.createdAt)
                                 const session = agent.activeSession
                                 return (
                                     <li key={agent.uuid} className="flex flex-wrap items-center gap-3 px-5 py-3.5">
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-semibold text-slate-900">{agent.name}</p>
-                                            <p className="truncate text-xs text-slate-500">
+                                            <p className="text-sm font-semibold text-ink">{agent.name}</p>
+                                            <p className="truncate text-xs text-ink-3">
                                                 {[agent.email, since ? `Alta: ${since}` : null].filter(Boolean).join(" · ")}
                                             </p>
                                             {session && (
@@ -133,7 +133,7 @@ export function SupportAgentsManager() {
                                 )
                             })}
                         </ul>
-                        <div className="flex items-center justify-between border-t border-slate-100 px-5 py-3 text-xs text-slate-500">
+                        <div className="flex items-center justify-between border-t border-rule px-5 py-3 text-xs text-ink-3">
                             <span>Página {state.meta.currentPage} de {state.meta.lastPage}</span>
                             <div className="flex gap-2">
                                 <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => { setState({ kind: "loading" }); setPage(page - 1) }}>
@@ -211,7 +211,7 @@ function CreateAgentForm({ onCreated }: { onCreated: () => void }) {
                         aria-invalid={errors.name ? true : undefined}
                         className="h-11"
                     />
-                    {errors.name && <p className="text-xs text-red-600">{errors.name}</p>}
+                    {errors.name && <p className="text-xs text-danger">{errors.name}</p>}
                 </div>
                 <div className="space-y-1.5">
                     <Label htmlFor="agent-email">Correo</Label>
@@ -223,14 +223,14 @@ function CreateAgentForm({ onCreated }: { onCreated: () => void }) {
                         aria-invalid={errors.email ? true : undefined}
                         className="h-11"
                     />
-                    {errors.email && <p className="text-xs text-red-600">{errors.email}</p>}
+                    {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
                 </div>
                 <Button type="submit" className="h-11 sm:mt-[22px]" disabled={saving}>
                     {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <UserPlus className="mr-1.5 h-4 w-4" />}
                     Dar de alta
                 </Button>
                 {errors.form && (
-                    <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 sm:col-span-3">
+                    <p role="alert" className="rounded-lg bg-danger-sunk px-3 py-2 text-sm text-danger sm:col-span-3">
                         {errors.form}
                     </p>
                 )}

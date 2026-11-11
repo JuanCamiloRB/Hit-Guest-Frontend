@@ -87,7 +87,7 @@ export function TransferOwnershipDialog({
             <DialogContent className="sm:max-w-[440px]">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Crown className="h-5 w-5 text-amber-500" />
+                        <Crown className="h-5 w-5 text-warning" />
                         Transferir propiedad de la cuenta
                     </DialogTitle>
                     <DialogDescription>
@@ -97,7 +97,7 @@ export function TransferOwnershipDialog({
 
                 <div className="space-y-4 py-1">
                     <div className="space-y-1.5">
-                        <Label className="text-sm font-semibold text-slate-700">Nuevo dueño</Label>
+                        <Label className="text-sm font-semibold text-ink-2">Nuevo dueño</Label>
                         <Select value={selectedUuid} onValueChange={setSelectedUuid} disabled={submitting}>
                             <SelectTrigger>
                                 <SelectValue placeholder="Selecciona un usuario" />
@@ -109,7 +109,7 @@ export function TransferOwnershipDialog({
                                     </SelectItem>
                                 ))}
                                 {candidates.length === 0 && (
-                                    <div className="px-3 py-2 text-xs text-slate-400">
+                                    <div className="px-3 py-2 text-xs text-ink-3">
                                         No hay otros usuarios en la cuenta. Crea uno primero.
                                     </div>
                                 )}
@@ -117,9 +117,9 @@ export function TransferOwnershipDialog({
                         </Select>
                     </div>
 
-                    <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5">
-                        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
-                        <p className="text-xs text-amber-800">
+                    <div className="flex items-start gap-2 rounded-lg bg-warning-sunk border border-warning/30 px-3 py-2.5">
+                        <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
+                        <p className="text-xs text-warning">
                             Dejarás de ser el dueño. No podrás deshacer esto tú mismo: solo el nuevo dueño
                             podrá transferírtela de vuelta. Conservarás tu rol de Administrador.
                         </p>

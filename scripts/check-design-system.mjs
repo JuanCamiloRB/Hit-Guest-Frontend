@@ -24,7 +24,7 @@ const rules = [
     {
         id: "tailwind-palette-color",
         description: "usa un color de paleta en vez de un token semántico",
-        pattern: new RegExp(`\\b(?:text|bg|border|ring|outline|fill|stroke|shadow)-(?:${PALETTE})-(?:50|100|200|300|400|500|600|700|800|900|950)(?:/[0-9]+)?`, "g"),
+        pattern: new RegExp(`\\b(?:text|bg|border|ring|outline|fill|stroke|shadow)-(?:${PALETTE})-(?:950|900|800|700|600|500|400|300|200|100|50)(?:/[0-9]+)?(?![\\w-])`, "g"),
     },
     {
         id: "arbitrary-color",

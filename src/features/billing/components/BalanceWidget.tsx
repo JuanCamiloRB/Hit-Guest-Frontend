@@ -24,17 +24,17 @@ export function BalanceWidget() {
     // Nothing to show until the first load resolves, or if billing isn't live yet.
     if (pending) return null
     if (!loaded && isLoading) {
-        return <div className="hidden sm:block h-10 w-24 rounded-lg bg-slate-100 animate-pulse" />
+        return <div className="hidden sm:block h-10 w-24 rounded-lg bg-sunk animate-pulse" />
     }
     if (amount === null) return null
 
     const state = getBalanceState(amount)
     const styles =
         state === "depleted"
-            ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
+            ? "bg-danger-sunk border-danger/30 text-danger hover:bg-danger-sunk"
             : state === "low"
-              ? "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100"
-              : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+              ? "bg-warning-sunk border-warning/30 text-warning hover:bg-warning-sunk"
+              : "bg-sunk/50 border-rule text-ink-2 hover:bg-sunk"
 
     return (
         <Link

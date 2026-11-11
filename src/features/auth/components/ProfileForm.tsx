@@ -69,9 +69,9 @@ interface ProfileFormProps {
 }
 
 const inputClass =
-    "h-11 bg-slate-50/50 border-slate-200 focus-visible:ring-primary/20 focus-visible:border-primary transition-all rounded-xl"
+    "h-11 bg-sunk/50 border-rule focus-visible:ring-primary/20 focus-visible:border-primary transition-all rounded-xl"
 const selectClass =
-    "h-11 bg-slate-50/50 border-slate-200 focus:ring-primary/20 rounded-xl"
+    "h-11 bg-sunk/50 border-rule focus:ring-primary/20 rounded-xl"
 
 export function ProfileForm({ user }: ProfileFormProps) {
     const [isLoading, setIsLoading] = useState(false)
@@ -221,7 +221,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
         // enviaría los valores de la sesión encima de los datos reales.
         return (
             <div role="alert" className="flex flex-col items-center gap-2 py-16 text-center">
-                <p className="text-sm font-semibold text-slate-900">No pudimos cargar la cuenta</p>
+                <p className="text-sm font-semibold text-ink">No pudimos cargar la cuenta</p>
                 <p className="text-xs text-muted-foreground">{accountError}</p>
                 <Button
                     variant="outline"
@@ -257,7 +257,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                             name="personTypeId"
                             render={({ field }) => (
                                 <FormItem className="min-w-0">
-                                    <FormLabel className="text-sm font-semibold text-slate-700">Tipo de Perfil</FormLabel>
+                                    <FormLabel className="text-sm font-semibold text-ink-2">Tipo de Perfil</FormLabel>
                                     <FormControl>
                                         <Select onValueChange={field.onChange} value={field.value}>
                                             <SelectTrigger className={selectClass}>
@@ -281,7 +281,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                             name="identificationTypeId"
                             render={({ field }) => (
                                 <FormItem className="min-w-0">
-                                    <FormLabel className="text-sm font-semibold text-slate-700">Tipo de Documento</FormLabel>
+                                    <FormLabel className="text-sm font-semibold text-ink-2">Tipo de Documento</FormLabel>
                                     <FormControl>
                                         <Select onValueChange={field.onChange} value={field.value}>
                                             <SelectTrigger className={selectClass}>
@@ -305,7 +305,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                             name="identificationNumber"
                             render={({ field }) => (
                                 <FormItem className="min-w-0">
-                                    <FormLabel className="text-sm font-semibold text-slate-700">
+                                    <FormLabel className="text-sm font-semibold text-ink-2">
                                         N.º de Identificación
                                     </FormLabel>
                                     <FormControl>
@@ -323,7 +323,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         name="name"
                         render={({ field }) => (
                             <FormItem className={isCompany ? "col-span-1 md:col-span-2" : ""}>
-                                <FormLabel className="text-sm font-semibold text-slate-700">
+                                <FormLabel className="text-sm font-semibold text-ink-2">
                                     {isCompany ? "Razón Social" : "Nombre"}
                                 </FormLabel>
                                 <FormControl>
@@ -343,7 +343,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                             name="lastname"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-sm font-semibold text-slate-700">Apellidos</FormLabel>
+                                    <FormLabel className="text-sm font-semibold text-ink-2">Apellidos</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Rodríguez" {...field} className={inputClass} />
                                     </FormControl>
@@ -359,13 +359,13 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         name="email"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-sm font-semibold text-slate-700">Correo Electrónico</FormLabel>
+                                <FormLabel className="text-sm font-semibold text-ink-2">Correo Electrónico</FormLabel>
                                 <FormControl>
                                     <Input
                                         placeholder="nombre@ejemplo.com"
                                         {...field}
                                         disabled
-                                        className="h-11 bg-slate-50 border-slate-100 text-slate-400 cursor-not-allowed rounded-xl"
+                                        className="h-11 bg-sunk/50 border-rule text-ink-3 cursor-not-allowed rounded-xl"
                                     />
                                 </FormControl>
                                 <FormDescription className="text-[10px] italic">
@@ -380,7 +380,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         name="phone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-sm font-semibold text-slate-700">Teléfono / Whatsapp</FormLabel>
+                                <FormLabel className="text-sm font-semibold text-ink-2">Teléfono / Whatsapp</FormLabel>
                                 <FormControl>
                                     <PhoneInputField
                                         value={field.value}
@@ -399,7 +399,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         name="address"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-sm font-semibold text-slate-700">Dirección</FormLabel>
+                                <FormLabel className="text-sm font-semibold text-ink-2">Dirección</FormLabel>
                                 <FormControl>
                                     <Input placeholder="Calle 123 #45-67" {...field} className={inputClass} />
                                 </FormControl>
@@ -412,7 +412,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         name="addressDetail"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-sm font-semibold text-slate-700">Detalle de Dirección</FormLabel>
+                                <FormLabel className="text-sm font-semibold text-ink-2">Detalle de Dirección</FormLabel>
                                 <FormControl>
                                     <Input placeholder="Apto, oficina, torre… (opcional)" {...field} className={inputClass} />
                                 </FormControl>
@@ -427,7 +427,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         name="city"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-sm font-semibold text-slate-700">Ciudad</FormLabel>
+                                <FormLabel className="text-sm font-semibold text-ink-2">Ciudad</FormLabel>
                                 <FormControl>
                                     <Input placeholder="Bogotá" {...field} className={inputClass} />
                                 </FormControl>
@@ -440,7 +440,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         name="state"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-sm font-semibold text-slate-700">Estado / Departamento</FormLabel>
+                                <FormLabel className="text-sm font-semibold text-ink-2">Estado / Departamento</FormLabel>
                                 <FormControl>
                                     <Input placeholder="Cundinamarca" {...field} className={inputClass} />
                                 </FormControl>
@@ -453,7 +453,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         name="countryId"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-sm font-semibold text-slate-700">País</FormLabel>
+                                <FormLabel className="text-sm font-semibold text-ink-2">País</FormLabel>
                                 <FormControl>
                                     {/* Controlled so the label renders once the async list loads. */}
                                     <Select onValueChange={field.onChange} value={field.value}>
