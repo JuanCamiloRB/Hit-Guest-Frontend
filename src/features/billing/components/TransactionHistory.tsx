@@ -7,13 +7,13 @@ import { billingService } from "../services/billing-service"
 import { formatUsd, type CreditTransaction, type TransactionsPage } from "../types"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { StatusPill } from "@/components/ui/status-pill"
+import { StatusPill, type StatusTone } from "@/components/ui/status-pill"
 
-/** "Jul 10, 2026 2:32 PM" in the PM's local timezone. */
+/** «10 jul 2026, 2:32 p. m.» en la zona horaria local del PM. */
 function formatDate(iso: string): string {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return "—"
-    return d.toLocaleString("en-US", {
+    return d.toLocaleString("es-CO", {
         month: "short",
         day: "numeric",
         year: "numeric",
@@ -22,12 +22,28 @@ function formatDate(iso: string): string {
     })
 }
 
+/*
+ * El backend manda códigos (`credit`, `refunded`, `automation_refund`…), no
+ * textos: la etiqueta en español es del front. Un código que no está en la
+ * tabla se muestra tal cual, para que un valor nuevo se vea y no se disfrace
+ * de otro.
+ */
 const SOURCE_LABELS: Record<string, string> = {
-    trial: "Trial",
+    trial: "Prueba",
     stripe: "Stripe",
-    automation: "Automation",
-    automation_refund: "Refund",
+    automation: "Automatización",
+    automation_refund: "Reembolso",
     manual: "Manual",
+}
+
+const TYPE_LABELS: Record<string, string> = {
+    credit: "Crédito",
+    debit: "Débito",
+}
+
+const STATUS_COPY: Record<string, { label: string; tone: StatusTone }> = {
+    completed: { label: "Completada", tone: "success" },
+    refunded: { label: "Reembolsada", tone: "warning" },
 }
 
 function SourceBadge({ source }: { source: string }) {
@@ -41,16 +57,16 @@ function TypeBadge({ type }: { type: string }) {
     const isCredit = type === "credit"
     return (
         <Badge tone={isCredit ? "success" : "neutral"}>
-            {isCredit ? "Credit" : "Debit"}
+            {TYPE_LABELS[type] ?? type}
         </Badge>
     )
 }
 
 function StatusBadge({ status }: { status: string }) {
-    const refunded = status === "refunded"
+    const copy = STATUS_COPY[status]
     return (
-        <StatusPill tone={refunded ? "warning" : "success"}>
-            {refunded ? "Refunded" : "Completed"}
+        <StatusPill tone={copy?.tone ?? "idle"}>
+            {copy?.label ?? status}
         </StatusPill>
     )
 }
@@ -65,12 +81,15 @@ function AmountCell({ tx }: { tx: CreditTransaction }) {
     )
 }
 
-/** Paginated credit-transaction history (20/page, newest first). */
+/** Historial paginado de transacciones de crédito (20 por página, más recientes primero). */
 export function TransactionHistory() {
     const [page, setPage] = useState(1)
     const [data, setData] = useState<TransactionsPage | null>(null)
     const [isLoading, setIsLoading] = useState(true)
     const [error, setError] = useState(false)
+    // Reintentar con la misma página no cambia `page`: este contador es lo que
+    // vuelve a disparar la carga.
+    const [attempt, setAttempt] = useState(0)
 
     useEffect(() => {
         let mounted = true
@@ -84,7 +103,7 @@ export function TransactionHistory() {
         return () => {
             mounted = false
         }
-    }, [page])
+    }, [page, attempt])
 
     return (
         <div className="rounded-xl border border-rule bg-white">
@@ -104,16 +123,16 @@ export function TransactionHistory() {
                 </div>
             ) : error ? (
                 <div className="flex flex-col items-center gap-3 py-12 text-center">
-                    <p className="text-sm text-ink-3">Failed to load transactions.</p>
+                    <p className="text-sm text-ink-3">No se pudo cargar el historial.</p>
                     <Button type="button" variant="link" size="inline"
-                        onClick={() => setPage((p) => p)}
+                        onClick={() => setAttempt((n) => n + 1)}
                     >
-                        Retry
+                        Reintentar
                     </Button>
                 </div>
             ) : !data || data.data.length === 0 ? (
                 <div className="py-12 text-center text-sm text-ink-3">
-                    No transactions yet. Recharge to get started.
+                    Aún no hay transacciones. Recarga créditos para empezar.
                 </div>
             ) : (
                 <>
@@ -121,13 +140,13 @@ export function TransactionHistory() {
                         <table className="w-full min-w-180 text-sm">
                             <thead>
                                 <tr className="border-b border-rule text-left text-xs font-bold text-ink-3">
-                                    <th className="px-5 py-2.5">Date</th>
-                                    <th className="px-3 py-2.5">Description</th>
-                                    <th className="px-3 py-2.5">Type</th>
-                                    <th className="px-3 py-2.5">Source</th>
-                                    <th className="px-3 py-2.5 text-right">Amount</th>
-                                    <th className="px-3 py-2.5 text-right">Balance</th>
-                                    <th className="px-5 py-2.5">Status</th>
+                                    <th className="px-5 py-2.5">Fecha</th>
+                                    <th className="px-3 py-2.5">Descripción</th>
+                                    <th className="px-3 py-2.5">Tipo</th>
+                                    <th className="px-3 py-2.5">Origen</th>
+                                    <th className="px-3 py-2.5 text-right">Monto</th>
+                                    <th className="px-3 py-2.5 text-right">Saldo</th>
+                                    <th className="px-5 py-2.5">Estado</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-rule">
@@ -153,7 +172,7 @@ export function TransactionHistory() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between border-t border-rule px-5 py-3">
                         <p className="text-xs text-ink-3">
-                            Showing {data.from}–{data.to} of {data.total}
+                            Mostrando {data.from}–{data.to} de {data.total}
                         </p>
                         <div className="flex items-center gap-2">
                             <Button type="button" variant="outline" size="sm"
@@ -161,17 +180,17 @@ export function TransactionHistory() {
                                 disabled={data.currentPage <= 1 || isLoading}
                                 className="inline-flex items-center"
                             >
-                                <Icon icon={ChevronLeft} size="sm" /> Previous
+                                <Icon icon={ChevronLeft} size="sm" /> Anterior
                             </Button>
                             <span className="text-xs font-medium text-ink-3">
-                                Page {data.currentPage} of {data.lastPage}
+                                Página {data.currentPage} de {data.lastPage}
                             </span>
                             <Button type="button" variant="outline" size="sm"
                                 onClick={() => setPage((p) => Math.min(data.lastPage, p + 1))}
                                 disabled={data.currentPage >= data.lastPage || isLoading}
                                 className="inline-flex items-center"
                             >
-                                Next <Icon icon={ChevronRight} size="sm" />
+                                Siguiente <Icon icon={ChevronRight} size="sm" />
                                 {isLoading && <Icon icon={Loader2} size="xs" className="ml-1 animate-spin" />}
                             </Button>
                         </div>

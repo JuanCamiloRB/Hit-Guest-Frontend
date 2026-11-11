@@ -36,13 +36,13 @@ export function BalanceBanner() {
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-danger/30 bg-danger-sunk px-4 py-3 sm:px-6 md:px-10">
                 <div className="flex items-center gap-2.5 text-sm font-medium text-danger">
                     <Icon icon={AlertTriangle} />
-                    <span>Your automations are paused. Your account has no credits left.</span>
+                    <span>Tus automatizaciones están en pausa: tu cuenta se quedó sin créditos.</span>
                 </div>
                 <Button asChild size="sm">
                     <Link
                         href={BILLING_HREF}
                     >
-                        Add Credits
+                        Recargar créditos
                     </Link>
                 </Button>
             </div>
@@ -55,8 +55,8 @@ export function BalanceBanner() {
             <div className="flex items-center gap-2.5 text-sm font-medium text-warning">
                 <Icon icon={AlertTriangle} />
                 <span>
-                    Your balance is running low ({formatUsd(amount)} remaining). Top up to avoid
-                    interruptions.
+                    Tu saldo se está agotando (quedan {formatUsd(amount)}). Recarga para evitar
+                    interrupciones.
                 </span>
             </div>
             <div className="flex items-center gap-2">
@@ -64,7 +64,7 @@ export function BalanceBanner() {
                     <Link
                         href={BILLING_HREF}
                     >
-                        Add Credits
+                        Recargar créditos
                     </Link>
                 </Button>
                 <UnstyledButton
