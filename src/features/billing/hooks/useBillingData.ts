@@ -80,6 +80,38 @@ export function resetBillingDataCache(): void {
     lastResult = null
 }
 
+/**
+ * Un refresco que falla para ALGUNAS reservas no borra lo que ya se sabía de
+ * ellas: la reserva conserva su último consumo conocido y solo va a «no
+ * disponible» si nunca se pudo consultar. Volver al Tablero dejaba en «Consumo
+ * no disponible» reservas cuyo consumo estaba en pantalla un momento antes.
+ * Devuelve cuántas quedaron con el valor anterior, para avisar.
+ */
+function keepKnownCosts(
+    reservations: { id: string }[],
+    next: ReservationCostsResult,
+    previous: ReservationCostsResult | null,
+): { result: ReservationCostsResult; stale: number } {
+    if (!previous || next.failedReservations.length === 0) return { result: next, stale: 0 }
+    const fresh = new Map(next.costs.map((c) => [c.reservationId, c]))
+    const known = new Map(previous.costs.map((c) => [c.reservationId, c]))
+    const failed = new Map(next.failedReservations.map((f) => [f.reservationId, f]))
+    const costs: ReservationCost[] = []
+    const failedReservations: ReservationCostFailure[] = []
+    let stale = 0
+    for (const { id } of reservations) {
+        const cost = fresh.get(id) ?? known.get(id)
+        if (cost) {
+            if (!fresh.has(id)) stale += 1
+            costs.push(cost)
+        } else {
+            const failure = failed.get(id)
+            if (failure) failedReservations.push(failure)
+        }
+    }
+    return { result: { costs, failedReservations }, stale }
+}
+
 /** Los nombres que trae cada fila de consumo, actualizados con los del portafolio. */
 function withNames<T extends { reservationId: string; unitName: string; propertyName: string }>(
     rows: T[],
@@ -151,14 +183,16 @@ export function useBillingData(): BillingData {
                     })
                 }
                 : undefined
-            const result = await consumptionService.getReservationCosts(reservations, controller.signal, onProgress)
-            if (result.costs.length === 0 && result.failedReservations.length > 0) {
-                throw new AllCostRequestsFailedError(result.failedReservations.length)
+            const loaded = await consumptionService.getReservationCosts(reservations, controller.signal, onProgress)
+            if (loaded.costs.length === 0 && loaded.failedReservations.length > 0) {
+                throw new AllCostRequestsFailedError(loaded.failedReservations.length)
             }
             if (id !== requestId.current) return
+            const { result, stale } = keepKnownCosts(reservations, loaded, lastResult)
             lastResult = result
             setData(result)
-            setLastLoadIssue(null)
+            // Con valores anteriores a la vista, se avisa igual que un refresco fallido.
+            setLastLoadIssue(stale > 0 ? "error" : null)
         } catch (error) {
             if (id !== requestId.current || controller.signal.aborted) return
             console.error("[useBillingData] consumo no disponible:", error)

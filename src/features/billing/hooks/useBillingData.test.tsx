@@ -289,6 +289,42 @@ describe("useBillingData — volver al Tablero muestra lo último mientras actua
         expect(hook.current.summary?.monthTotal).toBe(2.5)
     })
 
+    it("si al volver fallan algunas consultas, esas reservas conservan su último consumo (no pasan a «no disponible»)", async () => {
+        // El caso reportado: primera visita con todo cargado; al volver, la
+        // mayoría de las consultas falla y la tabla quedaba en «Consumo no
+        // disponible» para reservas cuyo consumo ya se conocía.
+        mocks.list.mockResolvedValue([{ id: "a" }, { id: "b" }, { id: "c" }])
+        mocks.getReservationCosts.mockResolvedValueOnce(result([cost("a", 2.5), cost("b", 1), cost("c", 0.5)]))
+        const first = renderHook(() => useBillingData())
+        await waitFor(() => expect(first.result.current.status).toBe("ready"))
+        first.unmount()
+
+        mocks.getReservationCosts.mockResolvedValueOnce(result([cost("a", 3)], [failure("b"), failure("c")]))
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(hook.current.status).not.toBe("refreshing"))
+
+        // a se actualiza; b y c conservan lo último conocido, en su orden.
+        expect(hook.current.costs.map((c) => [c.reservationId, c.total])).toEqual([["a", 3], ["b", 1], ["c", 0.5]])
+        expect(hook.current.failedReservations).toEqual([])
+        expect(hook.current.summary?.monthTotal).toBe(4.5)
+        // Y se avisa que parte de lo que se ve no se pudo actualizar.
+        expect(hook.current.refreshFailed).toBe(true)
+    })
+
+    it("una reserva sin consumo previo que falla sí va a «no disponible»", async () => {
+        mocks.list.mockResolvedValue([{ id: "a" }, { id: "b" }])
+        mocks.getReservationCosts.mockResolvedValueOnce(result([cost("a", 2.5)]))
+        const first = renderHook(() => useBillingData())
+        await waitFor(() => expect(first.result.current.status).toBe("ready"))
+        first.unmount()
+
+        mocks.getReservationCosts.mockResolvedValueOnce(result([cost("a", 2.5)], [failure("b")]))
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(hook.current.status).toBe("partial"))
+        expect(hook.current.failedReservations.map((f) => f.reservationId)).toEqual(["b"])
+        expect(hook.current.refreshFailed).toBe(false)
+    })
+
     it("un error nunca queda guardado: sin una carga buena previa, volver arranca en loading", async () => {
         mocks.list.mockRejectedValueOnce(new Error("network down"))
         const first = renderHook(() => useBillingData())
