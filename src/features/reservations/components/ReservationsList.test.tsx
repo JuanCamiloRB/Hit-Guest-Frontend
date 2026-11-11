@@ -1,6 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { resetReservationsCache } from "../hooks/useReservations"
+import { resetAutomationStatusMemory } from "../hooks/useAutomationStatusLoader"
+
+// El semáforo consultado se recuerda entre montajes (ventana de frescura):
+// cada prueba arranca sin recuerdos de la anterior.
+beforeEach(() => resetAutomationStatusMemory())
 import type { Reservation } from "@/types"
 import ReservationsList from "./ReservationsList"
 import { ReservationsNotReadyError } from "../services/reservations-service"

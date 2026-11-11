@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react"
+import { act, render, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Reservation } from "@/types"
 
@@ -24,6 +24,7 @@ vi.mock("next/navigation", () => ({
 }))
 
 import { resetReservationsCache } from "../hooks/useReservations"
+import { resetAutomationStatusMemory } from "../hooks/useAutomationStatusLoader"
 import { resetPropertiesCaches } from "@/features/properties/lib/properties-cache"
 import ReservationsList from "./ReservationsList"
 
@@ -46,6 +47,7 @@ describe("Operaciones — volver con la lista en caché carga los semáforos sin
     beforeEach(() => {
         resetReservationsCache()
         resetPropertiesCaches()
+        resetAutomationStatusMemory()
         vi.clearAllMocks()
         mocks.list.mockResolvedValue(ROWS)
         mocks.loadAutomationStatus.mockResolvedValue({ contract: "success" })
@@ -57,7 +59,10 @@ describe("Operaciones — volver con la lista en caché carga los semáforos sin
         expect(requestedIds().every((id) => Number(id.slice(1)) < 20)).toBe(true)
     })
 
-    it("volver (caché caliente, la tabla aparece en el primer render): vuelve a pedirlos solo", async () => {
+    it("volver enseguida (caché caliente): los semáforos vienen de memoria, sin pedirlos", async () => {
+        // Volver a Operaciones disparaba otra vez 20 consultas aunque se hubiera
+        // salido un segundo antes: con el Tablero haciendo lo propio, ir y
+        // volver agotaba el límite por minuto del backend.
         const first = render(<ReservationsList />)
         await waitFor(() => expect(new Set(requestedIds()).size).toBe(20))
         first.unmount()
@@ -65,6 +70,19 @@ describe("Operaciones — volver con la lista en caché carga los semáforos sin
 
         render(<ReservationsList />)
         // La lista ya está: se pinta sin esqueleto, en el primer render.
+        expect(screen.getByText("Huésped 0")).toBeInTheDocument()
+        await act(async () => { await new Promise((r) => setTimeout(r, 50)) })
+        expect(requestedIds()).toEqual([])
+    })
+
+    it("volver pasada la ventana de frescura: vuelve a pedirlos solo", async () => {
+        const first = render(<ReservationsList />)
+        await waitFor(() => expect(new Set(requestedIds()).size).toBe(20))
+        first.unmount()
+        mocks.loadAutomationStatus.mockClear()
+        resetAutomationStatusMemory()
+
+        render(<ReservationsList />)
         expect(screen.getByText("Huésped 0")).toBeInTheDocument()
         await waitFor(() => expect(new Set(requestedIds()).size).toBe(20))
         expect(requestedIds().slice(0, 10).sort()).toEqual(ROWS.slice(0, 10).map((r) => r.id).sort())
@@ -75,6 +93,7 @@ describe("Operaciones — volver con la lista en caché carga los semáforos sin
         await waitFor(() => expect(new Set(requestedIds()).size).toBe(20))
         first.unmount()
         mocks.loadAutomationStatus.mockClear()
+        resetAutomationStatusMemory()
 
         render(<ReservationsList />, { reactStrictMode: true })
         await waitFor(() => expect(new Set(requestedIds()).size).toBe(20))

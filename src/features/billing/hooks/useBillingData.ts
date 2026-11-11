@@ -7,6 +7,7 @@ import { reservationsCache } from "@/features/reservations/hooks/useReservations
 import { withListingNames } from "@/features/reservations/lib/listing-names"
 import { useListingPortfolio } from "@/features/reservations/hooks/useListingPortfolio"
 import { consumptionService, type CostLoadProgress } from "../services/consumption-service"
+import { isRateLimitError } from "@/lib/rate-limit"
 import type {
     ConsumptionSummary,
     MonthlyPoint,
@@ -43,6 +44,11 @@ interface BillingData {
      * Solo con datos visibles; sin datos, eso es `status: "error"`.
      */
     refreshFailed: boolean
+    /**
+     * El backend pidió esperar (429): con datos visibles se conservan; sin
+     * ellos, `status: "error"`. En los dos casos el aviso dice «en un minuto».
+     */
+    rateLimited: boolean
     /** El backend respondió 202: conserva datos anteriores si existen. */
     syncing: boolean
     /** KPIs for `refMonth`; null mientras no hay datos confiables. */
@@ -60,11 +66,22 @@ interface BillingData {
 
 /** Hubo reservas y no se pudo consultar ninguna: no hay nada que mostrar. */
 class AllCostRequestsFailedError extends Error {
-    constructor(count: number) {
+    constructor(count: number, public readonly rateLimited: boolean) {
         super(`ninguna de las ${count} consultas de consumo respondió`)
         this.name = "AllCostRequestsFailedError"
     }
 }
+
+/**
+ * Cuánto vale lo ya consultado antes de volver a pedirlo (por reserva y para
+ * la lista). Entrar al Tablero disparaba UNA consulta por reserva cada vez,
+ * aunque se hubiera salido un segundo antes: ir y volver entre pantallas
+ * agotaba el límite por minuto del backend (429) y todo quedaba «no
+ * disponible». Dentro de la ventana no se pide nada; `retry` y una reserva
+ * nueva (`reservationCreated`) sí fuerzan la consulta.
+ */
+export const COSTS_FRESH_MS = 2 * 60_000
+export const LIST_FRESH_MS = 60_000
 
 /**
  * Última carga buena. Volver al Tablero la muestra de inmediato (`refreshing`)
@@ -74,42 +91,65 @@ class AllCostRequestsFailedError extends Error {
  * módulo (ver `support-session.ts`).
  */
 let lastResult: ReservationCostsResult | null = null
+/** Cuándo se consultó bien el consumo de cada reserva (epoch ms). */
+let costFetchedAt = new Map<string, number>()
+let listFetchedAt = 0
 
 /** Solo para tests: olvida la última carga. */
 export function resetBillingDataCache(): void {
     lastResult = null
+    costFetchedAt = new Map()
+    listFetchedAt = 0
+}
+
+/** Solo para tests: lo cargado sigue, pero ya no cuenta como fresco. */
+export function expireBillingDataCache(): void {
+    costFetchedAt = new Map()
+    listFetchedAt = 0
+}
+
+/** Solo para tests: solo la lista deja de estar fresca; el consumo por reserva sigue. */
+export function expireBillingListCache(): void {
+    listFetchedAt = 0
 }
 
 /**
- * Un refresco que falla para ALGUNAS reservas no borra lo que ya se sabía de
- * ellas: la reserva conserva su último consumo conocido y solo va a «no
- * disponible» si nunca se pudo consultar. Volver al Tablero dejaba en «Consumo
- * no disponible» reservas cuyo consumo estaba en pantalla un momento antes.
- * Devuelve cuántas quedaron con el valor anterior, para avisar.
+ * Mezcla lo recién consultado con lo que ya se sabía, en el orden de la
+ * lista. Una reserva que no se consultó (estaba fresca) o cuya consulta falló
+ * conserva su último consumo conocido: un refresco parcial no borra datos que
+ * estaban en pantalla un momento antes. Solo va a «no disponible» la que
+ * nunca se pudo consultar. `stale` = cuántas se pidieron y se quedaron con el
+ * valor anterior, para avisar.
  */
-function keepKnownCosts(
+function mergeCosts(
     reservations: { id: string }[],
-    next: ReservationCostsResult,
+    queried: ReadonlySet<string>,
+    loaded: ReservationCostsResult,
     previous: ReservationCostsResult | null,
 ): { result: ReservationCostsResult; stale: number } {
-    if (!previous || next.failedReservations.length === 0) return { result: next, stale: 0 }
-    const fresh = new Map(next.costs.map((c) => [c.reservationId, c]))
-    const known = new Map(previous.costs.map((c) => [c.reservationId, c]))
-    const failed = new Map(next.failedReservations.map((f) => [f.reservationId, f]))
+    const fresh = new Map(loaded.costs.map((c) => [c.reservationId, c]))
+    const known = new Map(previous?.costs.map((c) => [c.reservationId, c]) ?? [])
+    const failed = new Map(loaded.failedReservations.map((f) => [f.reservationId, f]))
     const costs: ReservationCost[] = []
     const failedReservations: ReservationCostFailure[] = []
     let stale = 0
+    const placed = new Set<string>()
     for (const { id } of reservations) {
+        placed.add(id)
         const cost = fresh.get(id) ?? known.get(id)
         if (cost) {
-            if (!fresh.has(id)) stale += 1
+            if (!fresh.has(id) && queried.has(id)) stale += 1
             costs.push(cost)
         } else {
             const failure = failed.get(id)
             if (failure) failedReservations.push(failure)
         }
     }
-    return { result: { costs, failedReservations }, stale }
+    // Lo que el servicio devolvió y no está en la lista no se descarta: es
+    // un dato real (la lista pudo cambiar entre una consulta y otra).
+    for (const c of loaded.costs) if (!placed.has(c.reservationId)) costs.push(c)
+    for (const f of loaded.failedReservations) if (!placed.has(f.reservationId)) failedReservations.push(f)
+    return { result: { costs, failedReservations, rateLimited: loaded.rateLimited }, stale }
 }
 
 /** Los nombres que trae cada fila de consumo, actualizados con los del portafolio. */
@@ -146,7 +186,7 @@ export function useBillingData(): BillingData {
     const [partial, setPartial] = useState<{ byIndex: (ReservationCost | null)[]; done: number } | null>(null)
     // Arranca en true: la primera carga sale del efecto de montaje.
     const [inFlight, setInFlight] = useState(true)
-    const [lastLoadIssue, setLastLoadIssue] = useState<"error" | "syncing" | null>(null)
+    const [lastLoadIssue, setLastLoadIssue] = useState<"error" | "syncing" | "rate-limited" | null>(null)
     /** Solo la solicitud más reciente escribe el estado. */
     const requestId = useRef(0)
     const activeController = useRef<AbortController | null>(null)
@@ -156,7 +196,8 @@ export function useBillingData(): BillingData {
     const [refMonth, setRefMonthState] = useState(() => startOfMonth(new Date()))
     const setRefMonth = useCallback((month: Date) => setRefMonthState(startOfMonth(month)), [])
 
-    const fetchCosts = useCallback(async () => {
+    /** `force`: reintento o reserva nueva; ignora la ventana de frescura. */
+    const fetchCosts = useCallback(async (force = false) => {
         const id = ++requestId.current
         activeController.current?.abort()
         const controller = new AbortController()
@@ -165,12 +206,23 @@ export function useBillingData(): BillingData {
             // La misma lista que Operaciones y el Calendario (dedupe y último
             // valor). Los nombres del portafolio no se esperan: se ponen al
             // mostrar (`withNames`), así el BFF no retrasa ninguna consulta.
-            const reservations = await reservationsCache.load()
+            // Dentro de la ventana se usa la lista ya cargada, sin pedirla.
+            const cachedList = reservationsCache.read()
+            const listFresh = !force && cachedList !== null && Date.now() - listFetchedAt < LIST_FRESH_MS
+            const reservations = listFresh ? cachedList : await reservationsCache.load()
+            if (!listFresh) listFetchedAt = Date.now()
             if (controller.signal.aborted) return
+            // Solo lo que no está fresco. Sin datos previos, todo.
+            const known = lastResult
+            const now = Date.now()
+            const toQuery = force || known === null
+                ? reservations
+                : reservations.filter((r) => now - (costFetchedAt.get(r.id) ?? 0) >= COSTS_FRESH_MS)
+            const queried = new Set(toQuery.map((r) => r.id))
             // Progresivo solo sin datos en pantalla (`lastResult` es lo que se
             // ve): una actualización conserva lo anterior hasta tener el
             // resultado completo (fase 1).
-            const progressive = lastResult === null
+            const progressive = known === null
             if (progressive) setPartial({ byIndex: new Array(reservations.length).fill(null), done: 0 })
             const onProgress = progressive
                 ? ({ done, index, cost }: CostLoadProgress) => {
@@ -183,21 +235,29 @@ export function useBillingData(): BillingData {
                     })
                 }
                 : undefined
-            const loaded = await consumptionService.getReservationCosts(reservations, controller.signal, onProgress)
-            if (loaded.costs.length === 0 && loaded.failedReservations.length > 0) {
-                throw new AllCostRequestsFailedError(loaded.failedReservations.length)
+            // Con datos en pantalla y nada vencido no se consulta nada. La
+            // primera carga siempre consulta (aunque la lista venga vacía).
+            const loaded: ReservationCostsResult = toQuery.length > 0 || known === null
+                ? await consumptionService.getReservationCosts(toQuery, controller.signal, onProgress)
+                : { costs: [], failedReservations: [] }
+            // Sin nada previo que conservar, un fallo de todas es un error total.
+            if (known === null && loaded.costs.length === 0 && loaded.failedReservations.length > 0) {
+                throw new AllCostRequestsFailedError(loaded.failedReservations.length, loaded.rateLimited === true)
             }
             if (id !== requestId.current) return
-            const { result, stale } = keepKnownCosts(reservations, loaded, lastResult)
+            const fetchedAt = Date.now()
+            for (const c of loaded.costs) costFetchedAt.set(c.reservationId, fetchedAt)
+            const { result, stale } = mergeCosts(reservations, queried, loaded, known)
             lastResult = result
             setData(result)
             // Con valores anteriores a la vista, se avisa igual que un refresco fallido.
-            setLastLoadIssue(stale > 0 ? "error" : null)
+            setLastLoadIssue(loaded.rateLimited ? "rate-limited" : stale > 0 ? "error" : null)
         } catch (error) {
             if (id !== requestId.current || controller.signal.aborted) return
             console.error("[useBillingData] consumo no disponible:", error)
             // Lo anterior se conserva: un fallo no reemplaza datos por ceros.
-            setLastLoadIssue(error instanceof ReservationsNotReadyError ? "syncing" : "error")
+            const rateLimited = isRateLimitError(error) || (error instanceof AllCostRequestsFailedError && error.rateLimited)
+            setLastLoadIssue(error instanceof ReservationsNotReadyError ? "syncing" : rateLimited ? "rate-limited" : "error")
         } finally {
             if (id === requestId.current) {
                 if (activeController.current === controller) activeController.current = null
@@ -209,7 +269,7 @@ export function useBillingData(): BillingData {
 
     const retry = useCallback(() => {
         setInFlight(true)
-        void fetchCosts()
+        void fetchCosts(true)
     }, [fetchCosts])
 
     // Suscribirse además cuenta al Tablero como consumidor de la lista
@@ -260,7 +320,8 @@ export function useBillingData(): BillingData {
         costs,
         loadingProgress: !data && partial ? { done: partial.done, total: partial.byIndex.length } : null,
         failedReservations,
-        refreshFailed: data !== null && lastLoadIssue === "error" && !inFlight,
+        refreshFailed: data !== null && (lastLoadIssue === "error" || lastLoadIssue === "rate-limited") && !inFlight,
+        rateLimited: lastLoadIssue === "rate-limited" && !inFlight,
         syncing: lastLoadIssue === "syncing" && !inFlight,
         summary: analytics?.summary ?? null,
         monthly: analytics?.monthly ?? [],

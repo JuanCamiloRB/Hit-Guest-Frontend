@@ -8,7 +8,7 @@ vi.mock("../services/reservations-service", () => ({
     reservationsService: { loadAutomationStatus: mocks.loadAutomationStatus },
 }))
 
-import { useAutomationStatusLoader } from "./useAutomationStatusLoader"
+import { resetAutomationStatusMemory, useAutomationStatusLoader } from "./useAutomationStatusLoader"
 
 const row = (id: string) => ({ id } as Reservation)
 const rows = (...ids: string[]) => ids.map(row)
@@ -29,6 +29,7 @@ describe("useAutomationStatusLoader — solo lo necesario", () => {
         // mockReset, no clearAllMocks: una implementación que nunca resuelve no
         // puede pasar de un test al siguiente.
         mocks.loadAutomationStatus.mockReset()
+        resetAutomationStatusMemory()
     })
 
     it("lo visible se adelanta a la página siguiente que todavía espera turno", async () => {
@@ -159,5 +160,55 @@ describe("useAutomationStatusLoader — solo lo necesario", () => {
         act(() => { preparation = result.current.ensure(rows("a")) })
         unmount()
         await expect(preparation.promise).resolves.toEqual({ cancelled: true })
+    })
+})
+
+describe("useAutomationStatusLoader — lo consultado vale al volver (DS: límite por minuto)", () => {
+    beforeEach(() => {
+        mocks.loadAutomationStatus.mockReset()
+        resetAutomationStatusMemory()
+    })
+
+    it("al volver a la pantalla, lo consultado hace un momento no se vuelve a pedir; renew sí", async () => {
+        mocks.loadAutomationStatus.mockResolvedValue(light("success"))
+        const first = renderHook(() => useAutomationStatusLoader())
+        act(() => first.result.current.prioritize(rows("a", "b")))
+        await waitFor(() => expect(statusOf(first.result, "b").automationStatus).toBeDefined())
+        expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(2)
+        first.unmount()
+
+        const second = renderHook(() => useAutomationStatusLoader())
+        expect(statusOf(second.result, "a").automationStatus).toBeDefined()
+        act(() => second.result.current.prioritize(rows("a", "b", "c")))
+        await waitFor(() => expect(statusOf(second.result, "c").automationStatus).toBeDefined())
+        // Solo «c» era nueva.
+        expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(3)
+
+        act(() => second.result.current.renew(rows("a")))
+        await waitFor(() => expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(4))
+    })
+
+    it("un fallo no se recuerda entre montajes: al volver se vuelve a pedir", async () => {
+        mocks.loadAutomationStatus.mockRejectedValue(new Error("x"))
+        const first = renderHook(() => useAutomationStatusLoader())
+        act(() => first.result.current.prioritize(rows("a")))
+        await waitFor(() => expect(statusOf(first.result, "a").automationStatusFailed).toBe(true))
+        first.unmount()
+
+        mocks.loadAutomationStatus.mockResolvedValue(light("success"))
+        const second = renderHook(() => useAutomationStatusLoader())
+        act(() => second.result.current.prioritize(rows("a")))
+        await waitFor(() => expect(statusOf(second.result, "a").automationStatus).toBeDefined())
+    })
+
+    it("con el freno de 429 vigente, lo que espera turno falla en el acto sin salir a la red", async () => {
+        const { noteRateLimited, resetRateLimit } = await import("@/lib/rate-limit")
+        noteRateLimited(30)
+        mocks.loadAutomationStatus.mockResolvedValue(light("success"))
+        const { result } = renderHook(() => useAutomationStatusLoader())
+        act(() => result.current.prioritize(rows("a", "b")))
+        await waitFor(() => expect(statusOf(result, "b").automationStatusFailed).toBe(true))
+        expect(mocks.loadAutomationStatus).not.toHaveBeenCalled()
+        resetRateLimit()
     })
 })

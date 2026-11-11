@@ -3,6 +3,7 @@ import { consumptionService, lifetimeCostStats } from "./consumption-service"
 import type { ReservationCost } from "../types"
 import { automationService } from "@/features/properties/services/automation-service"
 import type { Reservation } from "@/types"
+import { noteRateLimited, resetRateLimit } from "@/lib/rate-limit"
 
 vi.mock("@/features/properties/services/automation-service", async (importOriginal) => ({
     // `classifyRecord` importa `canonicalSlug` del mismo módulo: se conserva lo
@@ -268,5 +269,35 @@ describe("getReservationCosts — onProgress avisa cada consulta al llegar", () 
         expect(seen.filter((s) => s.index !== 1).every((s) => !s.failed)).toBe(true)
         expect(result.costs.map((c) => c.reservationId)).toEqual(["res-0", "res-2"])
         expect(result.failedReservations.map((f) => f.reservationId)).toEqual(["res-1"])
+    })
+})
+
+describe("getReservationCosts — un 429 frena las que esperan turno", () => {
+
+    it("tras el primer 429, las que esperaban turno no salen a la red y el resultado lo marca", async () => {
+        resetRateLimit()
+        vi.mocked(automationService.listUsageRecords).mockClear()
+        const reservations = Array.from({ length: 12 }, (_, i) => ({ id: `r${i}`, guestName: `H${i}`, unitName: "u", propertyName: "p", checkIn: new Date() }) as Reservation)
+        vi.mocked(automationService.listUsageRecords).mockImplementation(async () => {
+            // El backend ya dijo «basta»: como hace el api-client al recibir 429.
+            noteRateLimited(null)
+            throw Object.assign(new Error("Too Many Attempts."), { status: 429 })
+        })
+        const result = await consumptionService.getReservationCosts(reservations)
+        expect(result.rateLimited).toBe(true)
+        expect(result.costs).toEqual([])
+        expect(result.failedReservations).toHaveLength(12)
+        // A lo sumo las que ya estaban en vuelo (el límite de concurrencia).
+        expect(vi.mocked(automationService.listUsageRecords).mock.calls.length).toBeLessThanOrEqual(6)
+        resetRateLimit()
+    })
+
+    it("sin 429, un fallo de red no marca el resultado como límite", async () => {
+        resetRateLimit()
+        const reservations = [{ id: "a", guestName: "A", unitName: "u", propertyName: "p", checkIn: new Date() } as Reservation]
+        vi.mocked(automationService.listUsageRecords).mockRejectedValue(new Error("network down"))
+        const result = await consumptionService.getReservationCosts(reservations)
+        expect(result.rateLimited).toBe(false)
+        expect(result.failedReservations).toHaveLength(1)
     })
 })

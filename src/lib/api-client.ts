@@ -2,6 +2,7 @@ import { ApiError, ApiErrorResponse } from "@/types/api"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import { DEFAULT_LANGUAGE, dictionaries } from "@/lib/i18n/dictionaries"
+import { noteRateLimited } from "@/lib/rate-limit"
 
 /**
  * Handle a session-expiry 401: clear the session and bounce to /login, but only
@@ -123,6 +124,12 @@ export async function request<T>(
     if (!response.ok) {
         if (response.status === 401 && !options?.suppressUnauthorizedRedirect) {
             handleSessionExpired()
+        }
+        // Un 429 frena las cargas en cola (ver lib/rate-limit): seguir pidiendo
+        // solo alarga el bloqueo. `Retry-After` dice cuánto; sin ella, un minuto.
+        if (response.status === 429) {
+            const retryAfter = Number(response.headers.get("retry-after"))
+            noteRateLimited(Number.isFinite(retryAfter) ? retryAfter : null)
         }
         throw new ApiError(response.status, data as ApiErrorResponse)
     }

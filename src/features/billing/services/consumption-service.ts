@@ -10,6 +10,7 @@
 import { automationService } from "@/features/properties/services/automation-service"
 import { endOfMonth, isSameMonth, isValid, startOfMonth, subMonths } from "date-fns"
 import { ConcurrencyLimiter, settleWithConcurrency } from "@/lib/settle-with-concurrency"
+import { isRateLimitError, throwIfRateLimited } from "@/lib/rate-limit"
 import type { Reservation } from "@/types"
 import type {
     CostCategory,
@@ -233,13 +234,19 @@ class ConsumptionService {
         // final: la tabla puede pintar las filas a medida que llegan. `null` =
         // esa consulta falló.
         const costByIndex: (ReservationCost | null)[] = new Array(total).fill(null)
+        let rateLimited = false
         await settleWithConcurrency(
             reservations,
             costRequestLimiter,
-            (r) => automationService.listUsageRecords(r.id, undefined, signal),
+            (r) => {
+                // Tras un 429, las que esperaban turno no salen: recibirían lo mismo.
+                throwIfRateLimited()
+                return automationService.listUsageRecords(r.id, undefined, signal)
+            },
             signal,
             (index, result) => {
                 done += 1
+                if (result.status === "rejected" && isRateLimitError(result.reason)) rateLimited = true
                 if (result.status === "fulfilled") {
                     // Records enter as the typed AutomationUsageRecord[], but may carry
                     // snake_case keys the readers normalize — treat as raw at this boundary.
@@ -265,7 +272,7 @@ class ConsumptionService {
                 checkIn: reservation.checkIn,
             })
         })
-        return { costs, failedReservations }
+        return { costs, failedReservations, rateLimited }
     }
 
     /**

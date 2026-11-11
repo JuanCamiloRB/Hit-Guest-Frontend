@@ -75,6 +75,11 @@ export interface ReservationCostFailure {
 export interface ReservationCostsResult {
     costs: ReservationCost[]
     failedReservations: ReservationCostFailure[]
+    /**
+     * Alguna consulta recibió 429 (o se frenó por uno anterior): las fallidas
+     * no son un error de datos sino un «espera un minuto».
+     */
+    rateLimited?: boolean
 }
 
 /** One month of the consumption history chart. */

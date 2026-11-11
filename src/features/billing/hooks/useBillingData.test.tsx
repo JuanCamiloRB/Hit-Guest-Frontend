@@ -28,7 +28,7 @@ vi.mock("../services/consumption-service", async (importOriginal) => {
 
 import { resetReservationsCache } from "@/features/reservations/hooks/useReservations"
 import { resetPropertiesCaches } from "@/features/properties/lib/properties-cache"
-import { resetBillingDataCache, useBillingData } from "./useBillingData"
+import { COSTS_FRESH_MS, expireBillingDataCache, expireBillingListCache, resetBillingDataCache, useBillingData } from "./useBillingData"
 import { ReservationsNotReadyError } from "@/features/reservations/services/reservations-service"
 
 const thisMonth = new Date()
@@ -261,10 +261,46 @@ describe("useBillingData — volver al Tablero muestra lo último mientras actua
         mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
     })
 
-    it("al volver arranca en refreshing con los datos anteriores, no en el skeleton", async () => {
+    it("al volver dentro de la ventana de frescura no se consulta nada: ready con lo anterior", async () => {
+        // El caso que agotaba el límite por minuto: ir y volver entre pantallas
+        // disparaba una consulta por reserva cada vez.
         const first = renderHook(() => useBillingData())
         await waitFor(() => expect(first.result.current.status).toBe("ready"))
         first.unmount()
+        expect(mocks.getReservationCosts).toHaveBeenCalledTimes(1)
+        expect(mocks.list).toHaveBeenCalledTimes(1)
+
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(hook.current.status).toBe("ready"))
+        expect(hook.current.summary?.monthTotal).toBe(2.5)
+        expect(mocks.getReservationCosts).toHaveBeenCalledTimes(1)
+        expect(mocks.list).toHaveBeenCalledTimes(1)
+        expect(COSTS_FRESH_MS).toBeGreaterThanOrEqual(60_000)
+    })
+
+    it("al volver, solo se consultan las reservas que ya no están frescas (y las nuevas)", async () => {
+        mocks.list.mockResolvedValue([{ id: "a" }, { id: "b" }])
+        mocks.getReservationCosts.mockResolvedValueOnce(result([cost("a", 2.5), cost("b", 1)]))
+        const first = renderHook(() => useBillingData())
+        await waitFor(() => expect(first.result.current.status).toBe("ready"))
+        first.unmount()
+
+        // Aparece «c» en la lista; a y b siguen frescas.
+        mocks.list.mockResolvedValue([{ id: "a" }, { id: "b" }, { id: "c" }])
+        expireBillingListCache()
+        mocks.getReservationCosts.mockResolvedValueOnce(result([cost("c", 4)]))
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(hook.current.costs).toHaveLength(3))
+        const queried = mocks.getReservationCosts.mock.calls[1][0] as { id: string }[]
+        expect(queried.map((r) => r.id)).toEqual(["c"])
+        expect(hook.current.costs.map((c) => [c.reservationId, c.total])).toEqual([["a", 2.5], ["b", 1], ["c", 4]])
+    })
+
+    it("al volver pasada la ventana arranca en refreshing con los datos anteriores, no en el skeleton", async () => {
+        const first = renderHook(() => useBillingData())
+        await waitFor(() => expect(first.result.current.status).toBe("ready"))
+        first.unmount()
+        expireBillingDataCache()
 
         const pending = deferred<ReservationCostsResult>()
         mocks.getReservationCosts.mockReturnValueOnce(pending.promise)
@@ -281,6 +317,7 @@ describe("useBillingData — volver al Tablero muestra lo último mientras actua
         const first = renderHook(() => useBillingData())
         await waitFor(() => expect(first.result.current.status).toBe("ready"))
         first.unmount()
+        expireBillingDataCache()
 
         mocks.list.mockRejectedValueOnce(new Error("network down"))
         const { result: hook } = renderHook(() => useBillingData())
@@ -298,6 +335,7 @@ describe("useBillingData — volver al Tablero muestra lo último mientras actua
         const first = renderHook(() => useBillingData())
         await waitFor(() => expect(first.result.current.status).toBe("ready"))
         first.unmount()
+        expireBillingDataCache()
 
         mocks.getReservationCosts.mockResolvedValueOnce(result([cost("a", 3)], [failure("b"), failure("c")]))
         const { result: hook } = renderHook(() => useBillingData())
@@ -311,12 +349,37 @@ describe("useBillingData — volver al Tablero muestra lo último mientras actua
         expect(hook.current.refreshFailed).toBe(true)
     })
 
+    it("un 429 al volver conserva lo anterior y lo dice como «espera un minuto», no como fallo", async () => {
+        mocks.list.mockResolvedValue([{ id: "a" }, { id: "b" }])
+        mocks.getReservationCosts.mockResolvedValueOnce(result([cost("a", 2.5), cost("b", 1)]))
+        const first = renderHook(() => useBillingData())
+        await waitFor(() => expect(first.result.current.status).toBe("ready"))
+        first.unmount()
+        expireBillingDataCache()
+
+        mocks.getReservationCosts.mockResolvedValueOnce({ costs: [], failedReservations: [failure("a"), failure("b")], rateLimited: true })
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(hook.current.rateLimited).toBe(true))
+        expect(hook.current.refreshFailed).toBe(true)
+        expect(hook.current.status).toBe("ready")
+        expect(hook.current.costs.map((c) => c.total)).toEqual([2.5, 1])
+        expect(hook.current.failedReservations).toEqual([])
+    })
+
+    it("un 429 sin datos previos es error, marcado como límite (no «falló la carga»)", async () => {
+        mocks.getReservationCosts.mockResolvedValueOnce({ costs: [], failedReservations: [failure("a")], rateLimited: true })
+        const { result: hook } = renderHook(() => useBillingData())
+        await waitFor(() => expect(hook.current.status).toBe("error"))
+        expect(hook.current.rateLimited).toBe(true)
+    })
+
     it("una reserva sin consumo previo que falla sí va a «no disponible»", async () => {
         mocks.list.mockResolvedValue([{ id: "a" }, { id: "b" }])
         mocks.getReservationCosts.mockResolvedValueOnce(result([cost("a", 2.5)]))
         const first = renderHook(() => useBillingData())
         await waitFor(() => expect(first.result.current.status).toBe("ready"))
         first.unmount()
+        expireBillingDataCache()
 
         mocks.getReservationCosts.mockResolvedValueOnce(result([cost("a", 2.5)], [failure("b")]))
         const { result: hook } = renderHook(() => useBillingData())

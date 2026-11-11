@@ -25,6 +25,7 @@ export function BillingDashboard() {
         loadingProgress,
         failedReservations,
         refreshFailed,
+        rateLimited,
         syncing,
         summary,
         monthly,
@@ -60,6 +61,7 @@ export function BillingDashboard() {
                 onMonthChange={setRefMonth}
                 failedCount={failedReservations.length}
                 refreshFailed={refreshFailed}
+                rateLimited={rateLimited}
                 syncing={syncing}
                 loadingProgress={loadingProgress}
                 onRetry={retry}

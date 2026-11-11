@@ -26,6 +26,8 @@ interface Props {
     failedCount: number
     /** Una actualización falló y se ven los últimos datos cargados. */
     refreshFailed: boolean
+    /** El backend pidió esperar (429): el aviso dice «en un minuto», no «falló». */
+    rateLimited?: boolean
     /** Reservas respondió 202 (sincronizando). */
     syncing: boolean
     /** Avance de la carga inicial: las cifras esperan al total, pero se dice cuánto falta. */
@@ -55,6 +57,7 @@ export function PeriodActivity({
     onMonthChange,
     failedCount,
     refreshFailed,
+    rateLimited = false,
     syncing,
     loadingProgress = null,
     onRetry,
@@ -91,7 +94,8 @@ export function PeriodActivity({
                         <ActivityMessage
                             role="alert"
                             icon={<Icon icon={AlertTriangle} size="lg" className="text-danger" />}
-                            title="No pudimos cargar la información de consumo."
+                            title={rateLimited ? "Demasiadas consultas en poco tiempo." : "No pudimos cargar la información de consumo."}
+                            description={rateLimited ? "Espera un minuto y vuelve a intentar." : undefined}
                             onRetry={onRetry}
                         />
                     )
@@ -99,7 +103,9 @@ export function PeriodActivity({
                     <>
                         {refreshFailed && (
                             <ActivityNotice onRetry={onRetry}>
-                                No pudimos actualizar el consumo. Se muestran los últimos datos cargados.
+                                {rateLimited
+                                    ? "Demasiadas consultas en poco tiempo. Se muestran los últimos datos cargados; vuelve a intentar en un minuto."
+                                    : "No pudimos actualizar el consumo. Se muestran los últimos datos cargados."}
                             </ActivityNotice>
                         )}
                         {syncing && (

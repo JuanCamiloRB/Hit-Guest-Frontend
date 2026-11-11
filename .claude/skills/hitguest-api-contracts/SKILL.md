@@ -2685,6 +2685,24 @@ muestra el `digest` como referencia en pantalla.
 
 ## 5. Abierto — no inventar una respuesta
 
+- **⚠️ Límite por minuto del backend (anotado 2026-11-12).** ✅ Verificado sin
+  sesión: `POST /auth/login` y `GET /checkin/countries` responden con
+  `x-ratelimit-limit: 300` / `x-ratelimit-remaining` (throttle de Laravel por
+  minuto). Las rutas del PM (`/reservations`, `/billing/*`, `/providers`) no
+  muestran la cabecera en el 401 sin sesión, así que su límite exacto queda
+  SIN confirmar (hipótesis: el mismo 300/min por cuenta). Lo que sí se midió en
+  el front: cada entrada al Tablero costaba UNA consulta por reserva
+  (`/reservations/{uuid}/automation-records`) y cada entrada a Operaciones 20
+  de semáforo (`/automation-status`); ir y volver entre pantallas con una
+  cuenta grande pasaba el límite y TODO (saldo, lista, consumo) respondía 429.
+  Corregido en front: ventana de frescura de 2 min por reserva (Tablero y
+  Operaciones), lista 1 min, y freno compartido al primer 429
+  (`src/lib/rate-limit.ts`: las que esperan turno no salen; se lee
+  `Retry-After` si viene). Pendiente con backend: el endpoint agregado
+  `/billing/consumption` (abajo) sigue siendo la solución de fondo, y
+  confirmar el límite real de las rutas del PM (`curl` con token:
+  `curl -s -D - -o /dev/null "$API/reservations" "${H[@]}" | grep -i ratelimit`).
+
 - **⚠️ Forma de `GET /billing/transactions` (anotado 2026-11-12, SIN curl).**
   `apiClient.request()` devuelve `body.data` cuando el cuerpo tiene la clave
   `data` (`src/lib/api-client.ts`, «Support both { data: T }…»). Después,

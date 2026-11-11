@@ -2,11 +2,38 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { PriorityLoadQueue } from "@/lib/priority-load-queue"
+import { throwIfRateLimited } from "@/lib/rate-limit"
 import type { AutomationStatus, Reservation } from "@/types"
 import { reservationsService } from "../services/reservations-service"
 
 /** Consultas de semáforo en vuelo a la vez (una por reserva). */
 export const STATUS_CONCURRENCY = 6
+
+/**
+ * Cuánto vale un semáforo ya consultado al volver a Operaciones. Cada entrada
+ * pedía otra vez las filas visibles y la página siguiente (20 consultas) aunque
+ * se hubiera salido un segundo antes; con el Tablero haciendo lo propio, ir y
+ * volver agotaba el límite por minuto del backend. `renew` y `retry` ignoran
+ * la ventana.
+ */
+export const STATUS_FRESH_MS = 2 * 60_000
+
+/** Lo consultado, compartido entre montajes de la pantalla. */
+let statusMemory = new Map<string, { entry: StatusEntry; at: number }>()
+
+/** Solo para tests. */
+export function resetAutomationStatusMemory(): void {
+    statusMemory = new Map()
+}
+
+/** Lo que sigue fresco al montar: la pantalla arranca con ello, sin pedirlo. */
+function freshEntries(now = Date.now()): Map<string, StatusEntry> {
+    const fresh = new Map<string, StatusEntry>()
+    for (const [id, { entry, at }] of statusMemory) {
+        if (entry.ok && now - at < STATUS_FRESH_MS) fresh.set(id, entry)
+    }
+    return fresh
+}
 
 /**
  * Lo que se sabe del semáforo de una reserva. Ausente = todavía cargando;
@@ -45,7 +72,7 @@ export interface StatusPreparation {
  * un backend caído sería un bucle): se reintenta con `retry` o con `renew`.
  */
 export function useAutomationStatusLoader() {
-    const [entries, setEntries] = useState<ReadonlyMap<string, StatusEntry>>(() => new Map())
+    const [entries, setEntries] = useState<ReadonlyMap<string, StatusEntry>>(() => freshEntries())
     // La misma tabla, legible desde callbacks estables sin esperar un render.
     const entriesRef = useRef(entries)
     const queueRef = useRef<PriorityLoadQueue<Reservation> | null>(null)
@@ -67,6 +94,7 @@ export function useAutomationStatusLoader() {
     useEffect(() => {
         const waiters = waitersRef.current
         const write = (id: string, entry: StatusEntry) => {
+            if (entry.ok) statusMemory.set(id, { entry, at: Date.now() })
             entriesRef.current = new Map(entriesRef.current).set(id, entry)
             setEntries(entriesRef.current)
             waiters.forEach((_release, check) => check())
@@ -76,6 +104,8 @@ export function useAutomationStatusLoader() {
             (reservation) => reservation.id,
             async (reservation, signal) => {
                 try {
+                    // Tras un 429, lo que esperaba turno no sale: recibiría lo mismo.
+                    throwIfRateLimited()
                     const status = await reservationsService.loadAutomationStatus(reservation, signal)
                     if (!signal.aborted) write(reservation.id, { ok: true, status })
                 } catch {
