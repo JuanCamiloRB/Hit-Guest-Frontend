@@ -220,7 +220,7 @@ describe("Button — variantes de DS-6", () => {
     it("field: forma de campo y tinta de marcador mientras no hay valor", () => {
         render(<Button variant="field" data-placeholder>Fechas</Button>)
         const button = screen.getByRole("button", { name: "Fechas" })
-        expect(button).toHaveClass("border-input", "hover:border-input-hover", "data-placeholder:text-ink-3", "font-normal")
+        expect(button).toHaveClass("border-input", "hover:border-primary", "data-placeholder:text-ink-3", "font-normal")
         expect(button).not.toHaveClass("font-medium")
         expect(button).toHaveAttribute("data-placeholder")
     })

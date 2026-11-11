@@ -163,11 +163,16 @@
   --destructive: var(--danger);
   --destructive-hover: #A02614;
   --border: var(--rule);
-  /* Borde de un CAMPO (Input, Textarea, Select, calendario): es la señal que lo
-     identifica, así que necesita 3:1 (WCAG 1.4.11). #e4e4e7 daba 1.27:1; #8188A6
-     da 3.50 card / 3.36 fondo / 3.15 sunk. El hover usa su propio token (ink-3,
-     5.23:1), no ink-4 (2.35:1). --border sigue para separadores y tarjetas. */
-  --input: #8188A6;
+  /* Borde de un CAMPO (Input, Textarea, Select, teléfono, calendario, Button
+     field): es la señal que lo identifica, así que necesita 3:1 (WCAG 1.4.11).
+     Es el navy de marca (#222755, mismo valor que --color-brand-navy): ~14:1
+     sobre card y fondo. Antes #8188A6 (3.50:1). Como la base ya es la tinta más
+     oscura, el hover del campo no puede oscurecerse más: pasa a `primary`
+     (hover:border-primary), que se distingue del foco porque el foco suma el
+     anillo de 3 px. --border sigue para separadores y tarjetas. */
+  --input: #222755;
+  /* Hover de las tarjetas y opciones seleccionables (borde rule → ink-3,
+     5.23:1). Ya no es el hover de los campos: ese es primary. */
   --input-hover: #636B8D;
   --ring: #9D4CF2;
 

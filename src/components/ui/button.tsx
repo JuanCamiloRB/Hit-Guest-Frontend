@@ -71,7 +71,7 @@ const buttonVariants = cva(
         // Disparador con forma de campo (fecha, mes): mismo borde, alto y foco
         // que Input y SelectTrigger. `data-placeholder` mientras no hay valor.
         field:
-          "justify-between border border-input bg-background font-normal text-ink shadow-xs hover:border-input-hover aria-expanded:border-ring data-placeholder:text-ink-3 disabled:bg-sunk",
+          "justify-between border border-input bg-background font-normal text-ink shadow-xs hover:border-primary aria-expanded:border-ring data-placeholder:text-ink-3 disabled:bg-sunk",
         link: "text-primary underline-offset-4 hover:underline disabled:no-underline aria-disabled:no-underline",
         // Acción dentro de un aviso: toma el color del aviso y va subrayada.
         "link-inherit": "text-current underline underline-offset-2 hover:no-underline disabled:no-underline aria-disabled:no-underline",

@@ -104,7 +104,7 @@ Radios (cuatro, decisión 2026-11-11), y `xs` para microcontroles:
 - `rounded-full`: avatar, indicador o pastilla; no contenedores generales.
 
 Sin `rounded` suelto, `rounded-sm`, `rounded-2xl` ni `rounded-3xl`.
-- `border-input`: campos editables.
+- `border-input`: campos editables, en el navy de marca (#222755, ~14:1). Su hover es `primary`; `input-hover` queda para el hover de tarjetas y opciones seleccionables.
 - `border-rule`: divisores y superficies.
 - `shadow-xs`: control elevado.
 - `shadow-sm`: tarjeta estándar.

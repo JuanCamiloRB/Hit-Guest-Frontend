@@ -20,7 +20,7 @@ describe("Input y Textarea — estados", () => {
         const field = screen.getByRole("textbox", { name: "Campo" })
         expect(field).toHaveClass("text-ink", "placeholder:text-ink-3", "focus-visible:ring-[3px]")
         // Hover con el `hover:` de Tailwind (solo con puntero) y sin foco: el borde de foco gana.
-        expect(field).toHaveClass("[&:not([readonly],[aria-invalid=true],:focus):enabled]:hover:border-input-hover")
+        expect(field).toHaveClass("[&:not([readonly],[aria-invalid=true],:focus):enabled]:hover:border-primary")
         expect(field.className).not.toMatch(/placeholder:text-muted-foreground|disabled:opacity-50/)
     })
 
