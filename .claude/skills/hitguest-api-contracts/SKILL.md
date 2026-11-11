@@ -2685,6 +2685,20 @@ muestra el `digest` como referencia en pantalla.
 
 ## 5. Abierto — no inventar una respuesta
 
+- **⚠️ Forma de `GET /billing/transactions` (anotado 2026-11-12, SIN curl).**
+  `apiClient.request()` devuelve `body.data` cuando el cuerpo tiene la clave
+  `data` (`src/lib/api-client.ts`, «Support both { data: T }…»). Después,
+  `billingService.getTransactions()` vuelve a leer `res.data` y `res.meta`. Si el
+  backend responde el paginado clásico de Laravel `{data: [...], meta, links}`,
+  el servicio recibe el ARRAY, `res.data` es `undefined` y el historial muestra
+  «Aún no hay transacciones» aunque haya movimientos. Solo funciona si viene
+  doble envuelto (`{data: {data: [...], meta}}`). Además el tipo asume claves
+  camelCase (`balanceAfter`, `createdAt`) que el servicio no mapea. Confirmar
+  con el token del PM (compartir solo el JSON anonimizado):
+  `curl -s "$API/billing/transactions?page=1" "${H[@]}" | jq '{keys: keys, meta, first: .data[0]}'`
+  Si es `{data, meta}`, la salida es la misma de `listProviders()`: `fetch`
+  crudo para conservar `meta`, documentado en el JSDoc.
+
 - **Con qué endpoint se crea una fila cuando el PM activa una que no existe.**
   Hoy: 403 en `POST /property-automations`, 405 en
   `POST /properties/{uuid}/automations`. Sin esto, las automatizaciones se
