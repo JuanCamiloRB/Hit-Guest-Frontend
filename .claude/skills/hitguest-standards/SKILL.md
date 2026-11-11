@@ -96,6 +96,12 @@ copiarlo, no reinventarlo:
   hardcodeado. Si un mockup HTML trae sus propios hex, primero comparar contra
   `globals.css` — si coinciden (como pasó con el mockup de garantía), es señal
   de que el diseño ya fue pensado para este sistema de tokens.
+- **Contrato visual ejecutable**: `docs/hitguest-design-system.md` define la
+  tipografía, color, superficies, radios, sombras, iconos, densidades y el mapa
+  de primitivas permitido. `npm run design:check` impide aumentar la deuda de
+  colores de paleta, valores arbitrarios, gradientes y controles nativos. La
+  línea base (`scripts/design-system-baseline.json`) describe deuda heredada,
+  no excepciones aprobadas: solo puede disminuir hasta llegar a cero.
 - **Manual de marca HIT** (lo que importa en pantalla): navy `#222755`, purple
   `#9D4CF2`, blue `#5467FA`, off-white `#F9FBFA` (los tokens de arriba).
   Gabarito Bold para logotipo y títulos (`font-sans`); Poppins para el cuerpo

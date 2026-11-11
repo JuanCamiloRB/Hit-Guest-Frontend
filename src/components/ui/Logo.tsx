@@ -47,8 +47,8 @@ export function Logo({ className, variant = "icon", showText = true, isWhite = f
             {icon}
             {showText && (
                 <span className={cn(
-                    "font-sans font-black text-[18px] leading-none tracking-tighter uppercase translate-y-[1px]",
-                    isWhite ? "text-white" : "text-[#222755]"
+                    "translate-y-px font-sans text-lg font-black leading-none tracking-tighter uppercase",
+                    isWhite ? "text-white" : "text-brand-navy"
                 )}>
                     Guest
                 </span>

@@ -11,9 +11,11 @@
     "lint:new": "node scripts/lint-changed.mjs --new-only",
     "lint:changed": "node scripts/lint-changed.mjs",
     "lint:gate": "node scripts/lint-changed.mjs --no-regressions",
+    "design:check": "node scripts/check-design-system.mjs",
+    "design:baseline": "node scripts/check-design-system.mjs --write-baseline",
     "test": "vitest run",
     "test:watch": "vitest",
-    "verify": "npm run typecheck && npm run lint:gate && npm run test"
+    "verify": "npm run typecheck && npm run lint:gate && npm run design:check && npm run test"
   },
   "dependencies": {
     "@didit-protocol/sdk-web": "^0.2.1",

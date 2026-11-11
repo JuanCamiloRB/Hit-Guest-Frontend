@@ -81,7 +81,7 @@ export function PhoneInputField({
 
     if (isLoading) {
         return (
-            <div role="status" className="flex gap-3 w-full h-11 items-center bg-slate-50/50 border border-slate-200 rounded-xl px-4">
+            <div role="status" className="flex h-11 w-full items-center gap-3 rounded-md border border-input bg-background px-4">
                 <Loader2 className="h-4 w-4 animate-spin text-ink-3" aria-hidden />
                 <span className="text-xs text-ink-3">Cargando prefijos…</span>
             </div>
@@ -100,11 +100,11 @@ export function PhoneInputField({
                         aria-label="Prefijo telefónico"
                         aria-invalid={invalid || undefined}
                         aria-describedby={invalid ? describedBy : undefined}
-                        className="w-full !h-11 px-2.5 bg-slate-50 border-slate-200 focus:ring-[var(--color-brand-purple)]/30 focus:border-[var(--color-brand-purple)] rounded-xl group-hover:border-[var(--color-brand-blue)]/40 transition-colors">
+                        className="!h-11 w-full rounded-md border-input bg-background px-2.5">
                         <SelectValue>
                             <div className="flex items-center gap-1.5 w-full">
                                 <span className="text-sm shrink-0">{matchedCountry?.extra?.emoji ? `${matchedCountry.extra.emoji} ` : ""}</span>
-                                <span className="text-sm font-semibold text-slate-700">{currentPrefix ? `+${currentPrefix}` : ""}</span>
+                                <span className="text-sm font-semibold text-ink">{currentPrefix ? `+${currentPrefix}` : ""}</span>
                             </div>
                         </SelectValue>
                     </SelectTrigger>
@@ -123,7 +123,7 @@ export function PhoneInputField({
             </div>
             <div className="flex-1">
                 <div className="relative group">
-                    <Phone aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-[var(--color-brand-purple)] transition-colors" />
+                    <Phone aria-hidden className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-3 transition-colors group-focus-within:text-primary" />
                     <Input
                         id={id}
                         // Sin etiqueta externa (sin `id`), se nombra solo.
@@ -137,7 +137,7 @@ export function PhoneInputField({
                         disabled={disabled}
                         value={currentNumber}
                         onChange={handleNumberChange}
-                        className="pl-9 h-11 bg-slate-50/50 border-slate-200 focus-visible:ring-[var(--color-brand-purple)]/20 focus-visible:border-[var(--color-brand-purple)] rounded-xl w-full"
+                        className="h-11 w-full rounded-md border-input bg-background pl-9"
                     />
                 </div>
             </div>
