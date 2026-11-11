@@ -68,8 +68,24 @@ copiarlo, no reinventarlo:
   secundaria `[reference]/s/[guestToken]`) — mirroreando el wrapper exacto que
   ya existe para pantallas hermanas (ver `contact-challenge/page.tsx` × 3,
   copiado línea por línea de `verify/page.tsx` × 3).
-- **Primitivos de UI**: `StatusPill`, `SectionCard`, `EmptyState`, `LoadingState`
-  en `components/ui/` — no reinventar spinners o pastillas de estado a mano.
+- **Primitivos de UI**: `StatusPill`, `SectionCard`, `EmptyState`, `LoadingState`,
+  `RefreshIndicator`, `FeedbackBanner` en `components/ui/` — no reinventar
+  spinners, avisos ni pastillas de estado a mano.
+- **Escala de estados (Fase 2.2)**: cada estado de una pantalla tiene UNA forma.
+
+  | Estado | Cómo se muestra |
+  |---|---|
+  | Carga inicial (sin datos aún) | `LoadingState` (`rows`) o `Skeleton` con la forma real |
+  | Actualización (ya hay datos) | los datos siguen a la vista + `RefreshIndicator`; nunca volver al esqueleto |
+  | Acción en curso | `loading` del `Button` |
+  | Sin datos | `EmptyState` (`kind="empty"`): qué iría aquí + acción de crear |
+  | Sin resultados | `EmptyState` (`kind="no-results"`): lo buscado + «Limpiar filtros»; se anuncia |
+  | Error al cargar | `FeedbackBanner` `tone="danger"` `mode="blocking"` + «Reintentar»; nunca un vacío |
+  | Datos parciales | datos a la vista + `FeedbackBanner` `tone="warning"` que diga qué falta |
+  | Éxito | toast, o `FeedbackBanner` `tone="success"` `mode="dynamic"` si debe quedar en la pantalla |
+
+  Cómo se anuncia (`role`, `aria-live`…) lo decide la primitiva y se aplica
+  después del spread: una pantalla no lo puede cambiar.
 - **Tokens de diseño**: los colores de marca (`--color-brand-navy/purple/blue`)
   están registrados en `@theme inline` de `globals.css` — usar las clases
   Tailwind que genera (`bg-brand-purple`, `text-brand-navy`, etc.), nunca hex
