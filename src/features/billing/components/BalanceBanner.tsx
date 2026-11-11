@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import Link from "next/link"
 import { AlertTriangle, X } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useBalanceStore } from "../hooks/useBalanceStore"
 import { formatUsd, getBalanceState } from "../types"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
@@ -33,7 +34,7 @@ export function BalanceBanner() {
         return (
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-danger/30 bg-danger-sunk px-4 py-3 sm:px-6 md:px-10">
                 <div className="flex items-center gap-2.5 text-sm font-medium text-danger">
-                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <Icon icon={AlertTriangle} />
                     <span>Your automations are paused. Your account has no credits left.</span>
                 </div>
                 <Link
@@ -50,7 +51,7 @@ export function BalanceBanner() {
     return (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-warning/30 bg-warning-sunk px-4 py-3 sm:px-6 md:px-10">
             <div className="flex items-center gap-2.5 text-sm font-medium text-warning">
-                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <Icon icon={AlertTriangle} />
                 <span>
                     Your balance is running low ({formatUsd(amount)} remaining). Top up to avoid
                     interruptions.
@@ -69,7 +70,7 @@ export function BalanceBanner() {
                     aria-label="Descartar"
                     className="rounded-md p-1 text-warning transition-colors hover:bg-warning-sunk hover:text-warning"
                 >
-                    <X className="h-4 w-4" />
+                    <Icon icon={X} />
                 </UnstyledButton>
             </div>
         </div>

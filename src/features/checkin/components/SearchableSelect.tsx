@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { ChevronDown, Search, Check } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -104,10 +105,8 @@ export function SearchableSelect({
           <span className={`min-w-0 truncate ${selectedOption ? "text-ink" : "text-ink-3"}`}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
-          <ChevronDown
-            size={16}
-            className={`shrink-0 text-ink-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
-          />
+          <Icon icon={ChevronDown}
+            className={`shrink-0 text-ink-3 transition-transform ${isOpen ? "rotate-180" : ""}`} />
         </UnstyledButton>
 
         {/* Dropdown */}
@@ -116,7 +115,7 @@ export function SearchableSelect({
             {/* Search Input */}
             <div className="p-2 border-b border-rule">
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
+                <Icon icon={Search} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
                 <Input
                   ref={inputRef}
                   type="text"
@@ -156,7 +155,7 @@ export function SearchableSelect({
                         <span className="text-xs text-ink-3 ml-2">{option.sublabel}</span>
                       )}
                     </div>
-                    {value === option.id && <Check size={16} className="text-primary" />}
+                    {value === option.id && <Icon icon={Check} className="text-primary" />}
                   </UnstyledButton>
                 ))
               )}

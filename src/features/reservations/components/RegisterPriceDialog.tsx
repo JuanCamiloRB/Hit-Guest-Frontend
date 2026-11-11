@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Loader2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -144,7 +145,7 @@ export function RegisterPriceDialog({
 
                 {mode === "correct" && traStatus === "loading" && (
                     <p className="flex items-center gap-2 text-xs text-ink-3" role="status">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                        <Icon icon={Loader2} size="sm" className="animate-spin" />
                         Comprobando si el reporte a TRA ya se envió…
                     </p>
                 )}
@@ -190,7 +191,7 @@ export function RegisterPriceDialog({
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>
                     <Button onClick={() => void save()} disabled={!canSave || saving}>
-                        {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                        {saving && <Icon icon={Loader2} className="mr-1.5 animate-spin" />}
                         {mode === "correct" ? "Guardar valor" : "Registrar valor"}
                     </Button>
                 </DialogFooter>

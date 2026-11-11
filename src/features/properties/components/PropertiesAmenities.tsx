@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/form"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Sparkles } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useEffect, useState } from "react"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { cn } from "@/lib/utils"
@@ -45,7 +46,7 @@ export function PropertiesAmenities() {
         <Card>
             <CardHeader className="border-b bg-sunk/50">
                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                    <Sparkles className="h-5 w-5 text-primary" />
+                    <Icon icon={Sparkles} size="lg" className="text-primary" />
                     Amenidades de la Propiedad
                 </CardTitle>
                 <CardDescription>Selecciona las características y servicios incluidos en este alojamiento.</CardDescription>

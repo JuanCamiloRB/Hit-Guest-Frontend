@@ -1,6 +1,7 @@
 "use client"
 
 import { Loader2, AlertTriangle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { useKunasIntegration } from "../hooks/useKunasIntegration"
 import { KunasConnectForm } from "./KunasConnectForm"
@@ -26,7 +27,7 @@ export function KunasIntegrationPanel() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-16">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <Icon icon={Loader2} size="xl" className="animate-spin text-primary" />
             </div>
         )
     }
@@ -36,7 +37,7 @@ export function KunasIntegrationPanel() {
     if (loadError) {
         return (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
-                <AlertTriangle className="h-8 w-8 text-warning" />
+                <Icon icon={AlertTriangle} size="2xl" className="text-warning" />
                 <p className="text-sm text-ink-3">
                     No se pudo cargar el estado de la integración.
                 </p>

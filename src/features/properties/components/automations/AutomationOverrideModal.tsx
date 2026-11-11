@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import { Building2, Loader2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     Dialog,
     DialogContent,
@@ -409,7 +410,7 @@ export function AutomationOverrideModal({
             <DialogContent className={cn("max-h-[88vh] overflow-y-auto", isContract ? "sm:max-w-3xl" : "sm:max-w-lg")}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 text-base">
-                        <Building2 size={16} className="text-primary" />
+                        <Icon icon={Building2} className="text-primary" />
                         {isEdit ? "Editar override" : "Configurar override"}
                         {listingName && (
                             <span className="text-xs font-normal text-ink-3">· {listingName}</span>
@@ -572,7 +573,7 @@ export function AutomationOverrideModal({
                         disabled={saving || (!isEdit && !selectedPaUuid)}
                         className="bg-primary hover:bg-primary/90 text-white"
                     >
-                        {saving && <Loader2 size={16} className="animate-spin mr-2" />}
+                        {saving && <Icon icon={Loader2} className="animate-spin mr-2" />}
                         Guardar
                     </Button>
                 </DialogFooter>

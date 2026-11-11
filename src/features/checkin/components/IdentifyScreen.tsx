@@ -9,6 +9,7 @@ import {
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, Loader2, ShieldCheck, Users } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { checkinService } from "@/features/checkin/services/checkin-service"
@@ -480,7 +481,7 @@ export function IdentifyScreen({
 
             <div className="flex items-center justify-between">
                 <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                    <ArrowLeft size={20} />
+                    <Icon icon={ArrowLeft} size="lg" />
                 </Link>
                 <div className="text-sm font-bold text-ink-3">
                     {isSecondary ? "Paso 1 de 4" : "Paso 2 de 6"}
@@ -661,14 +662,14 @@ export function IdentifyScreen({
                 {/* isMainGuest indicator */}
                 {!isSecondary && (
                     <div className="flex items-center gap-2 pt-1 text-xs text-ink-3">
-                        <Users size={14} />
+                        <Icon icon={Users} size="sm" />
                         <span>Estás registrando al huésped principal</span>
                     </div>
                 )}
             </div>
 
             <div className="bg-sunk/50 border border-rule rounded-xl p-4 flex items-start gap-3">
-                <ShieldCheck size={20} className="text-success flex-shrink-0 mt-0.5" />
+                <Icon icon={ShieldCheck} size="lg" className="text-success flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-ink-2">
                     Tus datos están protegidos con cifrado de extremo a extremo y solo se usarán para el check-in.
                 </p>
@@ -699,7 +700,7 @@ export function IdentifyScreen({
                         className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {isSubmitting ? (
-                            <><Loader2 className="animate-spin" size={20} /> Verificando...</>
+                            <><Icon icon={Loader2} size="lg" className="animate-spin" /> Verificando...</>
                         ) : (
                             isLoadingCatalogs ? "Cargando..." : "Continuar"
                         )}

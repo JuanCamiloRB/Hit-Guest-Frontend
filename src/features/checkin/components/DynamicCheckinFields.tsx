@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { FormInput } from "@/features/checkin/components/FormInput"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
 import { catalogService } from "@/features/auth/services/catalog-service"
@@ -157,7 +158,7 @@ export function DynamicCheckinFields({ fields, values, onChange }: DynamicChecki
                                     {f.required && <span className="text-danger ml-0.5">*</span>}
                                 </Label>
                                 <div className="flex items-center gap-2 bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink-3">
-                                    <Loader2 size={16} className="animate-spin" />
+                                    <Icon icon={Loader2} className="animate-spin" />
                                     <span className="text-sm">Cargando opciones...</span>
                                 </div>
                             </div>

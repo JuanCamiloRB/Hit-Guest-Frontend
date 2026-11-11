@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { FileText } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     Dialog,
     DialogContent,
@@ -164,7 +165,7 @@ function HistoryRow({
                     rel="noopener noreferrer"
                     className="mt-2 inline-flex w-fit items-center gap-1.5 rounded-lg bg-success-sunk px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-success transition-opacity hover:opacity-80"
                 >
-                    <FileText size={13} /> Ver contrato firmado
+                    <Icon icon={FileText} size="sm" /> Ver contrato firmado
                 </a>
             )}
         </li>

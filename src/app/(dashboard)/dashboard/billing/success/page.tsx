@@ -4,6 +4,7 @@ import { Suspense, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { CheckCircle2, ArrowRight } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useBalanceStore } from "@/features/billing/hooks/useBalanceStore"
 
 const BILLING_HREF = "/dashboard/settings?tab=billing"
@@ -32,7 +33,7 @@ function BillingSuccessContent() {
     return (
         <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 px-4 text-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-full border border-success/20 bg-success-sunk">
-                <CheckCircle2 className="h-10 w-10 text-success" />
+                <Icon icon={CheckCircle2} size="3xl" className="text-success" />
             </div>
             <div className="space-y-2">
                 <h1 className="text-2xl font-bold text-ink">Payment successful!</h1>
@@ -48,7 +49,7 @@ function BillingSuccessContent() {
                 href={BILLING_HREF}
                 className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 font-bold text-white transition-colors hover:bg-primary"
             >
-                Go to Billing <ArrowRight className="h-4 w-4" />
+                Go to Billing <Icon icon={ArrowRight} />
             </Link>
         </div>
     )

@@ -9,6 +9,7 @@ import {
     LogOut,
     Languages,
 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useHasHydrated } from "@/hooks/useHasHydrated"
@@ -77,7 +78,7 @@ export function Header() {
                                     aria-label="Idioma de la interfaz"
                                     className="hidden sm:inline-flex h-10 w-auto px-3 gap-2 text-ink-2 bg-sunk/50 hover:bg-sunk rounded-lg border border-rule text-xs font-bold"
                                 >
-                                    <Languages className="h-4 w-4" aria-hidden />
+                                    <Icon icon={Languages} />
                                     {isMounted ? language : DEFAULT_LANGUAGE}
                                 </Button>
                             </DropdownMenuTrigger>
@@ -99,7 +100,7 @@ export function Header() {
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button className="rounded-lg bg-primary hover:bg-primary/90 text-white gap-2 h-10 px-4">
-                                <CircleUserRound className="h-5 w-5" />
+                                <Icon icon={CircleUserRound} />
                                 <span className="hidden sm:inline font-medium text-sm text-sm">
                                     {isMounted ? user?.firstName : t('common.loading')}
                                 </span>
@@ -121,13 +122,13 @@ export function Header() {
                                 <>
                                     <DropdownMenuItem asChild>
                                         <Link href="/dashboard/settings?tab=profile" className="cursor-pointer">
-                                            <CircleUserRound className="mr-2 h-4 w-4" />
+                                            <Icon icon={CircleUserRound} className="mr-2" />
                                             <span>{t('header.myProfile')}</span>
                                         </Link>
                                     </DropdownMenuItem>
                                     <DropdownMenuItem asChild>
                                         <Link href="/dashboard/settings?tab=team" className="cursor-pointer">
-                                            <Users className="mr-2 h-4 w-4" />
+                                            <Icon icon={Users} className="mr-2" />
                                             <span>{t('header.users')}</span>
                                         </Link>
                                     </DropdownMenuItem>
@@ -138,7 +139,7 @@ export function Header() {
                                 className="text-destructive focus:text-destructive cursor-pointer"
                                 onClick={logout}
                             >
-                                <LogOut className="mr-2 h-4 w-4" />
+                                <Icon icon={LogOut} className="mr-2" />
                                 <span>{isInSupportSession ? "Salir del modo soporte" : t('header.logout')}</span>
                             </DropdownMenuItem>
                         </DropdownMenuContent>

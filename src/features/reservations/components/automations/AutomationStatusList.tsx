@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { RefreshCw, Zap } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { hasPendingWork, useAutomationStatus } from "@/features/reservations/hooks/useAutomationStatus"
 import type { AutomationStatusItem as AutomationStatusItemType } from "@/features/properties/types/automation"
@@ -65,7 +66,7 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                     disabled={isLoading || refreshing}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-xs text-xs font-medium text-ink-3 transition-colors hover:text-primary disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
-                    <RefreshCw size={13} aria-hidden className={cn((isLoading || refreshing) && "animate-spin")} />
+                    <Icon icon={RefreshCw} size="sm" className={cn((isLoading || refreshing) && "animate-spin")} />
                     Refrescar
                 </UnstyledButton>
             </div>
@@ -90,7 +91,7 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
             ) : items.length === 0 ? (
                 <EmptyState
                     className="rounded-xl border border-dashed border-rule py-10"
-                    icon={<Zap size={22} />}
+                    icon={Zap}
                     title="No hay automatizaciones configuradas para esta propiedad."
                 />
             ) : (

@@ -26,7 +26,7 @@ export function SupportAccessGate({
     if (isInSupportSession) {
         return (
             <EmptyState
-                icon={<ShieldAlert aria-hidden />}
+                icon={ShieldAlert}
                 title="Estás en modo soporte"
                 description="Sal de la sesión de soporte (en la franja de arriba) para volver a la consola."
             />
@@ -39,7 +39,7 @@ export function SupportAccessGate({
     if (!allowed) {
         return (
             <EmptyState
-                icon={<ShieldAlert aria-hidden />}
+                icon={ShieldAlert}
                 title="Esta sección es solo para el equipo de soporte"
                 description="Tu cuenta no tiene acceso a esta pantalla."
             />

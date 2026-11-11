@@ -1,6 +1,7 @@
 "use client"
 
 import { CreditCard, AlertTriangle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { SectionCard } from "@/components/ui/section-card"
 import { StatusPill } from "@/components/ui/status-pill"
 import { formatMoney } from "@/lib/money"
@@ -43,12 +44,12 @@ export function ReservationPriceCard({
                 </span>
             </div>
             <p className="mt-1 flex items-center gap-1.5 text-xs text-ink-3">
-                <CreditCard size={13} aria-hidden />
+                <Icon icon={CreditCard} size="sm" />
                 Valor total de la reserva
             </p>
             {!currency && (
                 <p className="mt-2 flex items-start gap-1.5 text-xs text-warning">
-                    <AlertTriangle size={13} className="mt-0.5 shrink-0" aria-hidden />
+                    <Icon icon={AlertTriangle} size="sm" className="mt-0.5" />
                     La reserva no informa su moneda.
                 </p>
             )}

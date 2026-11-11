@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
 import { cancelDetailPrefetch, startDetailPrefetch } from "../lib/detail-prefetch"
 import { MoreVertical, Trash2, RefreshCw } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import Link from "next/link"
 
@@ -76,7 +77,7 @@ function StatusUnavailable({ reservation, onRetry }: { reservation?: Reservation
         >
             <StatusPill tone="idle">
                 No disponible
-                <RefreshCw className="h-3 w-3" aria-hidden />
+                <Icon icon={RefreshCw} size="xs" />
             </StatusPill>
         </UnstyledButton>
     )
@@ -280,7 +281,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
                                 aria-label={`Acciones de la reserva de ${reservation.guestName}`}
                                 className="text-ink-4 hover:text-primary"
                             >
-                                <MoreVertical className="h-4 w-4" />
+                                <Icon icon={MoreVertical} />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -312,7 +313,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
                                         className="text-danger focus:bg-danger-sunk focus:text-danger"
                                         onClick={() => onDelete(reservation)}
                                     >
-                                        <Trash2 className="h-4 w-4 mr-2" />
+                                        <Icon icon={Trash2} className="mr-2" />
                                         Eliminar
                                     </DropdownMenuItem>
                                 </>

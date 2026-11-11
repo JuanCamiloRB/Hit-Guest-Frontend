@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Settings2, Loader2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     Dialog,
     DialogContent,
@@ -45,7 +46,7 @@ export function ConfigModal({
             <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Settings2 size={18} className="text-primary" />
+                        <Icon icon={Settings2} size="lg" className="text-primary" />
                         Configurar: {definition.title}
                     </DialogTitle>
                     <DialogDescription className="text-sm text-ink-3 mt-1">
@@ -86,7 +87,7 @@ export function ConfigModal({
                         disabled={isSaving}
                         className="bg-primary hover:bg-primary/90 text-white"
                     >
-                        {isSaving && <Loader2 size={16} className="animate-spin mr-2" />}
+                        {isSaving && <Icon icon={Loader2} className="animate-spin mr-2" />}
                         Guardar Configuración
                     </Button>
                 </DialogFooter>

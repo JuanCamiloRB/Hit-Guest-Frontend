@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface DataTableProps<TData, TValue> {
@@ -202,15 +203,12 @@ export function DataTable<TData, TValue>({
                                                         solo apareciera al ordenar, nada indicaría
                                                         que el encabezado se puede pulsar. */}
                                                     {sorted === "asc" ? (
-                                                        <ArrowUp size={13} aria-hidden className="shrink-0" />
+                                                        <Icon icon={ArrowUp} size="sm" />
                                                     ) : sorted === "desc" ? (
-                                                        <ArrowDown size={13} aria-hidden className="shrink-0" />
+                                                        <Icon icon={ArrowDown} size="sm" />
                                                     ) : (
-                                                        <ChevronsUpDown
-                                                            size={13}
-                                                            aria-hidden
-                                                            className="shrink-0 text-ink-4 opacity-60 transition-opacity group-hover:opacity-100"
-                                                        />
+                                                        <Icon icon={ChevronsUpDown} size="sm"
+                                                            className="text-ink-4 opacity-60 transition-opacity group-hover:opacity-100" />
                                                     )}
                                                 </UnstyledButton>
                                             </TableHead>
@@ -260,7 +258,7 @@ export function DataTable<TData, TValue>({
                         onClick={() => table.previousPage()}
                         disabled={!table.getCanPreviousPage()}
                     >
-                        <ChevronLeft className="h-4 w-4 mr-1" />
+                        <Icon icon={ChevronLeft} className="mr-1" />
                         Anterior
                     </Button>
                     <Button
@@ -270,7 +268,7 @@ export function DataTable<TData, TValue>({
                         disabled={!table.getCanNextPage()}
                     >
                         Siguiente
-                        <ChevronRight className="h-4 w-4 ml-1" />
+                        <Icon icon={ChevronRight} className="ml-1" />
                     </Button>
                 </div>
             </div>

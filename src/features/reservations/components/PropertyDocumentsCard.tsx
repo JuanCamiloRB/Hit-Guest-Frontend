@@ -9,6 +9,7 @@ import {
     Download,
     ChevronUp,
 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { propertyDocumentService } from "@/features/properties/services/property-document-service"
 import { reservationsService } from "../services/reservations-service"
 import type { PropertyDocument } from "@/features/properties/types/document"
@@ -111,7 +112,7 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
                             <div className="flex items-center justify-between gap-3 p-3">
                                 <div className="flex min-w-0 items-center gap-3">
                                     <div className="rounded-lg bg-sunk p-2 text-ink-3">
-                                        <FileText size={16} aria-hidden />
+                                        <Icon icon={FileText} />
                                     </div>
                                     <span className="truncate text-sm font-semibold text-ink">
                                         {documentTypeLabel(doc.documentType)}
@@ -125,7 +126,7 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
                                         className="rounded-lg p-2 text-ink-3 transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                                         title={isOpen ? "Ocultar vista previa" : "Vista previa"}
                                     >
-                                        {isOpen ? <ChevronUp size={16} /> : <Eye size={16} />}
+                                        {isOpen ? <Icon icon={ChevronUp} /> : <Icon icon={Eye} />}
                                         <span className="sr-only">
                                             {isOpen ? "Ocultar vista previa" : "Ver vista previa"}
                                         </span>
@@ -137,8 +138,8 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
                                         title="Descargar PDF"
                                     >
                                         {downloadingPdf === doc.uuid
-                                            ? <Loader2 size={16} className="animate-spin" />
-                                            : <Download size={16} />
+                                            ? <Icon icon={Loader2} className="animate-spin" />
+                                            : <Icon icon={Download} />
                                         }
                                         <span className="sr-only">Descargar PDF</span>
                                     </UnstyledButton>
@@ -149,7 +150,7 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
                                 <div id={panelId} className="border-t border-rule bg-sunk p-4">
                                     {previewLoading ? (
                                         <div className="flex items-center justify-center gap-2 py-6 text-ink-3">
-                                            <Loader2 size={16} className="animate-spin" />
+                                            <Icon icon={Loader2} className="animate-spin" />
                                             <span className="text-xs">Renderizando documento…</span>
                                         </div>
                                     ) : (

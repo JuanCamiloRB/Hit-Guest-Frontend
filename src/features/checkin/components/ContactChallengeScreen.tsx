@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Mail, Loader2, ShieldCheck, RotateCcw, XCircle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
@@ -228,7 +229,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
     if (!sessionLoaded) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 size={32} className="animate-spin text-primary" />
+                <Icon icon={Loader2} size="2xl" className="animate-spin text-primary" />
             </div>
         )
     }
@@ -237,7 +238,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
                 <div className="bg-danger-sunk w-24 h-24 rounded-full flex items-center justify-center border border-danger/20">
-                    <XCircle size={40} className="text-danger" />
+                    <Icon icon={XCircle} size="3xl" className="text-danger" />
                 </div>
                 <div className="space-y-2">
                     <h2 className="text-xl font-bold text-ink">Sesión de verificación no encontrada</h2>
@@ -247,7 +248,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                     onClick={handleBackToIdentify}
                     className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
-                    <RotateCcw size={18} />
+                    <Icon icon={RotateCcw} size="lg" />
                     Volver a identificarme
                 </UnstyledButton>
             </div>
@@ -274,7 +275,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
 
             <div className="flex items-center justify-between">
                 <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                    <ArrowLeft size={20} />
+                    <Icon icon={ArrowLeft} size="lg" />
                 </Link>
                 <div className="text-sm font-bold text-ink-3">
                     {isSecondary ? "Paso 2 de 4" : "Paso 3 de 6"}
@@ -301,7 +302,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
             <div className="bg-white border border-rule rounded-xl p-6 shadow-sm space-y-5">
                 <div className="flex items-center gap-3">
                     <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center border border-primary/20 shrink-0">
-                        <Mail size={20} className="text-primary" />
+                        <Icon icon={Mail} size="lg" className="text-primary" />
                     </div>
                     <p className="text-xs text-ink-3">
                         {challenge.alreadyVerified
@@ -358,9 +359,9 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                         className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {submitting ? (
-                            <><Loader2 className="animate-spin" size={20} /> Verificando...</>
+                            <><Icon icon={Loader2} size="lg" className="animate-spin" /> Verificando...</>
                         ) : (
-                            <><ShieldCheck size={20} /> Verificar código</>
+                            <><Icon icon={ShieldCheck} size="lg" /> Verificar código</>
                         )}
                     </UnstyledButton>
                 </div>

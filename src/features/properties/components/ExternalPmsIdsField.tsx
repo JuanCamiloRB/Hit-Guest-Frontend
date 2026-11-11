@@ -3,6 +3,7 @@
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import { useEffect, useId, useMemo, useState } from "react"
 import { Link2, Plus, Trash2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -141,7 +142,7 @@ export function ExternalPmsIdsField({
                     <div className="rounded-xl border border-dashed border-rule">
                         <EmptyState
                             className="px-6 py-8"
-                            icon={<Link2 className="h-5 w-5" />}
+                            icon={Link2}
                             title="Sin origen externo"
                             description={`Esta ${subject} se administra solo en HitGuest. Si además existe en tu PMS o en un canal, vincúlala para que sus reservas externas se asocien correctamente.`}
                             action={
@@ -152,7 +153,7 @@ export function ExternalPmsIdsField({
                                     onClick={addRow}
                                     disabled={!canAddRow}
                                 >
-                                    <Plus className="mr-2 h-4 w-4" /> Vincular origen
+                                    <Icon icon={Plus} className="mr-2" /> Vincular origen
                                 </Button>
                             }
                         />
@@ -243,7 +244,7 @@ export function ExternalPmsIdsField({
                                         onClick={() => removeRow(index)}
                                         disabled={disabled}
                                     >
-                                        <Trash2 className="h-4 w-4" />
+                                        <Icon icon={Trash2} />
                                     </Button>
                                 </div>
 
@@ -264,7 +265,7 @@ export function ExternalPmsIdsField({
                             onClick={addRow}
                             disabled={!canAddRow}
                         >
-                            <Plus className="mr-2 h-4 w-4" /> Vincular otro origen
+                            <Icon icon={Plus} className="mr-2" /> Vincular otro origen
                         </Button>
                         {allOriginsUsed && (
                             <span className="text-xs text-ink-3">

@@ -14,6 +14,7 @@ import {
     Redo2,
     Code,
 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { SHORTCODE_LABELS } from "../../types/document"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -94,33 +95,33 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
                 {/* Toolbar */}
                 <div className="flex items-center gap-0.5 border-b border-rule bg-sunk/60 px-2 py-1.5 flex-wrap">
                     <ToolbarButton title="Negrita" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
-                        <Bold size={15} />
+                        <Icon icon={Bold} />
                     </ToolbarButton>
                     <ToolbarButton title="Cursiva" active={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()}>
-                        <Italic size={15} />
+                        <Icon icon={Italic} />
                     </ToolbarButton>
                     <ToolbarButton title="Tachado" active={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()}>
-                        <Strikethrough size={15} />
+                        <Icon icon={Strikethrough} />
                     </ToolbarButton>
                     <div className="w-px h-5 bg-sunk mx-1" />
                     <ToolbarButton title="Título" active={editor.isActive("heading", { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>
-                        <Heading2 size={15} />
+                        <Icon icon={Heading2} />
                     </ToolbarButton>
                     <ToolbarButton title="Lista" active={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()}>
-                        <List size={15} />
+                        <Icon icon={List} />
                     </ToolbarButton>
                     <ToolbarButton title="Lista numerada" active={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
-                        <ListOrdered size={15} />
+                        <Icon icon={ListOrdered} />
                     </ToolbarButton>
                     <ToolbarButton title="Bloque de código" active={editor.isActive("codeBlock")} onClick={() => editor.chain().focus().toggleCodeBlock().run()}>
-                        <Code size={15} />
+                        <Icon icon={Code} />
                     </ToolbarButton>
                     <div className="w-px h-5 bg-sunk mx-1" />
                     <ToolbarButton title="Deshacer" disabled={!editor.can().undo()} onClick={() => editor.chain().focus().undo().run()}>
-                        <Undo2 size={15} />
+                        <Icon icon={Undo2} />
                     </ToolbarButton>
                     <ToolbarButton title="Rehacer" disabled={!editor.can().redo()} onClick={() => editor.chain().focus().redo().run()}>
-                        <Redo2 size={15} />
+                        <Icon icon={Redo2} />
                     </ToolbarButton>
                 </div>
 

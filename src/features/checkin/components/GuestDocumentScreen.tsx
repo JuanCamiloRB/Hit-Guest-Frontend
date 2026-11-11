@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Download, FileText, Loader2, XCircle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
@@ -50,7 +51,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <Icon icon={Loader2} size="2xl" className="animate-spin text-primary" />
                 <p className="text-sm font-medium text-ink-3">Cargando documento...</p>
             </div>
         )
@@ -60,7 +61,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4 text-center animate-in fade-in px-4">
                 <div className="w-16 h-16 rounded-full bg-danger-sunk flex items-center justify-center">
-                    <XCircle className="w-8 h-8 text-danger" />
+                    <Icon icon={XCircle} size="2xl" className="text-danger" />
                 </div>
                 <h2 className="text-xl font-semibold text-ink">Documento no disponible</h2>
                 <p className="text-ink-3 text-sm max-w-sm">{error}</p>
@@ -81,11 +82,11 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
                     onClick={() => router.push(basePath)}
                     className="flex items-center gap-2 p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors"
                 >
-                    <ArrowLeft size={20} />
+                    <Icon icon={ArrowLeft} size="lg" />
                     <span className="text-sm font-semibold">Volver</span>
                 </UnstyledButton>
                 <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-lg">
-                    <FileText size={14} />
+                    <Icon icon={FileText} size="sm" />
                     Documento
                 </div>
             </div>
@@ -102,7 +103,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
                         disabled={isDownloading}
                         className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 disabled:opacity-60 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]"
                     >
-                        {isDownloading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
+                        {isDownloading ? <Icon icon={Loader2} size="lg" className="animate-spin" /> : <Icon icon={Download} size="lg" />}
                         Descargar PDF
                     </UnstyledButton>
                 </div>

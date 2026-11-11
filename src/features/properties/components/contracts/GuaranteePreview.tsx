@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { ShieldCheck } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import {
     systemDocumentService,
@@ -60,7 +61,7 @@ export function GuaranteePreview() {
     return (
         <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs font-semibold text-ink-3">
-                <ShieldCheck size={14} className="text-primary" />
+                <Icon icon={ShieldCheck} size="sm" className="text-primary" />
                 Garantía de daños y consumos
                 <span className="font-normal text-ink-3">— mantenida por HitGuest, no editable aquí</span>
             </div>

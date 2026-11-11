@@ -1,6 +1,7 @@
 "use client"
 
 import { MoreHorizontal, MapPin, Building, Hotel, Home as HomeIcon, Palmtree, Loader2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useState } from "react"
 import { usePropertyTypeLabel } from "../hooks/usePropertyTypeLabel"
 
@@ -53,12 +54,12 @@ const BADGE_STYLES: Record<PropertyBadge["kind"], string> = {
  * español según el catálogo). No hay switch por id: el que había asumía
  * 100/101/102 = Casa/Hotel/Apartamento, y en el catálogo real 102 es Hotel.
  */
-const TypeIcon = ({ label }: { label: string | null }) => {
+const PropertyTypeIcon = ({ label }: { label: string | null }) => {
     const l = (label || "").toLowerCase()
-    if (l.includes("hotel")) return <Hotel className="h-3 w-3" />
-    if (l.includes("resort")) return <Palmtree className="h-3 w-3" />
-    if (l.includes("casa") || l.includes("villa") || l.includes("house")) return <HomeIcon className="h-3 w-3" />
-    return <Building className="h-3 w-3" />
+    if (l.includes("hotel")) return <Icon icon={Hotel} size="xs" />
+    if (l.includes("resort")) return <Icon icon={Palmtree} size="xs" />
+    if (l.includes("casa") || l.includes("villa") || l.includes("house")) return <Icon icon={HomeIcon} size="xs" />
+    return <Icon icon={Building} size="xs" />
 }
 
 export function PropertyCard({ property, onStatusChange, activeListings = null, badges = null }: PropertyCardProps) {
@@ -138,7 +139,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 {typeLabel && (
                     <div className="absolute top-2 left-2 flex gap-1">
                         <Badge className="bg-white/90 text-ink border-none shadow-sm backdrop-blur-sm flex gap-1.5 items-center px-2 py-0.5">
-                            <TypeIcon label={hasType ? typeLabel : null} />
+                            <PropertyTypeIcon label={hasType ? typeLabel : null} />
                             <span className="text-xs font-bold">{typeLabel}</span>
                         </Badge>
                     </div>
@@ -161,14 +162,14 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                             {property.name}
                         </h3>
                         <div className="flex items-center text-xs text-ink-2 font-medium">
-                            <MapPin className="mr-1 h-3.3 w-3.3 text-secondary" />
+                            <Icon icon={MapPin} size="sm" className="mr-1 text-secondary" />
                             {property.address?.city || "Ciudad"}, {property.address?.country || "País"}
                         </div>
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon-sm" className="-mt-1 rounded-full" aria-label={`Acciones de ${property.name}`}>
-                                <MoreHorizontal className="h-4 w-4" />
+                                <Icon icon={MoreHorizontal} />
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-45">
@@ -235,7 +236,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        {isToggling && <Loader2 className="h-3 w-3 animate-spin text-ink-3" />}
+                        {isToggling && <Icon icon={Loader2} size="xs" className="animate-spin text-ink-3" />}
                         <Switch
                             checked={isActive}
                             onCheckedChange={requestStatusChange}

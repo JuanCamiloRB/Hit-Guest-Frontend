@@ -3,6 +3,7 @@
 import { useRef, useState } from "react"
 import Image from "next/image"
 import { Loader2, Upload, Trash2, ImageIcon } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { authService } from "@/features/auth/services/auth-service"
@@ -139,7 +140,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
                             className="h-full w-full object-contain"
                         />
                     ) : (
-                        <ImageIcon className="h-8 w-8 text-ink-4" />
+                        <Icon icon={ImageIcon} size="2xl" className="text-ink-4" />
                     )}
                 </div>
 
@@ -153,7 +154,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
                             disabled={disabled}
                             className="gap-1.5"
                         >
-                            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            {busy ? <Icon icon={Loader2} className="animate-spin" /> : <Icon icon={Upload} />}
                             {logoUrl ? "Reemplazar" : "Subir logo"}
                         </Button>
                         {logoUrl && (
@@ -165,7 +166,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
                                 disabled={disabled}
                                 className="gap-1.5 text-danger hover:text-danger hover:bg-danger-sunk"
                             >
-                                <Trash2 className="h-4 w-4" />
+                                <Icon icon={Trash2} />
                                 Eliminar
                             </Button>
                         )}

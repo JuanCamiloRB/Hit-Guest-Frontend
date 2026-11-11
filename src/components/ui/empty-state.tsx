@@ -1,5 +1,7 @@
 import * as React from "react"
+import type { LucideIcon } from "lucide-react"
 
+import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 
 /**
@@ -21,7 +23,8 @@ interface EmptyStateProps extends Omit<React.ComponentProps<"div">, ControlledAt
     title: string
     /** Por qué está vacío o qué hacer. Opcional: se omite cuando es obvio. */
     description?: string
-    icon?: React.ReactNode
+    /** Ilustración decorativa: siempre 2xl, trazo light, en ink-4. */
+    icon?: LucideIcon
     /** La acción que llena el vacío (`empty`) o deshace el filtro (`no-results`). */
     action?: React.ReactNode
     kind?: EmptyStateKind
@@ -63,7 +66,7 @@ function EmptyState({
                 className,
             )}
         >
-            {icon && <div aria-hidden className="mb-1 text-ink-4">{icon}</div>}
+            {icon && <Icon icon={icon} size="2xl" weight="light" className="mb-1 text-ink-4" />}
             <p className="text-sm font-semibold text-ink">{title}</p>
             {description && <p className="max-w-sm text-xs text-ink-3">{description}</p>}
             {action && <div className="mt-3">{action}</div>}

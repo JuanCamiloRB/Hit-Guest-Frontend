@@ -1,6 +1,7 @@
 "use client"
 
 import { MapPin, Globe, Search } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useFormContext } from "react-hook-form"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
 import { useState, useCallback, useEffect, useRef } from "react"
@@ -145,7 +146,7 @@ export function PropertiesLocation() {
         <Card className="border-rule shadow-sm">
             <CardHeader className="border-b bg-sunk/50">
                 <CardTitle className="text-xl font-bold text-ink flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-primary" />
+                    <Icon icon={MapPin} size="lg" className="text-primary" />
                     Ubicación de la Propiedad
                 </CardTitle>
                 <CardDescription>
@@ -295,7 +296,7 @@ export function PropertiesLocation() {
                                 <FormLabel className="text-ink-2 font-semibold">Zona Horaria</FormLabel>
                                 <FormControl>
                                     <div className="relative">
-                                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-3 z-10" />
+                                        <Icon icon={Globe} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3 z-10" />
                                         <Select
                                             onValueChange={field.onChange}
                                             value={field.value || ""}
@@ -306,7 +307,7 @@ export function PropertiesLocation() {
                                             <SelectContent className="max-h-75">
                                                 <div className="p-2 sticky top-0 bg-white z-10 border-b border-rule mb-1">
                                                     <div className="relative">
-                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-3" />
+                                                        <Icon icon={Search} size="sm" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
                                                         <Input
                                                             placeholder="Buscar zona horaria..."
                                                             value={tzSearch}

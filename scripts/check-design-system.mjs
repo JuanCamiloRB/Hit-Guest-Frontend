@@ -169,6 +169,23 @@ const rules = [
         ignore: (path) => path.startsWith("src/components/ui/"),
     },
     {
+        // Un ícono se pinta con la primitiva Icon (escala de tamaños, trazo y
+        // aria-hidden comunes): `<Icon icon={Mail} />`, nunca `<Mail />`.
+        id: "icon-direct",
+        description: "pinta un ícono de lucide directamente; usa <Icon icon={…} size=…>",
+        pattern: /^.+$/gm,
+        input: "lucideElements",
+        ignore: UI_ONLY,
+    },
+    {
+        // El tamaño de un ícono es su `size` (xs…4xl), no una clase.
+        id: "icon-size-override",
+        description: "da tamaño a un Icon con clases; usa la prop size de la escala",
+        pattern: /(?<![\w-])(?:[a-z-]+:)*(?:h|w|size|min-h|min-w|max-h|max-w)-[\w.\[\]/-]+(?![\w-])/g,
+        input: "iconClasses",
+        ignore: UI_ONLY,
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,
@@ -205,6 +222,34 @@ function inspect() {
         const imports = []
         const styles = []
         const fieldClasses = []
+        const lucideElements = []
+        const iconClasses = []
+        const lucideNames = new Set()
+        for (const statement of sourceFile.statements) {
+            if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
+                && statement.moduleSpecifier.text === "lucide-react") {
+                const bindings = statement.importClause?.namedBindings
+                if (bindings && ts.isNamedImports(bindings)) for (const el of bindings.elements) lucideNames.add(el.name.text)
+            }
+        }
+        const classTexts = (node) => {
+            const texts = []
+            for (const attr of node.attributes.properties) {
+                if (!ts.isJsxAttribute(attr) || attr.name.getText(sourceFile) !== "className" || !attr.initializer) continue
+                const init = attr.initializer
+                if (ts.isStringLiteral(init)) texts.push(init.text)
+                else if (ts.isJsxExpression(init) && init.expression) {
+                    // Todos los literales del `className`, también dentro de cn(…) y ternarios.
+                    const collect = (n) => {
+                        if (ts.isStringLiteralLike(n) || ts.isNoSubstitutionTemplateLiteral(n)) texts.push(n.text)
+                        else if (ts.isTemplateExpression(n)) texts.push(n.head.text, ...n.templateSpans.map((sp) => sp.literal.text))
+                        ts.forEachChild(n, collect)
+                    }
+                    collect(init.expression)
+                }
+            }
+            return texts
+        }
 
         function visit(node) {
             if (ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
@@ -233,6 +278,12 @@ function inspect() {
                     }
                 }
             }
+            if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
+                const tag = node.tagName.getText(sourceFile)
+                // Un componente de lucide importado, o uno elegido por dato (`<item.icon />`).
+                if (lucideNames.has(tag) || /\.icon$/i.test(tag)) lucideElements.push(`<${tag}>`)
+                if (tag === "Icon") iconClasses.push(...classTexts(node))
+            }
             // Claves de los objetos en `style={{…}}`.
             if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === "style" && node.initializer
                 && ts.isJsxExpression(node.initializer) && node.initializer.expression
@@ -253,6 +304,8 @@ function inspect() {
             imports: imports.join("\n"),
             styles: styles.join("\n"),
             fieldClasses: fieldClasses.join("\n"),
+            lucideElements: lucideElements.join("\n"),
+            iconClasses: iconClasses.join("\n"),
         }
         for (const rule of rules) {
             if (rule.ignore?.(path)) continue

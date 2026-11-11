@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Building2, RefreshCw, Search } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -97,7 +98,7 @@ export function SupportConsole() {
             <form onSubmit={search} className="flex max-w-3xl flex-wrap gap-3" role="search">
                 <Label variant="plain" htmlFor="support-client-search" className="sr-only">Buscar cliente</Label>
                 <div className="relative min-w-55 flex-1">
-                    <Search size={16} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
+                    <Icon icon={Search} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
                     <Input
                         id="support-client-search"
                         type="search"
@@ -123,14 +124,14 @@ export function SupportConsole() {
                     <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-6 text-sm">
                         <span className="text-danger">{clients.message}</span>
                         <Button variant="outline" size="sm" onClick={() => { setClients({ kind: "loading" }); setReloadKey((k) => k + 1) }}>
-                            <RefreshCw size={14} className="mr-1.5" /> Reintentar
+                            <Icon icon={RefreshCw} className="mr-1.5" /> Reintentar
                         </Button>
                     </div>
                 )}
 
                 {clients.kind === "ready" && clients.items.length === 0 && (
                     <EmptyState
-                        icon={<Building2 aria-hidden />}
+                        icon={Building2}
                         title={query ? "Ningún cliente coincide con la búsqueda" : "Todavía no hay clientes"}
                         description={query ? "Prueba con el correo, la identificación o el nombre de uno de sus usuarios." : undefined}
                     />

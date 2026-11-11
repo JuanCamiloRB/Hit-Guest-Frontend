@@ -18,6 +18,7 @@ import {
     UserCog,
     type LucideIcon,
 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -71,10 +72,11 @@ function NavItem({ item }: { item: NavEntry }) {
                         : "font-medium text-white/70 hover:bg-white/5 hover:text-white",
                 )}
             >
-                <item.icon
-                    aria-hidden
+                <Icon
+                    icon={item.icon}
+                    size="lg"
                     className={cn(
-                        "size-5 shrink-0 transition-colors",
+                        "transition-colors",
                         item.active ? "text-white" : "text-white/60 group-hover:text-white",
                     )}
                 />
@@ -255,7 +257,7 @@ export function Sidebar({ className }: { className?: string }) {
                                           : (user?.email ?? "")}
                                 </p>
                             </div>
-                            <MoreVertical className="h-4 w-4 text-white/40" />
+                            <Icon icon={MoreVertical} className="text-white/40" />
                         </UnstyledButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56" side="top">
@@ -269,19 +271,19 @@ export function Sidebar({ className }: { className?: string }) {
                             para el perfil de una sola. */}
                         <DropdownMenuItem asChild>
                             <Link href="/dashboard/settings?tab=profile" className="flex w-full cursor-pointer items-center">
-                                <User className="mr-2 h-4 w-4" />
+                                <Icon icon={User} className="mr-2" />
                                 <span>Mi cuenta</span>
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem asChild>
                             <Link href="/dashboard/settings" className="flex w-full cursor-pointer items-center">
-                                <Settings className="mr-2 h-4 w-4" />
+                                <Icon icon={Settings} className="mr-2" />
                                 <span>Configuración</span>
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer" onClick={logout}>
-                            <LogOut className="mr-2 h-4 w-4" />
+                            <Icon icon={LogOut} className="mr-2" />
                             <span>{isInSupportSession ? "Salir del modo soporte" : "Cerrar Sesión"}</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -298,7 +300,7 @@ export function MobileSidebar() {
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden" aria-label="Abrir menú">
-                    <Menu className="h-6 w-6" aria-hidden />
+                    <Icon icon={Menu} />
                 </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 border-none p-0">

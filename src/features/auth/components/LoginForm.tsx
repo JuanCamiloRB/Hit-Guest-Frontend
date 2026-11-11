@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Loader2, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -80,7 +81,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
             </div>
             {isMounted && error && (
                 <div className="bg-destructive/15 text-destructive text-sm p-3 rounded-md flex items-center gap-2 border border-destructive/20 animate-in fade-in zoom-in duration-200">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <Icon icon={AlertCircle} />
                     <span>{error}</span>
                 </div>
             )}
@@ -97,7 +98,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                     <FormItem id="email-form-item">
                                         <FormLabel>Correo electrónico <span className="text-destructive">*</span></FormLabel>
                                             <div className="relative">
-                                                <Mail aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Icon icon={Mail} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                                                 <FormControl>
                                                     <Input
                                                     placeholder="nombre@hitguest.com"
@@ -119,7 +120,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                 disabled={isLoading}
                                 className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300 h-11"
                             >
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
+                                {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin text-white" />}
                                 Continuar con el acceso
                             </Button>
                         </div>
@@ -152,7 +153,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                             </UnstyledButton>
                                         </div>
                                             <div className="relative">
-                                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <Icon icon={Lock} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                                                 <FormControl>
                                                     <Input
                                                     id="otp"
@@ -177,7 +178,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                     disabled={isLoading}
                                     className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300 h-11 w-full"
                                 >
-                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
+                                    {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin text-white" />}
                                     Verificar e Iniciar Sesión
                                 </Button>
 

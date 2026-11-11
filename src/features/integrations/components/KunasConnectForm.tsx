@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, KeyRound, Mail, Lock, Tag, Plug, Eye, EyeOff } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { notifyError } from "@/lib/notify-error"
 import type { KunasConnectPayload } from "../types"
 import {
@@ -74,7 +75,7 @@ export function KunasConnectForm({ onConnect }: Props) {
 
             <Field
                 label="Token KunasPMS"
-                icon={<KeyRound className="h-4 w-4" />}
+                icon={<Icon icon={KeyRound} />}
                 required
                 error={errors.token}
             >
@@ -86,7 +87,7 @@ export function KunasConnectForm({ onConnect }: Props) {
                 />
             </Field>
 
-            <Field label="Email" icon={<Mail className="h-4 w-4" />} required error={errors.email}>
+            <Field label="Email" icon={<Icon icon={Mail} />} required error={errors.email}>
                 <Input
                     type="email"
                     value={email}
@@ -96,7 +97,7 @@ export function KunasConnectForm({ onConnect }: Props) {
                 />
             </Field>
 
-            <Field label="Contraseña" icon={<Lock className="h-4 w-4" />} required error={errors.password}>
+            <Field label="Contraseña" icon={<Icon icon={Lock} />} required error={errors.password}>
                 <div className="relative">
                     <Input
                         type={showPassword ? "text" : "password"}
@@ -112,12 +113,12 @@ export function KunasConnectForm({ onConnect }: Props) {
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
                         aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                     >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        {showPassword ? <Icon icon={EyeOff} /> : <Icon icon={Eye} />}
                     </UnstyledButton>
                 </div>
             </Field>
 
-            <Field label="Nombre (opcional)" icon={<Tag className="h-4 w-4" />} error={errors.name}>
+            <Field label="Nombre (opcional)" icon={<Icon icon={Tag} />} error={errors.name}>
                 <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
@@ -130,7 +131,7 @@ export function KunasConnectForm({ onConnect }: Props) {
                 disabled={!canSubmit}
                 className="gap-2 bg-primary hover:bg-primary text-white font-bold"
             >
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />}
+                {isSubmitting ? <Icon icon={Loader2} className="animate-spin" /> : <Icon icon={Plug} />}
                 Conectar KunasPMS
             </Button>
         </form>

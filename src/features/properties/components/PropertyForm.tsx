@@ -3,6 +3,7 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader2, Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, AlertCircle, FileText, Link2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -381,20 +382,16 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                             value="details"
                             className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
-                            <Info className={cn(
-                                "mr-2 h-4 w-4 transition-colors",
-                                activeTab === "details" ? "text-white" : "text-primary"
-                            )} />
+                            <Icon icon={Info} className={cn("mr-2 transition-colors",
+ activeTab ==="details"?"text-white":"text-primary")} />
                             <span className="font-bold">Detalles</span>
                         </TabsTrigger>
                         <TabsTrigger
                             value="units"
                             className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
-                            <Building className={cn(
-                                "mr-2 h-4 w-4 transition-colors",
-                                activeTab === "units" ? "text-white" : "text-primary"
-                            )} />
+                            <Icon icon={Building} className={cn("mr-2 transition-colors",
+ activeTab ==="units"?"text-white":"text-primary")} />
                             <span className="font-bold">Alojamientos</span>
                         </TabsTrigger>
                         {initialData && (
@@ -402,10 +399,8 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                 value="automations"
                                 className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                             >
-                                <Sparkles className={cn(
-                                    "mr-2 h-4 w-4 transition-colors",
-                                    activeTab === "automations" ? "text-white" : "text-primary"
-                                )} />
+                                <Icon icon={Sparkles} className={cn("mr-2 transition-colors",
+ activeTab ==="automations"?"text-white":"text-primary")} />
                                 <span className="font-bold">Automatización</span>
                             </TabsTrigger>
                         )}
@@ -414,10 +409,8 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                 value="documents"
                                 className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                             >
-                                <FileText className={cn(
-                                    "mr-2 h-4 w-4 transition-colors",
-                                    activeTab === "documents" ? "text-white" : "text-primary"
-                                )} />
+                                <Icon icon={FileText} className={cn("mr-2 transition-colors",
+ activeTab ==="documents"?"text-white":"text-primary")} />
                                 <span className="font-bold">Documentos</span>
                             </TabsTrigger>
                         )}
@@ -425,20 +418,16 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                             value="location"
                             className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
-                            <MapPin className={cn(
-                                "mr-2 h-4 w-4 transition-colors",
-                                activeTab === "location" ? "text-white" : "text-primary"
-                            )} />
+                            <Icon icon={MapPin} className={cn("mr-2 transition-colors",
+ activeTab ==="location"?"text-white":"text-primary")} />
                             <span className="font-bold">Ubicación</span>
                         </TabsTrigger>
                         <TabsTrigger
                             value="photos"
                             className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
                         >
-                            <Camera className={cn(
-                                "mr-2 h-4 w-4 transition-colors",
-                                activeTab === "photos" ? "text-white" : "text-primary"
-                            )} />
+                            <Icon icon={Camera} className={cn("mr-2 transition-colors",
+ activeTab ==="photos"?"text-white":"text-primary")} />
                             <span className="font-bold">Fotos</span>
                         </TabsTrigger>
                     </TabsList>
@@ -447,7 +436,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         <Card>
                             <CardHeader className="border-b bg-sunk/50">
                                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                                    <LayoutDashboard className="h-5 w-5 text-primary" />
+                                    <Icon icon={LayoutDashboard} size="lg" className="text-primary" />
                                     Detalles de la Propiedad
                                 </CardTitle>
                                 <CardDescription>
@@ -627,7 +616,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         <Card>
                             <CardHeader className="border-b bg-sunk/50">
                                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                                    <Link2 className="h-5 w-5 text-primary" />
+                                    <Icon icon={Link2} size="lg" className="text-primary" />
                                     Identificación Externa
                                 </CardTitle>
                                 <CardDescription>
@@ -700,7 +689,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                             <DialogTrigger asChild>
                                 <Button type="button" variant="outline" className="text-destructive border-destructive hover:bg-destructive/10">
-                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    <Icon icon={Trash2} className="mr-2" />
                                     Eliminar Propiedad
                                 </Button>
                             </DialogTrigger>
@@ -717,7 +706,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                         Cancelar
                                     </Button>
                                     <Button variant="destructive" onClick={onDelete} disabled={isDeleting}>
-                                        {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {isDeleting && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                                         Confirmar Eliminación
                                     </Button>
                                 </DialogFooter>
@@ -730,7 +719,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         disabled={isLoading}
                         className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-8 rounded-lg shadow-sm transition-all"
                     >
-                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                         {initialData ? "Actualizar Propiedad" : "Crear Propiedad"}
                     </Button>
                 </div>
@@ -750,7 +739,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                 <DialogContent className="sm:max-w-110">
                     <DialogHeader>
                         <div className="flex items-center gap-3 text-destructive mb-2">
-                            <AlertCircle className="h-6 w-6" />
+                            <Icon icon={AlertCircle} size="xl" />
                             <DialogTitle className="text-xl">Información Faltante</DialogTitle>
                         </div>
                         <DialogDescription className="text-ink-2">

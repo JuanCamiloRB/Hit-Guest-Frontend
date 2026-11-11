@@ -34,6 +34,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { Plus, Trash2, Edit2, Building, BedDouble, Bath, Clock, Settings2, Shield, Zap, Loader2, Info, TriangleAlert, Sparkles } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import { useState, useEffect, useRef } from "react"
@@ -634,7 +635,7 @@ export function PropertiesUnits() {
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
                         <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                            <Building className="h-5 w-5 text-primary" />
+                            <Icon icon={Building} size="lg" className="text-primary" />
                             Alojamientos
                         </CardTitle>
                         <CardDescription>
@@ -647,7 +648,7 @@ export function PropertiesUnits() {
                         onClick={handleOpenAddDialog}
                         className="bg-primary hover:bg-primary/90 text-white font-bold px-4 rounded-lg shadow-sm transition-all"
                     >
-                        <Plus className="mr-2 h-4 w-4" /> Añadir Unidad
+                        <Icon icon={Plus} className="mr-2" /> Añadir Unidad
                     </Button>
 
                     <Dialog
@@ -732,7 +733,7 @@ export function PropertiesUnits() {
                                             <TabsTrigger value="policies" className="text-xs font-bold">Políticas</TabsTrigger>
                                             {propertyUuid && (
                                                 <TabsTrigger value="automations" className="text-xs font-bold flex items-center gap-1">
-                                                    <Zap className="h-3 w-3" />
+                                                    <Icon icon={Zap} />
                                                     Autom.
                                                 </TabsTrigger>
                                             )}
@@ -823,7 +824,7 @@ export function PropertiesUnits() {
                                                     <FieldError message={fieldErrors.roomTypeId} />
                                                     {!roomTypesLoading && roomTypes.length === 0 && (
                                                         <p className="flex items-start gap-1.5 text-xs text-warning">
-                                                            <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                                                            <Icon icon={TriangleAlert} size="sm" className="mt-0.5" />
                                                             No se pudo cargar el catálogo. Recarga la página antes de guardar.
                                                         </p>
                                                     )}
@@ -943,7 +944,7 @@ export function PropertiesUnits() {
                                             <div className="space-y-4">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <Clock className="h-4 w-4 text-primary" />
+                                                        <Icon icon={Clock} className="text-primary" />
                                                         <h4 className="text-sm font-bold text-ink-3">Horarios</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -1001,7 +1002,7 @@ export function PropertiesUnits() {
                                             <div className="space-y-4 pt-4 border-t">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <Settings2 className="h-4 w-4 text-primary" />
+                                                        <Icon icon={Settings2} className="text-primary" />
                                                         <h4 className="text-sm font-bold text-ink-3">WiFi Especial</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -1059,7 +1060,7 @@ export function PropertiesUnits() {
                                             <div className="space-y-4 pt-4 border-t">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <Sparkles className="h-4 w-4 text-primary" />
+                                                        <Icon icon={Sparkles} className="text-primary" />
                                                         <h4 className="text-sm font-bold text-ink-3">Amenidades</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -1125,7 +1126,7 @@ export function PropertiesUnits() {
                                             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                                                 <div className="space-y-4 p-4 border rounded-xl bg-sunk/30">
                                                     <div className="flex items-center gap-2">
-                                                        <BedDouble className="h-4 w-4 text-primary" />
+                                                        <Icon icon={BedDouble} className="text-primary" />
                                                         <h4 className="text-xs font-bold text-ink-2">Dormitorios</h4>
                                                     </div>
                                                     <div className="grid grid-cols-1 gap-3">
@@ -1150,7 +1151,7 @@ export function PropertiesUnits() {
 
                                                 <div className="space-y-4 p-4 border rounded-xl bg-sunk/30">
                                                     <div className="flex items-center gap-2">
-                                                        <Bath className="h-4 w-4 text-primary" />
+                                                        <Icon icon={Bath} className="text-primary" />
                                                         <h4 className="text-xs font-bold text-ink-2">Baños</h4>
                                                     </div>
                                                     <div className="grid grid-cols-1 gap-3">
@@ -1179,7 +1180,7 @@ export function PropertiesUnits() {
                                             <div className="space-y-4 pt-2">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
-                                                        <Shield className="h-4 w-4 text-primary" />
+                                                        <Icon icon={Shield} className="text-primary" />
                                                         <h4 className="text-sm font-bold text-ink-3">Políticas</h4>
                                                     </div>
                                                     <div className="flex items-center gap-2">
@@ -1196,7 +1197,7 @@ export function PropertiesUnits() {
 
                                                 {unitForm.extra.inheritPolicies ? (
                                                     <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex gap-3">
-                                                        <Shield className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                                                        <Icon icon={Shield} size="lg" className="text-primary mt-0.5" />
                                                         <div className="space-y-1">
                                                             <p className="text-sm font-bold text-primary">Políticas del Tipo de Alojamiento</p>
                                                             <p className="text-xs text-primary leading-relaxed">
@@ -1235,7 +1236,7 @@ export function PropertiesUnits() {
                                         {propertyUuid && (
                                         <TabsContent value="automations" className="space-y-4">
                                             <div className="flex items-start gap-3 bg-primary/10 border border-primary/20 rounded-xl p-4">
-                                                <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                                                <Icon icon={Info} className="text-primary mt-0.5" />
                                                 <div>
                                                     <p className="text-sm font-semibold text-primary">Sobreescribir automatizaciones</p>
                                                     <p className="text-xs text-primary leading-relaxed">
@@ -1248,7 +1249,7 @@ export function PropertiesUnits() {
                                                 <LoadingState rows={2} label="Cargando automatizaciones…" />
                                             ) : propertyAutomations.length === 0 ? (
                                                 <EmptyState
-                                                    icon={<Zap className="h-5 w-5" />}
+                                                    icon={Zap}
                                                     title="No hay automatizaciones activas en esta propiedad."
                                                     className="rounded-xl border border-rule py-8"
                                                 />
@@ -1286,7 +1287,7 @@ export function PropertiesUnits() {
                                                             )}>
                                                                 <div className="min-w-0 space-y-0.5">
                                                                     <div className="flex items-center gap-2 flex-wrap">
-                                                                        <Settings2 className="h-4 w-4 text-ink-3 shrink-0" />
+                                                                        <Icon icon={Settings2} className="text-ink-3" />
                                                                         <span className="text-sm font-bold text-ink truncate">{display.title}</span>
                                                                         {display.detail && (
                                                                             <Badge
@@ -1363,7 +1364,7 @@ export function PropertiesUnits() {
                                     disabled={isSavingUnit || roomTypesLoading || roomTypes.length === 0}
                                     className="bg-primary hover:bg-primary/90 text-white font-bold"
                                 >
-                                    {isSavingUnit && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    {isSavingUnit && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                                     {editingIndex !== null ? "Guardar Cambios" : "Añadir Unidad"}
                                 </Button>
                             </DialogFooter>
@@ -1451,7 +1452,7 @@ export function PropertiesUnits() {
                                     </TableCell>
                                     <TableCell className="text-right space-x-1 flex justify-end">
                                         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary" onClick={() => handleOpenEditDialog(index)}>
-                                            <Edit2 className="h-4 w-4" />
+                                            <Icon icon={Edit2} />
                                         </Button>
                                         <Button
                                             type="button"
@@ -1461,7 +1462,7 @@ export function PropertiesUnits() {
                                             className="h-8 w-8 text-destructive hover:bg-destructive/10"
                                             onClick={() => handleRemoveUnit(index)}
                                         >
-                                            <Trash2 className="h-4 w-4" aria-hidden />
+                                            <Icon icon={Trash2} />
                                         </Button>
                                     </TableCell>
                                 </TableRow>

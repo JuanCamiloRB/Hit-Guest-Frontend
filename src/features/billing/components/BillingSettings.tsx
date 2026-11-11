@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Loader2, Wallet, Plus } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { ApiError } from "@/types/api"
 import { billingService, BillingNotConfiguredError } from "../services/billing-service"
 import { useBalanceStore } from "../hooks/useBalanceStore"
@@ -104,7 +105,7 @@ export function BillingSettings() {
             {/* ── Balance + Recharge ── */}
             <div className="rounded-xl border border-rule bg-white p-6">
                 <div className="flex items-center gap-2 text-sm font-semibold text-ink-3">
-                    <Wallet className="h-4 w-4 text-primary" />
+                    <Icon icon={Wallet} className="text-primary" />
                     Saldo disponible
                 </div>
                 <div className="mt-2 flex items-baseline gap-2">
@@ -197,9 +198,9 @@ export function BillingSettings() {
                             className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 font-bold text-white transition-colors hover:bg-primary disabled:opacity-50"
                         >
                             {isSubmitting ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <Icon icon={Loader2} className="animate-spin" />
                             ) : (
-                                <Plus className="h-4 w-4" />
+                                <Icon icon={Plus} />
                             )}
                             Add Credits
                         </UnstyledButton>

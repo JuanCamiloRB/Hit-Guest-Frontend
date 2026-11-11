@@ -1,7 +1,8 @@
 "use client"
 
-import type { ComponentType } from "react"
+import type { LucideIcon } from "lucide-react"
 import { Mail, MessageCircle, MessagesSquare, Phone } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { format, isValid } from "date-fns"
 import { es } from "date-fns/locale"
 import { SectionCard } from "@/components/ui/section-card"
@@ -37,7 +38,7 @@ interface Props {
     origin: Pick<ReservationOrigin, "originKnown" | "importSource">
 }
 
-type IconType = ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }>
+type IconType = LucideIcon
 
 function formatSentAt(iso: string | null): string | null {
     if (!iso) return null
@@ -106,7 +107,7 @@ export function CheckinLinkDeliveryCard({
                                 reservationUuid={reservationUuid}
                                 trigger={
                                     <Button type="button" size="sm" variant="outline" className="gap-1.5 text-xs">
-                                        <Phone size={13} aria-hidden /> {phone ? "Corregir teléfono" : "Agregar teléfono"}
+                                        <Icon icon={Phone} /> {phone ? "Corregir teléfono" : "Agregar teléfono"}
                                     </Button>
                                 }
                             />
@@ -133,7 +134,7 @@ function whenOf(delivery: ChannelDelivery): string | null {
 }
 
 function ChannelRow({
-    icon: Icon,
+    icon,
     label,
     to,
     when,
@@ -150,7 +151,7 @@ function ChannelRow({
         // dt y dd) y la definición se alinea con el texto (16 px + 6 px).
         <div className="min-w-0">
                 <dt className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
-                    <Icon size={16} className="shrink-0 text-ink-4" aria-hidden />
+                    <Icon icon={icon} className="text-ink-4" />
                     {label}
                 </dt>
                 <dd className="mt-0.5 space-y-1 pl-5.5">

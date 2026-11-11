@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Loader2, Eye, EyeOff, KeyRound } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { notifyError } from "@/lib/notify-error"
 import type { KunasConfigurationPayload } from "../types"
 import {
@@ -135,7 +136,7 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
                                 aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                             >
-                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                {showPassword ? <Icon icon={EyeOff} /> : <Icon icon={Eye} />}
                             </UnstyledButton>
                         </div>
                         {errors.password && <p className="text-xs font-medium text-danger">{errors.password}</p>}
@@ -143,7 +144,7 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
 
                     <div className="space-y-1.5">
                         <Label variant="plain" className="flex items-center gap-1.5 text-sm font-semibold text-ink-2">
-                            <KeyRound className="h-4 w-4 text-ink-3" />
+                            <Icon icon={KeyRound} className="text-ink-3" />
                             Token KunasPMS
                         </Label>
                         <Input
@@ -165,7 +166,7 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                         disabled={!canSave}
                         className="gap-2 bg-primary hover:bg-primary text-white font-bold"
                     >
-                        {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {isSaving && <Icon icon={Loader2} className="animate-spin" />}
                         Guardar
                     </Button>
                 </DialogFooter>

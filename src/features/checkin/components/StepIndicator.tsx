@@ -1,6 +1,7 @@
 "use client"
 
 import { Check } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 
 interface Step {
   label: string
@@ -43,7 +44,7 @@ export function StepIndicator({
               `}
             >
               {isCompleted || isPast ? (
-                <Check size={14} strokeWidth={3} />
+                <Icon icon={Check} size="sm" weight="bold" />
               ) : (
                 i + 1
               )}

@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -66,7 +67,7 @@ export function ContractChannelCard({
                     )}
                     <Button type="button" variant={expanded ? "secondary" : "outline"} size="sm" onClick={onToggle} aria-expanded={expanded}>
                         {status === "unconfigured" ? "Configurar" : expanded ? "Cerrar" : "Editar"}
-                        {expanded ? <ChevronUp className="ml-1.5 h-4 w-4" /> : <ChevronDown className="ml-1.5 h-4 w-4" />}
+                        {expanded ? <Icon icon={ChevronUp} className="ml-1.5" /> : <Icon icon={ChevronDown} className="ml-1.5" />}
                     </Button>
                 </div>
             </div>

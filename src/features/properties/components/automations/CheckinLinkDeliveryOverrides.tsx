@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react"
 import { Building2, ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -123,7 +124,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                 className="group flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-xs font-semibold text-ink-3 transition-colors hover:bg-sunk/50 hover:text-ink-2"
             >
                 <div className="flex items-center gap-2">
-                    <Building2 size={13} className="text-ink-3 group-hover:text-ink-2" />
+                    <Icon icon={Building2} size="sm" className="text-ink-3 group-hover:text-ink-2" />
                     <span>Por unidad</span>
                     {overrideCount > 0 && (
                         <Badge variant="outline" className="h-4 border-primary/20 bg-primary/10 text-xs font-bold text-primary">
@@ -135,8 +136,8 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                     )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                    {loading && <Loader2 size={12} className="animate-spin text-ink-3" />}
-                    {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    {loading && <Icon icon={Loader2} size="xs" className="animate-spin text-ink-3" />}
+                    {expanded ? <Icon icon={ChevronUp} size="sm" /> : <Icon icon={ChevronDown} size="sm" />}
                 </div>
             </UnstyledButton>
 
@@ -149,7 +150,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                             density="compact"
                             action={
                                 <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => void loadPending()}>
-                                    <RefreshCw size={12} aria-hidden /> Reintentar
+                                    <Icon icon={RefreshCw} /> Reintentar
                                 </Button>
                             }
                         >
@@ -168,7 +169,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                                             <p className="text-xs text-warning">No se pudo cargar</p>
                                         </div>
                                         <Button type="button" size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => void loadListings([listing])}>
-                                            <RefreshCw size={12} /> Reintentar
+                                            <Icon icon={RefreshCw} /> Reintentar
                                         </Button>
                                     </li>
                                 )
@@ -177,7 +178,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                                 return (
                                     <li key={listing.uuid} className="flex items-center justify-between gap-3 rounded-lg border border-rule bg-white px-3 py-2">
                                         <p className="truncate text-xs font-semibold text-ink-2">{listing.name}</p>
-                                        <Loader2 size={12} className="animate-spin text-ink-3" />
+                                        <Icon icon={Loader2} size="xs" className="animate-spin text-ink-3" />
                                     </li>
                                 )
                             }
@@ -354,7 +355,7 @@ function ListingDeliveryRow({
             {dirty && (
                 <div className="flex justify-end">
                     <Button type="button" size="sm" className="h-7 gap-1 text-xs" onClick={() => void save()} disabled={saving}>
-                        {saving && <Loader2 size={12} className="animate-spin" />}
+                        {saving && <Icon icon={Loader2} className="animate-spin" />}
                         Guardar
                     </Button>
                 </div>

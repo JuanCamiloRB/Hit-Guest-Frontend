@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { Building2, Ban, ChevronDown, ChevronUp, Settings2, Loader2, Lock, RefreshCw } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -105,7 +106,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                 className="w-full flex items-center justify-between px-1 py-1.5 text-xs font-semibold text-ink-3 hover:text-ink-2 rounded-lg hover:bg-sunk/50 transition-colors group"
             >
                 <div className="flex items-center gap-2">
-                    <Building2 size={13} className="text-ink-3 group-hover:text-ink-2" />
+                    <Icon icon={Building2} size="sm" className="text-ink-3 group-hover:text-ink-2" />
                     <span>Overrides por unidad</span>
                     {overrideCount > 0 && (
                         <Badge variant="outline" className="h-4 text-xs bg-primary/10 text-primary border-primary/20 font-bold">
@@ -117,8 +118,8 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                     )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                    {loading && <Loader2 size={12} className="animate-spin text-ink-3" />}
-                    {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    {loading && <Icon icon={Loader2} size="xs" className="animate-spin text-ink-3" />}
+                    {expanded ? <Icon icon={ChevronUp} size="sm" /> : <Icon icon={ChevronDown} size="sm" />}
                 </div>
             </UnstyledButton>
 
@@ -136,7 +137,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                     density="compact"
                                     action={
                                         <Button type="button" size="sm" variant="outline" className="gap-1" onClick={() => void loadPending()}>
-                                            <RefreshCw size={12} aria-hidden /> Reintentar
+                                            <Icon icon={RefreshCw} /> Reintentar
                                         </Button>
                                     }
                                 >
@@ -182,7 +183,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                 className="h-7 gap-1 text-xs"
                                                 onClick={() => void loadListings([listing])}
                                             >
-                                                <RefreshCw size={12} /> Reintentar
+                                                <Icon icon={RefreshCw} /> Reintentar
                                             </Button>
                                         </div>
                                     )
@@ -222,7 +223,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                 )}
                                                 {hasToken && (
                                                     <span className="inline-flex items-center gap-0.5 text-xs text-ink-3">
-                                                        <Lock size={9} /> token
+                                                        <Icon icon={Lock} size="xs" /> token
                                                     </span>
                                                 )}
                                             </div>
@@ -240,7 +241,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                 </span>
                                             ) : isDisabledHere ? (
                                                 <div className="flex items-center gap-1 mt-0.5">
-                                                    <Ban size={10} className="text-danger" />
+                                                    <Icon icon={Ban} size="xs" className="text-danger" />
                                                     <span className="text-xs text-danger font-medium">
                                                         Desactivada en esta unidad
                                                     </span>
@@ -276,7 +277,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                             )}
                                         </div>
 
-                                        <Settings2 size={12} className="text-ink-4 shrink-0" />
+                                        <Icon icon={Settings2} size="xs" className="text-ink-4" />
                                     </UnstyledButton>
                                 )
                             })}

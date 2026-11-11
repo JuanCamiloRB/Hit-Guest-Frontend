@@ -124,9 +124,10 @@ escala en hover.
 | Rótulo de grupo | `Overline` (único uso de mayúsculas) |
 | Aviso | `FeedbackBanner` |
 | Carga | `LoadingState`, `Skeleton`, `RefreshIndicator` o `Button loading` |
-| Vacío | `EmptyState` (`empty` o `no-results`) |
+| Vacío | `EmptyState` (`empty` o `no-results`; `icon` recibe el componente de lucide y lo pinta en `2xl` light) |
 | Tabla | `Table` para composición especial; `DataTable` para ordenar/paginar |
-| Marca | `Logo`, `ChannelLogo`; iconos funcionales desde `lucide-react` |
+| Ícono | `Icon icon={…}` (escala `xs`…`4xl`, trazo `light`/`regular`/`bold`, decorativo salvo `label`) |
+| Marca | `Logo`, `ChannelLogo` |
 
 No se crean botones, inputs, selects, textareas, avisos, spinners o pastillas a
 mano dentro de una feature. Una excepción técnica debe quedar documentada junto
@@ -134,11 +135,29 @@ al código y no puede convertirse en un patrón visual alternativo.
 
 ## 6. Iconografía
 
-- `lucide-react` es la biblioteca funcional única.
-- Tamaño estándar: 16 px en controles, 20 px en navegación y 24 px en estados
-  vacíos o mensajes destacados.
-- Un icono decorativo lleva `aria-hidden`.
-- Un botón que solo contiene un icono necesita nombre accesible y usa el tamaño
+- `lucide-react` es la biblioteca funcional única, y un ícono se pinta siempre
+  con la primitiva `Icon`: `<Icon icon={Mail} />`, nunca `<Mail />` ni
+  `<item.icon />`. Los componentes de lucide se importan solo para pasarlos
+  como valor (`icon={Mail}`).
+- Escala única (prop `size`, nunca clases `h-*`/`w-*`/`size-*`):
+
+  | Paso | px | Uso |
+  |---|---|---|
+  | `xs` | 12 | dentro de una pastilla o de texto `text-xs` |
+  | `sm` | 14 | junto a un rótulo o dato pequeño |
+  | `md` | 16 | predeterminado: texto, campos y todo ícono dentro de `Button`, menús, `Tabs` y `Select` |
+  | `lg` | 20 | navegación y encabezados de tarjeta |
+  | `xl` | 24 | mensajes destacados |
+  | `2xl` | 32 | estado vacío (`EmptyState`), ilustración de una tarjeta |
+  | `3xl` | 40 | resultado de un paso del portal (éxito, espera, error) |
+  | `4xl` | 48 | pantalla final del portal |
+
+- Trazo: `regular` (2) siempre; `bold` (3) solo para el check de un paso
+  completado; `light` (1,5) para los pasos de ilustración.
+- Decorativo por omisión (`aria-hidden`). Si el ícono es el único portador del
+  significado, `label` lo convierte en imagen con nombre. El color va en
+  `className` con tokens; la posición también (`absolute left-3`).
+- Un botón que solo contiene un ícono necesita nombre accesible y usa el tamaño
   `icon`, `icon-sm` o `icon-lg` de `Button`.
 - Logos de canales se resuelven mediante `ChannelLogo`, nunca mediante texto,
   emojis o dibujos aproximados.
@@ -177,6 +196,8 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `arbitrary-length` | `w-[180px]`, `h-[2.5rem]` | `w-45`, `h-10` |
 | `font-weight-scale` | `font-black` | `font-bold` |
 | `uppercase-text` | `uppercase`, `tracking-[0.2em]` | caso de oración; `Overline` para rótulos de grupo |
+| `icon-direct` | `<Mail />`, `<item.icon />` | `<Icon icon={Mail} />` |
+| `icon-size-override` | `<Icon className="h-5 w-5" />` | `<Icon size="lg" />` |
 | `nonstandard-icon-library` | `react-icons` | `lucide-react` |
 
 Revisa los textos fijos y también los trozos fijos de los template literals

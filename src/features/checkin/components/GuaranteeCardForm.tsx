@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { loadStripe, type Stripe, type StripeCardElement } from "@stripe/stripe-js"
 import { Loader2, ShieldCheck, AlertTriangle, CreditCard } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { normalizeApiError } from "@/lib/notify-error"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
@@ -461,7 +462,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
     if (status === null) {
         return (
             <div className="flex items-center gap-2 text-sm text-ink-3 py-4">
-                <Loader2 size={16} className="animate-spin" />
+                <Icon icon={Loader2} className="animate-spin" />
                 Cargando garantía…
             </div>
         )
@@ -470,7 +471,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
     if (status === "active") {
         return (
             <div className="flex items-center gap-3 rounded-xl border border-success/30 bg-success-sunk p-4">
-                <ShieldCheck size={20} className="text-success shrink-0" />
+                <Icon icon={ShieldCheck} size="lg" className="text-success" />
                 <div>
                     <p className="text-sm font-bold text-success">Tarjeta de garantía registrada</p>
                     <p className="text-xs text-success mt-0.5">
@@ -519,8 +520,8 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                 <div className="space-y-2">
                     <div className="flex items-center gap-2 rounded-xl border border-rule bg-sunk/50 p-4 text-sm text-ink-3">
                         {pollTimedOut
-                            ? <CreditCard size={16} className="text-ink-3" />
-                            : <Loader2 size={16} className="animate-spin text-primary" />}
+                            ? <Icon icon={CreditCard} className="text-ink-3" />
+                            : <Icon icon={Loader2} className="animate-spin text-primary" />}
                         {pollTimedOut
                             ? "Tu tarjeta sigue sin confirmarse."
                             : /* La frase avanza con la espera (máx. 60 s de sondeo):
@@ -558,7 +559,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                         formulario…" sobre un formulario que ya nunca iba a llegar. */}
                     {!cardMounted && !problem && (
                         <div className="flex items-center gap-2 text-xs text-ink-3">
-                            <Loader2 size={13} className="animate-spin" /> Preparando formulario…
+                            <Icon icon={Loader2} size="sm" className="animate-spin" /> Preparando formulario…
                         </div>
                     )}
 
@@ -592,9 +593,9 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                         className="w-full flex items-center justify-center gap-2 h-11 rounded-xl bg-primary text-white text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
                     >
                         {submitting ? (
-                            <Loader2 size={16} className="animate-spin" />
+                            <Icon icon={Loader2} className="animate-spin" />
                         ) : (
-                            <CreditCard size={16} />
+                            <Icon icon={CreditCard} />
                         )}
                         Autorizar tarjeta
                     </UnstyledButton>
@@ -603,7 +604,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
 
             {problemText && (
                 <p className="flex items-start gap-2 text-xs text-danger bg-danger-sunk border border-danger/20 rounded-lg px-3 py-2">
-                    <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+                    <Icon icon={AlertTriangle} size="sm" className="mt-0.5" />
                     <span>
                         {problemText}
                         {/* La referencia existe porque diagnosticar esto costó dos

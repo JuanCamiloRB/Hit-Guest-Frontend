@@ -1,6 +1,7 @@
 "use client"
 
 import { Zap } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -148,7 +149,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
     return (
         <div className="space-y-3 rounded-xl border border-rule bg-sunk/60 p-4">
             <div className="flex items-center gap-2">
-                <Zap size={15} className="text-primary" />
+                <Icon icon={Zap} className="text-primary" />
                 <h4 className="text-sm font-bold text-ink">Disparador</h4>
                 <span className="text-xs font-semibold text-ink-3">
                     {required ? "Requerido" : "Opcional"}

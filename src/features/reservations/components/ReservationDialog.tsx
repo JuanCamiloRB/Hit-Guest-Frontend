@@ -22,6 +22,7 @@ import {
     Edit,
     AlertCircle,
 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { format, differenceInDays, addDays } from "date-fns"
 import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -641,7 +642,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                     // Botón principal estándar: el morado de marca con texto blanco
                     // daba 4,42:1 (no AA); `primary` es su versión de interacción.
                     <Button className="gap-2">
-                        <Plus size={18} aria-hidden />
+                        <Icon icon={Plus} />
                         Nueva reserva
                     </Button>
                 )}
@@ -671,7 +672,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                         {/* ─── Section: Guest Info ─── */}
                         <div className="space-y-1">
                             <h3 className="text-xs font-bold text-ink-3 flex items-center gap-2">
-                                <User size={14} />
+                                <Icon icon={User} size="sm" />
                                 Datos del Huésped
                             </h3>
                             <div className="h-px bg-sunk" />
@@ -751,7 +752,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                         {/* ─── Section: Property & Source ─── */}
                         <div className="space-y-1.5 pt-2">
                             <h3 className="text-xs font-bold text-secondary flex items-center gap-2">
-                                <Home size={14} />
+                                <Icon icon={Home} size="sm" />
                                 Alojamiento y Canal
                             </h3>
                             <div className="h-px w-full bg-rule" />
@@ -759,7 +760,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {isCreate && (
                             <p className="flex items-start gap-2 text-xs text-ink-3">
-                                <AlertCircle size={14} className="mt-0.5 shrink-0 text-ink-3" /> {BOOKING_RULE}
+                                <Icon icon={AlertCircle} size="sm" className="mt-0.5 text-ink-3" /> {BOOKING_RULE}
                             </p>
                         )}
 
@@ -921,7 +922,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                         {/* ─── Section: Dates ─── */}
                         <div className="space-y-1.5 pt-2">
                             <h3 className="text-xs font-bold text-primary flex items-center gap-2">
-                                <CalendarIcon size={14} />
+                                <Icon icon={CalendarIcon} size="sm" />
                                 Fechas y Huéspedes
                             </h3>
                             <div className="h-px w-full bg-rule" />
@@ -959,7 +960,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                     ) : (
                                                         <span>Seleccionar fechas</span>
                                                     )}
-                                                    <CalendarIcon className="h-4 w-4 opacity-50" />
+                                                    <Icon icon={CalendarIcon} className="opacity-50" />
                                                 </Button>
                                             </FormControl>
                                         </PopoverTrigger>
@@ -986,7 +987,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="font-semibold text-ink-2 flex items-center gap-1.5">
-                                            <Users size={13} className="text-primary" />
+                                            <Icon icon={Users} size="sm" className="text-primary" />
                                             Huéspedes *
                                         </FormLabel>
                                         <FormControl>
@@ -1008,7 +1009,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="font-semibold text-ink-2 flex items-center gap-1.5">
-                                            <DollarSign size={13} className="text-primary" />
+                                            <Icon icon={DollarSign} size="sm" className="text-primary" />
                                             Precio total *
                                         </FormLabel>
                                         <FormControl>
@@ -1050,7 +1051,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                         {/* ─── Contact Info ─── */}
                         <div className="space-y-1.5 pt-2">
                             <h3 className="text-xs font-bold text-primary flex items-center gap-2">
-                                <Phone size={14} />
+                                <Icon icon={Phone} size="sm" />
                                 Contacto y Enlace Móvil
                             </h3>
                             <div className="h-px w-full bg-rule" />
@@ -1106,7 +1107,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                     <FormItem className="flex items-center justify-between gap-4">
                                         <div className="space-y-0.5">
                                             <FormLabel className="text-sm font-semibold text-ink flex items-center gap-2 cursor-pointer">
-                                                <Send size={15} className="text-primary" />
+                                                <Icon icon={Send} className="text-primary" />
                                                 Enviar link de check-in ahora
                                             </FormLabel>
                                             <FormDescription className="text-xs text-ink-3">
@@ -1141,12 +1142,12 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             >
                                 {isLoading ? (
                                     <>
-                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <Icon icon={Loader2} className="animate-spin" />
                                         {mode === "edit" ? "Guardando..." : "Creando..."}
                                     </>
                                 ) : (
                                     <>
-                                        {mode === "edit" ? <Edit size={16} /> : <Plus size={16} />}
+                                        {mode === "edit" ? <Icon icon={Edit} /> : <Icon icon={Plus} />}
                                         {mode === "edit" ? "Guardar Cambios" : "Crear Reserva"}
                                     </>
                                 )}

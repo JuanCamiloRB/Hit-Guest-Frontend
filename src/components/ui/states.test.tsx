@@ -1,3 +1,4 @@
+import { Inbox } from "lucide-react"
 import { describe, expect, it } from "vitest"
 import { render, screen } from "@testing-library/react"
 import { Button } from "./button"
@@ -96,9 +97,11 @@ describe("EmptyState — sin datos vs. sin resultados", () => {
         expect(status).toContainElement(screen.getByRole("button", { name: "Limpiar filtros" }))
     })
 
-    it("el ícono es decorativo", () => {
-        render(<EmptyState title="Vacío" icon={<span data-testid="icono">★</span>} />)
-        expect(screen.getByTestId("icono").parentElement).toHaveAttribute("aria-hidden", "true")
+    it("el ícono es decorativo y siempre del mismo paso de la escala", () => {
+        const { container } = render(<EmptyState title="Vacío" icon={Inbox} />)
+        const icon = container.querySelector('[data-slot="icon"]')!
+        expect(icon).toHaveAttribute("aria-hidden", "true")
+        expect(icon).toHaveAttribute("data-size", "2xl")
     })
 
     it.each([

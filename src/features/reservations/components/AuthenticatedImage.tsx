@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { Loader2, ImageOff } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { CONFIG } from "@/lib/config"
 import { describeImageError } from "./identity-document-meta"
@@ -99,7 +100,7 @@ export function AuthenticatedImage({ src, alt, className }: AuthenticatedImagePr
     if (!imageRequest) {
         return (
             <div className={`flex items-center justify-center bg-sunk/50 ${className ?? ""}`}>
-                <ImageOff size={18} className="text-ink-4" />
+                <Icon icon={ImageOff} size="lg" className="text-ink-4" />
             </div>
         )
     }
@@ -107,7 +108,7 @@ export function AuthenticatedImage({ src, alt, className }: AuthenticatedImagePr
     if (!result || result.src !== src) {
         return (
             <div className={`flex items-center justify-center bg-sunk/50 ${className ?? ""}`}>
-                <Loader2 size={18} className="animate-spin text-ink-4" />
+                <Icon icon={Loader2} size="lg" className="animate-spin text-ink-4" />
             </div>
         )
     }
@@ -119,7 +120,7 @@ export function AuthenticatedImage({ src, alt, className }: AuthenticatedImagePr
                 className={`flex flex-col items-center justify-center gap-1 bg-sunk/50 p-2 text-center ${className ?? ""}`}
                 title={detail}
             >
-                <ImageOff size={18} aria-hidden className="text-ink-4" />
+                <Icon icon={ImageOff} size="lg" className="text-ink-4" />
                 <span className="text-xs leading-tight text-ink-3">{short}</span>
             </div>
         )

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Headset, Loader2, LogOut } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useHasHydrated } from "@/hooks/useHasHydrated"
 import { useAuthStore } from "@/lib/store/auth-store"
@@ -56,7 +57,7 @@ export function SupportSessionBanner() {
             className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 bg-warning px-4 py-2.5 text-ink"
         >
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                <Headset size={16} aria-hidden className="shrink-0" />
+                <Icon icon={Headset} />
                 <strong>Modo soporte</strong>
                 <span>
                     · Estás en la cuenta de <strong>{clientName}</strong> como <strong>{userName}</strong>
@@ -72,7 +73,7 @@ export function SupportSessionBanner() {
                 disabled={leaving}
                 className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-70"
             >
-                {leaving ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <LogOut size={15} aria-hidden />}
+                {leaving ? <Icon icon={Loader2} className="animate-spin" /> : <Icon icon={LogOut} />}
                 Salir
             </UnstyledButton>
         </div>

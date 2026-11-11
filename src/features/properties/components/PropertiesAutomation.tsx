@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useFormContext } from "react-hook-form"
 import { Sparkles } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     Card,
     CardContent,
@@ -259,7 +260,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                 <CardHeader className="px-0 pt-0">
                     <div className="flex items-center gap-2 mb-1">
                         <div className="p-2 bg-primary/10 rounded-lg">
-                            <Sparkles className="h-5 w-5 text-primary" />
+                            <Icon icon={Sparkles} size="lg" className="text-primary" />
                         </div>
                         <CardTitle className="text-2xl font-bold tracking-tight text-ink">
                             Reglas de Automatización
@@ -356,7 +357,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             <Card className="bg-sunk/50 border-dashed border-2 border-rule">
                 <CardContent className="p-8 text-center flex flex-col items-center justify-center space-y-3">
                     <div className="p-3 bg-white rounded-full shadow-sm">
-                        <Sparkles className="h-6 w-6 text-primary" />
+                        <Icon icon={Sparkles} size="xl" className="text-primary" />
                     </div>
                     <div>
                         <h4 className="font-bold text-ink">¿Necesitas una regla personalizada?</h4>

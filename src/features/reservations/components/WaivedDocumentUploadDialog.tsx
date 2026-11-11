@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { ImagePlus, Loader2, X } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -66,7 +67,7 @@ function PhotoField({
                         disabled={disabled}
                         className="inline-flex items-center gap-1 text-xs font-medium text-ink-3 hover:text-danger disabled:opacity-50"
                     >
-                        <X size={12} aria-hidden /> Quitar
+                        <Icon icon={X} size="xs" /> Quitar
                     </UnstyledButton>
                 )}
             </div>
@@ -81,7 +82,7 @@ function PhotoField({
                 {photo
                     // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:), no pasa por next/image
                     ? <img src={photo.url} alt={`Vista previa: ${label}`} className="h-full w-full object-contain" />
-                    : <span className="flex items-center gap-2"><ImagePlus size={16} aria-hidden /> Elegir foto</span>}
+                    : <span className="flex items-center gap-2"><Icon icon={ImagePlus} /> Elegir foto</span>}
             </Label>
             <FileInput
                 id={id}
@@ -247,7 +248,7 @@ export function WaivedDocumentUploadDialog({
                         <Button type="button" variant="outline" onClick={() => close(false)} disabled={submitting}>Cancelar</Button>
                         <Button type="submit" disabled={submitting}>
                             {submitting
-                                ? <><Loader2 className="mr-1.5 h-4 w-4 animate-spin" aria-hidden /> Procesando las fotos…</>
+                                ? <><Icon icon={Loader2} className="mr-1.5 animate-spin" /> Procesando las fotos…</>
                                 : "Subir fotos"}
                         </Button>
                     </DialogFooter>

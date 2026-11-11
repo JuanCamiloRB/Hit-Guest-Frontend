@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { Check, LogOut, FileText, Send, XCircle, Timer } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 
 interface StatusBadgeProps {
     status: string
@@ -31,7 +32,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
         case "CONFIRMED":
             label = "Completado"
             className = "bg-success-sunk text-success hover:bg-success-sunk border-transparent"
-            icon = <Check className="h-3 w-3 mr-1.5" />
+            icon = <Icon icon={Check} size="xs" className="mr-1.5" />
             break
         case "NO_STARTED":
             label = "No Iniciado"
@@ -41,7 +42,7 @@ export function StatusBadge({ status }: StatusBadgeProps) {
         case "CHECKED_OUT":
             label = "Salida (Check-out)"
             className = "bg-success-sunk text-success hover:bg-success-sunk border-transparent"
-            icon = <LogOut className="h-3 w-3 mr-1.5" />
+            icon = <Icon icon={LogOut} size="xs" className="mr-1.5" />
             break
         default:
             label = status

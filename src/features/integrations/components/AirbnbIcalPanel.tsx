@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { AlertTriangle, Copy, FileText, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -188,7 +189,7 @@ export function AirbnbIcalPanel() {
                     de Airbnb con la plantilla de mensaje de cada calendario.
                 </p>
                 <Button size="sm" className="shrink-0 gap-1.5" onClick={() => setCreateOpen(true)}>
-                    <Plus className="h-4 w-4" /> Agregar calendario
+                    <Icon icon={Plus} /> Agregar calendario
                 </Button>
             </div>
 
@@ -227,7 +228,7 @@ export function AirbnbIcalPanel() {
                             </div>
                             {feed.lastSyncError !== null && (
                                 <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning">
-                                    <AlertTriangle size={13} className="mt-0.5 shrink-0" />
+                                    <Icon icon={AlertTriangle} size="sm" className="mt-0.5" />
                                     <span className="break-words">{feed.lastSyncError}</span>
                                 </p>
                             )}
@@ -238,7 +239,7 @@ export function AirbnbIcalPanel() {
                                     onClick={() => void openTemplate(feed)}
                                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline disabled:opacity-50"
                                 >
-                                    <FileText size={13} /> Plantilla de mensaje
+                                    <Icon icon={FileText} size="sm" /> Plantilla de mensaje
                                 </UnstyledButton>
                                 <UnstyledButton
                                     type="button"
@@ -246,7 +247,7 @@ export function AirbnbIcalPanel() {
                                     onClick={() => void handleSync(feed)}
                                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-3 hover:text-ink-2 disabled:opacity-50"
                                 >
-                                    <RefreshCw size={13} /> Sincronizar ahora
+                                    <Icon icon={RefreshCw} size="sm" /> Sincronizar ahora
                                 </UnstyledButton>
                                 <UnstyledButton
                                     type="button"
@@ -262,7 +263,7 @@ export function AirbnbIcalPanel() {
                                     onClick={() => setDeleteTarget(feed)}
                                     className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-danger hover:text-danger disabled:opacity-50"
                                 >
-                                    <Trash2 size={13} /> Eliminar
+                                    <Icon icon={Trash2} size="sm" /> Eliminar
                                 </UnstyledButton>
                             </div>
                         </li>
@@ -508,7 +509,7 @@ function CreateFeedDialog({
                         <div className="space-y-2 rounded-lg border border-warning/30 bg-warning-sunk px-3 py-2 text-sm text-warning">
                             <p>{needsIntegration}</p>
                             <Button size="sm" variant="outline" disabled={connecting} onClick={() => void connectAndRetry()}>
-                                {connecting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                                {connecting && <Icon icon={Loader2} className="mr-1.5 animate-spin" />}
                                 Conectar Airbnb iCal ahora
                             </Button>
                         </div>
@@ -518,7 +519,7 @@ function CreateFeedDialog({
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={submitting}>Cancelar</Button>
                     <Button onClick={() => void submit()} disabled={!canSubmit || submitting}>
-                        {submitting && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                        {submitting && <Icon icon={Loader2} className="mr-1.5 animate-spin" />}
                         Conectar calendario
                     </Button>
                 </DialogFooter>
@@ -571,7 +572,7 @@ function TemplateDialog({
                         con el idioma en que ves este panel. No modifiques la URL.
                     </p>
                     <Button size="sm" className="gap-1.5" onClick={() => void copy()}>
-                        <Copy className="h-3.5 w-3.5" /> Copiar mensaje
+                        <Icon icon={Copy} /> Copiar mensaje
                     </Button>
 
                     {/* Los pasos son copy del front, no el `instructions` del backend:
@@ -660,7 +661,7 @@ function EditUrlDialog({
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>
                     <Button onClick={() => void save()} disabled={saving || url.trim() === ""}>
-                        {saving && <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />}
+                        {saving && <Icon icon={Loader2} className="mr-1.5 animate-spin" />}
                         Guardar
                     </Button>
                 </DialogFooter>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Eye, Loader2, RefreshCw } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { validationMessages } from "@/lib/notify-error"
@@ -262,7 +263,7 @@ export function UnitContractTexts({
                     density="compact"
                     action={
                         <Button type="button" variant="outline" size="sm" disabled={refreshing} onClick={() => void retryRefresh()}>
-                            <RefreshCw size={12} aria-hidden className={refreshing ? "animate-spin" : undefined} /> Volver a cargar
+                            <Icon icon={RefreshCw} className={refreshing ? "animate-spin" : undefined} /> Volver a cargar
                         </Button>
                     }
                 >
@@ -291,7 +292,7 @@ export function UnitContractTexts({
                                     disabled={busy}
                                     onClick={() => void removeDocument(`replaced:${text.uuid}`, text.uuid, "Texto reemplazado borrado")}
                                 >
-                                    {busyKey === `replaced:${text.uuid}` && <Loader2 size={12} className="mr-1 animate-spin" />}
+                                    {busyKey === `replaced:${text.uuid}` && <Icon icon={Loader2} className="mr-1 animate-spin" />}
                                     Borrar
                                 </Button>
                             </li>
@@ -339,7 +340,7 @@ export function UnitContractTexts({
                                         <div className="flex shrink-0 flex-wrap gap-2">
                                             {signing.document && (
                                                 <Button type="button" variant="ghost" size="sm" onClick={() => setPreview(signing.document)}>
-                                                    <Eye size={14} className="mr-1" /> Ver texto
+                                                    <Icon icon={Eye} className="mr-1" /> Ver texto
                                                 </Button>
                                             )}
                                             {row.unitDocument && (
@@ -351,7 +352,7 @@ export function UnitContractTexts({
                                                     disabled={busy}
                                                     onClick={() => void removeDocument(row.key, row.unitDocument!.uuid, "La unidad vuelve a usar el texto de la propiedad")}
                                                 >
-                                                    {busyKey === row.key && <Loader2 size={14} className="mr-1 animate-spin" />}
+                                                    {busyKey === row.key && <Icon icon={Loader2} className="mr-1 animate-spin" />}
                                                     Usar el de la propiedad
                                                 </Button>
                                             )}
@@ -393,7 +394,7 @@ export function UnitContractTexts({
                                                 onClick={() => void saveRow(row, editing.text)}
                                                 className="bg-primary text-white hover:bg-primary/90"
                                             >
-                                                {busyKey === row.key && <Loader2 size={14} className="mr-1 animate-spin" />}
+                                                {busyKey === row.key && <Icon icon={Loader2} className="mr-1 animate-spin" />}
                                                 Guardar texto
                                             </Button>
                                         </div>

@@ -3,6 +3,7 @@
 import { useEffect } from "react"
 import Link from "next/link"
 import { Wallet, AlertTriangle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { useBalanceStore } from "../hooks/useBalanceStore"
 import { formatUsd, getBalanceState } from "../types"
@@ -46,9 +47,9 @@ export function BalanceWidget() {
             aria-label="Ver saldo y recargar"
         >
             {state === "normal" ? (
-                <Wallet className="h-4 w-4 shrink-0" />
+                <Icon icon={Wallet} />
             ) : (
-                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <Icon icon={AlertTriangle} />
             )}
             <span className="tabular-nums">{formatUsd(amount)}</span>
             <span className="hidden md:inline text-xs font-semibold text-ink-3">USD</span>

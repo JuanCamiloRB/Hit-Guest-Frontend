@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react"
 import { Building2, Network, RadioTower, RefreshCw } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { AirbnbMark, BookingMark, CloudbedsMark, GuestyMark } from "@/components/brand/ProviderMarks"
 import { KunasIntegrationPanel } from "./KunasIntegrationPanel"
 import { AirbnbIcalPanel } from "./AirbnbIcalPanel"
@@ -50,7 +51,7 @@ export function IntegrationsHub() {
             <section aria-labelledby="pms-integrations" className="space-y-5">
                 <div className="flex items-start gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                        <RefreshCw size={19} />
+                        <Icon icon={RefreshCw} size="lg" />
                     </span>
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -71,7 +72,7 @@ export function IntegrationsHub() {
                     <ProviderCard
                         name="Kunas PMS"
                         description="Sincroniza tus propiedades y reservas de Kunas."
-                        icon={<Building2 className="h-6 w-6 text-primary" />}
+                        icon={<Icon icon={Building2} size="xl" className="text-primary" />}
                         badge="Configurable"
                         badgeClassName="bg-success-sunk text-success"
                     />
@@ -90,7 +91,7 @@ export function IntegrationsHub() {
                     <ProviderCard
                         name="Otros PMS"
                         description="Conecta cualquiera de los demás PMS compatibles con el catálogo de Calry.app."
-                        icon={<Network className="h-6 w-6 text-primary" />}
+                        icon={<Icon icon={Network} size="xl" className="text-primary" />}
                         badge="Todos vía Calry.app"
                     />
                 </div>
@@ -98,7 +99,7 @@ export function IntegrationsHub() {
                 <div className="rounded-xl border border-rule bg-sunk/60 p-5 sm:p-6">
                     <div className="mb-5 flex items-center gap-3 border-b border-rule pb-4">
                         <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-primary shadow-sm">
-                            <Building2 size={17} />
+                            <Icon icon={Building2} />
                         </span>
                         <div>
                             <h4 className="font-bold text-ink">Configurar Kunas PMS</h4>
@@ -112,7 +113,7 @@ export function IntegrationsHub() {
             <section aria-labelledby="ota-integrations" className="space-y-5">
                 <div className="flex items-start gap-3">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-info-sunk text-info">
-                        <RadioTower size={19} />
+                        <Icon icon={RadioTower} size="lg" />
                     </span>
                     <div>
                         <h3 id="ota-integrations" className="text-lg font-bold text-ink">

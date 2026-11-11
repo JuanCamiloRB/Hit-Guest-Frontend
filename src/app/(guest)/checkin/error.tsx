@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { AlertTriangle, RefreshCw } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface CheckinErrorProps {
@@ -53,7 +54,7 @@ export default function CheckinError({ error, reset }: CheckinErrorProps) {
     return (
         <main className="flex min-h-[70vh] flex-col items-center justify-center gap-6 px-6 text-center">
             <div className="flex h-20 w-20 items-center justify-center rounded-full border border-warning/20 bg-warning-sunk">
-                <AlertTriangle className="text-warning" size={34} />
+                <Icon icon={AlertTriangle} size="2xl" className="text-warning" />
             </div>
             <div className="max-w-sm space-y-2">
                 <h1 className="text-xl font-bold text-ink">No pudimos mostrar este paso</h1>
@@ -74,7 +75,7 @@ export default function CheckinError({ error, reset }: CheckinErrorProps) {
                     onClick={reset}
                     className="flex h-12 items-center justify-center gap-2 rounded-xl bg-primary font-bold text-white"
                 >
-                    <RefreshCw size={17} /> Reintentar
+                    <Icon icon={RefreshCw} /> Reintentar
                 </UnstyledButton>
                 <Link
                     href={checkinHome}

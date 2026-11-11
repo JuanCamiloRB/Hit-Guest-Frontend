@@ -19,6 +19,7 @@ import {
     Plug,
     CreditCard,
 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
@@ -84,8 +85,8 @@ export function SettingsContent() {
                                     : "text-ink-3 hover:text-ink hover:bg-sunk/50"
                             )}
                         >
-                            <tab.icon className={cn(
-                                "h-4 w-4 transition-colors",
+                            <Icon icon={tab.icon} className={cn(
+                                "transition-colors",
                                 activeTab === tab.id ? "text-primary" : "text-ink-3 group-hover:text-ink-2"
                             )} />
                             <span>{tab.label}</span>

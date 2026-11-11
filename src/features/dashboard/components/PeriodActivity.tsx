@@ -1,6 +1,7 @@
 "use client"
 
 import { AlertTriangle, Loader2, RefreshCw } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { ConsumptionStatus } from "@/features/billing/hooks/useBillingData"
 import type { ConsumptionSummary, MonthlyPoint, NodeUsage } from "@/features/billing/types"
@@ -68,7 +69,7 @@ export function PeriodActivity({
                 <div className="flex flex-wrap items-center gap-3">
                     {status === "refreshing" && (
                         <span role="status" className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                            <Icon icon={Loader2} size="sm" className="animate-spin" />
                             Actualizando…
                         </span>
                     )}
@@ -84,7 +85,7 @@ export function PeriodActivity({
                     status === "syncing" ? (
                         <ActivityMessage
                             role="status"
-                            icon={<RefreshCw className="h-5 w-5 text-ink-3" aria-hidden />}
+                            icon={<Icon icon={RefreshCw} size="lg" className="text-ink-3" />}
                             title="Las reservas se están sincronizando"
                             description="Intenta nuevamente en unos segundos."
                             onRetry={onRetry}
@@ -92,7 +93,7 @@ export function PeriodActivity({
                     ) : (
                         <ActivityMessage
                             role="alert"
-                            icon={<AlertTriangle className="h-5 w-5 text-danger" aria-hidden />}
+                            icon={<Icon icon={AlertTriangle} size="lg" className="text-danger" />}
                             title="No pudimos cargar la información de consumo."
                             onRetry={onRetry}
                         />
@@ -142,7 +143,7 @@ function ActivityNotice({ onRetry, children }: { onRetry: () => void; children: 
             className="flex flex-col gap-1 rounded-lg bg-warning-sunk px-3 py-2 text-sm text-ink-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
         >
             <p className="flex items-start gap-2">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" aria-hidden />
+                <Icon icon={AlertTriangle} size="sm" className="mt-0.5 text-warning" />
                 <span>{children}</span>
             </p>
             <RetryButton onRetry={onRetry} className="self-start sm:self-auto" />

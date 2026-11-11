@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Loader2, Mail, User, Building2, ArrowLeft, CheckCircle2, MapPin, Gift } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -96,7 +97,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
             <div className="grid gap-6 text-center animate-in fade-in zoom-in duration-300">
                 <div className="flex flex-col items-center gap-3">
                     <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success-sunk" aria-hidden="true">
-                        <CheckCircle2 className="h-6 w-6 text-success" />
+                        <Icon icon={CheckCircle2} size="xl" className="text-success" />
                     </span>
                     <div className="space-y-1">
                         <h2
@@ -131,7 +132,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                 </div>
 
                 <p className="inline-flex items-center justify-center gap-1.5 text-sm font-medium text-primary">
-                    <Gift className="h-4 w-4" />
+                    <Icon icon={Gift} />
                     Tu cuenta inicia con USD 10 de saldo de bienvenida.
                 </p>
             </div>
@@ -150,7 +151,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                         {/* Welcome credit — the backend credits USD 10 to every new account. */}
                         <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
                             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
-                                <Gift className="h-4 w-4 text-primary" />
+                                <Icon icon={Gift} className="text-primary" />
                             </span>
                             <p className="text-sm text-ink-2">
                                 <span className="font-bold text-primary">USD 10 de regalo</span> — tu cuenta inicia con saldo de bienvenida para ejecutar tus primeras automatizaciones.
@@ -193,10 +194,8 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     <FormItem>
                                         <FormLabel>Razón Social (Nombre de la Empresa) <span className="text-destructive">*</span></FormLabel>
                                             <div className="relative group">
-                                                <Building2 className={cn(
-                                                    "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                    form.formState.errors.companyName ? "text-destructive" : "text-secondary group-focus-within:text-secondary"
-                                                )} />
+                                                <Icon icon={Building2} className={cn("absolute left-3 top-3 transition-colors",
+ form.formState.errors.companyName ?"text-destructive":"text-secondary group-focus-within:text-secondary")} />
                                                 <FormControl>
                                                     <Input
                                                     placeholder="Ej: Apartamentos del Mar SAS"
@@ -223,10 +222,8 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <span className="text-destructive"> *</span>
                                         </FormLabel>
                                             <div className="relative group">
-                                                <User className={cn(
-                                                    "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                    form.formState.errors.name ? "text-destructive" : "text-secondary group-focus-within:text-secondary"
-                                                )} />
+                                                <Icon icon={User} className={cn("absolute left-3 top-3 transition-colors",
+ form.formState.errors.name ?"text-destructive":"text-secondary group-focus-within:text-secondary")} />
                                                 <FormControl>
                                                     <Input
                                                     placeholder="Ej: Juan"
@@ -250,10 +247,8 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             <span className="text-destructive"> *</span>
                                         </FormLabel>
                                             <div className="relative group">
-                                                <User className={cn(
-                                                    "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                    form.formState.errors.lastname ? "text-destructive" : "text-secondary group-focus-within:text-secondary"
-                                                )} />
+                                                <Icon icon={User} className={cn("absolute left-3 top-3 transition-colors",
+ form.formState.errors.lastname ?"text-destructive":"text-secondary group-focus-within:text-secondary")} />
                                                 <FormControl>
                                                     <Input
                                                     placeholder="Ej: Pérez"
@@ -324,10 +319,8 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 <FormItem>
                                     <FormLabel>Correo electrónico <span className="text-destructive">*</span></FormLabel>
                                         <div className="relative group">
-                                            <Mail className={cn(
-                                                "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                form.formState.errors.email ? "text-destructive" : "text-secondary group-focus-within:text-secondary"
-                                            )} />
+                                            <Icon icon={Mail} className={cn("absolute left-3 top-3 transition-colors",
+ form.formState.errors.email ?"text-destructive":"text-secondary group-focus-within:text-secondary")} />
                                             <FormControl>
                                                 <Input
                                                 placeholder="nombre@empresa.com"
@@ -399,7 +392,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                         </Select>
                                     ) : (
                                             <div className="relative group">
-                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-secondary group-focus-within:text-secondary transition-colors" />
+                                                <Icon icon={MapPin} className="absolute left-3 top-3 text-secondary group-focus-within:text-secondary transition-colors" />
                                                 <FormControl>
                                                     <Input
                                                     placeholder="Ej: Colombia"
@@ -477,14 +470,14 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 disabled={isLoading || !acceptedTerms}
                                 className="w-full bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300 h-11 rounded-lg"
                             >
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
+                                {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin text-white" />}
                                 Crear Cuenta
                             </Button>
                         </div>
 
                         <div className="pt-4 border-t border-border/40 text-center">
                             <Link href="/login" className="inline-flex items-center justify-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors hover:underline">
-                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                <Icon icon={ArrowLeft} className="mr-2" />
                                 Volver al inicio de sesión
                             </Link>
                         </div>

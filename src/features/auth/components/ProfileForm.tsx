@@ -28,6 +28,7 @@ import { User } from "../../auth/types"
 import { authService } from "@/features/auth/services/auth-service"
 import { ApiError } from "@/types/api"
 import { Loader2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { ClientLogoSection } from "./ClientLogoSection"
 
@@ -211,7 +212,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
     if (isHydrating) {
         return (
             <div className="flex items-center justify-center py-16">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <Icon icon={Loader2} size="xl" className="animate-spin text-primary" />
             </div>
         )
     }
@@ -482,7 +483,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         disabled={isLoading}
                         className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-8 rounded-xl shadow-sm transition-all duration-300"
                     >
-                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                         GUARDAR CAMBIOS
                     </Button>
                 </div>

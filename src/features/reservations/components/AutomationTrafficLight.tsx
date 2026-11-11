@@ -4,6 +4,7 @@ import React from "react"
 import { AutomationStatus } from "@/types"
 import { cn } from "@/lib/utils"
 import { Send, CheckCircle2, Smartphone, Key, Shield, XCircle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 
 interface AutomationTrafficLightProps {
     status?: AutomationStatus
@@ -26,7 +27,7 @@ export function AutomationTrafficLight({ status }: AutomationTrafficLightProps) 
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             {indicators.map((indicator) => {
                 const state = status[indicator.key]
-                const Icon = indicator.icon
+                const glyph = indicator.icon
 
                 return (
                     <div key={indicator.key} className="relative group flex items-center">
@@ -41,8 +42,7 @@ export function AutomationTrafficLight({ status }: AutomationTrafficLightProps) 
                                         : "bg-sunk text-ink-3"
                             )}
                         >
-                            <Icon className={cn(
-                                "h-4 w-4 shrink-0",
+                            <Icon icon={glyph} className={cn(
                                 state === "success" ? "text-success"
                                     : state === "pending" ? "text-warning"
                                         : "text-ink-3"

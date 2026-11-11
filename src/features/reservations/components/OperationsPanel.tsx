@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type ComponentType, type ReactNode } from "react"
+import { useState, type ReactNode } from "react"
 import { reservationsService } from "../services/reservations-service"
 import { useReservationDetail } from "../hooks/useReservationDetail"
 import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
@@ -21,7 +21,9 @@ import {
     Mail,
     Phone,
     Moon,
+    type LucideIcon,
 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { Button } from "@/components/ui/button"
@@ -260,7 +262,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     Reservas
                                 </Link>
                             </li>
-                            <ChevronRight size={12} aria-hidden className="text-ink-4" />
+                            <Icon icon={ChevronRight} size="xs" className="text-ink-4" />
                             <li aria-current="page" className="truncate font-semibold text-ink-2">
                                 {data.externalId || `${reservationId.slice(0, 8)}…`}
                             </li>
@@ -281,7 +283,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                     {/* La ficha sigue a la vista mientras se relee (editar, volver a la pestaña). */}
                     <RefreshIndicator active={status === "refreshing"} label="Actualizando reserva…" />
                     <Button onClick={() => window.print()} variant="outline" className="gap-2">
-                        <Printer size={16} aria-hidden />
+                        <Icon icon={Printer} />
                         Imprimir
                     </Button>
                     <ReservationDialog
@@ -308,7 +310,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                              * acá solo podía equivocarse en los dos sentidos.
                              */
                             <Button className="gap-2" title="Editar los detalles de la reserva">
-                                <Edit size={16} aria-hidden />
+                                <Icon icon={Edit} />
                                 Editar reserva
                             </Button>
                         }
@@ -376,7 +378,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     value={
                                         <span className="flex items-center gap-1.5">
                                             {format(data.checkIn, "d MMM", { locale: es })}
-                                            <ChevronRight size={14} aria-hidden className="text-ink-4" />
+                                            <Icon icon={ChevronRight} size="sm" className="text-ink-4" />
                                             {format(data.checkOut, "d MMM", { locale: es })}
                                         </span>
                                     }
@@ -436,7 +438,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                     >
                         <div className="flex items-center gap-3">
                             <div className="h-fit rounded-lg bg-sunk p-2 text-ink-3">
-                                <FileText size={18} aria-hidden />
+                                <Icon icon={FileText} size="lg" />
                             </div>
                             <div className="min-w-0">
                                 <p className="text-sm font-semibold text-ink">Reserva creada</p>
@@ -540,10 +542,10 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                             className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 focus-visible:outline-white disabled:bg-white/5 disabled:text-white/60"
                                         >
                                             <span className="flex items-center gap-3">
-                                                <Send size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />
+                                                <Icon icon={Send} className="text-white/70 transition-colors group-hover:text-white" />
                                                 <span className="font-semibold">Enviar link de check-in</span>
                                             </span>
-                                            <ChevronRight size={16} aria-hidden className="text-white/50" />
+                                            <Icon icon={ChevronRight} className="text-white/50" />
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent className="sm:max-w-110">
@@ -602,7 +604,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                                 disabled={isSendingLink || !isValidEmail}
                                                 className="bg-primary hover:bg-primary text-white"
                                             >
-                                                {isSendingLink && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                {isSendingLink && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                                                 {isSendingLink ? "Enviando..." : "Enviar"}
                                             </Button>
                                         </DialogFooter>
@@ -616,10 +618,10 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 focus-visible:outline-white disabled:bg-white/5 disabled:text-white/60"
                                 >
                                     <span className="flex items-center gap-3">
-                                        <Copy size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />
+                                        <Icon icon={Copy} className="text-white/70 transition-colors group-hover:text-white" />
                                         <span className="font-semibold">Copiar link de check-in</span>
                                     </span>
-                                    <ChevronRight size={16} aria-hidden className="text-white/50" />
+                                    <Icon icon={ChevronRight} className="text-white/50" />
                                 </Button>
                                 <Button
                                     onClick={handleMessageGuest}
@@ -629,10 +631,10 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     className="group h-12 w-full justify-between border-none bg-white/10 px-4 text-white hover:bg-white/20 focus-visible:outline-white disabled:bg-white/5 disabled:text-white/60"
                                 >
                                     <span className="flex items-center gap-3">
-                                        <MessageSquare size={18} aria-hidden className="text-white/70 transition-colors group-hover:text-white" />
+                                        <Icon icon={MessageSquare} className="text-white/70 transition-colors group-hover:text-white" />
                                         <span className="font-semibold">Escribir al huésped</span>
                                     </span>
-                                    <ChevronRight size={16} aria-hidden className="text-white/50" />
+                                    <Icon icon={ChevronRight} className="text-white/50" />
                                 </Button>
                             </div>
                         </CardContent>
@@ -694,12 +696,12 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
  * hear it before.
  */
 function DetailCell({
-    icon: Icon,
+    icon,
     label,
     value,
     hint,
 }: {
-    icon: ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }>
+    icon: LucideIcon
     label: string
     value: ReactNode
     hint?: string
@@ -707,7 +709,7 @@ function DetailCell({
     return (
         <div className="min-w-0">
             <dt className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
-                <Icon size={14} aria-hidden className="shrink-0 text-ink-4" />
+                <Icon icon={icon} size="sm" className="text-ink-4" />
                 {label}
             </dt>
             <dd className="mt-1.5 truncate text-base font-bold leading-snug text-ink">{value}</dd>
@@ -720,19 +722,19 @@ function DetailCell({
 
 /** A guest contact detail, rendered as an actionable mailto:/tel: link. */
 function ContactRow({
-    icon: Icon,
+    icon,
     label,
     value,
     href,
 }: {
-    icon: ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }>
+    icon: LucideIcon
     label: string
     value: string
     href: string
 }) {
     return (
         <div className="flex items-center gap-3">
-            <Icon size={16} aria-hidden className="shrink-0 text-ink-4" />
+            <Icon icon={icon} className="text-ink-4" />
             <div className="min-w-0">
                 <dt className="text-xs text-ink-3">{label}</dt>
                 <dd>

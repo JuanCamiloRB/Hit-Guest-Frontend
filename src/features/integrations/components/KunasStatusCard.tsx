@@ -4,6 +4,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Loader2, Pause, Play, Pencil, Unplug, Mail, Building2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { notifyError } from "@/lib/notify-error"
 import { isActive as computeIsActive, type Integration, type KunasConfigurationPayload } from "../types"
 import { KunasCredentialsDialog } from "./KunasCredentialsDialog"
@@ -64,14 +65,14 @@ export function KunasStatusCard({
             {/* Body: account + sync info */}
             <div className="space-y-3 px-5 py-4">
                 <div className="flex items-center gap-2 text-sm text-ink-2">
-                    <Mail className="h-4 w-4 text-ink-3" />
+                    <Icon icon={Mail} className="text-ink-3" />
                     <span className="font-medium text-ink">{email}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-ink-2">
-                    <Building2 className="h-4 w-4 text-ink-3" />
+                    <Icon icon={Building2} className="text-ink-3" />
                     {isSyncing ? (
                         <span className="inline-flex items-center gap-1.5 font-medium text-ink-3">
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            <Icon icon={Loader2} size="sm" className="animate-spin" />
                             Sincronizando…
                         </span>
                     ) : (
@@ -95,7 +96,7 @@ export function KunasStatusCard({
                     onSave={onUpdateCredentials}
                     trigger={
                         <Button variant="outline" size="sm" className="gap-1.5">
-                            <Pencil className="h-3.5 w-3.5" /> Editar credenciales
+                            <Icon icon={Pencil} /> Editar credenciales
                         </Button>
                     }
                 />
@@ -108,11 +109,11 @@ export function KunasStatusCard({
                     className="gap-1.5"
                 >
                     {isToggling ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <Icon icon={Loader2} className="animate-spin" />
                     ) : active ? (
-                        <Pause className="h-3.5 w-3.5" />
+                        <Icon icon={Pause} />
                     ) : (
-                        <Play className="h-3.5 w-3.5" />
+                        <Icon icon={Play} />
                     )}
                     {active ? "Pausar" : "Activar"}
                 </Button>
@@ -125,7 +126,7 @@ export function KunasStatusCard({
                             size="sm"
                             className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
                         >
-                            <Unplug className="h-3.5 w-3.5" /> Desconectar
+                            <Icon icon={Unplug} /> Desconectar
                         </Button>
                     }
                 />

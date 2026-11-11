@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useFormContext } from "react-hook-form"
 import { AlertCircle, AlertTriangle, CheckCircle2, FileSignature, Loader2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { notifyError, validationMessages } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
@@ -638,7 +639,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
         <div className="space-y-6 rounded-xl border border-rule bg-white p-4 sm:p-5">
             <div className="flex items-start gap-3">
                 <div className="rounded-xl bg-primary/10 p-2.5">
-                    <FileSignature className="h-6 w-6 text-primary" />
+                    <Icon icon={FileSignature} size="xl" className="text-primary" />
                 </div>
                 <div>
                     <h3 className="text-xl font-bold text-ink">Contratos por canal</h3>
@@ -793,7 +794,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                             <div className="space-y-1.5 pt-2">
                                 {gaps.includes(ALL_SOURCES_KEY) && (
                                     <p className="flex items-center gap-1.5 text-xs text-warning">
-                                        <AlertCircle size={13} /> Los canales con contrato de alquiler necesitan este texto antes de guardar.
+                                        <Icon icon={AlertCircle} size="sm" /> Los canales con contrato de alquiler necesitan este texto antes de guardar.
                                     </p>
                                 )}
                                 <DocumentEditor
@@ -865,13 +866,13 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
             <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-xl border border-rule bg-white/95 p-3 shadow-sm backdrop-blur sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 text-sm">
                     {routingBlocked ? (
-                        <><AlertTriangle className="h-4 w-4 text-warning" /><span className="font-semibold text-warning">Edición bloqueada hasta corregir los canales no identificados.</span></>
+                        <><Icon icon={AlertTriangle} className="text-warning" /><span className="font-semibold text-warning">Edición bloqueada hasta corregir los canales no identificados.</span></>
                     ) : orphansPendingDecision ? (
-                        <><AlertTriangle className="h-4 w-4 text-warning" /><span className="font-semibold text-warning">Quita la configuración desconocida para poder guardar.</span></>
+                        <><Icon icon={AlertTriangle} className="text-warning" /><span className="font-semibold text-warning">Quita la configuración desconocida para poder guardar.</span></>
                     ) : hasUnsavedChanges ? (
-                        <><AlertCircle className="h-4 w-4 text-warning" /><span className="font-semibold text-warning">Tienes cambios sin guardar.</span></>
+                        <><Icon icon={AlertCircle} className="text-warning" /><span className="font-semibold text-warning">Tienes cambios sin guardar.</span></>
                     ) : (
-                        <><CheckCircle2 className="h-4 w-4 text-success" /><span className="font-semibold text-success">La configuración está guardada.</span></>
+                        <><Icon icon={CheckCircle2} className="text-success" /><span className="font-semibold text-success">La configuración está guardada.</span></>
                     )}
                 </div>
                 <Button
@@ -880,7 +881,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     disabled={saving || routingBlocked || orphansPendingDecision || !hasUnsavedChanges}
                     className="bg-primary hover:bg-primary/90 text-white font-bold"
                 >
-                    {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {saving && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                     Guardar contrato y firma
                 </Button>
             </div>

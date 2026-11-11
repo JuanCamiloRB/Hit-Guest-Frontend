@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Crown, MoreHorizontal, UserPlus, Trash2, Loader2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -200,7 +201,7 @@ export function UserManagement() {
                 <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
                     <DialogTrigger asChild>
                         <Button className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300">
-                            <UserPlus className="mr-2 h-4 w-4" />
+                            <Icon icon={UserPlus} className="mr-2" />
                             Nuevo Usuario
                         </Button>
                     </DialogTrigger>
@@ -287,7 +288,7 @@ export function UserManagement() {
                                         disabled={isSubmitting}
                                         className="bg-primary hover:bg-primary text-primary-foreground font-bold"
                                     >
-                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        {isSubmitting && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                                         Crear Usuario
                                     </Button>
                                 </DialogFooter>
@@ -322,7 +323,7 @@ export function UserManagement() {
                         {isLoading ? (
                             <TableRow>
                                 <TableCell colSpan={3} className="h-24 text-center">
-                                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                                    <Icon icon={Loader2} size="xl" className="animate-spin mx-auto text-muted-foreground" />
                                 </TableCell>
                             </TableRow>
                         ) : status === "error" ? (
@@ -353,7 +354,7 @@ export function UserManagement() {
                                     <TableCell>
                                         {user.isAccountOwner ? (
                                             <Badge className="gap-1 bg-warning-sunk text-warning border-warning/30 hover:bg-warning-sunk">
-                                                <Crown className="h-3 w-3" /> Dueño de la cuenta
+                                                <Icon icon={Crown} size="xs" /> Dueño de la cuenta
                                             </Badge>
                                         ) : (
                                             <Badge variant="outline" className="text-ink-3">Miembro</Badge>
@@ -365,14 +366,14 @@ export function UserManagement() {
                                                 <DropdownMenuTrigger asChild>
                                                     {/* Solo ícono: sin nombre, un lector de pantalla diría «botón». */}
                                                     <Button variant="ghost" size="icon-sm" aria-label={`Acciones para ${user.firstName}`}>
-                                                        <MoreHorizontal className="h-4 w-4" />
+                                                        <Icon icon={MoreHorizontal} />
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuLabel>Acciones</DropdownMenuLabel>
                                                     {canTransferFrom(user) && (
                                                         <DropdownMenuItem onClick={() => setTransferOpen(true)}>
-                                                            <Crown className="mr-2 h-4 w-4" /> Transferir propiedad de la cuenta
+                                                            <Icon icon={Crown} className="mr-2" /> Transferir propiedad de la cuenta
                                                         </DropdownMenuItem>
                                                     )}
                                                     {canDelete(user) && (
@@ -380,7 +381,7 @@ export function UserManagement() {
                                                             className="text-destructive"
                                                             onClick={() => handleDelete(user)}
                                                         >
-                                                            <Trash2 className="mr-2 h-4 w-4" /> Eliminar
+                                                            <Icon icon={Trash2} className="mr-2" /> Eliminar
                                                         </DropdownMenuItem>
                                                     )}
                                                 </DropdownMenuContent>

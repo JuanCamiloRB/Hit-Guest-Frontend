@@ -5,6 +5,7 @@ import { columns } from "./columns"
 import { DataTable } from "@/components/shared/data-table"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { UserDialog } from "./UserDialog"
 
 // Mock data
@@ -47,7 +48,7 @@ export default function UserList() {
                 </div>
                 <UserDialog trigger={
                     <Button className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-sm hover:shadow-sm transition-all duration-300">
-                        <Plus className="mr-2 h-4 w-4" /> Add Member
+                        <Icon icon={Plus} className="mr-2" /> Add Member
                     </Button>
                 } />
             </div>

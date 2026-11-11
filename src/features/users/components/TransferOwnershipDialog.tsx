@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Loader2, Crown, AlertTriangle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     Dialog,
     DialogContent,
@@ -87,7 +88,7 @@ export function TransferOwnershipDialog({
             <DialogContent className="sm:max-w-110">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <Crown className="h-5 w-5 text-warning" />
+                        <Icon icon={Crown} size="lg" className="text-warning" />
                         Transferir propiedad de la cuenta
                     </DialogTitle>
                     <DialogDescription>
@@ -118,7 +119,7 @@ export function TransferOwnershipDialog({
                     </div>
 
                     <div className="flex items-start gap-2 rounded-lg bg-warning-sunk border border-warning/30 px-3 py-2.5">
-                        <AlertTriangle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
+                        <Icon icon={AlertTriangle} className="text-warning mt-0.5" />
                         <p className="text-xs text-warning">
                             Dejarás de ser el dueño. No podrás deshacer esto tú mismo: solo el nuevo dueño
                             podrá transferírtela de vuelta. Conservarás tu rol de Administrador.
@@ -135,7 +136,7 @@ export function TransferOwnershipDialog({
                         disabled={submitting || !selectedUuid || !clientUuid}
                         className="bg-primary hover:bg-primary text-white font-bold"
                     >
-                        {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {submitting && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                         Transferir
                     </Button>
                 </DialogFooter>

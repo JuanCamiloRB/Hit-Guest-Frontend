@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { MessageCircle, Loader2, Info } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -157,7 +158,7 @@ export function CheckinLinkDeliveryCard({
                 <div className="flex flex-col items-stretch md:flex-row">
                     {/* Columna de ícono como las demás automatizaciones: el verde es solo para estado. */}
                     <div className="flex w-full items-center justify-center bg-primary/5 py-4 md:w-20 md:py-0">
-                        <MessageCircle className="h-8 w-8 text-primary" />
+                        <Icon icon={MessageCircle} size="2xl" className="text-primary" />
                     </div>
 
                     <div className="flex-1 space-y-4 p-5">
@@ -220,7 +221,7 @@ export function CheckinLinkDeliveryCard({
                         )}
 
                         <p className="flex items-start gap-2 text-xs text-ink-3">
-                            <Info size={14} className="mt-0.5 shrink-0 text-ink-3" />
+                            <Icon icon={Info} size="sm" className="mt-0.5 text-ink-3" />
                             Si un canal no aplica a una reserva (sin teléfono, o sin conversación en la OTA), el link le
                             llega por email de todas formas.
                         </p>
@@ -240,7 +241,7 @@ export function CheckinLinkDeliveryCard({
                                 disabled={!dirty || saving || !canConfigure}
                                 className="gap-2 bg-primary text-white hover:bg-primary/90"
                             >
-                                {saving && <Loader2 size={14} className="animate-spin" />}
+                                {saving && <Icon icon={Loader2} className="animate-spin" />}
                                 Guardar
                             </Button>
                         </div>

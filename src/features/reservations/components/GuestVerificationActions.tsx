@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { RotateCcw, ShieldOff, Loader2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -160,8 +161,8 @@ export function GuestVerificationActions({
                     onClick={() => void handleReset()}
                 >
                     {busy === "reset"
-                        ? <Loader2 size={13} className="animate-spin" />
-                        : <RotateCcw size={13} aria-hidden />}
+                        ? <Icon icon={Loader2} className="animate-spin" />
+                        : <Icon icon={RotateCcw} />}
                     Reiniciar verificación
                 </Button>
             )}
@@ -175,7 +176,7 @@ export function GuestVerificationActions({
                     disabled={busy !== null}
                     onClick={() => setWaiveOpen(true)}
                 >
-                    <ShieldOff size={13} aria-hidden />
+                    <Icon icon={ShieldOff} />
                     Exonerar verificación
                 </Button>
             )}
@@ -190,8 +191,8 @@ export function GuestVerificationActions({
                     onClick={() => setRevokeOpen(true)}
                 >
                     {busy === "revoke"
-                        ? <Loader2 size={13} className="animate-spin" />
-                        : <RotateCcw size={13} aria-hidden />}
+                        ? <Icon icon={Loader2} className="animate-spin" />
+                        : <Icon icon={RotateCcw} />}
                     Revocar exoneración
                 </Button>
             )}
@@ -243,7 +244,7 @@ export function GuestVerificationActions({
                             disabled={busy !== null || (reasonTouched && !!reasonProblem)}
                             onClick={() => void handleWaive()}
                         >
-                            {busy === "waive" && <Loader2 size={14} className="animate-spin" />}
+                            {busy === "waive" && <Icon icon={Loader2} className="animate-spin" />}
                             Exonerar
                         </Button>
                     </DialogFooter>
@@ -271,7 +272,7 @@ export function GuestVerificationActions({
                             disabled={busy !== null}
                             onClick={() => void handleRevoke()}
                         >
-                            {busy === "revoke" && <Loader2 size={14} className="animate-spin" />}
+                            {busy === "revoke" && <Icon icon={Loader2} className="animate-spin" />}
                             Revocar
                         </Button>
                     </DialogFooter>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Loader2, Receipt } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { billingService } from "../services/billing-service"
 import { formatUsd, type CreditTransaction, type TransactionsPage } from "../types"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
@@ -96,7 +97,7 @@ export function TransactionHistory() {
     return (
         <div className="rounded-xl border border-rule bg-white">
             <div className="flex items-center gap-2 border-b border-rule px-5 py-4">
-                <Receipt className="h-4 w-4 text-primary" />
+                <Icon icon={Receipt} className="text-primary" />
                 <h3 className="text-sm font-bold text-ink">Historial de transacciones</h3>
             </div>
 
@@ -169,7 +170,7 @@ export function TransactionHistory() {
                                 disabled={data.currentPage <= 1 || isLoading}
                                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-rule px-2.5 text-xs font-semibold text-ink-2 transition-colors hover:bg-sunk/50 disabled:opacity-40"
                             >
-                                <ChevronLeft className="h-3.5 w-3.5" /> Previous
+                                <Icon icon={ChevronLeft} size="sm" /> Previous
                             </UnstyledButton>
                             <span className="text-xs font-medium text-ink-3">
                                 Page {data.currentPage} of {data.lastPage}
@@ -179,8 +180,8 @@ export function TransactionHistory() {
                                 disabled={data.currentPage >= data.lastPage || isLoading}
                                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-rule px-2.5 text-xs font-semibold text-ink-2 transition-colors hover:bg-sunk/50 disabled:opacity-40"
                             >
-                                Next <ChevronRight className="h-3.5 w-3.5" />
-                                {isLoading && <Loader2 className="ml-1 h-3 w-3 animate-spin" />}
+                                Next <Icon icon={ChevronRight} size="sm" />
+                                {isLoading && <Icon icon={Loader2} size="xs" className="ml-1 animate-spin" />}
                             </UnstyledButton>
                         </div>
                     </div>

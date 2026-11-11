@@ -17,6 +17,7 @@ import {
     Upload,
     X,
 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { AuthenticatedImage } from "./AuthenticatedImage"
 import {
@@ -116,7 +117,7 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink-3 transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             aria-label="Actualizar documentos y estados de huéspedes"
         >
-            <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
+            <Icon icon={RefreshCw} size="sm" className={isRefreshing ? "animate-spin" : ""} />
             Actualizar
         </UnstyledButton>
     )
@@ -141,7 +142,7 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
             <SectionCard title="Documentos de huéspedes" actions={refreshButton}>
                 <div className="flex flex-col items-center gap-2 py-8 text-center">
                     <div className="rounded-full bg-sunk p-3 text-ink-4">
-                        <FileText size={20} aria-hidden />
+                        <Icon icon={FileText} size="lg" />
                     </div>
                     <p className="text-sm text-ink-3">
                         Aún no hay huéspedes registrados. Aparecerán aquí en cuanto se identifiquen con el link de check-in, aunque no lo hayan completado.
@@ -187,7 +188,7 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
                             aria-label="Cerrar"
                             className="absolute -top-10 right-0 text-white hover:text-ink-4 transition-colors"
                         >
-                            <X size={24} />
+                            <Icon icon={X} size="xl" />
                         </UnstyledButton>
                         <div onClick={(e) => e.stopPropagation()} className="space-y-2">
                             <AuthenticatedImage
@@ -303,7 +304,7 @@ function GuestDocumentRow({
             {canUploadWaivedDocuments(guest) && (
                 <>
                     <Button type="button" variant="outline" size="sm" onClick={() => setUploadOpen(true)}>
-                        <Upload size={14} className="mr-1.5" aria-hidden />
+                        <Icon icon={Upload} className="mr-1.5" />
                         {hasDocuments ? "Reemplazar fotos del documento" : "Subir fotos del documento"}
                     </Button>
                     <WaivedDocumentUploadDialog
@@ -355,7 +356,7 @@ function GuestDocumentRow({
                 </div>
             ) : (
                 <div className="flex items-center gap-2 rounded-lg bg-sunk px-4 py-3">
-                    <ImageIcon size={16} aria-hidden className="text-ink-4" />
+                    <Icon icon={ImageIcon} className="text-ink-4" />
                     <span className="text-xs text-ink-3">
                         {describeMissingImages(guest.identityDocument, isIdentityVerified)}
                     </span>

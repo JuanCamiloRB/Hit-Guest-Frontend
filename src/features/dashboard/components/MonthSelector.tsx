@@ -3,6 +3,7 @@
 import { addMonths, format, isSameMonth, startOfMonth, subMonths } from "date-fns"
 import { es } from "date-fns/locale"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useSyncExternalStore } from "react"
 import { Button } from "@/components/ui/button"
 
@@ -40,7 +41,7 @@ export function MonthSelector({ value, onChange }: Props) {
                 onClick={() => onChange(subMonths(value, 1))}
                 aria-label="Mes anterior"
             >
-                <ChevronLeft className="h-4 w-4" />
+                <Icon icon={ChevronLeft} />
             </Button>
 
             <span className="min-w-34 text-center text-sm font-semibold capitalize text-ink">
@@ -54,7 +55,7 @@ export function MonthSelector({ value, onChange }: Props) {
                 disabled={!hydrated || atCurrentMonth}
                 aria-label="Mes siguiente"
             >
-                <ChevronRight className="h-4 w-4" />
+                <Icon icon={ChevronRight} />
             </Button>
         </div>
     )

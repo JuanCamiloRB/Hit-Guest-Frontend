@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { Loader2, Eye, FileText } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { notifyError, validationMessages } from "@/lib/notify-error"
 import {
@@ -129,7 +130,7 @@ export function DocumentFormModal({
                 <DialogContent className="sm:max-w-3xl max-h-[92vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
-                            <FileText className="h-5 w-5 text-primary" />
+                            <Icon icon={FileText} size="lg" className="text-primary" />
                             {isEdit ? "Editar documento" : "Nuevo documento"}
                         </DialogTitle>
                         <DialogDescription>
@@ -197,7 +198,7 @@ export function DocumentFormModal({
                             onClick={() => setPreviewOpen(true)}
                             className="gap-1.5"
                         >
-                            <Eye size={15} />
+                            <Icon icon={Eye} />
                             Vista previa
                         </Button>
                         <div className="flex-1" />
@@ -210,7 +211,7 @@ export function DocumentFormModal({
                             disabled={saving}
                             className="bg-primary hover:bg-primary/90 text-white font-bold"
                         >
-                            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {saving && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                             {isEdit ? "Guardar cambios" : "Crear documento"}
                         </Button>
                     </DialogFooter>

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react"
 import { Settings2, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Clock, FileSignature } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     Card,
     CardContent,
@@ -477,7 +478,7 @@ export function AutomationCard({
                             "flex items-center justify-center w-full md:w-20 py-4 md:py-0",
                             definition.bgColor
                         )}>
-                            <definition.icon className={cn("h-8 w-8", definition.color)} />
+                            <Icon icon={definition.icon} size="2xl" className={definition.color} />
                         </div>
 
                         {/* Content column */}
@@ -502,7 +503,7 @@ export function AutomationCard({
                                 </div>
                                 <div className="shrink-0">
                                     {toggling
-                                        ? <Loader2 size={20} className="animate-spin text-primary" />
+                                        ? <Icon icon={Loader2} size="lg" className="animate-spin text-primary" />
                                         : <Switch
                                             checked={isActive}
                                             onCheckedChange={handleToggle}
@@ -555,7 +556,7 @@ export function AutomationCard({
                                     </Select>
                                     {pendingActivation && (
                                         <p className="flex items-center gap-1.5 text-xs font-medium text-warning">
-                                            <AlertCircle size={13} className="shrink-0" />
+                                            <Icon icon={AlertCircle} size="sm" />
                                             Selección pendiente: enciende el interruptor para activarla y guardarla.
                                         </p>
                                     )}
@@ -606,9 +607,9 @@ export function AutomationCard({
                                                         </p>
                                                     </div>
                                                     {channel.status === "ready" ? (
-                                                        <CheckCircle2 size={16} className="shrink-0 text-success" aria-label="Listo" />
+                                                        <Icon icon={CheckCircle2} className="text-success" aria-label="Listo" />
                                                     ) : (
-                                                        <AlertTriangle size={16} className="shrink-0 text-warning" aria-label="Requiere atención" />
+                                                        <Icon icon={AlertTriangle} className="text-warning" aria-label="Requiere atención" />
                                                     )}
                                                 </div>
                                             ))}
@@ -668,7 +669,7 @@ export function AutomationCard({
                             {/* Footer: time indicator + config button */}
                             <div className="flex items-center justify-between pt-2 border-t border-rule">
                                 <div className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
-                                    <Clock className="h-3.5 w-3.5" />
+                                    <Icon icon={Clock} size="sm" />
                                     <span>Tiempo Real</span>
                                 </div>
                                 {/* Siempre visible: sin routing es el ÚNICO camino
@@ -687,8 +688,8 @@ export function AutomationCard({
                                                 : "text-warning hover:text-warning",
                                         )}
                                     >
-                                        {!routingSummary && <AlertCircle size={13} />}
-                                        <FileSignature className="h-3.5 w-3.5" />
+                                        {!routingSummary && <Icon icon={AlertCircle} />}
+                                        <Icon icon={FileSignature} />
                                         {routingSummary ? "Configurar contrato y firma" : "Configurar (requerido)"}
                                     </Button>
                                 )}
@@ -705,8 +706,8 @@ export function AutomationCard({
                                                 : "text-primary hover:text-primary"
                                         )}
                                     >
-                                        {needsConfig && <AlertCircle size={13} />}
-                                        <Settings2 className="h-3.5 w-3.5" />
+                                        {needsConfig && <Icon icon={AlertCircle} />}
+                                        <Icon icon={Settings2} />
                                         {needsConfig ? "Configurar (requerido)" : "Configurar"}
                                     </Button>
                                 )}

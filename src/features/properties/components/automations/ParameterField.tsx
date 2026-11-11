@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Plus, Trash2, Eye, EyeOff } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     Select,
     SelectContent,
@@ -52,7 +53,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                                 onClick={() => removeItem(i)}
                                 className="text-danger hover:text-danger transition-colors"
                             >
-                                <Trash2 size={14} />
+                                <Icon icon={Trash2} size="sm" />
                             </UnstyledButton>
                         </div>
                         {schema.arrayItemSchema?.map(sub => (
@@ -72,7 +73,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                     onClick={addItem}
                     className="w-full gap-1.5 border-dashed"
                 >
-                    <Plus size={14} /> Agregar {schema.label}
+                    <Icon icon={Plus} /> Agregar {schema.label}
                 </Button>
             </div>
         )
@@ -107,7 +108,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                             onClick={() => removeItem(i)}
                             className="text-danger hover:text-danger transition-colors shrink-0"
                         >
-                            <Trash2 size={16} />
+                            <Icon icon={Trash2} />
                         </UnstyledButton>
                     </div>
                 ))}
@@ -118,7 +119,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                     onClick={addItem}
                     className="w-full gap-1.5 border-dashed"
                 >
-                    <Plus size={14} /> Agregar {schema.label.toLowerCase()}
+                    <Icon icon={Plus} /> Agregar {schema.label.toLowerCase()}
                 </Button>
             </div>
         )
@@ -184,7 +185,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                         onClick={() => setShowPwd(p => !p)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
                     >
-                        {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showPwd ? <Icon icon={EyeOff} /> : <Icon icon={Eye} />}
                     </UnstyledButton>
                 )}
             </div>

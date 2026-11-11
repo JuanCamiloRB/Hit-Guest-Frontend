@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { SecondaryGateStatus } from "../types/checkin"
 import { AlertCircle, Clock, CheckCircle2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 
 interface SecondaryGateScreenProps {
     status: SecondaryGateStatus
@@ -30,7 +31,7 @@ export function SecondaryGateScreen({ status, basePath }: SecondaryGateScreenPro
     if (status.mainGuestCompleted) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-4 animate-in fade-in duration-500">
-                <CheckCircle2 className="h-12 w-12 text-success animate-pulse" />
+                <Icon icon={CheckCircle2} size="4xl" className="text-success animate-pulse" />
                 <h1 className="text-xl font-bold text-ink">Redirigiendo...</h1>
                 <p className="text-ink-3">El titular ya completó su registro, preparándote para comenzar.</p>
             </div>
@@ -40,7 +41,7 @@ export function SecondaryGateScreen({ status, basePath }: SecondaryGateScreenPro
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="bg-warning-sunk p-4 rounded-full mb-6">
-                <Clock className="h-10 w-10 text-warning" />
+                <Icon icon={Clock} size="3xl" className="text-warning" />
             </div>
             
             <h1 className="text-2xl font-bold text-ink mb-4">Registro en espera</h1>
@@ -50,7 +51,7 @@ export function SecondaryGateScreen({ status, basePath }: SecondaryGateScreenPro
             </p>
             
             <div className="bg-sunk/50 border border-rule rounded-xl p-5 w-full max-w-sm mb-8 flex items-start gap-3 text-left">
-                <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                <Icon icon={AlertCircle} size="lg" className="text-primary mt-0.5" />
                 <div className="text-sm text-ink-2">
                     <span className="font-semibold block mb-1">¿Qué debes hacer?</span>
                     Pídele al titular que finalice su registro. Una vez lo haga, esta página te permitirá ingresar tus datos.

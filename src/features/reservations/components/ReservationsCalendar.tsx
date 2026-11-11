@@ -13,7 +13,8 @@ import {
     addMonths,
     subMonths,
 } from "date-fns"
-import { ChevronLeft, ChevronRight, Loader2, LogIn, LogOut } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight, Loader2, LogIn, LogOut } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,7 +23,6 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { Checkbox } from "@/components/ui/checkbox"
-import { ChevronDown } from "lucide-react"
 import { useReservations } from "../hooks/useReservations"
 import { cancelDetailPrefetch, startDetailPrefetch } from "../lib/detail-prefetch"
 import type { Reservation } from "@/types"
@@ -75,7 +75,7 @@ function MultiSelectFilter({
             <PopoverTrigger asChild>
                 <Button variant="outline" className="h-9 min-w-42.5 justify-between gap-2 text-xs font-medium">
                     <span className="truncate">{triggerText}</span>
-                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-ink-3" />
+                    <Icon icon={ChevronDown} className="text-ink-3" />
                 </Button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-60 p-1">
@@ -189,11 +189,11 @@ export function ReservationsCalendar() {
                 </h2>
                 <div className="flex items-center space-x-2">
                     <Button variant="outline" size="icon" onClick={prevMonth}>
-                        <ChevronLeft className="h-4 w-4" />
+                        <Icon icon={ChevronLeft} />
                     </Button>
                     <Button variant="outline" onClick={today}>Today</Button>
                     <Button variant="outline" size="icon" onClick={nextMonth}>
-                        <ChevronRight className="h-4 w-4" />
+                        <Icon icon={ChevronRight} />
                     </Button>
                 </div>
             </div>
@@ -203,13 +203,13 @@ export function ReservationsCalendar() {
                 <div className="flex items-center gap-4 text-xs font-medium text-ink-2">
                     <span className="inline-flex items-center gap-1.5">
                         <span className="inline-flex h-4 w-4 items-center justify-center rounded-xs bg-success-sunk text-success">
-                            <LogIn size={11} />
+                            <Icon icon={LogIn} size="xs" />
                         </span>
                         Entrada (Check-in)
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                         <span className="inline-flex h-4 w-4 items-center justify-center rounded-xs bg-warning-sunk text-warning">
-                            <LogOut size={11} />
+                            <Icon icon={LogOut} size="xs" />
                         </span>
                         Salida (Checkout)
                     </span>
@@ -255,7 +255,7 @@ export function ReservationsCalendar() {
             <div className="relative grid grid-cols-7 gap-px bg-muted rounded-lg overflow-hidden border">
                 {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-xs">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        <Icon icon={Loader2} size="xl" className="animate-spin text-primary" />
                     </div>
                 )}
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
@@ -298,7 +298,7 @@ export function ReservationsCalendar() {
                                     className="flex items-center gap-1 text-xs truncate bg-success-sunk text-success border border-success/30 px-1 py-0.5 rounded-xs cursor-pointer hover:bg-success-sunk"
                                     title={`Entrada · ${res.guestName} · ${res.propertyName}`}
                                 >
-                                    <LogIn size={11} className="shrink-0" />
+                                    <Icon icon={LogIn} size="xs" />
                                     <span className="truncate">{res.guestName}</span>
                                 </Link>
                             ))}
@@ -314,7 +314,7 @@ export function ReservationsCalendar() {
                                     className="flex items-center gap-1 text-xs truncate bg-warning-sunk text-warning border border-warning/30 px-1 py-0.5 rounded-xs cursor-pointer hover:bg-warning-sunk"
                                     title={`Salida · ${res.guestName} · ${res.propertyName}`}
                                 >
-                                    <LogOut size={11} className="shrink-0" />
+                                    <Icon icon={LogOut} size="xs" />
                                     <span className="truncate">{res.guestName}</span>
                                 </Link>
                             ))}

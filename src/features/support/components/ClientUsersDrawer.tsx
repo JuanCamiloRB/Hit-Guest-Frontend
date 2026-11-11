@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Loader2, LogIn, RefreshCw, ShieldAlert, Users, X } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Label } from "@/components/ui/label"
@@ -198,12 +199,12 @@ function DrawerBody({
                     </SheetDescription>
                 </div>
                 <Button variant="ghost" size="icon-lg" onClick={onRequestClose} disabled={busy} aria-label="Cerrar">
-                    <X size={18} aria-hidden />
+                    <Icon icon={X} />
                 </Button>
             </header>
 
             <p className="flex items-start gap-2 border-b border-warning/20 bg-warning-sunk px-6 py-3 text-sm text-warning">
-                <ShieldAlert size={15} aria-hidden className="mt-0.5 shrink-0" />
+                <Icon icon={ShieldAlert} className="mt-0.5" />
                 Entrarás con los mismos permisos del usuario. Todo lo que hagas quedará a su nombre.
             </p>
 
@@ -215,14 +216,14 @@ function DrawerBody({
                         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger/20 bg-danger-sunk px-4 py-3 text-sm">
                             <span className="text-danger">{state.message}</span>
                             <Button type="button" variant="outline" size="sm" onClick={reload}>
-                                <RefreshCw size={14} className="mr-1.5" /> Reintentar
+                                <Icon icon={RefreshCw} className="mr-1.5" /> Reintentar
                             </Button>
                         </div>
                     )}
 
                     {state.kind === "ready" && users.length === 0 && (
                         <EmptyState
-                            icon={<Users aria-hidden />}
+                            icon={Users}
                             title="Este cliente no tiene usuarios activos"
                             description="No hay nadie como quien entrar en esta cuenta."
                         />
@@ -337,7 +338,7 @@ function DrawerBody({
                                     aria-label={selectedUser ? `Entrar como ${selectedUser.name}` : undefined}
                                     title={selectedUser ? `Entrar como ${selectedUser.name}` : undefined}
                                 >
-                                    {busy ? <Loader2 className="mr-1.5 h-4 w-4 shrink-0 animate-spin" aria-hidden /> : <LogIn className="mr-1.5 h-4 w-4 shrink-0" aria-hidden />}
+                                    {busy ? <Icon icon={Loader2} className="mr-1.5 animate-spin" /> : <Icon icon={LogIn} className="mr-1.5" />}
                                     <span className="truncate">{selectedUser ? `Entrar como ${selectedUser.name}` : "Elige un usuario"}</span>
                                 </Button>
                             </div>

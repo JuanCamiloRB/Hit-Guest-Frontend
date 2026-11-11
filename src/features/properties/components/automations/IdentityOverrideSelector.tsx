@@ -1,6 +1,7 @@
 "use client"
 
 import { Loader2, RefreshCw } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { IdentityCatalogState } from "../../hooks/useIdentityProviderCatalog"
@@ -74,7 +75,7 @@ export function IdentityOverrideSelector({
                     density="compact"
                     action={
                         <Button type="button" variant="outline" size="sm" className="gap-1" onClick={catalog.retry}>
-                            <RefreshCw size={12} aria-hidden /> Reintentar
+                            <Icon icon={RefreshCw} /> Reintentar
                         </Button>
                     }
                 >
@@ -114,7 +115,7 @@ export function IdentityOverrideSelector({
                             {description && <span className="block text-sm text-ink-2">{description}</span>}
                             {blocked && (
                                 <span className="mt-0.5 flex items-center gap-1 text-xs text-warning">
-                                    {catalog.status === "loading" && canOverrideLevel && <Loader2 size={11} className="animate-spin" aria-hidden />}
+                                    {catalog.status === "loading" && canOverrideLevel && <Icon icon={Loader2} size="xs" className="animate-spin" />}
                                     {blocked}
                                 </span>
                             )}

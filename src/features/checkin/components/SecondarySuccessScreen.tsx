@@ -4,6 +4,7 @@ import Link from "next/link"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { CheckCircle2, MapPin, CalendarDays, Home } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useSearchParams } from "next/navigation"
 import { completedEntryCopy, resolveCompletedEntryReason } from "@/features/checkin/lib/success-entry"
 
@@ -28,7 +29,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
 
             <div className="flex flex-col items-center justify-center text-center mt-6 space-y-4">
                 <div className="h-20 w-20 bg-success-sunk rounded-full flex items-center justify-center mb-2">
-                    <CheckCircle2 className="h-10 w-10 text-success" />
+                    <Icon icon={CheckCircle2} size="3xl" className="text-success" />
                 </div>
                 <h1 className="text-3xl font-bold text-ink tracking-tight">
                     {completedCopy?.title ?? "¡Registro Exitoso!"}
@@ -42,7 +43,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 <h3 className="font-bold text-ink text-sm">Resumen de Estadía</h3>
                 
                 <div className="flex items-start gap-3">
-                    <MapPin className="h-5 w-5 text-primary shrink-0" />
+                    <Icon icon={MapPin} size="lg" className="text-primary" />
                     <div>
                         <p className="text-sm font-semibold text-ink">Tu alojamiento</p>
                         <p className="text-xs text-ink-3">{res.uuid.slice(0, 8)}...</p>
@@ -50,7 +51,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 </div>
 
                 <div className="flex items-start gap-3">
-                    <CalendarDays className="h-5 w-5 text-primary shrink-0" />
+                    <Icon icon={CalendarDays} size="lg" className="text-primary" />
                     <div>
                         <p className="text-sm font-semibold text-ink">
                             {res.arrivalDate} — {res.departureDate}
@@ -72,7 +73,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                         href={`/checkin/${reservationUuid}`}
                         className="w-full flex items-center justify-center gap-2 h-14 bg-ink hover:bg-ink/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
                     >
-                        <Home size={18} />
+                        <Icon icon={Home} size="lg" />
                         Volver al inicio
                     </Link>
                 </div>

@@ -1,6 +1,7 @@
 "use client"
 
 import { Key, DoorOpen, Building2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import type { SmartlockCode } from "@/features/checkin/types/checkin"
 
 interface SmartlockCodesProps {
@@ -12,16 +13,16 @@ export function SmartlockCodes({ codes }: SmartlockCodesProps) {
 
     const getIcon = (type: string) => {
         switch (type) {
-            case 'building_entrance': return <Building2 size={20} className="text-warning" />
-            case 'unit_entrance': return <DoorOpen size={20} className="text-primary" />
-            default: return <Key size={20} className="text-ink-3" />
+            case 'building_entrance': return <Icon icon={Building2} size="lg" className="text-warning" />
+            case 'unit_entrance': return <Icon icon={DoorOpen} size="lg" className="text-primary" />
+            default: return <Icon icon={Key} size="lg" className="text-ink-3" />
         }
     }
 
     return (
         <div className="w-full max-w-sm space-y-3">
             <h3 className="font-bold text-ink text-left px-1 flex items-center gap-2">
-                <Key size={18} className="text-ink-3" />
+                <Icon icon={Key} size="lg" className="text-ink-3" />
                 Códigos de Acceso
             </h3>
             <div className="grid gap-3">

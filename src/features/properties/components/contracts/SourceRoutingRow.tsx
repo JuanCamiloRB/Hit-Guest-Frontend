@@ -1,6 +1,7 @@
 "use client"
 
 import { AlertCircle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
@@ -137,7 +138,7 @@ export function SourceRoutingRow({
                     </Label>
                     {hasTextGap && (
                         <p className="flex items-center gap-1.5 text-xs text-warning">
-                            <AlertCircle size={13} /> Este canal necesita texto de contrato antes de guardar.
+                            <Icon icon={AlertCircle} size="sm" /> Este canal necesita texto de contrato antes de guardar.
                         </p>
                     )}
                     <DocumentEditor value={text} onChange={onTextChange} shortcodes={shortcodes} />

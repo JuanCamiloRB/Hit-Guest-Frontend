@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Camera, Upload, Loader2, CheckCircle2, XCircle, RotateCcw, FileText, Clock } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { normalizeVerificationResult } from "@/features/checkin/lib/verification-result"
 import { checkinService } from "@/features/checkin/services/checkin-service"
@@ -879,7 +880,7 @@ export function VerifyScreen({
     if (!sessionLoaded) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <Loader2 size={32} className="animate-spin text-primary" />
+                <Icon icon={Loader2} size="2xl" className="animate-spin text-primary" />
             </div>
         )
     }
@@ -903,8 +904,8 @@ export function VerifyScreen({
                     <div className="absolute inset-0 bg-primary blur-3xl opacity-20 rounded-full" />
                     <div className="bg-primary/10 w-24 h-24 rounded-full flex items-center justify-center shadow-sm relative z-10 border border-primary/20">
                         {progress >= 100
-                            ? <CheckCircle2 size={40} className="text-success" />
-                            : <Loader2 size={40} className="text-primary animate-spin" />
+                            ? <Icon icon={CheckCircle2} size="3xl" className="text-success" />
+                            : <Icon icon={Loader2} size="3xl" className="text-primary animate-spin" />
                         }
                     </div>
                 </div>
@@ -957,7 +958,7 @@ export function VerifyScreen({
 
                 <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 border-b border-rule pb-3">
-                        <FileText size={20} className="text-primary" />
+                        <Icon icon={FileText} size="lg" className="text-primary" />
                         <h2 className="font-bold text-ink">Datos Extraídos</h2>
                     </div>
                     
@@ -1007,7 +1008,7 @@ export function VerifyScreen({
                             }
                             className="flex-[2] flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            <CheckCircle2 size={20} /> Continuar
+                            <Icon icon={CheckCircle2} size="lg" /> Continuar
                         </UnstyledButton>
                     </div>
                 </div>
@@ -1020,7 +1021,7 @@ export function VerifyScreen({
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
                 <div className="bg-warning-sunk w-24 h-24 rounded-full flex items-center justify-center border border-warning/20">
-                    <Clock size={40} className="text-warning" />
+                    <Icon icon={Clock} size="3xl" className="text-warning" />
                 </div>
                 <div className="space-y-2">
                     <h2 className="text-xl font-bold text-ink">No pudimos confirmar tu identidad</h2>
@@ -1040,7 +1041,7 @@ export function VerifyScreen({
                     onClick={handleResetVerification}
                     className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
-                    <RotateCcw size={18} />
+                    <Icon icon={RotateCcw} size="lg" />
                     Continuar verificación
                 </UnstyledButton>
                 <Link
@@ -1059,7 +1060,7 @@ export function VerifyScreen({
                     }}
                     className="flex items-center gap-2 h-12 px-6 bg-sunk hover:bg-sunk text-ink-2 rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
-                    <ArrowLeft size={18} />
+                    <Icon icon={ArrowLeft} size="lg" />
                     Volver al inicio
                 </Link>
             </div>
@@ -1074,7 +1075,7 @@ export function VerifyScreen({
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
                 <div className="bg-warning-sunk w-24 h-24 rounded-full flex items-center justify-center border border-warning/20">
-                    <RotateCcw size={40} className="text-warning" />
+                    <Icon icon={RotateCcw} size="3xl" className="text-warning" />
                 </div>
                 <div className="space-y-2">
                     <h2 className="text-xl font-bold text-ink">Tu sesión de verificación expiró</h2>
@@ -1087,7 +1088,7 @@ export function VerifyScreen({
                     onClick={handleResetVerification}
                     className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
-                    <RotateCcw size={18} />
+                    <Icon icon={RotateCcw} size="lg" />
                     Reiniciar verificación
                 </UnstyledButton>
             </div>
@@ -1106,7 +1107,7 @@ export function VerifyScreen({
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
                 <div className="bg-danger-sunk w-24 h-24 rounded-full flex items-center justify-center border border-danger/20">
-                    <XCircle size={40} className="text-danger" />
+                    <Icon icon={XCircle} size="3xl" className="text-danger" />
                 </div>
                 <div className="space-y-2">
                     <h2 className="text-xl font-bold text-ink">Verificación no exitosa</h2>
@@ -1122,7 +1123,7 @@ export function VerifyScreen({
                         href={basePath}
                         className="flex items-center gap-2 h-12 px-6 bg-sunk hover:bg-sunk text-ink-2 rounded-xl font-semibold transition-all active:scale-[0.98]"
                     >
-                        <ArrowLeft size={18} />
+                        <Icon icon={ArrowLeft} size="lg" />
                         Volver al inicio
                     </Link>
                 ) : (
@@ -1136,7 +1137,7 @@ export function VerifyScreen({
                         onClick={verification?.type === "session" || !verification ? handleResetVerification : handleRetry}
                         className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                     >
-                        <RotateCcw size={18} />
+                        <Icon icon={RotateCcw} size="lg" />
                         Repetir verificación
                     </UnstyledButton>
                 )}
@@ -1165,7 +1166,7 @@ export function VerifyScreen({
                 {/* Back goes to the welcome hub, not /identify — re-identifying an existing
                     guest hits "document already registered" and lands on an empty form. */}
                 <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                    <ArrowLeft size={20} />
+                    <Icon icon={ArrowLeft} size="lg" />
                 </Link>
                 <div className="text-sm font-bold text-ink-3">
                     {isSecondary ? "Paso 2 de 4" : "Paso 3 de 6"}
@@ -1195,7 +1196,7 @@ export function VerifyScreen({
                 es más barato que recuperarlo. Aplica a los dos flujos con cámara. */}
             {(verification.type === "session" || isDocumentFlow) && (
                 <div className="flex items-start gap-2.5 rounded-xl border border-warning/20 bg-warning-sunk px-4 py-3">
-                    <Camera size={16} className="mt-0.5 shrink-0 text-warning" aria-hidden />
+                    <Icon icon={Camera} className="mt-0.5 text-warning" />
                     <p className="text-sm text-warning">
                         Antes de empezar, <span className="font-semibold">limpia el lente de tu cámara</span>{" "}
                         y ubícate en un lugar <span className="font-semibold">con buena luz</span>.
@@ -1244,7 +1245,7 @@ export function VerifyScreen({
                     {failureMessage && (
                         <div className="rounded-xl border border-danger/30 bg-danger-sunk px-4 py-3 text-sm text-danger">
                             <div className="flex items-start gap-2">
-                                <XCircle size={16} className="mt-0.5 shrink-0 text-danger" />
+                                <Icon icon={XCircle} className="mt-0.5 text-danger" />
                                 <span>{failureMessage}</span>
                             </div>
                             {docErrorType === "UNSUPPORTED_DOCUMENT_LAYOUT" && (
@@ -1268,7 +1269,7 @@ export function VerifyScreen({
                                 {frontFile ? (
                                     <div className="flex items-center justify-between bg-success-sunk border border-success/30 rounded-xl px-4 py-3">
                                         <div className="flex items-center gap-2">
-                                            <CheckCircle2 size={18} className="text-success" />
+                                            <Icon icon={CheckCircle2} size="lg" className="text-success" />
                                             <span className="text-sm text-ink-2 truncate max-w-45">{frontFile.name}</span>
                                         </div>
                                         <UnstyledButton onClick={() => setFrontFile(null)} className="text-xs text-danger font-medium">Quitar</UnstyledButton>
@@ -1276,7 +1277,7 @@ export function VerifyScreen({
                                 ) : (
                                     <Label variant="plain" className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
                                         <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                            <Camera size={24} />
+                                            <Icon icon={Camera} size="xl" />
                                         </div>
                                         <span className="text-sm font-medium">Tomar foto o seleccionar</span>
                                         <FileInput
@@ -1299,7 +1300,7 @@ export function VerifyScreen({
                                     {backFile ? (
                                         <div className="flex items-center justify-between bg-success-sunk border border-success/30 rounded-xl px-4 py-3">
                                             <div className="flex items-center gap-2">
-                                                <CheckCircle2 size={18} className="text-success" />
+                                                <Icon icon={CheckCircle2} size="lg" className="text-success" />
                                                 <span className="text-sm text-ink-2 truncate max-w-45">{backFile.name}</span>
                                             </div>
                                             <UnstyledButton onClick={() => setBackFile(null)} className="text-xs text-danger font-medium">Quitar</UnstyledButton>
@@ -1307,7 +1308,7 @@ export function VerifyScreen({
                                     ) : (
                                         <Label variant="plain" className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
                                             <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                                <Upload size={24} />
+                                                <Icon icon={Upload} size="xl" />
                                             </div>
                                             <span className="text-sm font-medium">Subir reverso</span>
                                             <FileInput
@@ -1347,7 +1348,7 @@ export function VerifyScreen({
                             {selfieFile ? (
                                 <div className="flex items-center justify-between bg-success-sunk border border-success/30 rounded-xl px-4 py-3">
                                     <div className="flex items-center gap-2">
-                                        <CheckCircle2 size={18} className="text-success" />
+                                        <Icon icon={CheckCircle2} size="lg" className="text-success" />
                                         <span className="text-sm text-ink-2 truncate max-w-45">{selfieFile.name}</span>
                                     </div>
                                     <UnstyledButton onClick={() => setSelfieFile(null)} className="text-xs text-danger font-medium">Quitar</UnstyledButton>
@@ -1355,7 +1356,7 @@ export function VerifyScreen({
                             ) : (
                                 <Label variant="plain" className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
                                     <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                        <Camera size={24} />
+                                        <Icon icon={Camera} size="xl" />
                                     </div>
                                     <span className="text-sm font-medium">Tomar selfie</span>
                                     {/* capture="user" opens the front camera on mobile; desktop falls back to a file picker */}

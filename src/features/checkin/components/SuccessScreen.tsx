@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { CheckCircle2, Home, Users, Calendar, MapPin, Download, Clock, FileText, Loader2, Mail, XCircle, RefreshCw } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { normalizeApiError } from "@/lib/notify-error"
@@ -236,8 +237,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                     : "bg-success"}`}
                 >
                     {awaitingSignature
-                        ? <Mail size={48} className="text-white" />
-                        : <CheckCircle2 size={48} className="text-white" />}
+                        ? <Icon icon={Mail} size="4xl" className="text-white" />
+                        : <Icon icon={CheckCircle2} size="4xl" className="text-white" />}
                 </div>
             </div>
 
@@ -262,7 +263,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 lo reemplaza la tarjeta de "esperando la firma" de abajo. */}
             {contractPending && contractState === "awaiting_guest" && (
                 <div className="bg-primary/5 border border-primary/15 rounded-xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
-                    <Mail size={18} className="text-primary flex-shrink-0 mt-0.5" />
+                    <Icon icon={Mail} size="lg" className="text-primary flex-shrink-0 mt-0.5" />
                     <div>
                         <p className="text-sm font-bold text-ink">Falta firmar el contrato</p>
                         <p className="text-xs text-ink-3 mt-0.5">
@@ -277,7 +278,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             {contractReady && (
                 <div className="bg-success-sunk border border-success/20 rounded-xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
                     <div className="flex items-start gap-3">
-                        <CheckCircle2 size={18} className="text-success flex-shrink-0 mt-0.5" />
+                        <Icon icon={CheckCircle2} size="lg" className="text-success flex-shrink-0 mt-0.5" />
                         <div>
                             <p className="text-sm font-bold text-success">Contrato firmado</p>
                             <p className="text-xs text-success mt-0.5">
@@ -291,8 +292,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                         className="w-full flex items-center justify-center gap-2 h-11 bg-success hover:bg-success/90 text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         {downloadingContract
-                            ? <Loader2 size={16} className="animate-spin" />
-                            : <Download size={16} />}
+                            ? <Icon icon={Loader2} className="animate-spin" />
+                            : <Icon icon={Download} />}
                         Descargar contrato firmado
                     </UnstyledButton>
                 </div>
@@ -312,8 +313,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 <div className="bg-warning-sunk border border-warning/20 rounded-xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
                     <div className="flex items-start gap-3">
                         {pollStalled
-                            ? <Clock size={18} className="text-warning flex-shrink-0 mt-0.5" />
-                            : <Loader2 size={18} className="text-warning flex-shrink-0 mt-0.5 animate-spin" />}
+                            ? <Icon icon={Clock} size="lg" className="text-warning flex-shrink-0 mt-0.5" />
+                            : <Icon icon={Loader2} size="lg" className="text-warning flex-shrink-0 mt-0.5 animate-spin" />}
                         <div>
                             <p className="text-sm font-bold text-warning">
                                 {contractState === "awaiting_external"
@@ -335,8 +336,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                             className="w-full flex items-center justify-center gap-2 h-10 bg-warning-sunk hover:bg-warning-sunk text-warning rounded-xl font-bold text-xs transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {refreshing
-                                ? <Loader2 size={14} className="animate-spin" />
-                                : <RefreshCw size={14} />}
+                                ? <Icon icon={Loader2} size="sm" className="animate-spin" />
+                                : <Icon icon={RefreshCw} size="sm" />}
                             Ya firmé, actualizar estado
                         </UnstyledButton>
                     )}
@@ -351,7 +352,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
               */}
             {contractState === "rejected" && (
                 <div className="bg-danger-sunk border border-danger/20 rounded-xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
-                    <XCircle size={18} className="text-danger flex-shrink-0 mt-0.5" />
+                    <Icon icon={XCircle} size="lg" className="text-danger flex-shrink-0 mt-0.5" />
                     <div>
                         <p className="text-sm font-bold text-danger">Tu contrato no pudo firmarse</p>
                         <p className="text-xs text-danger mt-0.5">
@@ -364,7 +365,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
 
             {isMainDone && pendingGuests > 0 && (
                 <div className="bg-warning-sunk border border-warning/30 rounded-xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
-                    <Clock size={18} className="text-warning flex-shrink-0 mt-0.5" />
+                    <Icon icon={Clock} size="lg" className="text-warning flex-shrink-0 mt-0.5" />
                     <div>
                         <p className="text-sm font-bold text-warning">
                             {pendingGuests} {pendingGuests === 1 ? "huésped pendiente" : "huéspedes pendientes"}
@@ -379,7 +380,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             <div className="bg-white border border-rule rounded-xl p-4 w-full max-w-sm space-y-3 shadow-sm">
                 <div className="flex items-center gap-3 text-left">
                     <div className="bg-primary/10 p-2 rounded-xl">
-                        <MapPin size={18} className="text-primary" />
+                        <Icon icon={MapPin} size="lg" className="text-primary" />
                     </div>
                     <div>
                         <h3 className="font-bold text-ink text-sm">Tu alojamiento</h3>
@@ -389,11 +390,11 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 <div className="h-px bg-sunk" />
                 <div className="grid grid-cols-2 gap-2 text-left">
                     <div className="flex items-center gap-2">
-                        <Calendar size={14} className="text-ink-3" />
+                        <Icon icon={Calendar} size="sm" className="text-ink-3" />
                         <span className="text-xs text-ink-2">{formatDate(res.arrivalDate)} — {formatDate(res.departureDate)}</span>
                     </div>
                     <div className="flex items-center gap-2 justify-end">
-                        <Users size={14} className="text-ink-3" />
+                        <Icon icon={Users} size="sm" className="text-ink-3" />
                         <span className="text-xs text-ink-2">{res.totalGuestsAllowed} huéspedes</span>
                     </div>
                 </div>
@@ -405,7 +406,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
 
             {docsLoading ? (
                 <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-3 w-full max-w-sm">
-                    <Loader2 size={18} className="animate-spin text-ink-3" />
+                    <Icon icon={Loader2} size="lg" className="animate-spin text-ink-3" />
                     <span className="text-xs text-ink-3">Cargando documentos...</span>
                 </div>
             ) : documents.length > 0 ? (
@@ -413,7 +414,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                     {documents.map((doc) => (
                         <div key={doc.uuid} className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left">
                             <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
-                                <FileText className="text-primary" size={20} />
+                                <Icon icon={FileText} size="lg" className="text-primary" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <h3 className="font-bold text-ink text-sm truncate">{doc.typeName}</h3>
@@ -425,7 +426,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                                 className="text-sm font-bold text-primary hover:underline disabled:opacity-50 flex-shrink-0"
                             >
                                 {downloadingDoc === doc.uuid ? (
-                                    <Loader2 size={16} className="animate-spin" />
+                                    <Icon icon={Loader2} className="animate-spin" />
                                 ) : (
                                     "Descargar"
                                 )}
@@ -436,7 +437,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             ) : (
                 <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left w-full max-w-sm">
                     <div className="bg-primary/10 p-3 rounded-xl">
-                        <Download className="text-primary" size={24} />
+                        <Icon icon={Download} size="xl" className="text-primary" />
                     </div>
                     <div className="flex-1">
                         <h3 className="font-bold text-ink text-sm">
@@ -450,7 +451,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
 
             <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left w-full max-w-sm mt-2">
                 <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
-                    <Home className="text-primary" size={24} />
+                    <Icon icon={Home} size="xl" className="text-primary" />
                 </div>
                 <div>
                     <h3 className="font-bold text-ink text-sm">Todo Listo</h3>
@@ -462,7 +463,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 <div className="w-full max-w-lg flex flex-col gap-2">
                     {hasPendingSecondaries && (
                         <Link href={welcomeHref} className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]">
-                            <Users size={18} />
+                            <Icon icon={Users} size="lg" />
                             Ver inicio para acompañantes
                         </Link>
                     )}

@@ -5,6 +5,7 @@ import { Property, Unit } from "@/types"
 import { PropertyCard } from "./PropertyCard"
 import { Button } from "@/components/ui/button"
 import { Plus, Search, Filter, Home, List } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { EmptyState } from "@/components/ui/empty-state"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
@@ -135,7 +136,7 @@ export function PropertiesList() {
                 {/* Botón principal estándar: sin degradado, sombra de color ni escala. */}
                 <Button asChild size="lg">
                     <Link href="/dashboard/properties/new">
-                        <Plus className="mr-2 h-5 w-5" /> Añadir Propiedad
+                        <Icon icon={Plus} className="mr-2" /> Añadir Propiedad
                     </Link>
                 </Button>
             </div>
@@ -147,19 +148,19 @@ export function PropertiesList() {
                             value="properties"
                             className="gap-2 rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white data-[state=active]:shadow-sm transition-all font-bold"
                         >
-                            <Home className="h-4 w-4" /> Propiedades
+                            <Icon icon={Home} /> Propiedades
                         </TabsTrigger>
                         <TabsTrigger
                             value="units"
                             className="gap-2 rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white data-[state=active]:shadow-sm transition-all font-bold"
                         >
-                            <List className="h-4 w-4" /> Alojamientos
+                            <Icon icon={List} /> Alojamientos
                         </TabsTrigger>
                     </TabsList>
 
                     <div className="flex flex-1 items-center gap-3 px-2">
                         <div className="relative flex-1 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                            <Icon icon={Search} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" />
                             <Input
                                 placeholder="Buscar por nombre o número..."
                                 aria-label="Buscar propiedades y alojamientos"
@@ -171,7 +172,7 @@ export function PropertiesList() {
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
                             <SelectTrigger className="w-45 shrink-0 h-10" aria-label="Filtrar por estado">
                                 <div className="flex items-center gap-2 pointer-events-none min-w-0">
-                                    <Filter className="h-3 w-3 shrink-0 text-ink-3" />
+                                    <Icon icon={Filter} className="text-ink-3" />
                                     <SelectValue placeholder="Estado" />
                                 </div>
                             </SelectTrigger>
@@ -207,19 +208,19 @@ export function PropertiesList() {
                         <div className="rounded-xl border-2 border-dashed border-rule bg-white">
                             {properties.length === 0 ? (
                                 <EmptyState
-                                    icon={<Home className="h-8 w-8" />}
+                                    icon={Home}
                                     title="Todavía no tienes propiedades"
                                     description="Añade tu primera propiedad para empezar a recibir check-ins."
                                     action={
                                         <Button asChild size="sm">
-                                            <Link href="/dashboard/properties/new"><Plus aria-hidden /> Añadir propiedad</Link>
+                                            <Link href="/dashboard/properties/new"><Icon icon={Plus} /> Añadir propiedad</Link>
                                         </Button>
                                     }
                                 />
                             ) : (
                                 <EmptyState
                                     kind="no-results"
-                                    icon={<Home className="h-8 w-8" />}
+                                    icon={Home}
                                     title={searchQuery.trim() ? `Sin resultados para «${searchQuery.trim()}»` : "Ninguna propiedad coincide con los filtros"}
                                     description="Prueba con otra búsqueda o quita el filtro de estado."
                                     action={<Button variant="outline" size="sm" onClick={clearFilters}>Limpiar filtros</Button>}

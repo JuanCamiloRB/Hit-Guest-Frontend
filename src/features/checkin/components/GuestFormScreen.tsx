@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, CheckCircle2, FileText, User, Globe, Plane, Loader2, ClipboardList, AlertTriangle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
@@ -485,7 +486,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
     if (isLoadingSchema) {
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in">
-                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <Icon icon={Loader2} size="2xl" className="animate-spin text-primary" />
                 <p className="text-sm font-medium text-ink-3">Preparando formulario...</p>
             </div>
         )
@@ -500,7 +501,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                     {/* Back goes to the welcome hub, not /verify — revisiting verify would
                         re-launch (or bounce a Textract-verified guest) and confuse the flow. */}
                     <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                        <ArrowLeft size={20} />
+                        <Icon icon={ArrowLeft} size="lg" />
                     </Link>
                     <div className="text-sm font-bold text-ink-3">
                         Paso 4 de 6
@@ -519,11 +520,11 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             </div>
 
             {/* ── Document Section ── */}
-            <CollapsibleSection icon={<FileText size={18} />} title="Documento de identidad" expanded={expanded.document} onToggle={() => toggleSection("document")} badge={form.identificationNumber ? "✓" : undefined}>
+            <CollapsibleSection icon={<Icon icon={FileText} size="lg" />} title="Documento de identidad" expanded={expanded.document} onToggle={() => toggleSection("document")} badge={form.identificationNumber ? "✓" : undefined}>
                 <div className="space-y-4">
                     {docVerified && (
                         <div className="flex items-center gap-2 bg-success-sunk border border-success/30 text-success rounded-xl px-3 py-2">
-                            <CheckCircle2 size={16} className="text-success" />
+                            <Icon icon={CheckCircle2} className="text-success" />
                             <span className="text-xs font-semibold">
                                 {DOCUMENT_NOTICE_COPY[docNotice]}
                             </span>
@@ -541,7 +542,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             </CollapsibleSection>
 
             {/* ── Personal Section ── */}
-            <CollapsibleSection icon={<User size={18} />} title="Datos personales" expanded={expanded.personal} onToggle={() => toggleSection("personal")} badge={form.name && form.lastname ? "✓" : undefined}>
+            <CollapsibleSection icon={<Icon icon={User} size="lg" />} title="Datos personales" expanded={expanded.personal} onToggle={() => toggleSection("personal")} badge={form.name && form.lastname ? "✓" : undefined}>
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <FormInput label="Nombre" value={form.name} onChange={(v) => updateField("name", v)} placeholder="Ej. Ricardo" required />
@@ -580,7 +581,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
 
             {/* ── Origin/Destination Section ── */}
             {showOriginSection && (
-                <CollapsibleSection icon={<Globe size={18} />} title="Origen y destino" expanded={expanded.origin} onToggle={() => toggleSection("origin")} badge={form.nationalityId && form.countryOfOriginId && form.countryDestinationId && form.reasonForTripId ? "✓" : undefined}>
+                <CollapsibleSection icon={<Icon icon={Globe} size="lg" />} title="Origen y destino" expanded={expanded.origin} onToggle={() => toggleSection("origin")} badge={form.nationalityId && form.countryOfOriginId && form.countryDestinationId && form.reasonForTripId ? "✓" : undefined}>
                     <div className="space-y-4">
                         {isFieldVisible('nationalityId') && (
                             <SearchableSelect label="Nacionalidad" options={countryOptions} value={form.nationalityId} onChange={(v) => updateField("nationalityId", v)} placeholder="Seleccionar país..." required={isFieldRequired('nationalityId')} />
@@ -627,7 +628,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
 
             {/* ── Travel Section (optional) ── */}
             {(isFieldVisible('arrivalTime') || isFieldVisible('departureTime') || isFieldVisible('arrivalFlight') || isFieldVisible('departureFlight')) && (
-                <CollapsibleSection icon={<Plane size={18} />} title="Información de viaje" expanded={expanded.travel} onToggle={() => toggleSection("travel")} optional>
+                <CollapsibleSection icon={<Icon icon={Plane} size="lg" />} title="Información de viaje" expanded={expanded.travel} onToggle={() => toggleSection("travel")} optional>
                     <div className="space-y-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {isFieldVisible('arrivalTime') && (
@@ -657,14 +658,14 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
 
             {/* ── Provider-declared dynamic fields (v4.6) ── */}
             {dynamicFields.length > 0 && (
-                <CollapsibleSection icon={<ClipboardList size={18} />} title="Información requerida" expanded={expanded.additional} onToggle={() => toggleSection("additional")}>
+                <CollapsibleSection icon={<Icon icon={ClipboardList} size="lg" />} title="Información requerida" expanded={expanded.additional} onToggle={() => toggleSection("additional")}>
                     <DynamicCheckinFields fields={dynamicFields} values={dynamicValues} onChange={updateDynamicField} />
                 </CollapsibleSection>
             )}
 
             {/* ── Photos Section (skip if biometric/Didit already verified documents) ── */}
             {!docVerified && (
-                <CollapsibleSection icon={<FileText size={18} />} title="Fotos del documento" expanded={expanded.photos} onToggle={() => toggleSection("photos")} badge={form.documentImage1 ? "✓" : undefined}>
+                <CollapsibleSection icon={<Icon icon={FileText} size="lg" />} title="Fotos del documento" expanded={expanded.photos} onToggle={() => toggleSection("photos")} badge={form.documentImage1 ? "✓" : undefined}>
                     <div className="space-y-4">
                         <DocumentUpload label="Foto del documento (frente)" value={form.documentImage1} onChange={(v) => updateField("documentImage1", v)} required id="doc-front" />
                         {!isPassport && (
@@ -681,7 +682,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                 dice acá y no después de que el huésped firme. */}
             {documentExpired && (
                 <div className="flex items-start gap-3 rounded-xl border border-danger/20 bg-danger-sunk p-4">
-                    <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
+                    <Icon icon={AlertTriangle} size="lg" className="text-danger mt-0.5" />
                     <div>
                         <p className="text-sm font-bold text-danger">Tu documento está vencido</p>
                         <p className="text-xs text-danger mt-0.5">
@@ -704,7 +705,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                             onClick={handleSubmit} 
                             className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-sm transition-all active:scale-[0.98]"
                         >
-                            <CheckCircle2 size={20} />
+                            <Icon icon={CheckCircle2} size="lg" />
                             Continuar
                         </UnstyledButton>
                     ) : (

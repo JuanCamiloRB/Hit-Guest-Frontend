@@ -19,6 +19,7 @@ import {
     TableRow,
 } from "@/components/ui/table"
 import { ChevronLeft, ChevronRight, Search } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { COST_CATEGORIES } from "@/features/billing/lib/pricing"
 import { formatUsd, type ReservationCost, type ReservationCostFailure } from "@/features/billing/types"
 import { cn } from "@/lib/utils"
@@ -137,7 +138,7 @@ export function ReservationCostsList({
                         </Button>
                     )}
                     <div className="relative w-full sm:w-64">
-                        <Search aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-4" />
+                        <Icon icon={Search} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4" />
                         <Input
                             placeholder="Buscar huésped, alojamiento…"
                             value={query}
@@ -239,12 +240,12 @@ export function ReservationCostsList({
                     {pageCount > 1 && (
                         <div className="flex items-center space-x-2">
                             <Button variant="outline" size="sm" onClick={() => setPage(current - 1)} disabled={current <= 1}>
-                                <ChevronLeft className="h-4 w-4 mr-1" />
+                                <Icon icon={ChevronLeft} className="mr-1" />
                                 Anterior
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => setPage(current + 1)} disabled={current >= pageCount}>
                                 Siguiente
-                                <ChevronRight className="h-4 w-4 ml-1" />
+                                <Icon icon={ChevronRight} className="ml-1" />
                             </Button>
                         </div>
                     )}

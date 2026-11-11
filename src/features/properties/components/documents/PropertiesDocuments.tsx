@@ -14,6 +14,7 @@ import {
     Filter,
     Eye,
 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     Card,
     CardDescription,
@@ -168,7 +169,7 @@ export function PropertiesDocuments() {
                         <div>
                             <div className="flex items-center gap-2 mb-1">
                                 <div className="p-2 bg-primary/10 rounded-lg">
-                                    <FileText className="h-5 w-5 text-primary" />
+                                    <Icon icon={FileText} size="lg" className="text-primary" />
                                 </div>
                                 <CardTitle className="text-2xl font-bold tracking-tight text-ink">
                                     Documentos
@@ -185,7 +186,7 @@ export function PropertiesDocuments() {
                                 onClick={openCreate}
                                 className="bg-primary hover:bg-primary/90 text-white font-bold gap-1.5"
                             >
-                                <Plus size={16} /> Nuevo documento
+                                <Icon icon={Plus} /> Nuevo documento
                             </Button>
                         )}
                     </div>
@@ -201,7 +202,7 @@ export function PropertiesDocuments() {
                     {/* Filter */}
                     {manageableTypes.length > 0 && (
                         <div className="flex items-center gap-2">
-                            <Filter size={15} className="text-ink-3" />
+                            <Icon icon={Filter} className="text-ink-3" />
                             <Select value={typeFilter} onValueChange={setTypeFilter}>
                                 <SelectTrigger className="h-9 w-56 text-sm">
                                     <SelectValue />
@@ -223,11 +224,11 @@ export function PropertiesDocuments() {
                     ) : visibleDocuments.length === 0 ? (
                         <EmptyState
                             className="rounded-xl border border-dashed border-rule"
-                            icon={<FileText size={24} />}
+                            icon={FileText}
                             title="Aún no hay documentos para esta propiedad."
                             action={
                                 <Button type="button" variant="outline" size="sm" onClick={openCreate} className="gap-1.5">
-                                    <Plus size={15} aria-hidden /> Crear el primero
+                                    <Icon icon={Plus} /> Crear el primero
                                 </Button>
                             }
                         />
@@ -248,7 +249,7 @@ export function PropertiesDocuments() {
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="p-2.5 bg-sunk/50 rounded-xl text-primary shrink-0">
-                                                <FileText size={18} />
+                                                <Icon icon={FileText} size="lg" />
                                             </div>
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
@@ -291,7 +292,7 @@ export function PropertiesDocuments() {
                                                     onClick={() => handleRestore(doc)}
                                                     className="gap-1.5 text-success border-success/30 hover:bg-success-sunk"
                                                 >
-                                                    <RotateCcw size={14} /> Restaurar
+                                                    <Icon icon={RotateCcw} /> Restaurar
                                                 </Button>
                                             ) : (
                                                 <>
@@ -302,7 +303,7 @@ export function PropertiesDocuments() {
                                                         onClick={() => setPreviewDoc(doc)}
                                                         className="gap-1.5 text-primary"
                                                     >
-                                                        <Eye size={14} />
+                                                        <Icon icon={Eye} />
                                                     </Button>
                                                     <Button
                                                         type="button"
@@ -311,7 +312,7 @@ export function PropertiesDocuments() {
                                                         onClick={() => openEdit(doc)}
                                                         className="gap-1.5 text-ink-2"
                                                     >
-                                                        <Pencil size={14} /> Editar
+                                                        <Icon icon={Pencil} /> Editar
                                                     </Button>
                                                     <Button
                                                         type="button"
@@ -320,7 +321,7 @@ export function PropertiesDocuments() {
                                                         onClick={() => setDeleteTarget(doc)}
                                                         className="gap-1.5 text-danger hover:text-danger hover:bg-danger-sunk"
                                                     >
-                                                        <Trash2 size={14} />
+                                                        <Icon icon={Trash2} />
                                                     </Button>
                                                 </>
                                             )}
@@ -363,7 +364,7 @@ export function PropertiesDocuments() {
                             Cancelar
                         </Button>
                         <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-                            {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {deleting && <Icon icon={Loader2} className="mr-2 animate-spin" />}
                             Eliminar
                         </Button>
                     </DialogFooter>

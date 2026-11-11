@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Loader2, RefreshCw, UserPlus, UserX, Users } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import {
     AlertDialog,
@@ -98,12 +99,12 @@ export function SupportAgentsManager() {
                     <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-6 text-sm">
                         <span className="text-danger">{state.message}</span>
                         <Button variant="outline" size="sm" onClick={reload}>
-                            <RefreshCw size={14} className="mr-1.5" /> Reintentar
+                            <Icon icon={RefreshCw} className="mr-1.5" /> Reintentar
                         </Button>
                     </div>
                 )}
                 {state.kind === "ready" && state.items.length === 0 && (
-                    <EmptyState icon={<Users aria-hidden />} title="Todavía no hay agentes de soporte" />
+                    <EmptyState icon={Users} title="Todavía no hay agentes de soporte" />
                 )}
                 {state.kind === "ready" && state.items.length > 0 && (
                     <>
@@ -127,7 +128,7 @@ export function SupportAgentsManager() {
                                             )}
                                         </div>
                                         <Button variant="outline" size="sm" onClick={() => setRevoking(agent)}>
-                                            <UserX size={14} className="mr-1.5" aria-hidden /> Revocar
+                                            <Icon icon={UserX} className="mr-1.5" /> Revocar
                                         </Button>
                                     </li>
                                 )
@@ -226,7 +227,7 @@ function CreateAgentForm({ onCreated }: { onCreated: () => void }) {
                     {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
                 </div>
                 <Button type="submit" className="h-11 sm:mt-5.5" disabled={saving}>
-                    {saving ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <UserPlus className="mr-1.5 h-4 w-4" />}
+                    {saving ? <Icon icon={Loader2} className="mr-1.5 animate-spin" /> : <Icon icon={UserPlus} className="mr-1.5" />}
                     Dar de alta
                 </Button>
                 {errors.form && (

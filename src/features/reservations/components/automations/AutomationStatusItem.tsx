@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Loader2, RotateCcw, History, Play, FileText, Send, Lock } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import type {
@@ -155,7 +156,7 @@ export function AutomationStatusItem({
 
             {blockedMessage && (
                 <p className="inline-flex items-start gap-1.5 rounded-lg bg-sunk px-3 py-2 text-xs break-words text-ink-2">
-                    <Lock size={13} className="mt-0.5 shrink-0 text-ink-3" />
+                    <Icon icon={Lock} size="sm" className="mt-0.5 text-ink-3" />
                     {blockedMessage}
                 </p>
             )}
@@ -167,7 +168,7 @@ export function AutomationStatusItem({
                     rel="noopener noreferrer"
                     className="inline-flex w-fit items-center gap-1.5 rounded-lg bg-success-sunk px-3 py-1.5 text-xs font-semibold text-success transition-opacity hover:opacity-80"
                 >
-                    <FileText size={13} /> Ver contrato firmado
+                    <Icon icon={FileText} size="sm" /> Ver contrato firmado
                 </a>
             )}
 
@@ -177,7 +178,7 @@ export function AutomationStatusItem({
                     onClick={() => onViewHistory(item)}
                     className="inline-flex items-center gap-1.5 rounded-xs text-xs font-medium text-ink-3 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
-                    <History size={14} />
+                    <Icon icon={History} size="sm" />
                     Ver historial
                 </UnstyledButton>
 
@@ -191,11 +192,11 @@ export function AutomationStatusItem({
                             className="h-8 gap-1.5 border-danger/30 text-danger hover:bg-danger-sunk hover:text-danger"
                         >
                             {isRedispatching ? (
-                                <><Loader2 size={14} className="animate-spin" /> Reenviando...</>
+                                <><Icon icon={Loader2} className="animate-spin" /> Reenviando...</>
                             ) : inCooldown ? (
                                 <>Espera {formatCooldown(cooldownLeft)}</>
                             ) : (
-                                <><RotateCcw size={14} /> Reintentar</>
+                                <><Icon icon={RotateCcw} /> Reintentar</>
                             )}
                         </Button>
                     ) : canManual && item.canDispatch ? (
@@ -207,13 +208,13 @@ export function AutomationStatusItem({
                             className="h-8 gap-1.5 border-primary/20 text-primary hover:bg-primary/10 hover:text-primary"
                         >
                             {isDispatching ? (
-                                <><Loader2 size={14} className="animate-spin" /> Disparando...</>
+                                <><Icon icon={Loader2} className="animate-spin" /> Disparando...</>
                             ) : inCooldown ? (
                                 <>Espera {formatCooldown(cooldownLeft)}</>
                             ) : perGuest ? (
-                                <><Play size={14} /> Despachar pendientes</>
+                                <><Icon icon={Play} /> Despachar pendientes</>
                             ) : (
-                                <><Play size={14} /> Disparar</>
+                                <><Icon icon={Play} /> Disparar</>
                             )}
                         </Button>
                     ) : null}
@@ -244,13 +245,13 @@ export function AutomationStatusItem({
                             )}
                         >
                             {isDispatching ? (
-                                <><Loader2 size={14} className="animate-spin" /> Enviando...</>
+                                <><Icon icon={Loader2} className="animate-spin" /> Enviando...</>
                             ) : inCooldown ? (
                                 <>Espera {formatCooldown(cooldownLeft)}</>
                             ) : confirmingResend ? (
-                                <><Send size={14} /> Confirmar — genera un cargo</>
+                                <><Icon icon={Send} /> Confirmar — genera un cargo</>
                             ) : (
-                                <><Send size={14} /> Reenviar PDF</>
+                                <><Icon icon={Send} /> Reenviar PDF</>
                             )}
                         </Button>
                     )}
@@ -324,7 +325,7 @@ function GuestRow({
                             aria-label={`Reintentar para ${guest.name}`}
                             className="h-7 gap-1 border-danger/30 px-2 text-xs text-danger hover:bg-danger-sunk hover:text-danger"
                         >
-                            {isRedispatching ? <Loader2 size={12} className="animate-spin" /> : inCooldown ? formatCooldown(cooldownLeft) : <><RotateCcw size={12} /> Reintentar</>}
+                            {isRedispatching ? <Icon icon={Loader2} className="animate-spin" /> : inCooldown ? formatCooldown(cooldownLeft) : <><Icon icon={RotateCcw} /> Reintentar</>}
                         </Button>
                     ) : canManual && guest.canDispatch ? (
                         <Button
@@ -335,7 +336,7 @@ function GuestRow({
                             aria-label={`Despachar para ${guest.name}`}
                             className="h-7 gap-1 border-primary/20 px-2 text-xs text-primary hover:bg-primary/10 hover:text-primary"
                         >
-                            {isDispatching ? <Loader2 size={12} className="animate-spin" /> : inCooldown ? formatCooldown(cooldownLeft) : <><Play size={12} /> Despachar</>}
+                            {isDispatching ? <Icon icon={Loader2} className="animate-spin" /> : inCooldown ? formatCooldown(cooldownLeft) : <><Icon icon={Play} /> Despachar</>}
                         </Button>
                     ) : null}
                 </div>

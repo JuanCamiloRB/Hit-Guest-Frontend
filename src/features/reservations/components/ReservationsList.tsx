@@ -24,6 +24,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { Search, X, CalendarIcon } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { LoadingState, RefreshIndicator } from "@/components/ui/loading-state"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { format, isValid, isWithinInterval, startOfDay, endOfDay } from "date-fns"
@@ -358,7 +359,7 @@ export default function ReservationsList() {
                 desbordar la página (Fase 3). La búsqueda nunca baja de 16rem. */}
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
                 <div className="relative min-w-0 flex-1 sm:min-w-64 sm:max-w-sm">
-                    <Search aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-4" />
+                    <Icon icon={Search} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4" />
                     <Input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
@@ -404,7 +405,7 @@ export default function ReservationsList() {
                                 !dateRange?.from && "text-ink-3"
                             )}
                         >
-                            <CalendarIcon className="h-4 w-4 shrink-0" />
+                            <Icon icon={CalendarIcon} />
                             {dateRange?.from ? (
                                 <span className="truncate">
                                     {DATE_FIELD_LABELS[dateField]}: {format(dateRange.from, "d MMM", { locale: es })}
@@ -450,7 +451,7 @@ export default function ReservationsList() {
                                     onClick={() => setDateRange(undefined)}
                                     className="w-full text-ink-3 gap-1.5"
                                 >
-                                    <X className="h-4 w-4" />
+                                    <Icon icon={X} />
                                     Quitar fechas
                                 </Button>
                             </div>
@@ -459,7 +460,7 @@ export default function ReservationsList() {
                 </Popover>
                 {hasActiveFilters && (
                     <Button variant="ghost" onClick={clearFilters} className="text-ink-3 gap-1.5">
-                        <X className="h-4 w-4" />
+                        <Icon icon={X} />
                         Limpiar
                     </Button>
                 )}

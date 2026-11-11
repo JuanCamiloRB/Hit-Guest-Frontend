@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Loader2 } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { reservationsService } from "@/features/reservations/services/reservations-service"
 import {
     AlertDialog,
@@ -145,7 +146,7 @@ export function DeactivationConfirmDialog({ target, onConfirm, onCancel }: Props
                                 : "bg-sunk/50 text-ink-2",
                         )}
                     >
-                        {count === "loading" && <Loader2 size={14} className="animate-spin" aria-hidden />}
+                        {count === "loading" && <Icon icon={Loader2} size="sm" className="animate-spin" />}
                         {countLine}
                     </p>
                 )}

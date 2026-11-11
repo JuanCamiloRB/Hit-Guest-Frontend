@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { FileText, KeyRound, LockKeyhole, MapPinned } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import type { CheckinPortalResponse, PortalDocument } from "@/features/checkin/types/checkin"
 import { SmartlockCodes } from "./SmartlockCodes"
 
@@ -43,7 +44,7 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
             <div className="rounded-xl border border-rule bg-white p-5 shadow-sm">
                 <div className="flex items-start gap-3">
                     <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${unlocked ? "bg-success-sunk text-success" : "bg-sunk text-ink-3"}`}>
-                        {unlocked ? <MapPinned size={21} /> : <LockKeyhole size={21} />}
+                        {unlocked ? <Icon icon={MapPinned} size="lg" /> : <Icon icon={LockKeyhole} size="lg" />}
                     </span>
                     <div>
                         <h2 id="access-instructions-title" className="font-bold text-ink">
@@ -66,7 +67,7 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
                                 className="flex items-center justify-between gap-3 rounded-xl border border-rule bg-sunk/50 px-4 py-3 transition-colors hover:border-primary/20 hover:bg-primary/5"
                             >
                                 <span className="flex min-w-0 items-center gap-3">
-                                    <FileText size={17} className="shrink-0 text-primary" />
+                                    <Icon icon={FileText} className="text-primary" />
                                     <span className="truncate text-sm font-semibold text-ink-2">
                                         {document.type || "Instrucciones"}
                                     </span>
@@ -77,7 +78,7 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
 
                         {!hasAccessContent && (
                             <div className="flex items-start gap-3 rounded-xl bg-warning-sunk px-4 py-3 text-warning">
-                                <KeyRound size={17} className="mt-0.5 shrink-0" />
+                                <Icon icon={KeyRound} className="mt-0.5" />
                                 <p className="text-xs leading-relaxed">
                                     El alojamiento todavía no ha publicado instrucciones o códigos para esta reserva.
                                 </p>

@@ -1,4 +1,5 @@
 import { XCircle, Trash2, Clock, PauseCircle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import type { PortalStatus } from "../types/checkin"
 
 interface PortalStatusScreenProps {
@@ -53,12 +54,12 @@ export function PortalStatusScreen({ status, message }: PortalStatusScreenProps)
         defaultMessage: "Esta reserva no está disponible para el check-in en este momento.",
         accent: "text-warning bg-warning-sunk",
     }
-    const Icon = content.icon
+    const glyph = content.icon
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-6 animate-in fade-in duration-500">
             <div className={`rounded-full p-4 mb-5 ${content.accent}`}>
-                <Icon size={40} strokeWidth={1.5} />
+                <Icon icon={glyph} size="3xl" weight="light" />
             </div>
             <h1 className="text-2xl font-bold text-ink mb-2">{content.title}</h1>
             <p className="text-ink-3 max-w-md leading-relaxed">

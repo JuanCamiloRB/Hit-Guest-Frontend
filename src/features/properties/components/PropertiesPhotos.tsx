@@ -8,6 +8,7 @@ import {
     CardTitle,
 } from "@/components/ui/card"
 import { Upload, Trash2, Camera, Loader2, ImageIcon } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -124,7 +125,7 @@ export function PropertiesPhotos() {
         <Card>
             <CardHeader className="border-b bg-sunk/50">
                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
-                    <Camera className="h-5 w-5 text-primary" />
+                    <Icon icon={Camera} size="lg" className="text-primary" />
                     Galería de Fotos
                 </CardTitle>
                 <CardDescription>
@@ -168,7 +169,7 @@ export function PropertiesPhotos() {
                                     className="absolute top-1.5 right-1.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black/60 disabled:opacity-40"
                                     aria-label={`Eliminar ${photoLabel(index + 1, picturesUrl.length)}`}
                                 >
-                                    <Trash2 className="h-4 w-4" aria-hidden />
+                                    <Icon icon={Trash2} />
                                 </UnstyledButton>
                             </div>
                         ))}
@@ -192,12 +193,12 @@ export function PropertiesPhotos() {
                             <div className="flex flex-col items-center gap-2 text-muted-foreground pointer-events-none">
                                 {isUploading ? (
                                     <>
-                                        <Loader2 className="h-8 w-8 animate-spin" />
+                                        <Icon icon={Loader2} size="2xl" className="animate-spin" />
                                         <span className="text-sm">Subiendo…</span>
                                     </>
                                 ) : (
                                     <>
-                                        <Upload className="h-8 w-8" />
+                                        <Icon icon={Upload} size="2xl" />
                                         <span className="text-sm">Subir Fotos</span>
                                     </>
                                 )}
@@ -206,7 +207,7 @@ export function PropertiesPhotos() {
 
                         {picturesUrl.length === 0 && !isUploading && (
                             <div className="col-span-full flex items-center gap-2 text-xs text-ink-3 pt-1">
-                                <ImageIcon className="h-4 w-4" />
+                                <Icon icon={ImageIcon} />
                                 Aún no hay fotos. Sube la primera para crear la portada.
                             </div>
                         )}

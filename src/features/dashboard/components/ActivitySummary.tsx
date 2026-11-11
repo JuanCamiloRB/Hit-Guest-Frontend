@@ -3,6 +3,7 @@
 import { format, isSameYear, subMonths } from "date-fns"
 import { es } from "date-fns/locale"
 import { TrendingDown, TrendingUp } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { formatUsd, type ConsumptionSummary } from "@/features/billing/types"
 
 /**
@@ -48,7 +49,7 @@ export function MonthDeltaLine({ summary, refMonth }: { summary: ConsumptionSumm
         return <p className="text-sm text-ink-3">Sin cambio vs {prevLabel}</p>
     }
     const rising = summary.monthDeltaPct > 0
-    const Icon = rising ? TrendingUp : TrendingDown
+    const trend = rising ? TrendingUp : TrendingDown
     return (
         <p
             className="flex items-center gap-1.5 text-sm text-ink-3"
@@ -56,7 +57,7 @@ export function MonthDeltaLine({ summary, refMonth }: { summary: ConsumptionSumm
         >
             <span className="sr-only">{rising ? "Sube" : "Baja"}</span>
             <span className={`inline-flex items-center gap-0.5 font-semibold ${rising ? "text-danger" : "text-success"}`}>
-                <Icon className="h-4 w-4" aria-hidden />
+                <Icon icon={trend} />
                 {rising ? "+" : "−"}{percent.format(Math.abs(summary.monthDeltaPct) * 100)} %
             </span>
             <span>vs {prevLabel}</span>

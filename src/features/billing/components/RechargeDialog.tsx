@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CreditCard, Loader2, Plus } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import {
     billingService,
     BillingNotConfiguredError,
@@ -109,14 +110,14 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
             <DialogTrigger asChild>
                 {trigger ?? (
                     <Button size="sm" className="gap-1.5">
-                        <Plus className="h-4 w-4" /> Recargar
+                        <Icon icon={Plus} /> Recargar
                     </Button>
                 )}
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        <CreditCard className="h-5 w-5 text-primary" />
+                        <Icon icon={CreditCard} size="lg" className="text-primary" />
                         Recargar bolsa
                     </DialogTitle>
                     <DialogDescription>
@@ -188,7 +189,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                         disabled={isSubmitting || packagesStatus === "loading" || belowMinimum || invalidAmount}
                         className="w-full gap-2 bg-primary hover:bg-primary text-white font-bold"
                     >
-                        {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {isSubmitting && <Icon icon={Loader2} className="animate-spin" />}
                         Continuar al pago
                     </Button>
                 </DialogFooter>

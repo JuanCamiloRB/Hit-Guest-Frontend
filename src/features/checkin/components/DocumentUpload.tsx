@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Camera, CheckCircle2, ScanLine, RotateCcw } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { prepareImageForUpload } from "@/lib/image-upload"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
@@ -118,7 +119,7 @@ export function DocumentUpload({
               }}
             />
             <div className="bg-white p-3 rounded-xl shadow-sm border border-rule group-hover:bg-primary/5 group-hover:border-primary/20 transition-all">
-              <Camera size={28} className="text-primary" />
+              <Icon icon={Camera} size="2xl" className="text-primary" />
             </div>
             <div className="text-center">
               <p className="text-sm font-semibold text-ink-2">
@@ -138,7 +139,7 @@ export function DocumentUpload({
             <div className="relative w-36 h-24 bg-white/60 rounded-xl border border-secondary/20 flex items-center justify-center overflow-hidden">
               <IdCardPlaceholder />
               <div className="absolute inset-0 bg-secondary/10 flex items-center justify-center">
-                <ScanLine className="text-secondary animate-pulse w-8 h-8" />
+                <Icon icon={ScanLine} size="2xl" className="text-secondary animate-pulse" />
               </div>
               <div
                 className="absolute bottom-0 left-0 bg-secondary/30 w-full transition-all duration-300"
@@ -164,7 +165,7 @@ export function DocumentUpload({
         {state === "done" && (
           <div className="p-5 flex items-center gap-4">
             <div className="bg-success-sunk p-2.5 rounded-xl">
-              <CheckCircle2 size={24} className="text-success" />
+              <Icon icon={CheckCircle2} size="xl" className="text-success" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-success">
@@ -180,7 +181,7 @@ export function DocumentUpload({
               className="p-2 rounded-lg hover:bg-success-sunk/50 text-success transition-colors"
               title="Volver a tomar"
             >
-              <RotateCcw size={18} />
+              <Icon icon={RotateCcw} size="lg" />
             </UnstyledButton>
           </div>
         )}

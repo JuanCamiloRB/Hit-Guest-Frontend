@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, Mail, PenLine, RefreshCw, XCircle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { normalizeApiError, notifyError } from "@/lib/notify-error"
 import { normalizeVerificationResult } from "@/features/checkin/lib/verification-result"
@@ -739,7 +740,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
     if (isLoading) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">
-                <Loader2 size={40} className="text-primary animate-spin" />
+                <Icon icon={Loader2} size="3xl" className="text-primary animate-spin" />
                 <p className="text-sm text-ink-3 mt-4">Cargando contrato...</p>
             </div>
         )
@@ -764,7 +765,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
 
                 <div className="flex items-center justify-between">
                     <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                        <ArrowLeft size={20} />
+                        <Icon icon={ArrowLeft} size="lg" />
                     </Link>
                     <div className="text-sm font-bold text-ink-3">Paso 5 de 6</div>
                 </div>
@@ -779,8 +780,8 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 >
                     <div className="flex items-center gap-2.5">
                         {isRejected
-                            ? <XCircle size={22} className="text-danger flex-shrink-0" />
-                            : <Mail size={22} className="text-primary flex-shrink-0" />}
+                            ? <Icon icon={XCircle} size="xl" className="text-danger flex-shrink-0" />
+                            : <Icon icon={Mail} size="xl" className="text-primary flex-shrink-0" />}
                         <h1 className={`text-lg font-bold ${isRejected ? "text-danger" : "text-ink"}`}>
                             {isRejected ? "Tu contrato no pudo firmarse" : "Revisa tu correo"}
                         </h1>
@@ -808,7 +809,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                 }}
                                 className="w-full flex items-center justify-center gap-2 h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98]"
                             >
-                                <RefreshCw size={16} /> Ya firmé, actualizar
+                                <Icon icon={RefreshCw} /> Ya firmé, actualizar
                             </UnstyledButton>
                         )}
                         <Link
@@ -872,7 +873,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
 
             <div className="flex items-center justify-between">
                 <Link href={`${basePath}/guest?guest_uuid=${guestUuid}`} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                    <ArrowLeft size={20} />
+                    <Icon icon={ArrowLeft} size="lg" />
                 </Link>
                 <div className="text-sm font-bold text-ink-3">Paso 5 de 6</div>
             </div>
@@ -910,7 +911,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     role="status"
                     className="flex items-center gap-2.5 rounded-xl border border-success/30 bg-success-sunk px-5 py-4 text-sm text-success"
                 >
-                    <CheckCircle2 size={18} className="flex-shrink-0" />
+                    <Icon icon={CheckCircle2} size="lg" className="flex-shrink-0" />
                     <p className="font-bold">
                         {needsSignature || signatureRecorded
                             ? "Contrato firmado"
@@ -949,7 +950,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                             }}
                             className="mt-3 inline-flex items-center gap-2 rounded-lg bg-warning-sunk px-3 py-1.5 text-xs font-bold text-warning hover:bg-warning-sunk transition-colors"
                         >
-                            <RefreshCw size={14} /> Reintentar
+                            <Icon icon={RefreshCw} size="sm" /> Reintentar
                         </UnstyledButton>
                     )}
                 </div>
@@ -967,12 +968,12 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                 className="w-full flex items-center justify-between p-4 hover:bg-sunk/50 transition-colors"
                             >
                                 <div className="flex items-center gap-2">
-                                    <FileText size={18} className="text-primary" />
+                                    <Icon icon={FileText} size="lg" className="text-primary" />
                                     <h2 className="font-bold text-ink text-sm">{doc.typeName}</h2>
                                 </div>
                                 {expandedDoc === doc.uuid
-                                    ? <ChevronUp size={18} className="text-ink-3" />
-                                    : <ChevronDown size={18} className="text-ink-3" />
+                                    ? <Icon icon={ChevronUp} size="lg" className="text-ink-3" />
+                                    : <Icon icon={ChevronDown} size="lg" className="text-ink-3" />
                                 }
                             </UnstyledButton>
                             {expandedDoc === doc.uuid && (
@@ -989,7 +990,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             ) : (
                 <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 border-b border-rule pb-3">
-                        <FileText size={20} className="text-primary" />
+                        <Icon icon={FileText} size="lg" className="text-primary" />
                         <h2 className="font-bold text-ink">Contrato</h2>
                     </div>
                     <p className="text-sm text-ink-3 text-center py-4">
@@ -1020,7 +1021,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     <>
                         {hasNativeSignature && (
                             <div className="flex items-start gap-2 p-3 bg-warning-sunk border border-warning/20 rounded-xl">
-                                <PenLine size={16} className="text-warning flex-shrink-0 mt-0.5" />
+                                <Icon icon={PenLine} className="text-warning flex-shrink-0 mt-0.5" />
                                 <p className="text-xs text-warning">
                                     Ya tienes una firma registrada. Si firmas de nuevo, reemplazará la anterior.
                                 </p>
@@ -1032,7 +1033,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
 
                 {signingProvider === "tufirma" && (
                     <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/15 rounded-xl">
-                        <Mail size={18} className="text-primary flex-shrink-0 mt-0.5" />
+                        <Icon icon={Mail} size="lg" className="text-primary flex-shrink-0 mt-0.5" />
                         <p className="text-sm text-ink-2">
                             Recibirás un correo de <strong>TuFirma</strong> para completar la firma digital de tu
                             contrato. No necesitas firmar aquí.
@@ -1063,7 +1064,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                         {isSubmitting ? (
                             <>
                                 <span className="flex items-center gap-2">
-                                    <Loader2 className="animate-spin" size={20} />
+                                    <Icon icon={Loader2} size="lg" className="animate-spin" />
                                     {isContractPhaseCta ? "Guardando firma..." : "Finalizando..."}
                                 </span>
                                 {submitStatus && <span className="text-xs font-normal opacity-80">{submitStatus}</span>}

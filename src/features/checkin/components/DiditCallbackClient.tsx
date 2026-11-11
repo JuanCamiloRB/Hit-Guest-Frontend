@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, XCircle } from "lucide-react"
+import { Icon } from "@/components/ui/icon"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 
 interface DiditCallbackClientProps {
@@ -204,7 +205,7 @@ export function DiditCallbackClient({
                 {state === "redirecting" && (
                     <>
                         <div className="w-16 h-16 rounded-full bg-info-sunk flex items-center justify-center mx-auto mb-5">
-                            <Loader2 className="w-8 h-8 animate-spin text-info" />
+                            <Icon icon={Loader2} size="2xl" className="animate-spin text-info" />
                         </div>
                         <h2 className="text-xl font-semibold text-ink mb-2">
                             Verificación recibida
@@ -218,7 +219,7 @@ export function DiditCallbackClient({
                 {state === "no_context" && (
                     <>
                         <div className="w-16 h-16 rounded-full bg-warning-sunk flex items-center justify-center mx-auto mb-5">
-                            <XCircle className="w-8 h-8 text-warning" />
+                            <Icon icon={XCircle} size="2xl" className="text-warning" />
                         </div>
                         <h2 className="text-xl font-semibold text-ink mb-2">
                             Sesión expirada
@@ -232,7 +233,7 @@ export function DiditCallbackClient({
                 {state === "secondary_context_missing" && (
                     <>
                         <div className="w-16 h-16 rounded-full bg-warning-sunk flex items-center justify-center mx-auto mb-5">
-                            <XCircle className="w-8 h-8 text-warning" />
+                            <Icon icon={XCircle} size="2xl" className="text-warning" />
                         </div>
                         <h2 className="text-xl font-semibold text-ink mb-2">
                             Vuelve a tu enlace de invitación
