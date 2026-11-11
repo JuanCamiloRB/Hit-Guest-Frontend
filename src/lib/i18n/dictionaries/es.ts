@@ -30,6 +30,9 @@ export const es = {
     filters: "Filtros",
     newReservation: "Nueva Reserva",
   },
+  auth: {
+    loginHeading: "Iniciar sesión",
+  },
   errors: {
     unparsableResponse: "No se pudo leer la respuesta del servidor.",
   },

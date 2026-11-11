@@ -480,7 +480,7 @@ function inspect() {
                     const joined = ` ${classTexts(node).join(" ")} `
                     // Aviso: fondo de estado pleno (sin opacidad) con borde. Las filas
                     // que solo se tiñen (`bg-danger-sunk/40`) son estado de fila, no aviso.
-                    if (/\sbg-(?:success|warning|danger|info)-sunk\s/.test(joined) && /\sborder(?:-[a-z]+\/\d+)?\s/.test(joined)
+                    if (/\sbg-(?:(?:success|warning|danger|info)-sunk|(?:success|warning|danger|info|destructive)\/\d+)\s/.test(joined) && /\sborder(?:-[a-z]+\/\d+)?\s/.test(joined)
                         && !/\srounded-full\s/.test(joined)) {
                         noticeElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
                     }

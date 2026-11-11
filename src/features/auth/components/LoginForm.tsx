@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Mail, Lock, AlertCircle } from "lucide-react"
+import { Mail, Lock } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,8 @@ import { useLogin } from "../hooks/use-login"
 import { Honeypot } from "./Honeypot"
 import Link from "next/link"
 import { Logo } from "@/components/ui/Logo"
+import { Heading } from "@/components/ui/heading"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { useTranslation } from "@/hooks/useTranslation"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import { AVAILABLE_LANGUAGES } from "@/lib/i18n/dictionaries"
@@ -73,16 +75,15 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                         </Button>
                     </div>
                 )}
+                {/* El logo no nombra la pantalla: el h1 es para lectores de pantalla. */}
+                <Heading level={1} className="sr-only">{t("auth.loginHeading")}</Heading>
                 <Logo variant="icon" className="h-12 w-auto" />
                 <p className="text-sm text-ink-3 font-secondary mt-1">
                     {t('common.welcome')} - Gestión inteligente para hospitalidad
                 </p>
             </div>
             {isMounted && error && (
-                <div className="bg-destructive/20 text-danger text-sm p-3 rounded-md flex items-center gap-2 border border-danger/20 animate-in fade-in zoom-in duration-200">
-                    <Icon icon={AlertCircle} />
-                    <span>{error}</span>
-                </div>
+                <FeedbackBanner tone="danger" mode="dynamic">{error}</FeedbackBanner>
             )}
 
             {step === "email" ? (

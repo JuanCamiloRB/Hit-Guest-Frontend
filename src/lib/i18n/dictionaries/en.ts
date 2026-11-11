@@ -29,6 +29,9 @@ export const en = {
     filters: "Filters",
     newReservation: "New Booking",
   },
+  auth: {
+    loginHeading: "Sign in",
+  },
   errors: {
     unparsableResponse: "Could not parse response",
   },
