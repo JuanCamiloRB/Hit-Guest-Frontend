@@ -54,5 +54,7 @@ export function useTranslation() {
     return value as string;
   }, [dictionary, language]);
 
-  return { t, language };
+  // `dictionary` sirve para tablas indexadas por un código del backend, donde
+  // la clave no se conoce en compilación (`dictionary.billing.history.types[code]`).
+  return { t, language, dictionary };
 }

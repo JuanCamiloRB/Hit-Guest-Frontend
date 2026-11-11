@@ -18,11 +18,13 @@ export const DEFAULT_LANGUAGE: Language = "es";
 /**
  * Idiomas que la interfaz puede RENDERIZAR de verdad hoy.
  *
- * Ojo: NO se deriva de `dictionaries`. Existe una entrada `en`, pero cubre unas
- * 20 cadenas (common, navigation, header, dashboard) y solo la consumen tres
- * componentes — LoginForm, DashboardHeader y Header. Todo lo demás está escrito
- * en español directamente en el JSX, así que elegir inglés no traducía la app:
- * dejaba al PM en una interfaz mezclada.
+ * Ojo: NO se deriva de `dictionaries`. Existe una entrada `en`, pero solo cubre
+ * lo que ya pasa por `t()` (header, login, facturación, títulos de pestaña).
+ * Todo lo demás está escrito en español directamente en el JSX, así que elegir
+ * inglés hoy no traduce la app: dejaría al PM en una interfaz mezclada.
+ *
+ * Regla para textos nuevos que pasen por aquí: se escriben en `es` y en `en` a
+ * la vez (la prueba de paridad lo exige).
  *
  * Para habilitar inglés cuando exista la librería: añadir "en" a esta lista.
  * Es el único cambio necesario — el selector y la detección de idioma leen de

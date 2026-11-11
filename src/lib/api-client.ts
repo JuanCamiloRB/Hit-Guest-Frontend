@@ -1,6 +1,7 @@
 import { ApiError, ApiErrorResponse } from "@/types/api"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { useLanguageStore } from "@/store/useLanguageStore"
+import { DEFAULT_LANGUAGE, dictionaries } from "@/lib/i18n/dictionaries"
 
 /**
  * Handle a session-expiry 401: clear the session and bounce to /login, but only
@@ -116,7 +117,7 @@ export async function request<T>(
     try {
         data = await response.json()
     } catch {
-        data = { message: "Could not parse response" }
+        data = { message: dictionaries[useLanguageStore.getState().language ?? DEFAULT_LANGUAGE].errors.unparsableResponse }
     }
 
     if (!response.ok) {

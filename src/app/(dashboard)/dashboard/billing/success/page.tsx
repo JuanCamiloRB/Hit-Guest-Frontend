@@ -6,6 +6,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { CheckCircle2, ArrowRight } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { useTranslation } from "@/hooks/useTranslation"
 import { useBalanceStore } from "@/features/billing/hooks/useBalanceStore"
 
 const BILLING_HREF = "/dashboard/settings?tab=billing"
@@ -22,6 +23,7 @@ function BillingSuccessContent() {
     const router = useRouter()
     const params = useSearchParams()
     const sessionId = params.get("session_id")
+    const { t } = useTranslation()
     const refresh = useBalanceStore((s) => s.refresh)
 
     useEffect(() => {
@@ -37,11 +39,8 @@ function BillingSuccessContent() {
                 <Icon icon={CheckCircle2} size="3xl" className="text-success" />
             </div>
             <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-ink">Payment successful!</h1>
-                <p className="max-w-sm text-sm text-ink-3">
-                    Payment received — your balance will update shortly. Redirecting you to
-                    billing…
-                </p>
+                <h1 className="text-2xl font-bold text-ink">{t("billing.success.title")}</h1>
+                <p className="max-w-sm text-sm text-ink-3">{t("billing.success.body")}</p>
                 {sessionId && (
                     <p className="text-xs text-ink-4">Ref: {sessionId}</p>
                 )}
@@ -50,7 +49,7 @@ function BillingSuccessContent() {
                 <Link
                     href={BILLING_HREF}
                 >
-                    Go to Billing <Icon icon={ArrowRight} />
+                    {t("billing.success.goToBilling")} <Icon icon={ArrowRight} />
                 </Link>
             </Button>
         </div>

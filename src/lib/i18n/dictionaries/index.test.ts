@@ -41,3 +41,37 @@ describe("idiomas disponibles", () => {
         })
     })
 })
+
+/** Todas las rutas «a.b.c» de un diccionario, para comparar sus formas. */
+function keyPaths(node: unknown, prefix = ""): string[] {
+    if (!node || typeof node !== "object") return [prefix]
+    return Object.entries(node).flatMap(([k, v]) => keyPaths(v, prefix ? `${prefix}.${k}` : k))
+}
+
+describe("paridad es/en", () => {
+    // Cada texto se escribe en los dos idiomas: así habilitar inglés es solo
+    // añadir "en" a AVAILABLE_LANGUAGES, sin cadenas que caigan a su clave.
+    it("los dos diccionarios tienen exactamente las mismas claves", () => {
+        expect(keyPaths(dictionaries.es).sort()).toEqual(keyPaths(dictionaries.en).sort())
+    })
+
+    it("ningún texto está vacío", () => {
+        for (const lang of ["es", "en"] as const) {
+            const empty = keyPaths(dictionaries[lang]).filter((path) => {
+                const value = path.split(".").reduce<unknown>((acc, k) => (acc as Record<string, unknown>)[k], dictionaries[lang])
+                return typeof value !== "string" || value.trim() === ""
+            })
+            expect(empty, lang).toEqual([])
+        }
+    })
+
+    it("los parámetros {{x}} coinciden entre idiomas", () => {
+        const params = (lang: "es" | "en", path: string) => {
+            const value = path.split(".").reduce<unknown>((acc, k) => (acc as Record<string, unknown>)[k], dictionaries[lang])
+            return [...String(value).matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]).sort()
+        }
+        for (const path of keyPaths(dictionaries.es)) {
+            expect(params("es", path), path).toEqual(params("en", path))
+        }
+    })
+})

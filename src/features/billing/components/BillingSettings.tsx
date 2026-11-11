@@ -18,9 +18,11 @@ import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { useTranslation } from "@/hooks/useTranslation"
 
 /** Balance card + recharge (packages/custom) + transaction history. */
 export function BillingSettings() {
+    const { t } = useTranslation()
     const { amount, isLoading: balanceLoading, loaded: balanceLoaded, pending, error: balanceError, refresh } = useBalanceStore()
 
     const [packages, setPackages] = useState<PackagesInfo | null>(null)
@@ -86,7 +88,7 @@ export function BillingSettings() {
             } else if (error instanceof ApiError && error.status === 422) {
                 setAmountError(error.message || "Monto no válido.")
             } else {
-                toast.error("Failed to connect to payment. Try again.")
+                toast.error(t("billing.checkoutError"))
             }
         } finally {
             setIsSubmitting(false)
@@ -186,7 +188,7 @@ export function BillingSettings() {
                                     step="1"
                                     value={custom}
                                     onChange={(e) => onCustomChange(e.target.value)}
-                                    placeholder={`Custom amount (min ${formatUsd(minimum)})`}
+                                    placeholder={t("billing.customAmountPlaceholder", { min: formatUsd(minimum) })}
                                     className="w-full py-2.5 pl-7 pr-3 font-semibold text-ink"
                                 />
                             </div>
@@ -203,7 +205,7 @@ export function BillingSettings() {
                             ) : (
                                 <Icon icon={Plus} />
                             )}
-                            Add Credits
+                            {t("billing.addCredits")}
                         </Button>
                     </div>
                 )}

@@ -8,12 +8,13 @@ import { formatUsd, type CreditTransaction, type TransactionsPage } from "../typ
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { StatusPill, type StatusTone } from "@/components/ui/status-pill"
+import { useTranslation } from "@/hooks/useTranslation"
 
 /** «10 jul 2026, 2:32 p. m.» en la zona horaria local del PM. */
-function formatDate(iso: string): string {
+function formatDate(iso: string, locale: string): string {
     const d = new Date(iso)
     if (Number.isNaN(d.getTime())) return "—"
-    return d.toLocaleString("es-CO", {
+    return d.toLocaleString(locale, {
         month: "short",
         day: "numeric",
         year: "numeric",
@@ -24,49 +25,39 @@ function formatDate(iso: string): string {
 
 /*
  * El backend manda códigos (`credit`, `refunded`, `automation_refund`…), no
- * textos: la etiqueta en español es del front. Un código que no está en la
- * tabla se muestra tal cual, para que un valor nuevo se vea y no se disfrace
- * de otro.
+ * textos: la etiqueta sale del diccionario del idioma activo. Un código que no
+ * está en la tabla se muestra tal cual, para que un valor nuevo se vea y no se
+ * disfrace de otro. `hasOwn` evita que «constructor» o «toString» resuelvan a
+ * algo del prototipo.
  */
-const SOURCE_LABELS: Record<string, string> = {
-    trial: "Prueba",
-    stripe: "Stripe",
-    automation: "Automatización",
-    automation_refund: "Reembolso",
-    manual: "Manual",
+function labelFor(table: Readonly<Record<string, string>>, code: string): string {
+    return Object.hasOwn(table, code) ? table[code] : code
 }
 
-const TYPE_LABELS: Record<string, string> = {
-    credit: "Crédito",
-    debit: "Débito",
-}
-
-const STATUS_COPY: Record<string, { label: string; tone: StatusTone }> = {
-    completed: { label: "Completada", tone: "success" },
-    refunded: { label: "Reembolsada", tone: "warning" },
+const STATUS_TONE: Record<string, StatusTone> = {
+    completed: "success",
+    refunded: "warning",
 }
 
 function SourceBadge({ source }: { source: string }) {
-    const label = SOURCE_LABELS[source] ?? source
-    return (
-        <Badge>{label}</Badge>
-    )
+    const { dictionary } = useTranslation()
+    return <Badge>{labelFor(dictionary.billing.history.sources, source)}</Badge>
 }
 
 function TypeBadge({ type }: { type: string }) {
-    const isCredit = type === "credit"
+    const { dictionary } = useTranslation()
     return (
-        <Badge tone={isCredit ? "success" : "neutral"}>
-            {TYPE_LABELS[type] ?? type}
+        <Badge tone={type === "credit" ? "success" : "neutral"}>
+            {labelFor(dictionary.billing.history.types, type)}
         </Badge>
     )
 }
 
 function StatusBadge({ status }: { status: string }) {
-    const copy = STATUS_COPY[status]
+    const { dictionary } = useTranslation()
     return (
-        <StatusPill tone={copy?.tone ?? "idle"}>
-            {copy?.label ?? status}
+        <StatusPill tone={Object.hasOwn(STATUS_TONE, status) ? STATUS_TONE[status] : "idle"}>
+            {labelFor(dictionary.billing.history.statuses, status)}
         </StatusPill>
     )
 }
@@ -83,6 +74,7 @@ function AmountCell({ tx }: { tx: CreditTransaction }) {
 
 /** Historial paginado de transacciones de crédito (20 por página, más recientes primero). */
 export function TransactionHistory() {
+    const { t } = useTranslation()
     const [page, setPage] = useState(1)
     const [data, setData] = useState<TransactionsPage | null>(null)
     const [isLoading, setIsLoading] = useState(true)
@@ -109,7 +101,7 @@ export function TransactionHistory() {
         <div className="rounded-xl border border-rule bg-white">
             <div className="flex items-center gap-2 border-b border-rule px-5 py-4">
                 <Icon icon={Receipt} className="text-primary" />
-                <h3 className="text-sm font-bold text-ink">Historial de transacciones</h3>
+                <h3 className="text-sm font-bold text-ink">{t("billing.history.title")}</h3>
             </div>
 
             {isLoading ? (
@@ -123,16 +115,16 @@ export function TransactionHistory() {
                 </div>
             ) : error ? (
                 <div className="flex flex-col items-center gap-3 py-12 text-center">
-                    <p className="text-sm text-ink-3">No se pudo cargar el historial.</p>
+                    <p className="text-sm text-ink-3">{t("billing.history.loadError")}</p>
                     <Button type="button" variant="link" size="inline"
                         onClick={() => setAttempt((n) => n + 1)}
                     >
-                        Reintentar
+                        {t("common.retry")}
                     </Button>
                 </div>
             ) : !data || data.data.length === 0 ? (
                 <div className="py-12 text-center text-sm text-ink-3">
-                    Aún no hay transacciones. Recarga créditos para empezar.
+                    {t("billing.history.empty")}
                 </div>
             ) : (
                 <>
@@ -140,20 +132,20 @@ export function TransactionHistory() {
                         <table className="w-full min-w-180 text-sm">
                             <thead>
                                 <tr className="border-b border-rule text-left text-xs font-bold text-ink-3">
-                                    <th className="px-5 py-2.5">Fecha</th>
-                                    <th className="px-3 py-2.5">Descripción</th>
-                                    <th className="px-3 py-2.5">Tipo</th>
-                                    <th className="px-3 py-2.5">Origen</th>
-                                    <th className="px-3 py-2.5 text-right">Monto</th>
-                                    <th className="px-3 py-2.5 text-right">Saldo</th>
-                                    <th className="px-5 py-2.5">Estado</th>
+                                    <th className="px-5 py-2.5">{t("billing.history.columns.date")}</th>
+                                    <th className="px-3 py-2.5">{t("billing.history.columns.description")}</th>
+                                    <th className="px-3 py-2.5">{t("billing.history.columns.type")}</th>
+                                    <th className="px-3 py-2.5">{t("billing.history.columns.source")}</th>
+                                    <th className="px-3 py-2.5 text-right">{t("billing.history.columns.amount")}</th>
+                                    <th className="px-3 py-2.5 text-right">{t("billing.history.columns.balance")}</th>
+                                    <th className="px-5 py-2.5">{t("billing.history.columns.status")}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-rule">
                                 {data.data.map((tx) => (
                                     <tr key={tx.uuid} className="hover:bg-sunk/50">
                                         <td className="whitespace-nowrap px-5 py-3 text-ink-3">
-                                            {formatDate(tx.createdAt)}
+                                            {formatDate(tx.createdAt, t("common.dateLocale"))}
                                         </td>
                                         <td className="px-3 py-3 text-ink-2">{tx.description}</td>
                                         <td className="px-3 py-3"><TypeBadge type={tx.type} /></td>
@@ -172,7 +164,7 @@ export function TransactionHistory() {
                     {/* Pagination */}
                     <div className="flex items-center justify-between border-t border-rule px-5 py-3">
                         <p className="text-xs text-ink-3">
-                            Mostrando {data.from}–{data.to} de {data.total}
+                            {t("billing.history.showing", { from: data.from, to: data.to, total: data.total })}
                         </p>
                         <div className="flex items-center gap-2">
                             <Button type="button" variant="outline" size="sm"
@@ -180,17 +172,17 @@ export function TransactionHistory() {
                                 disabled={data.currentPage <= 1 || isLoading}
                                 className="inline-flex items-center"
                             >
-                                <Icon icon={ChevronLeft} size="sm" /> Anterior
+                                <Icon icon={ChevronLeft} size="sm" /> {t("common.previous")}
                             </Button>
                             <span className="text-xs font-medium text-ink-3">
-                                Página {data.currentPage} de {data.lastPage}
+                                {t("billing.history.page", { page: data.currentPage, last: data.lastPage })}
                             </span>
                             <Button type="button" variant="outline" size="sm"
                                 onClick={() => setPage((p) => Math.min(data.lastPage, p + 1))}
                                 disabled={data.currentPage >= data.lastPage || isLoading}
                                 className="inline-flex items-center"
                             >
-                                Siguiente <Icon icon={ChevronRight} size="sm" />
+                                {t("common.next")} <Icon icon={ChevronRight} size="sm" />
                                 {isLoading && <Icon icon={Loader2} size="xs" className="ml-1 animate-spin" />}
                             </Button>
                         </div>

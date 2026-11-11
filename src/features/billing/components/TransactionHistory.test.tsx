@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import type { CreditTransaction, TransactionsPage } from "../types"
@@ -9,6 +9,7 @@ vi.mock("../services/billing-service", () => ({
 }))
 
 import { TransactionHistory } from "./TransactionHistory"
+import { useLanguageStore } from "@/store/useLanguageStore"
 
 function tx(over: Partial<CreditTransaction>): CreditTransaction {
     return {
@@ -72,5 +73,26 @@ describe("TransactionHistory — la etiqueta sale del código que manda el backe
         expect(await screen.findByText("Crédito")).toBeInTheDocument()
         expect(getTransactions).toHaveBeenCalledTimes(2)
         expect(getTransactions).toHaveBeenLastCalledWith(1)
+    })
+})
+
+describe("TransactionHistory — el inglés queda listo para cuando se habilite", () => {
+    beforeEach(() => getTransactions.mockReset())
+    // `setState` directo: `setLanguage` todavía rechaza "en" porque no está en
+    // AVAILABLE_LANGUAGES. La prueba fija que, al habilitarlo, el texto ya existe.
+    afterEach(() => useLanguageStore.setState({ language: "es" }))
+
+    it("con idioma en, las mismas etiquetas salen del diccionario en inglés", async () => {
+        useLanguageStore.setState({ language: "en" })
+        getTransactions.mockResolvedValue(page([
+            tx({ type: "credit", source: "automation_refund", status: "refunded" }),
+        ]))
+        render(<TransactionHistory />)
+
+        expect(await screen.findByText("Credit")).toBeInTheDocument()
+        expect(screen.getByText("Refund")).toBeInTheDocument()
+        expect(screen.getByText("Refunded")).toBeInTheDocument()
+        expect(screen.getByText("Showing 1–1 of 1")).toBeInTheDocument()
+        expect(screen.getByText("Transaction history")).toBeInTheDocument()
     })
 })

@@ -1,4 +1,5 @@
 import "server-only"
+import { DEFAULT_LANGUAGE, dictionaries } from "@/lib/i18n/dictionaries"
 
 /**
  * Server-side API helper for Next.js API Routes (BFF layer).
@@ -88,7 +89,7 @@ export async function serverFetch<T = any>(
     try {
         data = await res.json()
     } catch {
-        data = { message: "Could not parse response" }
+        data = { message: dictionaries[DEFAULT_LANGUAGE].errors.unparsableResponse }
     }
 
     if (!res.ok) {

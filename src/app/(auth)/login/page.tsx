@@ -1,11 +1,11 @@
 import { Metadata } from "next"
+import { DEFAULT_LANGUAGE, dictionaries } from "@/lib/i18n/dictionaries"
 import { LoginForm } from "@/features/auth/components/LoginForm"
 import { Logo } from "@/components/ui/Logo"
 
-export const metadata: Metadata = {
-    title: "Login - Hit Guest",
-    description: "Inicia sesión en tu cuenta",
-}
+// La pestaña se arma en el servidor, donde no existe el idioma elegido por el
+// PM (vive en el navegador): manda el idioma por defecto.
+export const metadata: Metadata = dictionaries[DEFAULT_LANGUAGE].meta.login
 
 export default function LoginPage() {
     return (

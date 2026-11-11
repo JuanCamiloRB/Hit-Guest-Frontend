@@ -5,6 +5,10 @@ export const en = {
     error: "An error occurred",
     save: "Save",
     cancel: "Cancel",
+    retry: "Retry",
+    previous: "Previous",
+    next: "Next",
+    dateLocale: "en-US",
     search: "Search...",
   },
   navigation: {
@@ -24,5 +28,60 @@ export const en = {
     description: "Your balance, automation usage and per-booking detail",
     filters: "Filters",
     newReservation: "New Booking",
-  }
+  },
+  errors: {
+    unparsableResponse: "Could not parse response",
+  },
+  meta: {
+    login: { title: "Login - Hit Guest", description: "Sign in to your account" },
+    dashboard: { title: "Dashboard - Hit Guest", description: "Manage your properties and reservations" },
+    properties: { title: "Properties - Hit Guest", description: "Manage your properties" },
+    reservation: {
+      title: "Reservation Operations - Hit Guest",
+      description: "Detailed reservation management and automation status",
+    },
+  },
+  reservations: {
+    noListings: "No listings available",
+  },
+  billing: {
+    customAmountPlaceholder: "Custom amount (min {{min}})",
+    addCredits: "Add Credits",
+    checkoutError: "Failed to connect to payment. Try again.",
+    banner: {
+      depleted: "Your automations are paused. Your account has no credits left.",
+      low: "Your balance is running low ({{amount}} remaining). Top up to avoid interruptions.",
+      dismiss: "Dismiss",
+    },
+    success: {
+      title: "Payment successful!",
+      body: "Payment received — your balance will update shortly. Redirecting you to billing…",
+      goToBilling: "Go to Billing",
+    },
+    history: {
+      title: "Transaction history",
+      loadError: "Failed to load transactions.",
+      empty: "No transactions yet. Recharge to get started.",
+      showing: "Showing {{from}}–{{to}} of {{total}}",
+      page: "Page {{page}} of {{last}}",
+      columns: {
+        date: "Date",
+        description: "Description",
+        type: "Type",
+        source: "Source",
+        amount: "Amount",
+        balance: "Balance",
+        status: "Status",
+      },
+      types: { credit: "Credit", debit: "Debit" },
+      sources: {
+        trial: "Trial",
+        stripe: "Stripe",
+        automation: "Automation",
+        automation_refund: "Refund",
+        manual: "Manual",
+      },
+      statuses: { completed: "Completed", refunded: "Refunded" },
+    },
+  },
 } as const;

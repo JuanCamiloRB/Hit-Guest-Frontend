@@ -91,6 +91,7 @@ import { createReservationWithFollowUp } from "@/features/reservations/lib/creat
 import { readGuestNameParts } from "@/features/reservations/lib/guest-name"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Badge } from "@/components/ui/badge"
+import { useTranslation } from "@/hooks/useTranslation"
 
 // ── Zod Schema ──────────────────────────────────────────────
 const reservationSchema = z.object({
@@ -162,6 +163,7 @@ interface ReservationDialogProps {
 }
 
 export function ReservationDialog({ mode = "create", reservationUuid, trigger }: ReservationDialogProps) {
+    const { t } = useTranslation()
     const [open, setOpen] = useState(false)
     const [isSmallScreen, setIsSmallScreen] = useState(false)
     useEffect(() => {
@@ -832,7 +834,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                             : loadingListings
                                                                 ? "Cargando..."
                                                                 : listings.length === 0
-                                                                    ? "No listings disponibles"
+                                                                    ? t("reservations.noListings")
                                                                     : "Selecciona..."
                                                     } />
                                                 </SelectTrigger>
