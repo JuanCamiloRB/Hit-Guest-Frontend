@@ -151,11 +151,11 @@ export function DynamicCheckinFields({ fields, values, onChange }: DynamicChecki
                     if (isLoadingOptions && options.length === 0) {
                         return (
                             <div key={f.key} className="space-y-1.5">
-                                <label className="text-sm font-semibold text-slate-700">
+                                <label className="text-sm font-semibold text-ink-2">
                                     {label}
-                                    {f.required && <span className="text-red-400 ml-0.5">*</span>}
+                                    {f.required && <span className="text-danger ml-0.5">*</span>}
                                 </label>
-                                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-400">
+                                <div className="flex items-center gap-2 bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink-3">
                                     <Loader2 size={16} className="animate-spin" />
                                     <span className="text-sm">Cargando opciones...</span>
                                 </div>

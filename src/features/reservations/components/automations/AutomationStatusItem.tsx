@@ -304,10 +304,10 @@ function GuestRow({
                         {guest.isMainGuest && <span className="ml-1.5 font-normal text-ink-3">· Titular</span>}
                     </p>
                     {!guest.checkinCompleted && (
-                        <p className="text-[11px] text-ink-3">Check-in sin terminar</p>
+                        <p className="text-xs text-ink-3">Check-in sin terminar</p>
                     )}
                     {guest.lastRunAt && (
-                        <p className="text-[11px] text-ink-3">Última ejecución {formatRunDate(guest.lastRunAt)}</p>
+                        <p className="text-xs text-ink-3">Última ejecución {formatRunDate(guest.lastRunAt)}</p>
                     )}
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -339,7 +339,7 @@ function GuestRow({
                     ) : null}
                 </div>
             </div>
-            {failure && <p className="break-words text-[11px] text-danger">{failure}</p>}
+            {failure && <p className="break-words text-xs text-danger">{failure}</p>}
         </li>
     )
 }

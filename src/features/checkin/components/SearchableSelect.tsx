@@ -74,9 +74,9 @@ export function SearchableSelect({
 
   return (
     <div className="space-y-1.5" ref={containerRef}>
-      <label className="text-sm font-semibold text-slate-700">
+      <label className="text-sm font-semibold text-ink-2">
         {label}
-        {required && <span className="text-red-400 ml-0.5">*</span>}
+        {required && <span className="text-danger ml-0.5">*</span>}
       </label>
 
       <div className="relative">
@@ -89,37 +89,37 @@ export function SearchableSelect({
             setSearch("")
           }}
           className={`
-            w-full bg-slate-50 border rounded-xl px-4 py-3 text-left
+            w-full bg-sunk/50 border rounded-xl px-4 py-3 text-left
             flex items-center justify-between gap-2
             transition-all
             ${isOpen
               ? "border-primary ring-2 ring-primary/30"
-              : "border-slate-200 hover:border-slate-300"
+              : "border-rule hover:border-input-hover"
             }
           `}
         >
-          <span className={`min-w-0 truncate ${selectedOption ? "text-slate-900" : "text-slate-400"}`}>
+          <span className={`min-w-0 truncate ${selectedOption ? "text-ink" : "text-ink-3"}`}>
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           <ChevronDown
             size={16}
-            className={`shrink-0 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
+            className={`shrink-0 text-ink-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
           />
         </button>
 
         {/* Dropdown */}
         {isOpen && (
-          <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-white rounded-xl shadow-lg border border-rule overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
             {/* Search Input */}
-            <div className="p-2 border-b border-slate-100">
+            <div className="p-2 border-b border-rule">
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
                 <input
                   ref={inputRef}
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary transition-all"
+                  className="w-full bg-sunk/50 border border-rule rounded-lg pl-9 pr-3 py-2 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-primary/30 focus:border-primary transition-all"
                   placeholder="Buscar..."
                 />
               </div>
@@ -128,7 +128,7 @@ export function SearchableSelect({
             {/* Options List */}
             <div className="max-h-48 overflow-y-auto">
               {filtered.length === 0 ? (
-                <div className="p-3 text-sm text-slate-400 text-center">
+                <div className="p-3 text-sm text-ink-3 text-center">
                   Sin resultados
                 </div>
               ) : (
@@ -144,13 +144,13 @@ export function SearchableSelect({
                     className={`
                       w-full text-left px-4 py-2.5 text-sm flex items-center justify-between
                       transition-colors hover:bg-primary/5
-                      ${value === option.id ? "bg-primary/5 text-primary font-medium" : "text-slate-700"}
+                      ${value === option.id ? "bg-primary/5 text-primary font-medium" : "text-ink-2"}
                     `}
                   >
                     <div>
                       <span>{option.label}</span>
                       {option.sublabel && (
-                        <span className="text-xs text-slate-400 ml-2">{option.sublabel}</span>
+                        <span className="text-xs text-ink-3 ml-2">{option.sublabel}</span>
                       )}
                     </div>
                     {value === option.id && <Check size={16} className="text-primary" />}

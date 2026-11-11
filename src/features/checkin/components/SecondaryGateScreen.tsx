@@ -30,28 +30,28 @@ export function SecondaryGateScreen({ status, basePath }: SecondaryGateScreenPro
     if (status.mainGuestCompleted) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-4 animate-in fade-in duration-500">
-                <CheckCircle2 className="h-12 w-12 text-green-500 animate-pulse" />
-                <h1 className="text-xl font-bold text-slate-900">Redirigiendo...</h1>
-                <p className="text-slate-500">El titular ya completó su registro, preparándote para comenzar.</p>
+                <CheckCircle2 className="h-12 w-12 text-success animate-pulse" />
+                <h1 className="text-xl font-bold text-ink">Redirigiendo...</h1>
+                <p className="text-ink-3">El titular ya completó su registro, preparándote para comenzar.</p>
             </div>
         )
     }
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-amber-100 p-4 rounded-full mb-6">
-                <Clock className="h-10 w-10 text-amber-600" />
+            <div className="bg-warning-sunk p-4 rounded-full mb-6">
+                <Clock className="h-10 w-10 text-warning" />
             </div>
             
-            <h1 className="text-2xl font-bold text-slate-900 mb-4">Registro en espera</h1>
+            <h1 className="text-2xl font-bold text-ink mb-4">Registro en espera</h1>
             
-            <p className="text-slate-600 mb-6 max-w-sm">
+            <p className="text-ink-2 mb-6 max-w-sm">
                 Hola. El titular de la reserva, <strong>{status.mainGuestName || "tu anfitrión"}</strong>, aún no ha completado su proceso de check-in obligatorio.
             </p>
             
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 w-full max-w-sm mb-8 flex items-start gap-3 text-left">
+            <div className="bg-sunk/50 border border-rule rounded-xl p-5 w-full max-w-sm mb-8 flex items-start gap-3 text-left">
                 <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                <div className="text-sm text-slate-700">
+                <div className="text-sm text-ink-2">
                     <span className="font-semibold block mb-1">¿Qué debes hacer?</span>
                     Pídele al titular que finalice su registro. Una vez lo haga, esta página te permitirá ingresar tus datos.
                 </div>

@@ -210,7 +210,7 @@ export function AddressAutocomplete({
     return (
         <div ref={containerRef} className="relative">
             <div className="relative">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-3" />
                 <input
                     type="text"
                     value={value}
@@ -225,26 +225,26 @@ export function AddressAutocomplete({
                     placeholder={placeholder}
                     autoComplete="off"
                     className={cn(
-                        "w-full pl-9 pr-9 h-11 rounded-md border border-slate-200 bg-white text-sm",
+                        "w-full pl-9 pr-9 h-11 rounded-md border border-rule bg-white text-sm",
                         "focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none",
                         className,
                     )}
                 />
                 {(loading || resolving) && (
-                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-slate-400" />
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-ink-3" />
                 )}
             </div>
 
             {open && suggestions.length > 0 && (
-                <ul className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+                <ul className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-rule bg-white shadow-lg">
                     {suggestions.map((s) => (
                         <li key={s.placeId}>
                             <button
                                 type="button"
                                 onClick={() => handlePick(s)}
-                                className="flex w-full items-start gap-2 px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-primary/10"
+                                className="flex w-full items-start gap-2 px-3 py-2.5 text-left text-sm text-ink-2 hover:bg-primary/10"
                             >
-                                <Search className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
+                                <Search className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-3" />
                                 <span className="line-clamp-2">
                                     {formatSuggestion(s.description, value)}
                                 </span>
@@ -261,7 +261,7 @@ export function AddressAutocomplete({
               * cuando en realidad la propiedad se guardó sin coordenadas.
               */}
             {unavailable && (
-                <p className="mt-1.5 text-xs text-amber-700" role="status">
+                <p className="mt-1.5 text-xs text-warning" role="status">
                     {unavailableReason === "manual_search_required"
                         ? "Completa la dirección y presiona Enter o Buscar dirección."
                         : "El buscador mundial de direcciones no está respondiendo. Intenta nuevamente o ubica la propiedad arrastrando el pin."}
@@ -279,7 +279,7 @@ export function AddressAutocomplete({
                 </button>
             )}
             {noResults && !loading && (
-                <p className="mt-1.5 text-xs text-slate-500" role="status">
+                <p className="mt-1.5 text-xs text-ink-3" role="status">
                     No encontramos coincidencias. Agrega calle, ciudad o localidad y país; la unidad se conservará automáticamente.
                 </p>
             )}

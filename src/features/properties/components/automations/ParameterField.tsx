@@ -38,17 +38,17 @@ export function ParameterField({ schema, value, onChange }: Props) {
 
         return (
             <div className="space-y-3">
-                <Label className="text-sm font-semibold text-slate-700">{schema.label}</Label>
+                <Label className="text-sm font-semibold text-ink-2">{schema.label}</Label>
                 {items.map((item, i) => (
-                    <div key={i} className="border border-slate-200 rounded-xl p-3 space-y-2 bg-slate-50">
+                    <div key={i} className="border border-rule rounded-xl p-3 space-y-2 bg-sunk/50">
                         <div className="flex justify-between items-center">
-                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+                            <span className="text-xs font-semibold text-ink-3 uppercase tracking-wide">
                                 Elemento {i + 1}
                             </span>
                             <button
                                 type="button"
                                 onClick={() => removeItem(i)}
-                                className="text-red-400 hover:text-red-600 transition-colors"
+                                className="text-danger hover:text-danger transition-colors"
                             >
                                 <Trash2 size={14} />
                             </button>
@@ -88,9 +88,9 @@ export function ParameterField({ schema, value, onChange }: Props) {
 
         return (
             <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700">
+                <Label className="text-sm font-semibold text-ink-2">
                     {schema.label}
-                    {schema.required && <span className="text-red-400 ml-0.5">*</span>}
+                    {schema.required && <span className="text-danger ml-0.5">*</span>}
                 </Label>
                 {items.map((item, i) => (
                     <div key={i} className="flex items-center gap-2">
@@ -99,12 +99,12 @@ export function ParameterField({ schema, value, onChange }: Props) {
                             value={item}
                             onChange={e => updateItem(i, e.target.value)}
                             placeholder={schema.placeholder}
-                            className="bg-slate-50 border-slate-200"
+                            className="bg-sunk/50 border-rule"
                         />
                         <button
                             type="button"
                             onClick={() => removeItem(i)}
-                            className="text-red-400 hover:text-red-600 transition-colors shrink-0"
+                            className="text-danger hover:text-danger transition-colors shrink-0"
                         >
                             <Trash2 size={16} />
                         </button>
@@ -126,16 +126,16 @@ export function ParameterField({ schema, value, onChange }: Props) {
     if (schema.type === "textarea") {
         return (
             <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-slate-700">
+                <Label className="text-sm font-semibold text-ink-2">
                     {schema.label}
-                    {schema.required && <span className="text-red-400 ml-0.5">*</span>}
+                    {schema.required && <span className="text-danger ml-0.5">*</span>}
                 </Label>
                 <textarea
                     value={value ?? ""}
                     onChange={e => onChange(e.target.value)}
                     placeholder={schema.placeholder}
                     rows={4}
-                    className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 resize-y"
+                    className="w-full rounded-md border border-rule bg-sunk/50 px-3 py-2 text-sm placeholder:text-ink-3 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40 resize-y"
                 />
             </div>
         )
@@ -144,12 +144,12 @@ export function ParameterField({ schema, value, onChange }: Props) {
     if (schema.type === "select") {
         return (
             <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-slate-700">
+                <Label className="text-sm font-semibold text-ink-2">
                     {schema.label}
-                    {schema.required && <span className="text-red-400 ml-0.5">*</span>}
+                    {schema.required && <span className="text-danger ml-0.5">*</span>}
                 </Label>
                 <Select value={value ?? ""} onValueChange={onChange}>
-                    <SelectTrigger className="bg-slate-50 border-slate-200">
+                    <SelectTrigger className="bg-sunk/50 border-rule">
                         <SelectValue placeholder={schema.placeholder ?? `Selecciona ${schema.label}`} />
                     </SelectTrigger>
                     <SelectContent>
@@ -165,9 +165,9 @@ export function ParameterField({ schema, value, onChange }: Props) {
     const isPassword = schema.type === "password"
     return (
         <div className="space-y-1.5">
-            <Label className="text-sm font-semibold text-slate-700">
+            <Label className="text-sm font-semibold text-ink-2">
                 {schema.label}
-                {schema.required && <span className="text-red-400 ml-0.5">*</span>}
+                {schema.required && <span className="text-danger ml-0.5">*</span>}
             </Label>
             <div className="relative">
                 <Input
@@ -175,13 +175,13 @@ export function ParameterField({ schema, value, onChange }: Props) {
                     value={value ?? ""}
                     onChange={e => onChange(e.target.value)}
                     placeholder={schema.placeholder}
-                    className="bg-slate-50 border-slate-200 pr-10"
+                    className="bg-sunk/50 border-rule pr-10"
                 />
                 {isPassword && (
                     <button
                         type="button"
                         onClick={() => setShowPwd(p => !p)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
                     >
                         {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>

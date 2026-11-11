@@ -31,20 +31,20 @@ export function AccountBalanceStrip({ balance, isLoadingBalance, balanceError = 
             )}
         >
             <div className="min-w-0">
-                <h2 id="account-balance-title" className="font-secondary text-[13px] font-medium tracking-normal text-ink-3">
+                <h2 id="account-balance-title" className="font-secondary text-sm font-medium tracking-normal text-ink-3">
                     Saldo disponible
                 </h2>
                 {isLoadingBalance ? (
                     <Skeleton className="mt-2 h-7 w-36" />
                 ) : !balance ? (
                     <>
-                        <p className="mt-1 text-[28px] font-semibold leading-tight tracking-tight text-ink-4">— USD</p>
+                        <p className="mt-1 text-3xl font-semibold leading-tight tracking-tight text-ink-4">— USD</p>
                         <BalanceNotice text="Saldo no disponible" onRetry={onRetryBalance} />
                     </>
                 ) : (
                     <>
                         <p className="mt-1 flex items-baseline gap-1.5">
-                            <span className="text-[28px] font-semibold leading-tight tracking-tight tabular-nums text-ink">
+                            <span className="text-3xl font-semibold leading-tight tracking-tight tabular-nums text-ink">
                                 {balance.amount.toLocaleString("es-CO", {
                                     minimumFractionDigits: 2,
                                     maximumFractionDigits: 2,

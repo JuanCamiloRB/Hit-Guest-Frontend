@@ -23,8 +23,8 @@ export default async function CheckinByExternalPage({
         if ((error as { status?: number })?.status === 429) {
             return (
                 <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
-                    <h1 className="text-2xl font-bold text-slate-800 mb-2">Demasiados intentos</h1>
-                    <p className="text-slate-500">Espera un momento y vuelve a intentarlo.</p>
+                    <h1 className="text-2xl font-bold text-ink mb-2">Demasiados intentos</h1>
+                    <p className="text-ink-3">Espera un momento y vuelve a intentarlo.</p>
                     <a
                         href=""
                         className="mt-6 inline-flex h-12 items-center rounded-xl bg-primary px-6 font-semibold text-white"
@@ -39,8 +39,8 @@ export default async function CheckinByExternalPage({
     if (!portal) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
-                <h1 className="text-2xl font-bold text-slate-800 mb-2">Reserva no encontrada</h1>
-                <p className="text-slate-500">No pudimos encontrar la reserva o el link ha expirado.</p>
+                <h1 className="text-2xl font-bold text-ink mb-2">Reserva no encontrada</h1>
+                <p className="text-ink-3">No pudimos encontrar la reserva o el link ha expirado.</p>
             </div>
         )
     }

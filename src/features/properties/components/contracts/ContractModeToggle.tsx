@@ -28,13 +28,13 @@ export function ContractModeToggle({ value, onChange, disabled }: Props) {
                     "rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                     value === "all_sources"
                         ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                        : "border-slate-200 bg-white hover:border-slate-300",
+                        : "border-rule bg-white hover:border-input-hover",
                 )}
             >
-                <span className={cn("block text-sm font-bold", value === "all_sources" ? "text-primary" : "text-slate-800")}>
+                <span className={cn("block text-sm font-bold", value === "all_sources" ? "text-primary" : "text-ink")}>
                     Un mismo contrato para todos
                 </span>
-                <span className="mt-1 block text-xs font-medium leading-relaxed text-slate-500">
+                <span className="mt-1 block text-xs font-medium leading-relaxed text-ink-3">
                     Todos los huéspedes firman el mismo documento, sin importar de dónde llegue la reserva.
                 </span>
             </button>
@@ -48,13 +48,13 @@ export function ContractModeToggle({ value, onChange, disabled }: Props) {
                     "rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                     value === "per_source"
                         ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                        : "border-slate-200 bg-white hover:border-slate-300",
+                        : "border-rule bg-white hover:border-input-hover",
                 )}
             >
-                <span className={cn("block text-sm font-bold", value === "per_source" ? "text-primary" : "text-slate-800")}>
+                <span className={cn("block text-sm font-bold", value === "per_source" ? "text-primary" : "text-ink")}>
                     Un contrato para cada canal
                 </span>
-                <span className="mt-1 block text-xs font-medium leading-relaxed text-slate-500">
+                <span className="mt-1 block text-xs font-medium leading-relaxed text-ink-3">
                     Configura por separado Airbnb, Booking.com, reservas directas y los demás canales.
                 </span>
             </button>

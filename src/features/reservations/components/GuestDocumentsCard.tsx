@@ -254,7 +254,7 @@ function GuestDocumentRow({
                         <span className="text-sm font-semibold text-ink">{fullName}</span>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-ink-3">
                             {guest.isMain && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-primary/20 text-primary">
+                                <Badge variant="outline" className="text-xs px-1.5 py-0 border-primary/20 text-primary">
                                     Principal
                                 </Badge>
                             )}
@@ -394,7 +394,7 @@ function DocumentThumbnail({
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-            <span className="absolute bottom-1.5 left-2 text-[10px] font-bold text-white bg-black/50 px-1.5 py-0.5 rounded">
+            <span className="absolute bottom-1.5 left-2 text-xs font-bold text-white bg-black/50 px-1.5 py-0.5 rounded">
                 {label}
             </span>
         </button>

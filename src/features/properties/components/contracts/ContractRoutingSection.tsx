@@ -634,14 +634,14 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     }
 
     return (
-        <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+        <div className="space-y-6 rounded-2xl border border-rule bg-white p-4 sm:p-5">
             <div className="flex items-start gap-3">
                 <div className="rounded-xl bg-primary/10 p-2.5">
                     <FileSignature className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                    <h3 className="text-xl font-bold text-slate-900">Contratos por canal</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-slate-500">
+                    <h3 className="text-xl font-bold text-ink">Contratos por canal</h3>
+                    <p className="mt-1 text-sm leading-relaxed text-ink-3">
                         Define qué documento reciben y cómo firman los huéspedes según el origen de la reserva.
                     </p>
                 </div>
@@ -724,8 +724,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
 
             <section className="space-y-2" aria-labelledby="contract-mode-heading">
                 <div>
-                    <h4 id="contract-mode-heading" className="text-sm font-bold text-slate-800">¿Cómo quieres aplicar tus contratos?</h4>
-                    <p className="mt-0.5 text-xs text-slate-500">Puedes usar una sola configuración o personalizarla para cada canal.</p>
+                    <h4 id="contract-mode-heading" className="text-sm font-bold text-ink">¿Cómo quieres aplicar tus contratos?</h4>
+                    <p className="mt-0.5 text-xs text-ink-3">Puedes usar una sola configuración o personalizarla para cada canal.</p>
                 </div>
                 <ContractModeToggle value={mode} onChange={handleModeChange} disabled={saving || routingBlocked} />
             </section>
@@ -765,8 +765,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 </ContractChannelCard>
             ) : (
                 <div className="space-y-3" aria-label="Configuración por canal">
-                    <fieldset className="space-y-2 rounded-xl border border-slate-200 p-3 sm:p-4">
-                        <legend className="px-1 text-sm font-bold text-slate-800">Texto del contrato de alquiler</legend>
+                    <fieldset className="space-y-2 rounded-xl border border-rule p-3 sm:p-4">
+                        <legend className="px-1 text-sm font-bold text-ink">Texto del contrato de alquiler</legend>
                         <div role="radiogroup" aria-label="Texto del contrato de alquiler" className="grid gap-2 sm:grid-cols-2">
                             {([
                                 ["shared", "Mismo texto para todos los canales", "Cada canal puede firmar distinto, pero el texto es uno."],
@@ -781,17 +781,17 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                                     disabled={saving}
                                     className={textMode === value
                                         ? "rounded-lg border border-primary bg-primary/5 px-3 py-2 text-left"
-                                        : "rounded-lg border border-slate-200 px-3 py-2 text-left hover:border-slate-300"}
+                                        : "rounded-lg border border-rule px-3 py-2 text-left hover:border-input-hover"}
                                 >
-                                    <span className="block text-sm font-semibold text-slate-800">{label}</span>
-                                    <span className="block text-xs text-slate-500">{hint}</span>
+                                    <span className="block text-sm font-semibold text-ink">{label}</span>
+                                    <span className="block text-xs text-ink-3">{hint}</span>
                                 </button>
                             ))}
                         </div>
                         {textMode === "shared" && (
                             <div className="space-y-1.5 pt-2">
                                 {gaps.includes(ALL_SOURCES_KEY) && (
-                                    <p className="flex items-center gap-1.5 text-xs text-amber-600">
+                                    <p className="flex items-center gap-1.5 text-xs text-warning">
                                         <AlertCircle size={13} /> Los canales con contrato de alquiler necesitan este texto antes de guardar.
                                     </p>
                                 )}
@@ -861,16 +861,16 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                 <FeedbackBanner tone="danger" mode="blocking" className="whitespace-pre-line">{saveError}</FeedbackBanner>
             )}
 
-            <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+            <div className="sticky bottom-3 z-20 flex flex-col gap-3 rounded-xl border border-rule bg-white/95 p-3 shadow-lg backdrop-blur sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2 text-sm">
                     {routingBlocked ? (
-                        <><AlertTriangle className="h-4 w-4 text-amber-600" /><span className="font-semibold text-amber-800">Edición bloqueada hasta corregir los canales no identificados.</span></>
+                        <><AlertTriangle className="h-4 w-4 text-warning" /><span className="font-semibold text-warning">Edición bloqueada hasta corregir los canales no identificados.</span></>
                     ) : orphansPendingDecision ? (
-                        <><AlertTriangle className="h-4 w-4 text-amber-600" /><span className="font-semibold text-amber-800">Quita la configuración desconocida para poder guardar.</span></>
+                        <><AlertTriangle className="h-4 w-4 text-warning" /><span className="font-semibold text-warning">Quita la configuración desconocida para poder guardar.</span></>
                     ) : hasUnsavedChanges ? (
-                        <><AlertCircle className="h-4 w-4 text-amber-600" /><span className="font-semibold text-amber-800">Tienes cambios sin guardar.</span></>
+                        <><AlertCircle className="h-4 w-4 text-warning" /><span className="font-semibold text-warning">Tienes cambios sin guardar.</span></>
                     ) : (
-                        <><CheckCircle2 className="h-4 w-4 text-emerald-600" /><span className="font-semibold text-emerald-700">La configuración está guardada.</span></>
+                        <><CheckCircle2 className="h-4 w-4 text-success" /><span className="font-semibold text-success">La configuración está guardada.</span></>
                     )}
                 </div>
                 <Button

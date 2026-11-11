@@ -43,9 +43,9 @@ interface PropertyCardProps {
 /** Tono visual por clase de insignia — presentación, la derivación vive en `property-badges.ts`. */
 const BADGE_STYLES: Record<PropertyBadge["kind"], string> = {
     identity: "bg-primary/10 text-primary border-primary/20",
-    contract: "bg-blue-50 text-blue-700 border-blue-200",
-    ops: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    absent: "bg-slate-100 text-slate-500 border-slate-200",
+    contract: "bg-info-sunk text-info border-info/30",
+    ops: "bg-success-sunk text-success border-success/30",
+    absent: "bg-sunk text-ink-3 border-rule",
 }
 
 /**
@@ -124,8 +124,8 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
     }
 
     return (
-        <Card className="overflow-hidden group hover:shadow-2xl hover:shadow-brand-purple/10 transition-all duration-500 border-primary/10 hover:border-primary/30 rounded-2xl bg-white/50 backdrop-blur-sm">
-            <div className="relative aspect-video bg-slate-100">
+        <Card className="overflow-hidden group hover:shadow-2xl transition-all duration-500 border-primary/10 hover:border-primary/30 rounded-2xl bg-white/50 backdrop-blur-sm">
+            <div className="relative aspect-video bg-sunk">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                     src={coverSrc}
@@ -133,13 +133,13 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                     onError={() => setImgError(true)}
                     className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-110"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className="absolute inset-0 bg-ink/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
                 {typeLabel && (
                     <div className="absolute top-2 left-2 flex gap-1">
-                        <Badge className="bg-white/90 text-slate-900 border-none shadow-sm backdrop-blur-sm flex gap-1.5 items-center px-2 py-0.5">
+                        <Badge className="bg-white/90 text-ink border-none shadow-sm backdrop-blur-sm flex gap-1.5 items-center px-2 py-0.5">
                             <TypeIcon label={hasType ? typeLabel : null} />
-                            <span className="text-[10px] font-bold uppercase tracking-wider">{typeLabel}</span>
+                            <span className="text-xs font-bold uppercase tracking-wider">{typeLabel}</span>
                         </Badge>
                     </div>
                 )}
@@ -147,8 +147,8 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 <Badge
                     variant={isActive ? "default" : "secondary"}
                     className={cn(
-                        "absolute right-2 top-2 px-2 py-0.5 text-[10px] font-bold border-none shadow-sm transition-colors duration-300",
-                        isActive ? "bg-emerald-500" : "bg-slate-500"
+                        "absolute right-2 top-2 px-2 py-0.5 text-xs font-bold border-none shadow-sm transition-colors duration-300",
+                        isActive ? "bg-success" : "bg-ink-3"
                     )}
                 >
                     {isActive ? "ACTIVO" : "INACTIVO"}
@@ -167,7 +167,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="-mt-1 h-8 w-8 hover:bg-slate-100 rounded-full">
+                            <Button variant="ghost" size="icon" className="-mt-1 h-8 w-8 hover:bg-sunk rounded-full">
                                 <MoreHorizontal className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
@@ -185,7 +185,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
-                                className={cn("font-medium", isActive ? "text-destructive" : "text-emerald-600")}
+                                className={cn("font-medium", isActive ? "text-destructive" : "text-success")}
                                 // Diferido: abrir el diálogo mientras el menú se cierra deja
                                 // `pointer-events: none` en el body (fallo conocido de Radix).
                                 onSelect={() => window.setTimeout(() => requestStatusChange(!isActive), 0)}
@@ -202,7 +202,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                         <span className="text-xl font-extrabold text-ink tabular-nums">
                             {activeListings ?? "—"}
                         </span>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        <span className="text-xs font-bold uppercase tracking-wider text-ink-3">
                             {activeListings === 1 ? "Alojamiento activo" : "Alojamientos activos"}
                         </span>
                     </div>
@@ -214,7 +214,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                                 <Badge
                                     key={badge.key}
                                     variant="outline"
-                                    className={cn("px-2 py-0.5 text-[10px] font-bold border", BADGE_STYLES[badge.kind])}
+                                    className={cn("px-2 py-0.5 text-xs font-bold border", BADGE_STYLES[badge.kind])}
                                 >
                                     {badge.label}
                                 </Badge>
@@ -224,32 +224,31 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 </div>
 
                 {/* Status switch */}
-                <div className="flex items-center justify-between px-1 py-2 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="flex items-center justify-between px-1 py-2 bg-sunk/50 rounded-xl border border-rule">
                     <div className="flex flex-col">
                         <span className="text-xs font-bold text-ink">Estado de la propiedad</span>
                         <span className={cn(
-                            "text-[10px] font-semibold transition-colors duration-300",
-                            isActive ? "text-emerald-500" : "text-slate-400"
+                            "text-xs font-semibold transition-colors duration-300",
+                            isActive ? "text-success" : "text-ink-3"
                         )}>
                             {isActive ? "Visible y activa" : "Oculta / Inactiva"}
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        {isToggling && <Loader2 className="h-3 w-3 animate-spin text-slate-400" />}
+                        {isToggling && <Loader2 className="h-3 w-3 animate-spin text-ink-3" />}
                         <Switch
                             checked={isActive}
                             onCheckedChange={requestStatusChange}
                             disabled={isToggling}
-                            className={cn(
-                                "data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-300",
-                                "transition-colors duration-300"
-                            )}
+                            // Sin colores propios: la primitiva Switch ya define encendido
+                            // (primary) y apagado (ink-3, 3:1). Antes pisaba con verde y slate-300.
+                            aria-label="Estado de la propiedad"
                         />
                     </div>
                 </div>
             </CardHeader>
             <CardFooter className="p-4 pt-0">
-                <Button variant="outline" className="w-full border-primary/20 text-ink hover:bg-primary hover:text-white hover:border-transparent transition-all duration-300 font-bold rounded-xl shadow-sm hover:shadow-lg hover:shadow-brand-purple/20" asChild>
+                <Button variant="outline" className="w-full border-primary/20 text-ink hover:bg-primary hover:text-white hover:border-transparent transition-all duration-300 font-bold rounded-xl shadow-sm hover:shadow-lg" asChild>
                     <Link href={`/dashboard/properties/${propertyId}`}>Gestionar</Link>
                 </Button>
             </CardFooter>

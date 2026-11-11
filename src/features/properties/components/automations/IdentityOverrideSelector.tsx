@@ -63,7 +63,7 @@ export function IdentityOverrideSelector({
 
     return (
         <fieldset className="space-y-2" aria-describedby={error ? "identity-override-error" : undefined}>
-            <legend className="mb-1 text-sm font-semibold text-slate-700">Verificación en esta unidad</legend>
+            <legend className="mb-1 text-sm font-semibold text-ink-2">Verificación en esta unidad</legend>
 
             {catalog.status === "error" && canOverrideLevel && (
                 <FeedbackBanner
@@ -92,10 +92,10 @@ export function IdentityOverrideSelector({
                         className={cn(
                             "flex items-start gap-3 rounded-xl border px-4 py-3 transition-colors",
                             isDisabled
-                                ? "cursor-not-allowed border-slate-100 bg-slate-50 opacity-70"
+                                ? "cursor-not-allowed border-rule bg-sunk/50 opacity-70"
                                 : checked
                                     ? "cursor-pointer border-primary bg-primary/5"
-                                    : "cursor-pointer border-slate-200 hover:border-slate-300",
+                                    : "cursor-pointer border-rule hover:border-input-hover",
                         )}
                     >
                         <input
@@ -108,10 +108,10 @@ export function IdentityOverrideSelector({
                             className="mt-1 accent-primary"
                         />
                         <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-semibold text-slate-900">{OPTION_COPY[choice].label}</span>
-                            {description && <span className="block text-[13px] text-slate-600">{description}</span>}
+                            <span className="block text-sm font-semibold text-ink">{OPTION_COPY[choice].label}</span>
+                            {description && <span className="block text-sm text-ink-2">{description}</span>}
                             {blocked && (
-                                <span className="mt-0.5 flex items-center gap-1 text-xs text-amber-700">
+                                <span className="mt-0.5 flex items-center gap-1 text-xs text-warning">
                                     {catalog.status === "loading" && canOverrideLevel && <Loader2 size={11} className="animate-spin" aria-hidden />}
                                     {blocked}
                                 </span>
@@ -122,7 +122,7 @@ export function IdentityOverrideSelector({
             })}
 
             {error && (
-                <p id="identity-override-error" role="alert" className="text-xs font-medium text-red-600">{error}</p>
+                <p id="identity-override-error" role="alert" className="text-xs font-medium text-danger">{error}</p>
             )}
         </fieldset>
     )

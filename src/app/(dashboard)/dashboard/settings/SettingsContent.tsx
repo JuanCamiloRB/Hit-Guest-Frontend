@@ -51,10 +51,10 @@ export function SettingsContent() {
         return (
             <div className="flex flex-col md:flex-row gap-8 items-start animate-in fade-in duration-500">
                 {/* Sidebar Skeleton */}
-                <div className="w-full md:w-64 h-[320px] bg-sunk/60 rounded-[2.5rem] animate-pulse shadow-sm shadow-black/5" />
+                <div className="w-full md:w-64 h-[320px] bg-sunk/60 rounded-3xl animate-pulse motion-reduce:animate-none" />
                 
                 {/* Content Skeleton */}
-                <div className="flex-1 h-[600px] bg-sunk/60 rounded-[2.5rem] animate-pulse shadow-sm shadow-black/5" />
+                <div className="flex-1 h-[600px] bg-sunk/60 rounded-3xl animate-pulse motion-reduce:animate-none" />
             </div>
         )
     }
@@ -67,7 +67,7 @@ export function SettingsContent() {
         <div className="flex flex-col md:flex-row gap-8 items-start">
             {/* Vertical Sidebar Navigation */}
             <aside className="w-full md:w-64 space-y-2 flex-shrink-0">
-                <p className="px-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/60 mb-4">
+                <p className="px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground/60 mb-4">
                     CONFIGURACIÓN
                 </p>
                 <div className="flex flex-col space-y-1">

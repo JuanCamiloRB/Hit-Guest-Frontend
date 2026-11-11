@@ -475,10 +475,10 @@ export function IdentifyScreen({
             <ProgressBar currentStep={1} totalSteps={isSecondary ? 3 : 5} />
 
             <div className="flex items-center justify-between">
-                <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+                <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                     <ArrowLeft size={20} />
                 </Link>
-                <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">
                     {isSecondary ? "Paso 1 de 4" : "Paso 2 de 6"}
                 </div>
             </div>
@@ -488,45 +488,45 @@ export function IdentifyScreen({
                     propiedad verifica identidad o solo registra las fotos del
                     documento (contrato 2026-09-27, captura sin verificación).
                     Prometer «verificar» le mentía al huésped del segundo caso. */}
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
+                <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">
                     Identificación
                 </h1>
-                <p className="text-slate-500 text-sm">
+                <p className="text-ink-3 text-sm">
                     Necesitamos registrar tu documento para continuar con el registro.
                 </p>
             </div>
 
-            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
+            <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
 
                 {/* Name + Lastname */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-slate-700">
-                            Nombres<span className="text-red-400 ml-0.5">*</span>
+                        <label className="text-sm font-semibold text-ink-2">
+                            Nombres<span className="text-danger ml-0.5">*</span>
                         </label>
                         <input
                             type="text"
                             value={form.name}
                             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.name ? "border-red-400" : "border-slate-200"}`}
+                            className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.name ? "border-danger" : "border-rule"}`}
                             placeholder="Ej. Juan Carlos"
                             maxLength={120}
                         />
-                        {fieldErrors.name && <p className="text-xs text-red-500">{fieldErrors.name}</p>}
+                        {fieldErrors.name && <p className="text-xs text-danger">{fieldErrors.name}</p>}
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-slate-700">
-                            Apellidos<span className="text-red-400 ml-0.5">*</span>
+                        <label className="text-sm font-semibold text-ink-2">
+                            Apellidos<span className="text-danger ml-0.5">*</span>
                         </label>
                         <input
                             type="text"
                             value={form.lastname}
                             onChange={e => setForm(f => ({ ...f, lastname: e.target.value }))}
-                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.lastname ? "border-red-400" : "border-slate-200"}`}
+                            className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.lastname ? "border-danger" : "border-rule"}`}
                             placeholder="Ej. Rodríguez Barrera"
                             maxLength={60}
                         />
-                        {fieldErrors.lastname && <p className="text-xs text-red-500">{fieldErrors.lastname}</p>}
+                        {fieldErrors.lastname && <p className="text-xs text-danger">{fieldErrors.lastname}</p>}
                     </div>
                 </div>
 
@@ -568,8 +568,8 @@ export function IdentifyScreen({
                             />
                         </div>
                         <div className="md:col-span-3 space-y-1.5">
-                            <label className="text-sm font-semibold text-slate-700">
-                                Número de Documento<span className="text-red-400 ml-0.5">*</span>
+                            <label className="text-sm font-semibold text-ink-2">
+                                Número de Documento<span className="text-danger ml-0.5">*</span>
                             </label>
                             <input
                                 type="text"
@@ -583,13 +583,13 @@ export function IdentifyScreen({
                                     const text = (e.clipboardData.getData("text") || "").replace(/[^a-zA-Z0-9]/g, "")
                                     setForm(f => ({ ...f, identificationNumber: text }))
                                 }}
-                                className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.identificationNumber ? "border-red-400" : "border-slate-200"}`}
+                                className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.identificationNumber ? "border-danger" : "border-rule"}`}
                                 placeholder="Ej. 1234567890"
                                 maxLength={30}
                                 inputMode="text"
                                 pattern="[A-Za-z0-9]*"
                             />
-                            {fieldErrors.identificationNumber && <p className="text-xs text-red-500">{fieldErrors.identificationNumber}</p>}
+                            {fieldErrors.identificationNumber && <p className="text-xs text-danger">{fieldErrors.identificationNumber}</p>}
                         </div>
                     </div>
                 )}
@@ -599,8 +599,8 @@ export function IdentifyScreen({
                     los acompañantes no podrán registrarse. */}
                 {mustDeclareGuestCount && (
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-slate-700">
-                            ¿Cuántos huéspedes se hospedarán, incluyéndote?<span className="text-red-400 ml-0.5">*</span>
+                        <label className="text-sm font-semibold text-ink-2">
+                            ¿Cuántos huéspedes se hospedarán, incluyéndote?<span className="text-danger ml-0.5">*</span>
                         </label>
                         <input
                             type="text"
@@ -609,10 +609,10 @@ export function IdentifyScreen({
                             maxLength={2}
                             value={guestCount}
                             onChange={e => setGuestCount(e.target.value.replace(/\D/g, ""))}
-                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.totalGuests ? "border-red-400" : "border-slate-200"}`}
+                            className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.totalGuests ? "border-danger" : "border-rule"}`}
                             placeholder="Ej. 2"
                         />
-                        {fieldErrors.totalGuests && <p className="text-xs text-red-500">{fieldErrors.totalGuests}</p>}
+                        {fieldErrors.totalGuests && <p className="text-xs text-danger">{fieldErrors.totalGuests}</p>}
                     </div>
                 )}
 
@@ -620,17 +620,17 @@ export function IdentifyScreen({
                     flag. La moneda se nombra SIEMPRE: sin ella, un huésped extranjero
                     escribe dólares y se reportan como pesos. */}
                 {priceCurrencyMissing && (
-                    <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700" role="alert">
+                    <div className="rounded-xl border border-danger/30 bg-danger-sunk px-4 py-3 text-sm text-danger" role="alert">
                         Tu reserva pide el valor total, pero no informa en qué moneda. No podemos
                         recibirlo así: contacta al anfitrión para que lo registre.
                     </div>
                 )}
                 {mustDeclarePrice && priceCurrency && (
                     <div className="space-y-1.5">
-                        <label htmlFor="identify-total-price" className="text-sm font-semibold text-slate-700">
-                            Valor total de tu reserva{priceCurrency ? ` (${priceCurrency})` : ""}<span className="text-red-400 ml-0.5">*</span>
+                        <label htmlFor="identify-total-price" className="text-sm font-semibold text-ink-2">
+                            Valor total de tu reserva{priceCurrency ? ` (${priceCurrency})` : ""}<span className="text-danger ml-0.5">*</span>
                         </label>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-ink-3">
                             Ingresa el valor total de tu estadía
                             {describeCurrency(priceCurrency) ? ` en ${describeCurrency(priceCurrency)}` : ""}.
                             Lo encuentras en el detalle de tu viaje en Airbnb.
@@ -642,45 +642,45 @@ export function IdentifyScreen({
                             value={priceInput}
                             onChange={e => setPriceInput(e.target.value)}
                             aria-invalid={priceInput.trim() !== "" && declaredPrice == null ? true : undefined}
-                            className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.totalPrice || (priceInput.trim() !== "" && declaredPrice == null) ? "border-red-400" : "border-slate-200"}`}
+                            className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all ${fieldErrors.totalPrice || (priceInput.trim() !== "" && declaredPrice == null) ? "border-danger" : "border-rule"}`}
                             placeholder="Ej. 850.000"
                         />
                         {priceInput.trim() !== "" && (
                             declaredPrice != null
-                                ? <p className="text-xs text-slate-500">Vas a declarar: <span className="font-semibold text-slate-700">{formatDeclaredPrice(declaredPrice, priceCurrency)}</span></p>
-                                : <p className="text-xs text-red-500">{declaredPriceError(priceInput, priceCurrency)}</p>
+                                ? <p className="text-xs text-ink-3">Vas a declarar: <span className="font-semibold text-ink-2">{formatDeclaredPrice(declaredPrice, priceCurrency)}</span></p>
+                                : <p className="text-xs text-danger">{declaredPriceError(priceInput, priceCurrency)}</p>
                         )}
-                        {fieldErrors.totalPrice && <p className="text-xs text-red-500">{fieldErrors.totalPrice}</p>}
+                        {fieldErrors.totalPrice && <p className="text-xs text-danger">{fieldErrors.totalPrice}</p>}
                     </div>
                 )}
 
                 {/* isMainGuest indicator */}
                 {!isSecondary && (
-                    <div className="flex items-center gap-2 pt-1 text-xs text-slate-400">
+                    <div className="flex items-center gap-2 pt-1 text-xs text-ink-3">
                         <Users size={14} />
                         <span>Estás registrando al huésped principal</span>
                     </div>
                 )}
             </div>
 
-            <div className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex items-start gap-3">
-                <ShieldCheck size={20} className="text-green-500 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-slate-600">
+            <div className="bg-sunk/50 border border-rule rounded-xl p-4 flex items-start gap-3">
+                <ShieldCheck size={20} className="text-success flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-ink-2">
                     Tus datos están protegidos con cifrado de extremo a extremo y solo se usarán para el check-in.
                 </p>
             </div>
 
-            <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:border-primary/30 transition-colors">
+            <label className="flex items-start gap-3 p-3 bg-sunk/50 rounded-xl border border-rule cursor-pointer hover:border-primary/30 transition-colors">
                 <div className="relative flex items-center justify-center mt-0.5">
                     <input
                         type="checkbox"
                         checked={acceptedTerms}
                         onChange={(e) => setAcceptedTerms(e.target.checked)}
-                        className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
+                        className="peer appearance-none w-5 h-5 border-2 border-input rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
                     />
                     <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
                 </div>
-                <span className="text-sm text-slate-600 font-medium select-none">
+                <span className="text-sm text-ink-2 font-medium select-none">
                     Acepto los Términos y Condiciones de HIT —{" "}
                     <a
                         href={GUEST_TERMS_URL}
@@ -694,12 +694,12 @@ export function IdentifyScreen({
                 </span>
             </label>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     <button
                         onClick={handleVerify}
                         disabled={!isValid || isSubmitting || isLoadingCatalogs}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {isSubmitting ? (
                             <><Loader2 className="animate-spin" size={20} /> Verificando...</>

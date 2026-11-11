@@ -412,10 +412,10 @@ export function AutomationOverrideModal({
                         <Building2 size={16} className="text-primary" />
                         {isEdit ? "Editar override" : "Configurar override"}
                         {listingName && (
-                            <span className="text-xs font-normal text-slate-400">· {listingName}</span>
+                            <span className="text-xs font-normal text-ink-3">· {listingName}</span>
                         )}
                     </DialogTitle>
-                    <DialogDescription className="text-sm text-slate-500">
+                    <DialogDescription className="text-sm text-ink-3">
                         {automationLabel
                             ? <>Automatización: <span className="font-semibold">{automationLabel}</span></>
                             : "Elige una automatización y sobrescribe su configuración para esta unidad."
@@ -427,14 +427,14 @@ export function AutomationOverrideModal({
                     {/* Create-only: pick the property automation */}
                     {!isEdit && !lockedPropertyAutomationUuid && (
                         <div className="grid gap-1.5">
-                            <Label className="text-sm font-semibold text-slate-700">Automatización de la propiedad</Label>
+                            <Label className="text-sm font-semibold text-ink-2">Automatización de la propiedad</Label>
                             {availableAutomations.length === 0 ? (
                                 <FeedbackBanner tone="info" density="compact">
                                     No hay automatizaciones sobrescribibles disponibles para esta unidad.
                                 </FeedbackBanner>
                             ) : (
                                 <Select value={selectedPaUuid} onValueChange={setSelectedPaUuid}>
-                                    <SelectTrigger className="bg-slate-50 border-slate-200">
+                                    <SelectTrigger className="bg-sunk/50 border-rule">
                                         <SelectValue placeholder="Selecciona una automatización" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -465,13 +465,13 @@ export function AutomationOverrideModal({
                     {!isIdentity && (
                     <div className={cn(
                         "flex items-center justify-between p-3 rounded-xl border transition-colors",
-                        isActive ? "bg-slate-50 border-slate-200" : "bg-red-50 border-red-200"
+                        isActive ? "bg-sunk/50 border-rule" : "bg-danger-sunk border-danger/30"
                     )}>
                         <div className="space-y-0.5">
                             <Label className="text-sm font-semibold">
                                 {isActive ? "Activa en esta unidad" : "Desactivada para esta unidad"}
                             </Label>
-                            <p className="text-[11px] text-slate-500">
+                            <p className="text-xs text-ink-3">
                                 {isContract
                                     ? !isActive
                                         ? "Los huéspedes de esta unidad no firmarán contrato."
@@ -497,11 +497,11 @@ export function AutomationOverrideModal({
                         contrato activo en la unidad, y solo en una unidad ya guardada. */}
                     {isContract && isActive && (
                         draftMode || !listingUuid || !contractPropertyUuid || !onOverrideChanged ? (
-                            <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                            <p className="rounded-lg bg-sunk/50 px-3 py-2 text-xs text-ink-2">
                                 Guarda la unidad para poder personalizar el texto de su contrato.
                             </p>
                         ) : override && !override.isActive ? (
-                            <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                            <p className="rounded-lg bg-sunk/50 px-3 py-2 text-xs text-ink-2">
                                 Guarda primero para activar el contrato en esta unidad; después podrás personalizar su texto.
                             </p>
                         ) : (
@@ -521,11 +521,11 @@ export function AutomationOverrideModal({
                     {!isIdentity && (isEdit || selectedPaUuid) && fieldSchema.length > 0 && (
                         <div className="space-y-4">
                             <div className="flex items-center gap-2">
-                                <div className="h-px flex-1 bg-slate-200" />
-                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                <div className="h-px flex-1 bg-sunk" />
+                                <p className="text-xs font-bold text-ink-3 uppercase tracking-wider">
                                     Parámetros de la unidad
                                 </p>
-                                <div className="h-px flex-1 bg-slate-200" />
+                                <div className="h-px flex-1 bg-sunk" />
                             </div>
 
                             <FeedbackBanner tone="info" density="compact">
@@ -561,7 +561,7 @@ export function AutomationOverrideModal({
                             variant="ghost"
                             onClick={() => void handleRestoreInheritance()}
                             disabled={saving}
-                            className="sm:mr-auto text-slate-600"
+                            className="sm:mr-auto text-ink-2"
                         >
                             Volver a heredar
                         </Button>

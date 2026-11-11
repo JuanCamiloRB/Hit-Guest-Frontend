@@ -131,7 +131,7 @@ export function DeactivationConfirmDialog({ target, onConfirm, onCancel }: Props
                 <AlertDialogHeader>
                     <AlertDialogTitle>{copy?.title}</AlertDialogTitle>
                     <AlertDialogDescription>
-                        <span className="font-semibold text-slate-800">{target?.name}</span>
+                        <span className="font-semibold text-ink">{target?.name}</span>
                         <span className="mt-2 block">{copy?.lead}</span>
                     </AlertDialogDescription>
                 </AlertDialogHeader>
@@ -141,15 +141,15 @@ export function DeactivationConfirmDialog({ target, onConfirm, onCancel }: Props
                         className={cn(
                             "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold",
                             count !== null && count !== "loading" && "total" in count && count.total > 0
-                                ? "bg-red-50 text-red-700"
-                                : "bg-slate-50 text-slate-600",
+                                ? "bg-danger-sunk text-danger"
+                                : "bg-sunk/50 text-ink-2",
                         )}
                     >
                         {count === "loading" && <Loader2 size={14} className="animate-spin" aria-hidden />}
                         {countLine}
                     </p>
                 )}
-                <ul className="max-h-[50vh] list-disc space-y-1.5 overflow-y-auto pl-5 text-sm text-slate-700">
+                <ul className="max-h-[50vh] list-disc space-y-1.5 overflow-y-auto pl-5 text-sm text-ink-2">
                     {copy?.consequences.map((line) => <li key={line}>{line}</li>)}
                 </ul>
                 <AlertDialogFooter>

@@ -12,14 +12,14 @@ import { formatUsd, type ConsumptionSummary } from "@/features/billing/types"
 export function ActivitySummary({ summary, refMonth }: { summary: ConsumptionSummary; refMonth: Date }) {
     return (
         <div>
-            <p className="text-[13px] font-medium text-ink-3">Consumo facturado</p>
+            <p className="text-sm font-medium text-ink-3">Consumo facturado</p>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                <span className="text-[32px] font-semibold leading-tight tracking-tight tabular-nums text-ink">
+                <span className="text-3xl font-semibold leading-tight tracking-tight tabular-nums text-ink">
                     {formatUsd(summary.monthTotal)}
                 </span>
                 <MonthDeltaLine summary={summary} refMonth={refMonth} />
             </div>
-            <p className="mt-1 text-[13px] text-ink-3">
+            <p className="mt-1 text-sm text-ink-3">
                 Reservas con check-in en {format(refMonth, "MMMM 'de' yyyy", { locale: es })}
             </p>
         </div>

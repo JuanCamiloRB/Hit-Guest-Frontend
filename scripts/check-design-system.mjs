@@ -20,21 +20,33 @@ const writeBaseline = process.argv.includes("--write-baseline")
 
 const PALETTE = "slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose"
 
+/**
+ * Únicos lugares donde un color escrito es legítimo, y por qué:
+ * - components/brand: el color oficial de marcas ajenas (Airbnb, Booking…),
+ *   que no es un token de HitGuest.
+ * - lib/design-tokens.ts: espejo JS de globals.css para lo que no lee CSS
+ *   (Stripe); su prueba falla si se desalinea.
+ */
+const COLOR_EXCEPTIONS = (path) => path.startsWith("src/components/brand/") || path === "src/lib/design-tokens.ts"
+
 const rules = [
     {
         id: "tailwind-palette-color",
         description: "usa un color de paleta en vez de un token semántico",
         pattern: new RegExp(`\\b(?:text|bg|border|ring|outline|fill|stroke|shadow)-(?:${PALETTE})-(?:950|900|800|700|600|500|400|300|200|100|50)(?:/[0-9]+)?(?![\\w-])`, "g"),
+        ignore: COLOR_EXCEPTIONS,
     },
     {
         id: "arbitrary-color",
         description: "usa un color arbitrario en una utilidad Tailwind",
         pattern: /\b(?:text|bg|border|ring|outline|fill|stroke|shadow)-\[(?:#|rgb|rgba|hsl|hsla|oklch|var\()[^\]]+\]/g,
+        ignore: COLOR_EXCEPTIONS,
     },
     {
         id: "raw-color-literal",
         description: "inyecta un color hexadecimal directamente en código de interfaz",
         pattern: /#[0-9a-fA-F]{3,8}\b/g,
+        ignore: COLOR_EXCEPTIONS,
     },
     {
         id: "arbitrary-type-size",

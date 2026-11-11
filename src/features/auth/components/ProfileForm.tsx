@@ -368,7 +368,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                                         className="h-11 bg-sunk/50 border-rule text-ink-3 cursor-not-allowed rounded-xl"
                                     />
                                 </FormControl>
-                                <FormDescription className="text-[10px] italic">
+                                <FormDescription className="text-xs italic">
                                     El correo electrónico no se puede cambiar por seguridad.
                                 </FormDescription>
                                 <FormMessage />
@@ -479,7 +479,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                     <Button
                         type="submit"
                         disabled={isLoading}
-                        className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-8 rounded-xl shadow-md shadow-primary/20 transition-all duration-300"
+                        className="bg-primary hover:bg-primary/90 text-white font-bold h-11 px-8 rounded-xl shadow-md transition-all duration-300"
                     >
                         {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         GUARDAR CAMBIOS

@@ -113,26 +113,26 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
     const loading = loadingUuids.size > 0
 
     return (
-        <div className="border-t border-slate-100 pt-2">
+        <div className="border-t border-rule pt-2">
             <button
                 type="button"
                 onClick={() => void handleToggleExpand()}
-                className="group flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-xs font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+                className="group flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-xs font-semibold text-ink-3 transition-colors hover:bg-sunk/50 hover:text-ink-2"
             >
                 <div className="flex items-center gap-2">
-                    <Building2 size={13} className="text-slate-400 group-hover:text-slate-600" />
+                    <Building2 size={13} className="text-ink-3 group-hover:text-ink-2" />
                     <span>Por unidad</span>
                     {overrideCount > 0 && (
-                        <Badge variant="outline" className="h-4 border-primary/20 bg-primary/10 text-[9px] font-bold uppercase text-primary">
+                        <Badge variant="outline" className="h-4 border-primary/20 bg-primary/10 text-xs font-bold uppercase text-primary">
                             {overrideCount} distinta{overrideCount > 1 ? "s" : ""}
                         </Badge>
                     )}
                     {overrideCount === 0 && allLoaded && (
-                        <span className="text-[10px] font-normal text-slate-400">Todas heredan: {inherited}</span>
+                        <span className="text-xs font-normal text-ink-3">Todas heredan: {inherited}</span>
                     )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                    {loading && <Loader2 size={12} className="animate-spin text-slate-400" />}
+                    {loading && <Loader2 size={12} className="animate-spin text-ink-3" />}
                     {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </div>
             </button>
@@ -159,10 +159,10 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                             const isLoading = loadingUuids.has(listing.uuid)
                             if (entry?.state === "failed" && !isLoading) {
                                 return (
-                                    <li key={listing.uuid} className="flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50/60 px-3 py-2">
+                                    <li key={listing.uuid} className="flex items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning-sunk/60 px-3 py-2">
                                         <div className="min-w-0">
-                                            <p className="truncate text-xs font-semibold text-slate-700">{listing.name}</p>
-                                            <p className="text-[10px] text-amber-700">No se pudo cargar</p>
+                                            <p className="truncate text-xs font-semibold text-ink-2">{listing.name}</p>
+                                            <p className="text-xs text-warning">No se pudo cargar</p>
                                         </div>
                                         <Button type="button" size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => void loadListings([listing])}>
                                             <RefreshCw size={12} /> Reintentar
@@ -172,9 +172,9 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                             }
                             if (entry?.state !== "loaded") {
                                 return (
-                                    <li key={listing.uuid} className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-white px-3 py-2">
-                                        <p className="truncate text-xs font-semibold text-slate-700">{listing.name}</p>
-                                        <Loader2 size={12} className="animate-spin text-slate-400" />
+                                    <li key={listing.uuid} className="flex items-center justify-between gap-3 rounded-lg border border-rule bg-white px-3 py-2">
+                                        <p className="truncate text-xs font-semibold text-ink-2">{listing.name}</p>
+                                        <Loader2 size={12} className="animate-spin text-ink-3" />
                                     </li>
                                 )
                             }
@@ -279,18 +279,18 @@ function ListingDeliveryRow({
 
     const name = `delivery-${listing.uuid}`
     return (
-        <li className="space-y-2 rounded-lg border border-slate-100 bg-white px-3 py-2">
+        <li className="space-y-2 rounded-lg border border-rule bg-white px-3 py-2">
             <div className="min-w-0">
-                <p className="truncate text-xs font-semibold text-slate-700">
+                <p className="truncate text-xs font-semibold text-ink-2">
                     {listing.name}
-                    {listing.internalName && <span className="ml-2 font-normal text-slate-400">{listing.internalName}</span>}
+                    {listing.internalName && <span className="ml-2 font-normal text-ink-3">{listing.internalName}</span>}
                 </p>
                 {/* Siempre en texto qué hereda, para que el PM vea de qué se separa (§5). */}
-                <p className="text-[10px] text-slate-400">Propiedad: {inherited}</p>
+                <p className="text-xs text-ink-3">Propiedad: {inherited}</p>
             </div>
 
             <fieldset className="space-y-1.5" disabled={saving} aria-label={`Envío del link en ${listing.name}`}>
-                <label className="flex items-center gap-2 text-xs text-slate-700">
+                <label className="flex items-center gap-2 text-xs text-ink-2">
                     <input
                         type="radio"
                         name={name}
@@ -299,7 +299,7 @@ function ListingDeliveryRow({
                     />
                     Usar la configuración de la propiedad
                 </label>
-                <label className="flex items-center gap-2 text-xs text-slate-700">
+                <label className="flex items-center gap-2 text-xs text-ink-2">
                     <input
                         type="radio"
                         name={name}
@@ -315,7 +315,7 @@ function ListingDeliveryRow({
                 </label>
 
                 {current.kind === "custom" && (
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-5 text-xs text-slate-600">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-5 text-xs text-ink-2">
                         <span className="flex items-center gap-1.5">
                             <Checkbox checked disabled aria-label={`${CHANNEL_LABEL.email} en ${listing.name}`} />
                             {CHANNEL_LABEL.email}

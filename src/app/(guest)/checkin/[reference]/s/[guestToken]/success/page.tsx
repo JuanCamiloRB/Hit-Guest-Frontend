@@ -30,8 +30,8 @@ export default async function SecondarySuccessPage({
         // esta lectura falle, y repetir el proceso no es idempotente.
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4 gap-4">
-                <h1 className="text-2xl font-bold text-slate-800">No pudimos cargar el estado de tu check-in</h1>
-                <p className="text-slate-500 max-w-sm">
+                <h1 className="text-2xl font-bold text-ink">No pudimos cargar el estado de tu check-in</h1>
+                <p className="text-ink-3 max-w-sm">
                     Si ya habías enviado tu registro, quedó guardado — no repitas el proceso.
                     Intenta cargar de nuevo en un momento.
                 </p>

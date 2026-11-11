@@ -198,7 +198,7 @@ export function UserManagement() {
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
                     <DialogTrigger asChild>
-                        <Button className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300">
+                        <Button className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md hover:shadow-lg transition-all duration-300">
                             <UserPlus className="mr-2 h-4 w-4" />
                             Nuevo Usuario
                         </Button>
@@ -272,7 +272,7 @@ export function UserManagement() {
                                                 </SelectContent>
                                             </Select>
                                             {!isOwner && (
-                                                <FormDescription className="text-[11px]">
+                                                <FormDescription className="text-xs">
                                                     Solo el dueño de la cuenta puede crear Administradores.
                                                 </FormDescription>
                                             )}
@@ -298,9 +298,9 @@ export function UserManagement() {
 
             {refreshFailed && (
                 // Mismo aviso que las demás listas, fuera del borde de la tabla: se ve la última cargada.
-                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-[13px] text-ink-2">
+                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-sm text-ink-2">
                     <span>No pudimos actualizar la lista. Se muestra la última cargada.</span>
-                    <button type="button" onClick={fetchUsers} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">
+                    <button type="button" onClick={fetchUsers} className="text-sm font-semibold text-primary underline-offset-2 hover:underline">
                         Reintentar
                     </button>
                 </div>

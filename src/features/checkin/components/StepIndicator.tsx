@@ -35,10 +35,10 @@ export function StepIndicator({
                 flex items-center justify-center h-7 w-7 rounded-full text-xs font-bold
                 transition-all duration-500 flex-shrink-0
                 ${isCompleted || isPast
-                  ? "bg-green-500 text-white shadow-sm shadow-green-500/20"
+                  ? "bg-success text-white shadow-sm"
                   : isCurrent
-                  ? "bg-primary text-white shadow-md shadow-brand-purple/20 scale-110"
-                  : "bg-slate-200 text-slate-400"
+                  ? "bg-primary text-white shadow-md scale-110"
+                  : "bg-sunk text-ink-3"
                 }
               `}
             >
@@ -56,10 +56,10 @@ export function StepIndicator({
                   className={`
                     h-full rounded-full transition-all duration-700
                     ${isPast || isCompleted
-                      ? "bg-green-400 w-full"
+                      ? "bg-success w-full"
                       : isCurrent
-                      ? "bg-gradient-to-r from-brand-purple to-slate-200 w-full"
-                      : "bg-slate-200 w-full"
+                      ? "bg-primary w-full"
+                      : "bg-sunk w-full"
                     }
                   `}
                 />

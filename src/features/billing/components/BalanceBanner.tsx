@@ -37,7 +37,7 @@ export function BalanceBanner() {
                 </div>
                 <Link
                     href={BILLING_HREF}
-                    className="rounded-lg bg-red-600 px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-700"
+                    className="rounded-lg bg-destructive px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-destructive-hover"
                 >
                     Add Credits
                 </Link>
@@ -58,7 +58,7 @@ export function BalanceBanner() {
             <div className="flex items-center gap-2">
                 <Link
                     href={BILLING_HREF}
-                    className="rounded-lg bg-amber-500 px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-amber-600"
+                    className="rounded-lg bg-warning px-3.5 py-1.5 text-xs font-bold text-white transition-colors hover:bg-warning/90"
                 >
                     Add Credits
                 </Link>

@@ -52,7 +52,7 @@ export function SupportSessionBanner() {
         <div
             role="region"
             aria-label="Modo soporte"
-            className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 bg-amber-400 px-4 py-2.5 text-ink"
+            className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 bg-warning px-4 py-2.5 text-ink"
         >
             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                 <Headset size={16} aria-hidden className="shrink-0" />
@@ -69,7 +69,7 @@ export function SupportSessionBanner() {
                 type="button"
                 onClick={() => void leave()}
                 disabled={leaving}
-                className="inline-flex h-10 items-center gap-2 rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-70"
+                className="inline-flex h-10 items-center gap-2 rounded-lg bg-ink px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-70"
             >
                 {leaving ? <Loader2 size={15} className="animate-spin" aria-hidden /> : <LogOut size={15} aria-hidden />}
                 Salir

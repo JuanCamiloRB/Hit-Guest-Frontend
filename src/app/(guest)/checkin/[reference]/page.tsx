@@ -40,8 +40,8 @@ export default async function CheckinByUuidPage({
     } catch {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
-                <h1 className="text-2xl font-bold text-slate-800 mb-2">Reserva no encontrada</h1>
-                <p className="text-slate-500">No pudimos encontrar la reserva o el link ha expirado.</p>
+                <h1 className="text-2xl font-bold text-ink mb-2">Reserva no encontrada</h1>
+                <p className="text-ink-3">No pudimos encontrar la reserva o el link ha expirado.</p>
             </div>
         )
     }

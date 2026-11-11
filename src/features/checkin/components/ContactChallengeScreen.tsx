@@ -233,12 +233,12 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
     if (notFound) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
-                <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center border border-red-100">
-                    <XCircle size={40} className="text-red-400" />
+                <div className="bg-danger-sunk w-24 h-24 rounded-full flex items-center justify-center border border-danger/20">
+                    <XCircle size={40} className="text-danger" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-slate-900">Sesión de verificación no encontrada</h2>
-                    <p className="text-slate-500 text-sm max-w-xs">Vuelve a identificarte para recibir un nuevo código.</p>
+                    <h2 className="text-xl font-bold text-ink">Sesión de verificación no encontrada</h2>
+                    <p className="text-ink-3 text-sm max-w-xs">Vuelve a identificarte para recibir un nuevo código.</p>
                 </div>
                 <button
                     onClick={handleBackToIdentify}
@@ -254,7 +254,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
     if (!challenge) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-                <p className="text-slate-500 text-sm">Sesión expirada. Vuelve a identificarte.</p>
+                <p className="text-ink-3 text-sm">Sesión expirada. Vuelve a identificarte.</p>
                 <Link href={`${basePath}/identify`} className="text-primary font-semibold underline">
                     Volver al inicio
                 </Link>
@@ -270,22 +270,22 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
             <ProgressBar currentStep={2} totalSteps={isSecondary ? 3 : 5} />
 
             <div className="flex items-center justify-between">
-                <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+                <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                     <ArrowLeft size={20} />
                 </Link>
-                <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">
                     {isSecondary ? "Paso 2 de 4" : "Paso 3 de 6"}
                 </div>
             </div>
 
             <div className="space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
+                <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">
                     Confirma que eres tú
                 </h1>
                 {/* `alreadyVerified` (2026-08-24): /identify está retomando un
                     challenge ya resuelto — NO se envió correo nuevo. Decir
                     "enviamos" haría al huésped esperar un correo que no llega. */}
-                <p className="text-slate-500 text-sm">
+                <p className="text-ink-3 text-sm">
                     {challenge.alreadyVerified
                         ? <>Ya habías verificado este código. Reingresa el código de 6 dígitos
                             que te enviamos antes a <strong>{challenge.maskedDestination}</strong> —
@@ -295,12 +295,12 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 </p>
             </div>
 
-            <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm space-y-5">
+            <div className="bg-white border border-rule rounded-2xl p-6 shadow-sm space-y-5">
                 <div className="flex items-center gap-3">
                     <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center border border-primary/20 shrink-0">
                         <Mail size={20} className="text-primary" />
                     </div>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-ink-3">
                         {challenge.alreadyVerified
                             // En este modo el countdown es la ventana de sesión, no
                             // la vida del código: afirmar que "vence en minutos"
@@ -311,23 +311,23 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-slate-700">Código de verificación</label>
+                    <label className="text-sm font-semibold text-ink-2">Código de verificación</label>
                     <input
                         type="text"
                         inputMode="numeric"
                         value={code}
                         disabled={inputDisabled}
                         onChange={e => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                        className={`w-full bg-slate-50 border rounded-xl px-4 py-3 text-center text-2xl font-bold tracking-[0.5em] text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50 ${error ? "border-red-400" : "border-slate-200"}`}
+                        className={`w-full bg-sunk/50 border rounded-xl px-4 py-3 text-center text-2xl font-bold tracking-[0.5em] text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all disabled:opacity-50 ${error ? "border-danger" : "border-rule"}`}
                         placeholder="······"
                         maxLength={6}
                     />
-                    {error && <p className="text-xs text-red-500">{error}</p>}
+                    {error && <p className="text-xs text-danger">{error}</p>}
                     {phase === "idle" && !isBlocked && attemptsRemaining !== null && attemptsRemaining < 5 && (
-                        <p className="text-xs text-slate-400">Intentos restantes: {attemptsRemaining}</p>
+                        <p className="text-xs text-ink-3">Intentos restantes: {attemptsRemaining}</p>
                     )}
                     {isBlocked && (
-                        <p className="text-xs text-amber-600 font-medium">
+                        <p className="text-xs text-warning font-medium">
                             Podrás intentar de nuevo en {Math.ceil(blockedCountdown / 60)} min.
                         </p>
                     )}
@@ -337,7 +337,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                     type="button"
                     onClick={handleResend}
                     disabled={!canResend}
-                    className="text-xs font-semibold text-primary hover:underline disabled:text-slate-300 disabled:no-underline disabled:cursor-not-allowed"
+                    className="text-xs font-semibold text-primary hover:underline disabled:text-ink-4 disabled:no-underline disabled:cursor-not-allowed"
                 >
                     {resending
                         ? "Enviando..."
@@ -347,12 +347,12 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 </button>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     <button
                         onClick={handleVerify}
                         disabled={inputDisabled || code.length !== 6}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {submitting ? (
                             <><Loader2 className="animate-spin" size={20} /> Verificando...</>

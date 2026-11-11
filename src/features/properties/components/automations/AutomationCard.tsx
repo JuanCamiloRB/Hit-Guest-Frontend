@@ -467,7 +467,7 @@ export function AutomationCard({
     return (
         <>
             <Card className={cn(
-                "group overflow-hidden border-slate-200/60 hover:border-primary/30 hover:shadow-md transition-all duration-300",
+                "group overflow-hidden border-rule/60 hover:border-primary/30 hover:shadow-md transition-all duration-300",
                 isActive && "border-primary/20"
             )}>
                 <CardContent className="p-0">
@@ -486,18 +486,18 @@ export function AutomationCard({
                             <div className="flex items-start justify-between gap-4">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <h3 className="text-lg font-bold text-slate-900 leading-none">
+                                        <h3 className="text-lg font-bold text-ink leading-none">
                                             {definition.title}
                                         </h3>
                                         {isActive && (
-                                            <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 text-[10px] uppercase tracking-wider font-bold h-5">
+                                            <Badge variant="outline" className="bg-success-sunk text-success border-success/30 text-xs uppercase tracking-wider font-bold h-5">
                                                 Activo
                                             </Badge>
                                         )}
                                     </div>
-                                    <p className="text-sm text-slate-500 leading-relaxed">{definition.description}</p>
-                                    <p className="text-xs text-slate-500">
-                                        Costo: <span className="font-semibold text-slate-700">{costLabel}</span>
+                                    <p className="text-sm text-ink-3 leading-relaxed">{definition.description}</p>
+                                    <p className="text-xs text-ink-3">
+                                        Costo: <span className="font-semibold text-ink-2">{costLabel}</span>
                                     </p>
                                 </div>
                                 <div className="shrink-0">
@@ -519,14 +519,14 @@ export function AutomationCard({
                             {/* Provider selector (multi-option) */}
                             {!isContractRouting && definition.providerOptions.length > 1 && (
                                 <div className="space-y-1.5">
-                                    <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                    <Label className="text-xs font-semibold text-ink-3 uppercase tracking-wider">
                                         Proveedor {requiresProviderToActivate && !isActive && "requerido para activar"}
                                     </Label>
                                     <Select
                                         value={effectiveProviderName ?? ""}
                                         onValueChange={(v) => { setOptimisticProvider(v); handleProviderChange(v) }}
                                     >
-                                        <SelectTrigger className="h-9 text-sm bg-slate-50 border-slate-200 max-w-xs">
+                                        <SelectTrigger className="h-9 text-sm bg-sunk/50 border-rule max-w-xs">
                                             {/* Render only the label in the trigger. Otherwise radix clones the
                                                 option's two-line (label + description) markup into the value slot,
                                                 which is flex + line-clamp-1 — clipping the text and breaking the
@@ -554,7 +554,7 @@ export function AutomationCard({
                                         </SelectContent>
                                     </Select>
                                     {pendingActivation && (
-                                        <p className="flex items-center gap-1.5 text-xs font-medium text-amber-600">
+                                        <p className="flex items-center gap-1.5 text-xs font-medium text-warning">
                                             <AlertCircle size={13} className="shrink-0" />
                                             Selección pendiente: enciende el interruptor para activarla y guardarla.
                                         </p>
@@ -564,9 +564,9 @@ export function AutomationCard({
 
                             {/* Provider label (single-option) */}
                             {isActive && !isContractRouting && definition.providerOptions.length === 1 && (
-                                <p className="text-xs text-slate-400">
+                                <p className="text-xs text-ink-3">
                                     Proveedor:{" "}
-                                    <span className="font-semibold text-slate-600">
+                                    <span className="font-semibold text-ink-2">
                                         {definition.providerOptions[0].label}
                                     </span>
                                 </p>
@@ -575,7 +575,7 @@ export function AutomationCard({
                             {/* Digital Contract: espejo de solo lectura del routing */}
                             {isContractRouting && (
                                 <div className="space-y-1">
-                                    <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                    <Label className="text-xs font-semibold text-ink-3 uppercase tracking-wider">
                                         {routingView?.needsAttention
                                             ? "Requiere atención"
                                             : routingView || routingSummary ? "Contrato configurado" : "Sin configurar"}
@@ -595,20 +595,20 @@ export function AutomationCard({
                                                 </FeedbackBanner>
                                             )}
                                             {routingView.channels.map((channel) => (
-                                                <div key={channel.key} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5">
+                                                <div key={channel.key} className="flex items-center justify-between gap-3 rounded-xl border border-rule bg-sunk/70 p-2.5">
                                                     <div className="min-w-0">
                                                         <ReservationSourceIdentity name={channel.channel.name} slug={channel.channel.slug} compact />
                                                         {/* `summary` empieza con el nombre del canal, que ya está junto
                                                             al logo: se usan sus dos partes, también del backend. Si no
                                                             vienen, `summary` entero. */}
-                                                        <p className="mt-1 pl-11 text-xs text-slate-600">
+                                                        <p className="mt-1 pl-11 text-xs text-ink-2">
                                                             {[channel.contractTypeLabel, channel.provider?.label, signatureProviderCost(channel.provider?.slug)].filter(Boolean).join(" · ") || channel.summary}
                                                         </p>
                                                     </div>
                                                     {channel.status === "ready" ? (
-                                                        <CheckCircle2 size={16} className="shrink-0 text-emerald-600" aria-label="Listo" />
+                                                        <CheckCircle2 size={16} className="shrink-0 text-success" aria-label="Listo" />
                                                     ) : (
-                                                        <AlertTriangle size={16} className="shrink-0 text-amber-600" aria-label="Requiere atención" />
+                                                        <AlertTriangle size={16} className="shrink-0 text-warning" aria-label="Requiere atención" />
                                                     )}
                                                 </div>
                                             ))}
@@ -621,7 +621,7 @@ export function AutomationCard({
                                                     : sources?.find((item) => String(item.id) === channel.sourceKey)
                                                 const sourceMissing = channel.sourceKey !== ALL_SOURCES_KEY && !source
                                                 return (
-                                                    <div key={channel.sourceKey} className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50/70 p-2.5">
+                                                    <div key={channel.sourceKey} className="flex items-center justify-between gap-3 rounded-xl border border-rule bg-sunk/70 p-2.5">
                                                         <div className="min-w-0">
                                                             <ReservationSourceIdentity
                                                                 name={source
@@ -630,14 +630,14 @@ export function AutomationCard({
                                                                 slug={source ? reservationSourceSlug(source) : null}
                                                                 compact
                                                             />
-                                                            <p className="mt-1 pl-11 text-xs text-slate-600">
+                                                            <p className="mt-1 pl-11 text-xs text-ink-2">
                                                                 {[CONTRACT_TYPE_LABELS[channel.contractType], signatureProviderLabel(channel.providerSlug), signatureProviderCost(channel.providerSlug)]
                                                                     .filter(Boolean)
                                                                     .join(" · ")}
                                                             </p>
                                                         </div>
                                                         {sourceMissing && (
-                                                            <span className="shrink-0 text-[10px] font-medium text-amber-700">
+                                                            <span className="shrink-0 text-xs font-medium text-warning">
                                                                 ID guardado: {channel.sourceKey}
                                                             </span>
                                                         )}
@@ -651,13 +651,13 @@ export function AutomationCard({
                                            camino. Sin routing, el portal del huésped no resuelve
                                            contrato y el check-in avanza sin firmar — decirlo es
                                            mejor que un "sin configurar" neutro bajo un badge ACTIVO. */
-                                        <p className="text-sm text-amber-700">
+                                        <p className="text-sm text-warning">
                                             Está activa pero sin definir qué se firma ni quién firma:
                                             los huéspedes completan su check-in sin contrato.
                                             Configúrala en la pestaña Documentos.
                                         </p>
                                     ) : (
-                                        <p className="text-sm text-slate-500">
+                                        <p className="text-sm text-ink-3">
                                             Qué se firma y quién firma se define por canal de reserva, en
                                             la pestaña Documentos.
                                         </p>
@@ -666,8 +666,8 @@ export function AutomationCard({
                             )}
 
                             {/* Footer: time indicator + config button */}
-                            <div className="flex items-center justify-between pt-2 border-t border-slate-100">
-                                <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                            <div className="flex items-center justify-between pt-2 border-t border-rule">
+                                <div className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
                                     <Clock className="h-3.5 w-3.5" />
                                     <span>Tiempo Real</span>
                                 </div>
@@ -684,7 +684,7 @@ export function AutomationCard({
                                             "h-8 text-xs font-bold gap-1.5 px-3 hover:bg-primary/5",
                                             routingSummary
                                                 ? "text-primary"
-                                                : "text-amber-600 hover:text-amber-700",
+                                                : "text-warning hover:text-warning",
                                         )}
                                     >
                                         {!routingSummary && <AlertCircle size={13} />}
@@ -701,7 +701,7 @@ export function AutomationCard({
                                         className={cn(
                                             "h-8 text-xs font-bold gap-1.5 px-3 hover:bg-primary/5",
                                             needsConfig
-                                                ? "text-amber-600 hover:text-amber-700"
+                                                ? "text-warning hover:text-warning"
                                                 : "text-primary hover:text-primary"
                                         )}
                                     >

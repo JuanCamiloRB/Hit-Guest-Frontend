@@ -65,9 +65,9 @@ export function DocumentUpload({
 
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-semibold text-slate-700">
+      <label className="text-sm font-semibold text-ink-2">
         {label}
-        {required && <span className="text-red-400 ml-0.5">*</span>}
+        {required && <span className="text-danger ml-0.5">*</span>}
       </label>
 
       <div
@@ -76,10 +76,10 @@ export function DocumentUpload({
           relative w-full rounded-2xl border-2 border-dashed overflow-hidden
           transition-all duration-300
           ${state === "done"
-            ? "border-green-300 bg-green-50/50"
+            ? "border-success/40 bg-success-sunk/50"
             : state === "scanning"
             ? "border-secondary/40 bg-secondary/5"
-            : "border-slate-200 bg-slate-50 hover:border-primary/30 hover:bg-primary/5"
+            : "border-rule bg-sunk/50 hover:border-primary/30 hover:bg-primary/5"
           }
         `}
       >
@@ -114,14 +114,14 @@ export function DocumentUpload({
                 }
               }}
             />
-            <div className="bg-white p-3 rounded-xl shadow-sm border border-slate-100 group-hover:bg-primary/5 group-hover:border-primary/20 transition-all">
+            <div className="bg-white p-3 rounded-xl shadow-sm border border-rule group-hover:bg-primary/5 group-hover:border-primary/20 transition-all">
               <Camera size={28} className="text-primary" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-semibold text-slate-700">
+              <p className="text-sm font-semibold text-ink-2">
                 Tomar foto o subir archivo
               </p>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-ink-3 mt-0.5">
                 Asegura buena iluminación y evita reflejos
               </p>
             </div>
@@ -147,7 +147,7 @@ export function DocumentUpload({
               <p className="text-sm font-semibold text-secondary text-center animate-pulse">
                 Procesando documento...
               </p>
-              <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-sunk h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-secondary h-full transition-all duration-300 rounded-full"
                   style={{ width: `${progress}%` }}
@@ -160,21 +160,21 @@ export function DocumentUpload({
         {/* Done State */}
         {state === "done" && (
           <div className="p-5 flex items-center gap-4">
-            <div className="bg-green-100 p-2.5 rounded-xl">
-              <CheckCircle2 size={24} className="text-green-600" />
+            <div className="bg-success-sunk p-2.5 rounded-xl">
+              <CheckCircle2 size={24} className="text-success" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold text-green-700">
+              <p className="text-sm font-semibold text-success">
                 Documento capturado
               </p>
-              <p className="text-xs text-green-600/70 mt-0.5">
+              <p className="text-xs text-success/70 mt-0.5">
                 Datos cifrados de forma segura
               </p>
             </div>
             <button
               type="button"
               onClick={reset}
-              className="p-2 rounded-lg hover:bg-green-100/50 text-green-600 transition-colors"
+              className="p-2 rounded-lg hover:bg-success-sunk/50 text-success transition-colors"
               title="Volver a tomar"
             >
               <RotateCcw size={18} />
@@ -190,13 +190,13 @@ function IdCardPlaceholder() {
   return (
     <div className="flex flex-col gap-1.5 p-2.5 w-full h-full opacity-20">
       <div className="flex gap-2">
-        <div className="w-8 h-8 bg-slate-400 rounded-md" />
+        <div className="w-8 h-8 bg-ink-3 rounded-md" />
         <div className="flex flex-col gap-1 flex-1 py-0.5">
-          <div className="h-1.5 w-full bg-slate-400 rounded-full" />
-          <div className="h-1.5 w-2/3 bg-slate-400 rounded-full" />
+          <div className="h-1.5 w-full bg-ink-3 rounded-full" />
+          <div className="h-1.5 w-2/3 bg-ink-3 rounded-full" />
         </div>
       </div>
-      <div className="mt-auto h-1.5 w-full bg-slate-400 rounded-full" />
+      <div className="mt-auto h-1.5 w-full bg-ink-3 rounded-full" />
     </div>
   )
 }

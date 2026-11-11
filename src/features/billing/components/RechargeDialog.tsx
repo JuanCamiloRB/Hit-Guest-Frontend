@@ -145,7 +145,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                                 className={`flex-1 rounded-xl border-2 py-2.5 text-sm font-bold transition-all ${
                                     amount === preset
                                         ? "border-primary bg-primary/5 text-primary"
-                                        : "border-rule text-ink-3 hover:border-slate-300"
+                                        : "border-rule text-ink-3 hover:border-input-hover"
                                 }`}
                             >
                                 ${preset}

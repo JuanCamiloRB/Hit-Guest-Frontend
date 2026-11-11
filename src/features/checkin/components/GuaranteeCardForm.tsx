@@ -10,6 +10,7 @@ import { ReassuranceTicker } from "./ReassuranceTicker"
 import { CARD_WAIT_SCRIPT } from "../lib/reassurance"
 import { formatMoneyText } from "@/lib/money"
 import { GuaranteeInfoCard } from "@/features/checkin/components/GuaranteeInfoCard"
+import { tokens } from "@/lib/design-tokens"
 import {
     describeGuaranteeSetupFailure,
     readUsableSetupIntent,
@@ -234,12 +235,14 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
             const elements = stripe.elements()
             const card = elements.create("card", {
                 style: {
+                    // Colores desde el espejo de tokens (el iframe de Stripe no lee
+                    // CSS). El placeholder va en ink-3 (AA), no en ink-4.
                     base: {
-                        fontSize: "15px",
-                        color: "#1B2047",
-                        "::placeholder": { color: "#A2A8C4" },
+                        fontSize: "16px",
+                        color: tokens.ink,
+                        "::placeholder": { color: tokens.ink3 },
                     },
-                    invalid: { color: "#C0392B" },
+                    invalid: { color: tokens.danger },
                 },
             })
             card.mount(containerRef.current)
@@ -455,7 +458,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
 
     if (status === null) {
         return (
-            <div className="flex items-center gap-2 text-sm text-slate-400 py-4">
+            <div className="flex items-center gap-2 text-sm text-ink-3 py-4">
                 <Loader2 size={16} className="animate-spin" />
                 Cargando garantía…
             </div>
@@ -464,11 +467,11 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
 
     if (status === "active") {
         return (
-            <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-                <ShieldCheck size={20} className="text-emerald-600 shrink-0" />
+            <div className="flex items-center gap-3 rounded-xl border border-success/30 bg-success-sunk p-4">
+                <ShieldCheck size={20} className="text-success shrink-0" />
                 <div>
-                    <p className="text-sm font-bold text-emerald-700">Tarjeta de garantía registrada</p>
-                    <p className="text-xs text-emerald-600 mt-0.5">
+                    <p className="text-sm font-bold text-success">Tarjeta de garantía registrada</p>
+                    <p className="text-xs text-success mt-0.5">
                         {cardBrand && cardLast4
                             ? `${cardBrand.toUpperCase()} terminada en ${cardLast4}`
                             : "No se ha realizado ningún cobro."}
@@ -488,12 +491,12 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
 
     return (
         <div className="space-y-3">
-            <label className="text-sm font-semibold text-slate-700">
-                Tarjeta de garantía<span className="text-red-400 ml-0.5">*</span>
+            <label className="text-sm font-semibold text-ink-2">
+                Tarjeta de garantía<span className="text-danger ml-0.5">*</span>
             </label>
 
             {amount && currency && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-3">
                     Solo autorizamos tu tarjeta — no se realiza ningún cobro ahora. HIT Guest únicamente
                     la cobrará si se aprueba un reclamo por daños o consumos, hasta {formatMoneyText(amount, currency)}.
                 </p>
@@ -507,14 +510,14 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                 ref={containerRef}
                 hidden={isPending}
                 data-testid="stripe-card-container"
-                className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-3 py-3.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all"
+                className="rounded-xl border-2 border-dashed border-rule bg-sunk/50 px-3 py-3.5 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all"
             />
 
             {isPending ? (
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
+                    <div className="flex items-center gap-2 rounded-xl border border-rule bg-sunk/50 p-4 text-sm text-ink-3">
                         {pollTimedOut
-                            ? <CreditCard size={16} className="text-slate-400" />
+                            ? <CreditCard size={16} className="text-ink-3" />
                             : <Loader2 size={16} className="animate-spin text-primary" />}
                         {pollTimedOut
                             ? "Tu tarjeta sigue sin confirmarse."
@@ -539,7 +542,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                             <button
                                 type="button"
                                 onClick={handleRetry}
-                                className="text-xs font-semibold text-slate-500 hover:underline"
+                                className="text-xs font-semibold text-ink-3 hover:underline"
                             >
                                 Intentar con otra tarjeta
                             </button>
@@ -552,7 +555,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                         también junto al error, así que el huésped leía "Preparando
                         formulario…" sobre un formulario que ya nunca iba a llegar. */}
                     {!cardMounted && !problem && (
-                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                        <div className="flex items-center gap-2 text-xs text-ink-3">
                             <Loader2 size={13} className="animate-spin" /> Preparando formulario…
                         </div>
                     )}
@@ -597,7 +600,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
             )}
 
             {problemText && (
-                <p className="flex items-start gap-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                <p className="flex items-start gap-2 text-xs text-danger bg-danger-sunk border border-danger/20 rounded-lg px-3 py-2">
                     <AlertTriangle size={13} className="shrink-0 mt-0.5" />
                     <span>
                         {problemText}
@@ -605,7 +608,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                             días con un log de backend en verde: el huésped la puede
                             leer por WhatsApp sin conectar el móvil a un Mac. */}
                         {setupFailure && (
-                            <span className="ml-1 text-red-400">(ref: {setupFailure.ref})</span>
+                            <span className="ml-1 text-danger">(ref: {setupFailure.ref})</span>
                         )}
                     </span>
                 </p>

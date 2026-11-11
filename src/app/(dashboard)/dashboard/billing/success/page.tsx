@@ -41,7 +41,7 @@ function BillingSuccessContent() {
                     billing…
                 </p>
                 {sessionId && (
-                    <p className="text-[11px] text-ink-4">Ref: {sessionId}</p>
+                    <p className="text-xs text-ink-4">Ref: {sessionId}</p>
                 )}
             </div>
             <Link

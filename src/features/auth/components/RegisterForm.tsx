@@ -144,7 +144,6 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                 <form onSubmit={onRegister}>
                     <Honeypot {...honeypotProps} />
                     <div className="grid gap-5 bg-card/80 backdrop-blur-sm border border-secondary/10 rounded-xl p-6 shadow-lg shadow-secondary/5 relative">
-                        <div className="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-transparent via-secondary/40 to-transparent rounded-t-xl" />
 
                         {/* Welcome credit — the backend credits USD 10 to every new account. */}
                         <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
@@ -459,7 +458,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     type="checkbox"
                                     checked={acceptedTerms}
                                     onChange={(e) => setAcceptedTerms(e.target.checked)}
-                                    className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
+                                    className="peer appearance-none w-5 h-5 border-2 border-input rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
                                 />
                                 <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
                             </div>
@@ -481,7 +480,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             <Button
                                 type="submit"
                                 disabled={isLoading || !acceptedTerms}
-                                className="w-full bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 h-11 rounded-lg"
+                                className="w-full bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md hover:shadow-lg transition-all duration-300 h-11 rounded-lg"
                             >
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                 Crear Cuenta

@@ -27,35 +27,35 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
             <ProgressBar currentStep={3} totalSteps={3} isSuccess />
 
             <div className="flex flex-col items-center justify-center text-center mt-6 space-y-4">
-                <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center mb-2">
-                    <CheckCircle2 className="h-10 w-10 text-green-600" />
+                <div className="h-20 w-20 bg-success-sunk rounded-full flex items-center justify-center mb-2">
+                    <CheckCircle2 className="h-10 w-10 text-success" />
                 </div>
-                <h1 className="text-3xl font-black text-slate-900 tracking-tight">
+                <h1 className="text-3xl font-black text-ink tracking-tight">
                     {completedCopy?.title ?? "¡Registro Exitoso!"}
                 </h1>
-                <p className="text-slate-500 text-sm max-w-sm">
+                <p className="text-ink-3 text-sm max-w-sm">
                     {completedCopy?.description ?? "Tus datos han sido registrados correctamente."}
                 </p>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
-                <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider">Resumen de Estadía</h3>
+            <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
+                <h3 className="font-bold text-ink text-sm uppercase tracking-wider">Resumen de Estadía</h3>
                 
                 <div className="flex items-start gap-3">
                     <MapPin className="h-5 w-5 text-primary shrink-0" />
                     <div>
-                        <p className="text-sm font-semibold text-slate-900">Tu alojamiento</p>
-                        <p className="text-xs text-slate-500">{res.uuid.slice(0, 8)}...</p>
+                        <p className="text-sm font-semibold text-ink">Tu alojamiento</p>
+                        <p className="text-xs text-ink-3">{res.uuid.slice(0, 8)}...</p>
                     </div>
                 </div>
 
                 <div className="flex items-start gap-3">
                     <CalendarDays className="h-5 w-5 text-primary shrink-0" />
                     <div>
-                        <p className="text-sm font-semibold text-slate-900">
+                        <p className="text-sm font-semibold text-ink">
                             {res.arrivalDate} — {res.departureDate}
                         </p>
-                        <p className="text-xs text-slate-500">{res.totalGuestsAllowed} huéspedes permitidos</p>
+                        <p className="text-xs text-ink-3">{res.totalGuestsAllowed} huéspedes permitidos</p>
                     </div>
                 </div>
             </div>
@@ -66,11 +66,11 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 </p>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     <Link
                         href={`/checkin/${reservationUuid}`}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-2 h-14 bg-ink hover:bg-ink/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
                     >
                         <Home size={18} />
                         Volver al inicio

@@ -78,7 +78,7 @@ function NavItem({ item }: { item: NavEntry }) {
                 />
                 <span className="flex-1">{item.label}</span>
                 {item.badge && (
-                    <span className="rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold tracking-wider text-primary">
+                    <span className="rounded-full bg-white px-1.5 py-0.5 text-xs font-bold tracking-wider text-primary">
                         {item.badge}
                     </span>
                 )}

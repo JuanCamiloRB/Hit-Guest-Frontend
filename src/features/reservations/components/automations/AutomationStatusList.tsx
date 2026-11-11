@@ -50,7 +50,7 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
         <div className="space-y-4">
             <div className="flex items-center justify-between gap-3">
                 <div className="flex items-baseline gap-2">
-                    {/* Era `text-[10px] uppercase tracking-[0.2em]` en gris claro:
+                    {/* Era `text-xs uppercase tracking-[0.2em]` en gris claro:
                         el mismo tratamiento que las etiquetas de dato de arriba,
                         así que el encabezado de la sección más importante del
                         panel no se distinguía de un metadato. */}

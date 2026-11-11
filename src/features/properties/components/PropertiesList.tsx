@@ -132,7 +132,8 @@ export function PropertiesList() {
                             : "Gestiona tus propiedades, unidades y configuraciones de automatización."}
                     </p>
                 </div>
-                <Button asChild className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white shadow-lg shadow-brand-purple/20 border-none px-6 h-11 transition-all duration-300 transform hover:scale-[1.02]">
+                {/* Botón principal estándar: sin degradado, sombra de color ni escala. */}
+                <Button asChild size="lg">
                     <Link href="/dashboard/properties/new">
                         <Plus className="mr-2 h-5 w-5" /> Añadir Propiedad
                     </Link>
@@ -140,8 +141,8 @@ export function PropertiesList() {
             </div>
 
             <Tabs defaultValue="properties" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-2 rounded-2xl border-[1.5px] border-primary/20 shadow-xl shadow-brand-purple/5">
-                    <TabsList className="grid grid-cols-2 w-full md:w-[400px] bg-slate-100/50 p-1.5 h-12">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 backdrop-blur-md p-2 rounded-2xl border-[1.5px] border-primary/20 shadow-xl">
+                    <TabsList className="grid grid-cols-2 w-full md:w-[400px] bg-sunk/50 p-1.5 h-12">
                         <TabsTrigger
                             value="properties"
                             className="gap-2 rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold"
@@ -167,9 +168,9 @@ export function PropertiesList() {
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px] shrink-0 h-10 border-slate-200">
+                            <SelectTrigger className="w-[180px] shrink-0 h-10 border-rule">
                                 <div className="flex items-center gap-2 pointer-events-none min-w-0">
-                                    <Filter className="h-3 w-3 shrink-0 text-slate-400" />
+                                    <Filter className="h-3 w-3 shrink-0 text-ink-3" />
                                     <SelectValue placeholder="Estado" />
                                 </div>
                             </SelectTrigger>
@@ -315,10 +316,10 @@ export function PropertiesList() {
                                                     <TableCell className="text-ink/60 text-sm font-medium">{property?.name}</TableCell>
                                                     <TableCell>
                                                         <div className={cn(
-                                                            "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider",
                                                             unit.status === "ACTIVE"
-                                                                ? "bg-emerald-50 text-emerald-600 border border-emerald-100"
-                                                                : "bg-slate-100 text-slate-500 border border-slate-200"
+                                                                ? "bg-success-sunk text-success border border-success/20"
+                                                                : "bg-sunk text-ink-3 border border-rule"
                                                         )}>
                                                             {unit.status === "ACTIVE" ? "Activo" : "Inactivo"}
                                                         </div>

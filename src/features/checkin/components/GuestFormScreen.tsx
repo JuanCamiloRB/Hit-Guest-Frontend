@@ -483,7 +483,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-sm font-medium text-slate-500">Preparando formulario...</p>
+                <p className="text-sm font-medium text-ink-3">Preparando formulario...</p>
             </div>
         )
     }
@@ -496,10 +496,10 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                 <div className="flex items-center gap-2">
                     {/* Back goes to the welcome hub, not /verify — revisiting verify would
                         re-launch (or bounce a Textract-verified guest) and confuse the flow. */}
-                    <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+                    <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                         <ArrowLeft size={20} />
                     </Link>
-                    <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                    <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">
                         Paso 4 de 6
                     </div>
                 </div>
@@ -509,9 +509,9 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             </div>
 
             <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">Datos del Titular</h1>
-                <p className="text-slate-500 text-sm">
-                    Requerido por regulaciones locales de alojamiento. Los campos con <span className="text-red-400">*</span> son obligatorios.
+                <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">Datos del Titular</h1>
+                <p className="text-ink-3 text-sm">
+                    Requerido por regulaciones locales de alojamiento. Los campos con <span className="text-danger">*</span> son obligatorios.
                 </p>
             </div>
 
@@ -519,8 +519,8 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             <CollapsibleSection icon={<FileText size={18} />} title="Documento de identidad" expanded={expanded.document} onToggle={() => toggleSection("document")} badge={form.identificationNumber ? "✓" : undefined}>
                 <div className="space-y-4">
                     {docVerified && (
-                        <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-3 py-2">
-                            <CheckCircle2 size={16} className="text-green-600" />
+                        <div className="flex items-center gap-2 bg-success-sunk border border-success/30 text-success rounded-xl px-3 py-2">
+                            <CheckCircle2 size={16} className="text-success" />
                             <span className="text-xs font-semibold">
                                 {DOCUMENT_NOTICE_COPY[docNotice]}
                             </span>
@@ -629,14 +629,14 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {isFieldVisible('arrivalTime') && (
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-red-400 ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.arrivalTime ?? ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                                    <label className="text-sm font-semibold text-ink-2">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-danger ml-0.5">*</span>}</label>
+                                    <input type="time" value={form.arrivalTime ?? ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                             {isFieldVisible('departureTime') && (
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">Hora de salida{isFieldRequired('departureTime') && <span className="text-red-400 ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.departureTime ?? ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                                    <label className="text-sm font-semibold text-ink-2">Hora de salida{isFieldRequired('departureTime') && <span className="text-danger ml-0.5">*</span>}</label>
+                                    <input type="time" value={form.departureTime ?? ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                         </div>
@@ -668,7 +668,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                             <DocumentUpload label="Foto del documento (reverso)" value={form.documentImage2} onChange={(v) => updateField("documentImage2", v)} required id="doc-back" />
                         )}
                         {isPassport && (
-                            <p className="text-xs text-slate-400 text-center mt-1">Para pasaporte solo se requiere la página de datos.</p>
+                            <p className="text-xs text-ink-3 text-center mt-1">Para pasaporte solo se requiere la página de datos.</p>
                         )}
                     </div>
                 </CollapsibleSection>
@@ -677,11 +677,11 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             {/* El documento venció: el backend lo va a rechazar igual, así que se
                 dice acá y no después de que el huésped firme. */}
             {documentExpired && (
-                <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 p-4">
-                    <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 rounded-xl border border-danger/20 bg-danger-sunk p-4">
+                    <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-sm font-bold text-red-800">Tu documento está vencido</p>
-                        <p className="text-xs text-red-700 mt-0.5">
+                        <p className="text-sm font-bold text-danger">Tu documento está vencido</p>
+                        <p className="text-xs text-danger mt-0.5">
                             No podemos completar el registro con un documento de identidad vencido.
                             Contacta al anfitrión para continuar con tu check-in.
                         </p>
@@ -690,22 +690,22 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             )}
 
             {/* CTA */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     {documentExpired ? (
-                        <button disabled className="w-full flex items-center justify-center h-14 bg-slate-100 text-slate-400 rounded-xl font-bold text-lg cursor-not-allowed">
+                        <button disabled className="w-full flex items-center justify-center h-14 bg-sunk text-ink-3 rounded-xl font-bold text-lg cursor-not-allowed">
                             Documento vencido
                         </button>
                     ) : isFormValid ? (
                         <button 
                             onClick={handleSubmit} 
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
                         >
                             <CheckCircle2 size={20} />
                             Continuar
                         </button>
                     ) : (
-                        <button disabled className="w-full flex items-center justify-center h-14 bg-slate-100 text-slate-400 rounded-xl font-bold text-lg cursor-not-allowed">
+                        <button disabled className="w-full flex items-center justify-center h-14 bg-sunk text-ink-3 rounded-xl font-bold text-lg cursor-not-allowed">
                             Completa los campos requeridos
                         </button>
                     )}

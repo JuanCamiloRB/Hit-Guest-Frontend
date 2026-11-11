@@ -152,41 +152,42 @@ export function CheckinLinkDeliveryCard({
     }
 
     return (
-        <Card className="group overflow-hidden border-slate-200/60 transition-all duration-300 hover:border-primary/30 hover:shadow-md">
+        <Card className="group overflow-hidden border-rule/60 transition-all duration-300 hover:border-primary/30 hover:shadow-md">
             <CardContent className="p-0">
                 <div className="flex flex-col items-stretch md:flex-row">
-                    <div className="flex w-full items-center justify-center bg-emerald-50 py-4 md:w-20 md:py-0">
-                        <MessageCircle className="h-8 w-8 text-emerald-600" />
+                    {/* Columna de ícono como las demás automatizaciones: el verde es solo para estado. */}
+                    <div className="flex w-full items-center justify-center bg-primary/5 py-4 md:w-20 md:py-0">
+                        <MessageCircle className="h-8 w-8 text-primary" />
                     </div>
 
                     <div className="flex-1 space-y-4 p-5">
                         <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="text-lg font-bold leading-none text-slate-900">
+                                <h3 className="text-lg font-bold leading-none text-ink">
                                     {CHECKIN_LINK_DELIVERY_TITLE}
                                 </h3>
                                 {automation?.isActive && (
-                                    <Badge variant="outline" className="h-5 border-green-200 bg-green-50 text-[10px] font-bold uppercase tracking-wider text-green-600">
+                                    <Badge variant="outline" className="h-5 border-success/30 bg-success-sunk text-xs font-bold uppercase tracking-wider text-success">
                                         Activo
                                     </Badge>
                                 )}
                             </div>
-                            <p className="text-sm leading-relaxed text-slate-500">
+                            <p className="text-sm leading-relaxed text-ink-3">
                                 Cómo le llega al huésped el link para hacer su check-in. El email va siempre y no
                                 tiene costo; los demás canales son opcionales.
                             </p>
                         </div>
 
                         <fieldset className="space-y-3" disabled={saving || !canConfigure}>
-                            <legend className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                            <legend className="text-xs font-semibold uppercase tracking-wider text-ink-3">
                                 ¿Cómo le llega el link al huésped?
                             </legend>
 
                             <div className="flex items-center gap-3">
                                 <Checkbox id="checkin-link-email" checked disabled aria-readonly />
-                                <Label htmlFor="checkin-link-email" className="flex flex-1 items-center justify-between gap-3 font-medium text-slate-700">
+                                <Label htmlFor="checkin-link-email" className="flex flex-1 items-center justify-between gap-3 font-medium text-ink-2">
                                     <span>{CHANNEL_LABEL.email}</span>{" "}
-                                    <span className="text-xs font-normal text-slate-500">Incluido siempre</span>
+                                    <span className="text-xs font-normal text-ink-3">Incluido siempre</span>
                                 </Label>
                             </div>
 
@@ -218,8 +219,8 @@ export function CheckinLinkDeliveryCard({
                             </FeedbackBanner>
                         )}
 
-                        <p className="flex items-start gap-2 text-xs text-slate-500">
-                            <Info size={14} className="mt-0.5 shrink-0 text-slate-400" />
+                        <p className="flex items-start gap-2 text-xs text-ink-3">
+                            <Info size={14} className="mt-0.5 shrink-0 text-ink-3" />
                             Si un canal no aplica a una reserva (sin teléfono, o sin conversación en la OTA), el link le
                             llega por email de todas formas.
                         </p>
@@ -231,7 +232,7 @@ export function CheckinLinkDeliveryCard({
                             </FeedbackBanner>
                         )}
 
-                        <div className="flex items-center justify-end border-t border-slate-100 pt-3">
+                        <div className="flex items-center justify-end border-t border-rule pt-3">
                             <Button
                                 type="button"
                                 size="sm"
@@ -275,11 +276,11 @@ function ChannelOption({
     return (
         <div className="flex items-center gap-3">
             <Checkbox id={id} checked={checked} onCheckedChange={(value) => onChange(channel, value === true)} />
-            <Label htmlFor={id} className="flex flex-1 items-center justify-between gap-3 font-medium text-slate-700">
+            <Label htmlFor={id} className="flex flex-1 items-center justify-between gap-3 font-medium text-ink-2">
                 {/* El espacio separa canal y tarifa en el nombre accesible
                     («WhatsApp 0,10 USD…», no «WhatsApp0,10 USD…»). */}
                 <span>{CHANNEL_LABEL[channel]}</span>{" "}
-                <span className="text-xs font-normal text-slate-500">{describeChannelCost(billing)}</span>
+                <span className="text-xs font-normal text-ink-3">{describeChannelCost(billing)}</span>
             </Label>
         </div>
     )

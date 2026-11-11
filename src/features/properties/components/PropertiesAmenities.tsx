@@ -43,7 +43,7 @@ export function PropertiesAmenities() {
 
     return (
         <Card>
-            <CardHeader className="border-b bg-slate-50/50">
+            <CardHeader className="border-b bg-sunk/50">
                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
                     <Sparkles className="h-5 w-5 text-primary" />
                     Amenidades de la Propiedad
@@ -71,7 +71,7 @@ export function PropertiesAmenities() {
                                                     <FormItem
                                                         key={item.id}
                                                         className={cn(
-                                                            "flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 transition-colors hover:bg-slate-50",
+                                                            "flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 transition-colors hover:bg-sunk/50",
                                                             isChecked && "bg-primary/5 border-primary/20"
                                                         )}
                                                     >

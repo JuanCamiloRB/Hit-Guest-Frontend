@@ -243,8 +243,8 @@ function ClientCard({ client, onOpen }: { client: SupportClient; onOpen: (opener
                 <p className={cn("truncate font-semibold", empty ? "text-ink-2" : "text-ink")} title={client.name}>
                     {client.name}
                 </p>
-                {client.email && <p className="truncate text-[13px] text-ink-2">{client.email}</p>}
-                <p className="mt-1 flex flex-wrap items-center gap-2 text-[13px] text-ink-2">
+                {client.email && <p className="truncate text-sm text-ink-2">{client.email}</p>}
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-2">
                     {client.identificationNumber && <span className="tabular-nums">ID {client.identificationNumber}</span>}
                     <UsersCountPill count={client.usersCount} />
                 </p>

@@ -141,41 +141,41 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
     }
 
     return (
-        <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+        <div className="space-y-3 rounded-xl border border-rule bg-sunk/60 p-4">
             <div className="flex items-center gap-2">
                 <Zap size={15} className="text-primary" />
-                <h4 className="text-sm font-bold text-slate-800">Disparador</h4>
-                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
+                <h4 className="text-sm font-bold text-ink">Disparador</h4>
+                <span className="text-xs font-semibold text-ink-3 uppercase tracking-wide">
                     {required ? "Requerido" : "Opcional"}
                 </span>
             </div>
-            <p className="text-xs text-slate-500 -mt-1">Define cuándo se ejecuta esta automatización y a qué huéspedes aplica.</p>
+            <p className="text-xs text-ink-3 -mt-1">Define cuándo se ejecuta esta automatización y a qué huéspedes aplica.</p>
             {required && triggerTypes.length === 0 && (
-                <p className="text-xs font-medium text-amber-700">
+                <p className="text-xs font-medium text-warning">
                     Selecciona al menos un disparador. Sin él, la automation queda activa pero el backend la omite en silencio.
                 </p>
             )}
 
             {/* Trigger types */}
             <div className="space-y-2">
-                <label className="text-xs font-semibold text-slate-600">¿Cuándo se ejecuta?</label>
+                <label className="text-xs font-semibold text-ink-2">¿Cuándo se ejecuta?</label>
                 {TRIGGER_TYPES.map((t) => {
                     const checked = triggerTypes.includes(t.key)
                     return (
-                        <div key={t.key} className="rounded-lg border border-slate-200 bg-white px-3 py-2">
+                        <div key={t.key} className="rounded-lg border border-rule bg-white px-3 py-2">
                             <label className="flex items-center gap-2.5 cursor-pointer">
                                 <input
                                     type="checkbox"
                                     checked={checked}
                                     onChange={() => toggleTrigger(t.key)}
                                     disabled={t.needsInternalPredecessorId}
-                                    className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30"
+                                    className="h-4 w-4 rounded border-input text-primary focus:ring-primary/30"
                                 />
-                                <span className="text-sm text-slate-700">{t.label}</span>
+                                <span className="text-sm text-ink-2">{t.label}</span>
                             </label>
 
                             {t.needsInternalPredecessorId && (
-                                <p className="mt-1 ml-6 text-xs text-amber-700">
+                                <p className="mt-1 ml-6 text-xs text-warning">
                                     El backend exige un ID interno que no expone en este recurso. Se conserva si ya estaba configurado, pero no se puede crear desde el portal todavía.
                                 </p>
                             )}
@@ -187,7 +187,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                             {checked && t.hasDelay && !t.needsInternalPredecessorId && (
                                 <div className="mt-2 ml-6 flex flex-wrap items-center gap-3">
                                     <div className="flex items-center gap-1.5">
-                                        <span className="text-xs text-slate-500">Espera</span>
+                                        <span className="text-xs text-ink-3">Espera</span>
                                         <input
                                             type="number"
                                             min={0}
@@ -196,9 +196,9 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                                                 setTriggerConfigValue(t.key, "delay_minutes", e.target.value === "" ? undefined : Number(e.target.value))
                                             }
                                             placeholder="0"
-                                            className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                            className="w-20 bg-sunk/50 border border-rule rounded-lg px-2 py-1 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/30"
                                         />
-                                        <span className="text-xs text-slate-500">min</span>
+                                        <span className="text-xs text-ink-3">min</span>
                                     </div>
                                 </div>
                             )}
@@ -209,7 +209,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
 
             {/* Guest filter */}
             <div className="space-y-2 pt-1">
-                <label className="text-xs font-semibold text-slate-600">¿A qué huéspedes aplica?</label>
+                <label className="text-xs font-semibold text-ink-2">¿A qué huéspedes aplica?</label>
                 <div className="flex flex-wrap gap-2">
                     {GUEST_FILTERS.map((g) => {
                         const active = guestFilter === g.value
@@ -223,7 +223,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                                     "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors " +
                                     (active
                                         ? "border-primary bg-primary/10 text-primary"
-                                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50")
+                                        : "border-rule bg-white text-ink-2 hover:bg-sunk/50")
                                 }
                             >
                                 {g.label}
@@ -232,7 +232,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                     })}
                 </div>
                 {isSire && (
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-ink-3">
                         SIRE se limita obligatoriamente a huéspedes extranjeros para no reportar nacionales a Migración Colombia.
                     </p>
                 )}
@@ -256,7 +256,7 @@ function ScheduledConfig({
     onChange: (field: string, value: string | number | undefined) => void
 }) {
     const selectCls =
-        "bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+        "bg-sunk/50 border border-rule rounded-lg px-2 py-1 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/30"
 
     // Backend stores HH:MM:SS; the native time input works in HH:MM.
     const timeValue = ((config.time_of_day as string) ?? "").slice(0, 5)
@@ -265,7 +265,7 @@ function ScheduledConfig({
     return (
         <div className="mt-2 ml-6 space-y-2">
             <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-slate-500">A las</span>
+                <span className="text-xs text-ink-3">A las</span>
                 <input
                     type="time"
                     value={timeValue}
@@ -274,7 +274,7 @@ function ScheduledConfig({
                     }
                     className={selectCls}
                 />
-                <span className="text-xs text-slate-500">del</span>
+                <span className="text-xs text-ink-3">del</span>
                 <select
                     value={referenceDate}
                     onChange={(e) => onChange("reference_date", e.target.value)}
@@ -286,7 +286,7 @@ function ScheduledConfig({
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-xs text-slate-500">Desplazar</span>
+                <span className="text-xs text-ink-3">Desplazar</span>
                 <input
                     type="number"
                     value={config.offset_days ?? ""}
@@ -294,9 +294,9 @@ function ScheduledConfig({
                         onChange("offset_days", e.target.value === "" ? undefined : parseInt(e.target.value, 10))
                     }
                     placeholder="0"
-                    className="w-20 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    className="w-20 bg-sunk/50 border border-rule rounded-lg px-2 py-1 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
-                <span className="text-xs text-slate-500">días (− antes · + después)</span>
+                <span className="text-xs text-ink-3">días (− antes · + después)</span>
             </div>
         </div>
     )

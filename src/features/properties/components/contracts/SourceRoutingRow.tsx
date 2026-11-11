@@ -76,7 +76,7 @@ export function SourceRoutingRow({
         <div className="space-y-5">
             {/* contract_type */}
             <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Qué se firma</Label>
+                <Label className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Qué se firma</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {CONTRACT_TYPES.map((type) => (
                         <button
@@ -88,11 +88,11 @@ export function SourceRoutingRow({
                                 "rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors",
                                 routing.contract_type === type
                                     ? "border-primary bg-primary/5 text-primary"
-                                    : "border-slate-200 text-slate-600 hover:border-slate-300",
+                                    : "border-rule text-ink-2 hover:border-input-hover",
                             )}
                         >
                             <span className="block">{CONTRACT_TYPE_LABELS[type]}</span>
-                            <span className="mt-0.5 block text-[10px] font-medium opacity-70">
+                            <span className="mt-0.5 block text-xs font-medium opacity-70">
                                 {CONTRACT_TYPE_OWNERS[type]}
                             </span>
                         </button>
@@ -102,12 +102,12 @@ export function SourceRoutingRow({
 
             {/* provider_slug */}
             <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">Quién firma</Label>
+                <Label className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Quién firma</Label>
                 <Select
                     value={routing.provider_slug || undefined}
                     onValueChange={(slug) => onChange({ ...routing, provider_slug: slug })}
                 >
-                    <SelectTrigger className="bg-slate-50 border-slate-200 max-w-xs">
+                    <SelectTrigger className="bg-sunk/50 border-rule max-w-xs">
                         <SelectValue placeholder="Selecciona el proveedor de firma" />
                     </SelectTrigger>
                     <SelectContent>
@@ -119,7 +119,7 @@ export function SourceRoutingRow({
                     </SelectContent>
                 </Select>
                 {!isNativeSignatureAllowed(routing.contract_type) && (
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-xs text-ink-3">
                         La garantía de daños solo puede firmarse con TuFirma por ahora.
                     </p>
                 )}
@@ -127,15 +127,15 @@ export function SourceRoutingRow({
 
             {/* Agreement text */}
             {needsAgreement && !showText && (
-                <p className="text-xs text-slate-500">Firma el texto para todos los canales.</p>
+                <p className="text-xs text-ink-3">Firma el texto para todos los canales.</p>
             )}
             {needsAgreement && showText && (
                 <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-slate-600 uppercase tracking-wide">
+                    <Label className="text-xs font-semibold text-ink-2 uppercase tracking-wide">
                         Texto del contrato
                     </Label>
                     {hasTextGap && (
-                        <p className="flex items-center gap-1.5 text-xs text-amber-600">
+                        <p className="flex items-center gap-1.5 text-xs text-warning">
                             <AlertCircle size={13} /> Este canal necesita texto de contrato antes de guardar.
                         </p>
                     )}

@@ -403,6 +403,9 @@ export interface AutomationDefinition {
   title: string
   description: string
   icon: LucideIcon
+  /** Ícono y columna de la tarjeta. Un solo tratamiento para todas
+   *  (`text-primary` sobre `bg-primary/5`): los colores de estado no son
+   *  colores de categoría (docs/hitguest-design-system.md §2). */
   color: string
   bgColor: string
   providerOptions: ProviderOption[]

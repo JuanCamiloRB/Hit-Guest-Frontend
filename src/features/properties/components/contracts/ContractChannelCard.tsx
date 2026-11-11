@@ -11,10 +11,10 @@ import { ReservationSourceIdentity, reservationSourceName, reservationSourceSlug
 export type ContractChannelStatus = "configured" | "unconfigured" | "dirty" | "incomplete"
 
 const STATUS_COPY: Record<ContractChannelStatus, { label: string; className: string }> = {
-    configured: { label: "Configurado", className: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-    unconfigured: { label: "Sin contrato", className: "border-slate-200 bg-slate-100 text-slate-600" },
-    dirty: { label: "Cambios sin guardar", className: "border-amber-200 bg-amber-50 text-amber-700" },
-    incomplete: { label: "Incompleto", className: "border-red-200 bg-red-50 text-red-700" },
+    configured: { label: "Configurado", className: "border-success/30 bg-success-sunk text-success" },
+    unconfigured: { label: "Sin contrato", className: "border-rule bg-sunk text-ink-2" },
+    dirty: { label: "Cambios sin guardar", className: "border-warning/30 bg-warning-sunk text-warning" },
+    incomplete: { label: "Incompleto", className: "border-danger/30 bg-danger-sunk text-danger" },
 }
 
 interface Props {
@@ -44,23 +44,23 @@ export function ContractChannelCard({
     return (
         <article className={cn(
             "overflow-hidden rounded-2xl border bg-white transition-colors",
-            status === "dirty" ? "border-amber-300" : status === "incomplete" ? "border-red-200" : "border-slate-200",
+            status === "dirty" ? "border-warning/40" : status === "incomplete" ? "border-danger/30" : "border-rule",
         )}>
             <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2.5">
                         <ReservationSourceIdentity name={sourceName} slug={source ? reservationSourceSlug(source) : null} />
-                        <Badge variant="outline" className={cn("h-6 rounded-full px-2.5 text-[10px] font-bold uppercase tracking-wide", statusCopy.className)}>
+                        <Badge variant="outline" className={cn("h-6 rounded-full px-2.5 text-xs font-bold uppercase tracking-wide", statusCopy.className)}>
                             {statusCopy.label}
                         </Badge>
                     </div>
-                    <p className={cn("pl-0 text-sm sm:pl-[60px]", status === "unconfigured" ? "text-slate-500" : "font-medium text-slate-700")}>
+                    <p className={cn("pl-0 text-sm sm:pl-[60px]", status === "unconfigured" ? "text-ink-3" : "font-medium text-ink-2")}>
                         {summary}
                     </p>
                 </div>
                 <div className="flex shrink-0 items-center justify-end gap-2">
                     {onRemove && status !== "unconfigured" && (
-                        <Button type="button" variant="ghost" size="sm" onClick={onRemove} className="text-slate-500 hover:text-red-600">
+                        <Button type="button" variant="ghost" size="sm" onClick={onRemove} className="text-ink-3 hover:text-danger">
                             Quitar configuración
                         </Button>
                     )}
@@ -71,7 +71,7 @@ export function ContractChannelCard({
                 </div>
             </div>
             {expanded && children && (
-                <div className="border-t border-slate-200 bg-slate-50/40 p-4 sm:p-5" aria-label={`Configuración de ${sourceName}`}>
+                <div className="border-t border-rule bg-sunk/40 p-4 sm:p-5" aria-label={`Configuración de ${sourceName}`}>
                     {children}
                 </div>
             )}

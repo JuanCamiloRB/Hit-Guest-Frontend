@@ -48,7 +48,7 @@ export function ConfigModal({
                         <Settings2 size={18} className="text-primary" />
                         Configurar: {definition.title}
                     </DialogTitle>
-                    <DialogDescription className="text-sm text-slate-500 mt-1">
+                    <DialogDescription className="text-sm text-ink-3 mt-1">
                         Proveedor: <span className="font-semibold">{provider.label}</span>
                     </DialogDescription>
                 </DialogHeader>

@@ -18,10 +18,10 @@ interface WelcomeScreenProps {
 // Shared badge tokens so every guest row reads the same way. All of them share
 // the same size/shape — only the color changes — so "Principal" next to
 // "Pendiente" doesn't look like two different design systems.
-const BADGE_BASE = "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold leading-5"
+const BADGE_BASE = "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold leading-5"
 const BADGE_MAIN = `${BADGE_BASE} bg-primary/10 text-primary`
-const BADGE_DONE = `${BADGE_BASE} bg-green-50 text-green-600`
-const BADGE_PENDING = `${BADGE_BASE} bg-slate-100 text-slate-500`
+const BADGE_DONE = `${BADGE_BASE} bg-success-sunk text-success`
+const BADGE_PENDING = `${BADGE_BASE} bg-sunk text-ink-3`
 
 /**
  * Fixed bottom action bar.
@@ -37,7 +37,7 @@ const BADGE_PENDING = `${BADGE_BASE} bg-slate-100 text-slate-500`
  * home indicator. Adding it back only makes sense together with the viewport
  * meta AND the same padding on the other 11 checkin bottom bars.
  */
-const BOTTOM_BAR = "fixed bottom-0 left-0 right-0 z-10 flex justify-center border-t border-slate-200/70 bg-white/95 py-4 backdrop-blur-md"
+const BOTTOM_BAR = "fixed bottom-0 left-0 right-0 z-10 flex justify-center border-t border-rule/70 bg-white/95 py-4 backdrop-blur-md"
 const BOTTOM_BAR_INNER = "w-full max-w-lg px-4"
 
 /**
@@ -56,7 +56,7 @@ const BOTTOM_BAR_INNER = "w-full max-w-lg px-4"
 function GuestRow({
     icon,
     name,
-    nameClassName = "text-slate-700",
+    nameClassName = "text-ink-2",
     badges,
     actions,
 }: {
@@ -67,7 +67,7 @@ function GuestRow({
     actions?: ReactNode
 }) {
     return (
-        <li className="flex items-start gap-2.5 rounded-xl border border-slate-100/50 bg-slate-50 p-3">
+        <li className="flex items-start gap-2.5 rounded-xl border border-rule/50 bg-sunk/50 p-3">
             <span className="mt-0.5 flex-shrink-0">{icon}</span>
             <div className="min-w-0 flex-1">
                 <p className={`break-words text-sm font-medium leading-snug ${nameClassName}`}>
@@ -277,35 +277,35 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
             {/* NO StepIndicator here — eliminado para reducir fricción */}
 
             <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900 leading-tight">
+                <h1 className="text-3xl font-bold tracking-tight text-ink leading-tight">
                     Check-in Online
                 </h1>
-                <p className="text-slate-500 text-base">
+                <p className="text-ink-3 text-base">
                     Completa tu registro antes de la fecha de llegada.
                 </p>
             </div>
 
             {/* Reservation Card */}
-            <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-rule space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Llegada</span>
-                        <p className="font-medium mt-0.5 text-slate-800">{formatDate(res.arrivalDate)}</p>
+                        <span className="text-xs font-bold tracking-wider text-ink-3 uppercase">Llegada</span>
+                        <p className="font-medium mt-0.5 text-ink">{formatDate(res.arrivalDate)}</p>
                     </div>
                     <div>
-                        <span className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Salida</span>
-                        <p className="font-medium mt-0.5 text-slate-800">{formatDate(res.departureDate)}</p>
+                        <span className="text-xs font-bold tracking-wider text-ink-3 uppercase">Salida</span>
+                        <p className="font-medium mt-0.5 text-ink">{formatDate(res.departureDate)}</p>
                     </div>
                 </div>
 
                 <div className="flex gap-3">
-                    <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100/50 flex items-center gap-2">
+                    <div className="flex-1 bg-sunk/50 rounded-xl p-3 border border-rule/50 flex items-center gap-2">
                         <Calendar size={16} className="text-secondary" />
-                        <span className="text-sm font-medium text-slate-700">{nights} {nights === 1 ? "Noche" : "Noches"}</span>
+                        <span className="text-sm font-medium text-ink-2">{nights} {nights === 1 ? "Noche" : "Noches"}</span>
                     </div>
-                    <div className="flex-1 bg-slate-50 rounded-xl p-3 border border-slate-100/50 flex items-center gap-2">
+                    <div className="flex-1 bg-sunk/50 rounded-xl p-3 border border-rule/50 flex items-center gap-2">
                         <Users size={16} className="text-secondary" />
-                        <span className="text-sm font-medium text-slate-700">{res.totalGuestsAllowed} {res.totalGuestsAllowed === 1 ? "Huésped" : "Huéspedes"}</span>
+                        <span className="text-sm font-medium text-ink-2">{res.totalGuestsAllowed} {res.totalGuestsAllowed === 1 ? "Huésped" : "Huéspedes"}</span>
                     </div>
                 </div>
 
@@ -313,9 +313,9 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     en vez de dejar que el huésped lo descubra chocando con un 422
                     después de llenar el formulario. */}
                 {!checkinOpen && (
-                    <div className="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <Lock size={16} className="text-slate-400 shrink-0 mt-0.5" />
-                        <p className="text-xs text-slate-600 leading-relaxed">
+                    <div className="flex items-start gap-3 rounded-xl border border-rule bg-sunk/50 p-3">
+                        <Lock size={16} className="text-ink-3 shrink-0 mt-0.5" />
+                        <p className="text-xs text-ink-2 leading-relaxed">
                             El registro en línea está cerrado para esta reserva. Puedes seguir
                             consultando tus documentos, pero si necesitas modificar algo
                             contacta al anfitrión.
@@ -328,15 +328,15 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     Sin lista de personas, círculos ni candados — parecían una
                     selección obligatoria y la gente los tocaba en vez de avanzar. */}
                 {!mainCompleted && companionsTotal > 0 && (
-                    <p className="text-sm text-slate-600">
+                    <p className="text-sm text-ink-2">
                         Primero te registras tú. Después podrás registrar{" "}
                         {companionsTotal === 1 ? "a tu acompañante" : `a tus ${companionsTotal} acompañantes`}.
                     </p>
                 )}
                 {mainAwaitingExternalSignature && (
-                    <div className="flex items-start gap-3 rounded-xl border border-amber-100 bg-amber-50 p-3">
-                        <Mail size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                        <p className="text-xs text-amber-800 leading-relaxed">
+                    <div className="flex items-start gap-3 rounded-xl border border-warning/20 bg-warning-sunk p-3">
+                        <Mail size={16} className="text-warning shrink-0 mt-0.5" />
+                        <p className="text-xs text-warning leading-relaxed">
                             <span className="font-semibold">Falta firmar</span>: tu registro está guardado.
                             Te enviamos el contrato por correo para firmarlo.
                         </p>
@@ -348,12 +348,12 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                 {/* Progress bar */}
                 <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-500 font-medium">Progreso del registro</span>
+                        <span className="text-ink-3 font-medium">Progreso del registro</span>
                         <span className="font-bold text-primary">
                             {completedCount}/{res.totalGuestsAllowed} completados
                         </span>
                     </div>
-                    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-2 w-full bg-sunk rounded-full overflow-hidden">
                         <div
                             className="h-full bg-primary transition-all duration-500"
                             style={{ width: `${res.totalGuestsAllowed > 0
@@ -366,12 +366,12 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                 {/* Lista: solo con el titular terminado, que es cuando sirve. Sin
                     círculos (parecían una selección): check verde o la persona. */}
                 <div className="space-y-2 pt-1">
-                    <h2 id="guest-list-heading" className="text-[11px] font-bold tracking-wider text-slate-400 uppercase">Huéspedes de la reserva</h2>
+                    <h2 id="guest-list-heading" className="text-xs font-bold tracking-wider text-ink-3 uppercase">Huéspedes de la reserva</h2>
 
                     <ul aria-labelledby="guest-list-heading" className="space-y-2">
                     {mainGuest && (
                         <GuestRow
-                            icon={<CheckCircle2 size={16} className="text-green-500" />}
+                            icon={<CheckCircle2 size={16} className="text-success" />}
                             name={`${mainGuest.name} ${mainGuest.lastname}`.trim() || "Titular"}
                             badges={
                                 <>
@@ -387,8 +387,8 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                         <GuestRow
                             key={g.uuid}
                             icon={isGuestDone(g)
-                                ? <CheckCircle2 size={16} className="text-green-500" />
-                                : <UserCircle size={16} className="text-slate-300" />
+                                ? <CheckCircle2 size={16} className="text-success" />
+                                : <UserCircle size={16} className="text-ink-4" />
                             }
                             name={`${g.name} ${g.lastname}`.trim()}
                             badges={isGuestDone(g)
@@ -415,9 +415,9 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                         return (
                             <GuestRow
                                 key={`anon-${i}`}
-                                icon={<UserCircle size={16} className="text-slate-300" />}
+                                icon={<UserCircle size={16} className="text-ink-4" />}
                                 name={label}
-                                nameClassName="italic text-slate-500"
+                                nameClassName="italic text-ink-3"
                                 badges={<span className={BADGE_PENDING}>Sin registrar</span>}
                                 actions={checkinOpen ? (
                                     <GuestRowActions
@@ -435,7 +435,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     {/* Re-send the link so companions can register themselves. */}
                     {hasPendingCompanions && (
                         <div className="mt-3 rounded-xl border border-primary/15 bg-primary/5 p-3">
-                            <p className="text-xs font-medium text-slate-600 mb-2">
+                            <p className="text-xs font-medium text-ink-2 mb-2">
                                 ¿Viajas acompañado? Envíales el link para que hagan su registro.
                             </p>
                             <div className="flex gap-2">
@@ -450,7 +450,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                 <button
                                     type="button"
                                     onClick={() => handleCopyLink()}
-                                    className="inline-flex items-center justify-center h-10 px-3 rounded-lg border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50 transition-colors"
+                                    className="inline-flex items-center justify-center h-10 px-3 rounded-lg border border-rule text-ink-2 text-sm font-semibold hover:bg-sunk/50 transition-colors"
                                 >
                                     Copiar
                                 </button>
@@ -473,24 +473,24 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                         <Clock size={20} />
                         <span className="font-semibold">Tomará aproximadamente 3 minutos</span>
                     </div>
-                    <p className="text-sm text-slate-600 mb-4 font-medium">Requisitos para completar el registro:</p>
+                    <p className="text-sm text-ink-2 mb-4 font-medium">Requisitos para completar el registro:</p>
                     <ul className="space-y-4">
                         <li className="flex items-start gap-3">
-                            <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100 text-primary">
+                            <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm border border-rule text-primary">
                                 <IdCard size={18} />
                             </div>
                             <div>
-                                <p className="text-sm font-semibold text-slate-800">Documento de identidad</p>
-                                <p className="text-xs text-slate-500 mt-0.5">Pasaporte o cédula original de todos los adultos.</p>
+                                <p className="text-sm font-semibold text-ink">Documento de identidad</p>
+                                <p className="text-xs text-ink-3 mt-0.5">Pasaporte o cédula original de todos los adultos.</p>
                             </div>
                         </li>
                         <li className="flex items-start gap-3">
-                            <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm border border-slate-100 text-primary">
+                            <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm border border-rule text-primary">
                                 <CreditCard size={18} />
                             </div>
                             <div>
-                                <p className="text-sm font-semibold text-slate-800">Datos de contacto</p>
-                                <p className="text-xs text-slate-500 mt-0.5">Teléfono, email y datos de viaje del titular.</p>
+                                <p className="text-sm font-semibold text-ink">Datos de contacto</p>
+                                <p className="text-xs text-ink-3 mt-0.5">Teléfono, email y datos de viaje del titular.</p>
                             </div>
                         </li>
                     </ul>
@@ -499,15 +499,15 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
             {/* Security */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col items-center justify-center text-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
-                    <ShieldCheck size={28} className="text-green-500 mb-2" />
-                    <span className="text-xs font-semibold text-slate-800">Cifrado Seguro</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">Datos protegidos</span>
+                <div className="flex flex-col items-center justify-center text-center bg-white border border-rule p-4 rounded-2xl shadow-sm">
+                    <ShieldCheck size={28} className="text-success mb-2" />
+                    <span className="text-xs font-semibold text-ink">Cifrado Seguro</span>
+                    <span className="text-xs text-ink-3 mt-0.5">Datos protegidos</span>
                 </div>
-                <div className="flex flex-col items-center justify-center text-center bg-white border border-slate-100 p-4 rounded-2xl shadow-sm">
-                    <Key size={28} className="text-amber-500 mb-2" />
-                    <span className="text-xs font-semibold text-slate-800">Acceso Rápido</span>
-                    <span className="text-[10px] text-slate-400 mt-0.5">Evita la recepción</span>
+                <div className="flex flex-col items-center justify-center text-center bg-white border border-rule p-4 rounded-2xl shadow-sm">
+                    <Key size={28} className="text-warning mb-2" />
+                    <span className="text-xs font-semibold text-ink">Acceso Rápido</span>
+                    <span className="text-xs text-ink-3 mt-0.5">Evita la recepción</span>
                 </div>
             </div>
 
@@ -517,7 +517,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     <div className={BOTTOM_BAR_INNER}>
                         <Link
                             href={`${basePath}/success`}
-                            className="w-full flex items-center justify-center h-14 bg-green-500 hover:bg-green-600 text-white rounded-xl font-bold text-base shadow-lg shadow-green-500/20 transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center h-14 bg-success hover:bg-success/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
                         >
                             Ver Resumen de Check-in
                         </Link>
@@ -528,7 +528,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     <div className={BOTTOM_BAR_INNER}>
                         <Link
                             href={primaryCtaHref}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg shadow-brand-purple/25 transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
                         >
                             {primaryCtaLabel}
                             <ArrowRight size={20} />

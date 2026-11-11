@@ -62,7 +62,7 @@ export function PeriodActivity({
                     <h2 id="period-activity-title" className="text-base font-semibold text-ink">
                         Actividad del mes
                     </h2>
-                    <p className="mt-0.5 text-[13px] text-ink-3">Consumo, historial y nodos del mes elegido</p>
+                    <p className="mt-0.5 text-sm text-ink-3">Consumo, historial y nodos del mes elegido</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
                     {status === "refreshing" && (
@@ -138,7 +138,7 @@ function ActivityNotice({ onRetry, children }: { onRetry: () => void; children: 
     return (
         <div
             role="status"
-            className="flex flex-col gap-1 rounded-lg bg-warning-sunk px-3 py-2 text-[13px] text-ink-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+            className="flex flex-col gap-1 rounded-lg bg-warning-sunk px-3 py-2 text-sm text-ink-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
         >
             <p className="flex items-start gap-2">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-warning" aria-hidden />
@@ -167,7 +167,7 @@ function ActivityMessage({
         <div role={role} className="flex min-h-[18rem] flex-col items-center justify-center gap-2 text-center">
             {icon}
             <p className="text-sm font-semibold text-ink">{title}</p>
-            {description && <p className="text-[13px] text-ink-3">{description}</p>}
+            {description && <p className="text-sm text-ink-3">{description}</p>}
             <RetryButton onRetry={onRetry} className="mt-1" />
         </div>
     )
@@ -178,7 +178,7 @@ function RetryButton({ onRetry, className }: { onRetry: () => void; className?: 
         <button
             type="button"
             onClick={onRetry}
-            className={cn("shrink-0 text-[13px] font-semibold text-primary underline-offset-2 hover:underline", className)}
+            className={cn("shrink-0 text-sm font-semibold text-primary underline-offset-2 hover:underline", className)}
         >
             Reintentar
         </button>
@@ -197,7 +197,7 @@ function ActivitySkeleton({ progress }: { progress: { done: number; total: numbe
                 <Skeleton className="h-3.5 w-28" />
                 <Skeleton className="h-8 w-44" />
                 {progress ? (
-                    <p className="text-[13px] text-ink-3">
+                    <p className="text-sm text-ink-3">
                         Calculando el consumo · {progress.done} de {progress.total} reservas
                     </p>
                 ) : (

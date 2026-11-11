@@ -56,7 +56,7 @@ export function KunasStatusCard({
                             : "bg-warning-sunk text-warning"
                     }`}
                 >
-                    <span className={`h-2 w-2 rounded-full ${active ? "bg-emerald-500" : "bg-amber-500"}`} />
+                    <span className={`h-2 w-2 rounded-full ${active ? "bg-success" : "bg-warning"}`} />
                     {active ? "Activa" : "Inactiva"}
                 </span>
             </div>

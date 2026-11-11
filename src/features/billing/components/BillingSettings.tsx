@@ -152,7 +152,7 @@ export function BillingSettings() {
                                         className={`rounded-xl border-2 px-3 py-3 text-left transition-all ${
                                             active
                                                 ? "border-primary bg-primary/5"
-                                                : "border-rule hover:border-slate-300"
+                                                : "border-rule hover:border-input-hover"
                                         }`}
                                     >
                                         <div
@@ -160,7 +160,7 @@ export function BillingSettings() {
                                         >
                                             {pkg.label}
                                         </div>
-                                        <div className="text-[11px] text-ink-3">{pkg.description}</div>
+                                        <div className="text-xs text-ink-3">{pkg.description}</div>
                                     </button>
                                 )
                             })}

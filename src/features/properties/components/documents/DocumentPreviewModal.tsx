@@ -165,7 +165,7 @@ export function DocumentPreviewModal({
                             "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
                             mode === "sample"
                                 ? "border-primary/30 bg-primary/10 text-primary"
-                                : "border-slate-200 text-slate-500 hover:bg-slate-50",
+                                : "border-rule text-ink-3 hover:bg-sunk/50",
                         )}
                     >
                         <FlaskConical size={14} /> Datos de ejemplo
@@ -177,7 +177,7 @@ export function DocumentPreviewModal({
                             "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
                             mode === "real"
                                 ? "border-primary/30 bg-primary/10 text-primary"
-                                : "border-slate-200 text-slate-500 hover:bg-slate-50",
+                                : "border-rule text-ink-3 hover:bg-sunk/50",
                         )}
                     >
                         <Sparkles size={14} /> Reserva real
@@ -191,7 +191,7 @@ export function DocumentPreviewModal({
                         {!documentUuid ? (
                             <FeedbackBanner tone="info">Guarda el documento primero para previsualizarlo con una reserva real.</FeedbackBanner>
                         ) : loadingReservations ? (
-                            <div className="flex items-center gap-2 text-slate-400 text-sm py-2">
+                            <div className="flex items-center gap-2 text-ink-3 text-sm py-2">
                                 <Loader2 size={16} className="animate-spin" /> Cargando reservas...
                             </div>
                         ) : reservations.length === 0 ? (
@@ -204,7 +204,7 @@ export function DocumentPreviewModal({
                                     handleRender(v)
                                 }}
                             >
-                                <SelectTrigger className="bg-slate-50 border-slate-200">
+                                <SelectTrigger className="bg-sunk/50 border-rule">
                                     <SelectValue placeholder="Selecciona una reserva de prueba" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -220,15 +220,15 @@ export function DocumentPreviewModal({
                 )}
 
                 {/* Rendered document */}
-                <div className="rounded-xl border border-slate-200 bg-white p-6 min-h-[240px]">
+                <div className="rounded-xl border border-rule bg-white p-6 min-h-[240px]">
                     {rendering ? (
-                        <div className="flex items-center justify-center py-16 gap-2 text-slate-400">
+                        <div className="flex items-center justify-center py-16 gap-2 text-ink-3">
                             <Loader2 size={20} className="animate-spin" /> Generando vista previa...
                         </div>
                     ) : previewHtml ? (
                         <div
                             className={cn(
-                                "text-sm text-slate-700 leading-relaxed",
+                                "text-sm text-ink-2 leading-relaxed",
                                 "[&_h2]:text-lg [&_h2]:font-bold [&_h2]:my-2",
                                 "[&_p]:my-2 [&_strong]:font-bold",
                                 "[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2",
@@ -237,7 +237,7 @@ export function DocumentPreviewModal({
                             dangerouslySetInnerHTML={{ __html: previewHtml }}
                         />
                     ) : (
-                        <p className="text-center text-sm text-slate-400 py-16">
+                        <p className="text-center text-sm text-ink-3 py-16">
                             {mode === "real"
                                 ? "Selecciona una reserva para ver el documento renderizado."
                                 : "El documento está vacío."}
@@ -262,7 +262,7 @@ export function DocumentPreviewModal({
                 )}
 
                 {shortcodes.length > 0 && mode === "sample" && (
-                    <p className="text-[11px] text-slate-400">
+                    <p className="text-xs text-ink-3">
                         {allowRealReservation
                             ? <>Esta vista usa datos de ejemplo. Para ver datos reales selecciona &quot;Reserva real&quot;.</>
                             : "Esta vista usa datos de ejemplo."}

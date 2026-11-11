@@ -50,7 +50,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-sm font-medium text-slate-500">Cargando documento...</p>
+                <p className="text-sm font-medium text-ink-3">Cargando documento...</p>
             </div>
         )
     }
@@ -58,11 +58,11 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
     if (error) {
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4 text-center animate-in fade-in px-4">
-                <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center">
-                    <XCircle className="w-8 h-8 text-red-500" />
+                <div className="w-16 h-16 rounded-full bg-danger-sunk flex items-center justify-center">
+                    <XCircle className="w-8 h-8 text-danger" />
                 </div>
-                <h2 className="text-xl font-semibold text-slate-800">Documento no disponible</h2>
-                <p className="text-slate-500 text-sm max-w-sm">{error}</p>
+                <h2 className="text-xl font-semibold text-ink">Documento no disponible</h2>
+                <p className="text-ink-3 text-sm max-w-sm">{error}</p>
                 <button
                     onClick={() => router.push(basePath)}
                     className="mt-2 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold text-sm"
@@ -78,7 +78,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
             <div className="flex items-center justify-between">
                 <button
                     onClick={() => router.push(basePath)}
-                    className="flex items-center gap-2 p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
+                    className="flex items-center gap-2 p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors"
                 >
                     <ArrowLeft size={20} />
                     <span className="text-sm font-semibold">Volver</span>
@@ -90,16 +90,16 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
             </div>
 
             <div
-                className="bg-white border border-slate-200 rounded-2xl p-6 prose prose-sm prose-slate max-w-none [&_p]:my-2"
+                className="bg-white border border-rule rounded-2xl p-6 prose prose-sm prose-slate max-w-none [&_p]:my-2"
                 dangerouslySetInnerHTML={{ __html: rendered }}
             />
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     <button
                         onClick={handleDownloadPdf}
                         disabled={isDownloading}
-                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 disabled:opacity-60 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 disabled:opacity-60 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
                     >
                         {isDownloading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
                         Descargar PDF

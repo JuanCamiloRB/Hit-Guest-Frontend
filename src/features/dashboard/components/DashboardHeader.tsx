@@ -9,7 +9,7 @@ export function DashboardHeader() {
     return (
         <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
             <div>
-                <div className="mb-1 flex items-center text-[13px] text-ink-3">
+                <div className="mb-1 flex items-center text-sm text-ink-3">
                     <span>{t('dashboard.home')}</span>
                     <span className="mx-2">›</span>
                     <span className="font-medium text-ink-2">{t('dashboard.title')}</span>

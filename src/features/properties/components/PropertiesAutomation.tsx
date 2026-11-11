@@ -261,11 +261,11 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                         <div className="p-2 bg-primary/10 rounded-lg">
                             <Sparkles className="h-5 w-5 text-primary" />
                         </div>
-                        <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
+                        <CardTitle className="text-2xl font-bold tracking-tight text-ink">
                             Reglas de Automatización
                         </CardTitle>
                     </div>
-                    <CardDescription className="text-base text-slate-500">
+                    <CardDescription className="text-base text-ink-3">
                         Configura disparadores automáticos para mejorar la experiencia del huésped y agilizar tu operación.
                     </CardDescription>
                 </CardHeader>
@@ -353,14 +353,14 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             )}
 
             {/* Custom automation CTA */}
-            <Card className="bg-slate-50 border-dashed border-2 border-slate-200">
+            <Card className="bg-sunk/50 border-dashed border-2 border-rule">
                 <CardContent className="p-8 text-center flex flex-col items-center justify-center space-y-3">
                     <div className="p-3 bg-white rounded-full shadow-sm">
                         <Sparkles className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-900">¿Necesitas una regla personalizada?</h4>
-                        <p className="text-sm text-slate-500">
+                        <h4 className="font-bold text-ink">¿Necesitas una regla personalizada?</h4>
+                        <p className="text-sm text-ink-3">
                             Contacta con nuestro equipo para crear flujos de trabajo a la medida de tu negocio.
                         </p>
                     </div>

@@ -191,7 +191,7 @@ function DrawerBody({
             <header className="flex items-start gap-3 border-b border-rule px-6 py-5">
                 <div className="min-w-0 flex-1">
                     <SheetTitle className="truncate text-lg font-bold text-ink" title={client.name}>{client.name}</SheetTitle>
-                    <SheetDescription className="mt-0.5 text-[13px] text-ink-2">
+                    <SheetDescription className="mt-0.5 text-sm text-ink-2">
                         {[client.email, client.identificationNumber ? `ID ${client.identificationNumber}` : null]
                             .filter(Boolean).join(" · ") || "Cliente"}
                     </SheetDescription>
@@ -201,7 +201,7 @@ function DrawerBody({
                 </Button>
             </header>
 
-            <p className="flex items-start gap-2 border-b border-warning/20 bg-warning-sunk px-6 py-3 text-[13px] text-warning">
+            <p className="flex items-start gap-2 border-b border-warning/20 bg-warning-sunk px-6 py-3 text-sm text-warning">
                 <ShieldAlert size={15} aria-hidden className="mt-0.5 shrink-0" />
                 Entrarás con los mismos permisos del usuario. Todo lo que hagas quedará a su nombre.
             </p>
@@ -244,7 +244,7 @@ function DrawerBody({
                                                 ? "cursor-not-allowed border-rule bg-sunk/50 opacity-70"
                                                 : checked
                                                     ? "cursor-pointer border-primary bg-primary/5"
-                                                    : "cursor-pointer border-rule hover:border-slate-300",
+                                                    : "cursor-pointer border-rule hover:border-input-hover",
                                         )}
                                     >
                                         <input
@@ -261,7 +261,7 @@ function DrawerBody({
                                                 <span className="truncate" title={u.name}>{u.name}</span>
                                                 {u.isAccountOwner && <StatusPill tone="info">Dueño</StatusPill>}
                                             </span>
-                                            <span className="block truncate text-[13px] text-ink-2">
+                                            <span className="block truncate text-sm text-ink-2">
                                                 {[u.email, role].filter(Boolean).join(" · ")}
                                             </span>
                                             {!u.canOpenSession && (
@@ -299,13 +299,13 @@ function DrawerBody({
                                         {reasonMessage ?? "Queda registrado en la sesión de soporte."}
                                     </p>
                                 </div>
-                                <p className="text-[13px] text-ink-2">
+                                <p className="text-sm text-ink-2">
                                     Entrarás como <strong>{selectedUser.name}</strong> en <strong>{client.name}</strong>.
                                     Las acciones quedarán registradas a su nombre.
                                 </p>
                             </>
                         ) : (
-                            <p className="text-[13px] text-ink-2">Elige el usuario como el que quieres entrar.</p>
+                            <p className="text-sm text-ink-2">Elige el usuario como el que quieres entrar.</p>
                         )}
 
                         {error?.field === null && (

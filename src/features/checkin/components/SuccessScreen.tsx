@@ -229,10 +229,10 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             <ProgressBar currentStep={5} totalSteps={5} isSuccess />
 
             <div className="relative mt-4">
-                <div className={`absolute inset-0 ${awaitingSignature ? "bg-amber-400" : "bg-green-500"} blur-3xl opacity-20 rounded-full`} />
-                <div className={`bg-gradient-to-tr w-24 h-24 rounded-full flex items-center justify-center shadow-2xl relative z-10 ${awaitingSignature
-                    ? "from-amber-400 to-amber-500 shadow-amber-500/30"
-                    : "from-green-400 to-green-500 shadow-green-500/30"}`}
+                <div className={`absolute inset-0 ${awaitingSignature ? "bg-warning" : "bg-success"} blur-3xl opacity-20 rounded-full`} />
+                <div className={`w-24 h-24 rounded-full flex items-center justify-center relative z-10 ${awaitingSignature
+                    ? "bg-warning"
+                    : "bg-success"}`}
                 >
                     {awaitingSignature
                         ? <Mail size={48} className="text-white" />
@@ -241,12 +241,12 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             </div>
 
             <div className="space-y-3">
-                <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 leading-tight">
+                <h1 className="text-3xl font-extrabold tracking-tight text-ink leading-tight">
                     {completedCopy?.title ?? (awaitingSignature
                         ? "Tu registro quedó guardado"
                         : isMainDone ? "¡Tu Registro Está Listo!" : "¡Check-in Completado!")}
                 </h1>
-                <p className="text-slate-500 text-base max-w-[300px] mx-auto">
+                <p className="text-ink-3 text-base max-w-[300px] mx-auto">
                     {completedCopy?.description ?? (awaitingSignature
                         ? "Tu check-in se completará cuando firmes el contrato. Te llegará un correo de TuFirma para hacerlo."
                         : isMainDone
@@ -263,8 +263,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 <div className="bg-primary/5 border border-primary/15 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
                     <Mail size={18} className="text-primary flex-shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-sm font-bold text-slate-800">Falta firmar el contrato</p>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-sm font-bold text-ink">Falta firmar el contrato</p>
+                        <p className="text-xs text-ink-3 mt-0.5">
                             Recibirás un correo de TuFirma para firmar tu contrato de forma digital. Tu registro
                             ya quedó guardado.
                         </p>
@@ -274,12 +274,12 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
 
             {/* Contract ready → download the SIGNED PDF (with legal evidence page). */}
             {contractReady && (
-                <div className="bg-green-50 border border-green-100 rounded-2xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
+                <div className="bg-success-sunk border border-success/20 rounded-2xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
                     <div className="flex items-start gap-3">
-                        <CheckCircle2 size={18} className="text-green-500 flex-shrink-0 mt-0.5" />
+                        <CheckCircle2 size={18} className="text-success flex-shrink-0 mt-0.5" />
                         <div>
-                            <p className="text-sm font-bold text-green-800">Contrato firmado</p>
-                            <p className="text-xs text-green-700 mt-0.5">
+                            <p className="text-sm font-bold text-success">Contrato firmado</p>
+                            <p className="text-xs text-success mt-0.5">
                                 Tu contrato firmado está listo{signedAt ? ` (${formatDate(signedAt.slice(0, 10))})` : ""}.
                             </p>
                         </div>
@@ -287,7 +287,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                     <button
                         onClick={handleDownloadSignedContract}
                         disabled={downloadingContract}
-                        className="w-full flex items-center justify-center gap-2 h-11 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="w-full flex items-center justify-center gap-2 h-11 bg-success hover:bg-success/90 text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                         {downloadingContract
                             ? <Loader2 size={16} className="animate-spin" />
@@ -308,18 +308,18 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
               * mirarse es mentirle al huésped.
               */}
             {isContractTransitional(contractState) && (
-                <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
+                <div className="bg-warning-sunk border border-warning/20 rounded-2xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
                     <div className="flex items-start gap-3">
                         {pollStalled
-                            ? <Clock size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                            : <Loader2 size={18} className="text-amber-500 flex-shrink-0 mt-0.5 animate-spin" />}
+                            ? <Clock size={18} className="text-warning flex-shrink-0 mt-0.5" />
+                            : <Loader2 size={18} className="text-warning flex-shrink-0 mt-0.5 animate-spin" />}
                         <div>
-                            <p className="text-sm font-bold text-amber-800">
+                            <p className="text-sm font-bold text-warning">
                                 {contractState === "awaiting_external"
                                     ? "Falta tu firma en TuFirma"
                                     : "Procesando tu contrato…"}
                             </p>
-                            <p className="text-xs text-amber-700 mt-0.5">
+                            <p className="text-xs text-warning mt-0.5">
                                 {contractState === "awaiting_external"
                                     ? "Abre el correo de TuFirma y firma tu contrato. Si no lo ves, revisa la carpeta de spam."
                                     : "Estamos finalizando tu contrato firmado; podrás descargarlo en un momento."}
@@ -331,7 +331,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                             type="button"
                             onClick={handleRefreshContract}
                             disabled={refreshing}
-                            className="w-full flex items-center justify-center gap-2 h-10 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded-xl font-bold text-xs transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 h-10 bg-warning-sunk hover:bg-warning-sunk text-warning rounded-xl font-bold text-xs transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {refreshing
                                 ? <Loader2 size={14} className="animate-spin" />
@@ -349,11 +349,11 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
               * completado" y el huésped se iba creyendo que estaba todo en orden.
               */}
             {contractState === "rejected" && (
-                <div className="bg-red-50 border border-red-100 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
-                    <XCircle size={18} className="text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="bg-danger-sunk border border-danger/20 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
+                    <XCircle size={18} className="text-danger flex-shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-sm font-bold text-red-800">Tu contrato no pudo firmarse</p>
-                        <p className="text-xs text-red-700 mt-0.5">
+                        <p className="text-sm font-bold text-danger">Tu contrato no pudo firmarse</p>
+                        <p className="text-xs text-danger mt-0.5">
                             La firma digital fue rechazada. Tus datos quedaron registrados, pero el
                             anfitrión debe reenviarte el contrato — contáctalo para completarlo.
                         </p>
@@ -362,38 +362,38 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             )}
 
             {isMainDone && pendingGuests > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
-                    <Clock size={18} className="text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="bg-warning-sunk border border-warning/30 rounded-2xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
+                    <Clock size={18} className="text-warning flex-shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-sm font-bold text-amber-800">
+                        <p className="text-sm font-bold text-warning">
                             {pendingGuests} {pendingGuests === 1 ? "huésped pendiente" : "huéspedes pendientes"}
                         </p>
-                        <p className="text-xs text-amber-700 mt-0.5">
+                        <p className="text-xs text-warning mt-0.5">
                             Los accesos de la propiedad estarán disponibles cuando todos completen su registro.
                         </p>
                     </div>
                 </div>
             )}
 
-            <div className="bg-white border border-slate-100 rounded-2xl p-4 w-full max-w-sm space-y-3 shadow-sm">
+            <div className="bg-white border border-rule rounded-2xl p-4 w-full max-w-sm space-y-3 shadow-sm">
                 <div className="flex items-center gap-3 text-left">
                     <div className="bg-primary/10 p-2 rounded-xl">
                         <MapPin size={18} className="text-primary" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-slate-800 text-sm">Tu alojamiento</h3>
-                        <p className="text-xs text-slate-500">{res.uuid.slice(0, 8)}...</p>
+                        <h3 className="font-bold text-ink text-sm">Tu alojamiento</h3>
+                        <p className="text-xs text-ink-3">{res.uuid.slice(0, 8)}...</p>
                     </div>
                 </div>
-                <div className="h-px bg-slate-100" />
+                <div className="h-px bg-sunk" />
                 <div className="grid grid-cols-2 gap-2 text-left">
                     <div className="flex items-center gap-2">
-                        <Calendar size={14} className="text-slate-400" />
-                        <span className="text-xs text-slate-600">{formatDate(res.arrivalDate)} — {formatDate(res.departureDate)}</span>
+                        <Calendar size={14} className="text-ink-3" />
+                        <span className="text-xs text-ink-2">{formatDate(res.arrivalDate)} — {formatDate(res.departureDate)}</span>
                     </div>
                     <div className="flex items-center gap-2 justify-end">
-                        <Users size={14} className="text-slate-400" />
-                        <span className="text-xs text-slate-600">{res.totalGuestsAllowed} huéspedes</span>
+                        <Users size={14} className="text-ink-3" />
+                        <span className="text-xs text-ink-2">{res.totalGuestsAllowed} huéspedes</span>
                     </div>
                 </div>
             </div>
@@ -403,20 +403,20 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             )}
 
             {docsLoading ? (
-                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-3 w-full max-w-sm">
-                    <Loader2 size={18} className="animate-spin text-slate-400" />
-                    <span className="text-xs text-slate-400">Cargando documentos...</span>
+                <div className="bg-sunk/50 border border-rule p-4 rounded-2xl flex items-center gap-3 w-full max-w-sm">
+                    <Loader2 size={18} className="animate-spin text-ink-3" />
+                    <span className="text-xs text-ink-3">Cargando documentos...</span>
                 </div>
             ) : documents.length > 0 ? (
                 <div className="w-full max-w-sm space-y-2">
                     {documents.map((doc) => (
-                        <div key={doc.uuid} className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 text-left">
+                        <div key={doc.uuid} className="bg-sunk/50 border border-rule p-4 rounded-2xl flex items-center gap-4 text-left">
                             <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
                                 <FileText className="text-primary" size={20} />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-slate-800 text-sm truncate">{doc.typeName}</h3>
-                                <p className="text-xs text-slate-500">Descarga tu copia aquí.</p>
+                                <h3 className="font-bold text-ink text-sm truncate">{doc.typeName}</h3>
+                                <p className="text-xs text-ink-3">Descarga tu copia aquí.</p>
                             </div>
                             <button
                                 onClick={() => handleDownloadPdf(doc.uuid)}
@@ -433,31 +433,31 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                     ))}
                 </div>
             ) : (
-                <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 text-left w-full max-w-sm">
+                <div className="bg-sunk/50 border border-rule p-4 rounded-2xl flex items-center gap-4 text-left w-full max-w-sm">
                     <div className="bg-primary/10 p-3 rounded-xl">
                         <Download className="text-primary" size={24} />
                     </div>
                     <div className="flex-1">
-                        <h3 className="font-bold text-slate-800 text-sm">
+                        <h3 className="font-bold text-ink text-sm">
                             {awaitingSignature ? "Registro guardado" : "Check-in Completado"}
                         </h3>
-                        <p className="text-xs text-slate-500">No hay documentos disponibles para descargar.</p>
+                        <p className="text-xs text-ink-3">No hay documentos disponibles para descargar.</p>
                     </div>
                 </div>
             )}
 
 
-            <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl flex items-center gap-4 text-left w-full max-w-sm mt-2">
+            <div className="bg-sunk/50 border border-rule p-4 rounded-2xl flex items-center gap-4 text-left w-full max-w-sm mt-2">
                 <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
                     <Home className="text-primary" size={24} />
                 </div>
                 <div>
-                    <h3 className="font-bold text-slate-800 text-sm">Todo Listo</h3>
-                    <p className="text-xs text-slate-500">Recibirás también esta información por email antes de tu llegada.</p>
+                    <h3 className="font-bold text-ink text-sm">Todo Listo</h3>
+                    <p className="text-xs text-ink-3">Recibirás también esta información por email antes de tu llegada.</p>
                 </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg flex flex-col gap-2">
                     {hasPendingSecondaries && (
                         <Link href={welcomeHref} className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]">
@@ -467,7 +467,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                     )}
                     <Link
                         href={hasPendingSecondaries ? welcomeHref : "/"}
-                        className="w-full flex items-center justify-center gap-2 h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-2 h-12 bg-ink hover:bg-ink/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
                     >
                         {hasPendingSecondaries ? "Cerrar y volver al inicio" : "Cerrar"}
                     </Link>

@@ -749,11 +749,11 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Section: Property & Source ─── */}
                         <div className="space-y-1.5 pt-2">
-                            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-secondary flex items-center gap-2">
+                            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-secondary flex items-center gap-2">
                                 <Home size={14} />
                                 Alojamiento y Canal
                             </h3>
-                            <div className="h-px bg-gradient-to-r from-brand-blue/20 to-transparent w-full" />
+                            <div className="h-px w-full bg-rule" />
                         </div>
 
                         {isCreate && (
@@ -919,11 +919,11 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Section: Dates ─── */}
                         <div className="space-y-1.5 pt-2">
-                            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                                 <CalendarIcon size={14} />
                                 Fechas y Huéspedes
                             </h3>
-                            <div className="h-px bg-gradient-to-r from-brand-purple/20 to-transparent w-full" />
+                            <div className="h-px w-full bg-rule" />
                         </div>
 
                         <FormField
@@ -1048,11 +1048,11 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Contact Info ─── */}
                         <div className="space-y-1.5 pt-2">
-                            <h3 className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
+                            <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-primary flex items-center gap-2">
                                 <Phone size={14} />
                                 Contacto y Enlace Móvil
                             </h3>
-                            <div className="h-px bg-gradient-to-r from-brand-purple/20 to-transparent w-full" />
+                            <div className="h-px w-full bg-rule" />
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -1108,7 +1108,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                 <Send size={15} className="text-primary" />
                                                 Enviar link de check-in ahora
                                             </FormLabel>
-                                            <FormDescription className="text-[11px] text-ink-3">
+                                            <FormDescription className="text-xs text-ink-3">
                                                 Se enviará un email a <span className="font-medium">{form.watch("emailGuest") || "..."}</span> con el link para completar el check-in online
                                             </FormDescription>
                                         </div>

@@ -25,7 +25,7 @@ export function ProgressRing({
         >
             {/* Background circle */}
             <circle
-                className="text-slate-200"
+                className="text-ink-4"
                 strokeWidth={strokeWidth}
                 stroke="currentColor"
                 fill="transparent"
@@ -37,7 +37,7 @@ export function ProgressRing({
             <circle
                 className={cn(
                     "transition-all duration-500 ease-in-out",
-                    progress === 100 ? "text-green-500" : "text-secondary"
+                    progress === 100 ? "text-success" : "text-secondary"
                 )}
                 strokeWidth={strokeWidth}
                 strokeDasharray={circumference}

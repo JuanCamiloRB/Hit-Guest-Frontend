@@ -33,15 +33,15 @@ export function DocumentTypeNumberFields({
                 required
             />
             <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-slate-700">
-                    Número de documento<span className="text-red-400 ml-0.5">*</span>
+                <label className="text-sm font-semibold text-ink-2">
+                    Número de documento<span className="text-danger ml-0.5">*</span>
                 </label>
                 <input
                     type="text"
                     inputMode="numeric"
                     value={documentNumber}
                     onChange={(e) => onDocumentNumberChange(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
+                    className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                     placeholder="Ej. 1234567890"
                 />
             </div>

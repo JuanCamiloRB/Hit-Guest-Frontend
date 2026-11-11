@@ -96,27 +96,27 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
     const editingEntry = editingListing ? entries[editingListing.uuid] : undefined
 
     return (
-        <div className="border-t border-slate-100 pt-2">
+        <div className="border-t border-rule pt-2">
             {/* Toggle header */}
             <button
                 type="button"
                 onClick={() => void handleToggleExpand()}
-                className="w-full flex items-center justify-between px-1 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-700 rounded-lg hover:bg-slate-50 transition-colors group"
+                className="w-full flex items-center justify-between px-1 py-1.5 text-xs font-semibold text-ink-3 hover:text-ink-2 rounded-lg hover:bg-sunk/50 transition-colors group"
             >
                 <div className="flex items-center gap-2">
-                    <Building2 size={13} className="text-slate-400 group-hover:text-slate-600" />
+                    <Building2 size={13} className="text-ink-3 group-hover:text-ink-2" />
                     <span>Overrides por unidad</span>
                     {overrideCount > 0 && (
-                        <Badge variant="outline" className="h-4 text-[9px] bg-primary/10 text-primary border-primary/20 font-bold uppercase">
+                        <Badge variant="outline" className="h-4 text-xs bg-primary/10 text-primary border-primary/20 font-bold uppercase">
                             {overrideCount} configurada{overrideCount > 1 ? "s" : ""}
                         </Badge>
                     )}
                     {listings.length > 0 && overrideCount === 0 && allLoaded && (
-                        <span className="text-[10px] text-slate-400 font-normal">Todas heredan de la propiedad</span>
+                        <span className="text-xs text-ink-3 font-normal">Todas heredan de la propiedad</span>
                     )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                    {loading && <Loader2 size={12} className="animate-spin text-slate-400" />}
+                    {loading && <Loader2 size={12} className="animate-spin text-ink-3" />}
                     {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </div>
             </button>
@@ -167,12 +167,12 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                     return (
                                         <div
                                             key={listing.uuid}
-                                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50/60"
+                                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-warning/30 bg-warning-sunk/60"
                                         >
-                                            <div className="h-2 w-2 rounded-full shrink-0 bg-amber-400" />
+                                            <div className="h-2 w-2 rounded-full shrink-0 bg-warning" />
                                             <div className="flex-1 min-w-0">
-                                                <span className="text-xs font-semibold text-slate-700 truncate">{listing.name}</span>
-                                                <p className="text-[10px] text-amber-700">No se pudo cargar</p>
+                                                <span className="text-xs font-semibold text-ink-2 truncate">{listing.name}</span>
+                                                <p className="text-xs text-warning">No se pudo cargar</p>
                                             </div>
                                             <Button
                                                 type="button"
@@ -198,56 +198,56 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                         className={cn(
                                             "w-full flex items-center gap-3 px-3 py-2 rounded-lg border text-left transition-all hover:shadow-sm disabled:cursor-wait disabled:opacity-70",
                                             isDisabledHere
-                                                ? "border-red-200 bg-red-50/60 hover:border-red-300"
+                                                ? "border-danger/30 bg-danger-sunk/60 hover:border-danger/40"
                                                 : hasParams
                                                     ? "border-primary/20 bg-primary/5 hover:border-primary/20"
-                                                    : "border-slate-100 bg-white hover:border-slate-200"
+                                                    : "border-rule bg-white hover:border-rule"
                                         )}
                                     >
                                         <div className={cn(
                                             "h-2 w-2 rounded-full shrink-0",
-                                            isDisabledHere ? "bg-red-400" : hasParams ? "bg-primary/100" : "bg-slate-300"
+                                            isDisabledHere ? "bg-danger" : hasParams ? "bg-primary" : "bg-ink-4"
                                         )} />
 
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="text-xs font-semibold text-slate-700 truncate">
+                                                <span className="text-xs font-semibold text-ink-2 truncate">
                                                     {listing.name}
                                                 </span>
                                                 {listing.internalName && (
-                                                    <span className="text-[10px] text-slate-400 font-normal">
+                                                    <span className="text-xs text-ink-3 font-normal">
                                                         {listing.internalName}
                                                     </span>
                                                 )}
                                                 {hasToken && (
-                                                    <span className="inline-flex items-center gap-0.5 text-[9px] text-slate-500">
+                                                    <span className="inline-flex items-center gap-0.5 text-xs text-ink-3">
                                                         <Lock size={9} /> token
                                                     </span>
                                                 )}
                                             </div>
 
                                             {!isLoaded ? (
-                                                <span className="text-[10px] text-slate-400">Cargando...</span>
+                                                <span className="text-xs text-ink-3">Cargando...</span>
                                             ) : identity ? (
                                                 <span className={cn(
-                                                    "text-[10px] font-medium",
-                                                    identity.tone === "disabled" ? "text-red-500"
+                                                    "text-xs font-medium",
+                                                    identity.tone === "disabled" ? "text-danger"
                                                         : identity.tone === "custom" ? "text-primary"
-                                                            : "text-slate-400",
+                                                            : "text-ink-3",
                                                 )}>
                                                     {identity.label}
                                                 </span>
                                             ) : isDisabledHere ? (
                                                 <div className="flex items-center gap-1 mt-0.5">
-                                                    <Ban size={10} className="text-red-400" />
-                                                    <span className="text-[10px] text-red-500 font-medium">
+                                                    <Ban size={10} className="text-danger" />
+                                                    <span className="text-xs text-danger font-medium">
                                                         Desactivada en esta unidad
                                                     </span>
                                                 </div>
                                             ) : override?.contractRouting?.replacedTexts.length ? (
-                                                <span className="text-[10px] font-medium text-amber-700">Textos propios sin aplicar · revisar</span>
+                                                <span className="text-xs font-medium text-warning">Textos propios sin aplicar · revisar</span>
                                             ) : ownContract ? (
-                                                <span className="text-[10px] text-primary font-medium">Contrato propio de la unidad</span>
+                                                <span className="text-xs text-primary font-medium">Contrato propio de la unidad</span>
                                             ) : hasParams ? (
                                                 <div className="flex flex-wrap gap-x-3 mt-0.5">
                                                     {fieldSchema.map(field => {
@@ -259,7 +259,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                                 ? `${val.length} elemento${val.length > 1 ? "s" : ""}`
                                                                 : String(val)
                                                         return (
-                                                            <span key={field.key} className="text-[10px] text-primary font-mono">
+                                                            <span key={field.key} className="text-xs text-primary font-mono">
                                                                 {field.key}: {display}
                                                             </span>
                                                         )
@@ -269,17 +269,17 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                 // Una fila activa sin parámetros NO es herencia: existe un
                                                 // override y su estado manda (contrato de overrides). Se
                                                 // quita con «Volver a heredar» en el modal.
-                                                <span className="text-[10px] text-slate-500">Override activo sin parámetros propios</span>
+                                                <span className="text-xs text-ink-3">Override activo sin parámetros propios</span>
                                             ) : (
-                                                <span className="text-[10px] text-slate-400">Hereda de la propiedad</span>
+                                                <span className="text-xs text-ink-3">Hereda de la propiedad</span>
                                             )}
                                         </div>
 
-                                        <Settings2 size={12} className="text-slate-300 shrink-0" />
+                                        <Settings2 size={12} className="text-ink-4 shrink-0" />
                                     </button>
                                 )
                             })}
-                            <p className="text-[10px] text-slate-400 text-center py-1">
+                            <p className="text-xs text-ink-3 text-center py-1">
                                 Click en una unidad para editar su override
                             </p>
                         </>

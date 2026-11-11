@@ -51,12 +51,12 @@ export default function CheckinError({ error, reset }: CheckinErrorProps) {
 
     return (
         <main className="flex min-h-[70vh] flex-col items-center justify-center gap-6 px-6 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-amber-100 bg-amber-50">
-                <AlertTriangle className="text-amber-500" size={34} />
+            <div className="flex h-20 w-20 items-center justify-center rounded-full border border-warning/20 bg-warning-sunk">
+                <AlertTriangle className="text-warning" size={34} />
             </div>
             <div className="max-w-sm space-y-2">
-                <h1 className="text-xl font-bold text-slate-900">No pudimos mostrar este paso</h1>
-                <p className="text-sm text-slate-500">
+                <h1 className="text-xl font-bold text-ink">No pudimos mostrar este paso</h1>
+                <p className="text-sm text-ink-3">
                     Intenta cargar nuevamente. Si ya habías enviado información, no repitas el proceso hasta
                     confirmar su estado; si el problema continúa, contacta al alojamiento.
                 </p>
@@ -64,7 +64,7 @@ export default function CheckinError({ error, reset }: CheckinErrorProps) {
                     códigos SETUP-* del formulario de garantía. Solo existe para
                     errores de servidor (Next la genera como `digest`). */}
                 {error.digest && (
-                    <p className="text-xs text-slate-400">Referencia: {error.digest}</p>
+                    <p className="text-xs text-ink-3">Referencia: {error.digest}</p>
                 )}
             </div>
             <div className="flex w-full max-w-sm flex-col gap-3">
@@ -77,7 +77,7 @@ export default function CheckinError({ error, reset }: CheckinErrorProps) {
                 </button>
                 <Link
                     href={checkinHome}
-                    className="flex h-12 items-center justify-center rounded-xl bg-slate-100 font-semibold text-slate-700"
+                    className="flex h-12 items-center justify-center rounded-xl bg-sunk font-semibold text-ink-2"
                 >
                     Volver al inicio
                 </Link>

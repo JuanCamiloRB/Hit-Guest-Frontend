@@ -40,16 +40,16 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
 
     return (
         <section aria-labelledby="access-instructions-title" className="w-full max-w-sm space-y-4 text-left">
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="rounded-2xl border border-rule bg-white p-5 shadow-sm">
                 <div className="flex items-start gap-3">
-                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${unlocked ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"}`}>
+                    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${unlocked ? "bg-success-sunk text-success" : "bg-sunk text-ink-3"}`}>
                         {unlocked ? <MapPinned size={21} /> : <LockKeyhole size={21} />}
                     </span>
                     <div>
-                        <h2 id="access-instructions-title" className="font-bold text-slate-900">
+                        <h2 id="access-instructions-title" className="font-bold text-ink">
                             Instrucciones de acceso
                         </h2>
-                        <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                        <p className="mt-1 text-xs leading-relaxed text-ink-3">
                             {unlocked
                                 ? "Consúltalas cuando quieras volviendo a abrir este mismo link."
                                 : "Estarán disponibles aquí cuando todos los huéspedes terminen su registro."}
@@ -58,16 +58,16 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
                 </div>
 
                 {unlocked && (
-                    <div className="mt-4 space-y-2 border-t border-slate-100 pt-4">
+                    <div className="mt-4 space-y-2 border-t border-rule pt-4">
                         {instructions.map((document) => (
                             <Link
                                 key={document.uuid}
                                 href={`/checkin/${portal.reservation.uuid}/documents/${document.uuid}`}
-                                className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3 transition-colors hover:border-primary/20 hover:bg-primary/5"
+                                className="flex items-center justify-between gap-3 rounded-xl border border-rule bg-sunk/50 px-4 py-3 transition-colors hover:border-primary/20 hover:bg-primary/5"
                             >
                                 <span className="flex min-w-0 items-center gap-3">
                                     <FileText size={17} className="shrink-0 text-primary" />
-                                    <span className="truncate text-sm font-semibold text-slate-700">
+                                    <span className="truncate text-sm font-semibold text-ink-2">
                                         {document.type || "Instrucciones"}
                                     </span>
                                 </span>
@@ -76,7 +76,7 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
                         ))}
 
                         {!hasAccessContent && (
-                            <div className="flex items-start gap-3 rounded-xl bg-amber-50 px-4 py-3 text-amber-800">
+                            <div className="flex items-start gap-3 rounded-xl bg-warning-sunk px-4 py-3 text-warning">
                                 <KeyRound size={17} className="mt-0.5 shrink-0" />
                                 <p className="text-xs leading-relaxed">
                                     El alojamiento todavía no ha publicado instrucciones o códigos para esta reserva.

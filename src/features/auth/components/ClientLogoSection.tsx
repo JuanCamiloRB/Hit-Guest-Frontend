@@ -170,7 +170,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
                         )}
                     </div>
                     {!clientUuid && (
-                        <p className="text-[11px] text-warning">
+                        <p className="text-xs text-warning">
                             No se pudo identificar la cuenta; recarga la página para subir un logo.
                         </p>
                     )}

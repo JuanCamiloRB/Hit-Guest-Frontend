@@ -120,7 +120,7 @@ export function AuthenticatedImage({ src, alt, className }: AuthenticatedImagePr
                 title={detail}
             >
                 <ImageOff size={18} aria-hidden className="text-ink-4" />
-                <span className="text-[11px] leading-tight text-ink-3">{short}</span>
+                <span className="text-xs leading-tight text-ink-3">{short}</span>
             </div>
         )
     }

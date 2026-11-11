@@ -897,37 +897,37 @@ export function VerifyScreen({
                 </div>
                 <div className="relative mt-8">
                     <div className="absolute inset-0 bg-primary blur-3xl opacity-20 rounded-full" />
-                    <div className="bg-primary/10 w-24 h-24 rounded-full flex items-center justify-center shadow-xl shadow-brand-purple/10 relative z-10 border border-primary/20">
+                    <div className="bg-primary/10 w-24 h-24 rounded-full flex items-center justify-center shadow-xl relative z-10 border border-primary/20">
                         {progress >= 100
-                            ? <CheckCircle2 size={40} className="text-green-500" />
+                            ? <CheckCircle2 size={40} className="text-success" />
                             : <Loader2 size={40} className="text-primary animate-spin" />
                         }
                     </div>
                 </div>
                 <div className="space-y-3 w-full max-w-xs">
-                    <h2 className="text-2xl font-bold tracking-tight text-slate-900">{loadingTitle}</h2>
+                    <h2 className="text-2xl font-bold tracking-tight text-ink">{loadingTitle}</h2>
                     {verificationState === "waiting_portal" && portalVerifStatus === "pending" ? (
                         /* Sin señal del portal todavía: la frase avanza con el tiempo
                            para que la espera no parezca un loop (Didier, 2026-09-06).
                            Cuando el portal reporta una etapa real, esa manda (abajo). */
                         <>
-                            <ReassuranceTicker script={DIDIT_WAIT_SCRIPT} className="text-slate-500 text-sm" />
-                            <p className="text-xs text-slate-400">Mantén esta pantalla abierta.</p>
+                            <ReassuranceTicker script={DIDIT_WAIT_SCRIPT} className="text-ink-3 text-sm" />
+                            <p className="text-xs text-ink-3">Mantén esta pantalla abierta.</p>
                         </>
                     ) : (
-                        <p className="text-slate-500 text-sm">{loadingSubtitle}</p>
+                        <p className="text-ink-3 text-sm">{loadingSubtitle}</p>
                     )}
                     {(verificationState === "polling" || verificationState === "waiting_portal") && diditHint && (
-                        <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800" role="status">
+                        <p className="mt-4 rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning" role="status">
                             Didit reportó: {diditHint} Estamos confirmando el resultado con el servidor.
                         </p>
                     )}
                     {verificationState === "polling" && (
                         <>
-                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden mt-6">
+                            <div className="h-2 w-full bg-sunk rounded-full overflow-hidden mt-6">
                                 <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
                             </div>
-                            <p className="text-xs text-slate-400 font-medium text-right mt-1">{progress}%</p>
+                            <p className="text-xs text-ink-3 font-medium text-right mt-1">{progress}%</p>
                         </>
                     )}
                 </div>
@@ -943,32 +943,32 @@ export function VerifyScreen({
                 <ProgressBar currentStep={2} totalSteps={isSecondary ? 3 : 5} />
 
                 <div className="space-y-2">
-                    <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
+                    <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">
                         Confirma tus datos
                     </h1>
-                    <p className="text-slate-500 text-sm">
+                    <p className="text-ink-3 text-sm">
                         Hemos extraído esta información de tu documento. Corrige cualquier error si es necesario.
                     </p>
                 </div>
 
-                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
-                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2 border-b border-rule pb-3">
                         <FileText size={20} className="text-primary" />
-                        <h2 className="font-bold text-slate-800">Datos Extraídos</h2>
+                        <h2 className="font-bold text-ink">Datos Extraídos</h2>
                     </div>
                     
                     <div className="space-y-4">
                         <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-slate-700">Nombres</label>
-                            <input type="text" value={editOcr.firstName} onChange={e => setEditOcr({...editOcr, firstName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                            <label className="text-sm font-semibold text-ink-2">Nombres</label>
+                            <input type="text" value={editOcr.firstName} onChange={e => setEditOcr({...editOcr, firstName: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-slate-700">Apellidos</label>
-                            <input type="text" value={editOcr.lastName} onChange={e => setEditOcr({...editOcr, lastName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                            <label className="text-sm font-semibold text-ink-2">Apellidos</label>
+                            <input type="text" value={editOcr.lastName} onChange={e => setEditOcr({...editOcr, lastName: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-slate-700">Número de Documento</label>
-                            <input type="text" value={editOcr.documentNumber} onChange={e => setEditOcr({...editOcr, documentNumber: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                            <label className="text-sm font-semibold text-ink-2">Número de Documento</label>
+                            <input type="text" value={editOcr.documentNumber} onChange={e => setEditOcr({...editOcr, documentNumber: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                         </div>
                         {/* Segmentadas (DD/MM/AAAA): son fechas que el huésped está
                             LEYENDO del documento — se teclean, no se navegan por un
@@ -990,9 +990,9 @@ export function VerifyScreen({
                     </div>
                 </div>
 
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center gap-3">
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center gap-3">
                     <div className="w-full max-w-lg flex gap-3">
-                        <button onClick={handleRetry} className="flex-1 h-14 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-lg transition-all active:scale-[0.98]">
+                        <button onClick={handleRetry} className="flex-1 h-14 bg-sunk hover:bg-sunk text-ink-2 rounded-xl font-bold text-lg transition-all active:scale-[0.98]">
                             Reintentar
                         </button>
                         <button
@@ -1001,7 +1001,7 @@ export function VerifyScreen({
                                 !isValidDateValue(editOcr.dateOfBirth, localDateValue())
                                 || (!!editOcr.expirationDate && !isValidDateValue(editOcr.expirationDate))
                             }
-                            className="flex-[2] flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="flex-[2] flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             <CheckCircle2 size={20} /> Continuar
                         </button>
@@ -1015,16 +1015,16 @@ export function VerifyScreen({
     if (verificationState === "stale") {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
-                <div className="bg-amber-50 w-24 h-24 rounded-full flex items-center justify-center border border-amber-100">
-                    <Clock size={40} className="text-amber-400" />
+                <div className="bg-warning-sunk w-24 h-24 rounded-full flex items-center justify-center border border-warning/20">
+                    <Clock size={40} className="text-warning" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-slate-900">No pudimos confirmar tu identidad</h2>
+                    <h2 className="text-xl font-bold text-ink">No pudimos confirmar tu identidad</h2>
                     {/* En este estado el backend no reporta la causa (`isStale` llega
                         sin motivo), así que el copy dice «puede deberse a» — nombra la
                         causa más frecuente sin afirmarla (pedido de producto,
                         2026-09-04, anexo al caso del escaneo con el lente sucio). */}
-                    <p className="text-slate-500 text-sm max-w-xs">
+                    <p className="text-ink-3 text-sm max-w-xs">
                         Puede deberse a una captura del documento poco nítida, con poca luz
                         o con sombras. Puedes continuar la verificación donde quedó —
                         cuida la nitidez y la luz de la imagen. Si sigue sin funcionar,
@@ -1053,7 +1053,7 @@ export function VerifyScreen({
                         // sesión en sí sigue siendo del backend.
                         try { localStorage.removeItem("checkin-pending-didit") } catch {}
                     }}
-                    className="flex items-center gap-2 h-12 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-all active:scale-[0.98]"
+                    className="flex items-center gap-2 h-12 px-6 bg-sunk hover:bg-sunk text-ink-2 rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
                     <ArrowLeft size={18} />
                     Volver al inicio
@@ -1069,12 +1069,12 @@ export function VerifyScreen({
     if (verificationState === "expired") {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
-                <div className="bg-amber-50 w-24 h-24 rounded-full flex items-center justify-center border border-amber-100">
-                    <RotateCcw size={40} className="text-amber-400" />
+                <div className="bg-warning-sunk w-24 h-24 rounded-full flex items-center justify-center border border-warning/20">
+                    <RotateCcw size={40} className="text-warning" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-slate-900">Tu sesión de verificación expiró</h2>
-                    <p className="text-slate-500 text-sm max-w-xs">
+                    <h2 className="text-xl font-bold text-ink">Tu sesión de verificación expiró</h2>
+                    <p className="text-ink-3 text-sm max-w-xs">
                         La verificación caduca después de un tiempo. Reiníciala para obtener una nueva.
                         Si el problema persiste, contacta al anfitrión.
                     </p>
@@ -1101,22 +1101,22 @@ export function VerifyScreen({
         const attemptsNotice = attemptsRemainingNotice(failureAttemptsRemaining)
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 pb-24 text-center px-4 animate-in fade-in duration-500">
-                <div className="bg-red-50 w-24 h-24 rounded-full flex items-center justify-center border border-red-100">
-                    <XCircle size={40} className="text-red-400" />
+                <div className="bg-danger-sunk w-24 h-24 rounded-full flex items-center justify-center border border-danger/20">
+                    <XCircle size={40} className="text-danger" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-slate-900">Verificación no exitosa</h2>
-                    <p className="text-slate-500 text-sm max-w-xs">
+                    <h2 className="text-xl font-bold text-ink">Verificación no exitosa</h2>
+                    <p className="text-ink-3 text-sm max-w-xs">
                         {failureMessage || "No pudimos verificar tu identidad. Por favor intenta de nuevo con fotos más claras."}
                     </p>
                     {!isHardStop && attemptsNotice && (
-                        <p className="text-xs font-semibold text-amber-600">{attemptsNotice}</p>
+                        <p className="text-xs font-semibold text-warning">{attemptsNotice}</p>
                     )}
                 </div>
                 {isHardStop ? (
                     <Link
                         href={basePath}
-                        className="flex items-center gap-2 h-12 px-6 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-all active:scale-[0.98]"
+                        className="flex items-center gap-2 h-12 px-6 bg-sunk hover:bg-sunk text-ink-2 rounded-xl font-semibold transition-all active:scale-[0.98]"
                     >
                         <ArrowLeft size={18} />
                         Volver al inicio
@@ -1144,7 +1144,7 @@ export function VerifyScreen({
     if (!verification) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4 text-center px-4">
-                <p className="text-slate-500 text-sm">Sesión expirada. Vuelve a identificarte.</p>
+                <p className="text-ink-3 text-sm">Sesión expirada. Vuelve a identificarte.</p>
                 <Link href={`${basePath}/identify`} className="text-primary font-semibold underline">
                     Volver al inicio
                 </Link>
@@ -1160,19 +1160,19 @@ export function VerifyScreen({
             <div className="flex items-center justify-between">
                 {/* Back goes to the welcome hub, not /identify — re-identifying an existing
                     guest hits "document already registered" and lands on an empty form. */}
-                <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+                <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                     <ArrowLeft size={20} />
                 </Link>
-                <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">
                     {isSecondary ? "Paso 2 de 4" : "Paso 3 de 6"}
                 </div>
             </div>
 
             <div className="space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
+                <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">
                     {isCaptureMode ? "Sube tu documento" : "Verifica tu Identidad"}
                 </h1>
-                <p className="text-slate-500 text-sm">
+                <p className="text-ink-3 text-sm">
                     {verification.type === "session"
                         ? (verification.sessionType === "kyc"
                             ? "Completa la verificación con Didit en un solo proceso: tu documento y una selfie."
@@ -1190,9 +1190,9 @@ export function VerifyScreen({
                 error — se queda a medias y deja al huésped esperando. Prevenirlo
                 es más barato que recuperarlo. Aplica a los dos flujos con cámara. */}
             {(verification.type === "session" || isDocumentFlow) && (
-                <div className="flex items-start gap-2.5 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3">
-                    <Camera size={16} className="mt-0.5 shrink-0 text-amber-500" aria-hidden />
-                    <p className="text-sm text-amber-800">
+                <div className="flex items-start gap-2.5 rounded-xl border border-warning/20 bg-warning-sunk px-4 py-3">
+                    <Camera size={16} className="mt-0.5 shrink-0 text-warning" aria-hidden />
+                    <p className="text-sm text-warning">
                         Antes de empezar, <span className="font-semibold">limpia el lente de tu cámara</span>{" "}
                         y ubícate en un lugar <span className="font-semibold">con buena luz</span>.
                         {/* Pedido de Ricardo (2026-10-21): las gafas son un motivo común de
@@ -1210,21 +1210,21 @@ export function VerifyScreen({
             {verification.type === "session" && (() => {
                 const copy = diditCopy[verification.sessionType]
                 return (
-                    <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm text-center space-y-6">
-                        <div className="bg-slate-50 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto border border-slate-100 shadow-inner">
-                            <span className="text-2xl font-black text-slate-800 tracking-tighter">Didit.</span>
+                    <div className="bg-white border border-rule rounded-2xl p-6 shadow-sm text-center space-y-6">
+                        <div className="bg-sunk/50 w-20 h-20 rounded-2xl flex items-center justify-center mx-auto border border-rule shadow-inner">
+                            <span className="text-2xl font-black text-ink tracking-tighter">Didit.</span>
                         </div>
                         <div className="space-y-2">
-                            <h3 className="font-bold text-slate-800">{copy.title}</h3>
-                            <p className="text-sm text-slate-500">{copy.description}</p>
+                            <h3 className="font-bold text-ink">{copy.title}</h3>
+                            <p className="text-sm text-ink-3">{copy.description}</p>
                         </div>
-                        <p className="text-xs text-slate-400">
+                        <p className="text-xs text-ink-3">
                             El resultado se detecta automáticamente al completar la verificación.
                         </p>
                         <button
                             type="button"
                             onClick={handleResetVerification}
-                            className="text-xs text-slate-400 underline hover:text-primary transition-colors"
+                            className="text-xs text-ink-3 underline hover:text-primary transition-colors"
                         >
                             ¿La ventana aparece como &quot;sesión expirada&quot;? Reinicia tu verificación
                         </button>
@@ -1238,9 +1238,9 @@ export function VerifyScreen({
                 <div className="space-y-4">
                     {/* A retryable error keeps us in the capture view; show why inline. */}
                     {failureMessage && (
-                        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                        <div className="rounded-xl border border-danger/30 bg-danger-sunk px-4 py-3 text-sm text-danger">
                             <div className="flex items-start gap-2">
-                                <XCircle size={16} className="mt-0.5 shrink-0 text-red-400" />
+                                <XCircle size={16} className="mt-0.5 shrink-0 text-danger" />
                                 <span>{failureMessage}</span>
                             </div>
                             {docErrorType === "UNSUPPORTED_DOCUMENT_LAYOUT" && (
@@ -1255,23 +1255,23 @@ export function VerifyScreen({
                     )}
 
                     {captureStep === "documents" ? (
-                        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
+                        <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
                             {/* Front photo */}
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-slate-700">
-                                    Foto Frontal<span className="text-red-400 ml-0.5">*</span>
+                                <label className="text-sm font-semibold text-ink-2">
+                                    Foto Frontal<span className="text-danger ml-0.5">*</span>
                                 </label>
                                 {frontFile ? (
-                                    <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                                    <div className="flex items-center justify-between bg-success-sunk border border-success/30 rounded-xl px-4 py-3">
                                         <div className="flex items-center gap-2">
-                                            <CheckCircle2 size={18} className="text-green-500" />
-                                            <span className="text-sm text-slate-700 truncate max-w-[180px]">{frontFile.name}</span>
+                                            <CheckCircle2 size={18} className="text-success" />
+                                            <span className="text-sm text-ink-2 truncate max-w-[180px]">{frontFile.name}</span>
                                         </div>
-                                        <button onClick={() => setFrontFile(null)} className="text-xs text-red-400 font-medium">Quitar</button>
+                                        <button onClick={() => setFrontFile(null)} className="text-xs text-danger font-medium">Quitar</button>
                                     </div>
                                 ) : (
-                                    <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-slate-500 cursor-pointer group">
-                                        <div className="bg-slate-100 p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                    <label className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
+                                        <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                             <Camera size={24} />
                                         </div>
                                         <span className="text-sm font-medium">Tomar foto o seleccionar</span>
@@ -1289,20 +1289,20 @@ export function VerifyScreen({
                             {/* Back photo — hidden for single-sided documents (passport, etc.) */}
                             {requiresBackImage ? (
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-slate-700">
-                                        Foto Reverso<span className="text-red-400 ml-0.5">*</span>
+                                    <label className="text-sm font-semibold text-ink-2">
+                                        Foto Reverso<span className="text-danger ml-0.5">*</span>
                                     </label>
                                     {backFile ? (
-                                        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                                        <div className="flex items-center justify-between bg-success-sunk border border-success/30 rounded-xl px-4 py-3">
                                             <div className="flex items-center gap-2">
-                                                <CheckCircle2 size={18} className="text-green-500" />
-                                                <span className="text-sm text-slate-700 truncate max-w-[180px]">{backFile.name}</span>
+                                                <CheckCircle2 size={18} className="text-success" />
+                                                <span className="text-sm text-ink-2 truncate max-w-[180px]">{backFile.name}</span>
                                             </div>
-                                            <button onClick={() => setBackFile(null)} className="text-xs text-red-400 font-medium">Quitar</button>
+                                            <button onClick={() => setBackFile(null)} className="text-xs text-danger font-medium">Quitar</button>
                                         </div>
                                     ) : (
-                                        <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-slate-500 cursor-pointer group">
-                                            <div className="bg-slate-100 p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                        <label className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
+                                            <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                                 <Upload size={24} />
                                             </div>
                                             <span className="text-sm font-medium">Subir reverso</span>
@@ -1317,40 +1317,40 @@ export function VerifyScreen({
                                     )}
                                 </div>
                             ) : (
-                                <p className="text-xs text-slate-400 text-center bg-slate-50 rounded-xl py-3 px-4">
+                                <p className="text-xs text-ink-3 text-center bg-sunk/50 rounded-xl py-3 px-4">
                                     Este documento solo requiere la imagen frontal.
                                 </p>
                             )}
                         </div>
                     ) : (
-                        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
+                        <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-semibold text-slate-700">
-                                    Selfie<span className="text-red-400 ml-0.5">*</span>
+                                <label className="text-sm font-semibold text-ink-2">
+                                    Selfie<span className="text-danger ml-0.5">*</span>
                                 </label>
                                 <button
                                     type="button"
                                     onClick={() => { setFailureMessage(null); setDocErrorType(null); setCaptureStep("documents") }}
-                                    className="text-xs font-medium text-slate-400 hover:text-primary transition-colors"
+                                    className="text-xs font-medium text-ink-3 hover:text-primary transition-colors"
                                 >
                                     ← Documentos
                                 </button>
                             </div>
-                            <p className="text-xs text-slate-500 -mt-1">
+                            <p className="text-xs text-ink-3 -mt-1">
                                 Tómate una selfie de frente, con buena luz y sin gafas ni gorra, para confirmar que eres la persona del documento.
                             </p>
 
                             {selfieFile ? (
-                                <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                                <div className="flex items-center justify-between bg-success-sunk border border-success/30 rounded-xl px-4 py-3">
                                     <div className="flex items-center gap-2">
-                                        <CheckCircle2 size={18} className="text-green-500" />
-                                        <span className="text-sm text-slate-700 truncate max-w-[180px]">{selfieFile.name}</span>
+                                        <CheckCircle2 size={18} className="text-success" />
+                                        <span className="text-sm text-ink-2 truncate max-w-[180px]">{selfieFile.name}</span>
                                     </div>
-                                    <button onClick={() => setSelfieFile(null)} className="text-xs text-red-400 font-medium">Quitar</button>
+                                    <button onClick={() => setSelfieFile(null)} className="text-xs text-danger font-medium">Quitar</button>
                                 </div>
                             ) : (
-                                <label className="w-full h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-slate-500 cursor-pointer group">
-                                    <div className="bg-slate-100 p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                <label className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
+                                    <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                         <Camera size={24} />
                                     </div>
                                     <span className="text-sm font-medium">Tomar selfie</span>
@@ -1365,7 +1365,7 @@ export function VerifyScreen({
                                 </label>
                             )}
 
-                            <ul className="text-xs text-slate-500 space-y-1.5 bg-slate-50 rounded-xl p-3">
+                            <ul className="text-xs text-ink-3 space-y-1.5 bg-sunk/50 rounded-xl p-3">
                                 <li>· Mira directamente a la cámara</li>
                                 <li>· Asegúrate de tener buena iluminación, sin sombras</li>
                                 <li>· Sin lentes de sol ni gorras</li>
@@ -1376,12 +1376,12 @@ export function VerifyScreen({
                 </div>
             )}
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     {verification.type === "session" ? (
                         <button
                             onClick={handleSessionVerification}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
                         >
                             {diditCopy[verification.sessionType].button}
                         </button>
@@ -1389,7 +1389,7 @@ export function VerifyScreen({
                         <button
                             onClick={handleDocumentsContinue}
                             disabled={!frontFile || (requiresBackImage && !backFile)}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {isCaptureMode ? "Enviar fotos" : "Continuar"}
                         </button>
@@ -1397,7 +1397,7 @@ export function VerifyScreen({
                         <button
                             onClick={handleDocumentUpload}
                             disabled={!selfieFile}
-                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             Analizar Documento
                         </button>

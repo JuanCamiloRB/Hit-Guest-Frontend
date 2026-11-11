@@ -142,9 +142,9 @@ export function PropertiesLocation() {
     }
 
     return (
-        <Card className="border-slate-200 shadow-sm">
-            <CardHeader className="border-b bg-slate-50/50">
-                <CardTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+        <Card className="border-rule shadow-sm">
+            <CardHeader className="border-b bg-sunk/50">
+                <CardTitle className="text-xl font-bold text-ink flex items-center gap-2">
                     <MapPin className="h-5 w-5 text-primary" />
                     Ubicación de la Propiedad
                 </CardTitle>
@@ -158,7 +158,7 @@ export function PropertiesLocation() {
                     name="address"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-slate-700 font-semibold">
+                            <FormLabel className="text-ink-2 font-semibold">
                                 Dirección Principal <span className="text-destructive">*</span>
                             </FormLabel>
                             <FormControl>
@@ -189,9 +189,9 @@ export function PropertiesLocation() {
                         name="addressDetail"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-slate-700 font-semibold">Dirección Línea 2 (Opcional)</FormLabel>
+                                <FormLabel className="text-ink-2 font-semibold">Dirección Línea 2 (Opcional)</FormLabel>
                                 <FormControl>
-                                    <Input className="h-11 border-slate-200" placeholder="Apto, Suite, etc." {...field} />
+                                    <Input className="h-11 border-rule" placeholder="Apto, Suite, etc." {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -202,9 +202,9 @@ export function PropertiesLocation() {
                         name="state"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-slate-700 font-semibold">Estado/Depto <span className="text-destructive">*</span></FormLabel>
+                                <FormLabel className="text-ink-2 font-semibold">Estado/Depto <span className="text-destructive">*</span></FormLabel>
                                 <FormControl>
-                                    <Input className="h-11 border-slate-200" placeholder="Bolívar" {...field} />
+                                    <Input className="h-11 border-rule" placeholder="Bolívar" {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -225,7 +225,7 @@ export function PropertiesLocation() {
                     </FeedbackBanner>
                 )}
 
-                <div className="aspect-video w-full rounded-xl bg-slate-100 border-2 border-slate-200 relative overflow-hidden shadow-inner group">
+                <div className="aspect-video w-full rounded-xl bg-sunk border-2 border-rule relative overflow-hidden shadow-inner group">
                     <MapComponent
                         lat={mapView.lat}
                         lng={mapView.lng}
@@ -245,10 +245,10 @@ export function PropertiesLocation() {
                         name="city"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-slate-700 font-semibold">Ciudad <span className="text-destructive">*</span></FormLabel>
+                                <FormLabel className="text-ink-2 font-semibold">Ciudad <span className="text-destructive">*</span></FormLabel>
                                 <FormControl>
                                     <Input
-                                        className="h-11 border-slate-200"
+                                        className="h-11 border-rule"
                                         placeholder="Cartagena"
                                         {...field}
                                     />
@@ -262,13 +262,13 @@ export function PropertiesLocation() {
                          name="countryId"
                          render={({ field }) => (
                              <FormItem>
-                                 <FormLabel className="text-slate-700 font-semibold">País <span className="text-destructive">*</span></FormLabel>
+                                 <FormLabel className="text-ink-2 font-semibold">País <span className="text-destructive">*</span></FormLabel>
                                  <FormControl>
                                      <Select
                                          onValueChange={(val) => field.onChange(parseInt(val))}
                                          value={String(field.value || "")}
                                      >
-                                         <SelectTrigger className="w-full h-11 border-slate-200 bg-white">
+                                         <SelectTrigger className="w-full h-11 border-rule bg-white">
                                              <SelectValue placeholder="Seleccionar país" />
                                          </SelectTrigger>
                                          <SelectContent>
@@ -292,21 +292,21 @@ export function PropertiesLocation() {
                         name="timezone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-slate-700 font-semibold">Zona Horaria</FormLabel>
+                                <FormLabel className="text-ink-2 font-semibold">Zona Horaria</FormLabel>
                                 <FormControl>
                                     <div className="relative">
-                                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" />
+                                        <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-3 z-10" />
                                         <Select
                                             onValueChange={field.onChange}
                                             value={field.value || ""}
                                         >
-                                            <SelectTrigger className="w-full pl-9 h-11 border-slate-200 bg-white">
+                                            <SelectTrigger className="w-full pl-9 h-11 border-rule bg-white">
                                                 <SelectValue placeholder="Seleccionar zona horaria" />
                                             </SelectTrigger>
                                             <SelectContent className="max-h-[300px]">
-                                                <div className="p-2 sticky top-0 bg-white z-10 border-b border-slate-100 mb-1">
+                                                <div className="p-2 sticky top-0 bg-white z-10 border-b border-rule mb-1">
                                                     <div className="relative">
-                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                                                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-ink-3" />
                                                         <Input
                                                             placeholder="Buscar zona horaria..."
                                                             value={tzSearch}
@@ -317,7 +317,7 @@ export function PropertiesLocation() {
                                                     </div>
                                                 </div>
                                                 {filteredTimezoneGroups.length === 0 ? (
-                                                    <div className="p-4 text-center text-sm text-slate-500">
+                                                    <div className="p-4 text-center text-sm text-ink-3">
                                                         No se encontraron resultados
                                                     </div>
                                                 ) : (
@@ -352,11 +352,11 @@ export function PropertiesLocation() {
                             name="latitude"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-[10px] text-slate-500 uppercase">Latitud</FormLabel>
+                                    <FormLabel className="text-xs text-ink-3 uppercase">Latitud</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
-                                            className="h-10 bg-white border-slate-200"
+                                            className="h-10 bg-white border-rule"
                                             {...field}
                                             value={field.value ?? ""}
                                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
@@ -370,11 +370,11 @@ export function PropertiesLocation() {
                             name="longitude"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="text-[10px] text-slate-500 uppercase">Longitud</FormLabel>
+                                    <FormLabel className="text-xs text-ink-3 uppercase">Longitud</FormLabel>
                                     <FormControl>
                                         <Input
                                             type="number"
-                                            className="h-10 bg-white border-slate-200"
+                                            className="h-10 bg-white border-rule"
                                             {...field}
                                             value={field.value ?? ""}
                                             onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
@@ -384,7 +384,7 @@ export function PropertiesLocation() {
                             )}
                         />
                     </div>
-                    <p className="text-[10px] text-slate-400 italic">Estas coordenadas se actualizan automáticamente al mover el pin en el mapa.</p>
+                    <p className="text-xs text-ink-3 italic">Estas coordenadas se actualizan automáticamente al mover el pin en el mapa.</p>
                 </div>
             </CardContent>
         </Card>

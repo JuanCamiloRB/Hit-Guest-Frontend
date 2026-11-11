@@ -120,7 +120,7 @@ export function PropertiesPhotos() {
 
     return (
         <Card>
-            <CardHeader className="border-b bg-slate-50/50">
+            <CardHeader className="border-b bg-sunk/50">
                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
                     <Camera className="h-5 w-5 text-primary" />
                     Galería de Fotos
@@ -130,7 +130,7 @@ export function PropertiesPhotos() {
                     <br />
                     {/* Los formatos se nombran ANTES de elegir el archivo: descubrirlos
                         por un rechazo es lo que hacía perder una carga entera. */}
-                    <span className="font-medium text-slate-600">
+                    <span className="font-medium text-ink-2">
                         Formatos: {ALLOWED_IMAGE_FORMATS_LABEL}
                     </span>
                     {" · "}
@@ -149,7 +149,7 @@ export function PropertiesPhotos() {
                         {picturesUrl.map((url, index) => (
                             <div
                                 key={url}
-                                className="aspect-video relative rounded-md overflow-hidden border bg-slate-50"
+                                className="aspect-video relative rounded-md overflow-hidden border bg-sunk/50"
                             >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
@@ -203,7 +203,7 @@ export function PropertiesPhotos() {
                         </div>
 
                         {picturesUrl.length === 0 && !isUploading && (
-                            <div className="col-span-full flex items-center gap-2 text-xs text-slate-400 pt-1">
+                            <div className="col-span-full flex items-center gap-2 text-xs text-ink-3 pt-1">
                                 <ImageIcon className="h-4 w-4" />
                                 Aún no hay fotos. Sube la primera para crear la portada.
                             </div>

@@ -59,10 +59,10 @@ export function GuaranteePreview() {
 
     return (
         <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+            <div className="flex items-center gap-2 text-xs font-semibold text-ink-3">
                 <ShieldCheck size={14} className="text-primary" />
                 Garantía de daños y consumos
-                <span className="font-normal text-slate-400">— mantenida por HitGuest, no editable aquí</span>
+                <span className="font-normal text-ink-3">— mantenida por HitGuest, no editable aquí</span>
             </div>
 
             {/* Sin decir que «aparecerán igual en el PDF»: HitGuest las vuelve a
@@ -75,7 +75,7 @@ export function GuaranteePreview() {
             )}
 
             <div
-                className="prose prose-sm max-w-none rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-sm text-slate-700 [&_strong]:font-bold [&_p]:my-2"
+                className="prose prose-sm max-w-none rounded-xl border border-rule bg-sunk/60 px-4 py-3 text-sm text-ink-2 [&_strong]:font-bold [&_p]:my-2"
                 // Content comes from HitGuest's own system-documents endpoint, not
                 // user input — same trust boundary as the rendered contract preview
                 // elsewhere in the app (DocumentPreviewModal).
@@ -97,6 +97,6 @@ function highlightMissing(html: string, missing: string[]): string {
     return html.replace(
         new RegExp(`(href=["'][^"']*)?\\{\\{\\s*(${keys})\\s*\\}\\}`, "gi"),
         (token, insideHref?: string) =>
-            insideHref ? token : `<mark class="bg-amber-200/70 rounded px-0.5">${token}</mark>`,
+            insideHref ? token : `<mark class="bg-warning-sunk rounded px-0.5">${token}</mark>`,
     )
 }

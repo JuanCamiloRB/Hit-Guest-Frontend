@@ -372,7 +372,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)} className="space-y-6">
                     <TabsList className={cn(
-                        "grid w-full h-auto bg-slate-100/50 p-1 border border-slate-200/60 rounded-xl shadow-sm",
+                        "grid w-full h-auto bg-sunk/50 p-1 border border-rule/60 rounded-xl shadow-sm",
                         initialData
                             ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-6"
                             : "grid-cols-2 md:grid-cols-2 lg:grid-cols-4"
@@ -445,7 +445,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
 
                     <TabsContent value="details" className="space-y-4">
                         <Card>
-                            <CardHeader className="border-b bg-slate-50/50">
+                            <CardHeader className="border-b bg-sunk/50">
                                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
                                     <LayoutDashboard className="h-5 w-5 text-primary" />
                                     Detalles de la Propiedad
@@ -625,7 +625,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         </Card>
 
                         <Card>
-                            <CardHeader className="border-b bg-slate-50/50">
+                            <CardHeader className="border-b bg-sunk/50">
                                 <CardTitle className="flex items-center gap-2 text-xl font-bold">
                                     <Link2 className="h-5 w-5 text-primary" />
                                     Identificación Externa
@@ -753,23 +753,23 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                             <AlertCircle className="h-6 w-6" />
                             <DialogTitle className="text-xl">Información Faltante</DialogTitle>
                         </div>
-                        <DialogDescription className="text-slate-600">
+                        <DialogDescription className="text-ink-2">
                             Completa los siguientes campos para poder guardar la propiedad:
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 my-2 max-h-64 overflow-y-auto">
+                    <div className="bg-sunk/50 p-4 rounded-xl border border-rule my-2 max-h-64 overflow-y-auto">
                         <ul className="space-y-2.5">
                             {validationErrors.map((err, i) => (
                                 <li key={i} className="flex items-start gap-2.5">
                                     <span className="mt-1 h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
                                     <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-slate-800 leading-tight">
+                                        <p className="text-sm font-semibold text-ink leading-tight">
                                             {err.label}
-                                            <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-slate-400 bg-slate-100 border border-slate-200 rounded px-1.5 py-0.5">
+                                            <span className="ml-2 text-xs font-bold uppercase tracking-wide text-ink-3 bg-sunk border border-rule rounded px-1.5 py-0.5">
                                                 {err.tab}
                                             </span>
                                         </p>
-                                        <p className="text-xs text-slate-500">{err.message}</p>
+                                        <p className="text-xs text-ink-3">{err.message}</p>
                                     </div>
                                 </li>
                             ))}

@@ -217,8 +217,8 @@ function fallbackDefinition(provider: Provider, slot: ProviderSetupSlot): Automa
         title: slot.name || provider.name,
         description: provider.description || "Automatización disponible para el país de esta propiedad.",
         icon: base.icon,
-        color: "text-slate-500",
-        bgColor: "bg-slate-50",
+        color: "text-primary",
+        bgColor: "bg-primary/5",
         guestType: slot.guest_type === "main_guest" ? "main" : slot.guest_type === "secondary_guest" ? "secondary" : "all",
         requiresConfig: Object.keys(slot.parameters ?? {}).length > 0,
         providerOptions: [{

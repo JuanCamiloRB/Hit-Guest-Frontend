@@ -410,7 +410,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
         return (
             <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                <p className="text-sm font-medium text-slate-500">Preparando formulario...</p>
+                <p className="text-sm font-medium text-ink-3">Preparando formulario...</p>
             </div>
         )
     }
@@ -422,10 +422,10 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     {/* Back to the welcome hub, not /verify (avoids re-launching verification). */}
-                    <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+                    <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                         <ArrowLeft size={20} />
                     </Link>
-                    <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                    <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">
                         Paso 3 de 4
                     </div>
                 </div>
@@ -435,9 +435,9 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             </div>
 
             <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">Completa tus datos</h1>
-                <p className="text-slate-500 text-sm">
-                    Requerido por regulaciones locales de alojamiento. Los campos con <span className="text-red-400">*</span> son obligatorios.
+                <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">Completa tus datos</h1>
+                <p className="text-ink-3 text-sm">
+                    Requerido por regulaciones locales de alojamiento. Los campos con <span className="text-danger">*</span> son obligatorios.
                 </p>
             </div>
 
@@ -531,14 +531,14 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {isFieldVisible('arrivalTime') && (
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-red-400 ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.arrivalTime || ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                                    <label className="text-sm font-semibold text-ink-2">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-danger ml-0.5">*</span>}</label>
+                                    <input type="time" value={form.arrivalTime || ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                             {isFieldVisible('departureTime') && (
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-slate-700">Hora de salida{isFieldRequired('departureTime') && <span className="text-red-400 ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.departureTime || ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                                    <label className="text-sm font-semibold text-ink-2">Hora de salida{isFieldRequired('departureTime') && <span className="text-danger ml-0.5">*</span>}</label>
+                                    <input type="time" value={form.departureTime || ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                         </div>
@@ -570,7 +570,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                             <DocumentUpload label="Foto del documento (reverso)" value={form.documentImage2 || null} onChange={(v) => updateField("documentImage2", v)} required id="doc-back" />
                         )}
                         {isSingleSidedDoc && (
-                            <p className="text-xs text-slate-400 text-center mt-1">Este documento solo requiere la imagen frontal.</p>
+                            <p className="text-xs text-ink-3 text-center mt-1">Este documento solo requiere la imagen frontal.</p>
                         )}
                     </div>
                 </CollapsibleSection>
@@ -579,11 +579,11 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             {/* El documento venció: /secondary/complete lo rechaza con 403, así que
                 se avisa acá en vez de dejar que lo descubra al enviar. */}
             {documentExpired && (
-                <div className="flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 p-4">
-                    <AlertTriangle size={18} className="text-red-400 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 rounded-xl border border-danger/20 bg-danger-sunk p-4">
+                    <AlertTriangle size={18} className="text-danger shrink-0 mt-0.5" />
                     <div>
-                        <p className="text-sm font-bold text-red-800">El documento está vencido</p>
-                        <p className="text-xs text-red-700 mt-0.5">
+                        <p className="text-sm font-bold text-danger">El documento está vencido</p>
+                        <p className="text-xs text-danger mt-0.5">
                             No podemos completar el registro con un documento de identidad vencido.
                             Revisa la fecha o contacta al anfitrión.
                         </p>
@@ -592,12 +592,12 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             )}
 
             {/* ── Sticky Bottom Bar ── */}
-            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-4 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] z-40">
+            <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-rule p-4 z-40">
                 <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
                     <Button
                         onClick={handleSubmit}
                         disabled={!isFormValid || isSubmitting}
-                        className="flex-1 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/25 transition-all"
+                        className="flex-1 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all"
                     >
                         {isSubmitting ? (
                             <><Loader2 className="animate-spin mr-2" size={20} /> Guardando...</>

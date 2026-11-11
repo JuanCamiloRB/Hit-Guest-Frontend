@@ -100,7 +100,7 @@ export function Header() {
                         <DropdownMenuTrigger asChild>
                             <Button className="rounded-lg bg-primary hover:bg-primary/90 text-white gap-2 h-10 px-4">
                                 <CircleUserRound className="h-5 w-5" />
-                                <span className="hidden sm:inline font-medium text-sm text-[13px]">
+                                <span className="hidden sm:inline font-medium text-sm text-sm">
                                     {isMounted ? user?.firstName : t('common.loading')}
                                 </span>
                             </Button>

@@ -117,7 +117,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             />
                             <Button
                                 disabled={isLoading}
-                                className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 h-11"
+                                className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md hover:shadow-lg transition-all duration-300 h-11"
                             >
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                 Continuar con el acceso
@@ -175,7 +175,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             <div className="flex flex-col gap-3">
                                 <Button
                                     disabled={isLoading}
-                                    className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-all duration-300 h-11 w-full"
+                                    className="bg-primary hover:bg-primary text-primary-foreground font-bold shadow-md hover:shadow-lg transition-all duration-300 h-11 w-full"
                                 >
                                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin text-white" />}
                                     Verificar e Iniciar Sesión

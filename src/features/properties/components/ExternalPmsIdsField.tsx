@@ -135,10 +135,10 @@ export function ExternalPmsIdsField({
                     <LoadingState
                         variant="spinner"
                         label="Cargando orígenes"
-                        className="rounded-xl border border-dashed border-slate-200 py-8"
+                        className="rounded-xl border border-dashed border-rule py-8"
                     />
                 ) : (
-                    <div className="rounded-xl border border-dashed border-slate-200">
+                    <div className="rounded-xl border border-dashed border-rule">
                         <EmptyState
                             className="px-6 py-8"
                             icon={<Link2 className="h-5 w-5" />}
@@ -164,8 +164,8 @@ export function ExternalPmsIdsField({
                         aria-hidden
                         className="hidden gap-3 px-1 sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.5rem]"
                     >
-                        <span className="text-xs font-semibold text-slate-500">Origen</span>
-                        <span className="text-xs font-semibold text-slate-500">ID en el origen</span>
+                        <span className="text-xs font-semibold text-ink-3">Origen</span>
+                        <span className="text-xs font-semibold text-ink-3">ID en el origen</span>
                         <span />
                     </div>
 
@@ -182,7 +182,7 @@ export function ExternalPmsIdsField({
                             <div key={index} className="space-y-1">
                                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.5rem] sm:items-center">
                                     <div className="grid gap-1.5">
-                                        <Label htmlFor={sourceId} className="text-xs text-slate-500 sm:sr-only">
+                                        <Label htmlFor={sourceId} className="text-xs text-ink-3 sm:sr-only">
                                             Origen
                                         </Label>
                                         <Select
@@ -218,7 +218,7 @@ export function ExternalPmsIdsField({
                                     <div className="grid gap-1.5">
                                         <Label
                                             htmlFor={externalIdId}
-                                            className="text-xs text-slate-500 sm:sr-only"
+                                            className="text-xs text-ink-3 sm:sr-only"
                                         >
                                             ID en el origen
                                         </Label>
@@ -239,7 +239,7 @@ export function ExternalPmsIdsField({
                                         variant="ghost"
                                         size="icon"
                                         aria-label={`Quitar origen ${index + 1}`}
-                                        className="justify-self-start text-slate-400 hover:text-destructive sm:justify-self-center"
+                                        className="justify-self-start text-ink-3 hover:text-destructive sm:justify-self-center"
                                         onClick={() => removeRow(index)}
                                         disabled={disabled}
                                     >
@@ -267,7 +267,7 @@ export function ExternalPmsIdsField({
                             <Plus className="mr-2 h-4 w-4" /> Vincular otro origen
                         </Button>
                         {allOriginsUsed && (
-                            <span className="text-xs text-slate-500">
+                            <span className="text-xs text-ink-3">
                                 Ya vinculaste todos los orígenes disponibles.
                             </span>
                         )}

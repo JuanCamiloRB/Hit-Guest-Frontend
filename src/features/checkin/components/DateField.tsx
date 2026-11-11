@@ -95,14 +95,14 @@ export function DateField({ label, required, value, onChange, max, autoCompleteK
 
     return (
         <fieldset className="space-y-1.5">
-            <legend className="text-sm font-semibold text-slate-700 leading-tight">
+            <legend className="text-sm font-semibold text-ink-2 leading-tight">
                 {label}
-                {required && <span className="text-red-400 ml-0.5">*</span>}
+                {required && <span className="text-danger ml-0.5">*</span>}
             </legend>
             <div className="flex items-center gap-2">
                 {SEGMENTS.map(({ key, label: segLabel, placeholder, width, bday }, index) => (
                     <div key={key} className="flex items-center gap-2">
-                        {index > 0 && <span aria-hidden className="text-slate-300 font-semibold">/</span>}
+                        {index > 0 && <span aria-hidden className="text-ink-4 font-semibold">/</span>}
                         <input
                             ref={refs[key]}
                             type="text"
@@ -115,13 +115,13 @@ export function DateField({ label, required, value, onChange, max, autoCompleteK
                             value={segments[key]}
                             onChange={(e) => handleInput(key, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(key, e)}
-                            className={`${width} bg-slate-50 border border-slate-200 rounded-xl px-3 py-3 text-center text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all`}
+                            className={`${width} bg-sunk/50 border border-rule rounded-xl px-3 py-3 text-center text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all`}
                         />
                     </div>
                 ))}
             </div>
             {error && (
-                <p id={errorId} role="alert" className="text-xs font-medium text-red-600">
+                <p id={errorId} role="alert" className="text-xs font-medium text-danger">
                     {error}
                 </p>
             )}

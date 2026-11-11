@@ -15,13 +15,13 @@ const STATUS_CONTENT: Partial<Record<
         title: "Reserva cancelada",
         defaultMessage:
             "Esta reserva fue cancelada y ya no está disponible para el check-in.",
-        accent: "text-amber-500 bg-amber-50",
+        accent: "text-warning bg-warning-sunk",
     },
     deleted: {
         icon: Trash2,
         title: "Reserva no disponible",
         defaultMessage: "Esta reserva ya no existe.",
-        accent: "text-red-500 bg-red-50",
+        accent: "text-danger bg-danger-sunk",
     },
     // Airbnb iCal (2026-09-04): la reserva existe en Airbnb pero HIT todavía no
     // la sincronizó. A diferencia de los otros estados, este se resuelve SOLO
@@ -33,13 +33,13 @@ const STATUS_CONTENT: Partial<Record<
         title: "Check-in no disponible por ahora",
         defaultMessage:
             "Esta reserva no puede procesarse porque el alojamiento asociado está inactivo o ya no existe.",
-        accent: "text-slate-500 bg-slate-100",
+        accent: "text-ink-3 bg-sunk",
     },
     pending_sync: {
         icon: Clock,
         title: "Estamos preparando tu check-in",
         defaultMessage: "Todavía estamos preparando tu check-in. Inténtalo de nuevo en unos minutos.",
-        accent: "text-blue-500 bg-blue-50",
+        accent: "text-info bg-info-sunk",
     },
 }
 
@@ -51,7 +51,7 @@ export function PortalStatusScreen({ status, message }: PortalStatusScreenProps)
         icon: XCircle,
         title: "Reserva no disponible",
         defaultMessage: "Esta reserva no está disponible para el check-in en este momento.",
-        accent: "text-amber-500 bg-amber-50",
+        accent: "text-warning bg-warning-sunk",
     }
     const Icon = content.icon
 
@@ -60,8 +60,8 @@ export function PortalStatusScreen({ status, message }: PortalStatusScreenProps)
             <div className={`rounded-full p-4 mb-5 ${content.accent}`}>
                 <Icon size={40} strokeWidth={1.5} />
             </div>
-            <h1 className="text-2xl font-bold text-slate-800 mb-2">{content.title}</h1>
-            <p className="text-slate-500 max-w-md leading-relaxed">
+            <h1 className="text-2xl font-bold text-ink mb-2">{content.title}</h1>
+            <p className="text-ink-3 max-w-md leading-relaxed">
                 {message || content.defaultMessage}
             </p>
             {status === "pending_sync" && (
@@ -74,7 +74,7 @@ export function PortalStatusScreen({ status, message }: PortalStatusScreenProps)
                     Reintentar
                 </a>
             )}
-            <p className="text-xs text-slate-400 mt-8">
+            <p className="text-xs text-ink-3 mt-8">
                 Si crees que esto es un error, contacta a tu anfitrión.
             </p>
         </div>

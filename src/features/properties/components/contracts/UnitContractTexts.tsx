@@ -249,8 +249,8 @@ export function UnitContractTexts({
     return (
         <section className="space-y-3" aria-labelledby="unit-contract-texts">
             <div>
-                <h3 id="unit-contract-texts" className="text-sm font-bold text-slate-800">Texto del contrato de esta unidad</h3>
-                <p className="text-xs text-slate-500">
+                <h3 id="unit-contract-texts" className="text-sm font-bold text-ink">Texto del contrato de esta unidad</h3>
+                <p className="text-xs text-ink-3">
                     Un texto propio reemplaza al de la propiedad solo en esta unidad. Lo que no personalices, lo hereda.
                 </p>
             </div>
@@ -304,7 +304,7 @@ export function UnitContractTexts({
             )}
 
             {plan.textMode === null ? (
-                <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                <p className="rounded-lg bg-sunk/50 px-3 py-2 text-sm text-ink-2">
                     La propiedad todavía no tiene texto de contrato. Créalo primero en Documentos de la propiedad.
                 </p>
             ) : (
@@ -317,7 +317,7 @@ export function UnitContractTexts({
                         // solo lo que dice el backend (ver `describeRowSigning`).
                         const signing = describeRowSigning(row, routing, allDocuments, listingUuid)
                         return (
-                            <li key={row.key} className="rounded-xl border border-slate-200 bg-white p-3">
+                            <li key={row.key} className="rounded-xl border border-rule bg-white p-3">
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div className="min-w-0">
                                         <ReservationSourceIdentity
@@ -325,12 +325,12 @@ export function UnitContractTexts({
                                             slug={row.slug ?? (source ? reservationSourceSlug(source) : null)}
                                             compact
                                         />
-                                        <p className="mt-1 pl-11 text-xs font-medium text-slate-700">{signing.headline}</p>
+                                        <p className="mt-1 pl-11 text-xs font-medium text-ink-2">{signing.headline}</p>
                                         {signing.channels.map((channel) => (
-                                            <p key={channel.key} className="pl-11 text-xs text-slate-500">
+                                            <p key={channel.key} className="pl-11 text-xs text-ink-3">
                                                 {channel.summary || channel.channel.name}
                                                 {channel.status !== "ready" && channel.statusLabel && (
-                                                    <span className="block text-amber-700">{channel.statusLabel}</span>
+                                                    <span className="block text-warning">{channel.statusLabel}</span>
                                                 )}
                                             </p>
                                         ))}
@@ -347,7 +347,7 @@ export function UnitContractTexts({
                                                     type="button"
                                                     variant="ghost"
                                                     size="sm"
-                                                    className="text-slate-500 hover:text-red-600"
+                                                    className="text-ink-3 hover:text-danger"
                                                     disabled={busy}
                                                     onClick={() => void removeDocument(row.key, row.unitDocument!.uuid, "La unidad vuelve a usar el texto de la propiedad")}
                                                 >
@@ -423,7 +423,7 @@ export function UnitContractTexts({
             )}
 
             {hasOwnTexts && (
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-ink-3">
                     Si apagas el contrato en esta unidad o vuelves a heredar, sus textos propios se conservan pero dejan de aplicar.
                 </p>
             )}

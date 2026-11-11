@@ -34,7 +34,7 @@ export function ReservationSourceIdentity({ name, slug, compact = false, classNa
         <div className={cn("flex min-w-0 items-center", compact ? "gap-2" : "gap-3", className)}>
             <span
                 className={cn(
-                    "flex shrink-0 items-center justify-center rounded-xl border border-black/5 text-slate-600",
+                    "flex shrink-0 items-center justify-center rounded-xl border border-black/5 text-ink-2",
                     compact ? "h-9 w-9 rounded-lg" : "h-12 w-12",
                     channelBackground(brand),
                 )}
@@ -44,7 +44,7 @@ export function ReservationSourceIdentity({ name, slug, compact = false, classNa
                     de origen: una sola regla en todo el panel. */}
                 <ChannelLogo channel={brand} className={compact ? "h-5 w-5" : "h-6 w-6"} />
             </span>
-            <span className={cn("truncate font-bold text-slate-900", compact ? "text-sm" : "text-lg")}>{name}</span>
+            <span className={cn("truncate font-bold text-ink", compact ? "text-sm" : "text-lg")}>{name}</span>
         </div>
     )
 }

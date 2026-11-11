@@ -53,7 +53,7 @@ export function UnitOverridesConfirmDialog({ request, partial, onDecision }: Pro
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 {lines.length > 0 && (
-                    <ul className="max-h-60 list-disc space-y-1.5 overflow-y-auto pl-5 text-sm text-slate-700">
+                    <ul className="max-h-60 list-disc space-y-1.5 overflow-y-auto pl-5 text-sm text-ink-2">
                         {lines.map((line, index) => <li key={index}>{line}</li>)}
                     </ul>
                 )}

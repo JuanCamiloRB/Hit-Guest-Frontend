@@ -29,7 +29,7 @@ const SOURCE_LABELS: Record<string, string> = {
 function SourceBadge({ source }: { source: string }) {
     const label = SOURCE_LABELS[source] ?? source
     return (
-        <span className="inline-flex rounded-full bg-sunk px-2 py-0.5 text-[11px] font-semibold text-ink-2">
+        <span className="inline-flex rounded-full bg-sunk px-2 py-0.5 text-xs font-semibold text-ink-2">
             {label}
         </span>
     )
@@ -39,7 +39,7 @@ function TypeBadge({ type }: { type: string }) {
     const isCredit = type === "credit"
     return (
         <span
-            className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${
+            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${
                 isCredit ? "bg-success-sunk text-success" : "bg-sunk text-ink-3"
             }`}
         >
@@ -52,7 +52,7 @@ function StatusBadge({ status }: { status: string }) {
     const refunded = status === "refunded"
     return (
         <span
-            className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
                 refunded ? "bg-warning-sunk text-warning" : "bg-success-sunk text-success"
             }`}
         >
@@ -127,7 +127,7 @@ export function TransactionHistory() {
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[720px] text-sm">
                             <thead>
-                                <tr className="border-b border-rule text-left text-[11px] font-bold uppercase tracking-wide text-ink-3">
+                                <tr className="border-b border-rule text-left text-xs font-bold uppercase tracking-wide text-ink-3">
                                     <th className="px-5 py-2.5">Date</th>
                                     <th className="px-3 py-2.5">Description</th>
                                     <th className="px-3 py-2.5">Type</th>

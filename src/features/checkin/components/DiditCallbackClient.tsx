@@ -199,17 +199,17 @@ export function DiditCallbackClient({
     }, [])
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
+        <div className="min-h-screen flex items-center justify-center bg-sunk/50 px-4">
             <div className="text-center max-w-sm mx-auto">
                 {state === "redirecting" && (
                     <>
-                        <div className="w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-5">
-                            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                        <div className="w-16 h-16 rounded-full bg-info-sunk flex items-center justify-center mx-auto mb-5">
+                            <Loader2 className="w-8 h-8 animate-spin text-info" />
                         </div>
-                        <h2 className="text-xl font-semibold text-slate-800 mb-2">
+                        <h2 className="text-xl font-semibold text-ink mb-2">
                             Verificación recibida
                         </h2>
-                        <p className="text-slate-500 text-sm">
+                        <p className="text-ink-3 text-sm">
                             Redirigiendo de vuelta al check-in...
                         </p>
                     </>
@@ -217,13 +217,13 @@ export function DiditCallbackClient({
 
                 {state === "no_context" && (
                     <>
-                        <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-5">
-                            <XCircle className="w-8 h-8 text-amber-500" />
+                        <div className="w-16 h-16 rounded-full bg-warning-sunk flex items-center justify-center mx-auto mb-5">
+                            <XCircle className="w-8 h-8 text-warning" />
                         </div>
-                        <h2 className="text-xl font-semibold text-slate-800 mb-2">
+                        <h2 className="text-xl font-semibold text-ink mb-2">
                             Sesión expirada
                         </h2>
-                        <p className="text-slate-500 text-sm">
+                        <p className="text-ink-3 text-sm">
                             Tu sesión ha expirado. Por favor regresa al link de check-in original e intenta de nuevo.
                         </p>
                     </>
@@ -231,13 +231,13 @@ export function DiditCallbackClient({
 
                 {state === "secondary_context_missing" && (
                     <>
-                        <div className="w-16 h-16 rounded-full bg-amber-50 flex items-center justify-center mx-auto mb-5">
-                            <XCircle className="w-8 h-8 text-amber-500" />
+                        <div className="w-16 h-16 rounded-full bg-warning-sunk flex items-center justify-center mx-auto mb-5">
+                            <XCircle className="w-8 h-8 text-warning" />
                         </div>
-                        <h2 className="text-xl font-semibold text-slate-800 mb-2">
+                        <h2 className="text-xl font-semibold text-ink mb-2">
                             Vuelve a tu enlace de invitación
                         </h2>
-                        <p className="text-slate-500 text-sm">
+                        <p className="text-ink-3 text-sm">
                             Tu verificación fue recibida, pero necesitamos el enlace personal del acompañante para continuar de forma segura.
                         </p>
                     </>

@@ -477,9 +477,9 @@ export default function ReservationsList() {
             )}
 
             {preparing ? (
-                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-sunk px-3 py-2 text-[13px] text-ink-2">
+                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-sunk px-3 py-2 text-sm text-ink-2">
                     <span>Preparando todos los estados para ordenar… {settled} de {filtered.length}</span>
-                    <button type="button" onClick={cancelPreparingSort} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">
+                    <button type="button" onClick={cancelPreparingSort} className="text-sm font-semibold text-primary underline-offset-2 hover:underline">
                         Cancelar orden
                     </button>
                 </div>

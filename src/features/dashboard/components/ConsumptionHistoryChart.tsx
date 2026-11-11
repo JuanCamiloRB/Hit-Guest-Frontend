@@ -41,7 +41,7 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
                     <div className="flex gap-3">
                         {/* Y axis — three recessive ticks, enough to read magnitude. */}
                         {/* Marcas del eje en ink-3: son texto real (ink-4 daba 2,35:1). */}
-                        <div aria-hidden className="flex flex-col justify-between h-48 pb-6 text-[11px] tabular-nums text-ink-3 text-right shrink-0">
+                        <div aria-hidden className="flex flex-col justify-between h-48 pb-6 text-xs tabular-nums text-ink-3 text-right shrink-0">
                             <span>{tick(ceiling)}</span>
                             <span>{tick(ceiling / 2)}</span>
                             <span>{tick(0)}</span>
@@ -73,7 +73,7 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
                                         >
                                             {/* Tooltip — hit target is the whole column; also on keyboard focus. */}
                                             <div className="pointer-events-none absolute bottom-full mb-1 z-10 hidden group-hover:block group-focus-visible:block">
-                                                <div className="whitespace-nowrap rounded-md bg-ink px-2 py-1 text-[11px] font-medium text-white">
+                                                <div className="whitespace-nowrap rounded-md bg-ink px-2 py-1 text-xs font-medium text-white">
                                                     <span className="capitalize">
                                                         {format(point.date, "MMMM yyyy", { locale: es })}
                                                     </span>
@@ -86,7 +86,7 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
 
                                             {/* Direct label on the scoped month only — never every bar. */}
                                             {isRef && point.total > 0 && (
-                                                <span className="mb-1 text-[11px] font-semibold tabular-nums text-ink">
+                                                <span className="mb-1 text-xs font-semibold tabular-nums text-ink">
                                                     {formatUsd(point.total)}
                                                 </span>
                                             )}
@@ -105,7 +105,7 @@ export function ConsumptionHistoryChart({ monthly, refMonth }: Props) {
                                             />
 
                                             <span
-                                                className={`absolute bottom-0 text-[11px] capitalize ${
+                                                className={`absolute bottom-0 text-xs capitalize ${
                                                     isRef
                                                         ? "font-semibold text-ink"
                                                         : "text-ink-3"

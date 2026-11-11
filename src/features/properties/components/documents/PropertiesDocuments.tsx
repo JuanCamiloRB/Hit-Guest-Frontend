@@ -170,11 +170,11 @@ export function PropertiesDocuments() {
                                 <div className="p-2 bg-primary/10 rounded-lg">
                                     <FileText className="h-5 w-5 text-primary" />
                                 </div>
-                                <CardTitle className="text-2xl font-bold tracking-tight text-slate-900">
+                                <CardTitle className="text-2xl font-bold tracking-tight text-ink">
                                     Documentos
                                 </CardTitle>
                             </div>
-                            <CardDescription className="text-base text-slate-500">
+                            <CardDescription className="text-base text-ink-3">
                                 Contratos, reglamentos, instrucciones y políticas con variables que se
                                 completan automáticamente por reserva.
                             </CardDescription>
@@ -201,9 +201,9 @@ export function PropertiesDocuments() {
                     {/* Filter */}
                     {manageableTypes.length > 0 && (
                         <div className="flex items-center gap-2">
-                            <Filter size={15} className="text-slate-400" />
+                            <Filter size={15} className="text-ink-3" />
                             <Select value={typeFilter} onValueChange={setTypeFilter}>
-                                <SelectTrigger className="h-9 w-56 text-sm bg-white border-slate-200">
+                                <SelectTrigger className="h-9 w-56 text-sm bg-white border-rule">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -242,38 +242,38 @@ export function PropertiesDocuments() {
                                         className={cn(
                                             "flex items-center justify-between gap-4 rounded-xl border p-4 transition-all",
                                             isDeleted
-                                                ? "border-slate-200 bg-slate-50/60 opacity-70"
-                                                : "border-slate-200 bg-white hover:shadow-sm",
+                                                ? "border-rule bg-sunk/60 opacity-70"
+                                                : "border-rule bg-white hover:shadow-sm",
                                         )}
                                     >
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="p-2.5 bg-slate-50 rounded-xl text-primary shrink-0">
+                                            <div className="p-2.5 bg-sunk/50 rounded-xl text-primary shrink-0">
                                                 <FileText size={18} />
                                             </div>
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <h4 className="font-bold text-slate-800 truncate">
+                                                    <h4 className="font-bold text-ink truncate">
                                                         {documentTypeLabel(doc.documentType)}
                                                     </h4>
                                                     {isDeleted ? (
-                                                        <Badge variant="outline" className="h-5 text-[10px] uppercase font-bold bg-slate-100 text-slate-500 border-slate-200">
+                                                        <Badge variant="outline" className="h-5 text-xs uppercase font-bold bg-sunk text-ink-3 border-rule">
                                                             Eliminado
                                                         </Badge>
                                                     ) : (
                                                         <Badge
                                                             variant="outline"
                                                             className={cn(
-                                                                "h-5 text-[10px] uppercase font-bold",
+                                                                "h-5 text-xs uppercase font-bold",
                                                                 isActive
-                                                                    ? "bg-green-50 text-green-600 border-green-200"
-                                                                    : "bg-slate-100 text-slate-500 border-slate-200",
+                                                                    ? "bg-success-sunk text-success border-success/30"
+                                                                    : "bg-sunk text-ink-3 border-rule",
                                                             )}
                                                         >
                                                             {isActive ? "Activo" : "Inactivo"}
                                                         </Badge>
                                                     )}
                                                 </div>
-                                                <p className="text-xs text-slate-400 mt-0.5">
+                                                <p className="text-xs text-ink-3 mt-0.5">
                                                     Actualizado{" "}
                                                     {doc.updatedAt
                                                         ? format(new Date(doc.updatedAt), "d MMM yyyy, HH:mm", { locale: es })
@@ -289,7 +289,7 @@ export function PropertiesDocuments() {
                                                     variant="outline"
                                                     size="sm"
                                                     onClick={() => handleRestore(doc)}
-                                                    className="gap-1.5 text-emerald-600 border-emerald-200 hover:bg-emerald-50"
+                                                    className="gap-1.5 text-success border-success/30 hover:bg-success-sunk"
                                                 >
                                                     <RotateCcw size={14} /> Restaurar
                                                 </Button>
@@ -309,7 +309,7 @@ export function PropertiesDocuments() {
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => openEdit(doc)}
-                                                        className="gap-1.5 text-slate-600"
+                                                        className="gap-1.5 text-ink-2"
                                                     >
                                                         <Pencil size={14} /> Editar
                                                     </Button>
@@ -318,7 +318,7 @@ export function PropertiesDocuments() {
                                                         variant="ghost"
                                                         size="sm"
                                                         onClick={() => setDeleteTarget(doc)}
-                                                        className="gap-1.5 text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                        className="gap-1.5 text-danger hover:text-danger hover:bg-danger-sunk"
                                                     >
                                                         <Trash2 size={14} />
                                                     </Button>

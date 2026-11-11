@@ -737,7 +737,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh]">
                 <Loader2 size={40} className="text-primary animate-spin" />
-                <p className="text-sm text-slate-500 mt-4">Cargando contrato...</p>
+                <p className="text-sm text-ink-3 mt-4">Cargando contrato...</p>
             </div>
         )
     }
@@ -760,41 +760,41 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 <ProgressBar currentStep={4} totalSteps={5} />
 
                 <div className="flex items-center justify-between">
-                    <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+                    <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                         <ArrowLeft size={20} />
                     </Link>
-                    <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">Paso 5 de 6</div>
+                    <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">Paso 5 de 6</div>
                 </div>
 
                 <div
                     role={isRejected ? "alert" : "status"}
                     className={`rounded-2xl border p-6 space-y-3 ${
                         isRejected
-                            ? "border-red-200 bg-red-50"
+                            ? "border-danger/30 bg-danger-sunk"
                             : "border-primary/15 bg-primary/5"
                     }`}
                 >
                     <div className="flex items-center gap-2.5">
                         {isRejected
-                            ? <XCircle size={22} className="text-red-400 flex-shrink-0" />
+                            ? <XCircle size={22} className="text-danger flex-shrink-0" />
                             : <Mail size={22} className="text-primary flex-shrink-0" />}
-                        <h1 className={`text-lg font-bold ${isRejected ? "text-red-800" : "text-slate-900"}`}>
+                        <h1 className={`text-lg font-bold ${isRejected ? "text-danger" : "text-ink"}`}>
                             {isRejected ? "Tu contrato no pudo firmarse" : "Revisa tu correo"}
                         </h1>
                     </div>
-                    <p className={`text-sm leading-relaxed ${isRejected ? "text-red-700" : "text-slate-600"}`}>
+                    <p className={`text-sm leading-relaxed ${isRejected ? "text-danger" : "text-ink-2"}`}>
                         {isRejected
                             ? "La firma digital fue rechazada o no pudo completarse. Tus datos quedaron registrados, pero el anfitrión debe reenviarte el contrato — contáctalo para terminar tu check-in."
                             : <>Ya te enviamos el contrato a tu correo. Ábrelo y fírmalo desde <strong>TuFirma</strong> para terminar tu check-in. Tus datos ya quedaron guardados: no tienes que llenar nada de nuevo aquí.</>}
                     </p>
                     {!isRejected && (
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-ink-3">
                             Si no lo ves, revisa la carpeta de spam o correo no deseado.
                         </p>
                     )}
                 </div>
 
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
+                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                     <div className="w-full max-w-lg flex flex-col gap-2">
                         {!isRejected && (
                             <button
@@ -803,14 +803,14 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                     setIsLoading(true)
                                     loadDocuments()
                                 }}
-                                className="w-full flex items-center justify-center gap-2 h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98]"
+                                className="w-full flex items-center justify-center gap-2 h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
                             >
                                 <RefreshCw size={16} /> Ya firmé, actualizar
                             </button>
                         )}
                         <Link
                             href={basePath}
-                            className="w-full flex items-center justify-center h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-base transition-all active:scale-[0.98]"
+                            className="w-full flex items-center justify-center h-12 bg-ink hover:bg-ink/90 text-white rounded-xl font-bold text-base transition-all active:scale-[0.98]"
                         >
                             Volver al inicio
                         </Link>
@@ -868,14 +868,14 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             <ProgressBar currentStep={4} totalSteps={5} />
 
             <div className="flex items-center justify-between">
-                <Link href={`${basePath}/guest?guest_uuid=${guestUuid}`} className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors">
+                <Link href={`${basePath}/guest?guest_uuid=${guestUuid}`} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
                     <ArrowLeft size={20} />
                 </Link>
-                <div className="text-sm font-bold text-slate-400 uppercase tracking-widest">Paso 5 de 6</div>
+                <div className="text-sm font-bold text-ink-3 uppercase tracking-widest">Paso 5 de 6</div>
             </div>
 
             <div className="space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
+                <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">
                     {showGuaranteePhase
                         ? "Tarjeta de garantía"
                         : signatureRecorded
@@ -886,7 +886,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                             ? "Documentos y Firma"
                             : "Documentos del Contrato"}
                 </h1>
-                <p className="text-slate-500 text-sm">
+                <p className="text-ink-3 text-sm">
                     {showGuaranteePhase
                         ? "Último paso: registra una tarjeta como respaldo del contrato. No se realiza ningún cobro ahora."
                         : signatureRecorded
@@ -905,7 +905,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             {showGuaranteePhase ? (
                 <div
                     role="status"
-                    className="flex items-center gap-2.5 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-700"
+                    className="flex items-center gap-2.5 rounded-2xl border border-success/30 bg-success-sunk px-5 py-4 text-sm text-success"
                 >
                     <CheckCircle2 size={18} className="flex-shrink-0" />
                     <p className="font-bold">
@@ -917,7 +917,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             ) : signatureRecorded ? (
                 <div
                     role="status"
-                    className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 text-sm text-emerald-700"
+                    className="rounded-2xl border border-success/30 bg-success-sunk p-5 text-sm text-success"
                 >
                     <p className="font-bold">Firma guardada correctamente</p>
                     <p className="mt-1">
@@ -929,8 +929,8 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     role="alert"
                     className={`rounded-2xl border p-5 text-sm ${
                         isRetryable
-                            ? "border-amber-200 bg-amber-50 text-amber-700"
-                            : "border-red-200 bg-red-50 text-red-700"
+                            ? "border-warning/30 bg-warning-sunk text-warning"
+                            : "border-danger/30 bg-danger-sunk text-danger"
                     }`}
                 >
                     <p className="font-bold">No es posible continuar con la firma</p>
@@ -944,36 +944,36 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                 setIsLoading(true)
                                 loadDocuments()
                             }}
-                            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-200 transition-colors"
+                            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-warning-sunk px-3 py-1.5 text-xs font-bold text-warning hover:bg-warning-sunk transition-colors"
                         >
                             <RefreshCw size={14} /> Reintentar
                         </button>
                     )}
                 </div>
             ) : signingProvider === null ? (
-                <div className="rounded-2xl border border-slate-100 bg-white p-5 text-sm text-slate-600 shadow-sm">
+                <div className="rounded-2xl border border-rule bg-white p-5 text-sm text-ink-2 shadow-sm">
                     Puedes completar el check-in sin firmar un contrato digital.
                 </div>
             ) : hasDocuments ? (
                 <div className="space-y-3">
                     {documents.map((doc) => (
-                        <div key={doc.uuid} className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                        <div key={doc.uuid} className="bg-white border border-rule rounded-2xl shadow-sm overflow-hidden">
                             <button
                                 type="button"
                                 onClick={() => setExpandedDoc(expandedDoc === doc.uuid ? null : doc.uuid)}
-                                className="w-full flex items-center justify-between p-4 hover:bg-slate-50/50 transition-colors"
+                                className="w-full flex items-center justify-between p-4 hover:bg-sunk/50 transition-colors"
                             >
                                 <div className="flex items-center gap-2">
                                     <FileText size={18} className="text-primary" />
-                                    <h2 className="font-bold text-slate-800 text-sm">{doc.typeName}</h2>
+                                    <h2 className="font-bold text-ink text-sm">{doc.typeName}</h2>
                                 </div>
                                 {expandedDoc === doc.uuid
-                                    ? <ChevronUp size={18} className="text-slate-400" />
-                                    : <ChevronDown size={18} className="text-slate-400" />
+                                    ? <ChevronUp size={18} className="text-ink-3" />
+                                    : <ChevronDown size={18} className="text-ink-3" />
                                 }
                             </button>
                             {expandedDoc === doc.uuid && (
-                                <div className="px-5 pb-5 border-t border-slate-100">
+                                <div className="px-5 pb-5 border-t border-rule">
                                     <div
                                         className="prose prose-sm prose-slate max-w-none max-h-60 overflow-y-auto pr-2 no-scrollbar pt-4"
                                         dangerouslySetInnerHTML={{ __html: doc.renderedHtml }}
@@ -984,12 +984,12 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     ))}
                 </div>
             ) : (
-                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-4">
-                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
+                    <div className="flex items-center gap-2 border-b border-rule pb-3">
                         <FileText size={20} className="text-primary" />
-                        <h2 className="font-bold text-slate-800">Contrato</h2>
+                        <h2 className="font-bold text-ink">Contrato</h2>
                     </div>
-                    <p className="text-sm text-slate-400 text-center py-4">
+                    <p className="text-sm text-ink-3 text-center py-4">
                         No hay documentos configurados para esta propiedad.
                     </p>
                 </div>
@@ -1001,7 +1001,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 contract but never registered the card, so this must still be
                 reachable during that recovery path. */}
             {!configurationError && showGuaranteePhase && (
-                <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+                <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm">
                     <GuaranteeCardForm
                         reservationUuid={reservationUuid}
                         guestUuid={guestUuid}
@@ -1012,13 +1012,13 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             )}
 
             {!configurationError && !contractAlreadyCompleted && !nativeSignatureAlreadySaved && !showGuaranteePhase && (
-            <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm space-y-5">
+            <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-5">
                 {needsSignature && (
                     <>
                         {hasNativeSignature && (
-                            <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-100 rounded-xl">
-                                <PenLine size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
-                                <p className="text-xs text-amber-700">
+                            <div className="flex items-start gap-2 p-3 bg-warning-sunk border border-warning/20 rounded-xl">
+                                <PenLine size={16} className="text-warning flex-shrink-0 mt-0.5" />
+                                <p className="text-xs text-warning">
                                     Ya tienes una firma registrada. Si firmas de nuevo, reemplazará la anterior.
                                 </p>
                             </div>
@@ -1030,24 +1030,24 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 {signingProvider === "tufirma" && (
                     <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/15 rounded-xl">
                         <Mail size={18} className="text-primary flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-slate-600">
+                        <p className="text-sm text-ink-2">
                             Recibirás un correo de <strong>TuFirma</strong> para completar la firma digital de tu
                             contrato. No necesitas firmar aquí.
                         </p>
                     </div>
                 )}
 
-                <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100 cursor-pointer hover:border-primary/30 transition-colors">
+                <label className="flex items-start gap-3 p-3 bg-sunk/50 rounded-xl border border-rule cursor-pointer hover:border-primary/30 transition-colors">
                     <div className="relative flex items-center justify-center mt-0.5">
                         <input 
                             type="checkbox" 
                             checked={accepted}
                             onChange={(e) => setAccepted(e.target.checked)}
-                            className="peer appearance-none w-5 h-5 border-2 border-slate-300 rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
+                            className="peer appearance-none w-5 h-5 border-2 border-input rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
                         />
                         <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
                     </div>
-                    <span className="text-sm text-slate-600 font-medium select-none">
+                    <span className="text-sm text-ink-2 font-medium select-none">
                         He leído y acepto los términos del contrato de arrendamiento.
                     </span>
                 </label>
@@ -1055,14 +1055,14 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             )}
 
             {!fixedCtaHidden && (
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-slate-100/50 z-10 flex justify-center">
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     {/* Un solo botón primario en pantalla, siempre. Antes convivían
                         el CTA de la tarjeta y el de finalizar, y competían entre sí. */}
                     <button
                         onClick={isContractPhaseCta ? handleContractContinue : handleComplete}
                         disabled={(isContractPhaseCta ? !contractPartValid : !isFormValid) || isSubmitting}
-                        className="w-full flex flex-col items-center justify-center gap-1 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg shadow-brand-purple/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                        className="w-full flex flex-col items-center justify-center gap-1 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                     >
                         {isSubmitting ? (
                             <>
