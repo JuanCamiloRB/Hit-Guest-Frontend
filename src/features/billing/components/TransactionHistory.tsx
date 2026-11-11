@@ -6,6 +6,8 @@ import { Icon } from "@/components/ui/icon"
 import { billingService } from "../services/billing-service"
 import { formatUsd, type CreditTransaction, type TransactionsPage } from "../types"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { StatusPill } from "@/components/ui/status-pill"
 
 /** "Jul 10, 2026 2:32 PM" in the PM's local timezone. */
 function formatDate(iso: string): string {
@@ -31,35 +33,25 @@ const SOURCE_LABELS: Record<string, string> = {
 function SourceBadge({ source }: { source: string }) {
     const label = SOURCE_LABELS[source] ?? source
     return (
-        <span className="inline-flex rounded-full bg-sunk px-2 py-0.5 text-xs font-semibold text-ink-2">
-            {label}
-        </span>
+        <Badge>{label}</Badge>
     )
 }
 
 function TypeBadge({ type }: { type: string }) {
     const isCredit = type === "credit"
     return (
-        <span
-            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-bold ${
-                isCredit ? "bg-success-sunk text-success" : "bg-sunk text-ink-3"
-            }`}
-        >
+        <Badge tone={isCredit ? "success" : "neutral"}>
             {isCredit ? "Credit" : "Debit"}
-        </span>
+        </Badge>
     )
 }
 
 function StatusBadge({ status }: { status: string }) {
     const refunded = status === "refunded"
     return (
-        <span
-            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${
-                refunded ? "bg-warning-sunk text-warning" : "bg-success-sunk text-success"
-            }`}
-        >
+        <StatusPill tone={refunded ? "warning" : "success"}>
             {refunded ? "Refunded" : "Completed"}
-        </span>
+        </StatusPill>
     )
 }
 

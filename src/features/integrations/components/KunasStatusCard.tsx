@@ -9,6 +9,7 @@ import { notifyError } from "@/lib/notify-error"
 import { isActive as computeIsActive, type Integration, type KunasConfigurationPayload } from "../types"
 import { KunasCredentialsDialog } from "./KunasCredentialsDialog"
 import { KunasDisconnectDialog } from "./KunasDisconnectDialog"
+import { StatusPill } from "@/components/ui/status-pill"
 
 interface Props {
     integration: Integration
@@ -50,16 +51,7 @@ export function KunasStatusCard({
             {/* Header: title + status badge */}
             <div className="flex items-center justify-between border-b border-rule px-5 py-4">
                 <h3 className="text-lg font-bold text-ink">Kunas PMS</h3>
-                <span
-                    className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
-                        active
-                            ? "bg-success-sunk text-success"
-                            : "bg-warning-sunk text-warning"
-                    }`}
-                >
-                    <span className={`h-2 w-2 rounded-full ${active ? "bg-success" : "bg-warning"}`} />
-                    {active ? "Activa" : "Inactiva"}
-                </span>
+                <StatusPill tone={active ? "success" : "warning"}>{active ? "Activa" : "Inactiva"}</StatusPill>
             </div>
 
             {/* Body: account + sync info */}

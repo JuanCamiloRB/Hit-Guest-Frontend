@@ -351,11 +351,11 @@ export function UserManagement() {
                                     </TableCell>
                                     <TableCell>
                                         {user.isAccountOwner ? (
-                                            <Badge className="gap-1 bg-warning-sunk text-warning border-warning/30 hover:bg-warning-sunk">
+                                            <Badge tone="warning">
                                                 <Icon icon={Crown} size="xs" /> Dueño de la cuenta
                                             </Badge>
                                         ) : (
-                                            <Badge variant="outline" className="text-ink-3">Miembro</Badge>
+                                            <Badge>Miembro</Badge>
                                         )}
                                     </TableCell>
                                     <TableCell className="text-right">

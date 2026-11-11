@@ -6,6 +6,7 @@ import { Icon } from "@/components/ui/icon"
 import { AirbnbMark, BookingMark, CloudbedsMark, GuestyMark } from "@/components/brand/ProviderMarks"
 import { KunasIntegrationPanel } from "./KunasIntegrationPanel"
 import { AirbnbIcalPanel } from "./AirbnbIcalPanel"
+import { Badge } from "@/components/ui/badge"
 
 interface ProviderCardProps {
     name: string
@@ -141,9 +142,7 @@ export function IntegrationsHub() {
                                 </p>
                             </div>
                         </div>
-                        <span className="shrink-0 rounded-full bg-danger-sunk px-2.5 py-1 text-xs font-bold text-danger">
-                            iCal
-                        </span>
+                        <Badge>iCal</Badge>
                     </div>
                     <div className="mt-5 border-t border-rule pt-5">
                         <AirbnbIcalPanel />

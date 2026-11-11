@@ -23,6 +23,8 @@ const statusPillVariants = cva(
                 info: "bg-info-sunk text-info",
                 danger: "bg-danger-sunk text-danger",
                 idle: "bg-neutral-sunk text-ink-3",
+                // Estado propio de HitGuest que no es éxito ni alerta («Personalizado»).
+                accent: "bg-primary/10 text-primary",
                 none: "text-ink-4 font-medium",
             },
         },
@@ -53,7 +55,9 @@ function StatusPill({
             <span
                 data-slot="status-pill"
                 data-tone="none"
-                className={cn(statusPillVariants({ tone }), className)}
+                // El guion es decorativo (ink-4); una palabra («TRA») es texto y
+                // necesita AA, así que va en ink-3.
+                className={cn(statusPillVariants({ tone }), emptyLabel !== "—" && "text-ink-3", className)}
                 {...props}
             >
                 {emptyLabel}

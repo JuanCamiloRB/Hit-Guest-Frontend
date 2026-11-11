@@ -7,7 +7,7 @@ import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { StatusPill } from "@/components/ui/status-pill"
 import { Label } from "@/components/ui/label"
 import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
@@ -168,9 +168,7 @@ export function CheckinLinkDeliveryCard({
                                     {CHECKIN_LINK_DELIVERY_TITLE}
                                 </h3>
                                 {automation?.isActive && (
-                                    <Badge variant="outline" className="h-5 border-success/30 bg-success-sunk text-xs font-bold text-success">
-                                        Activo
-                                    </Badge>
+                                    <StatusPill tone="success">Activo</StatusPill>
                                 )}
                             </div>
                             <p className="text-sm leading-relaxed text-ink-3">

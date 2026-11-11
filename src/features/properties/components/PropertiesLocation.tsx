@@ -234,7 +234,7 @@ export function PropertiesLocation() {
                         onChange={handleMapChange}
                     />
                     <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Badge className="bg-white/90 text-primary border border-primary/20 shadow-sm backdrop-blur-sm px-3 py-1 font-bold">
+                        <Badge tone="surface">
                             Arrastra el pin para ajustar
                         </Badge>
                     </div>

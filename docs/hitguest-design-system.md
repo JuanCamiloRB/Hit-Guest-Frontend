@@ -116,11 +116,12 @@ escala en hover.
 | Acción | `Button`, eligiendo la variante por intención: `default` (principal, una por vista), `secondary`, `outline`, `ghost`, `link`; `destructive`, `outline-destructive` y `ghost-destructive` para eliminar o desconectar; `outline-warning` para lo que pide atención sin destruir («Configurar (requerido)», exonerar); `link-inherit` para la acción dentro de un aviso; `inverse` sobre superficies oscuras; `overlay` sobre una foto; `field` para un disparador con forma de campo (fecha, mes) con `data-placeholder` sin valor. `outline`/`ghost` con `aria-pressed` son conmutadores. Tamaños: `sm` 32, `default` 40, `lg` 44 y `xl` 48 (solo portal del huésped); `icon-sm`/`icon`/`icon-lg`; `inline` toma el tamaño del texto. Un enlace con forma de botón es `Button asChild` sobre `Link`. Desde la pantalla, `className` solo lleva layout (ancho, márgenes, posición, alineación). |
 | Pulsable sin forma de botón | `UnstyledButton` (tarjetas seleccionables, filas, ítems de menú, encabezados que ordenan): `type="button"` y el foco del sistema; la forma, con tokens. Nunca con relleno sólido: eso es un `Button` |
 | Campo | `Input`, `Textarea`, `Select`, `PhoneInputField`, `FileInput` (oculto; lo abre un Button o una zona de carga) |
-| Etiqueta | `Label` asociada mediante `htmlFor`; `Label variant="plain"` cuando envuelve otra cosa (casilla + texto largo, zona de carga); texto auxiliar con `FormDescription` |
+| Etiqueta de campo | `Label` asociada mediante `htmlFor`; `Label variant="plain"` cuando envuelve otra cosa (casilla + texto largo, zona de carga); texto auxiliar con `FormDescription` |
 | Selección | `Checkbox`, `Radio` (nativo, grupo por `name`), `Switch`, `Tabs` |
 | Superficie | `Card` o `SectionCard` |
 | Modal | `Dialog`, `AlertDialog` o `Sheet` |
-| Estado corto | `StatusPill` |
+| Estado corto | `StatusPill tone=…` (`success`, `warning`, `info`, `danger`, `idle`, `accent`, `none`): punto + palabra; un estado nunca va solo por color |
+| Etiqueta corta (clasificación) | `Badge tone=…` (`neutral`, `accent`, `success`, `warning`, `danger`, `info`, `surface` sobre foto o mapa): clasifica, no es un estado (sin punto). Misma forma que StatusPill |
 | Rótulo de grupo | `Overline` (único uso de mayúsculas) |
 | Aviso | `FeedbackBanner` |
 | Carga | `LoadingState`, `Skeleton`, `RefreshIndicator` o `Button loading` |
@@ -199,6 +200,8 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `primitive-override` | `<Input className="rounded-xl bg-sunk">` | la primitiva tal cual; solo layout (ancho, relleno para un ícono) |
 | `button-override` | `<Button className="bg-primary h-11 font-bold">` | `variant`/`size` (`lg`); solo layout en `className` |
 | `pressable-fill` | `<UnstyledButton className="bg-primary">`, `<Link className="h-12 bg-primary">` | `Button`, `Button asChild` |
+| `label-override` | `<Badge className="bg-success-sunk text-success">` | `tone="success"` |
+| `handmade-pill` | `<span className="rounded-full bg-success-sunk px-2 text-xs">` | `Badge` o `StatusPill` |
 | `icon-direct` | `<Mail />`, `<item.icon />` | `<Icon icon={Mail} />` |
 | `icon-size-override` | `<Icon className="h-5 w-5" />` | `<Icon size="lg" />` |
 | `nonstandard-icon-library` | `react-icons` | `lucide-react` |

@@ -52,6 +52,7 @@ import { AutomationOverrideModal } from "./automations/AutomationOverrideModal"
 import { useIdentityProviderCatalog } from "../hooks/useIdentityProviderCatalog"
 import { identityOverrideSummary, isIdentityPropertyAutomation } from "../lib/identity-listing-override"
 import { Badge } from "@/components/ui/badge"
+import { StatusPill } from "@/components/ui/status-pill"
 import { ExternalPmsIdsField } from "./ExternalPmsIdsField"
 import {
     hasIncompleteExternalPmsId,
@@ -1289,25 +1290,20 @@ export function PropertiesUnits() {
                                                                         <Icon icon={Settings2} className="text-ink-3" />
                                                                         <span className="text-sm font-bold text-ink truncate">{display.title}</span>
                                                                         {display.detail && (
-                                                                            <Badge
-                                                                                variant="outline"
-                                                                                className="h-5 border-rule bg-white text-xs font-semibold text-ink-2"
-                                                                            >
+                                                                            <Badge>
                                                                                 {display.detail}
                                                                             </Badge>
                                                                         )}
                                                                         {isInactive && (
-                                                                            <Badge variant="outline" className="text-xs h-4 bg-danger-sunk text-danger border-danger/30 font-bold">
-                                                                                Desactivada aquí
-                                                                            </Badge>
+                                                                            <StatusPill tone="danger">Desactivada aquí</StatusPill>
                                                                         )}
                                                                         {hasParams && (
-                                                                            <Badge variant="outline" className="text-xs h-4 bg-primary/10 text-primary border-primary/20 font-bold">
+                                                                            <Badge tone="accent">
                                                                                 Personalizada
                                                                             </Badge>
                                                                         )}
                                                                         {hasToken && (
-                                                                            <Badge variant="outline" className="text-xs h-4 bg-sunk text-ink-2 border-rule font-bold">
+                                                                            <Badge>
                                                                                 Token
                                                                             </Badge>
                                                                         )}
@@ -1436,14 +1432,7 @@ export function PropertiesUnits() {
                                         {field.extra?.maxOccupancy || field.extra?.max_occupancy || 0} Huéspedes
                                     </TableCell>
                                     <TableCell>
-                                        <div className={cn(
-                                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold",
-                                            field.isActive !== false
-                                                ? "bg-success-sunk text-success border border-success/20"
-                                                : "bg-sunk text-ink-3 border border-rule"
-                                        )}>
-                                            {field.isActive !== false ? "Activo" : "Inactivo"}
-                                        </div>
+                                        <StatusPill tone={field.isActive !== false ? "success" : "idle"}>{field.isActive !== false ? "Activo" : "Inactivo"}</StatusPill>
                                     </TableCell>
                                     <TableCell className="text-right font-semibold text-ink-2">
                                         ${Number(field.price || field.extra?.startPrice || field.extra?.price || 0).toLocaleString()}

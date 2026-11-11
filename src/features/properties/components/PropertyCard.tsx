@@ -20,7 +20,8 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
+import { Badge, type BadgeTone } from "@/components/ui/badge"
+import { StatusPill } from "@/components/ui/status-pill"
 import { Switch } from "@/components/ui/switch"
 import { Property } from "@/types"
 import Link from "next/link"
@@ -42,11 +43,11 @@ interface PropertyCardProps {
 }
 
 /** Tono visual por clase de insignia — presentación, la derivación vive en `property-badges.ts`. */
-const BADGE_STYLES: Record<PropertyBadge["kind"], string> = {
-    identity: "bg-primary/10 text-primary border-primary/20",
-    contract: "bg-info-sunk text-info border-info/30",
-    ops: "bg-success-sunk text-success border-success/30",
-    absent: "bg-sunk text-ink-3 border-rule",
+const BADGE_TONE: Record<PropertyBadge["kind"], BadgeTone> = {
+    identity: "accent",
+    contract: "info",
+    ops: "success",
+    absent: "neutral",
 }
 
 /**
@@ -138,22 +139,16 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
 
                 {typeLabel && (
                     <div className="absolute top-2 left-2 flex gap-1">
-                        <Badge className="bg-white/90 text-ink border-none shadow-sm backdrop-blur-sm flex gap-1.5 items-center px-2 py-0.5">
+                        <Badge tone="surface">
                             <PropertyTypeIcon label={hasType ? typeLabel : null} />
-                            <span className="text-xs font-bold">{typeLabel}</span>
+                            {typeLabel}
                         </Badge>
                     </div>
                 )}
 
-                <Badge
-                    variant={isActive ? "default" : "secondary"}
-                    className={cn(
-                        "absolute right-2 top-2 px-2 py-0.5 text-xs font-bold border-none shadow-sm transition-colors duration-300",
-                        isActive ? "bg-success" : "bg-ink-3"
-                    )}
-                >
-                    {isActive ? "ACTIVO" : "INACTIVO"}
-                </Badge>
+                <StatusPill tone={isActive ? "success" : "idle"} className="absolute right-2 top-2">
+                    {isActive ? "Activo" : "Inactivo"}
+                </StatusPill>
             </div>
             <CardHeader className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
@@ -212,11 +207,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                     {badges && badges.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                             {badges.map((badge) => (
-                                <Badge
-                                    key={badge.key}
-                                    variant="outline"
-                                    className={cn("px-2 py-0.5 text-xs font-bold border", BADGE_STYLES[badge.kind])}
-                                >
+                                <Badge key={badge.key} tone={BADGE_TONE[badge.kind]}>
                                     {badge.label}
                                 </Badge>
                             ))}

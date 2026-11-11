@@ -256,7 +256,7 @@ function GuestDocumentRow({
                         <span className="text-sm font-semibold text-ink">{fullName}</span>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-ink-3">
                             {guest.isMain && (
-                                <Badge variant="outline" className="text-xs px-1.5 py-0 border-primary/20 text-primary">
+                                <Badge tone="accent">
                                     Principal
                                 </Badge>
                             )}

@@ -255,7 +255,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
                             // Sin reporte la pastilla sigue diciendo cuál es («TRA»):
                             // es texto real, no el guion decorativo de `ink-4`
                             // (2,35:1), así que va en `ink-3` (AA).
-                            <StatusPill key={key} tone={tone} emptyLabel={short} className={tone === "none" ? "text-ink-3" : undefined}>
+                            <StatusPill key={key} tone={tone} emptyLabel={short}>
                                 {short}
                             </StatusPill>
                         )

@@ -3,7 +3,7 @@
 import type { ReactNode } from "react"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
-import { Badge } from "@/components/ui/badge"
+import { StatusPill, type StatusTone } from "@/components/ui/status-pill"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { ReservationSource } from "../../services/reservation-source-service"
@@ -11,11 +11,11 @@ import { ReservationSourceIdentity, reservationSourceName, reservationSourceSlug
 
 export type ContractChannelStatus = "configured" | "unconfigured" | "dirty" | "incomplete"
 
-const STATUS_COPY: Record<ContractChannelStatus, { label: string; className: string }> = {
-    configured: { label: "Configurado", className: "border-success/30 bg-success-sunk text-success" },
-    unconfigured: { label: "Sin contrato", className: "border-rule bg-sunk text-ink-2" },
-    dirty: { label: "Cambios sin guardar", className: "border-warning/30 bg-warning-sunk text-warning" },
-    incomplete: { label: "Incompleto", className: "border-danger/30 bg-danger-sunk text-danger" },
+const STATUS_COPY: Record<ContractChannelStatus, { label: string; tone: StatusTone }> = {
+    configured: { label: "Configurado", tone: "success" },
+    unconfigured: { label: "Sin contrato", tone: "idle" },
+    dirty: { label: "Cambios sin guardar", tone: "warning" },
+    incomplete: { label: "Incompleto", tone: "danger" },
 }
 
 interface Props {
@@ -51,9 +51,7 @@ export function ContractChannelCard({
                 <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2.5">
                         <ReservationSourceIdentity name={sourceName} slug={source ? reservationSourceSlug(source) : null} />
-                        <Badge variant="outline" className={cn("h-6 rounded-full px-2.5 text-xs font-bold", statusCopy.className)}>
-                            {statusCopy.label}
-                        </Badge>
+                        <StatusPill tone={statusCopy.tone}>{statusCopy.label}</StatusPill>
                     </div>
                     <p className={cn("pl-0 text-sm sm:pl-15", status === "unconfigured" ? "text-ink-3" : "font-medium text-ink-2")}>
                         {summary}

@@ -1,6 +1,7 @@
 import { Check, CreditCard, Lock, Trash2, ArrowRight } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 
 interface GuaranteeInfoCardProps {
     onContinue: () => void
@@ -66,12 +67,12 @@ export function GuaranteeInfoCard({ onContinue }: GuaranteeInfoCardProps) {
 
             {/* Reassurance chips */}
             <div className="flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 bg-success-sunk text-success text-xs font-semibold px-3 py-1.5 rounded-full">
+                <Badge tone="success">
                     <Icon icon={Check} size="sm" /> Sin cobro ahora
-                </span>
-                <span className="inline-flex items-center gap-1.5 bg-success-sunk text-success text-xs font-semibold px-3 py-1.5 rounded-full">
+                </Badge>
+                <Badge tone="success">
                     <Icon icon={Lock} size="sm" /> Tokenización certificada
-                </span>
+                </Badge>
             </div>
 
             {/* FAQ */}

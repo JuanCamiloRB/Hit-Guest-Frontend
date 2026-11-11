@@ -15,7 +15,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
+import { StatusPill } from "@/components/ui/status-pill"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
@@ -491,9 +491,7 @@ export function AutomationCard({
                                             {definition.title}
                                         </h3>
                                         {isActive && (
-                                            <Badge variant="outline" className="bg-success-sunk text-success border-success/30 text-xs font-bold h-5">
-                                                Activo
-                                            </Badge>
+                                            <StatusPill tone="success">Activo</StatusPill>
                                         )}
                                     </div>
                                     <p className="text-sm text-ink-3 leading-relaxed">{definition.description}</p>

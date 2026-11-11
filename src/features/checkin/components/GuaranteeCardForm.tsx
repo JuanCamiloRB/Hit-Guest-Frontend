@@ -476,7 +476,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                     <p className="text-sm font-bold text-success">Tarjeta de garantía registrada</p>
                     <p className="text-xs text-success mt-0.5">
                         {cardBrand && cardLast4
-                            ? `${cardBrand.toUpperCase()} terminada en ${cardLast4}`
+                            ? `${cardBrand.charAt(0).toUpperCase()}${cardBrand.slice(1)} terminada en ${cardLast4}`
                             : "No se ha realizado ningún cobro."}
                     </p>
                 </div>

@@ -37,6 +37,7 @@ import { useCachedLoad } from "@/hooks/useCachedLoad"
 import { portfolioCache, propertiesCache } from "../lib/properties-cache"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Skeleton } from "@/components/ui/skeleton"
+import { StatusPill } from "@/components/ui/status-pill"
 
 // ── Component ──────────────────────────────────────────────────────────
 
@@ -317,14 +318,7 @@ export function PropertiesList() {
                                                     <TableCell className="font-bold text-ink">{unit.name}</TableCell>
                                                     <TableCell className="text-ink-2 text-sm font-medium">{property?.name}</TableCell>
                                                     <TableCell>
-                                                        <div className={cn(
-                                                            "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold",
-                                                            unit.status === "ACTIVE"
-                                                                ? "bg-success-sunk text-success border border-success/20"
-                                                                : "bg-sunk text-ink-3 border border-rule"
-                                                        )}>
-                                                            {unit.status === "ACTIVE" ? "Activo" : "Inactivo"}
-                                                        </div>
+                                                        <StatusPill tone={unit.status === "ACTIVE" ? "success" : "idle"}>{unit.status === "ACTIVE" ? "Activo" : "Inactivo"}</StatusPill>
                                                     </TableCell>
                                                     <TableCell className="text-sm font-medium text-ink-2">{unit.capacity} Huéspedes</TableCell>
                                                     <TableCell className="text-right font-bold text-ink">

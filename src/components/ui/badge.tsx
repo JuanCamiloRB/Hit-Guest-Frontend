@@ -1,48 +1,54 @@
 import * as React from "react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { Slot } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Etiqueta corta que CLASIFICA algo («Principal», «Personalizada», «Token»,
+ * el tipo de una propiedad). No es un estado: un estado lleva punto y va con
+ * `StatusPill`. Misma forma que StatusPill (radio md, xs semibold) para que
+ * ambas se lean como una familia; el color sale de `tone`, nunca de clases.
+ *
+ * - neutral: dato sin carga («Token», «Miembro»).
+ * - accent: lo propio de HitGuest o lo personalizado («Personalizada»).
+ * - success / warning / danger / info: el mismo significado que en los avisos.
+ * - surface: sobre una foto o un mapa, con fondo propio para leerse.
+ */
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-full border border-transparent px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
+  "inline-flex w-fit shrink-0 items-center gap-1 whitespace-nowrap rounded-md px-1.5 py-0.5 text-xs font-semibold [&>svg]:pointer-events-none",
   {
     variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
-        secondary:
-          "bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
-        destructive:
-          "bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline:
-          "border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        ghost: "[a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 [a&]:hover:underline",
+      tone: {
+        neutral: "bg-neutral-sunk text-ink-2",
+        accent: "bg-primary/10 text-primary",
+        success: "bg-success-sunk text-success",
+        warning: "bg-warning-sunk text-warning",
+        danger: "bg-danger-sunk text-danger",
+        info: "bg-info-sunk text-info",
+        surface: "bg-card text-ink shadow-xs",
       },
     },
     defaultVariants: {
-      variant: "default",
+      tone: "neutral",
     },
   }
 )
 
+type BadgeTone = NonNullable<VariantProps<typeof badgeVariants>["tone"]>
+
 function Badge({
   className,
-  variant = "default",
-  asChild = false,
+  tone = "neutral",
   ...props
-}: React.ComponentProps<"span"> &
-  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
-  const Comp = asChild ? Slot.Root : "span"
-
+}: React.ComponentProps<"span"> & VariantProps<typeof badgeVariants>) {
   return (
-    <Comp
+    <span
       data-slot="badge"
-      data-variant={variant}
-      className={cn(badgeVariants({ variant }), className)}
+      data-tone={tone}
+      className={cn(badgeVariants({ tone }), className)}
       {...props}
     />
   )
 }
 
-export { Badge, badgeVariants }
+export { Badge, badgeVariants, type BadgeTone }

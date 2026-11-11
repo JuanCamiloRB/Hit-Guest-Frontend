@@ -109,7 +109,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                     <Icon icon={Building2} size="sm" className="text-ink-3 group-hover:text-ink-2" />
                     <span>Overrides por unidad</span>
                     {overrideCount > 0 && (
-                        <Badge variant="outline" className="h-4 text-xs bg-primary/10 text-primary border-primary/20 font-bold">
+                        <Badge tone="accent">
                             {overrideCount} configurada{overrideCount > 1 ? "s" : ""}
                         </Badge>
                     )}

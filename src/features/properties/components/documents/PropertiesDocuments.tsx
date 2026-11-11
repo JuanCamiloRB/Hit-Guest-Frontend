@@ -29,7 +29,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { StatusPill } from "@/components/ui/status-pill"
 import {
     Dialog,
     DialogContent,
@@ -256,21 +256,11 @@ export function PropertiesDocuments() {
                                                         {documentTypeLabel(doc.documentType)}
                                                     </h4>
                                                     {isDeleted ? (
-                                                        <Badge variant="outline" className="h-5 text-xs font-bold bg-sunk text-ink-3 border-rule">
-                                                            Eliminado
-                                                        </Badge>
+                                                        <StatusPill tone="idle">Eliminado</StatusPill>
                                                     ) : (
-                                                        <Badge
-                                                            variant="outline"
-                                                            className={cn(
-                                                                "h-5 text-xs font-bold",
-                                                                isActive
-                                                                    ? "bg-success-sunk text-success border-success/30"
-                                                                    : "bg-sunk text-ink-3 border-rule",
-                                                            )}
-                                                        >
+                                                        <StatusPill tone={isActive ? "success" : "idle"}>
                                                             {isActive ? "Activo" : "Inactivo"}
-                                                        </Badge>
+                                                        </StatusPill>
                                                     )}
                                                 </div>
                                                 <p className="text-xs text-ink-3 mt-0.5">

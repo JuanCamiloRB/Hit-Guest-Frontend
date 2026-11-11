@@ -14,6 +14,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
+import { StatusPill } from "@/components/ui/status-pill"
 import { User } from "@/types"
 
 export const columns: ColumnDef<User>[] = [
@@ -35,8 +36,8 @@ export const columns: ColumnDef<User>[] = [
         cell: ({ row }) => {
             const role = row.getValue("role") as string
             return (
-                <Badge variant={role === "ADMIN" ? "default" : "secondary"}>
-                    {role}
+                <Badge tone={role === "ADMIN" ? "accent" : "neutral"}>
+                    {role === "ADMIN" ? "Admin" : role === "STAFF" ? "Staff" : role}
                 </Badge>
             )
         },
@@ -47,9 +48,9 @@ export const columns: ColumnDef<User>[] = [
         cell: ({ row }) => {
             const status = row.getValue("status") as string
             return (
-                <div className={status === "ACTIVE" ? "text-success font-medium" : "text-muted-foreground"}>
-                    {status}
-                </div>
+                <StatusPill tone={status === "ACTIVE" ? "success" : "idle"}>
+                    {status === "ACTIVE" ? "Active" : status === "INACTIVE" ? "Inactive" : status}
+                </StatusPill>
             )
         },
     },

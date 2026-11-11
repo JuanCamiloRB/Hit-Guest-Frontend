@@ -90,6 +90,7 @@ import { reservationsService } from "@/features/reservations/services/reservatio
 import { createReservationWithFollowUp } from "@/features/reservations/lib/create-reservation-followup"
 import { readGuestNameParts } from "@/features/reservations/lib/guest-name"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Badge } from "@/components/ui/badge"
 
 // ── Zod Schema ──────────────────────────────────────────────
 const reservationSchema = z.object({
@@ -945,9 +946,9 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                             <span>
                                                                 {format(field.value.from, "d MMM yyyy", { locale: es })} — {format(field.value.to, "d MMM yyyy", { locale: es })}
                                                                 {nights > 0 && (
-                                                                    <span className="ml-2 text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full font-semibold">
+                                                                    <Badge tone="accent" className="ml-2">
                                                                         {nights} {nights === 1 ? "noche" : "noches"}
-                                                                    </span>
+                                                                    </Badge>
                                                                 )}
                                                             </span>
                                                         ) : (

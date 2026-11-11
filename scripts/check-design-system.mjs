@@ -179,6 +179,23 @@ const rules = [
         ignore: UI_ONLY,
     },
     {
+        // Badge (etiqueta) y StatusPill (estado) traen forma y color por `tone`.
+        id: "label-override",
+        description: "pisa la apariencia de un Badge o StatusPill; elige `tone` (solo se permite layout)",
+        pattern: /(?<![\w-])(?:[a-z-]+:)*(?:bg|border|rounded|shadow|ring|outline|font|h|min-h|max-h|size|p|px|py|pt|pb|pl|pr|gap|transition|duration|opacity|leading|tracking|decoration|underline)(?:-[\w/\[\].%()-]+)?(?![\w-])|(?<![\w-])(?:[a-z-]+:)*text-(?!left\b|center\b|right\b|wrap\b|nowrap\b)[\w/\[\].-]+/g,
+        input: "labelClasses",
+        ignore: UI_ONLY,
+    },
+    {
+        // Una pastilla armada a mano (texto xs, radio, relleno y fondo de estado)
+        // es un Badge o un StatusPill que esquiva la primitiva.
+        id: "handmade-pill",
+        description: "arma una pastilla a mano; usa Badge (etiqueta) o StatusPill (estado)",
+        pattern: /^.+$/gm,
+        input: "pillElements",
+        ignore: UI_ONLY,
+    },
+    {
         // Un pulsable con relleno sólido ES un botón: va con Button y su variante
         // (un enlace, con `Button asChild`). La navegación lateral es la única
         // excepción: su ítem activo es un estado de navegación, no una acción.
@@ -246,6 +263,8 @@ function inspect() {
         const iconClasses = []
         const buttonClasses = []
         const pressableClasses = []
+        const labelClasses = []
+        const pillElements = []
         const lucideNames = new Set()
         for (const statement of sourceFile.statements) {
             if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
@@ -307,6 +326,14 @@ function inspect() {
                 if (tag === "Icon") iconClasses.push(...classTexts(node))
                 if (tag === "Button") buttonClasses.push(...classTexts(node))
                 if (tag === "UnstyledButton" || tag === "Link" || tag === "a") pressableClasses.push(...classTexts(node))
+                if (tag === "Badge" || tag === "StatusPill") labelClasses.push(...classTexts(node))
+                if (tag === "span" || tag === "div" || tag === "p") {
+                    const joined = ` ${classTexts(node).join(" ")} `
+                    if (/\stext-xs\s/.test(joined) && /\srounded-(?:full|md)\s/.test(joined) && /\spx-/.test(joined)
+                        && /\sbg-(?:(?:success|warning|danger|info|neutral)-sunk|primary\/10|sunk|white)\s/.test(joined)) {
+                        pillElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
+                    }
+                }
             }
             // Claves de los objetos en `style={{…}}`.
             if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === "style" && node.initializer
@@ -332,6 +359,8 @@ function inspect() {
             iconClasses: iconClasses.join("\n"),
             buttonClasses: buttonClasses.join("\n"),
             pressableClasses: pressableClasses.join("\n"),
+            labelClasses: labelClasses.join("\n"),
+            pillElements: pillElements.join("\n"),
         }
         for (const rule of rules) {
             if (rule.ignore?.(path)) continue

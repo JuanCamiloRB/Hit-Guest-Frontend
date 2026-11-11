@@ -70,9 +70,7 @@ export function SettingsContent() {
         <div className="flex flex-col md:flex-row gap-8 items-start">
             {/* Vertical Sidebar Navigation */}
             <aside className="w-full md:w-64 space-y-2 flex-shrink-0">
-                <Overline className="mb-4 px-4">
-                    CONFIGURACIÓN
-                </Overline>
+                <Overline className="mb-4 px-4">Configuración</Overline>
                 <div className="flex flex-col space-y-1">
                     {filteredTabs.map((tab) => (
                         <UnstyledButton

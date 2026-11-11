@@ -35,6 +35,7 @@ import { useIsSupportAgentOnly } from "@/features/support/hooks/useIsSupportAgen
 import { Avatar as UiAvatar, AvatarFallback } from "@/components/ui/avatar"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Overline } from "@/components/ui/overline"
+import { Badge } from "@/components/ui/badge"
 
 interface NavEntry {
     label: string
@@ -82,9 +83,7 @@ function NavItem({ item }: { item: NavEntry }) {
                 />
                 <span className="flex-1">{item.label}</span>
                 {item.badge && (
-                    <span className="rounded-full bg-white px-1.5 py-0.5 text-xs font-bold tracking-wider text-primary">
-                        {item.badge}
-                    </span>
+                    <Badge tone="surface">{item.badge}</Badge>
                 )}
             </Link>
         </li>
