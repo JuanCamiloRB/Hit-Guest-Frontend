@@ -2,6 +2,7 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 import { cardSurface } from "@/components/ui/card"
+import { Heading } from "@/components/ui/heading"
 
 interface SectionCardProps extends Omit<React.ComponentProps<"section">, "title"> {
     title: string
@@ -41,7 +42,6 @@ function SectionCard({
     ...props
 }: SectionCardProps) {
     const titleId = React.useId()
-    const Heading = `h${headingLevel}` as const
 
     return (
         <section
@@ -53,7 +53,7 @@ function SectionCard({
             {/* El DOM sigue el orden visual: en móvil, título y después acciones. */}
             <div className="flex flex-col gap-3 border-b border-rule px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 flex-1">
-                    <Heading id={titleId} className="text-base font-bold text-ink break-words">{title}</Heading>
+                    <Heading level={headingLevel} size="section" id={titleId} className="break-words">{title}</Heading>
                     {description && <p className="mt-0.5 text-xs text-ink-2">{description}</p>}
                 </div>
                 {actions && <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">{actions}</div>}

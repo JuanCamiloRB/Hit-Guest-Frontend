@@ -8,6 +8,8 @@ import { listingsService } from "@/features/properties/services/listings-service
 import { apiResponseToFormData } from "@/features/properties/types"
 import { Property } from "@/types"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Heading } from "@/components/ui/heading"
+import { Page, PageHeader } from "@/components/ui/page"
 
 export default function EditPropertyPage() {
     const { id } = useParams()
@@ -63,7 +65,7 @@ export default function EditPropertyPage() {
     if (isLoading) {
         return (
             // Esqueleto con la forma de la ficha (título, pestañas, formulario).
-            <div className="space-y-6" aria-busy>
+            <Page aria-busy>
                 <span className="sr-only" role="status">Cargando la propiedad…</span>
                 <div className="space-y-2">
                     <Skeleton className="h-8 w-64" />
@@ -71,30 +73,28 @@ export default function EditPropertyPage() {
                 </div>
                 <Skeleton className="h-12 w-full rounded-xl" />
                 <Skeleton className="h-96 w-full rounded-xl" />
-            </div>
+            </Page>
         )
     }
 
     if (!property) {
         return (
             <div className="flex flex-col items-center justify-center min-h-100 space-y-4">
-                <h2 className="text-2xl font-bold">Propiedad no encontrada</h2>
+                <Heading level={1}>Propiedad no encontrada</Heading>
                 <p className="text-ink-3">La propiedad que buscas no existe o ha sido eliminada.</p>
             </div>
         )
     }
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Gestionar Propiedad</h2>
-                <p className="text-ink-3">
-                    Edita los detalles, unidades y configuraciones de {property.name}.
-                </p>
-            </div>
+        <Page>
+            <PageHeader
+                title="Gestionar Propiedad"
+                description={`Edita los detalles, unidades y configuraciones de ${property.name}.`}
+            />
             <Suspense fallback={<Skeleton className="h-20 w-full rounded-lg" />}>
                 <PropertyForm initialData={property} />
             </Suspense>
-        </div>
+        </Page>
     )
 }

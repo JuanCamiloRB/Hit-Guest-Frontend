@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { UserDialog } from "./UserDialog"
+import { PageHeader } from "@/components/ui/page"
 
 // Mock data
 const data: User[] = [
@@ -39,19 +40,17 @@ const data: User[] = [
 export default function UserList() {
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Team Members</h2>
-                    <p className="text-ink-3">
-                        Manage your team members and their permissions.
-                    </p>
-                </div>
-                <UserDialog trigger={
-                    <Button>
-                        <Icon icon={Plus} className="mr-2" /> Add Member
-                    </Button>
-                } />
-            </div>
+            <PageHeader
+                title="Team Members"
+                description="Manage your team members and their permissions."
+                actions={
+                    <UserDialog trigger={
+                        <Button>
+                            <Icon icon={Plus} className="mr-2" /> Add Member
+                        </Button>
+                    } />
+                }
+            />
             <DataTable columns={columns} data={data} />
         </div>
     )

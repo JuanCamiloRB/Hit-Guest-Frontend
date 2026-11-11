@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Heading } from "@/components/ui/heading"
 
 /**
  * Universal trigger configuration shared by every automation (per the providers
@@ -150,7 +151,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
         <div className="space-y-3 rounded-xl border border-rule bg-sunk/60 p-4">
             <div className="flex items-center gap-2">
                 <Icon icon={Zap} className="text-primary" />
-                <h4 className="text-sm font-bold text-ink">Disparador</h4>
+                <Heading level={4}>Disparador</Heading>
                 <span className="text-xs font-semibold text-ink-3">
                     {required ? "Requerido" : "Opcional"}
                 </span>

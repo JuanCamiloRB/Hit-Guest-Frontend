@@ -28,6 +28,7 @@ import { Honeypot } from "./Honeypot"
 import Link from "next/link"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Heading } from "@/components/ui/heading"
 
 /** PM/Client account terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
 const ACCOUNT_TERMS_URL = "https://hitguest.com/terminos-condiciones/"
@@ -100,13 +101,9 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                         <Icon icon={CheckCircle2} size="xl" className="text-success" />
                     </span>
                     <div className="space-y-1">
-                        <h2
-                            ref={successHeadingRef}
-                            tabIndex={-1}
-                            className="text-2xl font-semibold tracking-tight text-ink outline-none"
-                        >
+                        <Heading level={2} size="page" className="outline-none" ref={successHeadingRef} tabIndex={-1}>
                             ¡Bienvenido a HIT Guest!
-                        </h2>
+                        </Heading>
                         <p className="text-sm leading-relaxed text-ink-2">
                             Tu cuenta ya está creada. Te enviamos un correo de bienvenida.
                         </p>

@@ -29,6 +29,7 @@ import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { FileInput } from "@/components/ui/file-input"
+import { Heading } from "@/components/ui/heading"
 
 interface VerifyScreenProps {
     reservationUuid: string
@@ -911,7 +912,7 @@ export function VerifyScreen({
                     </div>
                 </div>
                 <div className="space-y-3 w-full max-w-xs">
-                    <h2 className="text-2xl font-bold tracking-tight text-ink">{loadingTitle}</h2>
+                    <Heading level={2} size="page">{loadingTitle}</Heading>
                     {verificationState === "waiting_portal" && portalVerifStatus === "pending" ? (
                         /* Sin señal del portal todavía: la frase avanza con el tiempo
                            para que la espera no parezca un loop (Didier, 2026-09-06).
@@ -949,9 +950,9 @@ export function VerifyScreen({
                 <ProgressBar currentStep={2} totalSteps={isSecondary ? 3 : 5} />
 
                 <div className="space-y-2">
-                    <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">
+                    <Heading level={1}>
                         Confirma tus datos
-                    </h1>
+                    </Heading>
                     <p className="text-ink-3 text-sm">
                         Hemos extraído esta información de tu documento. Corrige cualquier error si es necesario.
                     </p>
@@ -960,7 +961,7 @@ export function VerifyScreen({
                 <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 border-b border-rule pb-3">
                         <Icon icon={FileText} size="lg" className="text-primary" />
-                        <h2 className="font-bold text-ink">Datos Extraídos</h2>
+                        <Heading level={2} size="section">Datos Extraídos</Heading>
                     </div>
                     
                     <div className="space-y-4">
@@ -1025,7 +1026,7 @@ export function VerifyScreen({
                     <Icon icon={Clock} size="3xl" className="text-warning" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-ink">No pudimos confirmar tu identidad</h2>
+                    <Heading level={2}>No pudimos confirmar tu identidad</Heading>
                     {/* En este estado el backend no reporta la causa (`isStale` llega
                         sin motivo), así que el copy dice «puede deberse a» — nombra la
                         causa más frecuente sin afirmarla (pedido de producto,
@@ -1080,7 +1081,7 @@ export function VerifyScreen({
                     <Icon icon={RotateCcw} size="3xl" className="text-warning" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-ink">Tu sesión de verificación expiró</h2>
+                    <Heading level={2}>Tu sesión de verificación expiró</Heading>
                     <p className="text-ink-3 text-sm max-w-xs">
                         La verificación caduca después de un tiempo. Reiníciala para obtener una nueva.
                         Si el problema persiste, contacta al anfitrión.
@@ -1112,7 +1113,7 @@ export function VerifyScreen({
                     <Icon icon={XCircle} size="3xl" className="text-danger" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-ink">Verificación no exitosa</h2>
+                    <Heading level={2}>Verificación no exitosa</Heading>
                     <p className="text-ink-3 text-sm max-w-xs">
                         {failureMessage || "No pudimos verificar tu identidad. Por favor intenta de nuevo con fotos más claras."}
                     </p>
@@ -1177,9 +1178,9 @@ export function VerifyScreen({
             </div>
 
             <div className="space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">
+                <Heading level={1}>
                     {isCaptureMode ? "Sube tu documento" : "Verifica tu Identidad"}
-                </h1>
+                </Heading>
                 <p className="text-ink-3 text-sm">
                     {verification.type === "session"
                         ? (verification.sessionType === "kyc"
@@ -1223,7 +1224,7 @@ export function VerifyScreen({
                             <span className="text-2xl font-bold text-ink tracking-tighter">Didit.</span>
                         </div>
                         <div className="space-y-2">
-                            <h3 className="font-bold text-ink">{copy.title}</h3>
+                            <Heading level={3}>{copy.title}</Heading>
                             <p className="text-sm text-ink-3">{copy.description}</p>
                         </div>
                         <p className="text-xs text-ink-3">

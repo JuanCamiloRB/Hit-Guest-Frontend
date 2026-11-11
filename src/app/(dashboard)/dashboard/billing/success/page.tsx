@@ -8,6 +8,7 @@ import { CheckCircle2, ArrowRight } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useTranslation } from "@/hooks/useTranslation"
 import { useBalanceStore } from "@/features/billing/hooks/useBalanceStore"
+import { Heading } from "@/components/ui/heading"
 
 const BILLING_HREF = "/dashboard/settings?tab=billing"
 const AUTO_REDIRECT_MS = 4000
@@ -39,7 +40,7 @@ function BillingSuccessContent() {
                 <Icon icon={CheckCircle2} size="3xl" className="text-success" />
             </div>
             <div className="space-y-2">
-                <h1 className="text-2xl font-bold text-ink">{t("billing.success.title")}</h1>
+                <Heading level={1}>{t("billing.success.title")}</Heading>
                 <p className="max-w-sm text-sm text-ink-3">{t("billing.success.body")}</p>
                 {sessionId && (
                     <p className="text-xs text-ink-4">Ref: {sessionId}</p>

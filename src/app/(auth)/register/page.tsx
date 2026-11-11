@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { RegisterForm } from "@/features/auth/components/RegisterForm"
 import { Logo } from "@/components/ui/Logo"
+import { Heading } from "@/components/ui/heading"
 
 export const metadata: Metadata = {
     title: "Registro - Hit Guest",
@@ -29,9 +30,9 @@ export default function RegisterPage() {
             <div className="lg:p-8 flex items-center bg-background">
                 <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-112.5">
                     <div className="flex flex-col space-y-2 text-center sm:text-left mb-2">
-                        <h1 className="text-3xl font-sans font-bold tracking-tight text-primary">
+                        <Heading level={1}>
                             Crea tu cuenta
-                        </h1>
+                        </Heading>
                         <p className="text-base text-ink-3 font-secondary leading-relaxed">
                             Gestiona tus propiedades con nuestra infraestructura confiable y profesional.
                         </p>

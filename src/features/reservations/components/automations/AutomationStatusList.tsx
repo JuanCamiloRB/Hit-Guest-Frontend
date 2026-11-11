@@ -15,6 +15,7 @@ import { RefreshIndicator } from "@/components/ui/loading-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Heading } from "@/components/ui/heading"
 
 interface AutomationStatusListProps {
     reservationUuid: string
@@ -56,7 +57,7 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                         el mismo tratamiento que las etiquetas de dato de arriba,
                         así que el encabezado de la sección más importante del
                         panel no se distinguía de un metadato. */}
-                    <h4 className="text-sm font-bold text-ink">Automatizaciones</h4>
+                    <Heading level={4}>Automatizaciones</Heading>
                     {/* Mientras hay trabajo pendiente el panel vuelve a consultar solo. */}
                     <RefreshIndicator active={!isLoading && (isPolling || refreshing)} />
                 </div>

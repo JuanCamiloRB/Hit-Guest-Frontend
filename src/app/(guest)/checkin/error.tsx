@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { AlertTriangle, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
+import { Heading } from "@/components/ui/heading"
 
 interface CheckinErrorProps {
     error: Error & { digest?: string }
@@ -57,7 +58,7 @@ export default function CheckinError({ error, reset }: CheckinErrorProps) {
                 <Icon icon={AlertTriangle} size="2xl" className="text-warning" />
             </div>
             <div className="max-w-sm space-y-2">
-                <h1 className="text-xl font-bold text-ink">No pudimos mostrar este paso</h1>
+                <Heading level={1} size="title">No pudimos mostrar este paso</Heading>
                 <p className="text-sm text-ink-3">
                     Intenta cargar nuevamente. Si ya habías enviado información, no repitas el proceso hasta
                     confirmar su estado; si el problema continúa, contacta al alojamiento.

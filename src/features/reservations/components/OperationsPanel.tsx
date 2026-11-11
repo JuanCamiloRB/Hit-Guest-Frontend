@@ -73,6 +73,8 @@ import { inactiveResourceAction, readInactiveResourceError } from "@/lib/inactiv
 import { checkinLinkBlockedReason } from "../lib/reservation-availability"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { RefreshIndicator } from "@/components/ui/loading-state"
+import { Heading } from "@/components/ui/heading"
+import { PageBreadcrumb, PageHeader } from "@/components/ui/page"
 
 export function OperationsPanel({ reservationId }: { reservationId: string }) {
     // Si la fila se precargó al pasar el cursor, la ficha se ve al instante y
@@ -238,7 +240,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
     const linkDisabledReason = disabledReason ?? linkBlockedReason ?? undefined
 
     return (
-        <div className="flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto pb-10">
+        <div className="flex flex-col gap-6 pb-10">
             {refreshFailed && (
                 // Mismo aviso que las listas: la ficha sigue a la vista, pero puede no ser la actual.
                 <FeedbackBanner
@@ -249,37 +251,27 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                     No pudimos actualizar la reserva. Se muestra la última cargada.
                 </FeedbackBanner>
             )}
-            {/* Breadcrumbs & Header */}
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
-                <div className="min-w-0 space-y-1">
-                    <nav aria-label="Ruta de navegación">
-                        <ol className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
-                            <li>
-                                <Link
-                                    href="/dashboard/reservations"
-                                    className="rounded-xs transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-                                >
-                                    Reservas
-                                </Link>
-                            </li>
-                            <Icon icon={ChevronRight} size="xs" className="text-ink-4" />
-                            <li aria-current="page" className="truncate font-semibold text-ink-2">
-                                {data.externalId || `${reservationId.slice(0, 8)}…`}
-                            </li>
-                        </ol>
-                    </nav>
-                    {/* El h1 nombra la reserva concreta, no la plantilla de la
-                        pantalla: "Panel de Operaciones" es idéntico en las mil
-                        reservas y no ayuda a saber cuál estás mirando. */}
-                    <h1 className="truncate text-2xl font-bold tracking-tight text-ink sm:text-3xl">
-                        {guestName}
-                    </h1>
-                    <p className="text-sm text-ink-3">
+            {/* El h1 nombra la reserva concreta, no la plantilla de la pantalla:
+                "Panel de Operaciones" es idéntico en las mil reservas y no ayuda a
+                saber cuál estás mirando. */}
+            <PageHeader
+                eyebrow={
+                    <PageBreadcrumb
+                        items={[
+                            { label: "Reservas", href: "/dashboard/reservations" },
+                            { label: data.externalId || `${reservationId.slice(0, 8)}…` },
+                        ]}
+                    />
+                }
+                title={guestName}
+                description={
+                    <>
                         {data.propertyName} · {format(data.checkIn, "d MMM", { locale: es })} –{" "}
                         {format(data.checkOut, "d MMM yyyy", { locale: es })}
-                    </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
+                    </>
+                }
+                actions={
+                    <>
                     {/* La ficha sigue a la vista mientras se relee (editar, volver a la pestaña). */}
                     <RefreshIndicator active={status === "refreshing"} label="Actualizando reserva…" />
                     <Button onClick={() => window.print()} variant="outline">
@@ -315,8 +307,9 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                             </Button>
                         }
                     />
-                </div>
-            </div>
+                    </>
+                }
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* Main Content Area */}
@@ -333,9 +326,9 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                         </AvatarFallback>
                                     </Avatar>
                                     <div className="min-w-0">
-                                        <h2 className="truncate text-lg font-bold leading-tight text-ink sm:text-xl">
+                                        <Heading level={2} size="section" className="truncate">
                                             {guestName}
-                                        </h2>
+                                        </Heading>
                                         <p className="mt-1 truncate text-sm text-ink-3">
                                             {channelLabel}
                                             {data.externalId && ` · ${data.externalId}`}
@@ -528,7 +521,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         foco: el outline morado del Button daría 1,23:1 aquí. */}
                     <Card className="border-none bg-primary p-0 text-white shadow-sm">
                         <CardContent className="p-5">
-                            <h3 className="text-sm font-bold text-white">Acciones rápidas</h3>
+                            <Heading level={3} size="subsection" tone="inverse">Acciones rápidas</Heading>
                             {linkDisabledReason && (
                                 <p className="mt-1 text-xs text-white/70">{linkDisabledReason}</p>
                             )}

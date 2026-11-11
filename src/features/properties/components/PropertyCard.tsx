@@ -32,6 +32,7 @@ import { notifyError } from "@/lib/notify-error"
 import type { PropertyBadge } from "../lib/property-badges"
 import { RECORD_STATUS } from "../lib/record-status"
 import { DeactivationConfirmDialog } from "./DeactivationConfirmDialog"
+import { Heading } from "@/components/ui/heading"
 
 interface PropertyCardProps {
     property: Property
@@ -153,9 +154,9 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
             <CardHeader className="p-4 space-y-3">
                 <div className="flex items-start justify-between">
                     <div className="grid gap-1">
-                        <h3 className="font-bold text-lg leading-tight text-ink group-hover:text-primary transition-colors duration-300">
+                        <Heading level={3}>
                             {property.name}
-                        </h3>
+                        </Heading>
                         <div className="flex items-center text-xs text-ink-2 font-medium">
                             <Icon icon={MapPin} size="sm" className="mr-1 text-secondary" />
                             {property.address?.city || "Ciudad"}, {property.address?.country || "País"}

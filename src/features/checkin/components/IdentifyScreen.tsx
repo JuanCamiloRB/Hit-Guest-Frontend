@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Heading } from "@/components/ui/heading"
 
 /** Guest-facing terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
 const GUEST_TERMS_URL = "https://hitguest.com/terminos-servicio1/"
@@ -493,9 +494,9 @@ export function IdentifyScreen({
                     propiedad verifica identidad o solo registra las fotos del
                     documento (contrato 2026-09-27, captura sin verificación).
                     Prometer «verificar» le mentía al huésped del segundo caso. */}
-                <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">
+                <Heading level={1}>
                     Identificación
-                </h1>
+                </Heading>
                 <p className="text-ink-3 text-sm">
                     Necesitamos registrar tu documento para continuar con el registro.
                 </p>

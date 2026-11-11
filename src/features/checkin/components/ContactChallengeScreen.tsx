@@ -15,6 +15,7 @@ import type { IdentifySessionData, ContactChallengeDirective } from "@/features/
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Heading } from "@/components/ui/heading"
 
 interface ContactChallengeScreenProps {
     reservationUuid: string
@@ -241,7 +242,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                     <Icon icon={XCircle} size="3xl" className="text-danger" />
                 </div>
                 <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-ink">Sesión de verificación no encontrada</h2>
+                    <Heading level={2}>Sesión de verificación no encontrada</Heading>
                     <p className="text-ink-3 text-sm max-w-xs">Vuelve a identificarte para recibir un nuevo código.</p>
                 </div>
                 <Button type="button" size="xl"
@@ -283,9 +284,9 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
             </div>
 
             <div className="space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">
+                <Heading level={1}>
                     Confirma que eres tú
-                </h1>
+                </Heading>
                 {/* `alreadyVerified` (2026-08-24): /identify está retomando un
                     challenge ya resuelto — NO se envió correo nuevo. Decir
                     "enviamos" haría al huésped esperar un correo que no llega. */}

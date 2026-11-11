@@ -10,6 +10,7 @@ import { authService } from "@/features/auth/services/auth-service"
 import { ApiError } from "@/types/api"
 import { handleSessionExpired } from "@/lib/api-client"
 import { FileInput } from "@/components/ui/file-input"
+import { Heading } from "@/components/ui/heading"
 
 const ACCEPTED = ["image/png", "image/jpeg"]
 const MAX_BYTES = 2 * 1024 * 1024 // 2 MB
@@ -111,7 +112,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
     return (
         <div className="rounded-xl border border-rule bg-white p-5 space-y-4">
             <div className="space-y-1">
-                <h3 className="text-sm font-bold text-ink">Logo de la cuenta</h3>
+                <Heading level={3} size="subsection">Logo de la cuenta</Heading>
                 <p className="text-xs text-ink-3">
                     Aparecerá como membrete en los documentos que genera HIT Guest (reportes,
                     contratos, etc.). Se ajusta automáticamente para verse bien. PNG o JPEG, máx. 2 MB.

@@ -29,6 +29,7 @@ import type { Reservation } from "@/types"
 import { cn } from "@/lib/utils"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
+import { Heading } from "@/components/ui/heading"
 
 /** True only when both dates are valid and ordered — safe to compare per-day. */
 function hasValidStay(res: Reservation): boolean {
@@ -184,9 +185,9 @@ export function ReservationsCalendar() {
     return (
         <div className="flex flex-col space-y-4">
             <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">
+                <Heading level={2}>
                     {format(currentMonth, "MMMM yyyy")}
-                </h2>
+                </Heading>
                 <div className="flex items-center space-x-2">
                     <Button variant="outline" size="icon" onClick={prevMonth}>
                         <Icon icon={ChevronLeft} />

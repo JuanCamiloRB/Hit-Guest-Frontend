@@ -3,6 +3,7 @@ import { WelcomeScreen } from "@/features/checkin/components/WelcomeScreen"
 import { PortalStatusScreen } from "@/features/checkin/components/PortalStatusScreen"
 import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
+import { Heading } from "@/components/ui/heading"
 
 export default async function CheckinByExternalPage({
     params,
@@ -24,7 +25,7 @@ export default async function CheckinByExternalPage({
         if ((error as { status?: number })?.status === 429) {
             return (
                 <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
-                    <h1 className="text-2xl font-bold text-ink mb-2">Demasiados intentos</h1>
+                    <Heading level={1} className="mb-2">Demasiados intentos</Heading>
                     <p className="text-ink-3">Espera un momento y vuelve a intentarlo.</p>
                     <Button asChild size="xl">
                         <a
@@ -42,7 +43,7 @@ export default async function CheckinByExternalPage({
     if (!portal) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
-                <h1 className="text-2xl font-bold text-ink mb-2">Reserva no encontrada</h1>
+                <Heading level={1} className="mb-2">Reserva no encontrada</Heading>
                 <p className="text-ink-3">No pudimos encontrar la reserva o el link ha expirado.</p>
             </div>
         )

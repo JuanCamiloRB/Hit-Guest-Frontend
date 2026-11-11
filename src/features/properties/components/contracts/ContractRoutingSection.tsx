@@ -60,6 +60,7 @@ import { ContractChannelCard, type ContractChannelStatus } from "./ContractChann
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Heading } from "@/components/ui/heading"
 
 const DEFAULT_ROUTING: SourceRouting = {
     contract_type: "agreement_only",
@@ -642,7 +643,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     <Icon icon={FileSignature} size="xl" className="text-primary" />
                 </div>
                 <div>
-                    <h3 className="text-xl font-bold text-ink">Contratos por canal</h3>
+                    <Heading level={3} size="title">Contratos por canal</Heading>
                     <p className="mt-1 text-sm leading-relaxed text-ink-3">
                         Define qué documento reciben y cómo firman los huéspedes según el origen de la reserva.
                     </p>
@@ -726,7 +727,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
 
             <section className="space-y-2" aria-labelledby="contract-mode-heading">
                 <div>
-                    <h4 id="contract-mode-heading" className="text-sm font-bold text-ink">¿Cómo quieres aplicar tus contratos?</h4>
+                    <Heading level={4} id="contract-mode-heading">¿Cómo quieres aplicar tus contratos?</Heading>
                     <p className="mt-0.5 text-xs text-ink-3">Puedes usar una sola configuración o personalizarla para cada canal.</p>
                 </div>
                 <ContractModeToggle value={mode} onChange={handleModeChange} disabled={saving || routingBlocked} />

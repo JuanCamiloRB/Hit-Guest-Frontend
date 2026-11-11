@@ -8,6 +8,7 @@ import {
 import { ReservationsCalendar } from "@/features/reservations/components/ReservationsCalendar"
 import ReservationsList from "@/features/reservations/components/ReservationsList"
 import { ReservationDialog } from "@/features/reservations/components/ReservationDialog"
+import { Page, PageHeader } from "@/components/ui/page"
 
 export const metadata: Metadata = {
     title: "Operaciones - Hit Guest",
@@ -16,12 +17,8 @@ export const metadata: Metadata = {
 
 export default function ReservationsPage() {
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between space-y-2">
-                {/* h1: es el título de la pantalla (no había ninguno). */}
-                <h1 className="text-3xl font-bold tracking-tight text-ink">Operaciones</h1>
-                <ReservationDialog />
-            </div>
+        <Page>
+            <PageHeader title="Operaciones" actions={<ReservationDialog />} />
             <Tabs defaultValue="list" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="list">Lista</TabsTrigger>
@@ -34,6 +31,6 @@ export default function ReservationsPage() {
                     <ReservationsCalendar />
                 </TabsContent>
             </Tabs>
-        </div>
+        </Page>
     )
 }

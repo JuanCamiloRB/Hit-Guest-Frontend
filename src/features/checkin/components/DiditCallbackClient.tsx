@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Loader2, XCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { checkinService } from "@/features/checkin/services/checkin-service"
+import { Heading } from "@/components/ui/heading"
 
 interface DiditCallbackClientProps {
     verificationSessionId: string
@@ -207,9 +208,9 @@ export function DiditCallbackClient({
                         <div className="w-16 h-16 rounded-full bg-info-sunk flex items-center justify-center mx-auto mb-5">
                             <Icon icon={Loader2} size="2xl" className="animate-spin text-info" />
                         </div>
-                        <h2 className="text-xl font-semibold text-ink mb-2">
+                        <Heading level={2} className="mb-2">
                             Verificación recibida
-                        </h2>
+                        </Heading>
                         <p className="text-ink-3 text-sm">
                             Redirigiendo de vuelta al check-in...
                         </p>
@@ -221,9 +222,9 @@ export function DiditCallbackClient({
                         <div className="w-16 h-16 rounded-full bg-warning-sunk flex items-center justify-center mx-auto mb-5">
                             <Icon icon={XCircle} size="2xl" className="text-warning" />
                         </div>
-                        <h2 className="text-xl font-semibold text-ink mb-2">
+                        <Heading level={2} className="mb-2">
                             Sesión expirada
-                        </h2>
+                        </Heading>
                         <p className="text-ink-3 text-sm">
                             Tu sesión ha expirado. Por favor regresa al link de check-in original e intenta de nuevo.
                         </p>
@@ -235,9 +236,9 @@ export function DiditCallbackClient({
                         <div className="w-16 h-16 rounded-full bg-warning-sunk flex items-center justify-center mx-auto mb-5">
                             <Icon icon={XCircle} size="2xl" className="text-warning" />
                         </div>
-                        <h2 className="text-xl font-semibold text-ink mb-2">
+                        <Heading level={2} className="mb-2">
                             Vuelve a tu enlace de invitación
-                        </h2>
+                        </Heading>
                         <p className="text-ink-3 text-sm">
                             Tu verificación fue recibida, pero necesitamos el enlace personal del acompañante para continuar de forma segura.
                         </p>

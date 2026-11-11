@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { SupportAccessGate } from "@/features/support/components/SupportAccessGate"
 import { SupportAgentsManager } from "@/features/support/components/SupportAgentsManager"
+import { Page, PageHeader } from "@/components/ui/page"
 
 export const metadata: Metadata = {
     title: "Agentes de soporte - Hit Guest",
@@ -9,14 +10,14 @@ export const metadata: Metadata = {
 
 export default function SupportAgentsPage() {
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div>
-                <h2 className="text-3xl font-bold tracking-tight">Agentes de soporte</h2>
-                <p className="text-sm text-ink-3">Quién puede entrar a las cuentas de los clientes.</p>
-            </div>
+        <Page>
+            <PageHeader
+                title="Agentes de soporte"
+                description="Quién puede entrar a las cuentas de los clientes."
+            />
             <SupportAccessGate requires="agents">
                 <SupportAgentsManager />
             </SupportAccessGate>
-        </div>
+        </Page>
     )
 }

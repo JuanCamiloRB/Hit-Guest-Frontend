@@ -12,6 +12,7 @@ import { DASHBOARD_SURFACE } from "./dashboard-surface"
 import { MonthSelector } from "./MonthSelector"
 import { TopNodesPanel } from "./TopNodesPanel"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Heading } from "@/components/ui/heading"
 
 interface Props {
     status: ConsumptionStatus
@@ -61,9 +62,9 @@ export function PeriodActivity({
         <section aria-labelledby="period-activity-title" className={DASHBOARD_SURFACE}>
             <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-rule px-5 py-4 sm:px-6">
                 <div className="min-w-0">
-                    <h2 id="period-activity-title" className="text-base font-semibold text-ink">
+                    <Heading level={2} size="section" id="period-activity-title">
                         Actividad del mes
-                    </h2>
+                    </Heading>
                     <p className="mt-0.5 text-sm text-ink-3">Consumo, historial y nodos del mes elegido</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">

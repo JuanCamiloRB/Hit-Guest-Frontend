@@ -3,6 +3,7 @@ import { DiditCallbackClient } from "@/features/checkin/components/DiditCallback
 import { PortalStatusScreen } from "@/features/checkin/components/PortalStatusScreen"
 import { checkinServerService } from "@/features/checkin/services/checkin-server-service"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
+import { Heading } from "@/components/ui/heading"
 
 export default async function CheckinByUuidPage({
     params,
@@ -40,7 +41,7 @@ export default async function CheckinByUuidPage({
     } catch {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center px-4">
-                <h1 className="text-2xl font-bold text-ink mb-2">Reserva no encontrada</h1>
+                <Heading level={1} className="mb-2">Reserva no encontrada</Heading>
                 <p className="text-ink-3">No pudimos encontrar la reserva o el link ha expirado.</p>
             </div>
         )

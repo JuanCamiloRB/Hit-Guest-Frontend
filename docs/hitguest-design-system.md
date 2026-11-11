@@ -86,7 +86,10 @@ compartido que las representa (`ChannelLogo`).
   existen en la primitiva `Overline`, para rótulos de grupo de navegación de
   una o dos palabras («Sistema»). El tracking de la escala se permite para
   dígitos de un código; no el arbitrario.
-- Cada pantalla tiene un solo `h1`; las secciones usan niveles consecutivos.
+- Cada pantalla tiene un solo `h1` (`PageHeader`); las secciones usan niveles
+  consecutivos. Los títulos salen de `Heading`, con cinco tamaños: `page`
+  (2xl, 3xl desde `sm`), `title` (xl), `section` (base), `subsection` (sm) y
+  `group` (xs). Todos en Gabarito bold (DS-7b).
 
 ## 4. Espaciado, bordes y elevación
 
@@ -129,6 +132,8 @@ escala en hover.
 | Modal | `Dialog`, `AlertDialog` o `Sheet` |
 | Estado corto | `StatusPill tone=…` (`success`, `warning`, `info`, `danger`, `idle`, `accent`, `none`): punto + palabra; un estado nunca va solo por color |
 | Etiqueta corta (clasificación) | `Badge tone=…` (`neutral`, `accent`, `success`, `warning`, `danger`, `info`, `surface` sobre foto o mapa): clasifica, no es un estado (sin punto). Misma forma que StatusPill |
+| Pantalla | `Page` (contenedor: ancho máximo y espacio entre bloques; el relleno lo da `<main>`) y `PageHeader` (el único `h1`: `title`, `description`, `actions`, `eyebrow` con `PageBreadcrumb`, `titleAddon`) |
+| Título | `Heading level={1–4}`: el nivel es la jerarquía y `size` cómo se ve (`page`, `title`, `section`, `subsection`, `group`; por omisión según el nivel). `tone`: `ink`, `muted` (rótulo pequeño), `inverse` (superficie oscura). Desde la pantalla solo layout |
 | Rótulo de grupo | `Overline` (único uso de mayúsculas) |
 | Aviso | `FeedbackBanner` |
 | Carga | `LoadingState`, `Skeleton`, `RefreshIndicator` o `Button loading` |
@@ -212,6 +217,8 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `icon-direct` | `<Mail />`, `<item.icon />` | `<Icon icon={Mail} />` |
 | `icon-size-override` | `<Icon className="h-5 w-5" />` | `<Icon size="lg" />` |
 | `nonstandard-icon-library` | `react-icons` | `lucide-react` |
+| `heading-direct` | `<h2 className="text-3xl font-bold">` | `Heading level={2}` o `PageHeader` |
+| `heading-override` | `<Heading className="font-semibold text-primary">` | `size`/`tone` |
 | `legacy-token` | `text-muted-foreground`, `text-destructive`, `bg-muted`, `border-border` | `text-ink-3`, `text-danger`, `bg-sunk`, `border-rule` |
 
 Revisa los textos fijos y también los trozos fijos de los template literals

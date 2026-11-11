@@ -14,6 +14,7 @@ import { resolveContractSigningState, isContractTransitional } from "@/features/
 import { completedEntryCopy, resolveCompletedEntryReason } from "@/features/checkin/lib/success-entry"
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
 import { Button } from "@/components/ui/button"
+import { Heading } from "@/components/ui/heading"
 
 interface ReservationDocument {
     uuid: string
@@ -243,11 +244,11 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             </div>
 
             <div className="space-y-3">
-                <h1 className="text-3xl font-bold tracking-tight text-ink leading-tight">
+                <Heading level={1}>
                     {completedCopy?.title ?? (awaitingSignature
                         ? "Tu registro quedó guardado"
                         : isMainDone ? "¡Tu Registro Está Listo!" : "¡Check-in Completado!")}
-                </h1>
+                </Heading>
                 <p className="text-ink-3 text-base max-w-75 mx-auto">
                     {completedCopy?.description ?? (awaitingSignature
                         ? "Tu check-in se completará cuando firmes el contrato. Te llegará un correo de TuFirma para hacerlo."
@@ -383,7 +384,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                         <Icon icon={MapPin} size="lg" className="text-primary" />
                     </div>
                     <div>
-                        <h3 className="font-bold text-ink text-sm">Tu alojamiento</h3>
+                        <Heading level={3} size="subsection">Tu alojamiento</Heading>
                         <p className="text-xs text-ink-3">{res.uuid.slice(0, 8)}...</p>
                     </div>
                 </div>
@@ -417,7 +418,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                                 <Icon icon={FileText} size="lg" className="text-primary" />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="font-bold text-ink text-sm truncate">{doc.typeName}</h3>
+                                <Heading level={3} size="subsection" className="truncate">{doc.typeName}</Heading>
                                 <p className="text-xs text-ink-3">Descarga tu copia aquí.</p>
                             </div>
                             <Button type="button" variant="link" size="inline"
@@ -440,9 +441,9 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                         <Icon icon={Download} size="xl" className="text-primary" />
                     </div>
                     <div className="flex-1">
-                        <h3 className="font-bold text-ink text-sm">
+                        <Heading level={3} size="subsection">
                             {awaitingSignature ? "Registro guardado" : "Check-in Completado"}
-                        </h3>
+                        </Heading>
                         <p className="text-xs text-ink-3">No hay documentos disponibles para descargar.</p>
                     </div>
                 </div>
@@ -454,7 +455,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                     <Icon icon={Home} size="xl" className="text-primary" />
                 </div>
                 <div>
-                    <h3 className="font-bold text-ink text-sm">Todo Listo</h3>
+                    <Heading level={3} size="subsection">Todo Listo</Heading>
                     <p className="text-xs text-ink-3">Recibirás también esta información por email antes de tu llegada.</p>
                 </div>
             </div>

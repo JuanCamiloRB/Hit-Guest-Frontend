@@ -50,6 +50,7 @@ import { emptyGuestForm } from "@/features/checkin/types/checkin"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Heading } from "@/components/ui/heading"
 
 interface GuestFormScreenProps {
     reservationUuid: string
@@ -513,7 +514,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             </div>
 
             <div className="space-y-1">
-                <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">Datos del Titular</h1>
+                <Heading level={1}>Datos del Titular</Heading>
                 <p className="text-ink-3 text-sm">
                     Requerido por regulaciones locales de alojamiento. Los campos con <span className="text-danger">*</span> son obligatorios.
                 </p>

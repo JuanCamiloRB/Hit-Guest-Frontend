@@ -27,6 +27,7 @@ import {
 import { API_BASE } from "@/lib/config"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Heading } from "@/components/ui/heading"
 
 interface AutomationStatusItemProps {
     item: AutomationStatusItemType
@@ -111,7 +112,7 @@ export function AutomationStatusItem({
                     {/* Sin `truncate`: el título es lo que identifica la fila, y
                         cortarlo dejaba dos automatizaciones distintas leyéndose
                         igual ("Verificación de identidad · Secundar…"). */}
-                    <h4 className="text-sm font-semibold leading-snug text-ink">{title}</h4>
+                    <Heading level={4}>{title}</Heading>
                     <p className="mt-0.5 text-xs text-ink-3">{providerLabel}</p>
                 </div>
                 <StatusPill

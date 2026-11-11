@@ -3,6 +3,7 @@
 import { Key, DoorOpen, Building2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import type { SmartlockCode } from "@/features/checkin/types/checkin"
+import { Heading } from "@/components/ui/heading"
 
 interface SmartlockCodesProps {
     codes: SmartlockCode[]
@@ -21,10 +22,10 @@ export function SmartlockCodes({ codes }: SmartlockCodesProps) {
 
     return (
         <div className="w-full max-w-sm space-y-3">
-            <h3 className="font-bold text-ink text-left px-1 flex items-center gap-2">
+            <Heading level={3} className="text-left px-1 flex items-center gap-2">
                 <Icon icon={Key} size="lg" className="text-ink-3" />
                 Códigos de Acceso
-            </h3>
+            </Heading>
             <div className="grid gap-3">
                 {codes.map((code, idx) => (
                     <div key={idx} className="bg-white border border-rule rounded-xl p-4 shadow-sm flex items-center gap-4 text-left">

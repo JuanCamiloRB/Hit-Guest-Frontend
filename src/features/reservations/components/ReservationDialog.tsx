@@ -92,6 +92,7 @@ import { readGuestNameParts } from "@/features/reservations/lib/guest-name"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Badge } from "@/components/ui/badge"
 import { useTranslation } from "@/hooks/useTranslation"
+import { Heading } from "@/components/ui/heading"
 
 // ── Zod Schema ──────────────────────────────────────────────
 const reservationSchema = z.object({
@@ -673,10 +674,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Section: Guest Info ─── */}
                         <div className="space-y-1">
-                            <h3 className="text-xs font-bold text-ink-3 flex items-center gap-2">
+                            <Heading level={3} size="group" tone="muted" className="flex items-center gap-2">
                                 <Icon icon={User} size="sm" />
                                 Datos del Huésped
-                            </h3>
+                            </Heading>
                             <div className="h-px bg-sunk" />
                         </div>
 
@@ -753,10 +754,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Section: Property & Source ─── */}
                         <div className="space-y-1.5 pt-2">
-                            <h3 className="text-xs font-bold text-secondary flex items-center gap-2">
+                            <Heading level={3} size="group" tone="muted" className="flex items-center gap-2">
                                 <Icon icon={Home} size="sm" />
                                 Alojamiento y Canal
-                            </h3>
+                            </Heading>
                             <div className="h-px w-full bg-rule" />
                         </div>
 
@@ -922,10 +923,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Section: Dates ─── */}
                         <div className="space-y-1.5 pt-2">
-                            <h3 className="text-xs font-bold text-primary flex items-center gap-2">
+                            <Heading level={3} size="group" tone="muted" className="flex items-center gap-2">
                                 <Icon icon={CalendarIcon} size="sm" />
                                 Fechas y Huéspedes
-                            </h3>
+                            </Heading>
                             <div className="h-px w-full bg-rule" />
                         </div>
 
@@ -1049,10 +1050,10 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
 
                         {/* ─── Contact Info ─── */}
                         <div className="space-y-1.5 pt-2">
-                            <h3 className="text-xs font-bold text-primary flex items-center gap-2">
+                            <Heading level={3} size="group" tone="muted" className="flex items-center gap-2">
                                 <Icon icon={Phone} size="sm" />
                                 Contacto y Enlace Móvil
-                            </h3>
+                            </Heading>
                             <div className="h-px w-full bg-rule" />
                         </div>
 

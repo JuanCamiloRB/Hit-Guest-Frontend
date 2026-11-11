@@ -11,14 +11,15 @@ interface ReservationPageProps {
         id: string
     }>
 }
+import { Page, PageHeader } from "@/components/ui/page"
 
 export default async function ReservationDetailPage({ params }: ReservationPageProps) {
     const resolvedParams = await params;
     const { id } = resolvedParams;
 
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <Page>
             <OperationsPanel reservationId={id} />
-        </div>
+        </Page>
     )
 }

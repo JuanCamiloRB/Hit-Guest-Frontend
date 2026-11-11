@@ -1,5 +1,6 @@
 import { Metadata } from "next"
 import UserList from "@/features/users/components/UserList"
+import { Page, PageHeader } from "@/components/ui/page"
 
 export const metadata: Metadata = {
     title: "Team - Hit Guest",
@@ -8,8 +9,8 @@ export const metadata: Metadata = {
 
 export default function TeamPage() {
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <Page>
             <UserList />
-        </div>
+        </Page>
     )
 }

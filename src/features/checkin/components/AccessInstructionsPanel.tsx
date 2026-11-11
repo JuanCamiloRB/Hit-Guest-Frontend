@@ -5,6 +5,7 @@ import { FileText, KeyRound, LockKeyhole, MapPinned } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import type { CheckinPortalResponse, PortalDocument } from "@/features/checkin/types/checkin"
 import { SmartlockCodes } from "./SmartlockCodes"
+import { Heading } from "@/components/ui/heading"
 
 interface AccessInstructionsPanelProps {
     portal: CheckinPortalResponse
@@ -47,9 +48,9 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
                         {unlocked ? <Icon icon={MapPinned} size="lg" /> : <Icon icon={LockKeyhole} size="lg" />}
                     </span>
                     <div>
-                        <h2 id="access-instructions-title" className="font-bold text-ink">
+                        <Heading level={2} size="section" id="access-instructions-title">
                             Instrucciones de acceso
-                        </h2>
+                        </Heading>
                         <p className="mt-1 text-xs leading-relaxed text-ink-3">
                             {unlocked
                                 ? "Consúltalas cuando quieras volviendo a abrir este mismo link."

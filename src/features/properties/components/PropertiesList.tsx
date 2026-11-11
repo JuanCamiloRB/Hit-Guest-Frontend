@@ -38,6 +38,7 @@ import { portfolioCache, propertiesCache } from "../lib/properties-cache"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StatusPill } from "@/components/ui/status-pill"
+import { PageHeader } from "@/components/ui/page"
 
 // ── Component ──────────────────────────────────────────────────────────
 
@@ -116,31 +117,28 @@ export function PropertiesList() {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <h2 className="text-3xl font-bold tracking-tight text-ink drop-shadow-sm">Propiedades y Alojamientos</h2>
-                        {/* Lo cargado sigue a la vista mientras se relee (p. ej. tras activar una propiedad). */}
-                        <RefreshIndicator
-                            active={hasProperties && (light.status === "refreshing" || portfolio.status === "refreshing")}
-                            label="Actualizando propiedades…"
-                        />
-                    </div>
-                    <p className="text-ink-2 text-sm font-medium">
-                        {properties.length > 0
-                            ? `${properties.length} ${properties.length === 1 ? "propiedad" : "propiedades"}${overviewByProperty
-                                ? ` · ${Object.values(overviewByProperty).reduce((sum, o) => sum + o.activeListings, 0)} alojamientos activos`
-                                : ""}`
-                            : "Gestiona tus propiedades, unidades y configuraciones de automatización."}
-                    </p>
-                </div>
-                {/* Botón principal estándar: sin degradado, sombra de color ni escala. */}
-                <Button asChild size="lg">
-                    <Link href="/dashboard/properties/new">
-                        <Icon icon={Plus} className="mr-2" /> Añadir Propiedad
-                    </Link>
-                </Button>
-            </div>
+            <PageHeader
+                title="Propiedades y Alojamientos"
+                // Lo cargado sigue a la vista mientras se relee (p. ej. tras activar una propiedad).
+                titleAddon={
+                    <RefreshIndicator
+                        active={hasProperties && (light.status === "refreshing" || portfolio.status === "refreshing")}
+                        label="Actualizando propiedades…"
+                    />
+                }
+                description={properties.length > 0
+                    ? `${properties.length} ${properties.length === 1 ? "propiedad" : "propiedades"}${overviewByProperty
+                        ? ` · ${Object.values(overviewByProperty).reduce((sum, o) => sum + o.activeListings, 0)} alojamientos activos`
+                        : ""}`
+                    : "Gestiona tus propiedades, unidades y configuraciones de automatización."}
+                actions={
+                    <Button asChild size="lg">
+                        <Link href="/dashboard/properties/new">
+                            <Icon icon={Plus} className="mr-2" /> Añadir Propiedad
+                        </Link>
+                    </Button>
+                }
+            />
 
             <Tabs defaultValue="properties" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-2 rounded-xl border border-rule shadow-sm">

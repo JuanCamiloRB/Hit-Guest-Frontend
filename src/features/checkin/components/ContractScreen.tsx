@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Heading } from "@/components/ui/heading"
 
 interface RenderedDocument {
     /** The agreement's real uuid, or the literal "guarantee" — the guarantee
@@ -783,9 +784,9 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                         {isRejected
                             ? <Icon icon={XCircle} size="xl" className="text-danger flex-shrink-0" />
                             : <Icon icon={Mail} size="xl" className="text-primary flex-shrink-0" />}
-                        <h1 className={`text-lg font-bold ${isRejected ? "text-danger" : "text-ink"}`}>
+                        <Heading level={1} size="section">
                             {isRejected ? "Tu contrato no pudo firmarse" : "Revisa tu correo"}
-                        </h1>
+                        </Heading>
                     </div>
                     <p className={`text-sm leading-relaxed ${isRejected ? "text-danger" : "text-ink-2"}`}>
                         {isRejected
@@ -882,7 +883,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             </div>
 
             <div className="space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight text-ink leading-tight">
+                <Heading level={1}>
                     {showGuaranteePhase
                         ? "Tarjeta de garantía"
                         : signatureRecorded
@@ -892,7 +893,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                         : needsSignature
                             ? "Documentos y Firma"
                             : "Documentos del Contrato"}
-                </h1>
+                </Heading>
                 <p className="text-ink-3 text-sm">
                     {showGuaranteePhase
                         ? "Último paso: registra una tarjeta como respaldo del contrato. No se realiza ningún cobro ahora."
@@ -972,7 +973,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                             >
                                 <div className="flex items-center gap-2">
                                     <Icon icon={FileText} size="lg" className="text-primary" />
-                                    <h2 className="font-bold text-ink text-sm">{doc.typeName}</h2>
+                                    <Heading level={2} size="subsection">{doc.typeName}</Heading>
                                 </div>
                                 {expandedDoc === doc.uuid
                                     ? <Icon icon={ChevronUp} size="lg" className="text-ink-3" />
@@ -994,7 +995,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
                     <div className="flex items-center gap-2 border-b border-rule pb-3">
                         <Icon icon={FileText} size="lg" className="text-primary" />
-                        <h2 className="font-bold text-ink">Contrato</h2>
+                        <Heading level={2} size="section">Contrato</Heading>
                     </div>
                     <p className="text-sm text-ink-3 text-center py-4">
                         No hay documentos configurados para esta propiedad.

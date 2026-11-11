@@ -19,6 +19,7 @@ import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useTranslation } from "@/hooks/useTranslation"
+import { Heading } from "@/components/ui/heading"
 
 /** Balance card + recharge (packages/custom) + transaction history. */
 export function BillingSettings() {
@@ -145,7 +146,7 @@ export function BillingSettings() {
 
                 {!pending && (
                     <div className="mt-6 space-y-4 border-t border-rule pt-5">
-                        <h3 className="text-sm font-bold text-ink">Recargar créditos</h3>
+                        <Heading level={3} size="subsection">Recargar créditos</Heading>
 
                         {/* Preset packages */}
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

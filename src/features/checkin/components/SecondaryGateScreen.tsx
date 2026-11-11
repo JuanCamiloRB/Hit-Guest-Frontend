@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { SecondaryGateStatus } from "../types/checkin"
 import { AlertCircle, Clock, CheckCircle2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Heading } from "@/components/ui/heading"
 
 interface SecondaryGateScreenProps {
     status: SecondaryGateStatus
@@ -32,7 +33,7 @@ export function SecondaryGateScreen({ status, basePath }: SecondaryGateScreenPro
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] text-center gap-4 animate-in fade-in duration-500">
                 <Icon icon={CheckCircle2} size="4xl" className="text-success animate-pulse" />
-                <h1 className="text-xl font-bold text-ink">Redirigiendo...</h1>
+                <Heading level={1} size="title">Redirigiendo...</Heading>
                 <p className="text-ink-3">El titular ya completó su registro, preparándote para comenzar.</p>
             </div>
         )
@@ -44,7 +45,7 @@ export function SecondaryGateScreen({ status, basePath }: SecondaryGateScreenPro
                 <Icon icon={Clock} size="3xl" className="text-warning" />
             </div>
             
-            <h1 className="text-2xl font-bold text-ink mb-4">Registro en espera</h1>
+            <Heading level={1} className="mb-4">Registro en espera</Heading>
             
             <p className="text-ink-2 mb-6 max-w-sm">
                 Hola. El titular de la reserva, <strong>{status.mainGuestName || "tu anfitrión"}</strong>, aún no ha completado su proceso de check-in obligatorio.

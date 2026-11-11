@@ -8,6 +8,7 @@ import { CheckCircle2, MapPin, CalendarDays, Home } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useSearchParams } from "next/navigation"
 import { completedEntryCopy, resolveCompletedEntryReason } from "@/features/checkin/lib/success-entry"
+import { Heading } from "@/components/ui/heading"
 
 interface SecondarySuccessScreenProps {
     portal: CheckinPortalResponse
@@ -32,16 +33,16 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 <div className="h-20 w-20 bg-success-sunk rounded-full flex items-center justify-center mb-2">
                     <Icon icon={CheckCircle2} size="3xl" className="text-success" />
                 </div>
-                <h1 className="text-3xl font-bold text-ink tracking-tight">
+                <Heading level={1}>
                     {completedCopy?.title ?? "¡Registro Exitoso!"}
-                </h1>
+                </Heading>
                 <p className="text-ink-3 text-sm max-w-sm">
                     {completedCopy?.description ?? "Tus datos han sido registrados correctamente."}
                 </p>
             </div>
 
             <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
-                <h3 className="font-bold text-ink text-sm">Resumen de Estadía</h3>
+                <Heading level={3} size="subsection">Resumen de Estadía</Heading>
                 
                 <div className="flex items-start gap-3">
                     <Icon icon={MapPin} size="lg" className="text-primary" />

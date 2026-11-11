@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Heading } from "@/components/ui/heading"
 
 interface GuestDocumentScreenProps {
     reservationUuid: string
@@ -64,7 +65,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
                 <div className="w-16 h-16 rounded-full bg-danger-sunk flex items-center justify-center">
                     <Icon icon={XCircle} size="2xl" className="text-danger" />
                 </div>
-                <h2 className="text-xl font-semibold text-ink">Documento no disponible</h2>
+                <Heading level={2}>Documento no disponible</Heading>
                 <p className="text-ink-3 text-sm max-w-sm">{error}</p>
                 <Button type="button"
                     onClick={() => router.push(basePath)}

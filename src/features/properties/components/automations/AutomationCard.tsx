@@ -35,6 +35,7 @@ import { describeAutomationCost } from "../../lib/automation-cost"
 import type { ListingMeta } from "./AutomationOverrideModal"
 import { ReservationSourceIdentity, reservationSourceName, reservationSourceSlug } from "../contracts/ReservationSourceIdentity"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Heading } from "@/components/ui/heading"
 
 const BACKEND_PENDING_MSG = "El backend aún no tiene este endpoint implementado. Contacta al equipo de desarrollo."
 
@@ -487,9 +488,9 @@ export function AutomationCard({
                             <div className="flex items-start justify-between gap-4">
                                 <div className="space-y-1">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <h3 className="text-lg font-bold text-ink leading-none">
+                                        <Heading level={3}>
                                             {definition.title}
-                                        </h3>
+                                        </Heading>
                                         {isActive && (
                                             <StatusPill tone="success">Activo</StatusPill>
                                         )}

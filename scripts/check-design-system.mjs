@@ -233,6 +233,23 @@ const rules = [
         pattern: /(?<=^|[\s"'`])(?:(?!dark:)[^\s:"'`]+:)*(?:text-(?:muted-foreground|foreground|popover-foreground|card-foreground|accent-foreground|destructive)|bg-(?:muted|foreground|border)|border-(?:border|destructive)|ring-destructive)(?:\/\d+)?(?![\w-])/gm,
     },
     {
+        // Un título es `Heading` (escala cerrada de cinco tamaños y tres tonos) y
+        // el de la pantalla, `PageHeader` (DS-7b). Había 95 títulos nativos con 35
+        // combinaciones de tamaño y peso, y seis pantallas sin h1.
+        id: "heading-direct",
+        description: "usa un título nativo (<h1>…<h4>); usa Heading o PageHeader",
+        pattern: /<h[1-6]\b/g,
+        input: "elements",
+        ignore: UI_ONLY,
+    },
+    {
+        id: "heading-override",
+        description: "pisa la tipografía o el color de un Heading; elige size/tone (solo se permite layout)",
+        pattern: /(?<![\w-])(?:[a-z-]+:)*(?:font|leading|tracking|drop-shadow)(?:-[\w/\[\].-]+)?(?![\w-])|(?<![\w-])(?:[a-z-]+:)*text-(?!left\b|center\b|right\b|wrap\b|nowrap\b|balance\b|pretty\b|ellipsis\b|clip\b)[\w/\[\].-]+/g,
+        input: "headingClasses",
+        ignore: UI_ONLY,
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,
@@ -274,6 +291,7 @@ function inspect() {
         const buttonClasses = []
         const pressableClasses = []
         const labelClasses = []
+        const headingClasses = []
         const pillElements = []
         const lucideNames = new Set()
         for (const statement of sourceFile.statements) {
@@ -337,6 +355,7 @@ function inspect() {
                 if (tag === "Button") buttonClasses.push(...classTexts(node))
                 if (tag === "UnstyledButton" || tag === "Link" || tag === "a") pressableClasses.push(...classTexts(node))
                 if (tag === "Badge" || tag === "StatusPill") labelClasses.push(...classTexts(node))
+                if (tag === "Heading") headingClasses.push(...classTexts(node))
                 if (tag === "span" || tag === "div" || tag === "p") {
                     const joined = ` ${classTexts(node).join(" ")} `
                     if (/\stext-xs\s/.test(joined) && /\srounded-(?:full|md)\s/.test(joined) && /\spx-/.test(joined)
@@ -370,6 +389,7 @@ function inspect() {
             buttonClasses: buttonClasses.join("\n"),
             pressableClasses: pressableClasses.join("\n"),
             labelClasses: labelClasses.join("\n"),
+            headingClasses: headingClasses.join("\n"),
             pillElements: pillElements.join("\n"),
         }
         for (const rule of rules) {

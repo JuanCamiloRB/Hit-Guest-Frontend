@@ -6,6 +6,7 @@ import type { AccountBalance } from "@/features/billing/types"
 import { cn } from "@/lib/utils"
 import { DASHBOARD_SURFACE } from "./dashboard-surface"
 import { Button } from "@/components/ui/button"
+import { Heading } from "@/components/ui/heading"
 
 interface Props {
     /** Último saldo conocido (el del store compartido); null = no disponible. */
@@ -32,9 +33,9 @@ export function AccountBalanceStrip({ balance, isLoadingBalance, balanceError = 
             )}
         >
             <div className="min-w-0">
-                <h2 id="account-balance-title" className="font-secondary text-sm font-medium tracking-normal text-ink-3">
+                <Heading level={2} size="subsection" tone="muted" id="account-balance-title">
                     Saldo disponible
-                </h2>
+                </Heading>
                 {isLoadingBalance ? (
                     <Skeleton className="mt-2 h-7 w-36" />
                 ) : !balance ? (

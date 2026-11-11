@@ -2,6 +2,7 @@ import { Metadata } from "next"
 import { SettingsContent } from "./SettingsContent"
 import { Suspense } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Page, PageHeader } from "@/components/ui/page"
 
 export const metadata: Metadata = {
     title: "Configuración - Hit Guest",
@@ -10,10 +11,8 @@ export const metadata: Metadata = {
 
 export default function SettingsPage() {
     return (
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between space-y-2">
-                <h2 className="text-3xl font-bold tracking-tight">Configuración</h2>
-            </div>
+        <Page>
+            <PageHeader title="Configuración" />
             <Suspense fallback={
                 <div className="space-y-4">
                     <Skeleton className="h-10 w-75" />
@@ -22,6 +21,6 @@ export default function SettingsPage() {
             }>
                 <SettingsContent />
             </Suspense>
-        </div>
+        </Page>
     )
 }

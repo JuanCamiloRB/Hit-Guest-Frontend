@@ -56,6 +56,7 @@ import { ContractRoutingSection } from "../contracts/ContractRoutingSection"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
 import { EmptyState } from "@/components/ui/empty-state"
+import { Heading } from "@/components/ui/heading"
 
 export function PropertiesDocuments() {
     const { watch } = useFormContext()
@@ -252,9 +253,9 @@ export function PropertiesDocuments() {
                                             </div>
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <h4 className="font-bold text-ink truncate">
+                                                    <Heading level={4} size="section" className="truncate">
                                                         {documentTypeLabel(doc.documentType)}
-                                                    </h4>
+                                                    </Heading>
                                                     {isDeleted ? (
                                                         <StatusPill tone="idle">Eliminado</StatusPill>
                                                     ) : (

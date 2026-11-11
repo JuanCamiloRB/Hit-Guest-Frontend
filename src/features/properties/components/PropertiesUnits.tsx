@@ -89,6 +89,7 @@ import { invalidatePropertiesCaches } from "../lib/properties-cache"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
 import { EmptyState } from "@/components/ui/empty-state"
+import { Heading } from "@/components/ui/heading"
 
 const defaultUnit = {
     name: "",
@@ -945,7 +946,7 @@ export function PropertiesUnits() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <Icon icon={Clock} className="text-primary" />
-                                                        <h4 className="text-sm font-bold text-ink-3">Horarios</h4>
+                                                        <Heading level={4} tone="muted">Horarios</Heading>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>
@@ -1003,7 +1004,7 @@ export function PropertiesUnits() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <Icon icon={Settings2} className="text-primary" />
-                                                        <h4 className="text-sm font-bold text-ink-3">WiFi Especial</h4>
+                                                        <Heading level={4} tone="muted">WiFi Especial</Heading>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>
@@ -1061,7 +1062,7 @@ export function PropertiesUnits() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <Icon icon={Sparkles} className="text-primary" />
-                                                        <h4 className="text-sm font-bold text-ink-3">Amenidades</h4>
+                                                        <Heading level={4} tone="muted">Amenidades</Heading>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>
@@ -1127,7 +1128,7 @@ export function PropertiesUnits() {
                                                 <div className="space-y-4 p-4 border rounded-xl bg-sunk/30">
                                                     <div className="flex items-center gap-2">
                                                         <Icon icon={BedDouble} className="text-primary" />
-                                                        <h4 className="text-xs font-bold text-ink-2">Dormitorios</h4>
+                                                        <Heading level={4} size="group" tone="muted">Dormitorios</Heading>
                                                     </div>
                                                     <div className="grid grid-cols-1 gap-3">
                                                         <div className="space-y-1">
@@ -1152,7 +1153,7 @@ export function PropertiesUnits() {
                                                 <div className="space-y-4 p-4 border rounded-xl bg-sunk/30">
                                                     <div className="flex items-center gap-2">
                                                         <Icon icon={Bath} className="text-primary" />
-                                                        <h4 className="text-xs font-bold text-ink-2">Baños</h4>
+                                                        <Heading level={4} size="group" tone="muted">Baños</Heading>
                                                     </div>
                                                     <div className="grid grid-cols-1 gap-3">
                                                         <div className="space-y-1">
@@ -1181,7 +1182,7 @@ export function PropertiesUnits() {
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <Icon icon={Shield} className="text-primary" />
-                                                        <h4 className="text-sm font-bold text-ink-3">Políticas</h4>
+                                                        <Heading level={4} tone="muted">Políticas</Heading>
                                                     </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>

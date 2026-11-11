@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button"
 import { XCircle, Trash2, Clock, PauseCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import type { PortalStatus } from "../types/checkin"
+import { Heading } from "@/components/ui/heading"
 
 interface PortalStatusScreenProps {
     status: PortalStatus
@@ -62,7 +63,7 @@ export function PortalStatusScreen({ status, message }: PortalStatusScreenProps)
             <div className={`rounded-full p-4 mb-5 ${content.accent}`}>
                 <Icon icon={glyph} size="3xl" weight="light" />
             </div>
-            <h1 className="text-2xl font-bold text-ink mb-2">{content.title}</h1>
+            <Heading level={1} className="mb-2">{content.title}</Heading>
             <p className="text-ink-3 max-w-md leading-relaxed">
                 {message || content.defaultMessage}
             </p>

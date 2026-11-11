@@ -30,6 +30,7 @@ import { AutomationCard, CheckinLinkDeliveryCard, type ListingMeta } from "./aut
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
 import { EmptyState } from "@/components/ui/empty-state"
+import { Heading } from "@/components/ui/heading"
 
 interface CountryCatalogItem {
     id: string | number
@@ -360,7 +361,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                         <Icon icon={Sparkles} size="xl" className="text-primary" />
                     </div>
                     <div>
-                        <h4 className="font-bold text-ink">¿Necesitas una regla personalizada?</h4>
+                        <Heading level={4} size="section">¿Necesitas una regla personalizada?</Heading>
                         <p className="text-sm text-ink-3">
                             Contacta con nuestro equipo para crear flujos de trabajo a la medida de tu negocio.
                         </p>

@@ -7,6 +7,7 @@ import { AirbnbMark, BookingMark, CloudbedsMark, GuestyMark } from "@/components
 import { KunasIntegrationPanel } from "./KunasIntegrationPanel"
 import { AirbnbIcalPanel } from "./AirbnbIcalPanel"
 import { Badge } from "@/components/ui/badge"
+import { Heading } from "@/components/ui/heading"
 
 interface ProviderCardProps {
     name: string
@@ -34,7 +35,7 @@ function ProviderCard({
                 </span>
             </div>
             <div className="mt-5">
-                <h4 className="font-bold text-ink">{name}</h4>
+                <Heading level={4} size="section">{name}</Heading>
                 <p className="mt-1 text-sm leading-relaxed text-ink-3">{description}</p>
             </div>
         </article>
@@ -56,9 +57,9 @@ export function IntegrationsHub() {
                     </span>
                     <div>
                         <div className="flex flex-wrap items-center gap-2">
-                            <h3 id="pms-integrations" className="text-lg font-bold text-ink">
+                            <Heading level={3} id="pms-integrations">
                                 Con PMS
-                            </h3>
+                            </Heading>
                             <span className="rounded-full bg-primary/5 px-2.5 py-1 text-xs font-bold text-primary">
                                 Conectividad Calry.app
                             </span>
@@ -103,7 +104,7 @@ export function IntegrationsHub() {
                             <Icon icon={Building2} />
                         </span>
                         <div>
-                            <h4 className="font-bold text-ink">Configurar Kunas PMS</h4>
+                            <Heading level={4} size="section">Configurar Kunas PMS</Heading>
                             <p className="text-xs text-ink-3">Conexión disponible actualmente.</p>
                         </div>
                     </div>
@@ -117,9 +118,9 @@ export function IntegrationsHub() {
                         <Icon icon={RadioTower} size="lg" />
                     </span>
                     <div>
-                        <h3 id="ota-integrations" className="text-lg font-bold text-ink">
+                        <Heading level={3} id="ota-integrations">
                             Con OTAs directas
-                        </h3>
+                        </Heading>
                         <p className="mt-1 text-sm text-ink-3">
                             Conecta directamente tus canales de venta para importar anuncios y reservas.
                         </p>
@@ -136,7 +137,7 @@ export function IntegrationsHub() {
                                 <AirbnbMark />
                             </span>
                             <div>
-                                <h4 className="font-bold text-ink">Airbnb</h4>
+                                <Heading level={4} size="section">Airbnb</Heading>
                                 <p className="mt-0.5 text-sm text-ink-3">
                                     Importa tus reservas conectando el calendario iCal de cada anuncio.
                                 </p>

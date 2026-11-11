@@ -11,6 +11,7 @@ import { isMainGuestCompleted } from "@/features/checkin/types/checkin"
 import { resolveContractSigningState } from "@/features/checkin/lib/contract-signing"
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
 import { Button } from "@/components/ui/button"
+import { Heading } from "@/components/ui/heading"
 
 interface WelcomeScreenProps {
     portal: CheckinPortalResponse
@@ -274,9 +275,9 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
             {/* NO StepIndicator here — eliminado para reducir fricción */}
 
             <div className="space-y-2">
-                <h1 className="text-3xl font-bold tracking-tight text-ink leading-tight">
+                <Heading level={1}>
                     Check-in Online
-                </h1>
+                </Heading>
                 <p className="text-ink-3 text-base">
                     Completa tu registro antes de la fecha de llegada.
                 </p>
@@ -363,7 +364,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                 {/* Lista: solo con el titular terminado, que es cuando sirve. Sin
                     círculos (parecían una selección): check verde o la persona. */}
                 <div className="space-y-2 pt-1">
-                    <h2 id="guest-list-heading" className="text-xs font-bold text-ink-3">Huéspedes de la reserva</h2>
+                    <Heading level={2} size="group" tone="muted" id="guest-list-heading">Huéspedes de la reserva</Heading>
 
                     <ul aria-labelledby="guest-list-heading" className="space-y-2">
                     {mainGuest && (

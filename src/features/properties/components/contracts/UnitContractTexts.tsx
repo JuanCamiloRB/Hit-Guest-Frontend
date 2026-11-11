@@ -25,6 +25,7 @@ import { DocumentPreviewModal } from "../documents/DocumentPreviewModal"
 import { ReservationSourceIdentity, reservationSourceSlug } from "./ReservationSourceIdentity"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
+import { Heading } from "@/components/ui/heading"
 
 interface Props {
     propertyUuid: string
@@ -250,7 +251,7 @@ export function UnitContractTexts({
     return (
         <section className="space-y-3" aria-labelledby="unit-contract-texts">
             <div>
-                <h3 id="unit-contract-texts" className="text-sm font-bold text-ink">Texto del contrato de esta unidad</h3>
+                <Heading level={3} size="subsection" id="unit-contract-texts">Texto del contrato de esta unidad</Heading>
                 <p className="text-xs text-ink-3">
                     Un texto propio reemplaza al de la propiedad solo en esta unidad. Lo que no personalices, lo hereda.
                 </p>

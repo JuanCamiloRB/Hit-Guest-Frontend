@@ -58,6 +58,7 @@ import { z } from "zod"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
+import { Heading } from "@/components/ui/heading"
 
 /**
  * Team users = CREATE + DELETE only. Editing a user is intentionally NOT offered:
@@ -192,7 +193,7 @@ export function UserManagement() {
         <div className="space-y-4">
             <div className="flex justify-between items-center">
                 <div>
-                    <h3 className="text-lg font-medium">Usuarios de la Cuenta</h3>
+                    <Heading level={3}>Usuarios de la Cuenta</Heading>
                     <p className="text-sm text-ink-3">
                         Gestiona quién accede a esta cuenta y con qué rol.
                     </p>

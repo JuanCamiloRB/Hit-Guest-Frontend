@@ -30,6 +30,7 @@ import { CHECKIN_LINK_DELIVERY_TITLE } from "../../lib/automation-display"
 import { CheckinLinkDeliveryOverrides } from "./CheckinLinkDeliveryOverrides"
 import type { ListingMeta } from "./AutomationOverrideModal"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Heading } from "@/components/ui/heading"
 
 interface Props {
     propertyUuid: string
@@ -164,9 +165,9 @@ export function CheckinLinkDeliveryCard({
                     <div className="flex-1 space-y-4 p-5">
                         <div className="space-y-1">
                             <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="text-lg font-bold leading-none text-ink">
+                                <Heading level={3}>
                                     {CHECKIN_LINK_DELIVERY_TITLE}
-                                </h3>
+                                </Heading>
                                 {automation?.isActive && (
                                     <StatusPill tone="success">Activo</StatusPill>
                                 )}

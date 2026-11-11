@@ -2,6 +2,7 @@
 
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatUsd, type ConsumptionSummary } from "@/features/billing/types"
+import { Heading } from "@/components/ui/heading"
 
 /**
  * Nivel 3, apertura: las cifras de TODA la cuenta, en una línea y fuera de la
@@ -22,9 +23,9 @@ export function AccountHistorySummary({ summary, isLoading }: { summary: Consump
             // dos superficies, sin borde ni sombra. Los divisores son `rule`.
             className="flex flex-wrap items-baseline gap-x-6 gap-y-2 rounded-lg bg-primary/5 px-4 py-3 text-sm text-ink-2 sm:[&>p]:border-l sm:[&>p]:border-rule sm:[&>p]:pl-6"
         >
-            <h2 id="account-history-title" className="w-full font-secondary font-medium tracking-normal text-ink-2 sm:w-auto">
+            <Heading level={2} size="section" tone="muted" className="w-full sm:w-auto" id="account-history-title">
                 Desde el inicio de la cuenta
-            </h2>
+            </Heading>
             {isLoading ? (
                 <Skeleton className="h-4 w-72" />
             ) : (
