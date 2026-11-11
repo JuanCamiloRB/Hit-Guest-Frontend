@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { Building2, ChevronDown, ChevronUp, Loader2, RefreshCw } from "lucide-react"
+import { Building2, ChevronDown, ChevronUp, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Badge } from "@/components/ui/badge"
@@ -32,6 +32,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Radio } from "@/components/ui/radio"
 import { Label } from "@/components/ui/label"
+import { Spinner } from "@/components/ui/loading-state"
 
 /**
  * Estado de carga por unidad. Se distingue «falló» de «no cargado» a propósito:
@@ -136,7 +137,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                     )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                    {loading && <Icon icon={Loader2} size="xs" className="animate-spin text-ink-3" />}
+                    {loading && <Spinner size="xs" tone="muted" />}
                     {expanded ? <Icon icon={ChevronUp} size="sm" /> : <Icon icon={ChevronDown} size="sm" />}
                 </div>
             </UnstyledButton>
@@ -183,7 +184,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                                 return (
                                     <li key={listing.uuid} className="flex items-center justify-between gap-3 rounded-lg border border-rule bg-white px-3 py-2">
                                         <p className="truncate text-xs font-semibold text-ink-2">{listing.name}</p>
-                                        <Icon icon={Loader2} size="xs" className="animate-spin text-ink-3" />
+                                        <Spinner size="xs" tone="muted" />
                                     </li>
                                 )
                             }
@@ -359,8 +360,7 @@ function ListingDeliveryRow({
 
             {dirty && (
                 <div className="flex justify-end">
-                    <Button type="button" size="sm" onClick={() => void save()} disabled={saving}>
-                        {saving && <Icon icon={Loader2} className="animate-spin" />}
+                    <Button type="button" size="sm" onClick={() => void save()} loading={saving}>
                         Guardar
                     </Button>
                 </div>

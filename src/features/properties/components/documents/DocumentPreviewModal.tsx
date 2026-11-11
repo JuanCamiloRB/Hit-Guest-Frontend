@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Loader2, Download, Sparkles, FlaskConical } from "lucide-react"
+import { Download, Sparkles, FlaskConical } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { notifyError } from "@/lib/notify-error"
 import {
@@ -28,6 +28,7 @@ import { normalizeShortcodes } from "../../types/document"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Surface } from "@/components/ui/card"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface DocumentPreviewModalProps {
     onClose: () => void
@@ -194,9 +195,7 @@ export function DocumentPreviewModal({
                         {!documentUuid ? (
                             <FeedbackBanner tone="info">Guarda el documento primero para previsualizarlo con una reserva real.</FeedbackBanner>
                         ) : loadingReservations ? (
-                            <div className="flex items-center gap-2 text-ink-3 text-sm py-2">
-                                <Icon icon={Loader2} className="animate-spin" /> Cargando reservas...
-                            </div>
+                            <LoadingState variant="inline" label="Cargando reservas..." className="py-2" />
                         ) : reservations.length === 0 ? (
                             <FeedbackBanner tone="info" density="compact">No hay reservas disponibles para previsualizar.</FeedbackBanner>
                         ) : (
@@ -225,9 +224,7 @@ export function DocumentPreviewModal({
                 {/* Rendered document */}
                 <Surface flat className="p-6 min-h-60">
                     {rendering ? (
-                        <div className="flex items-center justify-center py-16 gap-2 text-ink-3">
-                            <Icon icon={Loader2} size="lg" className="animate-spin" /> Generando vista previa...
-                        </div>
+                        <LoadingState variant="spinner" showLabel label="Generando vista previa..." />
                     ) : previewHtml ? (
                         <div
                             className={cn(
@@ -251,13 +248,8 @@ export function DocumentPreviewModal({
                 {/* PDF download (real mode only) */}
                 {mode === "real" && documentUuid && selectedReservation && (
                     <div className="flex justify-end">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={handleDownloadPdf}
-                            disabled={downloadingPdf}
-                        >
-                            {downloadingPdf ? <Icon icon={Loader2} className="animate-spin" /> : <Icon icon={Download} />}
+                        <Button type="button" variant="outline" onClick={handleDownloadPdf} loading={downloadingPdf}>
+                            <Icon icon={Download} />
                             Descargar PDF
                         </Button>
                     </div>

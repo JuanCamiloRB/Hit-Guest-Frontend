@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Loader2, FileText, ChevronDown, ChevronUp, Mail, RefreshCw, XCircle } from "lucide-react"
+import { ArrowLeft, FileText, ChevronDown, ChevronUp, Mail, RefreshCw, XCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { normalizeApiError, notifyError } from "@/lib/notify-error"
@@ -38,6 +38,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Heading } from "@/components/ui/heading"
 import { Card, Surface } from "@/components/ui/card"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface RenderedDocument {
     /** The agreement's real uuid, or the literal "guarantee" — the guarantee
@@ -743,10 +744,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
 
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[50vh]">
-                <Icon icon={Loader2} size="3xl" className="text-primary animate-spin" />
-                <p className="text-sm text-ink-3 mt-4">Cargando contrato...</p>
-            </div>
+            <LoadingState variant="spinner" page showLabel label="Cargando contrato..." />
         )
     }
 
@@ -1046,19 +1044,13 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                         el CTA de la tarjeta y el de finalizar, y competían entre sí. */}
                     <Button type="button" size="xl"
                         onClick={isContractPhaseCta ? handleContractContinue : handleComplete}
-                        disabled={(isContractPhaseCta ? !contractPartValid : !isFormValid) || isSubmitting}
-                        className="w-full flex flex-col items-center justify-center"
+                        disabled={isContractPhaseCta ? !contractPartValid : !isFormValid}
+                        loading={isSubmitting}
+                        // El paso concreto («Subiendo firma…») dice más que el genérico.
+                        loadingLabel={submitStatus || (isContractPhaseCta ? "Guardando firma..." : "Finalizando...")}
+                        className="w-full"
                     >
-                        {isSubmitting ? (
-                            <>
-                                <span className="flex items-center gap-2">
-                                    <Icon icon={Loader2} size="lg" className="animate-spin" />
-                                    {isContractPhaseCta ? "Guardando firma..." : "Finalizando..."}
-                                </span>
-                                {submitStatus && <span className="text-xs font-normal opacity-80">{submitStatus}</span>}
-                            </>
-                        ) : (
-                            configurationError
+                        {configurationError
                                 ? (isRetryable ? "Reintentar carga" : "Contrato no disponible")
                                 : isContractPhaseCta
                                     ? (needsSignature ? "Firmar y continuar" : "Aceptar y continuar")
@@ -1070,8 +1062,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                     ? "Completar check-in"
                                 : needsSignature
                                     ? "Firmar y Completar"
-                                    : "Aceptar y Completar"
-                        )}
+                                    : "Aceptar y Completar"}
                     </Button>
                 </div>
             </div>

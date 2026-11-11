@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Download, FileText, Loader2, XCircle } from "lucide-react"
+import { ArrowLeft, Download, FileText, XCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Surface } from "@/components/ui/card"
 import { toast } from "sonner"
@@ -10,6 +10,7 @@ import { checkinService } from "@/features/checkin/services/checkin-service"
 import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Heading } from "@/components/ui/heading"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface GuestDocumentScreenProps {
     reservationUuid: string
@@ -53,10 +54,7 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
 
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in">
-                <Icon icon={Loader2} size="2xl" className="animate-spin text-primary" />
-                <p className="text-sm font-medium text-ink-3">Cargando documento...</p>
-            </div>
+            <LoadingState variant="spinner" page showLabel label="Cargando documento..." />
         )
     }
 
@@ -102,12 +100,8 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
-                    <Button type="button" size="xl"
-                        onClick={handleDownloadPdf}
-                        disabled={isDownloading}
-                        className="w-full flex items-center justify-center"
-                    >
-                        {isDownloading ? <Icon icon={Loader2} size="lg" className="animate-spin" /> : <Icon icon={Download} size="lg" />}
+                    <Button type="button" size="xl" onClick={handleDownloadPdf} className="w-full flex items-center justify-center" loading={isDownloading}>
+                        <Icon icon={Download} size="lg" />
                         Descargar PDF
                     </Button>
                 </div>

@@ -110,16 +110,17 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
     }, [reservationUuid, refreshGuests])
 
     const refreshButton = (
-        <UnstyledButton
+        <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => void refreshGuests()}
-            disabled={isRefreshing}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-ink-3 transition-colors hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            loading={isRefreshing}
             aria-label="Actualizar documentos y estados de huéspedes"
         >
-            <Icon icon={RefreshCw} size="sm" className={isRefreshing ? "animate-spin" : ""} />
+            <Icon icon={RefreshCw} />
             Actualizar
-        </UnstyledButton>
+        </Button>
     )
 
     // El título de la sección no cambia entre estados: se declara una vez para

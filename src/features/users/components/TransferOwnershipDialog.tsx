@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, Crown } from "lucide-react"
+import { Crown } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import {
     Dialog,
@@ -129,11 +129,7 @@ export function TransferOwnershipDialog({
                     <Button variant="outline" onClick={() => handleClose(false)} disabled={submitting}>
                         Cancelar
                     </Button>
-                    <Button
-                        onClick={handleConfirm}
-                        disabled={submitting || !selectedUuid || !clientUuid}
-                    >
-                        {submitting && <Icon icon={Loader2} className="mr-2 animate-spin" />}
+                    <Button onClick={handleConfirm} disabled={!selectedUuid || !clientUuid} loading={submitting}>
                         Transferir
                     </Button>
                 </DialogFooter>

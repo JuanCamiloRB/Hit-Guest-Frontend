@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, RotateCcw, History, Play, FileText, Send, Lock } from "lucide-react"
+import { RotateCcw, History, Play, FileText, Send, Lock } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -188,30 +188,16 @@ export function AutomationStatusItem({
 
                 <div className="flex items-center gap-2">
                     {canManual && !perGuest && item.canRedispatch ? (
-                        <Button
-                            size="sm"
-                            variant="outline-destructive"
-                            disabled={retryDisabled}
-                            onClick={() => onRedispatch(item)}
-                        >
-                            {isRedispatching ? (
-                                <><Icon icon={Loader2} className="animate-spin" /> Reenviando...</>
-                            ) : inCooldown ? (
+                        <Button size="sm" variant="outline-destructive" disabled={retryDisabled} onClick={() => onRedispatch(item)} loading={isRedispatching} loadingLabel="Reenviando...">
+                            {inCooldown ? (
                                 <>Espera {formatCooldown(cooldownLeft)}</>
                             ) : (
                                 <><Icon icon={RotateCcw} /> Reintentar</>
                             )}
                         </Button>
                     ) : canManual && item.canDispatch ? (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={isDispatching || inCooldown}
-                            onClick={() => onDispatch(item)}
-                        >
-                            {isDispatching ? (
-                                <><Icon icon={Loader2} className="animate-spin" /> Disparando...</>
-                            ) : inCooldown ? (
+                        <Button size="sm" variant="outline" disabled={inCooldown} onClick={() => onDispatch(item)} loading={isDispatching} loadingLabel="Disparando...">
+                            {inCooldown ? (
                                 <>Espera {formatCooldown(cooldownLeft)}</>
                             ) : perGuest ? (
                                 <><Icon icon={Play} /> Despachar pendientes</>
@@ -226,23 +212,15 @@ export function AutomationStatusItem({
                         dice el costo. Un solo clic sobre una acción facturable es
                         una factura que el PM no eligió. */}
                     {canResendPdf && (
-                        <Button
-                            size="sm"
-                            variant={confirmingResend ? "outline-warning" : "outline"}
-                            disabled={isDispatching || inCooldown}
-                            onClick={() => {
+                        <Button size="sm" variant={confirmingResend ? "outline-warning" : "outline"} disabled={inCooldown} onClick={() => {
                                 if (confirmingResend) {
                                     setConfirmingResend(false)
                                     onResendPdf(item)
                                 } else {
                                     setConfirmingResend(true)
                                 }
-                            }}
-                            onBlur={() => setConfirmingResend(false)}
-                        >
-                            {isDispatching ? (
-                                <><Icon icon={Loader2} className="animate-spin" /> Enviando...</>
-                            ) : inCooldown ? (
+                            }} onBlur={() => setConfirmingResend(false)} loading={isDispatching} loadingLabel="Enviando...">
+                            {inCooldown ? (
                                 <>Espera {formatCooldown(cooldownLeft)}</>
                             ) : confirmingResend ? (
                                 <><Icon icon={Send} /> Confirmar — genera un cargo</>
@@ -313,24 +291,12 @@ function GuestRow({
                         {meta.label}
                     </StatusPill>
                     {canManual && guest.canRedispatch ? (
-                        <Button
-                            size="sm"
-                            variant="outline-destructive"
-                            disabled={isRedispatching || inCooldown}
-                            onClick={() => onRedispatch(item, guest)}
-                            aria-label={`Reintentar para ${guest.name}`}
-                        >
-                            {isRedispatching ? <Icon icon={Loader2} className="animate-spin" /> : inCooldown ? formatCooldown(cooldownLeft) : <><Icon icon={RotateCcw} /> Reintentar</>}
+                        <Button size="sm" variant="outline-destructive" disabled={inCooldown} onClick={() => onRedispatch(item, guest)} aria-label={`Reintentar para ${guest.name}`} loading={isRedispatching}>
+                            {inCooldown ? formatCooldown(cooldownLeft) : <><Icon icon={RotateCcw} /> Reintentar</>}
                         </Button>
                     ) : canManual && guest.canDispatch ? (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={isDispatching || inCooldown}
-                            onClick={() => onDispatch(item, guest)}
-                            aria-label={`Despachar para ${guest.name}`}
-                        >
-                            {isDispatching ? <Icon icon={Loader2} className="animate-spin" /> : inCooldown ? formatCooldown(cooldownLeft) : <><Icon icon={Play} /> Despachar</>}
+                        <Button size="sm" variant="outline" disabled={inCooldown} onClick={() => onDispatch(item, guest)} aria-label={`Despachar para ${guest.name}`} loading={isDispatching}>
+                            {inCooldown ? formatCooldown(cooldownLeft) : <><Icon icon={Play} /> Despachar</>}
                         </Button>
                     ) : null}
                 </div>

@@ -244,3 +244,15 @@ describe("Button — variantes de DS-6", () => {
         for (const variant of VARIANTS) expect(buttonVariants({ variant })).not.toMatch(/-(?:red|amber|orange)-\d/)
     })
 })
+
+describe("Button loading — el indicador ocupa el lugar del ícono (DS-7d)", () => {
+    it("oculta los Icon directos mientras carga y conserva el texto", async () => {
+        const { Icon } = await import("./icon")
+        const { Plus } = await import("lucide-react")
+        render(<Button loading><Icon icon={Plus} /> Recargar</Button>)
+        const btn = screen.getByRole("button", { name: /Recargar/ })
+        expect(btn.className).toContain("data-loading:[&>[data-slot=icon]]:hidden")
+        expect(btn).toHaveAttribute("aria-busy", "true")
+        expect(btn).toHaveAttribute("data-loading", "true")
+    })
+})

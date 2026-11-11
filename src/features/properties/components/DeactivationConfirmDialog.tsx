@@ -1,8 +1,6 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Loader2 } from "lucide-react"
-import { Icon } from "@/components/ui/icon"
 import { reservationsService } from "@/features/reservations/services/reservations-service"
 import {
     AlertDialog,
@@ -16,6 +14,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { Spinner } from "@/components/ui/loading-state"
 
 export interface DeactivationTarget {
     kind: "property" | "listing"
@@ -146,7 +145,7 @@ export function DeactivationConfirmDialog({ target, onConfirm, onCancel }: Props
                                 : "bg-sunk/50 text-ink-2",
                         )}
                     >
-                        {count === "loading" && <Icon icon={Loader2} size="sm" className="animate-spin" />}
+                        {count === "loading" && <Spinner size="sm" />}
                         {countLine}
                     </p>
                 )}

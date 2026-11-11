@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
-import { AlertTriangle, Copy, FileText, Loader2, Plus, RefreshCw, Trash2 } from "lucide-react"
+import { AlertTriangle, Copy, FileText, Plus, RefreshCw, Trash2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -512,8 +512,7 @@ function CreateFeedDialog({
                         <FeedbackBanner
                             tone="warning"
                             action={
-                                <Button size="sm" variant="outline" disabled={connecting} onClick={() => void connectAndRetry()}>
-                                    {connecting && <Icon icon={Loader2} className="mr-1.5 animate-spin" />}
+                                <Button size="sm" variant="outline" onClick={() => void connectAndRetry()} loading={connecting}>
                                     Conectar Airbnb iCal ahora
                                 </Button>
                             }
@@ -525,8 +524,7 @@ function CreateFeedDialog({
 
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={submitting}>Cancelar</Button>
-                    <Button onClick={() => void submit()} disabled={!canSubmit || submitting}>
-                        {submitting && <Icon icon={Loader2} className="mr-1.5 animate-spin" />}
+                    <Button onClick={() => void submit()} disabled={!canSubmit} loading={submitting}>
                         Conectar calendario
                     </Button>
                 </DialogFooter>
@@ -616,7 +614,6 @@ function TemplateDialog({
     )
 }
 
-
 /** El PATCH solo acepta `icalUrl`/`statusRecordId`: rotar la URL es el único edit real. */
 function EditUrlDialog({
     feed,
@@ -667,8 +664,7 @@ function EditUrlDialog({
                 </div>
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>
-                    <Button onClick={() => void save()} disabled={saving || url.trim() === ""}>
-                        {saving && <Icon icon={Loader2} className="mr-1.5 animate-spin" />}
+                    <Button onClick={() => void save()} disabled={url.trim() === ""} loading={saving}>
                         Guardar
                     </Button>
                 </DialogFooter>

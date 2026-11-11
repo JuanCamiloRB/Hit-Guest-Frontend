@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Building2, Ban, ChevronDown, ChevronUp, Settings2, Loader2, Lock, RefreshCw } from "lucide-react"
+import { Building2, Ban, ChevronDown, ChevronUp, Settings2, Lock, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import { identityOverrideSummary, isIdentityPropertyAutomation } from "../../lib
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { EmptyState } from "@/components/ui/empty-state"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Spinner } from "@/components/ui/loading-state"
 
 /**
  * Estado de carga por unidad. «Falló» se distingue de «no cargado» a propósito:
@@ -118,7 +119,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                     )}
                 </div>
                 <div className="flex items-center gap-1.5">
-                    {loading && <Icon icon={Loader2} size="xs" className="animate-spin text-ink-3" />}
+                    {loading && <Spinner size="xs" tone="muted" />}
                     {expanded ? <Icon icon={ChevronUp} size="sm" /> : <Icon icon={ChevronDown} size="sm" />}
                 </div>
             </UnstyledButton>

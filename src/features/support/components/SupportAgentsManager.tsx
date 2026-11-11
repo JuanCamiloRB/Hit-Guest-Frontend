@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, RefreshCw, UserPlus, UserX, Users } from "lucide-react"
+import { RefreshCw, UserPlus, UserX, Users } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import {
@@ -226,8 +226,8 @@ function CreateAgentForm({ onCreated }: { onCreated: () => void }) {
                     />
                     {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
                 </div>
-                <Button size="lg" type="submit" className="sm:mt-5.5" disabled={saving}>
-                    {saving ? <Icon icon={Loader2} className="mr-1.5 animate-spin" /> : <Icon icon={UserPlus} className="mr-1.5" />}
+                <Button size="lg" type="submit" className="sm:mt-5.5" loading={saving}>
+                    <Icon icon={UserPlus} className="mr-1.5" />
                     Dar de alta
                 </Button>
                 {errors.form && (

@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { useBalanceStore } from "../hooks/useBalanceStore"
 import { formatUsd, getBalanceState } from "../types"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const BILLING_HREF = "/dashboard/settings?tab=billing"
 
@@ -25,7 +26,7 @@ export function BalanceWidget() {
     // Nothing to show until the first load resolves, or if billing isn't live yet.
     if (pending) return null
     if (!loaded && isLoading) {
-        return <div className="hidden sm:block h-10 w-24 rounded-lg bg-sunk animate-pulse" />
+        return <Skeleton className="hidden sm:block h-10 w-24" />
     }
     if (amount === null) return null
 

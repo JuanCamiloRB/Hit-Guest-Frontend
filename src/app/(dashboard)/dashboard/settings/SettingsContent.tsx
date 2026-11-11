@@ -24,6 +24,7 @@ import { useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Overline } from "@/components/ui/overline"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const SETTINGS_TABS = [
     { id: "profile", label: "Mi cuenta", icon: User },
@@ -54,10 +55,10 @@ export function SettingsContent() {
         return (
             <div className="flex flex-col md:flex-row gap-8 items-start animate-in fade-in duration-500">
                 {/* Sidebar Skeleton */}
-                <div className="w-full md:w-64 h-80 bg-sunk/60 rounded-xl animate-pulse motion-reduce:animate-none" />
+                <Skeleton className="w-full md:w-64 h-80 rounded-xl" />
                 
                 {/* Content Skeleton */}
-                <div className="flex-1 h-150 bg-sunk/60 rounded-xl animate-pulse motion-reduce:animate-none" />
+                <Skeleton className="flex-1 h-150 rounded-xl" />
             </div>
         )
     }

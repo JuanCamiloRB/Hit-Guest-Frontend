@@ -2,13 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { SectionCard } from "@/components/ui/section-card"
-import {
-    FileText,
-    Loader2,
-    Eye,
-    Download,
-    ChevronUp,
-} from "lucide-react"
+import { FileText, Eye, Download, ChevronUp } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { propertyDocumentService } from "@/features/properties/services/property-document-service"
 import { reservationsService } from "../services/reservations-service"
@@ -17,6 +11,7 @@ import { documentTypeLabel, DOCUMENT_STATUS } from "@/features/properties/types/
 import { notifyError } from "@/lib/notify-error"
 import { LoadingState } from "@/components/ui/loading-state"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Button } from "@/components/ui/button"
 
 interface PropertyDocumentsCardProps {
     reservationUuid: string
@@ -131,28 +126,24 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
                                             {isOpen ? "Ocultar vista previa" : "Ver vista previa"}
                                         </span>
                                     </UnstyledButton>
-                                    <UnstyledButton
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon-sm"
                                         onClick={() => handleDownloadPdf(doc)}
-                                        disabled={downloadingPdf === doc.uuid}
-                                        className="rounded-lg p-2 text-ink-3 transition-colors hover:bg-sunk hover:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                                        loading={downloadingPdf === doc.uuid}
                                         title="Descargar PDF"
+                                        aria-label="Descargar PDF"
                                     >
-                                        {downloadingPdf === doc.uuid
-                                            ? <Icon icon={Loader2} className="animate-spin" />
-                                            : <Icon icon={Download} />
-                                        }
-                                        <span className="sr-only">Descargar PDF</span>
-                                    </UnstyledButton>
+                                        <Icon icon={Download} />
+                                    </Button>
                                 </div>
                             </div>
 
                             {isOpen && (
                                 <div id={panelId} className="border-t border-rule bg-sunk p-4">
                                     {previewLoading ? (
-                                        <div className="flex items-center justify-center gap-2 py-6 text-ink-3">
-                                            <Icon icon={Loader2} className="animate-spin" />
-                                            <span className="text-xs">Renderizando documento…</span>
-                                        </div>
+                                        <LoadingState variant="inline" compact label="Renderizando documento…" className="justify-center py-6" />
                                     ) : (
                                         <div
                                             className="prose prose-sm prose-slate max-h-72 max-w-none overflow-y-auto text-xs [&_h2]:text-sm [&_h2]:font-bold [&_p]:my-1.5"

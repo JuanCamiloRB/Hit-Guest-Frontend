@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { Loader2 } from "lucide-react"
-import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -20,6 +18,7 @@ import { reservationsService } from "../services/reservations-service"
 import { automationService } from "@/features/properties/services/automation-service"
 import { classifyRecord } from "@/features/billing/lib/pricing"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 /**
  * ¿Ya salió el reporte a TRA con el valor anterior? (contrato 2026-09-27 §2.2)
@@ -144,10 +143,7 @@ export function RegisterPriceDialog({
                 </DialogHeader>
 
                 {mode === "correct" && traStatus === "loading" && (
-                    <p className="flex items-center gap-2 text-xs text-ink-3" role="status">
-                        <Icon icon={Loader2} size="sm" className="animate-spin" />
-                        Comprobando si el reporte a TRA ya se envió…
-                    </p>
+                    <LoadingState variant="inline" compact label="Comprobando si el reporte a TRA ya se envió…" />
                 )}
                 {traStatus === "sent" && (
                     <FeedbackBanner tone="warning" mode="dynamic" density="compact">
@@ -190,8 +186,7 @@ export function RegisterPriceDialog({
 
                 <DialogFooter>
                     <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>
-                    <Button onClick={() => void save()} disabled={!canSave || saving}>
-                        {saving && <Icon icon={Loader2} className="mr-1.5 animate-spin" />}
+                    <Button onClick={() => void save()} disabled={!canSave} loading={saving}>
                         {mode === "correct" ? "Guardar valor" : "Registrar valor"}
                     </Button>
                 </DialogFooter>

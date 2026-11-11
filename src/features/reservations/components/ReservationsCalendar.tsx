@@ -13,7 +13,7 @@ import {
     addMonths,
     subMonths,
 } from "date-fns"
-import { ChevronDown, ChevronLeft, ChevronRight, Loader2, LogIn, LogOut } from "lucide-react"
+import { ChevronDown, ChevronLeft, ChevronRight, LogIn, LogOut } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Heading } from "@/components/ui/heading"
+import { Spinner } from "@/components/ui/loading-state"
 
 /** True only when both dates are valid and ordered — safe to compare per-day. */
 function hasValidStay(res: Reservation): boolean {
@@ -256,7 +257,7 @@ export function ReservationsCalendar() {
             <div className="relative grid grid-cols-7 gap-px bg-sunk rounded-lg overflow-hidden border">
                 {isLoading && (
                     <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-xs">
-                        <Icon icon={Loader2} size="xl" className="animate-spin text-primary" />
+                        <Spinner size="xl" tone="primary" />
                     </div>
                 )}
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (

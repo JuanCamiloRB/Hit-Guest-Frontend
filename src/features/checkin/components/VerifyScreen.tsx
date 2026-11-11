@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Camera, Upload, Loader2, CheckCircle2, XCircle, RotateCcw, FileText, Clock } from "lucide-react"
+import { ArrowLeft, Camera, Upload, CheckCircle2, XCircle, RotateCcw, FileText, Clock } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { normalizeVerificationResult } from "@/features/checkin/lib/verification-result"
@@ -32,6 +32,7 @@ import { FileInput } from "@/components/ui/file-input"
 import { Heading } from "@/components/ui/heading"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Surface } from "@/components/ui/card"
+import { LoadingState, Spinner } from "@/components/ui/loading-state"
 
 interface VerifyScreenProps {
     reservationUuid: string
@@ -883,9 +884,7 @@ export function VerifyScreen({
     // ── Session not yet loaded from localStorage (initial server/client sync) ──
     if (!sessionLoaded) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <Icon icon={Loader2} size="2xl" className="animate-spin text-primary" />
-            </div>
+            <LoadingState variant="spinner" page />
         )
     }
 
@@ -909,7 +908,7 @@ export function VerifyScreen({
                     <div className="bg-primary/10 w-24 h-24 rounded-full flex items-center justify-center shadow-sm relative z-10 border border-primary/20">
                         {progress >= 100
                             ? <Icon icon={CheckCircle2} size="3xl" className="text-success" />
-                            : <Icon icon={Loader2} size="3xl" className="text-primary animate-spin" />
+                            : <Spinner size="3xl" tone="primary" />
                         }
                     </div>
                 </div>
@@ -943,7 +942,6 @@ export function VerifyScreen({
             </div>
         )
     }
-
 
     // ── OCR Confirm State ──
     if (verificationState === "ocr_confirm") {

@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { CreditCard, Loader2, Plus } from "lucide-react"
+import { CreditCard, Plus } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import {
     billingService,
@@ -184,12 +184,7 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                 </div>
 
                 <DialogFooter>
-                    <Button
-                        onClick={handleRecharge}
-                        disabled={isSubmitting || packagesStatus === "loading" || belowMinimum || invalidAmount}
-                        className="w-full"
-                    >
-                        {isSubmitting && <Icon icon={Loader2} className="animate-spin" />}
+                    <Button onClick={handleRecharge} disabled={packagesStatus === "loading" || belowMinimum || invalidAmount} className="w-full" loading={isSubmitting}>
                         Continuar al pago
                     </Button>
                 </DialogFooter>

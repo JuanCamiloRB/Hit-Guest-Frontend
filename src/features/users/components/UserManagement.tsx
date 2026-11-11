@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Crown, MoreHorizontal, UserPlus, Trash2, Loader2 } from "lucide-react"
+import { Crown, MoreHorizontal, UserPlus, Trash2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import {
     DropdownMenu,
@@ -59,6 +59,7 @@ import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
 import { Heading } from "@/components/ui/heading"
+import { Spinner } from "@/components/ui/loading-state"
 
 /**
  * Team users = CREATE + DELETE only. Editing a user is intentionally NOT offered:
@@ -283,11 +284,7 @@ export function UserManagement() {
                                     )}
                                 />
                                 <DialogFooter>
-                                    <Button
-                                        type="submit"
-                                        disabled={isSubmitting}
-                                    >
-                                        {isSubmitting && <Icon icon={Loader2} className="mr-2 animate-spin" />}
+                                    <Button type="submit" loading={isSubmitting}>
                                         Crear Usuario
                                     </Button>
                                 </DialogFooter>
@@ -322,7 +319,7 @@ export function UserManagement() {
                         {isLoading ? (
                             <TableRow>
                                 <TableCell colSpan={3} className="h-24 text-center">
-                                    <Icon icon={Loader2} size="xl" className="animate-spin mx-auto text-ink-3" />
+                                    <Spinner size="xl" tone="muted" />
                                 </TableCell>
                             </TableRow>
                         ) : status === "error" ? (

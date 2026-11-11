@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, CheckCircle2, FileText, User, Globe, Plane, Loader2, ClipboardList } from "lucide-react"
+import { ArrowLeft, CheckCircle2, FileText, User, Globe, Plane, ClipboardList } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
@@ -52,6 +52,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Heading } from "@/components/ui/heading"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface GuestFormScreenProps {
     reservationUuid: string
@@ -487,10 +488,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
 
     if (isLoadingSchema) {
         return (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in">
-                <Icon icon={Loader2} size="2xl" className="animate-spin text-primary" />
-                <p className="text-sm font-medium text-ink-3">Preparando formulario...</p>
-            </div>
+            <LoadingState variant="spinner" page showLabel label="Preparando formulario..." />
         )
     }
 

@@ -126,3 +126,36 @@ describe("Skeleton", () => {
         expect(container.firstElementChild).toHaveClass("animate-pulse", "motion-reduce:animate-none", "h-4")
     })
 })
+
+describe("Espera — DS-7d", () => {
+    it("Spinner es decorativo sin label y se anuncia con label", async () => {
+        const { Spinner } = await import("./loading-state")
+        const { container, rerender } = render(<Spinner />)
+        expect(container.querySelector("svg")).toHaveAttribute("aria-hidden", "true")
+        expect(container.querySelector('[role="status"]')).toBeNull()
+        rerender(<Spinner label="Guardando…" />)
+        expect(screen.getByRole("status")).toHaveTextContent("Guardando…")
+    })
+
+    it("LoadingState inline muestra el texto junto al indicador", async () => {
+        const { LoadingState } = await import("./loading-state")
+        render(<LoadingState variant="inline" compact label="Cargando garantía…" />)
+        const region = screen.getByRole("status", { name: "Cargando garantía…" })
+        expect(region).toHaveClass("text-xs")
+        expect(region).toHaveTextContent("Cargando garantía…")
+    })
+
+    it("LoadingState spinner page ocupa la pantalla y showLabel deja ver el texto", async () => {
+        const { LoadingState } = await import("./loading-state")
+        render(<LoadingState variant="spinner" page showLabel label="Cargando contrato..." />)
+        const region = screen.getByRole("status")
+        expect(region).toHaveAttribute("data-page", "true")
+        expect(screen.getByText("Cargando contrato...")).not.toHaveClass("sr-only")
+    })
+
+    it("Skeleton inline es un span (válido dentro de un botón)", async () => {
+        const { Skeleton } = await import("./skeleton")
+        const { container } = render(<button><Skeleton inline className="h-4 w-24" /></button>)
+        expect(container.querySelector('[data-slot="skeleton"]')?.tagName).toBe("SPAN")
+    })
+})

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { CheckCircle2, Home, Users, Calendar, MapPin, Download, Clock, FileText, Loader2, Mail, XCircle, RefreshCw } from "lucide-react"
+import { CheckCircle2, Home, Users, Calendar, MapPin, Download, Clock, FileText, Mail, XCircle, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button"
 import { Heading } from "@/components/ui/heading"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Surface } from "@/components/ui/card"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface ReservationDocument {
     uuid: string
@@ -283,14 +284,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                     <FeedbackBanner tone="success" title="Contrato firmado">
                         Tu contrato firmado está listo{signedAt ? ` (${formatDate(signedAt.slice(0, 10))})` : ""}.
                     </FeedbackBanner>
-                    <Button type="button" size="lg"
-                        onClick={handleDownloadSignedContract}
-                        disabled={downloadingContract}
-                        className="w-full flex items-center justify-center"
-                    >
-                        {downloadingContract
-                            ? <Icon icon={Loader2} className="animate-spin" />
-                            : <Icon icon={Download} />}
+                    <Button type="button" size="lg" onClick={handleDownloadSignedContract} className="w-full flex items-center justify-center" loading={downloadingContract}>
+                        <Icon icon={Download} />
                         Descargar contrato firmado
                     </Button>
                 </div>
@@ -319,15 +314,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                             : "Estamos finalizando tu contrato firmado; podrás descargarlo en un momento."}
                     </FeedbackBanner>
                     {pollStalled && (
-                        <Button variant="outline-warning"
-                            type="button"
-                            onClick={handleRefreshContract}
-                            disabled={refreshing}
-                            className="w-full flex items-center justify-center"
-                        >
-                            {refreshing
-                                ? <Icon icon={Loader2} size="sm" className="animate-spin" />
-                                : <Icon icon={RefreshCw} size="sm" />}
+                        <Button variant="outline-warning" type="button" onClick={handleRefreshContract} className="w-full flex items-center justify-center" loading={refreshing}>
+                            <Icon icon={RefreshCw} size="sm" />
                             Ya firmé, actualizar estado
                         </Button>
                     )}
@@ -386,10 +374,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             )}
 
             {docsLoading ? (
-                <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-3 w-full max-w-sm">
-                    <Icon icon={Loader2} size="lg" className="animate-spin text-ink-3" />
-                    <span className="text-xs text-ink-3">Cargando documentos...</span>
-                </div>
+                <LoadingState variant="inline" compact label="Cargando documentos..." className="w-full max-w-sm rounded-xl border border-rule bg-sunk/50 p-4" />
             ) : documents.length > 0 ? (
                 <div className="w-full max-w-sm space-y-2">
                     {documents.map((doc) => (
@@ -401,16 +386,8 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                                 <Heading level={3} size="subsection" className="truncate">{doc.typeName}</Heading>
                                 <p className="text-xs text-ink-3">Descarga tu copia aquí.</p>
                             </div>
-                            <Button type="button" variant="link" size="inline"
-                                onClick={() => handleDownloadPdf(doc.uuid)}
-                                disabled={downloadingDoc === doc.uuid}
-                                className="flex-shrink-0"
-                            >
-                                {downloadingDoc === doc.uuid ? (
-                                    <Icon icon={Loader2} className="animate-spin" />
-                                ) : (
-                                    "Descargar"
-                                )}
+                            <Button type="button" variant="link" size="inline" onClick={() => handleDownloadPdf(doc.uuid)} className="flex-shrink-0" loading={downloadingDoc === doc.uuid}>
+                                Descargar
                             </Button>
                         </div>
                     ))}
@@ -428,7 +405,6 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                     </div>
                 </div>
             )}
-
 
             <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left w-full max-w-sm mt-2">
                 <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">

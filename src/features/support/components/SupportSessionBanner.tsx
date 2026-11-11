@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Headset, Loader2, LogOut } from "lucide-react"
+import { Headset, LogOut } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useHasHydrated } from "@/hooks/useHasHydrated"
@@ -67,13 +67,8 @@ export function SupportSessionBanner() {
                     <span className="text-xs text-ink">· Se cierra tras {idleMinutes} min sin actividad</span>
                 )}
             </p>
-            <Button
-                type="button"
-                onClick={() => void leave()}
-                disabled={leaving}
-                className="inline-flex items-center"
-            >
-                {leaving ? <Icon icon={Loader2} className="animate-spin" /> : <Icon icon={LogOut} />}
+            <Button type="button" onClick={() => void leave()} className="inline-flex items-center" loading={leaving}>
+                <Icon icon={LogOut} />
                 Salir
             </Button>
         </div>

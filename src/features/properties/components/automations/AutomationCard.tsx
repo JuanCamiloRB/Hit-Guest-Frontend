@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef } from "react"
-import { Settings2, Loader2, AlertCircle, AlertTriangle, CheckCircle2, Clock, FileSignature } from "lucide-react"
+import { Settings2, AlertCircle, AlertTriangle, CheckCircle2, Clock, FileSignature } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import {
     Card,
@@ -36,6 +36,7 @@ import type { ListingMeta } from "./AutomationOverrideModal"
 import { ReservationSourceIdentity, reservationSourceName, reservationSourceSlug } from "../contracts/ReservationSourceIdentity"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Heading } from "@/components/ui/heading"
+import { Spinner } from "@/components/ui/loading-state"
 
 const BACKEND_PENDING_MSG = "El backend aún no tiene este endpoint implementado. Contacta al equipo de desarrollo."
 
@@ -502,7 +503,7 @@ export function AutomationCard({
                                 </div>
                                 <div className="shrink-0">
                                     {toggling
-                                        ? <Icon icon={Loader2} size="lg" className="animate-spin text-primary" />
+                                        ? <Spinner size="lg" tone="primary" label="Guardando…" />
                                         : <Switch
                                             checked={isActive}
                                             onCheckedChange={handleToggle}

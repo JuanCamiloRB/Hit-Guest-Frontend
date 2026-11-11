@@ -27,10 +27,9 @@ import { useEffect, useState } from "react"
 import { User } from "../../auth/types"
 import { authService } from "@/features/auth/services/auth-service"
 import { ApiError } from "@/types/api"
-import { Loader2 } from "lucide-react"
-import { Icon } from "@/components/ui/icon"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { ClientLogoSection } from "./ClientLogoSection"
+import { LoadingState } from "@/components/ui/loading-state"
 
 /**
  * "Mi cuenta" edits the CLIENTE record — the billable account created at
@@ -211,9 +210,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
 
     if (isHydrating) {
         return (
-            <div className="flex items-center justify-center py-16">
-                <Icon icon={Loader2} size="xl" className="animate-spin text-primary" />
-            </div>
+            <LoadingState variant="spinner" />
         )
     }
 
@@ -478,11 +475,7 @@ export function ProfileForm({ user }: ProfileFormProps) {
                 </div>
 
                 <div className="pt-4">
-                    <Button size="lg"
-                        type="submit"
-                        disabled={isLoading}
-                    >
-                        {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin" />}
+                    <Button size="lg" type="submit" loading={isLoading}>
                         GUARDAR CAMBIOS
                     </Button>
                 </div>

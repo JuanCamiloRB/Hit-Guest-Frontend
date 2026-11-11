@@ -4,7 +4,7 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, KeyRound, Mail, Lock, Tag, Plug, Eye, EyeOff } from "lucide-react"
+import { KeyRound, Mail, Lock, Tag, Plug, Eye, EyeOff } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { notifyError } from "@/lib/notify-error"
 import type { KunasConnectPayload } from "../types"
@@ -125,11 +125,8 @@ export function KunasConnectForm({ onConnect }: Props) {
                 />
             </Field>
 
-            <Button
-                type="submit"
-                disabled={!canSubmit}
-            >
-                {isSubmitting ? <Icon icon={Loader2} className="animate-spin" /> : <Icon icon={Plug} />}
+            <Button type="submit" disabled={!canSubmit} loading={isSubmitting}>
+                <Icon icon={Plug} />
                 Conectar KunasPMS
             </Button>
         </form>

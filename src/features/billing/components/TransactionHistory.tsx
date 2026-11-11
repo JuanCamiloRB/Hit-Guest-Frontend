@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronLeft, ChevronRight, Loader2, Receipt } from "lucide-react"
+import { ChevronLeft, ChevronRight, Receipt } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { billingService } from "../services/billing-service"
 import { formatUsd, type CreditTransaction, type TransactionsPage } from "../types"
@@ -11,6 +11,7 @@ import { StatusPill, type StatusTone } from "@/components/ui/status-pill"
 import { useTranslation } from "@/hooks/useTranslation"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
 /** «10 jul 2026, 2:32 p. m.» en la zona horaria local del PM. */
 function formatDate(iso: string, locale: string): string {
@@ -110,8 +111,8 @@ export function TransactionHistory() {
                 <div className="divide-y divide-rule">
                     {Array.from({ length: 6 }).map((_, i) => (
                         <div key={i} className="flex items-center gap-4 px-5 py-3.5">
-                            <div className="h-4 flex-1 animate-pulse rounded-xs bg-sunk" />
-                            <div className="h-4 w-16 animate-pulse rounded-xs bg-sunk" />
+                            <Skeleton className="h-4 flex-1" />
+                            <Skeleton className="h-4 w-16" />
                         </div>
                     ))}
                 </div>
@@ -179,13 +180,8 @@ export function TransactionHistory() {
                             <span className="text-xs font-medium text-ink-3">
                                 {t("billing.history.page", { page: data.currentPage, last: data.lastPage })}
                             </span>
-                            <Button type="button" variant="outline" size="sm"
-                                onClick={() => setPage((p) => Math.min(data.lastPage, p + 1))}
-                                disabled={data.currentPage >= data.lastPage || isLoading}
-                                className="inline-flex items-center"
-                            >
+                            <Button type="button" variant="outline" size="sm" onClick={() => setPage((p) => Math.min(data.lastPage, p + 1))} disabled={data.currentPage >= data.lastPage} className="inline-flex items-center" loading={isLoading}>
                                 {t("common.next")} <Icon icon={ChevronRight} size="sm" />
-                                {isLoading && <Icon icon={Loader2} size="xs" className="ml-1 animate-spin" />}
                             </Button>
                         </div>
                     </div>

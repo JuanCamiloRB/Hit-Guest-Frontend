@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, Eye, EyeOff, KeyRound } from "lucide-react"
+import { Eye, EyeOff, KeyRound } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { notifyError } from "@/lib/notify-error"
 import type { KunasConfigurationPayload } from "../types"
@@ -160,11 +160,7 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                     <Button variant="outline" onClick={() => setOpen(false)} disabled={isSaving}>
                         Cancelar
                     </Button>
-                    <Button
-                        onClick={handleSave}
-                        disabled={!canSave}
-                    >
-                        {isSaving && <Icon icon={Loader2} className="animate-spin" />}
+                    <Button onClick={handleSave} disabled={!canSave} loading={isSaving}>
                         Guardar
                     </Button>
                 </DialogFooter>

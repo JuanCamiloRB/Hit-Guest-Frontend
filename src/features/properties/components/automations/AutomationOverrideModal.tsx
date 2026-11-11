@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Building2, Loader2 } from "lucide-react"
+import { Building2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import {
     Dialog,
@@ -568,11 +568,7 @@ export function AutomationOverrideModal({
                         </Button>
                     )}
                     <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>
-                    <Button
-                        onClick={handleSave}
-                        disabled={saving || (!isEdit && !selectedPaUuid)}
-                    >
-                        {saving && <Icon icon={Loader2} className="animate-spin mr-2" />}
+                    <Button onClick={handleSave} disabled={!isEdit && !selectedPaUuid} loading={saving}>
                         Guardar
                     </Button>
                 </DialogFooter>

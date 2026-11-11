@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { Upload, Trash2, Camera, Loader2, ImageIcon } from "lucide-react"
+import { Upload, Trash2, Camera, ImageIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import {
@@ -34,6 +34,7 @@ import {
 } from "../lib/property-image-validation"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { FileInput } from "@/components/ui/file-input"
+import { Spinner } from "@/components/ui/loading-state"
 
 /**
  * Property photo gallery, backed by the real images endpoints:
@@ -193,7 +194,7 @@ export function PropertiesPhotos() {
                             <div className="flex flex-col items-center gap-2 text-ink-3 pointer-events-none">
                                 {isUploading ? (
                                     <>
-                                        <Icon icon={Loader2} size="2xl" className="animate-spin" />
+                                        <Spinner size="2xl" />
                                         <span className="text-sm">Subiendo…</span>
                                     </>
                                 ) : (

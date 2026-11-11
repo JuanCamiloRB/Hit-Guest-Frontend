@@ -3,7 +3,6 @@
 import { useState } from "react"
 import { RefreshCw, Zap } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
-import { cn } from "@/lib/utils"
 import { hasPendingWork, useAutomationStatus } from "@/features/reservations/hooks/useAutomationStatus"
 import type { AutomationStatusItem as AutomationStatusItemType } from "@/features/properties/types/automation"
 import { AutomationStatusItem } from "./AutomationStatusItem"
@@ -14,7 +13,6 @@ import { Button } from "@/components/ui/button"
 import { RefreshIndicator } from "@/components/ui/loading-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Heading } from "@/components/ui/heading"
 
 interface AutomationStatusListProps {
@@ -61,15 +59,17 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                     {/* Mientras hay trabajo pendiente el panel vuelve a consultar solo. */}
                     <RefreshIndicator active={!isLoading && (isPolling || refreshing)} />
                 </div>
-                <UnstyledButton
+                <Button
                     type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0"
                     onClick={() => void handleRefresh()}
-                    disabled={isLoading || refreshing}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-xs text-xs font-medium text-ink-3 transition-colors hover:text-primary disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                    loading={isLoading || refreshing}
                 >
-                    <Icon icon={RefreshCw} size="sm" className={cn((isLoading || refreshing) && "animate-spin")} />
+                    <Icon icon={RefreshCw} />
                     Refrescar
-                </UnstyledButton>
+                </Button>
             </div>
 
             {isLoading ? (

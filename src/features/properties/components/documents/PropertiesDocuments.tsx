@@ -4,16 +4,7 @@ import { useCallback, useEffect, useState } from "react"
 import { useFormContext } from "react-hook-form"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import {
-    FileText,
-    Plus,
-    Loader2,
-    Pencil,
-    Trash2,
-    RotateCcw,
-    Filter,
-    Eye,
-} from "lucide-react"
+import { FileText, Plus, Pencil, Trash2, RotateCcw, Filter, Eye } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import {
     Card,
@@ -340,8 +331,7 @@ export function PropertiesDocuments() {
                         <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={deleting}>
                             Cancelar
                         </Button>
-                        <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
-                            {deleting && <Icon icon={Loader2} className="mr-2 animate-spin" />}
+                        <Button variant="destructive" onClick={handleDelete} loading={deleting}>
                             Eliminar
                         </Button>
                     </DialogFooter>

@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useSyncExternalStore } from "react"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Props {
     /** First day of the month currently shown. */
@@ -45,7 +46,7 @@ export function MonthSelector({ value, onChange }: Props) {
             </Button>
 
             <span className="min-w-34 text-center text-sm font-semibold capitalize text-ink">
-                {hydrated ? label : <span aria-hidden className="inline-block h-4 w-24 animate-pulse rounded-md bg-accent align-middle" />}
+                {hydrated ? label : <Skeleton inline className="h-4 w-24" />}
             </span>
 
             <Button

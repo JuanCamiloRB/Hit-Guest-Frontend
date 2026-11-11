@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Eye, Loader2, RefreshCw } from "lucide-react"
+import { Eye, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -264,8 +264,8 @@ export function UnitContractTexts({
                     mode="dynamic"
                     density="compact"
                     action={
-                        <Button type="button" variant="outline" size="sm" disabled={refreshing} onClick={() => void retryRefresh()}>
-                            <Icon icon={RefreshCw} className={refreshing ? "animate-spin" : undefined} /> Volver a cargar
+                        <Button type="button" variant="outline" size="sm" loading={refreshing} onClick={() => void retryRefresh()}>
+                            <Icon icon={RefreshCw} /> Volver a cargar
                         </Button>
                     }
                 >
@@ -286,14 +286,7 @@ export function UnitContractTexts({
                         {replacedTexts.map((text) => (
                             <li key={text.uuid} className="flex items-center justify-between gap-2 text-xs">
                                 <span>Texto propio · {text.channel.name}</span>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={busy}
-                                    onClick={() => void removeDocument(`replaced:${text.uuid}`, text.uuid, "Texto reemplazado borrado")}
-                                >
-                                    {busyKey === `replaced:${text.uuid}` && <Icon icon={Loader2} className="mr-1 animate-spin" />}
+                                <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void removeDocument(`replaced:${text.uuid}`, text.uuid, "Texto reemplazado borrado")} loading={busyKey === `replaced:${text.uuid}`}>
                                     Borrar
                                 </Button>
                             </li>
@@ -345,14 +338,7 @@ export function UnitContractTexts({
                                                 </Button>
                                             )}
                                             {row.unitDocument && (
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost-destructive"
-                                                    size="sm"
-                                                    disabled={busy}
-                                                    onClick={() => void removeDocument(row.key, row.unitDocument!.uuid, "La unidad vuelve a usar el texto de la propiedad")}
-                                                >
-                                                    {busyKey === row.key && <Icon icon={Loader2} className="mr-1 animate-spin" />}
+                                                <Button type="button" variant="ghost-destructive" size="sm" disabled={busy} onClick={() => void removeDocument(row.key, row.unitDocument!.uuid, "La unidad vuelve a usar el texto de la propiedad")} loading={busyKey === row.key}>
                                                     Usar el de la propiedad
                                                 </Button>
                                             )}
@@ -387,13 +373,7 @@ export function UnitContractTexts({
                                             <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => setEditing(null)}>
                                                 Cancelar
                                             </Button>
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                disabled={busy || !editing.text.replace(/<[^>]*>/g, "").trim()}
-                                                onClick={() => void saveRow(row, editing.text)}
-                                            >
-                                                {busyKey === row.key && <Icon icon={Loader2} className="mr-1 animate-spin" />}
+                                            <Button type="button" size="sm" disabled={busy || !editing.text.replace(/<[^>]*>/g, "").trim()} onClick={() => void saveRow(row, editing.text)} loading={busyKey === row.key}>
                                                 Guardar texto
                                             </Button>
                                         </div>

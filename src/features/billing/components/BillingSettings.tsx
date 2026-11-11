@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { toast } from "sonner"
-import { Loader2, Wallet, Plus } from "lucide-react"
+import { Wallet, Plus } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { ApiError } from "@/types/api"
 import { billingService, BillingNotConfiguredError } from "../services/billing-service"
@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { useTranslation } from "@/hooks/useTranslation"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 
 /** Balance card + recharge (packages/custom) + transaction history. */
 export function BillingSettings() {
@@ -121,7 +122,7 @@ export function BillingSettings() {
                     ) : amount === null && (balanceLoading || !balanceLoaded) ? (
                         // También antes de la primera consulta: sin esto el primer
                         // render decía «no disponible» un instante.
-                        <div className="h-10 w-32 animate-pulse rounded-xs bg-sunk" />
+                        <Skeleton className="h-10 w-32" />
                     ) : amount === null ? (
                         // Sin saldo conocido se dice; «0,00 USD» en rojo sería un dato inventado.
                         <div>
@@ -197,16 +198,8 @@ export function BillingSettings() {
                             {amountError && <p className="text-xs font-medium text-danger">{amountError}</p>}
                         </div>
 
-                        <Button type="button" size="lg"
-                            onClick={handleAddCredits}
-                            disabled={isSubmitting || effectiveAmount == null}
-                            className="inline-flex items-center"
-                        >
-                            {isSubmitting ? (
-                                <Icon icon={Loader2} className="animate-spin" />
-                            ) : (
-                                <Icon icon={Plus} />
-                            )}
+                        <Button type="button" size="lg" onClick={handleAddCredits} disabled={effectiveAmount == null} className="inline-flex items-center" loading={isSubmitting}>
+                            <Icon icon={Plus} />
                             {t("billing.addCredits")}
                         </Button>
                     </div>

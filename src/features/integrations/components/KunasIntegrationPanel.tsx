@@ -1,11 +1,12 @@
 "use client"
 
-import { Loader2, AlertTriangle } from "lucide-react"
+import { AlertTriangle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { useKunasIntegration } from "../hooks/useKunasIntegration"
 import { KunasConnectForm } from "./KunasConnectForm"
 import { KunasStatusCard } from "./KunasStatusCard"
+import { LoadingState } from "@/components/ui/loading-state"
 
 /**
  * Kunas PMS integration screen. Owns the integration state and renders the
@@ -26,9 +27,7 @@ export function KunasIntegrationPanel() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center py-16">
-                <Icon icon={Loader2} size="xl" className="animate-spin text-primary" />
-            </div>
+            <LoadingState variant="spinner" />
         )
     }
 

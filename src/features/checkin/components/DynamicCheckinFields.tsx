@@ -1,13 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2 } from "lucide-react"
-import { Icon } from "@/components/ui/icon"
 import { FormInput } from "@/features/checkin/components/FormInput"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import type { CheckinUserField } from "@/features/checkin/types/checkin"
 import { Label } from "@/components/ui/label"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface DynamicCheckinFieldsProps {
     fields: CheckinUserField[]
@@ -157,10 +156,7 @@ export function DynamicCheckinFields({ fields, values, onChange }: DynamicChecki
                                     {label}
                                     {f.required && <span className="text-danger ml-0.5">*</span>}
                                 </Label>
-                                <div className="flex items-center gap-2 bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink-3">
-                                    <Icon icon={Loader2} className="animate-spin" />
-                                    <span className="text-sm">Cargando opciones...</span>
-                                </div>
+                                <LoadingState variant="inline" label="Cargando opciones..." className="rounded-md border border-rule bg-sunk/50 px-4 py-3" />
                             </div>
                         )
                     }

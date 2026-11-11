@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { loadStripe, type Stripe, type StripeCardElement } from "@stripe/stripe-js"
-import { Loader2, ShieldCheck, CreditCard } from "lucide-react"
+import { ShieldCheck, CreditCard } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { normalizeApiError } from "@/lib/notify-error"
@@ -21,6 +21,7 @@ import type { GuaranteeStatus, GuaranteeStatusInfo } from "@/features/checkin/ty
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState, Spinner } from "@/components/ui/loading-state"
 
 interface GuaranteeCardFormProps {
     reservationUuid: string
@@ -462,10 +463,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
 
     if (status === null) {
         return (
-            <div className="flex items-center gap-2 text-sm text-ink-3 py-4">
-                <Icon icon={Loader2} className="animate-spin" />
-                Cargando garantía…
-            </div>
+            <LoadingState variant="inline" label="Cargando garantía…" className="py-4" />
         )
     }
 
@@ -516,7 +514,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                     <div className="flex items-center gap-2 rounded-xl border border-rule bg-sunk/50 p-4 text-sm text-ink-3">
                         {pollTimedOut
                             ? <Icon icon={CreditCard} className="text-ink-3" />
-                            : <Icon icon={Loader2} className="animate-spin text-primary" />}
+                            : <Spinner tone="primary" />}
                         {pollTimedOut
                             ? "Tu tarjeta sigue sin confirmarse."
                             : /* La frase avanza con la espera (máx. 60 s de sondeo):
@@ -551,9 +549,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                         también junto al error, así que el huésped leía "Preparando
                         formulario…" sobre un formulario que ya nunca iba a llegar. */}
                     {!cardMounted && !problem && (
-                        <div className="flex items-center gap-2 text-xs text-ink-3">
-                            <Icon icon={Loader2} size="sm" className="animate-spin" /> Preparando formulario…
-                        </div>
+                        <LoadingState variant="inline" compact label="Preparando formulario…" />
                     )}
 
                     {status === "failed" && !setupFailure && (
@@ -577,17 +573,8 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                         </Button>
                     )}
 
-                    <Button size="lg"
-                        type="button"
-                        onClick={() => void handleSubmit()}
-                        disabled={!cardMounted || !cardComplete || submitting}
-                        className="w-full flex items-center justify-center"
-                    >
-                        {submitting ? (
-                            <Icon icon={Loader2} className="animate-spin" />
-                        ) : (
-                            <Icon icon={CreditCard} />
-                        )}
+                    <Button size="lg" type="button" onClick={() => void handleSubmit()} disabled={!cardMounted || !cardComplete} className="w-full flex items-center justify-center" loading={submitting}>
+                        <Icon icon={CreditCard} />
                         Autorizar tarjeta
                     </Button>
                 </>

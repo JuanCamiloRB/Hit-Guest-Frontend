@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ImagePlus, Loader2, X } from "lucide-react"
+import { ImagePlus, X } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -246,10 +246,8 @@ export function WaivedDocumentUploadDialog({
 
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={() => close(false)} disabled={submitting}>Cancelar</Button>
-                        <Button type="submit" disabled={submitting}>
-                            {submitting
-                                ? <><Icon icon={Loader2} className="mr-1.5 animate-spin" /> Procesando las fotos…</>
-                                : "Subir fotos"}
+                        <Button type="submit" loading={submitting} loadingLabel="Procesando las fotos…">
+                            Subir fotos
                         </Button>
                     </DialogFooter>
                 </form>

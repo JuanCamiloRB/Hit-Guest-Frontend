@@ -1,6 +1,6 @@
 "use client"
 
-import { Loader2, RefreshCw } from "lucide-react"
+import { RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -10,6 +10,7 @@ import type { IdentityChoice } from "../../lib/identity-listing-override"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Radio } from "@/components/ui/radio"
 import { Label } from "@/components/ui/label"
+import { Spinner } from "@/components/ui/loading-state"
 
 interface Props {
     value: IdentityChoice
@@ -115,7 +116,7 @@ export function IdentityOverrideSelector({
                             {description && <span className="block text-sm text-ink-2">{description}</span>}
                             {blocked && (
                                 <span className="mt-0.5 flex items-center gap-1 text-xs text-warning">
-                                    {catalog.status === "loading" && canOverrideLevel && <Icon icon={Loader2} size="xs" className="animate-spin" />}
+                                    {catalog.status === "loading" && canOverrideLevel && <Spinner size="xs" />}
                                     {blocked}
                                 </span>
                             )}

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { RotateCcw, ShieldOff, Loader2 } from "lucide-react"
+import { RotateCcw, ShieldOff } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -152,16 +152,8 @@ export function GuestVerificationActions({
     return (
         <div className="flex flex-wrap items-center gap-2">
             {actions.showReset && (
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={busy !== null}
-                    onClick={() => void handleReset()}
-                >
-                    {busy === "reset"
-                        ? <Icon icon={Loader2} className="animate-spin" />
-                        : <Icon icon={RotateCcw} />}
+                <Button type="button" variant="outline" size="sm" disabled={busy !== null} onClick={() => void handleReset()} loading={busy === "reset"}>
+                    <Icon icon={RotateCcw} />
                     Reiniciar verificación
                 </Button>
             )}
@@ -180,16 +172,8 @@ export function GuestVerificationActions({
             )}
 
             {actions.showRevoke && (
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={busy !== null}
-                    onClick={() => setRevokeOpen(true)}
-                >
-                    {busy === "revoke"
-                        ? <Icon icon={Loader2} className="animate-spin" />
-                        : <Icon icon={RotateCcw} />}
+                <Button type="button" variant="outline" size="sm" disabled={busy !== null} onClick={() => setRevokeOpen(true)} loading={busy === "revoke"}>
+                    <Icon icon={RotateCcw} />
                     Revocar exoneración
                 </Button>
             )}
@@ -236,12 +220,7 @@ export function GuestVerificationActions({
                         <Button type="button" variant="outline" disabled={busy !== null} onClick={() => setWaiveOpen(false)}>
                             Cancelar
                         </Button>
-                        <Button
-                            type="button"
-                            disabled={busy !== null || (reasonTouched && !!reasonProblem)}
-                            onClick={() => void handleWaive()}
-                        >
-                            {busy === "waive" && <Icon icon={Loader2} className="animate-spin" />}
+                        <Button type="button" disabled={busy !== null || (reasonTouched && !!reasonProblem)} onClick={() => void handleWaive()} loading={busy === "waive"}>
                             Exonerar
                         </Button>
                     </DialogFooter>
@@ -263,13 +242,7 @@ export function GuestVerificationActions({
                         <Button type="button" variant="outline" disabled={busy !== null} onClick={() => setRevokeOpen(false)}>
                             Cancelar
                         </Button>
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            disabled={busy !== null}
-                            onClick={() => void handleRevoke()}
-                        >
-                            {busy === "revoke" && <Icon icon={Loader2} className="animate-spin" />}
+                        <Button type="button" variant="destructive" disabled={busy !== null} onClick={() => void handleRevoke()} loading={busy === "revoke"}>
                             Revocar
                         </Button>
                     </DialogFooter>

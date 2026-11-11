@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Loader2, ImageOff } from "lucide-react"
+import { ImageOff } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { CONFIG } from "@/lib/config"
 import { describeImageError } from "./identity-document-meta"
+import { Spinner } from "@/components/ui/loading-state"
 
 interface AuthenticatedImageProps {
     /** Image URL. If it requires Bearer auth, it is fetched as a blob. */
@@ -108,7 +109,7 @@ export function AuthenticatedImage({ src, alt, className }: AuthenticatedImagePr
     if (!result || result.src !== src) {
         return (
             <div className={`flex items-center justify-center bg-sunk/50 ${className ?? ""}`}>
-                <Icon icon={Loader2} size="lg" className="animate-spin text-ink-4" />
+                <Spinner size="lg" tone="muted" />
             </div>
         )
     }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Mail, Loader2, ShieldCheck, RotateCcw, XCircle } from "lucide-react"
+import { ArrowLeft, Mail, ShieldCheck, RotateCcw, XCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface ContactChallengeScreenProps {
     reservationUuid: string
@@ -230,9 +231,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
 
     if (!sessionLoaded) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <Icon icon={Loader2} size="2xl" className="animate-spin text-primary" />
-            </div>
+            <LoadingState variant="spinner" page />
         )
     }
 
@@ -354,16 +353,8 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
-                    <Button type="button" size="xl"
-                        onClick={handleVerify}
-                        disabled={inputDisabled || code.length !== 6}
-                        className="w-full flex items-center justify-center"
-                    >
-                        {submitting ? (
-                            <><Icon icon={Loader2} size="lg" className="animate-spin" /> Verificando...</>
-                        ) : (
-                            <><Icon icon={ShieldCheck} size="lg" /> Verificar código</>
-                        )}
+                    <Button type="button" size="xl" onClick={handleVerify} disabled={inputDisabled || code.length !== 6} className="w-full flex items-center justify-center" loading={submitting} loadingLabel="Verificando...">
+                        <><Icon icon={ShieldCheck} size="lg" /> Verificar código</>
                     </Button>
                 </div>
             </div>

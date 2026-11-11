@@ -26,7 +26,7 @@ import { DynamicCheckinFields, areDynamicFieldsValid, getProviderUserFields } fr
 import { CollapsibleSection } from "@/features/checkin/components/CollapsibleSection"
 import { mockDocumentTypes, mockGenders } from "@/features/checkin/data/mock-guest-data"
 import { DocumentUpload } from "@/features/checkin/components/DocumentUpload"
-import { ArrowLeft, User, FileText, Globe, Plane, Loader2, CheckCircle2, ClipboardList } from "lucide-react"
+import { ArrowLeft, User, FileText, Globe, Plane, CheckCircle2, ClipboardList } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Heading } from "@/components/ui/heading"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface SecondaryGuestFormScreenProps {
     reservationUuid: string
@@ -250,7 +251,6 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                 setIsLoadingSchema(false)
             }
         }
-        
         fetchSchema()
         // `session` sale de leer localStorage en cada render, así que su identidad
         // cambia siempre: incluirlo re-dispararía la carga del schema en bucle.
@@ -300,7 +300,6 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
 
     const isFieldVisible = (key: string) => 
         schema?.requiredFields.includes(key) || schema?.optionalFields.includes(key)
-    
     const isFieldRequired = (key: string) => 
         schema?.requiredFields.includes(key)
 
@@ -360,7 +359,6 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
 
             // Backend only returns { message } — re-fetch portal for updated state
             await checkinService.completeSecondaryGuest(reservationUuid, guestUuid, payload)
-            
             // Clean up form data and mark this secondary guest as done
             localStorage.removeItem(`checkin-secondary-form-${guestToken}`)
             localStorage.setItem(`checkin-secondary-done-${reservationUuid}-${guestToken}`, 'true')
@@ -413,10 +411,7 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
 
     if (isLoadingSchema) {
         return (
-            <div className="flex flex-col items-center justify-center py-24 gap-4 animate-in fade-in">
-                <Icon icon={Loader2} size="2xl" className="animate-spin text-primary" />
-                <p className="text-sm font-medium text-ink-3">Preparando formulario...</p>
-            </div>
+            <LoadingState variant="spinner" page showLabel label="Preparando formulario..." />
         )
     }
 
@@ -489,7 +484,6 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                         {isFieldVisible('nationalityId') && (
                             <SearchableSelect label="Nacionalidad" options={countryOptions} value={form.nationalityId ?? ""} onChange={(v) => updateField("nationalityId", v)} placeholder="Seleccionar país..." required={isFieldRequired('nationalityId')} />
                         )}
-                        
                         {(isFieldVisible('countryOfResidenceId') || isFieldVisible('cityOfResidence')) && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {isFieldVisible('countryOfResidenceId') && (
@@ -593,16 +587,8 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             {/* ── Sticky Bottom Bar ── */}
             <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-rule p-4 z-40">
                 <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
-                    <Button size="xl"
-                        onClick={handleSubmit}
-                        disabled={!isFormValid || isSubmitting}
-                        className="flex-1"
-                    >
-                        {isSubmitting ? (
-                            <><Icon icon={Loader2} className="animate-spin mr-2" /> Guardando...</>
-                        ) : (
-                            <><Icon icon={CheckCircle2} className="mr-2" /> Continuar</>
-                        )}
+                    <Button size="xl" onClick={handleSubmit} disabled={!isFormValid} className="flex-1" loading={isSubmitting} loadingLabel="Guardando...">
+                        <><Icon icon={CheckCircle2} className="mr-2" /> Continuar</>
                     </Button>
                 </div>
             </div>

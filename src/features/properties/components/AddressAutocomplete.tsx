@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { Loader2, MapPin, Search } from "lucide-react"
+import { MapPin, Search } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import {
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Input } from "@/components/ui/input"
 import { Surface } from "@/components/ui/card"
+import { Spinner } from "@/components/ui/loading-state"
 
 export type PlaceDetails = GeocodePlaceDetails
 
@@ -236,7 +237,7 @@ export function AddressAutocomplete({
                     )}
                 />
                 {(loading || resolving) && (
-                    <Icon icon={Loader2} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-ink-3" />
+                    <Spinner tone="muted" className="absolute right-3 top-1/2 -translate-y-1/2" />
                 )}
             </div>
 
@@ -273,13 +274,8 @@ export function AddressAutocomplete({
                 </p>
             )}
             {manualSearchAvailable && (
-                <Button variant="outline" size="sm"
-                    type="button"
-                    onClick={() => void handleManualSearch()}
-                    disabled={loading || resolving || value.trim().length < 3}
-                    className="mt-2 inline-flex items-center"
-                >
-                    {loading ? <Icon icon={Loader2} size="sm" className="animate-spin" /> : <Icon icon={Search} size="sm" />}
+                <Button variant="outline" size="sm" type="button" onClick={() => void handleManualSearch()} disabled={resolving || value.trim().length < 3} className="mt-2 inline-flex items-center" loading={loading}>
+                    <Icon icon={Search} size="sm" />
                     Buscar dirección
                 </Button>
             )}

@@ -4,24 +4,7 @@ import { useForm } from "react-hook-form"
 import { hasUsablePhone } from "../lib/checkin-link-delivery-status"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import {
-    CalendarIcon,
-    Loader2,
-    Plus,
-    User,
-    Mail,
-    Phone,
-    Home,
-    Tag,
-    Hash,
-    Users,
-    DollarSign,
-    Clock,
-    Send,
-    Plane,
-    Edit,
-    AlertCircle,
-} from "lucide-react"
+import { CalendarIcon, Plus, User, Phone, Home, Users, DollarSign, Send, Edit, AlertCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { format, differenceInDays, addDays } from "date-fns"
 import { es } from "date-fns/locale"
@@ -63,7 +46,7 @@ import {
 } from "@/components/ui/popover"
 import { Switch } from "@/components/ui/switch"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
-import { useEffect, useState, useCallback, useMemo, useRef } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import {
@@ -751,7 +734,6 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             />
                         </div>
 
-
                         {/* ─── Section: Property & Source ─── */}
                         <div className="space-y-1.5 pt-2">
                             <Heading level={3} size="group" tone="muted" className="flex items-center gap-2">
@@ -1096,8 +1078,6 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             />
                         </div>
 
-
-
                         {/* ─── Send Link Toggle ─── */}
                         <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
                             <FormField
@@ -1137,20 +1117,13 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={isLoading || (mode === "create" && (sourcesFailed || loadingSources))}
+                                disabled={mode === "create" && (sourcesFailed || loadingSources)}
+                                loading={isLoading}
+                                loadingLabel={mode === "edit" ? "Guardando..." : "Creando..."}
                                 className="min-w-40"
                             >
-                                {isLoading ? (
-                                    <>
-                                        <Icon icon={Loader2} className="animate-spin" />
-                                        {mode === "edit" ? "Guardando..." : "Creando..."}
-                                    </>
-                                ) : (
-                                    <>
-                                        {mode === "edit" ? <Icon icon={Edit} /> : <Icon icon={Plus} />}
-                                        {mode === "edit" ? "Guardar Cambios" : "Crear Reserva"}
-                                    </>
-                                )}
+                                {mode === "edit" ? <Icon icon={Edit} /> : <Icon icon={Plus} />}
+                                {mode === "edit" ? "Guardar Cambios" : "Crear Reserva"}
                             </Button>
                         </DialogFooter>
                     </form>

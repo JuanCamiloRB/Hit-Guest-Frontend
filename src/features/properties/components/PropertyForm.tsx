@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2, Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, AlertCircle, FileText, Link2 } from "lucide-react"
+import { Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, AlertCircle, FileText, Link2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useRouter, useSearchParams } from "next/navigation"
 
@@ -38,15 +38,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectLabel,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PropertiesLocation } from "./PropertiesLocation"
 import { PropertiesUnits } from "./PropertiesUnits"
 import { PropertiesPhotos } from "./PropertiesPhotos"
@@ -98,7 +90,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     const [validationErrors, setValidationErrors] = useState<{ label: string; tab: string; message: string }[]>([])
     const [activeTab, setActiveTab] = useState("details")
     const [statusRecords, setStatusRecords] = useState<CatalogOption[]>([])
-    
     const router = useRouter()
     const searchParams = useSearchParams()
 
@@ -125,7 +116,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         }
         fetchCatalogs()
     }, [])
-
 
     const form = useForm<PropertyFormData>({
         resolver: zodResolver(propertyFormSchema) as any,
@@ -285,7 +275,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                 if (!propertyUuid) {
                     throw new Error("El backend creó la propiedad sin devolver su UUID.")
                 }
- 
                 // Restore manual creation: units MUST be created via separate /listings endpoint
                 const pendingUnits = (values.units ?? []) as ListingDraft[]
                 const failedUnits: string[] = []
@@ -316,7 +305,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                             : "Propiedad creada",
                     )
                 }
- 
                 // A partial listing failure needs a visible recovery destination.
                 router.push(`/dashboard/properties/${propertyUuid}?tab=${failedUnits.length ? "units" : "automations"}`)
             }
@@ -705,8 +693,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeleting}>
                                         Cancelar
                                     </Button>
-                                    <Button variant="destructive" onClick={onDelete} disabled={isDeleting}>
-                                        {isDeleting && <Icon icon={Loader2} className="mr-2 animate-spin" />}
+                                    <Button variant="destructive" onClick={onDelete} loading={isDeleting}>
                                         Confirmar Eliminación
                                     </Button>
                                 </DialogFooter>
@@ -714,11 +701,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         </Dialog>
                     ) : <div />}
 
-                    <Button size="lg"
-                        type="submit"
-                        disabled={isLoading}
-                    >
-                        {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin" />}
+                    <Button size="lg" type="submit" loading={isLoading}>
                         {initialData ? "Actualizar Propiedad" : "Crear Propiedad"}
                     </Button>
                 </div>

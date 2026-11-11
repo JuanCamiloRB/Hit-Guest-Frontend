@@ -43,7 +43,7 @@ import { cn } from "@/lib/utils"
  *   (Se retiraron `xs`/`icon-xs`, de 24 px: nadie los usaba.)
  */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-invalid:border-danger disabled:cursor-not-allowed disabled:text-ink-3 disabled:shadow-none aria-disabled:not-data-loading:cursor-not-allowed aria-disabled:not-data-loading:text-ink-3 aria-disabled:not-data-loading:shadow-none data-loading:cursor-progress",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-invalid:border-danger disabled:cursor-not-allowed disabled:text-ink-3 disabled:shadow-none aria-disabled:not-data-loading:cursor-not-allowed aria-disabled:not-data-loading:text-ink-3 aria-disabled:not-data-loading:shadow-none data-loading:cursor-progress data-loading:[&>[data-slot=icon]]:hidden",
   {
     variants: {
       variant: {
@@ -115,7 +115,8 @@ type ButtonProps = React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
     /**
-     * Acción en curso. El botón muestra un indicador y `loadingLabel`, queda
+     * Acción en curso. El indicador ocupa el lugar del ícono del botón (los
+     * `Icon` directos se ocultan mientras carga) y se muestra `loadingLabel`; queda
      * no disponible para la tecnología asistiva (`aria-disabled`, `aria-busy`)
      * y no vuelve a ejecutarse (tampoco envía el formulario ni dispara el clic
      * de un contenedor), pero NO usa `disabled`: conserva su color y el foco.

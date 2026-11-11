@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { MessageCircle, Loader2, Info } from "lucide-react"
+import { MessageCircle, Info } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
@@ -233,13 +233,7 @@ export function CheckinLinkDeliveryCard({
                         )}
 
                         <div className="flex items-center justify-end border-t border-rule pt-3">
-                            <Button
-                                type="button"
-                                size="sm"
-                                onClick={() => void handleSave()}
-                                disabled={!dirty || saving || !canConfigure}
-                            >
-                                {saving && <Icon icon={Loader2} className="animate-spin" />}
+                            <Button type="button" size="sm" onClick={() => void handleSave()} disabled={!dirty || !canConfigure} loading={saving}>
                                 Guardar
                             </Button>
                         </div>

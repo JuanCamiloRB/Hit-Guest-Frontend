@@ -8,7 +8,7 @@ import {
 } from "@/features/checkin/lib/main-guest-prefill"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Loader2, ShieldCheck, Users } from "lucide-react"
+import { ArrowLeft, ShieldCheck, Users } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
@@ -697,16 +697,8 @@ export function IdentifyScreen({
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
-                    <Button type="button" size="xl"
-                        onClick={handleVerify}
-                        disabled={!isValid || isSubmitting || isLoadingCatalogs}
-                        className="w-full flex items-center justify-center"
-                    >
-                        {isSubmitting ? (
-                            <><Icon icon={Loader2} size="lg" className="animate-spin" /> Verificando...</>
-                        ) : (
-                            isLoadingCatalogs ? "Cargando..." : "Continuar"
-                        )}
+                    <Button type="button" size="xl" onClick={handleVerify} disabled={!isValid || isLoadingCatalogs} className="w-full flex items-center justify-center" loading={isSubmitting} loadingLabel="Verificando...">
+                        {isLoadingCatalogs ? "Cargando..." : "Continuar"}
                     </Button>
                 </div>
             </div>

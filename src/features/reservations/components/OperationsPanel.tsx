@@ -6,23 +6,7 @@ import { useReservationDetail } from "../hooks/useReservationDetail"
 import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import {
-    Printer,
-    Edit,
-    ChevronRight,
-    Send,
-    Copy,
-    MessageSquare,
-    Calendar,
-    Home,
-    FileText,
-    Loader2,
-    Users,
-    Mail,
-    Phone,
-    Moon,
-    type LucideIcon,
-} from "lucide-react"
+import { Printer, Edit, ChevronRight, Send, Copy, MessageSquare, Calendar, Home, FileText, Users, Mail, Phone, Moon, type LucideIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
@@ -98,7 +82,6 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
             unitCosts: linkChannels.unitCosts,
         })
         : null
-
 
     // Prefill recipient with the main guest's email and reset the language to the
     // property default each time the dialog opens.
@@ -592,11 +575,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                             <Button variant="outline" onClick={() => setSendDialogOpen(false)} disabled={isSendingLink}>
                                                 Cancelar
                                             </Button>
-                                            <Button
-                                                onClick={handleSendCheckinLink}
-                                                disabled={isSendingLink || !isValidEmail}
-                                            >
-                                                {isSendingLink && <Icon icon={Loader2} className="mr-2 animate-spin" />}
+                                            <Button onClick={handleSendCheckinLink} disabled={!isValidEmail} loading={isSendingLink}>
                                                 {isSendingLink ? "Enviando..." : "Enviar"}
                                             </Button>
                                         </DialogFooter>

@@ -3,8 +3,6 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { Loader2 } from "lucide-react"
-import { Icon } from "@/components/ui/icon"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
 
 import { Button } from "@/components/ui/button"
@@ -154,8 +152,7 @@ export function UserDialog({ trigger }: UserDialogProps) {
                             )}
                         />
                         <DialogFooter>
-                            <Button type="submit" disabled={isLoading}>
-                                {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin" />}
+                            <Button type="submit" loading={isLoading}>
                                 Crear Usuario
                             </Button>
                         </DialogFooter>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Settings2, Loader2 } from "lucide-react"
+import { Settings2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import {
     Dialog,
@@ -82,11 +82,7 @@ export function ConfigModal({
                     <Button variant="outline" onClick={onClose} disabled={isSaving}>
                         Cancelar
                     </Button>
-                    <Button
-                        onClick={() => onSave(params)}
-                        disabled={isSaving}
-                    >
-                        {isSaving && <Icon icon={Loader2} className="animate-spin mr-2" />}
+                    <Button onClick={() => onSave(params)} loading={isSaving}>
                         Guardar Configuración
                     </Button>
                 </DialogFooter>

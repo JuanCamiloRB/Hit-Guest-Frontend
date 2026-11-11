@@ -136,7 +136,7 @@ escala en hover.
 | Título | `Heading level={1–4}`: el nivel es la jerarquía y `size` cómo se ve (`page`, `title`, `section`, `subsection`, `group`; por omisión según el nivel). `tone`: `ink`, `muted` (rótulo pequeño), `inverse` (superficie oscura). Desde la pantalla solo layout |
 | Rótulo de grupo | `Overline` (único uso de mayúsculas) |
 | Aviso | `FeedbackBanner tone=… mode=…`: `title`, `action`, `density="compact"` en tarjetas y filas, `icon` cuando el ícono tiene significado propio (cámara, reloj, correo), `layout="bar"` para una franja a todo el ancho (aviso de saldo, cabecera de un cajón). Una fila que solo se tiñe por su estado (`bg-danger-sunk/40`) no es un aviso |
-| Carga | `LoadingState`, `Skeleton`, `RefreshIndicator` o `Button loading` |
+| Carga | Una forma por espera: acción → `Button loading` (`loadingLabel` opcional; el indicador ocupa el lugar del ícono y el botón conserva color y foco, sin `disabled`); carga inicial → `LoadingState` (`rows`, `spinner` en bloque —`page` para la pantalla entera, `showLabel` para ver el texto— o `inline` junto a un texto, `compact` en xs) o `Skeleton` (`inline` dentro de texto o de un botón); datos ya en pantalla → `RefreshIndicator`; el indicador solo (junto a un interruptor, sobre una foto) → `Spinner size tone label` |
 | Vacío | `EmptyState` (`empty` o `no-results`; `icon` recibe el componente de lucide y lo pinta en `2xl` light) |
 | Tabla | `Table` para composición especial; `DataTable` para ordenar/paginar |
 | Ícono | `Icon icon={…}` (escala `xs`…`4xl`, trazo `light`/`regular`/`bold`, decorativo salvo `label`) |
@@ -221,6 +221,8 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `heading-override` | `<Heading className="font-semibold text-primary">` | `size`/`tone` |
 | `handmade-notice` | `<div className="rounded-xl border border-danger/30 bg-danger-sunk px-4">` | `FeedbackBanner tone="danger"` |
 | `handmade-card` | `<div className="rounded-xl border border-rule bg-white p-5 shadow-sm">` | `Surface className="p-5"`, `Card`, `SectionCard` |
+| `handmade-spinner` | `<Icon icon={Loader2} className="animate-spin" />` | `Button loading`, `LoadingState`, `RefreshIndicator`, `Spinner` |
+| `handmade-skeleton` | `<div className="h-4 animate-pulse bg-sunk" />` | `Skeleton` |
 | `legacy-token` | `text-muted-foreground`, `text-destructive`, `bg-muted`, `border-border` | `text-ink-3`, `text-danger`, `bg-sunk`, `border-rule` |
 
 Revisa los textos fijos y también los trozos fijos de los template literals

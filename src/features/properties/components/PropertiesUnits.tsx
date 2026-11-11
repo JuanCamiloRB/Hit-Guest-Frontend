@@ -33,7 +33,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Plus, Trash2, Edit2, Building, BedDouble, Bath, Clock, Settings2, Shield, Zap, Loader2, Info, TriangleAlert, Sparkles } from "lucide-react"
+import { Plus, Trash2, Edit2, Building, BedDouble, Bath, Clock, Settings2, Shield, Zap, Info, TriangleAlert, Sparkles } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useFormContext, useFieldArray } from "react-hook-form"
@@ -938,7 +938,6 @@ export function PropertiesUnits() {
                                                 </div>
                                             </div>
 
-
                                         </TabsContent>
 
                                         <TabsContent value="amenities" className="space-y-6">
@@ -959,7 +958,6 @@ export function PropertiesUnits() {
                                                         />
                                                     </div>
                                                 </div>
-                                                
                                                 {!unitForm.extra.inheritSchedule && (
                                                     <div className="grid grid-cols-1 gap-6 rounded-xl border bg-sunk/50 p-4 sm:grid-cols-2">
                                                         <div className="space-y-3">
@@ -1354,12 +1352,7 @@ export function PropertiesUnits() {
                               */}
                             <DialogFooter className="p-6 border-t bg-sunk/5 shrink-0">
                                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSavingUnit}>Cancelar</Button>
-                                <Button
-                                    type="button"
-                                    onClick={() => void handleSaveUnit()}
-                                    disabled={isSavingUnit || roomTypesLoading || roomTypes.length === 0}
-                                >
-                                    {isSavingUnit && <Icon icon={Loader2} className="mr-2 animate-spin" />}
+                                <Button type="button" onClick={() => void handleSaveUnit()} disabled={roomTypesLoading || roomTypes.length === 0} loading={isSavingUnit}>
                                     {editingIndex !== null ? "Guardar Cambios" : "Añadir Unidad"}
                                 </Button>
                             </DialogFooter>

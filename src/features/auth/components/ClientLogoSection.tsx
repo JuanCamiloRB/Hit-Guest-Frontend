@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import Image from "next/image"
-import { Loader2, Upload, Trash2, ImageIcon } from "lucide-react"
+import { Upload, Trash2, ImageIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -149,14 +149,8 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
 
                 <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2">
-                        <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={pickFile}
-                            disabled={disabled}
-                        >
-                            {busy ? <Icon icon={Loader2} className="animate-spin" /> : <Icon icon={Upload} />}
+                        <Button type="button" variant="outline" size="sm" onClick={pickFile} disabled={disabled} loading={busy}>
+                            <Icon icon={Upload} />
                             {logoUrl ? "Reemplazar" : "Subir logo"}
                         </Button>
                         {logoUrl && (

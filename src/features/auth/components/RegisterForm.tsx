@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Mail, User, Building2, ArrowLeft, CheckCircle2, MapPin, Gift } from "lucide-react"
+import { Mail, User, Building2, ArrowLeft, CheckCircle2, MapPin, Gift } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -75,7 +75,6 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                 if (types && types.length > 0) {
                     setPersonTypes(types)
                 }
-                
                 if (idTypes && idTypes.length > 0) {
                     setIdentificationTypes(idTypes)
                 }
@@ -463,12 +462,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                         </Label>
 
                         <div className="pt-2">
-                            <Button size="lg"
-                                type="submit"
-                                disabled={isLoading || !acceptedTerms}
-                                className="w-full"
-                            >
-                                {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin text-white" />}
+                            <Button size="lg" type="submit" disabled={!acceptedTerms} className="w-full" loading={isLoading}>
                                 Crear Cuenta
                             </Button>
                         </div>

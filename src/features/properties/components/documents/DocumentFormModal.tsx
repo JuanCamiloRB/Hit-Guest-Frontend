@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { Loader2, Eye, FileText } from "lucide-react"
+import { Eye, FileText } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { notifyError, validationMessages } from "@/lib/notify-error"
@@ -204,12 +204,7 @@ export function DocumentFormModal({
                         <Button type="button" variant="outline" onClick={onClose} disabled={saving}>
                             Cancelar
                         </Button>
-                        <Button
-                            type="button"
-                            onClick={handleSave}
-                            disabled={saving}
-                        >
-                            {saving && <Icon icon={Loader2} className="mr-2 animate-spin" />}
+                        <Button type="button" onClick={handleSave} loading={saving}>
                             {isEdit ? "Guardar cambios" : "Crear documento"}
                         </Button>
                     </DialogFooter>

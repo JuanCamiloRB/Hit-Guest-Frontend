@@ -12,8 +12,6 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Loader2 } from "lucide-react"
-import { Icon } from "@/components/ui/icon"
 import { notifyError } from "@/lib/notify-error"
 
 interface Props {
@@ -56,8 +54,7 @@ export function KunasDisconnectDialog({ trigger, onConfirm }: Props) {
                     <Button variant="outline" onClick={() => setOpen(false)} disabled={isDeleting}>
                         Cancelar
                     </Button>
-                    <Button variant="destructive" onClick={handleConfirm} disabled={isDeleting}>
-                        {isDeleting && <Icon icon={Loader2} className="animate-spin" />}
+                    <Button variant="destructive" onClick={handleConfirm} loading={isDeleting}>
                         Desconectar
                     </Button>
                 </DialogFooter>

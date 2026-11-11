@@ -269,6 +269,23 @@ const rules = [
         ignore: UI_ONLY,
     },
     {
+        // DS-7d: un spinner es `Button loading` (acción), `LoadingState` (carga,
+        // en bloque o en línea), `RefreshIndicator` (datos ya en pantalla) o
+        // `Spinner` (el indicador solo). Había 93 armados con <Icon animate-spin>.
+        id: "handmade-spinner",
+        description: "gira un Icon a mano; usa Button loading, LoadingState, RefreshIndicator o Spinner",
+        pattern: /(?<![\w-])(?:[a-z-]+:)*animate-spin(?![\w-])/g,
+        input: "iconClasses",
+        ignore: UI_ONLY,
+    },
+    {
+        id: "handmade-skeleton",
+        description: "arma un skeleton a mano (bloque gris con animate-pulse); usa Skeleton",
+        pattern: /^.+$/gm,
+        input: "skeletonElements",
+        ignore: UI_ONLY,
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,
@@ -314,6 +331,7 @@ function inspect() {
         const pillElements = []
         const noticeElements = []
         const cardElements = []
+        const skeletonElements = []
         const lucideNames = new Set()
         for (const statement of sourceFile.statements) {
             if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
@@ -377,13 +395,17 @@ function inspect() {
                 if (tag === "UnstyledButton" || tag === "Link" || tag === "a") pressableClasses.push(...classTexts(node))
                 if (tag === "Badge" || tag === "StatusPill") labelClasses.push(...classTexts(node))
                 if (tag === "Heading") headingClasses.push(...classTexts(node))
-                if (/^(?:div|p|section|aside|li|article|header|form)$/.test(tag)) {
+                if (/^(?:div|p|span|section|aside|li|article|header|form)$/.test(tag)) {
                     const joined = ` ${classTexts(node).join(" ")} `
                     // Aviso: fondo de estado pleno (sin opacidad) con borde. Las filas
                     // que solo se tiñen (`bg-danger-sunk/40`) son estado de fila, no aviso.
                     if (/\sbg-(?:success|warning|danger|info)-sunk\s/.test(joined) && /\sborder(?:-[a-z]+\/\d+)?\s/.test(joined)
                         && !/\srounded-full\s/.test(joined)) {
                         noticeElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
+                    }
+                    // Skeleton: bloque gris que pulsa.
+                    if (/\sanimate-pulse\s/.test(joined) && /\sbg-(?:sunk|accent|muted|rule)(?:\/\d+)?\s/.test(joined)) {
+                        skeletonElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
                     }
                     // Tarjeta: la superficie de `Surface` copiada a mano.
                     if (/\srounded-xl\s/.test(joined) && /\sborder(?:-rule)?\s/.test(joined) && /\sbg-(?:white|card)\s/.test(joined)
@@ -428,6 +450,7 @@ function inspect() {
             pillElements: pillElements.join("\n"),
             noticeElements: noticeElements.join("\n"),
             cardElements: cardElements.join("\n"),
+            skeletonElements: skeletonElements.join("\n"),
         }
         for (const rule of rules) {
             if (rule.ignore?.(path)) continue

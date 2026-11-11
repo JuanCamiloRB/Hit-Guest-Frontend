@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Icon, type IconSize } from "@/components/ui/icon"
 
 /**
  * Escala de espera de HitGuest (Fase 2.2). Cada espera tiene UNA forma:
@@ -15,6 +16,38 @@ import { Skeleton } from "@/components/ui/skeleton"
  * skill `hitguest-standards`, Regla 4.
  */
 
+interface SpinnerProps {
+    /** De la escala de `Icon`. */
+    size?: IconSize
+    /**
+     * `current` toma el color del texto que lo rodea (en un botón, en un aviso);
+     * `muted` para una espera discreta; `primary` para la espera principal.
+     */
+    tone?: "current" | "muted" | "primary"
+    /** Con texto, se anuncia (`status`); sin él es decorativo. */
+    label?: string
+    className?: string
+}
+
+const SPINNER_TONE = { current: undefined, muted: "text-ink-4", primary: "text-primary" } as const
+
+/**
+ * El indicador de espera, solo. Para una carga con forma o con texto,
+ * `LoadingState`; para una acción, `Button loading`; para datos que ya están
+ * en pantalla, `RefreshIndicator`. Este es para lo que queda: junto a un
+ * interruptor que se está guardando, dentro de una miniatura, sobre una capa.
+ */
+function Spinner({ size = "md", tone = "current", label, className }: SpinnerProps) {
+    const glyph = <Icon icon={Loader2} size={size} className={cn("animate-spin", SPINNER_TONE[tone], className)} />
+    if (!label) return glyph
+    return (
+        <span role="status" aria-live="polite" data-slot="spinner" className="inline-flex">
+            {glyph}
+            <span className="sr-only">{label}</span>
+        </span>
+    )
+}
+
 /** Lo que decide cómo se anuncia; se aplica después del spread (ver FeedbackBanner). */
 type ControlledAttribute = "role" | "aria-live" | "aria-atomic" | "aria-relevant" | "aria-busy" | "aria-label"
 
@@ -23,11 +56,17 @@ interface LoadingStateProps extends Omit<React.ComponentProps<"div">, Controlled
      * `rows` imita la forma de la lista que viene, para que nada salte cuando
      * llegan los datos. `spinner` es para esperas chicas sin forma que anunciar.
      */
-    variant?: "rows" | "spinner"
+    variant?: "rows" | "spinner" | "inline"
     /** Filas de `rows`. Igual al tamaño de página que se suele mostrar. */
     rows?: number
     /** Lo que oye un lector de pantalla mientras dura la espera. */
     label?: string
+    /** `spinner`: la espera de una pantalla entera (el paso del portal). */
+    page?: boolean
+    /** `spinner`: el texto también se ve, bajo el indicador. `inline` siempre lo muestra. */
+    showLabel?: boolean
+    /** `inline`: texto xs, para dentro de una tarjeta o un campo. */
+    compact?: boolean
 }
 
 /**
@@ -38,6 +77,9 @@ function LoadingState({
     variant = "rows",
     rows = 5,
     label = "Cargando…",
+    page = false,
+    showLabel = false,
+    compact = false,
     className,
     ...props
 }: LoadingStateProps) {
@@ -50,6 +92,21 @@ function LoadingState({
         "aria-label": label,
     } as const
 
+    if (variant === "inline") {
+        return (
+            <div
+                {...props}
+                {...announcement}
+                data-slot="loading-state"
+                data-variant="inline"
+                className={cn("flex items-center gap-2 text-ink-3", compact ? "text-xs" : "text-sm", className)}
+            >
+                <Spinner size={compact ? "xs" : "md"} />
+                <span>{label}</span>
+            </div>
+        )
+    }
+
     if (variant === "spinner") {
         return (
             <div
@@ -57,10 +114,11 @@ function LoadingState({
                 {...announcement}
                 data-slot="loading-state"
                 data-variant="spinner"
-                className={cn("flex items-center justify-center py-10", className)}
+                data-page={page || undefined}
+                className={cn("flex flex-col items-center justify-center gap-3", page ? "min-h-[50vh]" : "py-10", className)}
             >
-                <Loader2 aria-hidden className="size-5 animate-spin text-ink-4" />
-                <span className="sr-only">{label}</span>
+                <Spinner size={page ? "2xl" : "lg"} tone="primary" />
+                <span className={showLabel ? "text-sm text-ink-3" : "sr-only"}>{label}</span>
             </div>
         )
     }
@@ -120,7 +178,7 @@ function RefreshIndicator({ active, label = "Actualizando…", className, ...pro
         >
             {active && (
                 <>
-                    <Loader2 aria-hidden className="size-3.5 animate-spin" />
+                    <Spinner size="sm" />
                     {label}
                 </>
             )}
@@ -128,4 +186,4 @@ function RefreshIndicator({ active, label = "Actualizando…", className, ...pro
     )
 }
 
-export { LoadingState, RefreshIndicator }
+export { LoadingState, RefreshIndicator, Spinner }

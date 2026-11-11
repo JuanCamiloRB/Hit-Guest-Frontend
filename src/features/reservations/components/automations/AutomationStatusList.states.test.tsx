@@ -61,11 +61,12 @@ describe("AutomationStatusList — estados (Fase 2.5)", () => {
         fireEvent.click(screen.getByRole("button", { name: "Refrescar" }))
         expect(refresh).toHaveBeenCalledTimes(1)
         expect(indicator).toHaveTextContent("Actualizando…")
-        expect(screen.getByRole("button", { name: "Refrescar" })).toBeDisabled()
+        // `Button loading`: en curso (aria-busy) y sin doble clic, sin `disabled`.
+        expect(screen.getByRole("button", { name: "Refrescar" })).toHaveAttribute("aria-busy", "true")
         expect(screen.getByText("No hay automatizaciones configuradas para esta propiedad.")).toBeInTheDocument()
 
         await act(async () => { finish() })
         expect(indicator).toBeEmptyDOMElement()
-        expect(screen.getByRole("button", { name: "Refrescar" })).toBeEnabled()
+        expect(screen.getByRole("button", { name: "Refrescar" })).not.toHaveAttribute("aria-busy")
     })
 })

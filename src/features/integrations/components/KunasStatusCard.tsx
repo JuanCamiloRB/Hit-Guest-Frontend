@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Loader2, Pause, Play, Pencil, Unplug, Mail, Building2 } from "lucide-react"
+import { Pause, Play, Pencil, Unplug, Mail, Building2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { notifyError } from "@/lib/notify-error"
 import { isActive as computeIsActive, type Integration, type KunasConfigurationPayload } from "../types"
@@ -12,6 +12,7 @@ import { KunasDisconnectDialog } from "./KunasDisconnectDialog"
 import { StatusPill } from "@/components/ui/status-pill"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
+import { RefreshIndicator } from "@/components/ui/loading-state"
 
 interface Props {
     integration: Integration
@@ -65,10 +66,7 @@ export function KunasStatusCard({
                 <div className="flex items-center gap-2 text-sm text-ink-2">
                     <Icon icon={Building2} className="text-ink-3" />
                     {isSyncing ? (
-                        <span className="inline-flex items-center gap-1.5 font-medium text-ink-3">
-                            <Icon icon={Loader2} size="sm" className="animate-spin" />
-                            Sincronizando…
-                        </span>
+                        <RefreshIndicator active label="Sincronizando…" />
                     ) : (
                         <span>
                             Propiedades sincronizadas:{" "}
@@ -95,15 +93,8 @@ export function KunasStatusCard({
                     }
                 />
 
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleToggle}
-                    disabled={isToggling}
-                >
-                    {isToggling ? (
-                        <Icon icon={Loader2} className="animate-spin" />
-                    ) : active ? (
+                <Button variant="outline" size="sm" onClick={handleToggle} loading={isToggling}>
+                    {active ? (
                         <Icon icon={Pause} />
                     ) : (
                         <Icon icon={Play} />

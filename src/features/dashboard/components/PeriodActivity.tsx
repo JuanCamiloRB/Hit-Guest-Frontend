@@ -1,6 +1,6 @@
 "use client"
 
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react"
+import { AlertTriangle, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { ConsumptionStatus } from "@/features/billing/hooks/useBillingData"
@@ -13,6 +13,7 @@ import { TopNodesPanel } from "./TopNodesPanel"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
+import { RefreshIndicator } from "@/components/ui/loading-state"
 
 interface Props {
     status: ConsumptionStatus
@@ -68,12 +69,7 @@ export function PeriodActivity({
                     <p className="mt-0.5 text-sm text-ink-3">Consumo, historial y nodos del mes elegido</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
-                    {status === "refreshing" && (
-                        <span role="status" className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
-                            <Icon icon={Loader2} size="sm" className="animate-spin" />
-                            Actualizando…
-                        </span>
-                    )}
+                    <RefreshIndicator active={status === "refreshing"} />
                     <MonthSelector value={refMonth} onChange={onMonthChange} />
                 </div>
             </header>

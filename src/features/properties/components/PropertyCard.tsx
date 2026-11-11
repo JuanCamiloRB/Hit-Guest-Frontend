@@ -1,17 +1,12 @@
 "use client"
 
-import { MoreHorizontal, MapPin, Building, Hotel, Home as HomeIcon, Palmtree, Loader2 } from "lucide-react"
+import { MoreHorizontal, MapPin, Building, Hotel, Home as HomeIcon, Palmtree } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useState } from "react"
 import { usePropertyTypeLabel } from "../hooks/usePropertyTypeLabel"
 
 import { Button } from "@/components/ui/button"
-import {
-    Card,
-    CardContent,
-    CardFooter,
-    CardHeader,
-} from "@/components/ui/card"
+import { Card, CardFooter, CardHeader } from "@/components/ui/card"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -33,6 +28,7 @@ import type { PropertyBadge } from "../lib/property-badges"
 import { RECORD_STATUS } from "../lib/record-status"
 import { DeactivationConfirmDialog } from "./DeactivationConfirmDialog"
 import { Heading } from "@/components/ui/heading"
+import { Spinner } from "@/components/ui/loading-state"
 
 interface PropertyCardProps {
     property: Property
@@ -228,7 +224,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                         </span>
                     </div>
                     <div className="flex items-center gap-2">
-                        {isToggling && <Icon icon={Loader2} size="xs" className="animate-spin text-ink-3" />}
+                        {isToggling && <Spinner size="xs" tone="muted" />}
                         <Switch
                             checked={isActive}
                             onCheckedChange={requestStatusChange}

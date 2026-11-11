@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Loader2, Mail, Lock, Eye, EyeOff, AlertCircle } from "lucide-react"
+import { Mail, Lock, AlertCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -115,10 +115,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                     </FormItem>
                                 )}
                             />
-                            <Button size="lg"
-                                disabled={isLoading}
-                            >
-                                {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin text-white" />}
+                            <Button size="lg" loading={isLoading}>
                                 Continuar con el acceso
                             </Button>
                         </div>
@@ -171,11 +168,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                             />
 
                             <div className="flex flex-col gap-3">
-                                <Button size="lg"
-                                    disabled={isLoading}
-                                    className="w-full"
-                                >
-                                    {isLoading && <Icon icon={Loader2} className="mr-2 animate-spin text-white" />}
+                                <Button size="lg" className="w-full" loading={isLoading}>
                                     Verificar e Iniciar Sesión
                                 </Button>
 

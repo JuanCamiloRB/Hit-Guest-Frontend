@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Loader2, XCircle } from "lucide-react"
+import { XCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { Heading } from "@/components/ui/heading"
+import { Spinner } from "@/components/ui/loading-state"
 
 interface DiditCallbackClientProps {
     verificationSessionId: string
@@ -206,7 +207,7 @@ export function DiditCallbackClient({
                 {state === "redirecting" && (
                     <>
                         <div className="w-16 h-16 rounded-full bg-info-sunk flex items-center justify-center mx-auto mb-5">
-                            <Icon icon={Loader2} size="2xl" className="animate-spin text-info" />
+                            <Spinner size="2xl" className="text-info" />
                         </div>
                         <Heading level={2} className="mb-2">
                             Verificación recibida

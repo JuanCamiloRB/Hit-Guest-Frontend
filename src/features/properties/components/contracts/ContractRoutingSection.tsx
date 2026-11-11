@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useFormContext } from "react-hook-form"
-import { AlertCircle, AlertTriangle, CheckCircle2, FileSignature, Loader2 } from "lucide-react"
+import { AlertCircle, AlertTriangle, CheckCircle2, FileSignature } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { notifyError, validationMessages } from "@/lib/notify-error"
@@ -97,7 +97,6 @@ function textsByDocumentChannel(documents: PropertyDocument[]): Record<string, s
     }
     return result
 }
-
 
 interface Props {
     propertyUuid: string
@@ -877,12 +876,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                         <><Icon icon={CheckCircle2} className="text-success" /><span className="font-semibold text-success">La configuración está guardada.</span></>
                     )}
                 </div>
-                <Button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving || routingBlocked || orphansPendingDecision || !hasUnsavedChanges}
-                >
-                    {saving && <Icon icon={Loader2} className="mr-2 animate-spin" />}
+                <Button type="button" onClick={handleSave} disabled={routingBlocked || orphansPendingDecision || !hasUnsavedChanges} loading={saving}>
                     Guardar contrato y firma
                 </Button>
             </div>

@@ -49,7 +49,10 @@ describe("WaivedDocumentUploadDialog", () => {
         fireEvent.click(screen.getByRole("button", { name: "Subir fotos" }))
 
         const busy = await screen.findByRole("button", { name: /Procesando las fotos/ })
-        expect(busy).toBeDisabled()
+        // `Button loading`: en curso y no disponible para la tecnología asistiva,
+        // pero sin `disabled` (conserva foco y color). El doble envío lo corta igual.
+        expect(busy).toHaveAttribute("aria-busy", "true")
+        expect(busy).toHaveAttribute("aria-disabled", "true")
         fireEvent.click(busy)
         expect(mocks.upload).toHaveBeenCalledTimes(1)
 

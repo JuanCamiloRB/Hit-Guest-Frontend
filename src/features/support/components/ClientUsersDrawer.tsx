@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, LogIn, RefreshCw, ShieldAlert, Users, X } from "lucide-react"
+import { LogIn, RefreshCw, ShieldAlert, Users, X } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -342,14 +342,8 @@ function DrawerBody({
                                 </Button>
                                 {/* Un nombre largo se corta con «…» dentro del botón (que no
                                     parte líneas); el nombre completo queda en aria-label y title. */}
-                                <Button size="lg"
-                                    type="submit"
-                                    className="min-w-0 max-w-full"
-                                    disabled={busy || !selectedUser}
-                                    aria-label={selectedUser ? `Entrar como ${selectedUser.name}` : undefined}
-                                    title={selectedUser ? `Entrar como ${selectedUser.name}` : undefined}
-                                >
-                                    {busy ? <Icon icon={Loader2} className="mr-1.5 animate-spin" /> : <Icon icon={LogIn} className="mr-1.5" />}
+                                <Button size="lg" type="submit" className="min-w-0 max-w-full" disabled={!selectedUser} aria-label={selectedUser ? `Entrar como ${selectedUser.name}` : undefined} title={selectedUser ? `Entrar como ${selectedUser.name}` : undefined} loading={busy}>
+                                    <Icon icon={LogIn} className="mr-1.5" />
                                     <span className="truncate">{selectedUser ? `Entrar como ${selectedUser.name}` : "Elige un usuario"}</span>
                                 </Button>
                             </div>
