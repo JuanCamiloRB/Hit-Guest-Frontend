@@ -11,6 +11,9 @@ import { setVerificationToken } from "@/features/checkin/lib/verification-token"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import type { IdentifySessionData, ContactChallengeDirective } from "@/features/checkin/types/checkin"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
 interface ContactChallengeScreenProps {
     reservationUuid: string
@@ -240,13 +243,13 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                     <h2 className="text-xl font-bold text-ink">Sesión de verificación no encontrada</h2>
                     <p className="text-ink-3 text-sm max-w-xs">Vuelve a identificarte para recibir un nuevo código.</p>
                 </div>
-                <button
+                <UnstyledButton
                     onClick={handleBackToIdentify}
                     className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
                     <RotateCcw size={18} />
                     Volver a identificarme
-                </button>
+                </UnstyledButton>
             </div>
         )
     }
@@ -311,8 +314,8 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-ink-2">Código de verificación</label>
-                    <input
+                    <Label variant="plain" className="text-sm font-semibold text-ink-2">Código de verificación</Label>
+                    <Input
                         type="text"
                         inputMode="numeric"
                         value={code}
@@ -333,7 +336,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                     )}
                 </div>
 
-                <button
+                <UnstyledButton
                     type="button"
                     onClick={handleResend}
                     disabled={!canResend}
@@ -344,12 +347,12 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                         : resendCountdown > 0
                             ? `Reenviar código (${resendCountdown}s)`
                             : "Reenviar código"}
-                </button>
+                </UnstyledButton>
             </div>
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
-                    <button
+                    <UnstyledButton
                         onClick={handleVerify}
                         disabled={inputDisabled || code.length !== 6}
                         className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
@@ -359,7 +362,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                         ) : (
                             <><ShieldCheck size={20} /> Verificar código</>
                         )}
-                    </button>
+                    </UnstyledButton>
                 </div>
             </div>
         </div>

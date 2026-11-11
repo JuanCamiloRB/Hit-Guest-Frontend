@@ -12,6 +12,8 @@ import {
     isCredentialError,
     type IntegrationFieldErrors,
 } from "../lib/integration-errors"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
 
 interface Props {
     /** Connects with the given payload; rejects on failure (form shows errors). */
@@ -104,14 +106,14 @@ export function KunasConnectForm({ onConnect }: Props) {
                         autoComplete="off"
                         className="pr-10"
                     />
-                    <button
+                    <UnstyledButton
                         type="button"
                         onClick={() => setShowPassword((s) => !s)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
                         aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                     >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
+                    </UnstyledButton>
                 </div>
             </Field>
 
@@ -155,11 +157,11 @@ function Field({
 }) {
     return (
         <div className="space-y-1.5">
-            <label className="flex items-center gap-1.5 text-sm font-semibold text-ink-2">
+            <Label variant="plain" className="flex items-center gap-1.5 text-sm font-semibold text-ink-2">
                 <span className="text-ink-3">{icon}</span>
                 {label}
                 {required && <span className="text-danger">*</span>}
-            </label>
+            </Label>
             {children}
             {error && <p className="text-xs font-medium text-danger">{error}</p>}
         </div>

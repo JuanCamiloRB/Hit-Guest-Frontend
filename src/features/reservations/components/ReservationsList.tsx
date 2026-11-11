@@ -85,6 +85,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 
 
@@ -362,6 +363,7 @@ export default function ReservationsList() {
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                         placeholder="Buscar huésped, propiedad, correo o ID..."
+                        aria-label="Buscar reservas"
                         className="pl-9"
                     />
                 </div>
@@ -417,7 +419,7 @@ export default function ReservationsList() {
                         {/* Which date column the range applies to */}
                         <div className="flex gap-1 border-b border-rule p-2">
                             {(Object.keys(DATE_FIELD_LABELS) as DateField[]).map((f) => (
-                                <button
+                                <UnstyledButton
                                     key={f}
                                     type="button"
                                     onClick={() => setDateField(f)}
@@ -429,7 +431,7 @@ export default function ReservationsList() {
                                     )}
                                 >
                                     {DATE_FIELD_LABELS[f]}
-                                </button>
+                                </UnstyledButton>
                             ))}
                         </div>
                         <Calendar
@@ -479,9 +481,9 @@ export default function ReservationsList() {
             {preparing ? (
                 <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-sunk px-3 py-2 text-sm text-ink-2">
                     <span>Preparando todos los estados para ordenar… {settled} de {filtered.length}</span>
-                    <button type="button" onClick={cancelPreparingSort} className="text-sm font-semibold text-primary underline-offset-2 hover:underline">
+                    <UnstyledButton type="button" onClick={cancelPreparingSort} className="text-sm font-semibold text-primary underline-offset-2 hover:underline">
                         Cancelar orden
-                    </button>
+                    </UnstyledButton>
                 </div>
             ) : failedInStatusSort > 0 ? (
                 <FeedbackBanner tone="warning" mode="dynamic">

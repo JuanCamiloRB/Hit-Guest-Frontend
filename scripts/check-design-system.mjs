@@ -97,6 +97,30 @@ const rules = [
         ignore: (path) => path.startsWith("src/components/ui/") || path.endsWith(".test.tsx"),
     },
     {
+        // Una tinta con opacidad (`text-ink/60`) cae por debajo de AA según el
+        // fondo: el texto usa el paso de la escala (ink-2, ink-3) a opacidad
+        // completa. `text-white/N` sobre superficies oscuras sí se permite.
+        id: "text-token-opacity",
+        description: "baja la opacidad de una tinta; usa el paso de la escala (ink-2, ink-3)",
+        pattern: /(?<![\w-])(?:text|placeholder)-(?:ink(?:-[234])?|muted-foreground|foreground|primary|secondary|success|warning|danger|info|brand-navy)\/[0-9]+(?![\w-])/g,
+    },
+    {
+        id: "color-function-literal",
+        description: "escribe un color con rgb()/hsl()/oklch() en código de interfaz",
+        pattern: /\b(?:rgba?|hsla?|oklch)\(/g,
+        ignore: COLOR_EXCEPTIONS,
+    },
+    {
+        // `style={{ color: … }}` y similares esquivan las clases: el estilo
+        // visual va en clases con tokens. Se permiten medidas dinámicas
+        // (width, height, transform) y patrones decorativos (backgroundImage).
+        id: "inline-visual-style",
+        description: "pone color, tipografía, radio o sombra en `style` en vez de clases con tokens",
+        pattern: /\b(?:color|backgroundColor|background|borderColor|fontSize|fontWeight|fontFamily|lineHeight|letterSpacing|borderRadius|boxShadow)\b/g,
+        input: "styles",
+        ignore: COLOR_EXCEPTIONS,
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,
@@ -131,6 +155,7 @@ function inspect() {
         const strings = []
         const elements = []
         const imports = []
+        const styles = []
 
         function visit(node) {
             if (ts.isStringLiteralLike(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
@@ -145,6 +170,14 @@ function inspect() {
                 const tag = node.tagName.getText(sourceFile)
                 if (/^[a-z]/.test(tag)) elements.push(`<${tag}`)
             }
+            // Claves de los objetos en `style={{…}}`.
+            if (ts.isJsxAttribute(node) && node.name.getText(sourceFile) === "style" && node.initializer
+                && ts.isJsxExpression(node.initializer) && node.initializer.expression
+                && ts.isObjectLiteralExpression(node.initializer.expression)) {
+                for (const prop of node.initializer.expression.properties) {
+                    if (prop.name) styles.push(prop.name.getText(sourceFile).replace(/^["']|["']$/g, ""))
+                }
+            }
             if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
                 imports.push(node.moduleSpecifier.text)
             }
@@ -155,6 +188,7 @@ function inspect() {
             strings: strings.join("\n"),
             elements: elements.join("\n"),
             imports: imports.join("\n"),
+            styles: styles.join("\n"),
         }
         for (const rule of rules) {
             if (rule.ignore?.(path)) continue

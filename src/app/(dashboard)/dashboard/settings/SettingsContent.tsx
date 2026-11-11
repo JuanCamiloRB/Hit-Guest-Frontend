@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import { useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 const SETTINGS_TABS = [
     { id: "profile", label: "Mi cuenta", icon: User },
@@ -67,12 +68,12 @@ export function SettingsContent() {
         <div className="flex flex-col md:flex-row gap-8 items-start">
             {/* Vertical Sidebar Navigation */}
             <aside className="w-full md:w-64 space-y-2 flex-shrink-0">
-                <p className="px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground/60 mb-4">
+                <p className="px-4 text-xs font-bold uppercase tracking-wider text-ink-3 mb-4">
                     CONFIGURACIÓN
                 </p>
                 <div className="flex flex-col space-y-1">
                     {filteredTabs.map((tab) => (
-                        <button
+                        <UnstyledButton
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={cn(
@@ -90,7 +91,7 @@ export function SettingsContent() {
                             {activeTab === tab.id && (
                                 <div className="absolute right-3 h-1 w-1 rounded-full bg-primary" />
                             )}
-                        </button>
+                        </UnstyledButton>
                     ))}
                 </div>
             </aside>

@@ -520,7 +520,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                 {/* Sidebar Areas */}
                 <div className="flex flex-col gap-6 lg:col-span-4">
                     {/* Quick Actions.
-                        El título y los iconos estaban en `text-primary/50`, es
+                        El título y los iconos estaban en `text-primary`, es
                         decir morado al 50% SOBRE morado: invisibles. Todo lo que
                         va dentro de esta tarjeta se pinta con blancos, también el
                         foco: el outline morado del Button daría 1,23:1 aquí. */}
@@ -711,7 +711,9 @@ function DetailCell({
                 {label}
             </dt>
             <dd className="mt-1.5 truncate text-base font-bold leading-snug text-ink">{value}</dd>
-            {hint && <p className="mt-0.5 truncate text-xs text-ink-3">{hint}</p>}
+            {/* Segundo `dd` del mismo término: dentro de un <dl> solo caben dt/dd
+                (un <p> rompía la lista de definiciones para el lector). */}
+            {hint && <dd className="mt-0.5 truncate text-xs text-ink-3">{hint}</dd>}
         </div>
     )
 }

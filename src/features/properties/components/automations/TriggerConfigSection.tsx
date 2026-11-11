@@ -1,6 +1,11 @@
 "use client"
 
 import { Zap } from "lucide-react"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 /**
  * Universal trigger configuration shared by every automation (per the providers
@@ -158,21 +163,19 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
 
             {/* Trigger types */}
             <div className="space-y-2">
-                <label className="text-xs font-semibold text-ink-2">¿Cuándo se ejecuta?</label>
+                <Label variant="plain" className="text-xs font-semibold text-ink-2">¿Cuándo se ejecuta?</Label>
                 {TRIGGER_TYPES.map((t) => {
                     const checked = triggerTypes.includes(t.key)
                     return (
                         <div key={t.key} className="rounded-lg border border-rule bg-white px-3 py-2">
-                            <label className="flex items-center gap-2.5 cursor-pointer">
-                                <input
-                                    type="checkbox"
+                            <Label variant="plain" className="flex items-center gap-2.5 cursor-pointer">
+                                <Checkbox
                                     checked={checked}
-                                    onChange={() => toggleTrigger(t.key)}
+                                    onCheckedChange={() => toggleTrigger(t.key)}
                                     disabled={t.needsInternalPredecessorId}
-                                    className="h-4 w-4 rounded border-input text-primary focus:ring-primary/30"
                                 />
                                 <span className="text-sm text-ink-2">{t.label}</span>
-                            </label>
+                            </Label>
 
                             {t.needsInternalPredecessorId && (
                                 <p className="mt-1 ml-6 text-xs text-warning">
@@ -188,7 +191,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                                 <div className="mt-2 ml-6 flex flex-wrap items-center gap-3">
                                     <div className="flex items-center gap-1.5">
                                         <span className="text-xs text-ink-3">Espera</span>
-                                        <input
+                                        <Input
                                             type="number"
                                             min={0}
                                             value={triggerConfig[t.key]?.delay_minutes ?? ""}
@@ -209,12 +212,12 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
 
             {/* Guest filter */}
             <div className="space-y-2 pt-1">
-                <label className="text-xs font-semibold text-ink-2">¿A qué huéspedes aplica?</label>
+                <Label variant="plain" className="text-xs font-semibold text-ink-2">¿A qué huéspedes aplica?</Label>
                 <div className="flex flex-wrap gap-2">
                     {GUEST_FILTERS.map((g) => {
                         const active = guestFilter === g.value
                         return (
-                            <button
+                            <UnstyledButton
                                 key={g.value}
                                 type="button"
                                 onClick={() => setGuestFilter(g.value)}
@@ -227,7 +230,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                                 }
                             >
                                 {g.label}
-                            </button>
+                            </UnstyledButton>
                         )
                     })}
                 </div>
@@ -255,8 +258,6 @@ function ScheduledConfig({
     config: TriggerConfigEntry
     onChange: (field: string, value: string | number | undefined) => void
 }) {
-    const selectCls =
-        "bg-sunk/50 border border-rule rounded-lg px-2 py-1 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/30"
 
     // Backend stores HH:MM:SS; the native time input works in HH:MM.
     const timeValue = ((config.time_of_day as string) ?? "").slice(0, 5)
@@ -266,28 +267,29 @@ function ScheduledConfig({
         <div className="mt-2 ml-6 space-y-2">
             <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-ink-3">A las</span>
-                <input
+                <Input
                     type="time"
                     value={timeValue}
                     onChange={(e) =>
                         onChange("time_of_day", e.target.value ? `${e.target.value}:00` : undefined)
                     }
-                    className={selectCls}
+                    className="h-8 w-auto"  // densidad compacta; borde y foco de la primitiva
                 />
                 <span className="text-xs text-ink-3">del</span>
-                <select
-                    value={referenceDate}
-                    onChange={(e) => onChange("reference_date", e.target.value)}
-                    className={selectCls}
-                >
-                    <option value="checkin_date">día de llegada</option>
-                    <option value="checkout_date">día de salida</option>
-                </select>
+                <Select value={referenceDate} onValueChange={(value) => onChange("reference_date", value)}>
+                    <SelectTrigger size="sm" className="w-auto" aria-label="Fecha de referencia">
+                        <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="checkin_date">día de llegada</SelectItem>
+                        <SelectItem value="checkout_date">día de salida</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="flex flex-wrap items-center gap-1.5">
                 <span className="text-xs text-ink-3">Desplazar</span>
-                <input
+                <Input
                     type="number"
                     value={config.offset_days ?? ""}
                     onChange={(e) =>

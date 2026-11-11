@@ -32,6 +32,7 @@ import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useHasHydrated } from "@/hooks/useHasHydrated"
 import { useIsSupportAgentOnly } from "@/features/support/hooks/useIsSupportAgentOnly"
 import { Avatar as UiAvatar, AvatarFallback } from "@/components/ui/avatar"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface NavEntry {
     label: string
@@ -222,7 +223,7 @@ export function Sidebar({ className }: { className?: string }) {
             <div className="p-4 border-t border-white/10 bg-white/5">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <button
+                        <UnstyledButton
                             // `focus:outline-none` quitaba el anillo sin poner nada
                             // en su lugar: quien navega con teclado perdía el rastro
                             // del foco justo en el único control del pie.
@@ -254,7 +255,7 @@ export function Sidebar({ className }: { className?: string }) {
                                 </p>
                             </div>
                             <MoreVertical className="h-4 w-4 text-white/40" />
-                        </button>
+                        </UnstyledButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56" side="top">
                         <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
@@ -295,8 +296,8 @@ export function MobileSidebar() {
     return (
         <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden hover:bg-muted/20">
-                    <Menu className="h-6 w-6" />
+                <Button variant="ghost" size="icon" className="md:hidden" aria-label="Abrir menú">
+                    <Menu className="h-6 w-6" aria-hidden />
                 </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-72 border-none p-0">

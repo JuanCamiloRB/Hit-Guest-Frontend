@@ -16,6 +16,7 @@ import {
     type SourceRouting,
 } from "../../types/contract-routing"
 import { providerSupportsContractType, type Provider } from "../../types/automation"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 const CONTRACT_TYPES = Object.keys(CONTRACT_TYPE_LABELS) as ContractType[]
 
@@ -79,7 +80,7 @@ export function SourceRoutingRow({
                 <Label className="text-xs font-semibold text-ink-2 uppercase tracking-wide">Qué se firma</Label>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {CONTRACT_TYPES.map((type) => (
-                        <button
+                        <UnstyledButton
                             key={type}
                             type="button"
                             aria-pressed={routing.contract_type === type}
@@ -95,7 +96,7 @@ export function SourceRoutingRow({
                             <span className="mt-0.5 block text-xs font-medium opacity-70">
                                 {CONTRACT_TYPE_OWNERS[type]}
                             </span>
-                        </button>
+                        </UnstyledButton>
                     ))}
                 </div>
             </div>

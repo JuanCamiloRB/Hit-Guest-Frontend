@@ -124,7 +124,7 @@ export function PropertiesList() {
                             label="Actualizando propiedades…"
                         />
                     </div>
-                    <p className="text-ink/60 text-sm font-medium">
+                    <p className="text-ink-2 text-sm font-medium">
                         {properties.length > 0
                             ? `${properties.length} ${properties.length === 1 ? "propiedad" : "propiedades"}${overviewByProperty
                                 ? ` · ${Object.values(overviewByProperty).reduce((sum, o) => sum + o.activeListings, 0)} alojamientos activos`
@@ -159,16 +159,17 @@ export function PropertiesList() {
 
                     <div className="flex flex-1 items-center gap-3 px-2">
                         <div className="relative flex-1 max-w-sm">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary/50" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
                             <Input
                                 placeholder="Buscar por nombre o número..."
+                                aria-label="Buscar propiedades y alojamientos"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-9 h-10 border-primary/10 bg-white focus:border-primary focus:ring-primary transition-all"
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-[180px] shrink-0 h-10 border-rule">
+                            <SelectTrigger className="w-[180px] shrink-0 h-10 border-rule" aria-label="Filtrar por estado">
                                 <div className="flex items-center gap-2 pointer-events-none min-w-0">
                                     <Filter className="h-3 w-3 shrink-0 text-ink-3" />
                                     <SelectValue placeholder="Estado" />
@@ -313,7 +314,7 @@ export function PropertiesList() {
                                                 <TableRow key={unit.id}>
                                                     <TableCell className="font-bold text-primary">{unit.number}</TableCell>
                                                     <TableCell className="font-bold text-ink">{unit.name}</TableCell>
-                                                    <TableCell className="text-ink/60 text-sm font-medium">{property?.name}</TableCell>
+                                                    <TableCell className="text-ink-2 text-sm font-medium">{property?.name}</TableCell>
                                                     <TableCell>
                                                         <div className={cn(
                                                             "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider",
@@ -324,7 +325,7 @@ export function PropertiesList() {
                                                             {unit.status === "ACTIVE" ? "Activo" : "Inactivo"}
                                                         </div>
                                                     </TableCell>
-                                                    <TableCell className="text-sm font-medium text-ink/70">{unit.capacity} Huéspedes</TableCell>
+                                                    <TableCell className="text-sm font-medium text-ink-2">{unit.capacity} Huéspedes</TableCell>
                                                     <TableCell className="text-right font-extrabold text-ink">
                                                         ${unit.pricePerNight?.toLocaleString()}
                                                     </TableCell>

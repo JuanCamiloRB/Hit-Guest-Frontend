@@ -8,7 +8,7 @@ import {
 } from "@/features/checkin/lib/main-guest-prefill"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, Loader2, ShieldCheck, Users, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, Loader2, ShieldCheck, Users } from "lucide-react"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { checkinService } from "@/features/checkin/services/checkin-service"
@@ -30,6 +30,10 @@ import {
     parseDeclaredPrice,
 } from "@/features/checkin/lib/declared-price"
 import { readCurrencyCode } from "@/lib/money"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 
 /** Guest-facing terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
 const GUEST_TERMS_URL = "https://hitguest.com/terminos-servicio1/"
@@ -501,10 +505,10 @@ export function IdentifyScreen({
                 {/* Name + Lastname */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-ink-2">
+                        <Label variant="plain" className="text-sm font-semibold text-ink-2">
                             Nombres<span className="text-danger ml-0.5">*</span>
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                             type="text"
                             value={form.name}
                             onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
@@ -515,10 +519,10 @@ export function IdentifyScreen({
                         {fieldErrors.name && <p className="text-xs text-danger">{fieldErrors.name}</p>}
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-ink-2">
+                        <Label variant="plain" className="text-sm font-semibold text-ink-2">
                             Apellidos<span className="text-danger ml-0.5">*</span>
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                             type="text"
                             value={form.lastname}
                             onChange={e => setForm(f => ({ ...f, lastname: e.target.value }))}
@@ -568,10 +572,10 @@ export function IdentifyScreen({
                             />
                         </div>
                         <div className="md:col-span-3 space-y-1.5">
-                            <label className="text-sm font-semibold text-ink-2">
+                            <Label variant="plain" className="text-sm font-semibold text-ink-2">
                                 Número de Documento<span className="text-danger ml-0.5">*</span>
-                            </label>
-                            <input
+                            </Label>
+                            <Input
                                 type="text"
                                 value={form.identificationNumber}
                                 onChange={e => {
@@ -599,10 +603,10 @@ export function IdentifyScreen({
                     los acompañantes no podrán registrarse. */}
                 {mustDeclareGuestCount && (
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-ink-2">
+                        <Label variant="plain" className="text-sm font-semibold text-ink-2">
                             ¿Cuántos huéspedes se hospedarán, incluyéndote?<span className="text-danger ml-0.5">*</span>
-                        </label>
-                        <input
+                        </Label>
+                        <Input
                             type="text"
                             inputMode="numeric"
                             pattern="[0-9]*"
@@ -627,15 +631,15 @@ export function IdentifyScreen({
                 )}
                 {mustDeclarePrice && priceCurrency && (
                     <div className="space-y-1.5">
-                        <label htmlFor="identify-total-price" className="text-sm font-semibold text-ink-2">
+                        <Label variant="plain" htmlFor="identify-total-price" className="text-sm font-semibold text-ink-2">
                             Valor total de tu reserva{priceCurrency ? ` (${priceCurrency})` : ""}<span className="text-danger ml-0.5">*</span>
-                        </label>
+                        </Label>
                         <p className="text-xs text-ink-3">
                             Ingresa el valor total de tu estadía
                             {describeCurrency(priceCurrency) ? ` en ${describeCurrency(priceCurrency)}` : ""}.
                             Lo encuentras en el detalle de tu viaje en Airbnb.
                         </p>
-                        <input
+                        <Input
                             id="identify-total-price"
                             type="text"
                             inputMode="decimal"
@@ -670,16 +674,9 @@ export function IdentifyScreen({
                 </p>
             </div>
 
-            <label className="flex items-start gap-3 p-3 bg-sunk/50 rounded-xl border border-rule cursor-pointer hover:border-primary/30 transition-colors">
-                <div className="relative flex items-center justify-center mt-0.5">
-                    <input
-                        type="checkbox"
-                        checked={acceptedTerms}
-                        onChange={(e) => setAcceptedTerms(e.target.checked)}
-                        className="peer appearance-none w-5 h-5 border-2 border-input rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
-                    />
-                    <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
-                </div>
+            <Label variant="plain" className="flex items-start gap-3 p-3 bg-sunk/50 rounded-xl border border-rule cursor-pointer hover:border-primary/30 transition-colors">
+                {/* La casilla del sistema (estados, foco y contraste propios). */}
+                <Checkbox checked={acceptedTerms} onCheckedChange={(value) => setAcceptedTerms(value === true)} className="mt-0.5 size-5" />
                 <span className="text-sm text-ink-2 font-medium select-none">
                     Acepto los Términos y Condiciones de HIT —{" "}
                     <a
@@ -692,11 +689,11 @@ export function IdentifyScreen({
                         Ver términos y condiciones
                     </a>
                 </span>
-            </label>
+            </Label>
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
-                    <button
+                    <UnstyledButton
                         onClick={handleVerify}
                         disabled={!isValid || isSubmitting || isLoadingCatalogs}
                         className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
@@ -706,7 +703,7 @@ export function IdentifyScreen({
                         ) : (
                             isLoadingCatalogs ? "Cargando..." : "Continuar"
                         )}
-                    </button>
+                    </UnstyledButton>
                 </div>
             </div>
         </div>

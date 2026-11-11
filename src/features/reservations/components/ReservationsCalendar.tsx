@@ -27,6 +27,8 @@ import { useReservations } from "../hooks/useReservations"
 import { cancelDetailPrefetch, startDetailPrefetch } from "../lib/detail-prefetch"
 import type { Reservation } from "@/types"
 import { cn } from "@/lib/utils"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
 
 /** True only when both dates are valid and ordered — safe to compare per-day. */
 function hasValidStay(res: Reservation): boolean {
@@ -77,7 +79,7 @@ function MultiSelectFilter({
                 </Button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-[240px] p-1">
-                <button
+                <UnstyledButton
                     type="button"
                     onClick={onClear}
                     className={cn(
@@ -86,19 +88,19 @@ function MultiSelectFilter({
                     )}
                 >
                     {allLabel}
-                </button>
+                </UnstyledButton>
                 <div className="mt-0.5 max-h-64 overflow-y-auto border-t border-rule pt-1">
                     {options.length === 0 ? (
                         <p className="px-2 py-2 text-xs text-ink-3">Sin opciones</p>
                     ) : (
                         options.map((o) => (
-                            <label
+                            <Label variant="plain"
                                 key={o.id}
                                 className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm text-ink-2 hover:bg-sunk/50"
                             >
                                 <Checkbox checked={selected.has(o.id)} onCheckedChange={() => onToggle(o.id)} />
                                 <span className="truncate">{o.name}</span>
-                            </label>
+                            </Label>
                         ))
                     )}
                 </div>
@@ -232,7 +234,7 @@ export function ReservationsCalendar() {
 
                     <div className="inline-flex rounded-lg bg-muted p-0.5">
                         {FILTER_OPTIONS.map((opt) => (
-                            <button
+                            <UnstyledButton
                                 key={opt.value}
                                 type="button"
                                 onClick={() => setFilter(opt.value)}
@@ -244,7 +246,7 @@ export function ReservationsCalendar() {
                                 )}
                             >
                                 {opt.label}
-                            </button>
+                            </UnstyledButton>
                         ))}
                     </div>
                 </div>

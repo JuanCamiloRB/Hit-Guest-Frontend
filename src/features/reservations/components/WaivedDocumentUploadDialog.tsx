@@ -17,6 +17,9 @@ import type { ReservationGuest } from "../services/reservations-service"
 import { reservationsService } from "../services/reservations-service"
 import { describeWaiverUploadError, type WaiverUploadErrorView } from "../lib/waiver-document-upload"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
+import { FileInput } from "@/components/ui/file-input"
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"]
 const NO_ERRORS: WaiverUploadErrorView = { front: null, back: null, form: null, refresh: false }
@@ -55,19 +58,19 @@ function PhotoField({
     return (
         <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
-                <label htmlFor={id} className="text-sm font-semibold text-ink">{label}</label>
+                <Label variant="plain" htmlFor={id} className="text-sm font-semibold text-ink">{label}</Label>
                 {onRemove && photo && (
-                    <button
+                    <UnstyledButton
                         type="button"
                         onClick={onRemove}
                         disabled={disabled}
                         className="inline-flex items-center gap-1 text-xs font-medium text-ink-3 hover:text-danger disabled:opacity-50"
                     >
                         <X size={12} aria-hidden /> Quitar
-                    </button>
+                    </UnstyledButton>
                 )}
             </div>
-            <label
+            <Label variant="plain"
                 htmlFor={id}
                 className={cn(
                     "flex h-32 cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed bg-sunk/50 text-sm text-ink-3 transition-colors hover:bg-sunk",
@@ -79,10 +82,10 @@ function PhotoField({
                     // eslint-disable-next-line @next/next/no-img-element -- vista previa local (blob:), no pasa por next/image
                     ? <img src={photo.url} alt={`Vista previa: ${label}`} className="h-full w-full object-contain" />
                     : <span className="flex items-center gap-2"><ImagePlus size={16} aria-hidden /> Elegir foto</span>}
-            </label>
-            <input
+            </Label>
+            <FileInput
                 id={id}
-                type="file"
+
                 accept="image/jpeg,image/png"
                 className="sr-only"
                 disabled={disabled}

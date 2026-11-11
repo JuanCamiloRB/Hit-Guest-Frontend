@@ -20,6 +20,7 @@ import { Logo } from "@/components/ui/Logo"
 import { useTranslation } from "@/hooks/useTranslation"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import { AVAILABLE_LANGUAGES } from "@/lib/i18n/dictionaries"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 type UserAuthFormProps = React.HTMLAttributes<HTMLDivElement>
 
@@ -95,11 +96,10 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                 render={({ field }) => (
                                     <FormItem id="email-form-item">
                                         <FormLabel>Correo electrónico <span className="text-destructive">*</span></FormLabel>
-                                        <FormControl>
                                             <div className="relative">
-                                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                <Input
-                                                    id="email"
+                                                <Mail aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                                <FormControl>
+                                                    <Input
                                                     placeholder="nombre@hitguest.com"
                                                     type="email"
                                                     autoCapitalize="none"
@@ -109,8 +109,8 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                                     className="pl-9"
                                                     {...field}
                                                 />
+                                                </FormControl>
                                             </div>
-                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -143,18 +143,18 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                     <FormItem id="otp-form-item">
                                         <div className="flex justify-between items-center mb-2">
                                             <FormLabel className="m-0">Código OTP <span className="text-destructive">*</span></FormLabel>
-                                            <button
+                                            <UnstyledButton
                                                 type="button"
                                                 onClick={resetFlow}
                                                 className="text-xs text-secondary font-semibold hover:underline"
                                             >
                                                 Cambiar correo
-                                            </button>
+                                            </UnstyledButton>
                                         </div>
-                                        <FormControl>
                                             <div className="relative">
                                                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                                                <Input
+                                                <FormControl>
+                                                    <Input
                                                     id="otp"
                                                     placeholder="123456"
                                                     type="text"
@@ -165,8 +165,8 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                                     className="pl-9 text-center tracking-[1em] font-mono text-lg"
                                                     {...field}
                                                 />
+                                                </FormControl>
                                             </div>
-                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -194,7 +194,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                                         <Button
                                             type="button"
                                             variant="ghost"
-                                            className="text-xs text-primary hover:text-primary/90 hover:bg-primary/10 h-auto py-2"
+                                            className="text-xs text-primary hover:text-primary hover:bg-primary/10 h-auto py-2"
                                             onClick={onResendOtp}
                                             disabled={isLoading || !canResend}
                                         >
@@ -212,7 +212,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                     ¿No tienes cuenta?{" "}
                     <Link
                         href="/register"
-                        className="font-semibold text-secondary hover:text-secondary/80 transition-colors underline-offset-4 hover:underline"
+                        className="font-semibold text-secondary hover:text-secondary transition-colors underline-offset-4 hover:underline"
                     >
                         Regístrate aquí
                     </Link>

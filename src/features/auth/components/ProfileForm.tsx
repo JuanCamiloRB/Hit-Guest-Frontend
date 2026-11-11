@@ -258,11 +258,12 @@ export function ProfileForm({ user }: ProfileFormProps) {
                             render={({ field }) => (
                                 <FormItem className="min-w-0">
                                     <FormLabel className="text-sm font-semibold text-ink-2">Tipo de Perfil</FormLabel>
-                                    <FormControl>
-                                        <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
                                             <SelectTrigger className={selectClass}>
                                                 <SelectValue placeholder="Selecciona el tipo" />
                                             </SelectTrigger>
+                                            </FormControl>
                                             <SelectContent>
                                                 {personTypes.map((t) => (
                                                     <SelectItem key={t.id} value={String(t.id)}>
@@ -271,7 +272,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -282,11 +282,12 @@ export function ProfileForm({ user }: ProfileFormProps) {
                             render={({ field }) => (
                                 <FormItem className="min-w-0">
                                     <FormLabel className="text-sm font-semibold text-ink-2">Tipo de Documento</FormLabel>
-                                    <FormControl>
-                                        <Select onValueChange={field.onChange} value={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
                                             <SelectTrigger className={selectClass}>
                                                 <SelectValue placeholder="Selecciona" />
                                             </SelectTrigger>
+                                            </FormControl>
                                             <SelectContent>
                                                 {identTypes.map((t) => (
                                                     <SelectItem key={t.id} value={String(t.id)}>
@@ -295,7 +296,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
                                                 ))}
                                             </SelectContent>
                                         </Select>
-                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -454,12 +454,14 @@ export function ProfileForm({ user }: ProfileFormProps) {
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel className="text-sm font-semibold text-ink-2">País</FormLabel>
-                                <FormControl>
-                                    {/* Controlled so the label renders once the async list loads. */}
-                                    <Select onValueChange={field.onChange} value={field.value}>
+                                {/* Controlled so the label renders once the async list loads.
+                                    FormControl va sobre el disparador: así la etiqueta nombra el combobox. */}
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
                                         <SelectTrigger className={selectClass}>
                                             <SelectValue placeholder="Selecciona un país" />
                                         </SelectTrigger>
+                                    </FormControl>
                                         <SelectContent>
                                             {countries.map((c) => (
                                                 <SelectItem key={c.id} value={String(c.id)}>
@@ -468,7 +470,6 @@ export function ProfileForm({ user }: ProfileFormProps) {
                                             ))}
                                         </SelectContent>
                                     </Select>
-                                </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}

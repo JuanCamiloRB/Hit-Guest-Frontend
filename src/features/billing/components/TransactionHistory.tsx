@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { ChevronLeft, ChevronRight, Loader2, Receipt } from "lucide-react"
 import { billingService } from "../services/billing-service"
 import { formatUsd, type CreditTransaction, type TransactionsPage } from "../types"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 /** "Jul 10, 2026 2:32 PM" in the PM's local timezone. */
 function formatDate(iso: string): string {
@@ -111,12 +112,12 @@ export function TransactionHistory() {
             ) : error ? (
                 <div className="flex flex-col items-center gap-3 py-12 text-center">
                     <p className="text-sm text-ink-3">Failed to load transactions.</p>
-                    <button
+                    <UnstyledButton
                         onClick={() => setPage((p) => p)}
                         className="text-xs font-semibold text-primary underline"
                     >
                         Retry
-                    </button>
+                    </UnstyledButton>
                 </div>
             ) : !data || data.data.length === 0 ? (
                 <div className="py-12 text-center text-sm text-ink-3">
@@ -163,24 +164,24 @@ export function TransactionHistory() {
                             Showing {data.from}–{data.to} of {data.total}
                         </p>
                         <div className="flex items-center gap-2">
-                            <button
+                            <UnstyledButton
                                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                                 disabled={data.currentPage <= 1 || isLoading}
                                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-rule px-2.5 text-xs font-semibold text-ink-2 transition-colors hover:bg-sunk/50 disabled:opacity-40"
                             >
                                 <ChevronLeft className="h-3.5 w-3.5" /> Previous
-                            </button>
+                            </UnstyledButton>
                             <span className="text-xs font-medium text-ink-3">
                                 Page {data.currentPage} of {data.lastPage}
                             </span>
-                            <button
+                            <UnstyledButton
                                 onClick={() => setPage((p) => Math.min(data.lastPage, p + 1))}
                                 disabled={data.currentPage >= data.lastPage || isLoading}
                                 className="inline-flex h-8 items-center gap-1 rounded-lg border border-rule px-2.5 text-xs font-semibold text-ink-2 transition-colors hover:bg-sunk/50 disabled:opacity-40"
                             >
                                 Next <ChevronRight className="h-3.5 w-3.5" />
                                 {isLoading && <Loader2 className="ml-1 h-3 w-3 animate-spin" />}
-                            </button>
+                            </UnstyledButton>
                         </div>
                     </div>
                 </>

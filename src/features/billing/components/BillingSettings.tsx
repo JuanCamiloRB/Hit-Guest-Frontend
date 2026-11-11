@@ -13,6 +13,9 @@ import {
     type BillingPackage,
     type PackagesInfo,
 } from "../types"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
 /** Balance card + recharge (packages/custom) + transaction history. */
 export function BillingSettings() {
@@ -119,9 +122,9 @@ export function BillingSettings() {
                             <span className="text-4xl font-black tabular-nums text-ink-3">— USD</span>
                             <p className="mt-1 text-xs font-medium text-warning">
                                 Saldo no disponible ·{" "}
-                                <button type="button" onClick={() => void refresh()} className="font-semibold underline underline-offset-2">
+                                <UnstyledButton type="button" onClick={() => void refresh()} className="font-semibold underline underline-offset-2">
                                     Reintentar
-                                </button>
+                                </UnstyledButton>
                             </p>
                         </div>
                     ) : (
@@ -145,7 +148,7 @@ export function BillingSettings() {
                             {(packages?.packages ?? []).map((pkg) => {
                                 const active = selected === pkg.amount
                                 return (
-                                    <button
+                                    <UnstyledButton
                                         key={pkg.amount}
                                         type="button"
                                         onClick={() => selectPackage(pkg)}
@@ -161,21 +164,21 @@ export function BillingSettings() {
                                             {pkg.label}
                                         </div>
                                         <div className="text-xs text-ink-3">{pkg.description}</div>
-                                    </button>
+                                    </UnstyledButton>
                                 )
                             })}
                         </div>
 
                         {/* Custom amount */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-semibold uppercase tracking-wide text-ink-3">
+                            <Label variant="plain" className="text-xs font-semibold uppercase tracking-wide text-ink-3">
                                 Monto personalizado
-                            </label>
+                            </Label>
                             <div className="relative max-w-xs">
                                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-medium text-ink-3">
                                     $
                                 </span>
-                                <input
+                                <Input
                                     type="number"
                                     min={minimum}
                                     step="1"
@@ -188,7 +191,7 @@ export function BillingSettings() {
                             {amountError && <p className="text-xs font-medium text-danger">{amountError}</p>}
                         </div>
 
-                        <button
+                        <UnstyledButton
                             onClick={handleAddCredits}
                             disabled={isSubmitting || effectiveAmount == null}
                             className="inline-flex h-11 items-center gap-2 rounded-xl bg-primary px-6 font-bold text-white transition-colors hover:bg-primary disabled:opacity-50"
@@ -199,7 +202,7 @@ export function BillingSettings() {
                                 <Plus className="h-4 w-4" />
                             )}
                             Add Credits
-                        </button>
+                        </UnstyledButton>
                     </div>
                 )}
             </div>

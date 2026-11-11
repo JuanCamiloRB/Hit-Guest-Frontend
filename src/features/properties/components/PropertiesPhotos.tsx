@@ -31,6 +31,8 @@ import {
     ALLOWED_IMAGE_FORMATS_LABEL,
 } from "../lib/property-image-validation"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { FileInput } from "@/components/ui/file-input"
 
 /**
  * Property photo gallery, backed by the real images endpoints:
@@ -159,7 +161,7 @@ export function PropertiesPhotos() {
                                 />
                                 {/* Siempre visible: con teclado y en pantallas táctiles no
                                     hay «pasar el mouse». 36 px de área táctil. */}
-                                <button
+                                <UnstyledButton
                                     type="button"
                                     onClick={() => setPhotoToDelete({ url, position: index + 1, total: picturesUrl.length })}
                                     disabled={isUploading}
@@ -167,7 +169,7 @@ export function PropertiesPhotos() {
                                     aria-label={`Eliminar ${photoLabel(index + 1, picturesUrl.length)}`}
                                 >
                                     <Trash2 className="h-4 w-4" aria-hidden />
-                                </button>
+                                </UnstyledButton>
                             </div>
                         ))}
 
@@ -178,8 +180,8 @@ export function PropertiesPhotos() {
                             }`}
                             onClick={() => !isUploading && fileInputRef.current?.click()}
                         >
-                            <input
-                                type="file"
+                            <FileInput
+
                                 multiple
                                 accept={ALLOWED_IMAGE_ACCEPT}
                                 className="hidden"

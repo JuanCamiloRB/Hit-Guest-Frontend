@@ -12,6 +12,7 @@ import { isMainGuestCompleted, pendingGuestsCount, type CheckinPortalResponse, t
 import { resolveContractSigningState, isContractTransitional } from "@/features/checkin/lib/contract-signing"
 import { completedEntryCopy, resolveCompletedEntryReason } from "@/features/checkin/lib/success-entry"
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface ReservationDocument {
     uuid: string
@@ -284,7 +285,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                             </p>
                         </div>
                     </div>
-                    <button
+                    <UnstyledButton
                         onClick={handleDownloadSignedContract}
                         disabled={downloadingContract}
                         className="w-full flex items-center justify-center gap-2 h-11 bg-success hover:bg-success/90 text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
@@ -293,7 +294,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                             ? <Loader2 size={16} className="animate-spin" />
                             : <Download size={16} />}
                         Descargar contrato firmado
-                    </button>
+                    </UnstyledButton>
                 </div>
             )}
 
@@ -327,7 +328,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                         </div>
                     </div>
                     {pollStalled && (
-                        <button
+                        <UnstyledButton
                             type="button"
                             onClick={handleRefreshContract}
                             disabled={refreshing}
@@ -337,7 +338,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                                 ? <Loader2 size={14} className="animate-spin" />
                                 : <RefreshCw size={14} />}
                             Ya firmé, actualizar estado
-                        </button>
+                        </UnstyledButton>
                     )}
                 </div>
             )}
@@ -418,7 +419,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                                 <h3 className="font-bold text-ink text-sm truncate">{doc.typeName}</h3>
                                 <p className="text-xs text-ink-3">Descarga tu copia aquí.</p>
                             </div>
-                            <button
+                            <UnstyledButton
                                 onClick={() => handleDownloadPdf(doc.uuid)}
                                 disabled={downloadingDoc === doc.uuid}
                                 className="text-sm font-bold text-primary hover:underline disabled:opacity-50 flex-shrink-0"
@@ -428,7 +429,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                                 ) : (
                                     "Descargar"
                                 )}
-                            </button>
+                            </UnstyledButton>
                         </div>
                     ))}
                 </div>

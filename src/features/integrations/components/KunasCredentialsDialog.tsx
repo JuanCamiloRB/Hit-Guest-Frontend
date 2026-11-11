@@ -21,6 +21,8 @@ import {
     isCredentialError,
     type IntegrationFieldErrors,
 } from "../lib/integration-errors"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
 
 interface Props {
     /** Current account email (prefills the field; password never prefilled). */
@@ -105,7 +107,7 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                     )}
 
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-ink-2">Email</label>
+                        <Label variant="plain" className="text-sm font-semibold text-ink-2">Email</Label>
                         <Input
                             type="email"
                             value={email}
@@ -117,7 +119,7 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-ink-2">Nueva contraseña</label>
+                        <Label variant="plain" className="text-sm font-semibold text-ink-2">Nueva contraseña</Label>
                         <div className="relative">
                             <Input
                                 type={showPassword ? "text" : "password"}
@@ -127,23 +129,23 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
                                 autoComplete="off"
                                 className="pr-10"
                             />
-                            <button
+                            <UnstyledButton
                                 type="button"
                                 onClick={() => setShowPassword((s) => !s)}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
                                 aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                             >
                                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                            </button>
+                            </UnstyledButton>
                         </div>
                         {errors.password && <p className="text-xs font-medium text-danger">{errors.password}</p>}
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="flex items-center gap-1.5 text-sm font-semibold text-ink-2">
+                        <Label variant="plain" className="flex items-center gap-1.5 text-sm font-semibold text-ink-2">
                             <KeyRound className="h-4 w-4 text-ink-3" />
                             Token KunasPMS
-                        </label>
+                        </Label>
                         <Input
                             value={token}
                             onChange={(e) => setToken(e.target.value)}

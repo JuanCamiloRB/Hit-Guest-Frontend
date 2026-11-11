@@ -17,6 +17,8 @@ import {
     type GuaranteeSetupFailure,
 } from "@/features/checkin/components/guarantee-setup-meta"
 import type { GuaranteeStatus, GuaranteeStatusInfo } from "@/features/checkin/types/checkin"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
 
 interface GuaranteeCardFormProps {
     reservationUuid: string
@@ -491,9 +493,9 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
 
     return (
         <div className="space-y-3">
-            <label className="text-sm font-semibold text-ink-2">
+            <Label variant="plain" className="text-sm font-semibold text-ink-2">
                 Tarjeta de garantía<span className="text-danger ml-0.5">*</span>
-            </label>
+            </Label>
 
             {amount && currency && (
                 <p className="text-xs text-ink-3">
@@ -532,20 +534,20 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                         la garantía "active"— no volvía a habilitarse nunca. */}
                     {pollTimedOut && (
                         <div className="flex flex-wrap gap-3">
-                            <button
+                            <UnstyledButton
                                 type="button"
                                 onClick={() => void handleRecheck()}
                                 className="text-xs font-semibold text-primary hover:underline"
                             >
                                 Volver a comprobar
-                            </button>
-                            <button
+                            </UnstyledButton>
+                            <UnstyledButton
                                 type="button"
                                 onClick={handleRetry}
                                 className="text-xs font-semibold text-ink-3 hover:underline"
                             >
                                 Intentar con otra tarjeta
-                            </button>
+                            </UnstyledButton>
                         </div>
                     )}
                 </div>
@@ -561,29 +563,29 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                     )}
 
                     {status === "failed" && !setupFailure && (
-                        <button
+                        <UnstyledButton
                             type="button"
                             onClick={handleRetry}
                             className="text-xs font-semibold text-primary hover:underline"
                         >
                             Intentar con otra tarjeta
-                        </button>
+                        </UnstyledButton>
                     )}
 
                     {/* Solo donde reintentar puede cambiar algo. Con la llave de
                         Stripe mal configurada, el botón sería una trampa: cada
                         toque crea otro SetupIntent y falla igual. */}
                     {setupFailure?.canRetry && (
-                        <button
+                        <UnstyledButton
                             type="button"
                             onClick={handleRetry}
                             className="text-xs font-semibold text-primary hover:underline"
                         >
                             Intentar de nuevo
-                        </button>
+                        </UnstyledButton>
                     )}
 
-                    <button
+                    <UnstyledButton
                         type="button"
                         onClick={() => void handleSubmit()}
                         disabled={!cardMounted || !cardComplete || submitting}
@@ -595,7 +597,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                             <CreditCard size={16} />
                         )}
                         Autorizar tarjeta
-                    </button>
+                    </UnstyledButton>
                 </>
             )}
 

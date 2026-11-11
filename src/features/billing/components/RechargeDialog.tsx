@@ -20,6 +20,8 @@ import {
 } from "../services/billing-service"
 import { rechargeErrorDescription } from "../lib/recharge-error"
 import type { PackagesInfo } from "../types"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
 
 /**
  * "Recargar bolsa" flow. Collects an amount and hands off to the hosted payment
@@ -130,15 +132,15 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                     {packagesStatus === "unavailable" && (
                         <div role="alert" className="rounded-lg bg-warning-sunk px-3 py-2 text-sm text-warning">
                             <p>No pudimos cargar los montos sugeridos. Puedes ingresar otro monto o reintentar.</p>
-                            <button type="button" onClick={loadPackages} className="mt-1 font-semibold underline">
+                            <UnstyledButton type="button" onClick={loadPackages} className="mt-1 font-semibold underline">
                                 Reintentar
-                            </button>
+                            </UnstyledButton>
                         </div>
                     )}
                     {presets.length > 0 && (
                         <div className="flex gap-2">
                             {presets.map((preset) => (
-                            <button
+                            <UnstyledButton
                                 key={preset}
                                 type="button"
                                 onClick={() => setAmount(preset)}
@@ -149,15 +151,15 @@ export function RechargeDialog({ trigger }: { trigger?: React.ReactNode }) {
                                 }`}
                             >
                                 ${preset}
-                            </button>
+                            </UnstyledButton>
                             ))}
                         </div>
                     )}
 
                     <div className="space-y-1.5">
-                        <label className="text-xs font-semibold uppercase tracking-wide text-ink-3">
+                        <Label variant="plain" className="text-xs font-semibold uppercase tracking-wide text-ink-3">
                             Otro monto (USD)
-                        </label>
+                        </Label>
                         <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3 font-medium">
                                 $

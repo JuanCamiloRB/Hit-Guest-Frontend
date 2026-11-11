@@ -10,6 +10,7 @@ import { ConsumptionHistoryChart } from "./ConsumptionHistoryChart"
 import { DASHBOARD_SURFACE } from "./dashboard-surface"
 import { MonthSelector } from "./MonthSelector"
 import { TopNodesPanel } from "./TopNodesPanel"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface Props {
     status: ConsumptionStatus
@@ -175,13 +176,13 @@ function ActivityMessage({
 
 function RetryButton({ onRetry, className }: { onRetry: () => void; className?: string }) {
     return (
-        <button
+        <UnstyledButton
             type="button"
             onClick={onRetry}
             className={cn("shrink-0 text-sm font-semibold text-primary underline-offset-2 hover:underline", className)}
         >
             Reintentar
-        </button>
+        </UnstyledButton>
     )
 }
 

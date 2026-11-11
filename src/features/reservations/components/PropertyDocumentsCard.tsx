@@ -15,6 +15,7 @@ import type { PropertyDocument } from "@/features/properties/types/document"
 import { documentTypeLabel, DOCUMENT_STATUS } from "@/features/properties/types/document"
 import { notifyError } from "@/lib/notify-error"
 import { LoadingState } from "@/components/ui/loading-state"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface PropertyDocumentsCardProps {
     reservationUuid: string
@@ -117,7 +118,7 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
                                     </span>
                                 </div>
                                 <div className="flex shrink-0 items-center gap-1">
-                                    <button
+                                    <UnstyledButton
                                         onClick={() => handlePreview(doc)}
                                         aria-expanded={isOpen}
                                         aria-controls={panelId}
@@ -128,8 +129,8 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
                                         <span className="sr-only">
                                             {isOpen ? "Ocultar vista previa" : "Ver vista previa"}
                                         </span>
-                                    </button>
-                                    <button
+                                    </UnstyledButton>
+                                    <UnstyledButton
                                         onClick={() => handleDownloadPdf(doc)}
                                         disabled={downloadingPdf === doc.uuid}
                                         className="rounded-lg p-2 text-ink-3 transition-colors hover:bg-sunk hover:text-ink disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
@@ -140,7 +141,7 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
                                             : <Download size={16} />
                                         }
                                         <span className="sr-only">Descargar PDF</span>
-                                    </button>
+                                    </UnstyledButton>
                                 </div>
                             </div>
 

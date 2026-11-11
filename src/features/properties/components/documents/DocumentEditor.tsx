@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils"
 import { SHORTCODE_LABELS } from "../../types/document"
 import { Skeleton } from "@/components/ui/skeleton"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface DocumentEditorProps {
     value: string
@@ -38,7 +39,7 @@ function ToolbarButton({
     children: React.ReactNode
 }) {
     return (
-        <button
+        <UnstyledButton
             type="button"
             title={title}
             disabled={disabled}
@@ -49,7 +50,7 @@ function ToolbarButton({
             )}
         >
             {children}
-        </button>
+        </UnstyledButton>
     )
 }
 
@@ -150,16 +151,16 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                         {shortcodes.map((key) => (
-                            <button
+                            <UnstyledButton
                                 key={key}
                                 type="button"
                                 onClick={() => insertShortcode(key)}
                                 title={`Inserta {{${key}}}`}
                                 className="inline-flex items-center gap-1 rounded-lg border border-primary/20 bg-white px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/10 hover:border-primary/20"
                             >
-                                <span className="font-mono text-primary/50 leading-none">+</span>
+                                <span className="font-mono text-primary leading-none">+</span>
                                 {SHORTCODE_LABELS[key] ?? key}
-                            </button>
+                            </UnstyledButton>
                         ))}
                     </div>
                 </div>

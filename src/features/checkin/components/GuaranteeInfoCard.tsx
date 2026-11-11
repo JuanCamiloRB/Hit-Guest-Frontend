@@ -1,4 +1,5 @@
 import { Check, CreditCard, Lock, Trash2, ArrowRight } from "lucide-react"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface GuaranteeInfoCardProps {
     onContinue: () => void
@@ -140,14 +141,14 @@ export function GuaranteeInfoCard({ onContinue }: GuaranteeInfoCardProps) {
             </div>
 
             <div className="pt-1">
-                <button
+                <UnstyledButton
                     type="button"
                     onClick={onContinue}
                     className="w-full flex items-center justify-center gap-2 h-12 rounded-xl bg-primary text-primary-foreground text-sm font-bold transition-colors hover:bg-primary-hover"
                 >
                     Continuar con confianza
                     <ArrowRight size={16} />
-                </button>
+                </UnstyledButton>
                 <p className="flex items-center justify-center gap-1.5 text-xs text-ink-3 mt-2.5">
                     <Lock size={11} /> Se elimina automáticamente 2 días después de tu check-out
                 </p>

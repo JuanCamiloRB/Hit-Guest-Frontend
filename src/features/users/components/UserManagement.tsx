@@ -57,6 +57,7 @@ import { z } from "zod"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 /**
  * Team users = CREATE + DELETE only. Editing a user is intentionally NOT offered:
@@ -300,9 +301,9 @@ export function UserManagement() {
                 // Mismo aviso que las demás listas, fuera del borde de la tabla: se ve la última cargada.
                 <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-sm text-ink-2">
                     <span>No pudimos actualizar la lista. Se muestra la última cargada.</span>
-                    <button type="button" onClick={fetchUsers} className="text-sm font-semibold text-primary underline-offset-2 hover:underline">
+                    <UnstyledButton type="button" onClick={fetchUsers} className="text-sm font-semibold text-primary underline-offset-2 hover:underline">
                         Reintentar
-                    </button>
+                    </UnstyledButton>
                 </div>
             )}
 

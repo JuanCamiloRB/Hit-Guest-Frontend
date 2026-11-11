@@ -25,6 +25,8 @@ import { catalogService, CatalogOption } from "@/features/auth/services/catalog-
 import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { Honeypot } from "./Honeypot"
 import Link from "next/link"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 
 /** PM/Client account terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
 const ACCOUNT_TERMS_URL = "https://hitguest.com/terminos-condiciones/"
@@ -190,20 +192,20 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Razón Social (Nombre de la Empresa) <span className="text-destructive">*</span></FormLabel>
-                                        <FormControl>
                                             <div className="relative group">
                                                 <Building2 className={cn(
                                                     "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                    form.formState.errors.companyName ? "text-destructive" : "text-secondary/60 group-focus-within:text-secondary"
+                                                    form.formState.errors.companyName ? "text-destructive" : "text-secondary group-focus-within:text-secondary"
                                                 )} />
-                                                <Input
+                                                <FormControl>
+                                                    <Input
                                                     placeholder="Ej: Apartamentos del Mar SAS"
                                                     disabled={isLoading}
                                                     className="pl-9 h-11 focus-visible:ring-secondary/30"
                                                     {...field}
                                                 />
+                                                </FormControl>
                                             </div>
-                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -220,20 +222,20 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             {isCompany ? "Nombre del Usuario Principal" : "Nombre"}
                                             <span className="text-destructive"> *</span>
                                         </FormLabel>
-                                        <FormControl>
                                             <div className="relative group">
                                                 <User className={cn(
                                                     "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                    form.formState.errors.name ? "text-destructive" : "text-secondary/60 group-focus-within:text-secondary"
+                                                    form.formState.errors.name ? "text-destructive" : "text-secondary group-focus-within:text-secondary"
                                                 )} />
-                                                <Input
+                                                <FormControl>
+                                                    <Input
                                                     placeholder="Ej: Juan"
                                                     disabled={isLoading}
                                                     className="pl-9 h-11 focus-visible:ring-secondary/30"
                                                     {...field}
                                                 />
+                                                </FormControl>
                                             </div>
-                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -247,20 +249,20 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             {isCompany ? "Apellido del Usuario Principal" : "Apellido"}
                                             <span className="text-destructive"> *</span>
                                         </FormLabel>
-                                        <FormControl>
                                             <div className="relative group">
                                                 <User className={cn(
                                                     "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                    form.formState.errors.lastname ? "text-destructive" : "text-secondary/60 group-focus-within:text-secondary"
+                                                    form.formState.errors.lastname ? "text-destructive" : "text-secondary group-focus-within:text-secondary"
                                                 )} />
-                                                <Input
+                                                <FormControl>
+                                                    <Input
                                                     placeholder="Ej: Pérez"
                                                     disabled={isLoading}
                                                     className="pl-9 h-11 focus-visible:ring-secondary/30"
                                                     {...field}
                                                 />
+                                                </FormControl>
                                             </div>
-                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -321,21 +323,21 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Correo electrónico <span className="text-destructive">*</span></FormLabel>
-                                    <FormControl>
                                         <div className="relative group">
                                             <Mail className={cn(
                                                 "absolute left-3 top-3 h-4 w-4 transition-colors",
-                                                form.formState.errors.email ? "text-destructive" : "text-secondary/60 group-focus-within:text-secondary"
+                                                form.formState.errors.email ? "text-destructive" : "text-secondary group-focus-within:text-secondary"
                                             )} />
-                                            <Input
+                                            <FormControl>
+                                                <Input
                                                 placeholder="nombre@empresa.com"
                                                 type="email"
                                                 disabled={isLoading}
                                                 className="pl-9 h-11 focus-visible:ring-secondary/30"
                                                 {...field}
                                             />
+                                            </FormControl>
                                         </div>
-                                    </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
@@ -396,17 +398,17 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                             </SelectContent>
                                         </Select>
                                     ) : (
-                                        <FormControl>
                                             <div className="relative group">
-                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-secondary/60 group-focus-within:text-secondary transition-colors" />
-                                                <Input
+                                                <MapPin className="absolute left-3 top-3 h-4 w-4 text-secondary group-focus-within:text-secondary transition-colors" />
+                                                <FormControl>
+                                                    <Input
                                                     placeholder="Ej: Colombia"
                                                     disabled={isLoading}
                                                     className="pl-9 h-11 rounded-lg border-rule shadow-sm"
                                                     {...field}
                                                 />
+                                                </FormControl>
                                             </div>
-                                        </FormControl>
                                     )}
                                     <FormMessage />
                                 </FormItem>
@@ -452,16 +454,9 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             />
                         </div>
 
-                        <label className="flex items-start gap-3 p-3 bg-muted/40 rounded-xl border border-border/60 cursor-pointer hover:border-primary/30 transition-colors">
-                            <div className="relative flex items-center justify-center mt-0.5">
-                                <input
-                                    type="checkbox"
-                                    checked={acceptedTerms}
-                                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                                    className="peer appearance-none w-5 h-5 border-2 border-input rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
-                                />
-                                <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
-                            </div>
+                        <Label variant="plain" className="flex items-start gap-3 p-3 bg-muted/40 rounded-xl border border-border/60 cursor-pointer hover:border-primary/30 transition-colors">
+                            {/* La casilla del sistema (estados, foco y contraste propios). */}
+                            <Checkbox checked={acceptedTerms} onCheckedChange={(value) => setAcceptedTerms(value === true)} className="mt-0.5 size-5" />
                             <span className="text-sm text-muted-foreground font-medium select-none">
                                 Acepto los Términos y Condiciones de HIT —{" "}
                                 <a
@@ -474,7 +469,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                     Ver términos y condiciones
                                 </a>
                             </span>
-                        </label>
+                        </Label>
 
                         <div className="pt-2">
                             <Button

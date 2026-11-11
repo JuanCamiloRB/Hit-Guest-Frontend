@@ -29,6 +29,8 @@ import { DocumentUpload } from "@/features/checkin/components/DocumentUpload"
 import { ArrowLeft, User, FileText, Globe, Plane, Loader2, CheckCircle2, ClipboardList, AlertTriangle } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
 interface SecondaryGuestFormScreenProps {
     reservationUuid: string
@@ -531,14 +533,14 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {isFieldVisible('arrivalTime') && (
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-ink-2">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-danger ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.arrivalTime || ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                                    <Label variant="plain" className="text-sm font-semibold text-ink-2">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-danger ml-0.5">*</span>}</Label>
+                                    <Input type="time" value={form.arrivalTime || ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                             {isFieldVisible('departureTime') && (
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-ink-2">Hora de salida{isFieldRequired('departureTime') && <span className="text-danger ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.departureTime || ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                                    <Label variant="plain" className="text-sm font-semibold text-ink-2">Hora de salida{isFieldRequired('departureTime') && <span className="text-danger ml-0.5">*</span>}</Label>
+                                    <Input type="time" value={form.departureTime || ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                         </div>

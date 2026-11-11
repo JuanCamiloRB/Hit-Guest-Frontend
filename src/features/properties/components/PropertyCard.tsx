@@ -160,14 +160,14 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                         <h3 className="font-extrabold text-lg leading-tight text-ink group-hover:text-primary transition-colors duration-300">
                             {property.name}
                         </h3>
-                        <div className="flex items-center text-xs text-ink/60 font-medium">
+                        <div className="flex items-center text-xs text-ink-2 font-medium">
                             <MapPin className="mr-1 h-3.3 w-3.3 text-secondary" />
                             {property.address?.city || "Ciudad"}, {property.address?.country || "País"}
                         </div>
                     </div>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="-mt-1 h-8 w-8 hover:bg-sunk rounded-full">
+                            <Button variant="ghost" size="icon-sm" className="-mt-1 rounded-full" aria-label={`Acciones de ${property.name}`}>
                                 <MoreHorizontal className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>

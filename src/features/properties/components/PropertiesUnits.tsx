@@ -1092,7 +1092,7 @@ export function PropertiesUnits() {
                                                                 const id = Number(item.id)
                                                                 const selected = (unitForm.extra.amenities ?? []).includes(id)
                                                                 return (
-                                                                    <label
+                                                                    <Label variant="plain"
                                                                         key={item.id}
                                                                         className={`flex cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 text-sm transition-colors hover:bg-white ${selected ? "border-primary/20 bg-primary/5" : "border-transparent"}`}
                                                                     >
@@ -1112,7 +1112,7 @@ export function PropertiesUnits() {
                                                                             }}
                                                                         />
                                                                         <span className="font-medium text-ink-2">{item.name}</span>
-                                                                    </label>
+                                                                    </Label>
                                                                 )
                                                             })}
                                                         </div>
@@ -1199,7 +1199,7 @@ export function PropertiesUnits() {
                                                         <Shield className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                                                         <div className="space-y-1">
                                                             <p className="text-sm font-bold text-primary">Políticas del Tipo de Alojamiento</p>
-                                                            <p className="text-xs text-primary/80 leading-relaxed">
+                                                            <p className="text-xs text-primary leading-relaxed">
                                                                 Este tipo de habitación heredará las políticas generales de la propiedad. Puedes definir políticas específicas o excepciones en la integración final.
                                                             </p>
                                                         </div>

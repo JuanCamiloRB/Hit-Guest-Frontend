@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft, Download, FileText, Loader2, XCircle } from "lucide-react"
 import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface GuestDocumentScreenProps {
     reservationUuid: string
@@ -63,12 +64,12 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
                 </div>
                 <h2 className="text-xl font-semibold text-ink">Documento no disponible</h2>
                 <p className="text-ink-3 text-sm max-w-sm">{error}</p>
-                <button
+                <UnstyledButton
                     onClick={() => router.push(basePath)}
                     className="mt-2 px-5 py-2.5 bg-primary text-white rounded-xl font-semibold text-sm"
                 >
                     Volver al check-in
-                </button>
+                </UnstyledButton>
             </div>
         )
     }
@@ -76,13 +77,13 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
     return (
         <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-24">
             <div className="flex items-center justify-between">
-                <button
+                <UnstyledButton
                     onClick={() => router.push(basePath)}
                     className="flex items-center gap-2 p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors"
                 >
                     <ArrowLeft size={20} />
                     <span className="text-sm font-semibold">Volver</span>
-                </button>
+                </UnstyledButton>
                 <div className="flex items-center gap-2 text-xs font-semibold px-2 py-1 bg-primary/10 text-primary rounded-lg">
                     <FileText size={14} />
                     Documento
@@ -96,14 +97,14 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
-                    <button
+                    <UnstyledButton
                         onClick={handleDownloadPdf}
                         disabled={isDownloading}
                         className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 disabled:opacity-60 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
                     >
                         {isDownloading ? <Loader2 size={20} className="animate-spin" /> : <Download size={20} />}
                         Descargar PDF
-                    </button>
+                    </UnstyledButton>
                 </div>
             </div>
         </div>

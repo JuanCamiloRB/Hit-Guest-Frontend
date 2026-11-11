@@ -23,6 +23,10 @@ import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { diditCompletionAction } from "@/features/checkin/lib/didit-completion"
 import type { VerificationResult } from "@didit-protocol/sdk-web"
 import { guestFormDraftKey } from "@/features/checkin/lib/guest-form-draft"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { FileInput } from "@/components/ui/file-input"
 
 interface VerifyScreenProps {
     reservationUuid: string
@@ -959,16 +963,16 @@ export function VerifyScreen({
                     
                     <div className="space-y-4">
                         <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-ink-2">Nombres</label>
-                            <input type="text" value={editOcr.firstName} onChange={e => setEditOcr({...editOcr, firstName: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                            <Label variant="plain" className="text-sm font-semibold text-ink-2">Nombres</Label>
+                            <Input type="text" value={editOcr.firstName} onChange={e => setEditOcr({...editOcr, firstName: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-ink-2">Apellidos</label>
-                            <input type="text" value={editOcr.lastName} onChange={e => setEditOcr({...editOcr, lastName: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                            <Label variant="plain" className="text-sm font-semibold text-ink-2">Apellidos</Label>
+                            <Input type="text" value={editOcr.lastName} onChange={e => setEditOcr({...editOcr, lastName: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-ink-2">Número de Documento</label>
-                            <input type="text" value={editOcr.documentNumber} onChange={e => setEditOcr({...editOcr, documentNumber: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                            <Label variant="plain" className="text-sm font-semibold text-ink-2">Número de Documento</Label>
+                            <Input type="text" value={editOcr.documentNumber} onChange={e => setEditOcr({...editOcr, documentNumber: e.target.value})} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                         </div>
                         {/* Segmentadas (DD/MM/AAAA): son fechas que el huésped está
                             LEYENDO del documento — se teclean, no se navegan por un
@@ -992,10 +996,10 @@ export function VerifyScreen({
 
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center gap-3">
                     <div className="w-full max-w-lg flex gap-3">
-                        <button onClick={handleRetry} className="flex-1 h-14 bg-sunk hover:bg-sunk text-ink-2 rounded-xl font-bold text-lg transition-all active:scale-[0.98]">
+                        <UnstyledButton onClick={handleRetry} className="flex-1 h-14 bg-sunk hover:bg-sunk text-ink-2 rounded-xl font-bold text-lg transition-all active:scale-[0.98]">
                             Reintentar
-                        </button>
-                        <button
+                        </UnstyledButton>
+                        <UnstyledButton
                             onClick={handleOcrConfirm}
                             disabled={
                                 !isValidDateValue(editOcr.dateOfBirth, localDateValue())
@@ -1004,7 +1008,7 @@ export function VerifyScreen({
                             className="flex-[2] flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                         >
                             <CheckCircle2 size={20} /> Continuar
-                        </button>
+                        </UnstyledButton>
                     </div>
                 </div>
             </div>
@@ -1031,14 +1035,14 @@ export function VerifyScreen({
                         contacta al anfitrión.
                     </p>
                 </div>
-                <button
+                <UnstyledButton
                     type="button"
                     onClick={handleResetVerification}
                     className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
                     <RotateCcw size={18} />
                     Continuar verificación
-                </button>
+                </UnstyledButton>
                 <Link
                     href={basePath}
                     onClick={() => {
@@ -1079,13 +1083,13 @@ export function VerifyScreen({
                         Si el problema persiste, contacta al anfitrión.
                     </p>
                 </div>
-                <button
+                <UnstyledButton
                     onClick={handleResetVerification}
                     className="flex items-center gap-2 h-12 px-6 bg-primary text-white rounded-xl font-semibold transition-all active:scale-[0.98]"
                 >
                     <RotateCcw size={18} />
                     Reiniciar verificación
-                </button>
+                </UnstyledButton>
             </div>
         )
     }
@@ -1122,7 +1126,7 @@ export function VerifyScreen({
                         Volver al inicio
                     </Link>
                 ) : (
-                    <button
+                    <UnstyledButton
                         // Sesión Didit: SIEMPRE via reset → /identify, que emite la
                         // sesión nueva. La `verificationUrl` de un rechazo apunta a
                         // la sesión ya resuelta — reabrirla no hace nada (trampa §4
@@ -1134,7 +1138,7 @@ export function VerifyScreen({
                     >
                         <RotateCcw size={18} />
                         Repetir verificación
-                    </button>
+                    </UnstyledButton>
                 )}
             </div>
         )
@@ -1221,13 +1225,13 @@ export function VerifyScreen({
                         <p className="text-xs text-ink-3">
                             El resultado se detecta automáticamente al completar la verificación.
                         </p>
-                        <button
+                        <UnstyledButton
                             type="button"
                             onClick={handleResetVerification}
                             className="text-xs text-ink-3 underline hover:text-primary transition-colors"
                         >
                             ¿La ventana aparece como &quot;sesión expirada&quot;? Reinicia tu verificación
-                        </button>
+                        </UnstyledButton>
                     </div>
                 )
             })()}
@@ -1258,62 +1262,62 @@ export function VerifyScreen({
                         <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
                             {/* Front photo */}
                             <div className="space-y-2">
-                                <label className="text-sm font-semibold text-ink-2">
+                                <Label variant="plain" className="text-sm font-semibold text-ink-2">
                                     Foto Frontal<span className="text-danger ml-0.5">*</span>
-                                </label>
+                                </Label>
                                 {frontFile ? (
                                     <div className="flex items-center justify-between bg-success-sunk border border-success/30 rounded-xl px-4 py-3">
                                         <div className="flex items-center gap-2">
                                             <CheckCircle2 size={18} className="text-success" />
                                             <span className="text-sm text-ink-2 truncate max-w-[180px]">{frontFile.name}</span>
                                         </div>
-                                        <button onClick={() => setFrontFile(null)} className="text-xs text-danger font-medium">Quitar</button>
+                                        <UnstyledButton onClick={() => setFrontFile(null)} className="text-xs text-danger font-medium">Quitar</UnstyledButton>
                                     </div>
                                 ) : (
-                                    <label className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
+                                    <Label variant="plain" className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
                                         <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                             <Camera size={24} />
                                         </div>
                                         <span className="text-sm font-medium">Tomar foto o seleccionar</span>
-                                        <input
-                                            type="file"
+                                        <FileInput
+
                                             accept="image/*"
                                             capture="environment"
                                             className="sr-only"
                                             onChange={e => setFrontFile(e.target.files?.[0] ?? null)}
                                         />
-                                    </label>
+                                    </Label>
                                 )}
                             </div>
 
                             {/* Back photo — hidden for single-sided documents (passport, etc.) */}
                             {requiresBackImage ? (
                                 <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-ink-2">
+                                    <Label variant="plain" className="text-sm font-semibold text-ink-2">
                                         Foto Reverso<span className="text-danger ml-0.5">*</span>
-                                    </label>
+                                    </Label>
                                     {backFile ? (
                                         <div className="flex items-center justify-between bg-success-sunk border border-success/30 rounded-xl px-4 py-3">
                                             <div className="flex items-center gap-2">
                                                 <CheckCircle2 size={18} className="text-success" />
                                                 <span className="text-sm text-ink-2 truncate max-w-[180px]">{backFile.name}</span>
                                             </div>
-                                            <button onClick={() => setBackFile(null)} className="text-xs text-danger font-medium">Quitar</button>
+                                            <UnstyledButton onClick={() => setBackFile(null)} className="text-xs text-danger font-medium">Quitar</UnstyledButton>
                                         </div>
                                     ) : (
-                                        <label className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
+                                        <Label variant="plain" className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
                                             <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                                 <Upload size={24} />
                                             </div>
                                             <span className="text-sm font-medium">Subir reverso</span>
-                                            <input
-                                                type="file"
+                                            <FileInput
+
                                                 accept="image/*"
                                                 capture="environment"
                                                 className="sr-only"
                                                 onChange={e => setBackFile(e.target.files?.[0] ?? null)}
                                             />
-                                        </label>
+                                        </Label>
                                     )}
                                 </div>
                             ) : (
@@ -1325,16 +1329,16 @@ export function VerifyScreen({
                     ) : (
                         <div className="bg-white border border-rule rounded-2xl p-5 shadow-sm space-y-4">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-semibold text-ink-2">
+                                <Label variant="plain" className="text-sm font-semibold text-ink-2">
                                     Selfie<span className="text-danger ml-0.5">*</span>
-                                </label>
-                                <button
+                                </Label>
+                                <UnstyledButton
                                     type="button"
                                     onClick={() => { setFailureMessage(null); setDocErrorType(null); setCaptureStep("documents") }}
                                     className="text-xs font-medium text-ink-3 hover:text-primary transition-colors"
                                 >
                                     ← Documentos
-                                </button>
+                                </UnstyledButton>
                             </div>
                             <p className="text-xs text-ink-3 -mt-1">
                                 Tómate una selfie de frente, con buena luz y sin gafas ni gorra, para confirmar que eres la persona del documento.
@@ -1346,23 +1350,23 @@ export function VerifyScreen({
                                         <CheckCircle2 size={18} className="text-success" />
                                         <span className="text-sm text-ink-2 truncate max-w-[180px]">{selfieFile.name}</span>
                                     </div>
-                                    <button onClick={() => setSelfieFile(null)} className="text-xs text-danger font-medium">Quitar</button>
+                                    <UnstyledButton onClick={() => setSelfieFile(null)} className="text-xs text-danger font-medium">Quitar</UnstyledButton>
                                 </div>
                             ) : (
-                                <label className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
+                                <Label variant="plain" className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
                                     <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                         <Camera size={24} />
                                     </div>
                                     <span className="text-sm font-medium">Tomar selfie</span>
                                     {/* capture="user" opens the front camera on mobile; desktop falls back to a file picker */}
-                                    <input
-                                        type="file"
+                                    <FileInput
+
                                         accept="image/*"
                                         capture="user"
                                         className="sr-only"
                                         onChange={e => setSelfieFile(e.target.files?.[0] ?? null)}
                                     />
-                                </label>
+                                </Label>
                             )}
 
                             <ul className="text-xs text-ink-3 space-y-1.5 bg-sunk/50 rounded-xl p-3">
@@ -1379,28 +1383,28 @@ export function VerifyScreen({
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     {verification.type === "session" ? (
-                        <button
+                        <UnstyledButton
                             onClick={handleSessionVerification}
                             className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
                         >
                             {diditCopy[verification.sessionType].button}
-                        </button>
+                        </UnstyledButton>
                     ) : captureStep === "documents" ? (
-                        <button
+                        <UnstyledButton
                             onClick={handleDocumentsContinue}
                             disabled={!frontFile || (requiresBackImage && !backFile)}
                             className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             {isCaptureMode ? "Enviar fotos" : "Continuar"}
-                        </button>
+                        </UnstyledButton>
                     ) : (
-                        <button
+                        <UnstyledButton
                             onClick={handleDocumentUpload}
                             disabled={!selfieFile}
                             className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                         >
                             Analizar Documento
-                        </button>
+                        </UnstyledButton>
                     )}
                 </div>
             </div>

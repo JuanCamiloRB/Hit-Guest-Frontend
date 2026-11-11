@@ -263,14 +263,15 @@ export function PropertiesLocation() {
                          render={({ field }) => (
                              <FormItem>
                                  <FormLabel className="text-ink-2 font-semibold">País <span className="text-destructive">*</span></FormLabel>
-                                 <FormControl>
-                                     <Select
+                                 <Select
                                          onValueChange={(val) => field.onChange(parseInt(val))}
                                          value={String(field.value || "")}
                                      >
+                                         <FormControl>
                                          <SelectTrigger className="w-full h-11 border-rule bg-white">
                                              <SelectValue placeholder="Seleccionar país" />
                                          </SelectTrigger>
+                                         </FormControl>
                                          <SelectContent>
                                              {countries.map((c) => (
                                                  <SelectItem key={c.id} value={String(c.id)}>
@@ -282,7 +283,6 @@ export function PropertiesLocation() {
                                              ))}
                                          </SelectContent>
                                      </Select>
-                                 </FormControl>
                                  <FormMessage />
                              </FormItem>
                          )}

@@ -16,6 +16,7 @@ import { enterSupportSession } from "../lib/support-session"
 import { defaultSupportUser, describeStartError, supportReasonError } from "../lib/start-session"
 import type { SupportClient, SupportClientUser } from "../lib/support-readers"
 import { roleLabel } from "../lib/support-display"
+import { Radio } from "@/components/ui/radio"
 
 type UsersState =
     | { kind: "loading" }
@@ -236,7 +237,7 @@ function DrawerBody({
                                 const role = roleLabel(u.role)
                                 const checked = selectedUuid === u.uuid
                                 return (
-                                    <label
+                                    <Label variant="plain"
                                         key={u.uuid}
                                         className={cn(
                                             "flex items-start gap-3 rounded-xl border px-4 py-3 transition-colors",
@@ -247,8 +248,8 @@ function DrawerBody({
                                                     : "cursor-pointer border-rule hover:border-input-hover",
                                         )}
                                     >
-                                        <input
-                                            type="radio"
+                                        <Radio
+
                                             name="support-user"
                                             value={u.uuid}
                                             checked={checked}
@@ -268,7 +269,7 @@ function DrawerBody({
                                                 <span className="block text-xs text-warning">{BLOCKED_USER_HINT}</span>
                                             )}
                                         </span>
-                                    </label>
+                                    </Label>
                                 )
                             })}
                         </fieldset>

@@ -33,6 +33,7 @@ import { usePortfolio } from "@/features/properties/hooks/usePortfolio"
 import { icalFeedService } from "../services/ical-feed-service"
 import { AIRBNB_SOURCE_PMS_ID, extractAirbnbListingId, maskIcalUrl } from "../lib/ical"
 import type { IcalFeed, IcalMessageTemplate } from "../types/ical"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 const FEED_ACTIVE = 6
 const FEED_INACTIVE = 7
@@ -196,9 +197,9 @@ export function AirbnbIcalPanel() {
             ) : loadError ? (
                 <div className="flex items-center justify-between gap-2 rounded-lg border border-warning/30 bg-warning-sunk px-3 py-2 text-sm text-warning">
                     <span>No se pudieron cargar los calendarios.</span>
-                    <button type="button" onClick={() => void loadFeeds()} className="font-semibold underline underline-offset-2">
+                    <UnstyledButton type="button" onClick={() => void loadFeeds()} className="font-semibold underline underline-offset-2">
                         Reintentar
-                    </button>
+                    </UnstyledButton>
                 </div>
             ) : feeds.length === 0 ? (
                 <EmptyState
@@ -231,38 +232,38 @@ export function AirbnbIcalPanel() {
                                 </p>
                             )}
                             <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-rule pt-3">
-                                <button
+                                <UnstyledButton
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => void openTemplate(feed)}
                                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline disabled:opacity-50"
                                 >
                                     <FileText size={13} /> Plantilla de mensaje
-                                </button>
-                                <button
+                                </UnstyledButton>
+                                <UnstyledButton
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => void handleSync(feed)}
                                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-3 hover:text-ink-2 disabled:opacity-50"
                                 >
                                     <RefreshCw size={13} /> Sincronizar ahora
-                                </button>
-                                <button
+                                </UnstyledButton>
+                                <UnstyledButton
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => setEditTarget(feed)}
                                     className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-3 hover:text-ink-2 disabled:opacity-50"
                                 >
                                     Editar URL
-                                </button>
-                                <button
+                                </UnstyledButton>
+                                <UnstyledButton
                                     type="button"
                                     disabled={busyUuid === feed.uuid}
                                     onClick={() => setDeleteTarget(feed)}
                                     className="ml-auto inline-flex items-center gap-1.5 text-xs font-semibold text-danger hover:text-danger disabled:opacity-50"
                                 >
                                     <Trash2 size={13} /> Eliminar
-                                </button>
+                                </UnstyledButton>
                             </div>
                         </li>
                     ))}
@@ -459,9 +460,9 @@ function CreateFeedDialog({
                         {listingsFailed && (
                             <p role="alert" className="text-xs text-warning">
                                 No pudimos cargar tus alojamientos.{" "}
-                                <button type="button" onClick={onRetryListings} className="font-semibold underline underline-offset-2">
+                                <UnstyledButton type="button" onClick={onRetryListings} className="font-semibold underline underline-offset-2">
                                     Reintentar
-                                </button>
+                                </UnstyledButton>
                             </p>
                         )}
                     </div>

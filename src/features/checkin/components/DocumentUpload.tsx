@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react"
 import { Camera, CheckCircle2, ScanLine, RotateCcw } from "lucide-react"
 import { prepareImageForUpload } from "@/lib/image-upload"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
+import { FileInput } from "@/components/ui/file-input"
 
 interface DocumentUploadProps {
   label: string
@@ -65,10 +68,10 @@ export function DocumentUpload({
 
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-semibold text-ink-2">
+      <Label variant="plain" className="text-sm font-semibold text-ink-2">
         {label}
         {required && <span className="text-danger ml-0.5">*</span>}
-      </label>
+      </Label>
 
       <div
         id={id}
@@ -85,9 +88,9 @@ export function DocumentUpload({
       >
         {/* Idle State */}
         {state === "idle" && (
-          <label className="w-full p-6 flex flex-col items-center gap-3 cursor-pointer group">
-            <input
-              type="file"
+          <Label variant="plain" className="w-full p-6 flex flex-col items-center gap-3 cursor-pointer group">
+            <FileInput
+
               accept="image/*"
               capture="environment"
               className="hidden"
@@ -125,7 +128,7 @@ export function DocumentUpload({
                 Asegura buena iluminación y evita reflejos
               </p>
             </div>
-          </label>
+          </Label>
         )}
 
         {/* Scanning State */}
@@ -167,18 +170,18 @@ export function DocumentUpload({
               <p className="text-sm font-semibold text-success">
                 Documento capturado
               </p>
-              <p className="text-xs text-success/70 mt-0.5">
+              <p className="text-xs text-success mt-0.5">
                 Datos cifrados de forma segura
               </p>
             </div>
-            <button
+            <UnstyledButton
               type="button"
               onClick={reset}
               className="p-2 rounded-lg hover:bg-success-sunk/50 text-success transition-colors"
               title="Volver a tomar"
             >
               <RotateCcw size={18} />
-            </button>
+            </UnstyledButton>
           </div>
         )}
       </div>

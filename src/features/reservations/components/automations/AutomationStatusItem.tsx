@@ -25,6 +25,7 @@ import {
 } from "./automation-status-meta"
 import { API_BASE } from "@/lib/config"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface AutomationStatusItemProps {
     item: AutomationStatusItemType
@@ -171,14 +172,14 @@ export function AutomationStatusItem({
             )}
 
             <div className="mt-auto flex items-center justify-between gap-2 pt-1">
-                <button
+                <UnstyledButton
                     type="button"
                     onClick={() => onViewHistory(item)}
                     className="inline-flex items-center gap-1.5 rounded text-xs font-medium text-ink-3 transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
                     <History size={14} />
                     Ver historial
-                </button>
+                </UnstyledButton>
 
                 <div className="flex items-center gap-2">
                     {canManual && !perGuest && item.canRedispatch ? (

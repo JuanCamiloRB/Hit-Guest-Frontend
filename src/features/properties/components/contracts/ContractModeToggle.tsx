@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils"
 import type { ContractMode } from "../../types/contract-routing"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface Props {
     value: ContractMode
@@ -18,7 +19,7 @@ interface Props {
 export function ContractModeToggle({ value, onChange, disabled }: Props) {
     return (
         <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Cómo aplicar los contratos">
-            <button
+            <UnstyledButton
                 type="button"
                 disabled={disabled}
                 role="radio"
@@ -37,8 +38,8 @@ export function ContractModeToggle({ value, onChange, disabled }: Props) {
                 <span className="mt-1 block text-xs font-medium leading-relaxed text-ink-3">
                     Todos los huéspedes firman el mismo documento, sin importar de dónde llegue la reserva.
                 </span>
-            </button>
-            <button
+            </UnstyledButton>
+            <UnstyledButton
                 type="button"
                 disabled={disabled}
                 role="radio"
@@ -57,7 +58,7 @@ export function ContractModeToggle({ value, onChange, disabled }: Props) {
                 <span className="mt-1 block text-xs font-medium leading-relaxed text-ink-3">
                     Configura por separado Airbnb, Booking.com, reservas directas y los demás canales.
                 </span>
-            </button>
+            </UnstyledButton>
         </div>
     )
 }

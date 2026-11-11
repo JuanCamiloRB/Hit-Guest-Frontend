@@ -3,6 +3,8 @@
 import SignatureCanvas from "react-signature-canvas"
 import { useRef, useState } from "react"
 import { tokens } from "@/lib/design-tokens"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
 
 interface SignaturePadProps {
     onSignatureChange: (base64: string | null) => void
@@ -28,9 +30,9 @@ export function SignaturePad({ onSignatureChange }: SignaturePadProps) {
 
     return (
         <div className="space-y-2">
-            <label className="text-sm font-semibold text-ink-2">
+            <Label variant="plain" className="text-sm font-semibold text-ink-2">
                 Firma Digital<span className="text-danger ml-0.5">*</span>
-            </label>
+            </Label>
             <div
                 className="relative border-2 border-dashed border-rule rounded-xl overflow-hidden bg-sunk/50 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-all"
                 style={{ touchAction: "none" }}
@@ -51,13 +53,13 @@ export function SignaturePad({ onSignatureChange }: SignaturePadProps) {
                 )}
             </div>
             <div className="flex justify-end">
-                <button
+                <UnstyledButton
                     type="button"
                     onClick={handleClear}
                     className="text-xs font-semibold text-ink-3 hover:text-ink-2 transition-colors py-1 px-2 -mr-2"
                 >
                     Limpiar firma
-                </button>
+                </UnstyledButton>
             </div>
         </div>
     )

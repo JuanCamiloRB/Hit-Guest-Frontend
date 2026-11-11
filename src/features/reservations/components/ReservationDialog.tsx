@@ -89,6 +89,7 @@ import { reservationsService } from "@/features/reservations/services/reservatio
 import { createReservationWithFollowUp } from "@/features/reservations/lib/create-reservation-followup"
 import { readGuestNameParts } from "@/features/reservations/lib/guest-name"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 // ── Zod Schema ──────────────────────────────────────────────
 const reservationSchema = z.object({
@@ -895,7 +896,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                 {mode === "create" && " Sin canal no se puede crear la reserva."}
                                                 {mode === "edit" && editSource && " Se conserva el canal actual."}{" "}
                                                 {/* `aria-disabled`, no `disabled`: el foco se queda en el botón mientras reintenta. */}
-                                                <button
+                                                <UnstyledButton
                                                     type="button"
                                                     aria-disabled={loadingSources}
                                                     onClick={async () => {
@@ -907,7 +908,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                                     className="font-semibold text-primary underline-offset-2 hover:underline aria-disabled:opacity-60"
                                                 >
                                                     {loadingSources ? "Reintentando…" : "Reintentar"}
-                                                </button>
+                                                </UnstyledButton>
                                             </p>
                                         )}
                                         <FormMessage />

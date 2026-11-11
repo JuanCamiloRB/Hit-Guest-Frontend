@@ -5,6 +5,7 @@ import Link from "next/link"
 import { AlertTriangle, X } from "lucide-react"
 import { useBalanceStore } from "../hooks/useBalanceStore"
 import { formatUsd, getBalanceState } from "../types"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 const BILLING_HREF = "/dashboard/settings?tab=billing"
 
@@ -62,14 +63,14 @@ export function BalanceBanner() {
                 >
                     Add Credits
                 </Link>
-                <button
+                <UnstyledButton
                     type="button"
                     onClick={dismissLowBanner}
                     aria-label="Descartar"
                     className="rounded-md p-1 text-warning transition-colors hover:bg-warning-sunk hover:text-warning"
                 >
                     <X className="h-4 w-4" />
-                </button>
+                </UnstyledButton>
             </div>
         </div>
     )

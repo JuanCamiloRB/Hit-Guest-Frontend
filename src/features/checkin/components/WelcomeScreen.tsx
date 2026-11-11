@@ -9,6 +9,7 @@ import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 import { isMainGuestCompleted } from "@/features/checkin/types/checkin"
 import { resolveContractSigningState } from "@/features/checkin/lib/contract-signing"
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface WelcomeScreenProps {
     portal: CheckinPortalResponse
@@ -112,7 +113,7 @@ function GuestRowActions({
             >
                 Registrar <ArrowRight size={13} />
             </Link>
-            <button
+            <UnstyledButton
                 type="button"
                 onClick={onShare}
                 aria-label={shareLabel}
@@ -120,7 +121,7 @@ function GuestRowActions({
                 className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-primary/15 bg-white text-primary transition-colors hover:bg-primary/5"
             >
                 <Share2 size={14} />
-            </button>
+            </UnstyledButton>
         </>
     )
 }
@@ -439,21 +440,21 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                 ¿Viajas acompañado? Envíales el link para que hagan su registro.
                             </p>
                             <div className="flex gap-2">
-                                <button
+                                <UnstyledButton
                                     type="button"
                                     onClick={() => handleShareLink()}
                                     className="flex-1 inline-flex items-center justify-center gap-1.5 h-10 rounded-lg bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-colors active:scale-[0.98]"
                                 >
                                     <Share2 size={15} />
                                     Compartir link
-                                </button>
-                                <button
+                                </UnstyledButton>
+                                <UnstyledButton
                                     type="button"
                                     onClick={() => handleCopyLink()}
                                     className="inline-flex items-center justify-center h-10 px-3 rounded-lg border border-rule text-ink-2 text-sm font-semibold hover:bg-sunk/50 transition-colors"
                                 >
                                     Copiar
-                                </button>
+                                </UnstyledButton>
                             </div>
                         </div>
                     )}

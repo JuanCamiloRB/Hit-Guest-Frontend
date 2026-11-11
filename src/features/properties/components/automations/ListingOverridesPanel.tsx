@@ -13,6 +13,7 @@ import { useIdentityProviderCatalog } from "../../hooks/useIdentityProviderCatal
 import { identityOverrideSummary, isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { EmptyState } from "@/components/ui/empty-state"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 /**
  * Estado de carga por unidad. «Falló» se distingue de «no cargado» a propósito:
@@ -98,7 +99,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
     return (
         <div className="border-t border-rule pt-2">
             {/* Toggle header */}
-            <button
+            <UnstyledButton
                 type="button"
                 onClick={() => void handleToggleExpand()}
                 className="w-full flex items-center justify-between px-1 py-1.5 text-xs font-semibold text-ink-3 hover:text-ink-2 rounded-lg hover:bg-sunk/50 transition-colors group"
@@ -119,7 +120,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                     {loading && <Loader2 size={12} className="animate-spin text-ink-3" />}
                     {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </div>
-            </button>
+            </UnstyledButton>
 
             {/* Listings list */}
             {expanded && (
@@ -188,7 +189,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                 }
 
                                 return (
-                                    <button
+                                    <UnstyledButton
                                         key={listing.uuid}
                                         type="button"
                                         // Sin cargar no se edita: el modal decidiría crear/actualizar
@@ -276,7 +277,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                         </div>
 
                                         <Settings2 size={12} className="text-ink-4 shrink-0" />
-                                    </button>
+                                    </UnstyledButton>
                                 )
                             })}
                             <p className="text-xs text-ink-3 text-center py-1">

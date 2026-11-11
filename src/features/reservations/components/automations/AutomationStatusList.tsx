@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { RefreshIndicator } from "@/components/ui/loading-state"
 import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface AutomationStatusListProps {
     reservationUuid: string
@@ -58,7 +59,7 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                     {/* Mientras hay trabajo pendiente el panel vuelve a consultar solo. */}
                     <RefreshIndicator active={!isLoading && (isPolling || refreshing)} />
                 </div>
-                <button
+                <UnstyledButton
                     type="button"
                     onClick={() => void handleRefresh()}
                     disabled={isLoading || refreshing}
@@ -66,7 +67,7 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                 >
                     <RefreshCw size={13} aria-hidden className={cn((isLoading || refreshing) && "animate-spin")} />
                     Refrescar
-                </button>
+                </UnstyledButton>
             </div>
 
             {isLoading ? (

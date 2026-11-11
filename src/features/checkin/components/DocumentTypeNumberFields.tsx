@@ -1,6 +1,8 @@
 "use client"
 
 import { SearchableSelect } from "./SearchableSelect"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
 interface Props {
     docTypeOptions: { id: number; label: string }[]
@@ -33,10 +35,10 @@ export function DocumentTypeNumberFields({
                 required
             />
             <div className="space-y-1.5">
-                <label className="text-sm font-semibold text-ink-2">
+                <Label variant="plain" className="text-sm font-semibold text-ink-2">
                     Número de documento<span className="text-danger ml-0.5">*</span>
-                </label>
-                <input
+                </Label>
+                <Input
                     type="text"
                     inputMode="numeric"
                     value={documentNumber}

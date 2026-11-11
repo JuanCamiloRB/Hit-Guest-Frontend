@@ -67,9 +67,10 @@ compartido que las representa (`ChannelLogo`).
 
 - **Gabarito (`font-sans`)**: títulos `h1`–`h4`, cifras protagonistas y marca.
 - **Poppins (`font-secondary`)**: cuerpo, controles, tablas y metadatos.
-- Escala permitida: utilidades Tailwind nombradas (`text-xs`, `text-sm`,
-  `text-base`, `text-lg`, `text-xl`, `text-2xl`, `text-3xl`). No se agregan
-  tamaños `text-[Npx]`.
+- Escala permitida (decisión A, 2026-11-11): utilidades Tailwind nombradas
+  (`text-xs` 12 px, `text-sm` 14 px, `text-base` 16 px, `text-lg`, `text-xl`,
+  `text-2xl`, `text-3xl`). No hay tamaños intermedios: lo que era 9–11 px es
+  `text-xs` y lo que era 13 px es `text-sm`. No se agregan `text-[Npx]`.
 - Pesos: `medium` para controles, `semibold` para énfasis y `bold` para títulos
   o cifras. Un párrafo completo no se presenta en bold.
 - Cada pantalla tiene un solo `h1`; las secciones usan niveles consecutivos.
@@ -96,10 +97,11 @@ escala en hover.
 
 | Necesidad | Componente |
 |---|---|
-| Acción | `Button` (`default`, `secondary`, `outline`, `ghost`, `link`, `destructive`) |
-| Campo | `Input`, `Textarea`, `Select`, `PhoneInputField` |
-| Etiqueta | `Label` asociada mediante `htmlFor`; texto auxiliar con `FormDescription` |
-| Selección | `Checkbox`, `Switch`, `Tabs` |
+| Acción | `Button` (`default`, `secondary`, `outline`, `ghost`, `link`, `destructive`; tamaño `inline` + `link` para una acción dentro de una frase) |
+| Pulsable sin forma de botón | `UnstyledButton` (tarjetas seleccionables, ítems de menú, encabezados que ordenan): `type="button"` y el foco del sistema; la forma, con tokens |
+| Campo | `Input`, `Textarea`, `Select`, `PhoneInputField`, `FileInput` (oculto; lo abre un Button o una zona de carga) |
+| Etiqueta | `Label` asociada mediante `htmlFor`; `Label variant="plain"` cuando envuelve otra cosa (casilla + texto largo, zona de carga); texto auxiliar con `FormDescription` |
+| Selección | `Checkbox`, `Radio` (nativo, grupo por `name`), `Switch`, `Tabs` |
 | Superficie | `Card` o `SectionCard` |
 | Modal | `Dialog`, `AlertDialog` o `Sheet` |
 | Estado corto | `StatusPill` |
@@ -151,21 +153,23 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `arbitrary-type-size`, `arbitrary-font` | `text-[13px]` | la escala (`text-xs`, `text-sm`…) |
 | `arbitrary-radius`, `arbitrary-shadow`, `gradient` | `rounded-[13px]`, `bg-gradient-to-r` | los radios y sombras del §4; sin degradados |
 | `native-control`, `native-label` | `<button>`, `<label>` fuera de `components/ui` | `Button`, `Label` y demás primitivas |
+| `color-function-literal` | `"rgb(0 0 0 / .1)"` en código | un token |
+| `inline-visual-style` | `style={{ color: … }}`, `style={{ borderRadius: 8 }}` | clases con tokens (se permiten medidas dinámicas como `width`) |
 | `nonstandard-icon-library` | `react-icons` | `lucide-react` |
 
 Revisa los textos fijos y también los trozos fijos de los template literals
 (`` `p-2 ${x}` ``). Las pruebas y las copias de Finder («Archivo 2.tsx») quedan
 fuera.
 
-La migración termina cuando esa línea base llega a cero. Una excepción legítima
-(por ejemplo, el color oficial de una OTA) se centraliza en una primitiva y se
-documenta; no se aumenta silenciosamente la línea base.
+**Estado (2026-11-11): la línea base está en cero y el gate es estricto.** Las
+2511 desviaciones heredadas se migraron; `scripts/design-system-baseline.json`
+es `{}`. Cualquier estilo fuera de este manual hace fallar `npm run verify`.
+Nunca se vuelve a escribir la línea base para hacer pasar un cambio.
 
-Orden de migración:
+Excepciones legítimas, centralizadas y documentadas en el verificador
+(`COLOR_EXCEPTIONS`):
 
-1. primitivas y layout compartido;
-2. Operaciones y Tablero;
-3. Propiedades y configuración;
-4. usuarios, soporte, billing e integraciones;
-5. portal del huésped;
-6. línea base en cero y gate estricto sin legado.
+- `src/components/brand/`: colores oficiales de marcas ajenas (OTAs, PMS) en
+  `ChannelLogo` y `ProviderMarks`.
+- `src/lib/design-tokens.ts`: espejo JS de los tokens para lo que no lee CSS
+  (Stripe Elements, la firma); su prueba falla si se desalinea de globals.css.

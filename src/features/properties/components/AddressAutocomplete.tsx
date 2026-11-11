@@ -8,6 +8,8 @@ import {
     mergeTypedAddress,
     type GeocodePlaceDetails,
 } from "@/lib/geocoding/address"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Input } from "@/components/ui/input"
 
 export type PlaceDetails = GeocodePlaceDetails
 
@@ -211,7 +213,7 @@ export function AddressAutocomplete({
         <div ref={containerRef} className="relative">
             <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-ink-3" />
-                <input
+                <Input
                     type="text"
                     value={value}
                     onChange={(e) => handleInputChange(e.target.value)}
@@ -239,7 +241,7 @@ export function AddressAutocomplete({
                 <ul className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-rule bg-white shadow-lg">
                     {suggestions.map((s) => (
                         <li key={s.placeId}>
-                            <button
+                            <UnstyledButton
                                 type="button"
                                 onClick={() => handlePick(s)}
                                 className="flex w-full items-start gap-2 px-3 py-2.5 text-left text-sm text-ink-2 hover:bg-primary/10"
@@ -248,7 +250,7 @@ export function AddressAutocomplete({
                                 <span className="line-clamp-2">
                                     {formatSuggestion(s.description, value)}
                                 </span>
-                            </button>
+                            </UnstyledButton>
                         </li>
                     ))}
                 </ul>
@@ -268,7 +270,7 @@ export function AddressAutocomplete({
                 </p>
             )}
             {manualSearchAvailable && (
-                <button
+                <UnstyledButton
                     type="button"
                     onClick={() => void handleManualSearch()}
                     disabled={loading || resolving || value.trim().length < 3}
@@ -276,7 +278,7 @@ export function AddressAutocomplete({
                 >
                     {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
                     Buscar dirección
-                </button>
+                </UnstyledButton>
             )}
             {noResults && !loading && (
                 <p className="mt-1.5 text-xs text-ink-3" role="status">

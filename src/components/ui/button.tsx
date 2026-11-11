@@ -52,6 +52,9 @@ const buttonVariants = cva(
         icon: "size-10",
         "icon-sm": "size-8",
         "icon-lg": "size-11",
+        // Acción de texto dentro de una frase («Reenviar código»): sin alto ni
+        // relleno, con `variant="link"`. El área de toque la da el texto.
+        inline: "h-auto gap-1 p-0 has-[>svg]:px-0",
       },
     },
     defaultVariants: {

@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
@@ -179,7 +180,7 @@ export function DataTable<TData, TValue>({
                                                             : "none"
                                                 }
                                             >
-                                                <button
+                                                <UnstyledButton
                                                     type="button"
                                                     onClick={header.column.getToggleSortingHandler()}
                                                     title={
@@ -211,7 +212,7 @@ export function DataTable<TData, TValue>({
                                                             className="shrink-0 text-ink-4 opacity-60 transition-opacity group-hover:opacity-100"
                                                         />
                                                     )}
-                                                </button>
+                                                </UnstyledButton>
                                             </TableHead>
                                         )
                                     })}

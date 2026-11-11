@@ -30,6 +30,9 @@ import type {
     SigningProvider,
     GuaranteeStatus,
 } from "@/features/checkin/types/checkin"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
 
 interface RenderedDocument {
     /** The agreement's real uuid, or the literal "guarantee" — the guarantee
@@ -797,7 +800,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                     <div className="w-full max-w-lg flex flex-col gap-2">
                         {!isRejected && (
-                            <button
+                            <UnstyledButton
                                 type="button"
                                 onClick={() => {
                                     setIsLoading(true)
@@ -806,7 +809,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                 className="w-full flex items-center justify-center gap-2 h-12 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-base shadow-lg transition-all active:scale-[0.98]"
                             >
                                 <RefreshCw size={16} /> Ya firmé, actualizar
-                            </button>
+                            </UnstyledButton>
                         )}
                         <Link
                             href={basePath}
@@ -936,7 +939,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     <p className="font-bold">No es posible continuar con la firma</p>
                     <p className="mt-1">{configurationError}</p>
                     {isRetryable && (
-                        <button
+                        <UnstyledButton
                             type="button"
                             onClick={() => {
                                 setConfigurationError(null)
@@ -947,7 +950,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                             className="mt-3 inline-flex items-center gap-2 rounded-lg bg-warning-sunk px-3 py-1.5 text-xs font-bold text-warning hover:bg-warning-sunk transition-colors"
                         >
                             <RefreshCw size={14} /> Reintentar
-                        </button>
+                        </UnstyledButton>
                     )}
                 </div>
             ) : signingProvider === null ? (
@@ -958,7 +961,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 <div className="space-y-3">
                     {documents.map((doc) => (
                         <div key={doc.uuid} className="bg-white border border-rule rounded-2xl shadow-sm overflow-hidden">
-                            <button
+                            <UnstyledButton
                                 type="button"
                                 onClick={() => setExpandedDoc(expandedDoc === doc.uuid ? null : doc.uuid)}
                                 className="w-full flex items-center justify-between p-4 hover:bg-sunk/50 transition-colors"
@@ -971,7 +974,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                     ? <ChevronUp size={18} className="text-ink-3" />
                                     : <ChevronDown size={18} className="text-ink-3" />
                                 }
-                            </button>
+                            </UnstyledButton>
                             {expandedDoc === doc.uuid && (
                                 <div className="px-5 pb-5 border-t border-rule">
                                     <div
@@ -1037,20 +1040,13 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     </div>
                 )}
 
-                <label className="flex items-start gap-3 p-3 bg-sunk/50 rounded-xl border border-rule cursor-pointer hover:border-primary/30 transition-colors">
-                    <div className="relative flex items-center justify-center mt-0.5">
-                        <input 
-                            type="checkbox" 
-                            checked={accepted}
-                            onChange={(e) => setAccepted(e.target.checked)}
-                            className="peer appearance-none w-5 h-5 border-2 border-input rounded focus:ring-2 focus:ring-primary/20 checked:bg-primary checked:border-primary transition-all"
-                        />
-                        <CheckCircle2 size={14} className="absolute text-white opacity-0 peer-checked:opacity-100 pointer-events-none" strokeWidth={3} />
-                    </div>
+                <Label variant="plain" className="flex items-start gap-3 p-3 bg-sunk/50 rounded-xl border border-rule cursor-pointer hover:border-primary/30 transition-colors">
+                    {/* La casilla del sistema (estados, foco y contraste propios). */}
+                    <Checkbox checked={accepted} onCheckedChange={(value) => setAccepted(value === true)} className="mt-0.5 size-5" />
                     <span className="text-sm text-ink-2 font-medium select-none">
                         He leído y acepto los términos del contrato de arrendamiento.
                     </span>
-                </label>
+                </Label>
             </div>
             )}
 
@@ -1059,7 +1055,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 <div className="w-full max-w-lg">
                     {/* Un solo botón primario en pantalla, siempre. Antes convivían
                         el CTA de la tarjeta y el de finalizar, y competían entre sí. */}
-                    <button
+                    <UnstyledButton
                         onClick={isContractPhaseCta ? handleContractContinue : handleComplete}
                         disabled={(isContractPhaseCta ? !contractPartValid : !isFormValid) || isSubmitting}
                         className="w-full flex flex-col items-center justify-center gap-1 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
@@ -1087,7 +1083,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                     ? "Firmar y Completar"
                                     : "Aceptar y Completar"
                         )}
-                    </button>
+                    </UnstyledButton>
                 </div>
             </div>
             )}

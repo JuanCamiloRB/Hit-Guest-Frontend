@@ -8,11 +8,12 @@ import {
     splitDateValue,
     type DateSegments,
 } from "../lib/date-field"
+import { Input } from "@/components/ui/input"
 
 interface DateFieldProps {
     label: string
     required?: boolean
-    /** `YYYY-MM-DD` o `""` — el mismo valor que emitía el `<input type="date">`. */
+    /** `YYYY-MM-DD` o `""` — el mismo valor que emitía el `<Input type="date">`. */
     value: string
     onChange: (value: string) => void
     /** Tope superior en `YYYY-MM-DD` (nacimiento: hoy). */
@@ -30,7 +31,7 @@ const SEGMENTS = [
 /**
  * Fecha conocida = fecha que se TECLEA, no que se navega.
  *
- * Reemplaza a los `<input type="date">` del portal: en iOS abrían el calendario
+ * Reemplaza a los `<Input type="date">` del portal: en iOS abrían el calendario
  * nativo, y llegar a una fecha de nacimiento exigía retroceder cientos de meses
  * o descubrir el selector de año escondido — ~10% de los huéspedes no lo
  * lograba (Didier, 2026-09-04). Tres casillas numéricas con auto-avance: el
@@ -103,7 +104,7 @@ export function DateField({ label, required, value, onChange, max, autoCompleteK
                 {SEGMENTS.map(({ key, label: segLabel, placeholder, width, bday }, index) => (
                     <div key={key} className="flex items-center gap-2">
                         {index > 0 && <span aria-hidden className="text-ink-4 font-semibold">/</span>}
-                        <input
+                        <Input
                             ref={refs[key]}
                             type="text"
                             inputMode="numeric"

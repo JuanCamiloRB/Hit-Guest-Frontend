@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { authService } from "@/features/auth/services/auth-service"
 import { ApiError } from "@/types/api"
 import { handleSessionExpired } from "@/lib/api-client"
+import { FileInput } from "@/components/ui/file-input"
 
 const ACCEPTED = ["image/png", "image/jpeg"]
 const MAX_BYTES = 2 * 1024 * 1024 // 2 MB
@@ -116,9 +117,9 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
                 </p>
             </div>
 
-            <input
+            <FileInput
                 ref={inputRef}
-                type="file"
+
                 accept="image/png,image/jpeg"
                 onChange={handleFile}
                 className="hidden"

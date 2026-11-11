@@ -16,6 +16,7 @@ import { supportService } from "../services/support-service"
 import type { PageMeta, SupportClient } from "../lib/support-readers"
 import { initialsOf } from "../lib/support-display"
 import { ClientUsersDrawer } from "./ClientUsersDrawer"
+import { Label } from "@/components/ui/label"
 
 type ClientsState =
     | { kind: "loading" }
@@ -94,7 +95,7 @@ export function SupportConsole() {
     return (
         <div className="space-y-4">
             <form onSubmit={search} className="flex max-w-3xl flex-wrap gap-3" role="search">
-                <label htmlFor="support-client-search" className="sr-only">Buscar cliente</label>
+                <Label variant="plain" htmlFor="support-client-search" className="sr-only">Buscar cliente</Label>
                 <div className="relative min-w-[220px] flex-1">
                     <Search size={16} aria-hidden className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
                     <Input

@@ -23,6 +23,7 @@ import { es } from "date-fns/locale"
 import { getReservationStatusMeta } from "./reservation-status-meta"
 import { getAutomationCellMeta, getCheckinCellMeta, REPORT_LIGHTS } from "./automation-cell-meta"
 import { compareText, compareDates, compareStatus, compareLight } from "./reservation-sorting"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 export interface ColumnsOptions {
     onDelete?: (reservation: Reservation) => void
@@ -65,7 +66,7 @@ function StatusUnavailable({ reservation, onRetry }: { reservation?: Reservation
     // La misma píldora que las demás celdas, dentro de un botón: se ven iguales
     // y el reintento no duplica estilos.
     return (
-        <button
+        <UnstyledButton
             type="button"
             onClick={() => onRetry(reservation)}
             // El nombre empieza por lo que se ve (WCAG 2.5.3): «No disponible».
@@ -77,7 +78,7 @@ function StatusUnavailable({ reservation, onRetry }: { reservation?: Reservation
                 No disponible
                 <RefreshCw className="h-3 w-3" aria-hidden />
             </StatusPill>
-        </button>
+        </UnstyledButton>
     )
 }
 

@@ -7,6 +7,8 @@ import type { IdentityCatalogState } from "../../hooks/useIdentityProviderCatalo
 import { IDENTITY_LEVEL_LABEL } from "../../lib/identity-providers"
 import type { IdentityChoice } from "../../lib/identity-listing-override"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Radio } from "@/components/ui/radio"
+import { Label } from "@/components/ui/label"
 
 interface Props {
     value: IdentityChoice
@@ -87,7 +89,7 @@ export function IdentityOverrideSelector({
                 const checked = value === choice
                 const description = choice === "inherit" ? inheritDescription : OPTION_COPY[choice].description
                 return (
-                    <label
+                    <Label variant="plain"
                         key={choice}
                         className={cn(
                             "flex items-start gap-3 rounded-xl border px-4 py-3 transition-colors",
@@ -98,8 +100,8 @@ export function IdentityOverrideSelector({
                                     : "cursor-pointer border-rule hover:border-input-hover",
                         )}
                     >
-                        <input
-                            type="radio"
+                        <Radio
+
                             name="identity-override"
                             value={choice}
                             checked={checked}
@@ -117,7 +119,7 @@ export function IdentityOverrideSelector({
                                 </span>
                             )}
                         </span>
-                    </label>
+                    </Label>
                 )
             })}
 

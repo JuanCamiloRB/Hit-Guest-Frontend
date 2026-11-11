@@ -2,6 +2,9 @@
 
 import { useState, useRef, useEffect } from "react"
 import { ChevronDown, Search, Check } from "lucide-react"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
 interface Option {
   id: number
@@ -74,14 +77,14 @@ export function SearchableSelect({
 
   return (
     <div className="space-y-1.5" ref={containerRef}>
-      <label className="text-sm font-semibold text-ink-2">
+      <Label variant="plain" className="text-sm font-semibold text-ink-2">
         {label}
         {required && <span className="text-danger ml-0.5">*</span>}
-      </label>
+      </Label>
 
       <div className="relative">
         {/* Trigger Button */}
-        <button
+        <UnstyledButton
           type="button"
           id={id}
           onClick={() => {
@@ -105,7 +108,7 @@ export function SearchableSelect({
             size={16}
             className={`shrink-0 text-ink-3 transition-transform ${isOpen ? "rotate-180" : ""}`}
           />
-        </button>
+        </UnstyledButton>
 
         {/* Dropdown */}
         {isOpen && (
@@ -114,7 +117,7 @@ export function SearchableSelect({
             <div className="p-2 border-b border-rule">
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
-                <input
+                <Input
                   ref={inputRef}
                   type="text"
                   value={search}
@@ -133,7 +136,7 @@ export function SearchableSelect({
                 </div>
               ) : (
                 filtered.map((option) => (
-                  <button
+                  <UnstyledButton
                     key={option.id}
                     type="button"
                     onClick={() => {
@@ -154,7 +157,7 @@ export function SearchableSelect({
                       )}
                     </div>
                     {value === option.id && <Check size={16} className="text-primary" />}
-                  </button>
+                  </UnstyledButton>
                 ))
               )}
             </div>

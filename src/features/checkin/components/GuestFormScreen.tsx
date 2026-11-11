@@ -46,6 +46,9 @@ import {
     mockGenders,
 } from "@/features/checkin/data/mock-guest-data"
 import { emptyGuestForm } from "@/features/checkin/types/checkin"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 
 interface GuestFormScreenProps {
     reservationUuid: string
@@ -629,14 +632,14 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {isFieldVisible('arrivalTime') && (
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-ink-2">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-danger ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.arrivalTime ?? ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                                    <Label variant="plain" className="text-sm font-semibold text-ink-2">Hora de llegada{isFieldRequired('arrivalTime') && <span className="text-danger ml-0.5">*</span>}</Label>
+                                    <Input type="time" value={form.arrivalTime ?? ""} onChange={(e) => updateField("arrivalTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                             {isFieldVisible('departureTime') && (
                                 <div className="space-y-1.5">
-                                    <label className="text-sm font-semibold text-ink-2">Hora de salida{isFieldRequired('departureTime') && <span className="text-danger ml-0.5">*</span>}</label>
-                                    <input type="time" value={form.departureTime ?? ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+                                    <Label variant="plain" className="text-sm font-semibold text-ink-2">Hora de salida{isFieldRequired('departureTime') && <span className="text-danger ml-0.5">*</span>}</Label>
+                                    <Input type="time" value={form.departureTime ?? ""} onChange={(e) => updateField("departureTime", e.target.value)} className="w-full bg-sunk/50 border border-rule rounded-xl px-4 py-3 text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
                                 </div>
                             )}
                         </div>
@@ -693,21 +696,21 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">
                     {documentExpired ? (
-                        <button disabled className="w-full flex items-center justify-center h-14 bg-sunk text-ink-3 rounded-xl font-bold text-lg cursor-not-allowed">
+                        <UnstyledButton disabled className="w-full flex items-center justify-center h-14 bg-sunk text-ink-3 rounded-xl font-bold text-lg cursor-not-allowed">
                             Documento vencido
-                        </button>
+                        </UnstyledButton>
                     ) : isFormValid ? (
-                        <button 
+                        <UnstyledButton
                             onClick={handleSubmit} 
                             className="w-full flex items-center justify-center gap-2 h-14 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold text-lg shadow-lg transition-all active:scale-[0.98]"
                         >
                             <CheckCircle2 size={20} />
                             Continuar
-                        </button>
+                        </UnstyledButton>
                     ) : (
-                        <button disabled className="w-full flex items-center justify-center h-14 bg-sunk text-ink-3 rounded-xl font-bold text-lg cursor-not-allowed">
+                        <UnstyledButton disabled className="w-full flex items-center justify-center h-14 bg-sunk text-ink-3 rounded-xl font-bold text-lg cursor-not-allowed">
                             Completa los campos requeridos
-                        </button>
+                        </UnstyledButton>
                     )}
                 </div>
             </div>

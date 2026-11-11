@@ -31,6 +31,7 @@ import { WaivedDocumentUploadDialog } from "./WaivedDocumentUploadDialog"
 import { canUploadWaivedDocuments } from "../lib/waiver-document-upload"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface GuestDocumentsCardProps {
     reservationUuid: string
@@ -108,7 +109,7 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
     }, [reservationUuid, refreshGuests])
 
     const refreshButton = (
-        <button
+        <UnstyledButton
             type="button"
             onClick={() => void refreshGuests()}
             disabled={isRefreshing}
@@ -117,7 +118,7 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
         >
             <RefreshCw size={14} className={isRefreshing ? "animate-spin" : ""} />
             Actualizar
-        </button>
+        </UnstyledButton>
     )
 
     // El título de la sección no cambia entre estados: se declara una vez para
@@ -181,13 +182,13 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
                     aria-label={`Documento de ${preview.guest.name} — ${preview.sideLabel}`}
                 >
                     <div className="relative max-w-3xl max-h-[90vh] w-full">
-                        <button
+                        <UnstyledButton
                             onClick={() => setPreview(null)}
                             aria-label="Cerrar"
                             className="absolute -top-10 right-0 text-white hover:text-ink-4 transition-colors"
                         >
                             <X size={24} />
-                        </button>
+                        </UnstyledButton>
                         <div onClick={(e) => e.stopPropagation()} className="space-y-2">
                             <AuthenticatedImage
                                 src={preview.url}
@@ -384,7 +385,7 @@ function DocumentThumbnail({
     onClick: () => void
 }) {
     return (
-        <button
+        <UnstyledButton
             onClick={onClick}
             className="group relative aspect-3/2 overflow-hidden rounded-lg border border-rule bg-sunk transition-colors hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         >
@@ -397,6 +398,6 @@ function DocumentThumbnail({
             <span className="absolute bottom-1.5 left-2 text-xs font-bold text-white bg-black/50 px-1.5 py-0.5 rounded">
                 {label}
             </span>
-        </button>
+        </UnstyledButton>
     )
 }

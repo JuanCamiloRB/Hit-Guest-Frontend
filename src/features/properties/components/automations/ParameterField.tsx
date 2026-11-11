@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import type { ParameterFieldSchema } from "../../types/automation"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Textarea } from "@/components/ui/textarea"
 
 interface Props {
     schema: ParameterFieldSchema
@@ -45,13 +47,13 @@ export function ParameterField({ schema, value, onChange }: Props) {
                             <span className="text-xs font-semibold text-ink-3 uppercase tracking-wide">
                                 Elemento {i + 1}
                             </span>
-                            <button
+                            <UnstyledButton
                                 type="button"
                                 onClick={() => removeItem(i)}
                                 className="text-danger hover:text-danger transition-colors"
                             >
                                 <Trash2 size={14} />
-                            </button>
+                            </UnstyledButton>
                         </div>
                         {schema.arrayItemSchema?.map(sub => (
                             <ParameterField
@@ -101,13 +103,13 @@ export function ParameterField({ schema, value, onChange }: Props) {
                             placeholder={schema.placeholder}
                             className="bg-sunk/50 border-rule"
                         />
-                        <button
+                        <UnstyledButton
                             type="button"
                             onClick={() => removeItem(i)}
                             className="text-danger hover:text-danger transition-colors shrink-0"
                         >
                             <Trash2 size={16} />
-                        </button>
+                        </UnstyledButton>
                     </div>
                 ))}
                 <Button
@@ -130,7 +132,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                     {schema.label}
                     {schema.required && <span className="text-danger ml-0.5">*</span>}
                 </Label>
-                <textarea
+                <Textarea
                     value={value ?? ""}
                     onChange={e => onChange(e.target.value)}
                     placeholder={schema.placeholder}
@@ -178,13 +180,13 @@ export function ParameterField({ schema, value, onChange }: Props) {
                     className="bg-sunk/50 border-rule pr-10"
                 />
                 {isPassword && (
-                    <button
+                    <UnstyledButton
                         type="button"
                         onClick={() => setShowPwd(p => !p)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink-2"
                     >
                         {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
+                    </UnstyledButton>
                 )}
             </div>
         </div>

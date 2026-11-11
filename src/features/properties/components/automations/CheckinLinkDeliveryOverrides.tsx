@@ -28,6 +28,9 @@ import {
 } from "../../lib/checkin-link-delivery"
 import type { ListingMeta } from "./AutomationOverrideModal"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Radio } from "@/components/ui/radio"
+import { Label } from "@/components/ui/label"
 
 /**
  * Estado de carga por unidad. Se distingue «falló» de «no cargado» a propósito:
@@ -114,7 +117,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
 
     return (
         <div className="border-t border-rule pt-2">
-            <button
+            <UnstyledButton
                 type="button"
                 onClick={() => void handleToggleExpand()}
                 className="group flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-xs font-semibold text-ink-3 transition-colors hover:bg-sunk/50 hover:text-ink-2"
@@ -135,7 +138,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                     {loading && <Loader2 size={12} className="animate-spin text-ink-3" />}
                     {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                 </div>
-            </button>
+            </UnstyledButton>
 
             {expanded && (
                 <div className="mt-2 space-y-1.5 pl-1">
@@ -290,18 +293,18 @@ function ListingDeliveryRow({
             </div>
 
             <fieldset className="space-y-1.5" disabled={saving} aria-label={`Envío del link en ${listing.name}`}>
-                <label className="flex items-center gap-2 text-xs text-ink-2">
-                    <input
-                        type="radio"
+                <Label variant="plain" className="flex items-center gap-2 text-xs text-ink-2">
+                    <Radio
+
                         name={name}
                         checked={current.kind === "inherit"}
                         onChange={() => choose({ kind: "inherit" })}
                     />
                     Usar la configuración de la propiedad
-                </label>
-                <label className="flex items-center gap-2 text-xs text-ink-2">
-                    <input
-                        type="radio"
+                </Label>
+                <Label variant="plain" className="flex items-center gap-2 text-xs text-ink-2">
+                    <Radio
+
                         name={name}
                         checked={current.kind === "custom"}
                         // Volver a «configurar distinto» RESTAURA lo persistido: si el
@@ -312,7 +315,7 @@ function ListingDeliveryRow({
                             : { kind: "custom", channels: buildChannels(selectedOptional) })}
                     />
                     Configurar distinto para esta unidad
-                </label>
+                </Label>
 
                 {current.kind === "custom" && (
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-5 text-xs text-ink-2">

@@ -25,6 +25,7 @@ import type { Reservation } from "@/types"
 import { propertyDocumentService } from "../../services/property-document-service"
 import { normalizeShortcodes } from "../../types/document"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface DocumentPreviewModalProps {
     onClose: () => void
@@ -158,7 +159,7 @@ export function DocumentPreviewModal({
                 {/* Mode switch */}
                 {allowRealReservation && (
                 <div className="flex items-center gap-2">
-                    <button
+                    <UnstyledButton
                         type="button"
                         onClick={() => setMode("sample")}
                         className={cn(
@@ -169,8 +170,8 @@ export function DocumentPreviewModal({
                         )}
                     >
                         <FlaskConical size={14} /> Datos de ejemplo
-                    </button>
-                    <button
+                    </UnstyledButton>
+                    <UnstyledButton
                         type="button"
                         onClick={switchToReal}
                         className={cn(
@@ -181,7 +182,7 @@ export function DocumentPreviewModal({
                         )}
                     >
                         <Sparkles size={14} /> Reserva real
-                    </button>
+                    </UnstyledButton>
                 </div>
                 )}
 

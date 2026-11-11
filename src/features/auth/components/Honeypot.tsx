@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { Label } from "@/components/ui/label"
 
 interface HoneypotProps extends React.InputHTMLAttributes<HTMLInputElement> {
     label?: string
@@ -13,7 +14,7 @@ export function Honeypot({ className, label = "Website", ...props }: HoneypotPro
             aria-hidden="true"
             style={{ display: "none" }}
         >
-            <label htmlFor="hp-field">{label}</label>
+            <Label variant="plain" htmlFor="hp-field">{label}</Label>
             <Input
                 id="hp-field"
                 name="hp-field"

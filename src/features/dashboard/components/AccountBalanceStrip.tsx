@@ -5,6 +5,7 @@ import { RechargeDialog } from "@/features/billing/components/RechargeDialog"
 import type { AccountBalance } from "@/features/billing/types"
 import { cn } from "@/lib/utils"
 import { DASHBOARD_SURFACE } from "./dashboard-surface"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 interface Props {
     /** Último saldo conocido (el del store compartido); null = no disponible. */
@@ -72,13 +73,13 @@ function BalanceNotice({ text, onRetry }: { text: string; onRetry?: () => void }
             {onRetry && (
                 <>
                     {" · "}
-                    <button
+                    <UnstyledButton
                         type="button"
                         onClick={onRetry}
                         className="font-semibold underline underline-offset-2 hover:opacity-80"
                     >
                         Reintentar
-                    </button>
+                    </UnstyledButton>
                 </>
             )}
         </p>

@@ -58,6 +58,7 @@ import { SourceRoutingRow } from "./SourceRoutingRow"
 import { ContractChannelCard, type ContractChannelStatus } from "./ContractChannelCard"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
+import { UnstyledButton } from "@/components/ui/unstyled-button"
 
 const DEFAULT_ROUTING: SourceRouting = {
     contract_type: "agreement_only",
@@ -772,7 +773,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                                 ["shared", "Mismo texto para todos los canales", "Cada canal puede firmar distinto, pero el texto es uno."],
                                 ["per_channel", "Un texto por canal", "Cada canal tiene su propio texto."],
                             ] as const).map(([value, label, hint]) => (
-                                <button
+                                <UnstyledButton
                                     key={value}
                                     type="button"
                                     role="radio"
@@ -785,7 +786,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                                 >
                                     <span className="block text-sm font-semibold text-ink">{label}</span>
                                     <span className="block text-xs text-ink-3">{hint}</span>
-                                </button>
+                                </UnstyledButton>
                             ))}
                         </div>
                         {textMode === "shared" && (
