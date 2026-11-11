@@ -18,7 +18,7 @@ export function AccountHistorySummary({ summary, isLoading }: { summary: Consump
     return (
         <section
             aria-labelledby="account-history-title"
-            className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-1 text-[13px] text-ink-3"
+            className="flex flex-wrap items-baseline gap-x-6 gap-y-1 px-1 text-[13px] text-ink-2"
         >
             <h2 id="account-history-title" className="w-full font-secondary font-medium tracking-normal text-ink-2 sm:w-auto">
                 Desde el inicio de la cuenta
@@ -28,13 +28,13 @@ export function AccountHistorySummary({ summary, isLoading }: { summary: Consump
             ) : (
                 <>
                     <p>
-                        <span className="text-base font-semibold tabular-nums text-ink">
+                        <span className="font-sans text-lg font-bold tabular-nums text-brand-navy">
                             {lifetime ? lifetime.processedReservations : "—"}
                         </span>{" "}
                         reservas con consumo facturado
                     </p>
                     <p>
-                        <span className="text-base font-semibold tabular-nums text-ink">
+                        <span className="font-sans text-lg font-bold tabular-nums text-brand-navy">
                             {lifetime?.avgPerReservation != null ? formatUsd(lifetime.avgPerReservation) : "—"}
                         </span>{" "}
                         promedio por reserva facturada
