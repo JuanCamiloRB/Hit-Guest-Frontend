@@ -21,6 +21,7 @@ import { Logo } from "@/components/ui/Logo"
 import { useTranslation } from "@/hooks/useTranslation"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import { AVAILABLE_LANGUAGES } from "@/lib/i18n/dictionaries"
+import { Surface } from "@/components/ui/card"
 
 type UserAuthFormProps = React.HTMLAttributes<HTMLDivElement>
 
@@ -59,7 +60,7 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
     }
 
     return (
-        <div className={cn("grid gap-8 bg-white p-8 rounded-xl shadow-sm border border-rule/50", className)} {...props}>
+        <Surface className={cn("grid gap-8 p-8", className)} {...props}>
             <div className="flex flex-col items-center gap-2 text-center mb-2">
                 {alternateLanguage && (
                     <div className="absolute top-4 right-4 z-50">
@@ -215,6 +216,6 @@ export function LoginForm({ className, ...props }: UserAuthFormProps) {
                     </Link>
                 </p>
             </div>
-        </div>
+        </Surface>
     )
 }

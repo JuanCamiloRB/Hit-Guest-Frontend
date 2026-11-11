@@ -15,6 +15,7 @@ import {
 } from "../lib/integration-errors"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface Props {
     /** Connects with the given payload; rejects on failure (form shows errors). */
@@ -68,9 +69,7 @@ export function KunasConnectForm({ onConnect }: Props) {
             </p>
 
             {errors.credentials && (
-                <div className="rounded-xl border border-danger/30 bg-danger-sunk px-4 py-3 text-sm font-medium text-danger">
-                    {errors.credentials}
-                </div>
+                <FeedbackBanner tone="danger" mode="dynamic">{errors.credentials}</FeedbackBanner>
             )}
 
             <Field

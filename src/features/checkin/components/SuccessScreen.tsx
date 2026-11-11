@@ -15,6 +15,8 @@ import { completedEntryCopy, resolveCompletedEntryReason } from "@/features/chec
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
 import { Button } from "@/components/ui/button"
 import { Heading } from "@/components/ui/heading"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Surface } from "@/components/ui/card"
 
 interface ReservationDocument {
     uuid: string
@@ -277,16 +279,10 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
 
             {/* Contract ready → download the SIGNED PDF (with legal evidence page). */}
             {contractReady && (
-                <div className="bg-success-sunk border border-success/20 rounded-xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
-                    <div className="flex items-start gap-3">
-                        <Icon icon={CheckCircle2} size="lg" className="text-success flex-shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-sm font-bold text-success">Contrato firmado</p>
-                            <p className="text-xs text-success mt-0.5">
-                                Tu contrato firmado está listo{signedAt ? ` (${formatDate(signedAt.slice(0, 10))})` : ""}.
-                            </p>
-                        </div>
-                    </div>
+                <div className="flex w-full max-w-sm flex-col gap-3 text-left">
+                    <FeedbackBanner tone="success" title="Contrato firmado">
+                        Tu contrato firmado está listo{signedAt ? ` (${formatDate(signedAt.slice(0, 10))})` : ""}.
+                    </FeedbackBanner>
                     <Button type="button" size="lg"
                         onClick={handleDownloadSignedContract}
                         disabled={downloadingContract}
@@ -311,24 +307,17 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
               * mirarse es mentirle al huésped.
               */}
             {isContractTransitional(contractState) && (
-                <div className="bg-warning-sunk border border-warning/20 rounded-xl p-4 w-full max-w-sm flex flex-col gap-3 text-left">
-                    <div className="flex items-start gap-3">
-                        {pollStalled
-                            ? <Icon icon={Clock} size="lg" className="text-warning flex-shrink-0 mt-0.5" />
-                            : <Icon icon={Loader2} size="lg" className="text-warning flex-shrink-0 mt-0.5 animate-spin" />}
-                        <div>
-                            <p className="text-sm font-bold text-warning">
-                                {contractState === "awaiting_external"
-                                    ? "Falta tu firma en TuFirma"
-                                    : "Procesando tu contrato…"}
-                            </p>
-                            <p className="text-xs text-warning mt-0.5">
-                                {contractState === "awaiting_external"
-                                    ? "Abre el correo de TuFirma y firma tu contrato. Si no lo ves, revisa la carpeta de spam."
-                                    : "Estamos finalizando tu contrato firmado; podrás descargarlo en un momento."}
-                            </p>
-                        </div>
-                    </div>
+                <div className="flex w-full max-w-sm flex-col gap-3 text-left">
+                    <FeedbackBanner
+                        tone="warning"
+                        mode="dynamic"
+                        icon={Clock}
+                        title={contractState === "awaiting_external" ? "Falta tu firma en TuFirma" : "Procesando tu contrato…"}
+                    >
+                        {contractState === "awaiting_external"
+                            ? "Abre el correo de TuFirma y firma tu contrato. Si no lo ves, revisa la carpeta de spam."
+                            : "Estamos finalizando tu contrato firmado; podrás descargarlo en un momento."}
+                    </FeedbackBanner>
                     {pollStalled && (
                         <Button variant="outline-warning"
                             type="button"
@@ -352,33 +341,24 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
               * completado" y el huésped se iba creyendo que estaba todo en orden.
               */}
             {contractState === "rejected" && (
-                <div className="bg-danger-sunk border border-danger/20 rounded-xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
-                    <Icon icon={XCircle} size="lg" className="text-danger flex-shrink-0 mt-0.5" />
-                    <div>
-                        <p className="text-sm font-bold text-danger">Tu contrato no pudo firmarse</p>
-                        <p className="text-xs text-danger mt-0.5">
-                            La firma digital fue rechazada. Tus datos quedaron registrados, pero el
-                            anfitrión debe reenviarte el contrato — contáctalo para completarlo.
-                        </p>
-                    </div>
-                </div>
+                <FeedbackBanner tone="danger" icon={XCircle} title="Tu contrato no pudo firmarse" className="w-full max-w-sm text-left">
+                    La firma digital fue rechazada. Tus datos quedaron registrados, pero el
+                    anfitrión debe reenviarte el contrato — contáctalo para completarlo.
+                </FeedbackBanner>
             )}
 
             {isMainDone && pendingGuests > 0 && (
-                <div className="bg-warning-sunk border border-warning/30 rounded-xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
-                    <Icon icon={Clock} size="lg" className="text-warning flex-shrink-0 mt-0.5" />
-                    <div>
-                        <p className="text-sm font-bold text-warning">
-                            {pendingGuests} {pendingGuests === 1 ? "huésped pendiente" : "huéspedes pendientes"}
-                        </p>
-                        <p className="text-xs text-warning mt-0.5">
-                            Los accesos de la propiedad estarán disponibles cuando todos completen su registro.
-                        </p>
-                    </div>
-                </div>
+                <FeedbackBanner
+                    tone="warning"
+                    icon={Clock}
+                    title={`${pendingGuests} ${pendingGuests === 1 ? "huésped pendiente" : "huéspedes pendientes"}`}
+                    className="w-full max-w-sm text-left"
+                >
+                    Los accesos de la propiedad estarán disponibles cuando todos completen su registro.
+                </FeedbackBanner>
             )}
 
-            <div className="bg-white border border-rule rounded-xl p-4 w-full max-w-sm space-y-3 shadow-sm">
+            <Surface className="p-4 w-full max-w-sm space-y-3">
                 <div className="flex items-center gap-3 text-left">
                     <div className="bg-primary/10 p-2 rounded-xl">
                         <Icon icon={MapPin} size="lg" className="text-primary" />
@@ -399,7 +379,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                         <span className="text-xs text-ink-2">{res.totalGuestsAllowed} huéspedes</span>
                     </div>
                 </div>
-            </div>
+            </Surface>
 
             {mainCompleted && (
                 <AccessInstructionsPanel portal={portal} unlocked={portal.progress.isFullyCompleted} />

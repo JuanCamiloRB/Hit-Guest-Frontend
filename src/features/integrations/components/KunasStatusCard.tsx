@@ -11,6 +11,7 @@ import { KunasCredentialsDialog } from "./KunasCredentialsDialog"
 import { KunasDisconnectDialog } from "./KunasDisconnectDialog"
 import { StatusPill } from "@/components/ui/status-pill"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 interface Props {
     integration: Integration
@@ -48,7 +49,7 @@ export function KunasStatusCard({
     }
 
     return (
-        <div className="max-w-lg rounded-xl border border-rule bg-white shadow-sm">
+        <Surface className="max-w-lg">
             {/* Header: title + status badge */}
             <div className="flex items-center justify-between border-b border-rule px-5 py-4">
                 <Heading level={3}>Kunas PMS</Heading>
@@ -122,6 +123,6 @@ export function KunasStatusCard({
                     }
                 />
             </div>
-        </div>
+        </Surface>
     )
 }

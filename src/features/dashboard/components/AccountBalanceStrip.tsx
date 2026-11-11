@@ -4,9 +4,9 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { RechargeDialog } from "@/features/billing/components/RechargeDialog"
 import type { AccountBalance } from "@/features/billing/types"
 import { cn } from "@/lib/utils"
-import { DASHBOARD_SURFACE } from "./dashboard-surface"
 import { Button } from "@/components/ui/button"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 interface Props {
     /** Último saldo conocido (el del store compartido); null = no disponible. */
@@ -25,13 +25,7 @@ interface Props {
  */
 export function AccountBalanceStrip({ balance, isLoadingBalance, balanceError = false, onRetryBalance }: Props) {
     return (
-        <section
-            aria-labelledby="account-balance-title"
-            className={cn(
-                DASHBOARD_SURFACE,
-                "flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6",
-            )}
-        >
+        <Surface as="section" flat className="flex flex-col gap-4 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6" aria-labelledby="account-balance-title">
             <div className="min-w-0">
                 <Heading level={2} size="subsection" tone="muted" id="account-balance-title">
                     Saldo disponible
@@ -63,7 +57,7 @@ export function AccountBalanceStrip({ balance, isLoadingBalance, balanceError = 
             <div className="shrink-0">
                 <RechargeDialog />
             </div>
-        </section>
+        </Surface>
     )
 }
 

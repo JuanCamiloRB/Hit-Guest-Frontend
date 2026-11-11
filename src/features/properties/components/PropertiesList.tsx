@@ -39,6 +39,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { StatusPill } from "@/components/ui/status-pill"
 import { PageHeader } from "@/components/ui/page"
+import { Surface } from "@/components/ui/card"
 
 // ── Component ──────────────────────────────────────────────────────────
 
@@ -141,7 +142,7 @@ export function PropertiesList() {
             />
 
             <Tabs defaultValue="properties" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-2 rounded-xl border border-rule shadow-sm">
+                <Surface className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-2">
                     <TabsList className="grid grid-cols-2 w-full md:w-100 bg-sunk/50 p-1.5 h-12">
                         <TabsTrigger
                             value="properties"
@@ -182,7 +183,7 @@ export function PropertiesList() {
                             </SelectContent>
                         </Select>
                     </div>
-                </div>
+                </Surface>
 
                 <TabsContent value="properties" className="space-y-6 outline-none">
                     {isLoading ? (

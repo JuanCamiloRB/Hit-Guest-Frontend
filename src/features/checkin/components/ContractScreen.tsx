@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, CheckCircle2, Loader2, FileText, ChevronDown, ChevronUp, Mail, PenLine, RefreshCw, XCircle } from "lucide-react"
+import { ArrowLeft, Loader2, FileText, ChevronDown, ChevronUp, Mail, RefreshCw, XCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { normalizeApiError, notifyError } from "@/lib/notify-error"
@@ -36,6 +36,8 @@ import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Heading } from "@/components/ui/heading"
+import { Card, Surface } from "@/components/ui/card"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface RenderedDocument {
     /** The agreement's real uuid, or the literal "guarantee" — the guarantee
@@ -772,14 +774,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     <div className="text-sm font-bold text-ink-3">Paso 5 de 6</div>
                 </div>
 
-                <div
-                    role={isRejected ? "alert" : "status"}
-                    className={`rounded-xl border p-6 space-y-3 ${
-                        isRejected
-                            ? "border-danger/30 bg-danger-sunk"
-                            : "border-primary/15 bg-primary/5"
-                    }`}
-                >
+                <Card role={isRejected ? "alert" : "status"} className="gap-3 px-6">
                     <div className="flex items-center gap-2.5">
                         {isRejected
                             ? <Icon icon={XCircle} size="xl" className="text-danger flex-shrink-0" />
@@ -788,7 +783,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                             {isRejected ? "Tu contrato no pudo firmarse" : "Revisa tu correo"}
                         </Heading>
                     </div>
-                    <p className={`text-sm leading-relaxed ${isRejected ? "text-danger" : "text-ink-2"}`}>
+                    <p className="text-sm leading-relaxed text-ink-2">
                         {isRejected
                             ? "La firma digital fue rechazada o no pudo completarse. Tus datos quedaron registrados, pero el anfitrión debe reenviarte el contrato — contáctalo para terminar tu check-in."
                             : <>Ya te enviamos el contrato a tu correo. Ábrelo y fírmalo desde <strong>TuFirma</strong> para terminar tu check-in. Tus datos ya quedaron guardados: no tienes que llenar nada de nuevo aquí.</>}
@@ -798,7 +793,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                             Si no lo ves, revisa la carpeta de spam o correo no deseado.
                         </p>
                     )}
-                </div>
+                </Card>
 
                 <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                     <div className="w-full max-w-lg flex flex-col gap-2">
@@ -911,61 +906,53 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 repetir el texto legal completo, para que la pantalla trate una sola
                 cosa a la vez — que es el punto de haber separado los dos pasos. */}
             {showGuaranteePhase ? (
-                <div
-                    role="status"
-                    className="flex items-center gap-2.5 rounded-xl border border-success/30 bg-success-sunk px-5 py-4 text-sm text-success"
-                >
-                    <Icon icon={CheckCircle2} size="lg" className="flex-shrink-0" />
-                    <p className="font-bold">
-                        {needsSignature || signatureRecorded
-                            ? "Contrato firmado"
-                            : "Contrato aceptado"}
-                    </p>
-                </div>
+                <FeedbackBanner
+                    tone="success"
+                    mode="dynamic"
+                    title={needsSignature || signatureRecorded ? "Contrato firmado" : "Contrato aceptado"}
+                />
             ) : signatureRecorded ? (
-                <div
-                    role="status"
-                    className="rounded-xl border border-success/30 bg-success-sunk p-5 text-sm text-success"
-                >
-                    <p className="font-bold">Firma guardada correctamente</p>
-                    <p className="mt-1">
-                        Puedes reintentar la finalización sin volver a firmar ni reemplazar la firma existente.
-                    </p>
-                </div>
+                <FeedbackBanner tone="success" mode="dynamic" title="Firma guardada correctamente">
+                    Puedes reintentar la finalización sin volver a firmar ni reemplazar la firma existente.
+                </FeedbackBanner>
             ) : configurationError ? (
-                <div
-                    role="alert"
-                    className={`rounded-xl border p-5 text-sm ${
-                        isRetryable
-                            ? "border-warning/30 bg-warning-sunk text-warning"
-                            : "border-danger/30 bg-danger-sunk text-danger"
-                    }`}
-                >
-                    <p className="font-bold">No es posible continuar con la firma</p>
-                    <p className="mt-1">{configurationError}</p>
-                    {isRetryable && (
-                        <UnstyledButton
-                            type="button"
-                            onClick={() => {
-                                setConfigurationError(null)
-                                setIsRetryable(false)
-                                setIsLoading(true)
-                                loadDocuments()
-                            }}
-                            className="mt-3 inline-flex items-center gap-2 rounded-lg bg-warning-sunk px-3 py-1.5 text-xs font-bold text-warning hover:bg-warning-sunk transition-colors"
-                        >
-                            <Icon icon={RefreshCw} size="sm" /> Reintentar
-                        </UnstyledButton>
-                    )}
-                </div>
+                isRetryable ? (
+                    // Una advertencia no interrumpe (`dynamic`); el error sin salida sí (`blocking`).
+                    <FeedbackBanner
+                        tone="warning"
+                        mode="dynamic"
+                        title="No es posible continuar con la firma"
+                        action={
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                    setConfigurationError(null)
+                                    setIsRetryable(false)
+                                    setIsLoading(true)
+                                    loadDocuments()
+                                }}
+                            >
+                                <Icon icon={RefreshCw} /> Reintentar
+                            </Button>
+                        }
+                    >
+                        {configurationError}
+                    </FeedbackBanner>
+                ) : (
+                    <FeedbackBanner tone="danger" mode="blocking" title="No es posible continuar con la firma">
+                        {configurationError}
+                    </FeedbackBanner>
+                )
             ) : signingProvider === null ? (
-                <div className="rounded-xl border border-rule bg-white p-5 text-sm text-ink-2 shadow-sm">
+                <Surface className="p-5 text-sm text-ink-2">
                     Puedes completar el check-in sin firmar un contrato digital.
-                </div>
+                </Surface>
             ) : hasDocuments ? (
                 <div className="space-y-3">
                     {documents.map((doc) => (
-                        <div key={doc.uuid} className="bg-white border border-rule rounded-xl shadow-sm overflow-hidden">
+                        <Surface className="overflow-hidden" key={doc.uuid}>
                             <UnstyledButton
                                 type="button"
                                 onClick={() => setExpandedDoc(expandedDoc === doc.uuid ? null : doc.uuid)}
@@ -988,11 +975,11 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                                     />
                                 </div>
                             )}
-                        </div>
+                        </Surface>
                     ))}
                 </div>
             ) : (
-                <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
+                <Surface className="p-5 space-y-4">
                     <div className="flex items-center gap-2 border-b border-rule pb-3">
                         <Icon icon={FileText} size="lg" className="text-primary" />
                         <Heading level={2} size="section">Contrato</Heading>
@@ -1000,7 +987,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     <p className="text-sm text-ink-3 text-center py-4">
                         No hay documentos configurados para esta propiedad.
                     </p>
-                </div>
+                </Surface>
             )}
 
             {/* Independent of contractAlreadyCompleted: the guarantee card is a
@@ -1009,27 +996,24 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 contract but never registered the card, so this must still be
                 reachable during that recovery path. */}
             {!configurationError && showGuaranteePhase && (
-                <div className="bg-white border border-rule rounded-xl p-5 shadow-sm">
+                <Surface className="p-5">
                     <GuaranteeCardForm
                         reservationUuid={reservationUuid}
                         guestUuid={guestUuid}
                         onStatusChange={setGuaranteeStatus}
                         onSessionExpired={redirectToVerification}
                     />
-                </div>
+                </Surface>
             )}
 
             {!configurationError && !contractAlreadyCompleted && !nativeSignatureAlreadySaved && !showGuaranteePhase && (
-            <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-5">
+            <Surface className="p-5 space-y-5">
                 {needsSignature && (
                     <>
                         {hasNativeSignature && (
-                            <div className="flex items-start gap-2 p-3 bg-warning-sunk border border-warning/20 rounded-xl">
-                                <Icon icon={PenLine} className="text-warning flex-shrink-0 mt-0.5" />
-                                <p className="text-xs text-warning">
-                                    Ya tienes una firma registrada. Si firmas de nuevo, reemplazará la anterior.
-                                </p>
-                            </div>
+                            <FeedbackBanner tone="warning" density="compact">
+                                Ya tienes una firma registrada. Si firmas de nuevo, reemplazará la anterior.
+                            </FeedbackBanner>
                         )}
                         <SignaturePad onSignatureChange={setSignature} />
                     </>
@@ -1052,7 +1036,7 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                         He leído y acepto los términos del contrato de arrendamiento.
                     </span>
                 </Label>
-            </div>
+            </Surface>
             )}
 
             {!fixedCtaHidden && (

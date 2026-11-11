@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Surface } from "@/components/ui/card"
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
@@ -141,7 +142,7 @@ export function DataTable<TData, TValue>({
                     />
                 </div>
             )}
-            <div className="rounded-xl border border-rule bg-card overflow-hidden">
+            <Surface flat className="overflow-hidden">
                 <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
@@ -243,7 +244,7 @@ export function DataTable<TData, TValue>({
                         </TableBody>
                     </Table>
                 </div>
-            </div>
+            </Surface>
             {/* Con una sola página (o ninguna fila) no hay nada que paginar: antes
                 decía «Página 1 de 0». Mismo criterio que el detalle del Tablero. */}
             {table.getPageCount() > 1 && (

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 interface ContactChallengeScreenProps {
     reservationUuid: string
@@ -300,7 +301,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 </p>
             </div>
 
-            <div className="bg-white border border-rule rounded-xl p-6 shadow-sm space-y-5">
+            <Surface className="p-6 space-y-5">
                 <div className="flex items-center gap-3">
                     <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center border border-primary/20 shrink-0">
                         <Icon icon={Mail} size="lg" className="text-primary" />
@@ -349,7 +350,7 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                             ? `Reenviar código (${resendCountdown}s)`
                             : "Reenviar código"}
                 </Button>
-            </div>
+            </Surface>
 
             <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
                 <div className="w-full max-w-lg">

@@ -167,24 +167,19 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
 
                                 if (isFailed) {
                                     return (
-                                        <div
+                                        <FeedbackBanner
                                             key={listing.uuid}
-                                            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg border border-warning/30 bg-warning-sunk/60"
+                                            tone="warning"
+                                            density="compact"
+                                            title={listing.name}
+                                            action={
+                                                <Button type="button" size="sm" variant="outline" onClick={() => void loadListings([listing])}>
+                                                    <Icon icon={RefreshCw} /> Reintentar
+                                                </Button>
+                                            }
                                         >
-                                            <div className="h-2 w-2 rounded-full shrink-0 bg-warning" />
-                                            <div className="flex-1 min-w-0">
-                                                <span className="text-xs font-semibold text-ink-2 truncate">{listing.name}</span>
-                                                <p className="text-xs text-warning">No se pudo cargar</p>
-                                            </div>
-                                            <Button
-                                                type="button"
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => void loadListings([listing])}
-                                            >
-                                                <Icon icon={RefreshCw} /> Reintentar
-                                            </Button>
-                                        </div>
+                                            No se pudo cargar
+                                        </FeedbackBanner>
                                     )
                                 }
 

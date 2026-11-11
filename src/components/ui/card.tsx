@@ -10,6 +10,41 @@ import { cn } from "@/lib/utils"
  */
 const cardSurface = "bg-card text-ink rounded-xl border border-rule shadow-sm"
 
+type SurfaceTag = "div" | "section" | "article" | "li" | "ul" | "aside" | "header" | "form"
+
+interface SurfaceProps extends React.HTMLAttributes<HTMLElement> {
+  /** La etiqueta semántica (una tarjeta de una lista es `li`, una ficha `article`). */
+  as?: SurfaceTag
+  /**
+   * Sin sombra: superficies que conviven en una cuadrícula densa (el Tablero) o
+   * que ya van dentro de otra superficie, donde la elevación no ordena nada.
+   */
+  flat?: boolean
+  /**
+   * Un panel que flota sobre el contenido (la lista de un buscador propio): la
+   * misma superficie que `Select` y `Popover`, radio `md` y sombra `md`.
+   */
+  floating?: boolean
+}
+
+/**
+ * La superficie de tarjeta, sin estructura: fondo, borde, radio y elevación de
+ * `cardSurface`, y el relleno y el layout los pone quien la usa. Es la tarjeta
+ * de una pantalla que arma su propio interior (el paso del portal, la ficha de
+ * una integración). Con encabezado y cuerpo estándar, `Card` o `SectionCard`.
+ */
+function Surface({ as: Tag = "div", flat = false, floating = false, className, ...props }: SurfaceProps) {
+  return (
+    <Tag
+      data-slot="surface"
+      data-flat={flat || undefined}
+      data-floating={floating || undefined}
+      className={cn(cardSurface, flat && "shadow-none", floating && "rounded-md shadow-md", className)}
+      {...(props as React.HTMLAttributes<HTMLElement>)}
+    />
+  )
+}
+
 function Card({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
@@ -88,6 +123,7 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 export {
+  Surface,
   cardSurface,
   Card,
   CardHeader,

@@ -19,8 +19,7 @@ import {
     Card,
     CardDescription,
     CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
+    CardTitle, Surface } from "@/components/ui/card"
 import {
     Select,
     SelectContent,
@@ -238,15 +237,7 @@ export function PropertiesDocuments() {
                                 const isDeleted = !!doc.deletedAt
                                 const isActive = doc.statusRecord?.id === DOCUMENT_STATUS.ACTIVE
                                 return (
-                                    <div
-                                        key={doc.uuid}
-                                        className={cn(
-                                            "flex items-center justify-between gap-4 rounded-xl border p-4 transition-all",
-                                            isDeleted
-                                                ? "border-rule bg-sunk/60 opacity-70"
-                                                : "border-rule bg-white hover:shadow-sm",
-                                        )}
-                                    >
+                                    <Surface flat className={cn("flex items-center justify-between gap-4 p-4 transition-all", isDeleted && "bg-sunk/60 opacity-70")} key={doc.uuid}>
                                         <div className="flex items-center gap-3 min-w-0">
                                             <div className="p-2.5 bg-sunk/50 rounded-xl text-primary shrink-0">
                                                 <Icon icon={FileText} size="lg" />
@@ -312,7 +303,7 @@ export function PropertiesDocuments() {
                                                 </>
                                             )}
                                         </div>
-                                    </div>
+                                    </Surface>
                                 )
                             })}
                         </div>

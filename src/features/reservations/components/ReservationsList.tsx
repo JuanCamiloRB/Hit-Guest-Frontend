@@ -85,6 +85,7 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Surface } from "@/components/ui/card"
 
 
 
@@ -327,9 +328,9 @@ export default function ReservationsList() {
         // Esqueletos con la forma de las filas que vienen: la tabla no salta
         // cuando llegan los datos, y se ve qué se está cargando.
         return (
-            <div className="rounded-xl border border-rule bg-white">
+            <Surface flat>
                 <LoadingState rows={6} label="Cargando reservaciones" />
-            </div>
+            </Surface>
         )
     }
 

@@ -18,6 +18,7 @@ import { defaultSupportUser, describeStartError, supportReasonError } from "../l
 import type { SupportClient, SupportClientUser } from "../lib/support-readers"
 import { roleLabel } from "../lib/support-display"
 import { Radio } from "@/components/ui/radio"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 type UsersState =
     | { kind: "loading" }
@@ -203,22 +204,26 @@ function DrawerBody({
                 </Button>
             </header>
 
-            <p className="flex items-start gap-2 border-b border-warning/20 bg-warning-sunk px-6 py-3 text-sm text-warning">
-                <Icon icon={ShieldAlert} className="mt-0.5" />
+            <FeedbackBanner tone="warning" layout="bar" icon={ShieldAlert} className="border-b border-warning/20">
                 Entrarás con los mismos permisos del usuario. Todo lo que hagas quedará a su nombre.
-            </p>
+            </FeedbackBanner>
 
             <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
                 <div className="flex-1 overflow-y-auto px-6 py-5">
                     {state.kind === "loading" && <LoadingState rows={3} label="Cargando usuarios" />}
 
                     {state.kind === "error" && (
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger/20 bg-danger-sunk px-4 py-3 text-sm">
-                            <span className="text-danger">{state.message}</span>
-                            <Button type="button" variant="outline" size="sm" onClick={reload}>
-                                <Icon icon={RefreshCw} className="mr-1.5" /> Reintentar
-                            </Button>
-                        </div>
+                        <FeedbackBanner
+                            tone="danger"
+                            mode="dynamic"
+                            action={
+                                <Button type="button" variant="outline" size="sm" onClick={reload}>
+                                    <Icon icon={RefreshCw} className="mr-1.5" /> Reintentar
+                                </Button>
+                            }
+                        >
+                            {state.message}
+                        </FeedbackBanner>
                     )}
 
                     {state.kind === "ready" && users.length === 0 && (
@@ -317,13 +322,19 @@ function DrawerBody({
                         )}
 
                         {confirmDiscard ? (
-                            <div role="alert" className="space-y-3 rounded-lg border border-warning/30 bg-warning-sunk px-3 py-3 text-sm text-warning">
-                                <p>Ya escribiste un motivo. ¿Cerrar sin entrar y descartarlo?</p>
-                                <div className="flex flex-wrap justify-end gap-2">
-                                    <Button type="button" variant="outline" size="sm" onClick={onKeepEditing}>Seguir aquí</Button>
-                                    <Button type="button" variant="destructive" size="sm" onClick={onClose}>Descartar y cerrar</Button>
-                                </div>
-                            </div>
+                            // Interrumpe (`alert`): perder el motivo escrito es destructivo.
+                            <FeedbackBanner
+                                tone="danger"
+                                mode="blocking"
+                                action={
+                                    <div className="flex flex-wrap justify-end gap-2">
+                                        <Button type="button" variant="outline" size="sm" onClick={onKeepEditing}>Seguir aquí</Button>
+                                        <Button type="button" variant="destructive" size="sm" onClick={onClose}>Descartar y cerrar</Button>
+                                    </div>
+                                }
+                            >
+                                Ya escribiste un motivo. ¿Cerrar sin entrar y descartarlo?
+                            </FeedbackBanner>
                         ) : (
                             <div className="flex min-w-0 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                                 <Button size="lg" type="button" variant="outline" onClick={onClose} disabled={busy}>

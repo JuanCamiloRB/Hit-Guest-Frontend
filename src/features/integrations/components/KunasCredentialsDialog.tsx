@@ -24,6 +24,7 @@ import {
 } from "../lib/integration-errors"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface Props {
     /** Current account email (prefills the field; password never prefilled). */
@@ -102,9 +103,7 @@ export function KunasCredentialsDialog({ currentEmail, trigger, onSave }: Props)
 
                 <div className="space-y-4 py-2">
                     {errors.credentials && (
-                        <div className="rounded-xl border border-danger/30 bg-danger-sunk px-4 py-3 text-sm font-medium text-danger">
-                            {errors.credentials}
-                        </div>
+                        <FeedbackBanner tone="danger" mode="dynamic">{errors.credentials}</FeedbackBanner>
                     )}
 
                     <div className="space-y-1.5">

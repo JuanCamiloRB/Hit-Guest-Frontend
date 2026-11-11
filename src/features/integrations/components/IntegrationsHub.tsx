@@ -8,6 +8,7 @@ import { KunasIntegrationPanel } from "./KunasIntegrationPanel"
 import { AirbnbIcalPanel } from "./AirbnbIcalPanel"
 import { Badge } from "@/components/ui/badge"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 interface ProviderCardProps {
     name: string
@@ -25,7 +26,7 @@ function ProviderCard({
     badgeClassName = "bg-primary/5 text-primary",
 }: ProviderCardProps) {
     return (
-        <article className="flex min-h-36 flex-col justify-between rounded-xl border border-rule bg-white p-5 shadow-sm transition-shadow hover:shadow-sm">
+        <Surface as="article" className="flex min-h-36 flex-col justify-between p-5 transition-shadow">
             <div className="flex items-start justify-between gap-4">
                 <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sunk/50 text-ink-2">
                     {icon}
@@ -38,7 +39,7 @@ function ProviderCard({
                 <Heading level={4} size="section">{name}</Heading>
                 <p className="mt-1 text-sm leading-relaxed text-ink-3">{description}</p>
             </div>
-        </article>
+        </Surface>
     )
 }
 
@@ -130,7 +131,7 @@ export function IntegrationsHub() {
                 {/* Una sola tarjeta de Airbnb, con los calendarios adentro. Antes había
                     una `ProviderCard` decorativa (sin acción) y debajo el panel real con el
                     mismo nombre: el PM veía «dos Airbnb» y no sabía cuál usar (2026-09-22). */}
-                <article className="rounded-xl border border-rule bg-white p-5 shadow-sm">
+                <Surface as="article" className="p-5">
                     <div className="flex items-start justify-between gap-4">
                         <div className="flex items-center gap-3">
                             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sunk/50">
@@ -148,7 +149,7 @@ export function IntegrationsHub() {
                     <div className="mt-5 border-t border-rule pt-5">
                         <AirbnbIcalPanel />
                     </div>
-                </article>
+                </Surface>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                     <ProviderCard

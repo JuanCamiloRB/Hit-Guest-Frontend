@@ -250,6 +250,25 @@ const rules = [
         ignore: UI_ONLY,
     },
     {
+        // DS-7c: había 32 avisos a mano en 22 variantes (radio xl o lg, borde al
+        // /20 o al /30, siete rellenos). `FeedbackBanner` trae tono, ícono, título,
+        // acción, densidad, `layout="bar"` y cómo se anuncia.
+        id: "handmade-notice",
+        description: "arma un aviso a mano (fondo de estado + borde); usa FeedbackBanner",
+        pattern: /^.+$/gm,
+        input: "noticeElements",
+        ignore: UI_ONLY,
+    },
+    {
+        // DS-7c: 47 tarjetas copiaban la superficie a mano. `Surface` es la
+        // superficie sola; `Card`/`SectionCard`, con encabezado y cuerpo.
+        id: "handmade-card",
+        description: "copia la superficie de tarjeta a mano; usa Surface, Card o SectionCard",
+        pattern: /^.+$/gm,
+        input: "cardElements",
+        ignore: UI_ONLY,
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,
@@ -293,6 +312,8 @@ function inspect() {
         const labelClasses = []
         const headingClasses = []
         const pillElements = []
+        const noticeElements = []
+        const cardElements = []
         const lucideNames = new Set()
         for (const statement of sourceFile.statements) {
             if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
@@ -356,6 +377,20 @@ function inspect() {
                 if (tag === "UnstyledButton" || tag === "Link" || tag === "a") pressableClasses.push(...classTexts(node))
                 if (tag === "Badge" || tag === "StatusPill") labelClasses.push(...classTexts(node))
                 if (tag === "Heading") headingClasses.push(...classTexts(node))
+                if (/^(?:div|p|section|aside|li|article|header|form)$/.test(tag)) {
+                    const joined = ` ${classTexts(node).join(" ")} `
+                    // Aviso: fondo de estado pleno (sin opacidad) con borde. Las filas
+                    // que solo se tiñen (`bg-danger-sunk/40`) son estado de fila, no aviso.
+                    if (/\sbg-(?:success|warning|danger|info)-sunk\s/.test(joined) && /\sborder(?:-[a-z]+\/\d+)?\s/.test(joined)
+                        && !/\srounded-full\s/.test(joined)) {
+                        noticeElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
+                    }
+                    // Tarjeta: la superficie de `Surface` copiada a mano.
+                    if (/\srounded-xl\s/.test(joined) && /\sborder(?:-rule)?\s/.test(joined) && /\sbg-(?:white|card)\s/.test(joined)
+                        && !/\sborder-dashed\s/.test(joined)) {
+                        cardElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
+                    }
+                }
                 if (tag === "span" || tag === "div" || tag === "p") {
                     const joined = ` ${classTexts(node).join(" ")} `
                     if (/\stext-xs\s/.test(joined) && /\srounded-(?:full|md)\s/.test(joined) && /\spx-/.test(joined)
@@ -391,6 +426,8 @@ function inspect() {
             labelClasses: labelClasses.join("\n"),
             headingClasses: headingClasses.join("\n"),
             pillElements: pillElements.join("\n"),
+            noticeElements: noticeElements.join("\n"),
+            cardElements: cardElements.join("\n"),
         }
         for (const rule of rules) {
             if (rule.ignore?.(path)) continue

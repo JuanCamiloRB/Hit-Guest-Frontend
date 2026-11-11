@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils"
 import { SHORTCODE_LABELS } from "../../types/document"
 import { Skeleton } from "@/components/ui/skeleton"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Surface } from "@/components/ui/card"
 
 interface DocumentEditorProps {
     value: string
@@ -91,7 +92,7 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
 
     return (
         <div className="space-y-3">
-            <div className="rounded-xl border border-rule overflow-hidden bg-white">
+            <Surface flat className="overflow-hidden">
                 {/* Toolbar */}
                 <div className="flex items-center gap-0.5 border-b border-rule bg-sunk/60 px-2 py-1.5 flex-wrap">
                     <ToolbarButton title="Negrita" active={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()}>
@@ -139,7 +140,7 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
                         "[&_pre]:bg-sunk [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:text-xs [&_pre]:my-2",
                     )}
                 />
-            </div>
+            </Surface>
 
             {/* Shortcode panel */}
             {shortcodes.length > 0 && (

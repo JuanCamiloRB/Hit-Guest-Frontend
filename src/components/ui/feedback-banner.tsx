@@ -88,10 +88,22 @@ const DENSITY: Record<FeedbackBannerDensity, { root: string; row: string; icon: 
     compact: { root: "gap-2 py-2 text-xs", row: "gap-1.5", icon: "mt-px size-3.5", action: "pl-5" },
 }
 
+/**
+ * Dónde vive el aviso:
+ *  - `inline` (por omisión): dentro del contenido, con radio `lg`.
+ *  - `bar`: una franja a todo el ancho de su contenedor (sobre la página, en la
+ *    cabecera de un cajón): sin radio y con el relleno lateral del contenido.
+ */
+type FeedbackBannerLayout = "inline" | "bar"
+
 const feedbackBannerVariants = cva(
-    "flex flex-col rounded-lg px-3 sm:flex-row sm:items-start sm:justify-between",
+    "flex flex-col sm:flex-row sm:items-start sm:justify-between",
     {
         variants: {
+            layout: {
+                inline: "rounded-lg px-3",
+                bar: "px-4 sm:px-6",
+            },
             tone: {
                 info: "bg-info-sunk",
                 success: "bg-success-sunk",
@@ -124,6 +136,12 @@ type FeedbackBannerProps = Omit<React.ComponentProps<"div">, "title" | Controlle
         action?: React.ReactNode
         /** `compact` dentro de tarjetas y filas densas. */
         density?: FeedbackBannerDensity
+        layout?: FeedbackBannerLayout
+        /**
+         * Un ícono con significado propio (cámara, reloj, correo) en lugar del
+         * del tono. La tinta sigue siendo la del tono.
+         */
+        icon?: LucideIcon
     }
 
 function FeedbackBanner({
@@ -133,10 +151,12 @@ function FeedbackBanner({
     children,
     action,
     density = "default",
+    layout = "inline",
+    icon,
     className,
     ...props
 }: FeedbackBannerProps) {
-    const Icon = ICON[tone]
+    const Icon = icon ?? ICON[tone]
     const size = DENSITY[density]
     return (
         <div
@@ -148,7 +168,8 @@ function FeedbackBanner({
             data-tone={tone}
             data-mode={mode}
             data-density={density}
-            className={cn(feedbackBannerVariants({ tone }), size.root, className)}
+            data-layout={layout}
+            className={cn(feedbackBannerVariants({ tone, layout }), size.root, className)}
         >
             <div className={cn("flex min-w-0 items-start", size.row)}>
                 <Icon aria-hidden className={cn("shrink-0", size.icon, TONE_INK[tone])} />
@@ -175,4 +196,4 @@ function FeedbackBanner({
     )
 }
 
-export { FeedbackBanner, type FeedbackBannerTone, type FeedbackBannerMode, type FeedbackBannerDensity }
+export { FeedbackBanner, type FeedbackBannerTone, type FeedbackBannerMode, type FeedbackBannerDensity, type FeedbackBannerLayout }

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Download, FileText, Loader2, XCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Surface } from "@/components/ui/card"
 import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { Button } from "@/components/ui/button"
@@ -93,8 +94,9 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
                 </div>
             </div>
 
-            <div
-                className="bg-white border border-rule rounded-xl p-6 prose prose-sm prose-slate max-w-none [&_p]:my-2"
+            <Surface
+                flat
+                className="p-6 prose prose-sm prose-slate max-w-none [&_p]:my-2"
                 dangerouslySetInnerHTML={{ __html: rendered }}
             />
 

@@ -27,6 +27,7 @@ import { propertyDocumentService } from "../../services/property-document-servic
 import { normalizeShortcodes } from "../../types/document"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { Surface } from "@/components/ui/card"
 
 interface DocumentPreviewModalProps {
     onClose: () => void
@@ -222,7 +223,7 @@ export function DocumentPreviewModal({
                 )}
 
                 {/* Rendered document */}
-                <div className="rounded-xl border border-rule bg-white p-6 min-h-60">
+                <Surface flat className="p-6 min-h-60">
                     {rendering ? (
                         <div className="flex items-center justify-center py-16 gap-2 text-ink-3">
                             <Icon icon={Loader2} size="lg" className="animate-spin" /> Generando vista previa...
@@ -245,7 +246,7 @@ export function DocumentPreviewModal({
                                 : "El documento está vacío."}
                         </p>
                     )}
-                </div>
+                </Surface>
 
                 {/* PDF download (real mode only) */}
                 {mode === "real" && documentUuid && selectedReservation && (

@@ -20,6 +20,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { useTranslation } from "@/hooks/useTranslation"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 /** Balance card + recharge (packages/custom) + transaction history. */
 export function BillingSettings() {
@@ -107,7 +108,7 @@ export function BillingSettings() {
     return (
         <div className="max-w-3xl space-y-6">
             {/* ── Balance + Recharge ── */}
-            <div className="rounded-xl border border-rule bg-white p-6">
+            <Surface flat className="p-6">
                 <div className="flex items-center gap-2 text-sm font-semibold text-ink-3">
                     <Icon icon={Wallet} className="text-primary" />
                     Saldo disponible
@@ -210,7 +211,7 @@ export function BillingSettings() {
                         </Button>
                     </div>
                 )}
-            </div>
+            </Surface>
 
             {/* ── Transaction history ── */}
             {!pending && <TransactionHistory />}

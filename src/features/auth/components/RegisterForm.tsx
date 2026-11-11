@@ -29,6 +29,7 @@ import Link from "next/link"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 /** PM/Client account terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
 const ACCOUNT_TERMS_URL = "https://hitguest.com/terminos-condiciones/"
@@ -143,7 +144,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
             <Form {...form}>
                 <form onSubmit={onRegister}>
                     <Honeypot {...honeypotProps} />
-                    <div className="grid gap-5 bg-card/80 backdrop-blur-sm border border-secondary/10 rounded-xl p-6 shadow-sm shadow-secondary/5 relative">
+                    <Surface className="grid gap-5 p-6 relative">
 
                         {/* Welcome credit — the backend credits USD 10 to every new account. */}
                         <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
@@ -478,7 +479,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                                 Volver al inicio de sesión
                             </Link>
                         </div>
-                    </div>
+                    </Surface>
                 </form>
             </Form>
         </div>

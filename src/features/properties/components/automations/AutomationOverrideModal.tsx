@@ -466,7 +466,7 @@ export function AutomationOverrideModal({
                     {!isIdentity && (
                     <div className={cn(
                         "flex items-center justify-between p-3 rounded-xl border transition-colors",
-                        isActive ? "bg-sunk/50 border-rule" : "bg-danger-sunk border-danger/30"
+                        isActive ? "bg-sunk/50 border-rule" : "bg-danger-sunk/40 border-danger/30"
                     )}>
                         <div className="space-y-0.5">
                             <Label className="text-sm font-semibold">

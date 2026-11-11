@@ -11,6 +11,8 @@ import { ApiError } from "@/types/api"
 import { handleSessionExpired } from "@/lib/api-client"
 import { FileInput } from "@/components/ui/file-input"
 import { Heading } from "@/components/ui/heading"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Surface } from "@/components/ui/card"
 
 const ACCEPTED = ["image/png", "image/jpeg"]
 const MAX_BYTES = 2 * 1024 * 1024 // 2 MB
@@ -110,7 +112,7 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
     }
 
     return (
-        <div className="rounded-xl border border-rule bg-white p-5 space-y-4">
+        <Surface flat className="p-5 space-y-4">
             <div className="space-y-1">
                 <Heading level={3} size="subsection">Logo de la cuenta</Heading>
                 <p className="text-xs text-ink-3">
@@ -179,10 +181,8 @@ export function ClientLogoSection({ clientUuid, initialLogoUrl }: ClientLogoSect
             </div>
 
             {error && (
-                <p className="text-sm text-danger bg-danger-sunk border border-danger/20 rounded-lg px-3 py-2">
-                    {error}
-                </p>
+                <FeedbackBanner tone="danger" mode="dynamic">{error}</FeedbackBanner>
             )}
-        </div>
+        </Surface>
     )
 }

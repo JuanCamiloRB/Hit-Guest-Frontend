@@ -36,6 +36,8 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Heading } from "@/components/ui/heading"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Surface } from "@/components/ui/card"
 
 /** Guest-facing terms hosted by HIT outside this app (hitguest.com root, per Ricardo/Didier thread 20260801). */
 const GUEST_TERMS_URL = "https://hitguest.com/terminos-servicio1/"
@@ -502,7 +504,7 @@ export function IdentifyScreen({
                 </p>
             </div>
 
-            <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
+            <Surface className="p-5 space-y-4">
 
                 {/* Name + Lastname */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -626,10 +628,10 @@ export function IdentifyScreen({
                     flag. La moneda se nombra SIEMPRE: sin ella, un huésped extranjero
                     escribe dólares y se reportan como pesos. */}
                 {priceCurrencyMissing && (
-                    <div className="rounded-xl border border-danger/30 bg-danger-sunk px-4 py-3 text-sm text-danger" role="alert">
+                    <FeedbackBanner tone="danger" mode="blocking">
                         Tu reserva pide el valor total, pero no informa en qué moneda. No podemos
                         recibirlo así: contacta al anfitrión para que lo registre.
-                    </div>
+                    </FeedbackBanner>
                 )}
                 {mustDeclarePrice && priceCurrency && (
                     <div className="space-y-1.5">
@@ -667,7 +669,7 @@ export function IdentifyScreen({
                         <span>Estás registrando al huésped principal</span>
                     </div>
                 )}
-            </div>
+            </Surface>
 
             <div className="bg-sunk/50 border border-rule rounded-xl p-4 flex items-start gap-3">
                 <Icon icon={ShieldCheck} size="lg" className="text-success flex-shrink-0 mt-0.5" />

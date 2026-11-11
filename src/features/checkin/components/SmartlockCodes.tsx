@@ -4,6 +4,7 @@ import { Key, DoorOpen, Building2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import type { SmartlockCode } from "@/features/checkin/types/checkin"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 interface SmartlockCodesProps {
     codes: SmartlockCode[]
@@ -28,7 +29,7 @@ export function SmartlockCodes({ codes }: SmartlockCodesProps) {
             </Heading>
             <div className="grid gap-3">
                 {codes.map((code, idx) => (
-                    <div key={idx} className="bg-white border border-rule rounded-xl p-4 shadow-sm flex items-center gap-4 text-left">
+                    <Surface className="p-4 flex items-center gap-4 text-left" key={idx}>
                         <div className="bg-sunk/50 p-3 rounded-xl border border-rule">
                             {getIcon(code.type)}
                         </div>
@@ -39,7 +40,7 @@ export function SmartlockCodes({ codes }: SmartlockCodesProps) {
                         <div className="text-right">
                             <span className="text-xs font-semibold text-success bg-success-sunk px-2 py-1 rounded-xs">Activo</span>
                         </div>
-                    </div>
+                    </Surface>
                 ))}
             </div>
             <p className="text-xs text-ink-3 text-center mt-2 px-4">

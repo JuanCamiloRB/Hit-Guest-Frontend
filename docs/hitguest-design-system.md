@@ -128,14 +128,14 @@ escala en hover.
 | Campo | `Input`, `Textarea`, `Select`, `PhoneInputField`, `FileInput` (oculto; lo abre un Button o una zona de carga) |
 | Etiqueta de campo | `Label` asociada mediante `htmlFor`; `Label variant="plain"` cuando envuelve otra cosa (casilla + texto largo, zona de carga); texto auxiliar con `FormDescription` |
 | Selección | `Checkbox`, `Radio` (nativo, grupo por `name`), `Switch`, `Tabs` |
-| Superficie | `Card` o `SectionCard` |
+| Superficie | `SectionCard` (sección con título), `Card` (encabezado y cuerpo estándar) o `Surface` (la superficie sola; el interior lo arma la pantalla). `Surface as=` para la etiqueta semántica, `flat` sin sombra (cuadrículas densas, dentro de otra superficie), `floating` para un panel flotante propio (radio y sombra `md`, como `Select`) |
 | Modal | `Dialog`, `AlertDialog` o `Sheet` |
 | Estado corto | `StatusPill tone=…` (`success`, `warning`, `info`, `danger`, `idle`, `accent`, `none`): punto + palabra; un estado nunca va solo por color |
 | Etiqueta corta (clasificación) | `Badge tone=…` (`neutral`, `accent`, `success`, `warning`, `danger`, `info`, `surface` sobre foto o mapa): clasifica, no es un estado (sin punto). Misma forma que StatusPill |
 | Pantalla | `Page` (contenedor: ancho máximo y espacio entre bloques; el relleno lo da `<main>`) y `PageHeader` (el único `h1`: `title`, `description`, `actions`, `eyebrow` con `PageBreadcrumb`, `titleAddon`) |
 | Título | `Heading level={1–4}`: el nivel es la jerarquía y `size` cómo se ve (`page`, `title`, `section`, `subsection`, `group`; por omisión según el nivel). `tone`: `ink`, `muted` (rótulo pequeño), `inverse` (superficie oscura). Desde la pantalla solo layout |
 | Rótulo de grupo | `Overline` (único uso de mayúsculas) |
-| Aviso | `FeedbackBanner` |
+| Aviso | `FeedbackBanner tone=… mode=…`: `title`, `action`, `density="compact"` en tarjetas y filas, `icon` cuando el ícono tiene significado propio (cámara, reloj, correo), `layout="bar"` para una franja a todo el ancho (aviso de saldo, cabecera de un cajón). Una fila que solo se tiñe por su estado (`bg-danger-sunk/40`) no es un aviso |
 | Carga | `LoadingState`, `Skeleton`, `RefreshIndicator` o `Button loading` |
 | Vacío | `EmptyState` (`empty` o `no-results`; `icon` recibe el componente de lucide y lo pinta en `2xl` light) |
 | Tabla | `Table` para composición especial; `DataTable` para ordenar/paginar |
@@ -219,6 +219,8 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `nonstandard-icon-library` | `react-icons` | `lucide-react` |
 | `heading-direct` | `<h2 className="text-3xl font-bold">` | `Heading level={2}` o `PageHeader` |
 | `heading-override` | `<Heading className="font-semibold text-primary">` | `size`/`tone` |
+| `handmade-notice` | `<div className="rounded-xl border border-danger/30 bg-danger-sunk px-4">` | `FeedbackBanner tone="danger"` |
+| `handmade-card` | `<div className="rounded-xl border border-rule bg-white p-5 shadow-sm">` | `Surface className="p-5"`, `Card`, `SectionCard` |
 | `legacy-token` | `text-muted-foreground`, `text-destructive`, `bg-muted`, `border-border` | `text-ink-3`, `text-danger`, `bg-sunk`, `border-rule` |
 
 Revisa los textos fijos y también los trozos fijos de los template literals

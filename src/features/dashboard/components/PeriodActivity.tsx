@@ -8,11 +8,11 @@ import type { ConsumptionSummary, MonthlyPoint, NodeUsage } from "@/features/bil
 import { cn } from "@/lib/utils"
 import { ActivitySummary } from "./ActivitySummary"
 import { ConsumptionHistoryChart } from "./ConsumptionHistoryChart"
-import { DASHBOARD_SURFACE } from "./dashboard-surface"
 import { MonthSelector } from "./MonthSelector"
 import { TopNodesPanel } from "./TopNodesPanel"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 interface Props {
     status: ConsumptionStatus
@@ -59,7 +59,7 @@ export function PeriodActivity({
     onRetry,
 }: Props) {
     return (
-        <section aria-labelledby="period-activity-title" className={DASHBOARD_SURFACE}>
+        <Surface as="section" flat aria-labelledby="period-activity-title">
             <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b border-rule px-5 py-4 sm:px-6">
                 <div className="min-w-0">
                     <Heading level={2} size="section" id="period-activity-title">
@@ -132,7 +132,7 @@ export function PeriodActivity({
                     </>
                 )}
             </div>
-        </section>
+        </Surface>
     )
 }
 

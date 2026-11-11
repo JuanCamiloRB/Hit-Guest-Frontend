@@ -168,3 +168,21 @@ describe("FeedbackBanner — contenido", () => {
         expect(banner(container)).toHaveAttribute("id", "aviso")
     })
 })
+
+describe("FeedbackBanner — ícono propio y layout bar (DS-7c)", () => {
+    it("un ícono con significado reemplaza al del tono, con la tinta del tono", async () => {
+        const { Camera } = await import("lucide-react")
+        const { container } = render(<FeedbackBanner tone="warning" icon={Camera}>Limpia el lente</FeedbackBanner>)
+        const svg = container.querySelector("svg")
+        expect(svg?.getAttribute("class")).toMatch(/lucide-camera/)
+        expect(svg).toHaveClass("text-warning")
+    })
+
+    it("bar va a todo el ancho, sin radio; inline lleva radio lg", () => {
+        const { container } = render(<><FeedbackBanner tone="danger" layout="bar">a</FeedbackBanner><FeedbackBanner tone="info">b</FeedbackBanner></>)
+        const [bar, inline] = container.querySelectorAll('[data-slot="feedback-banner"]')
+        expect(bar).toHaveAttribute("data-layout", "bar")
+        expect(bar).not.toHaveClass("rounded-lg")
+        expect(inline).toHaveClass("rounded-lg")
+    })
+})

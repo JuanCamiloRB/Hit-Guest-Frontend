@@ -26,6 +26,7 @@ import { ReservationSourceIdentity, reservationSourceSlug } from "./ReservationS
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 interface Props {
     propertyUuid: string
@@ -318,7 +319,7 @@ export function UnitContractTexts({
                         // solo lo que dice el backend (ver `describeRowSigning`).
                         const signing = describeRowSigning(row, routing, allDocuments, listingUuid)
                         return (
-                            <li key={row.key} className="rounded-xl border border-rule bg-white p-3">
+                            <Surface as="li" flat className="p-3" key={row.key}>
                                 <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div className="min-w-0">
                                         <ReservationSourceIdentity
@@ -404,7 +405,7 @@ export function UnitContractTexts({
                                         {error.join("\n")}
                                     </FeedbackBanner>
                                 )}
-                            </li>
+                            </Surface>
                         )
                     })}
                 </ul>

@@ -7,6 +7,7 @@ import { prepareImageForUpload } from "@/lib/image-upload"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { FileInput } from "@/components/ui/file-input"
+import { Surface } from "@/components/ui/card"
 
 interface DocumentUploadProps {
   label: string
@@ -118,9 +119,9 @@ export function DocumentUpload({
                 }
               }}
             />
-            <div className="bg-white p-3 rounded-xl shadow-sm border border-rule group-hover:bg-primary/5 group-hover:border-primary/20 transition-all">
+            <Surface className="p-3 group-hover:bg-primary/5 group-hover:border-primary/20 transition-all">
               <Icon icon={Camera} size="2xl" className="text-primary" />
-            </div>
+            </Surface>
             <div className="text-center">
               <p className="text-sm font-semibold text-ink-2">
                 Tomar foto o subir archivo

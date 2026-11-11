@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { loadStripe, type Stripe, type StripeCardElement } from "@stripe/stripe-js"
-import { Loader2, ShieldCheck, AlertTriangle, CreditCard } from "lucide-react"
+import { Loader2, ShieldCheck, CreditCard } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { normalizeApiError } from "@/lib/notify-error"
@@ -20,6 +20,7 @@ import {
 import type { GuaranteeStatus, GuaranteeStatusInfo } from "@/features/checkin/types/checkin"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface GuaranteeCardFormProps {
     reservationUuid: string
@@ -470,17 +471,11 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
 
     if (status === "active") {
         return (
-            <div className="flex items-center gap-3 rounded-xl border border-success/30 bg-success-sunk p-4">
-                <Icon icon={ShieldCheck} size="lg" className="text-success" />
-                <div>
-                    <p className="text-sm font-bold text-success">Tarjeta de garantía registrada</p>
-                    <p className="text-xs text-success mt-0.5">
-                        {cardBrand && cardLast4
-                            ? `${cardBrand.charAt(0).toUpperCase()}${cardBrand.slice(1)} terminada en ${cardLast4}`
-                            : "No se ha realizado ningún cobro."}
-                    </p>
-                </div>
-            </div>
+            <FeedbackBanner tone="success" icon={ShieldCheck} title="Tarjeta de garantía registrada">
+                {cardBrand && cardLast4
+                    ? `${cardBrand.charAt(0).toUpperCase()}${cardBrand.slice(1)} terminada en ${cardLast4}`
+                    : "No se ha realizado ningún cobro."}
+            </FeedbackBanner>
         )
     }
 
@@ -599,18 +594,13 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
             )}
 
             {problemText && (
-                <p className="flex items-start gap-2 text-xs text-danger bg-danger-sunk border border-danger/20 rounded-lg px-3 py-2">
-                    <Icon icon={AlertTriangle} size="sm" className="mt-0.5" />
-                    <span>
-                        {problemText}
-                        {/* La referencia existe porque diagnosticar esto costó dos
-                            días con un log de backend en verde: el huésped la puede
-                            leer por WhatsApp sin conectar el móvil a un Mac. */}
-                        {setupFailure && (
-                            <span className="ml-1 text-danger">(ref: {setupFailure.ref})</span>
-                        )}
-                    </span>
-                </p>
+                <FeedbackBanner tone="danger" mode="dynamic" density="compact">
+                    {problemText}
+                    {/* La referencia existe porque diagnosticar esto costó dos
+                        días con un log de backend en verde: el huésped la puede
+                        leer por WhatsApp sin conectar el móvil a un Mac. */}
+                    {setupFailure && <span className="ml-1">(ref: {setupFailure.ref})</span>}
+                </FeedbackBanner>
             )}
         </div>
     )

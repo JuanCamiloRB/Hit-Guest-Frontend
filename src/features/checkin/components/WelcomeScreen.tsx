@@ -12,6 +12,8 @@ import { resolveContractSigningState } from "@/features/checkin/lib/contract-sig
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
 import { Button } from "@/components/ui/button"
 import { Heading } from "@/components/ui/heading"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Surface } from "@/components/ui/card"
 
 interface WelcomeScreenProps {
     portal: CheckinPortalResponse
@@ -284,7 +286,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
             </div>
 
             {/* Reservation Card */}
-            <div className="bg-white rounded-xl p-5 shadow-sm border border-rule space-y-4">
+            <Surface className="p-5 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <span className="text-xs font-bold text-ink-3">Llegada</span>
@@ -332,13 +334,9 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     </p>
                 )}
                 {mainAwaitingExternalSignature && (
-                    <div className="flex items-start gap-3 rounded-xl border border-warning/20 bg-warning-sunk p-3">
-                        <Icon icon={Mail} className="text-warning mt-0.5" />
-                        <p className="text-xs text-warning leading-relaxed">
-                            <span className="font-semibold">Falta firmar</span>: tu registro está guardado.
-                            Te enviamos el contrato por correo para firmarlo.
-                        </p>
-                    </div>
+                    <FeedbackBanner tone="warning" density="compact" icon={Mail} title="Falta firmar">
+                        Tu registro está guardado. Te enviamos el contrato por correo para firmarlo.
+                    </FeedbackBanner>
                 )}
 
                 {mainCompleted && (
@@ -458,7 +456,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                 </div>
                 </>
                 )}
-            </div>
+            </Surface>
 
             {mainCompleted && (
                 <AccessInstructionsPanel portal={portal} unlocked={isFullyCompleted} />
@@ -497,16 +495,16 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
             {/* Security */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col items-center justify-center text-center bg-white border border-rule p-4 rounded-xl shadow-sm">
+                <Surface className="flex flex-col items-center justify-center text-center p-4">
                     <Icon icon={ShieldCheck} size="2xl" className="text-success mb-2" />
                     <span className="text-xs font-semibold text-ink">Cifrado Seguro</span>
                     <span className="text-xs text-ink-3 mt-0.5">Datos protegidos</span>
-                </div>
-                <div className="flex flex-col items-center justify-center text-center bg-white border border-rule p-4 rounded-xl shadow-sm">
+                </Surface>
+                <Surface className="flex flex-col items-center justify-center text-center p-4">
                     <Icon icon={Key} size="2xl" className="text-warning mb-2" />
                     <span className="text-xs font-semibold text-ink">Acceso Rápido</span>
                     <span className="text-xs text-ink-3 mt-0.5">Evita la recepción</span>
-                </div>
+                </Surface>
             </div>
 
             {/* Global CTA — big, unmissable primary action fixed at the bottom. */}

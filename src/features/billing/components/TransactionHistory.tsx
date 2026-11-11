@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { StatusPill, type StatusTone } from "@/components/ui/status-pill"
 import { useTranslation } from "@/hooks/useTranslation"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 /** «10 jul 2026, 2:32 p. m.» en la zona horaria local del PM. */
 function formatDate(iso: string, locale: string): string {
@@ -99,7 +100,7 @@ export function TransactionHistory() {
     }, [page, attempt])
 
     return (
-        <div className="rounded-xl border border-rule bg-white">
+        <Surface flat>
             <div className="flex items-center gap-2 border-b border-rule px-5 py-4">
                 <Icon icon={Receipt} className="text-primary" />
                 <Heading level={3} size="subsection">{t("billing.history.title")}</Heading>
@@ -190,6 +191,6 @@ export function TransactionHistory() {
                     </div>
                 </>
             )}
-        </div>
+        </Surface>
     )
 }

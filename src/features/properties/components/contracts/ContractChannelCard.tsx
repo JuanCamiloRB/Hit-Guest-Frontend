@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { ReservationSource } from "../../services/reservation-source-service"
 import { ReservationSourceIdentity, reservationSourceName, reservationSourceSlug } from "./ReservationSourceIdentity"
+import { Surface } from "@/components/ui/card"
 
 export type ContractChannelStatus = "configured" | "unconfigured" | "dirty" | "incomplete"
 
@@ -43,10 +44,7 @@ export function ContractChannelCard({
     const sourceName = source ? reservationSourceName(source) : fallbackName || "Canal"
 
     return (
-        <article className={cn(
-            "overflow-hidden rounded-xl border bg-white transition-colors",
-            status === "dirty" ? "border-warning/40" : status === "incomplete" ? "border-danger/30" : "border-rule",
-        )}>
+        <Surface as="article" flat className={cn("overflow-hidden transition-colors", status === "dirty" ? "border-warning/40" : status === "incomplete" ? "border-danger/30" : undefined)}>
             <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-2">
                     <div className="flex flex-wrap items-center gap-2.5">
@@ -74,7 +72,7 @@ export function ContractChannelCard({
                     {children}
                 </div>
             )}
-        </article>
+        </Surface>
     )
 }
 

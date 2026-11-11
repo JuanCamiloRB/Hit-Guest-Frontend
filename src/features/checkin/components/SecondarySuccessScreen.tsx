@@ -9,6 +9,7 @@ import { Icon } from "@/components/ui/icon"
 import { useSearchParams } from "next/navigation"
 import { completedEntryCopy, resolveCompletedEntryReason } from "@/features/checkin/lib/success-entry"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 interface SecondarySuccessScreenProps {
     portal: CheckinPortalResponse
@@ -41,7 +42,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                 </p>
             </div>
 
-            <div className="bg-white border border-rule rounded-xl p-5 shadow-sm space-y-4">
+            <Surface className="p-5 space-y-4">
                 <Heading level={3} size="subsection">Resumen de Estadía</Heading>
                 
                 <div className="flex items-start gap-3">
@@ -61,7 +62,7 @@ export function SecondarySuccessScreen({ portal, reservationUuid }: SecondarySuc
                         <p className="text-xs text-ink-3">{res.totalGuestsAllowed} huéspedes permitidos</p>
                     </div>
                 </div>
-            </div>
+            </Surface>
 
             <div className="bg-brand-navy/5 border border-brand-navy/10 rounded-xl p-5 text-center">
                 <p className="text-sm text-brand-navy font-medium">

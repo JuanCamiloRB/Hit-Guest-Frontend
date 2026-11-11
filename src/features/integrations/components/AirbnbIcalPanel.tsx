@@ -35,6 +35,8 @@ import { icalFeedService } from "../services/ical-feed-service"
 import { AIRBNB_SOURCE_PMS_ID, extractAirbnbListingId, maskIcalUrl } from "../lib/ical"
 import type { IcalFeed, IcalMessageTemplate } from "../types/ical"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Surface } from "@/components/ui/card"
 
 const FEED_ACTIVE = 6
 const FEED_INACTIVE = 7
@@ -196,12 +198,13 @@ export function AirbnbIcalPanel() {
             {feeds === null ? (
                 <LoadingState rows={2} label="Cargando calendarios" />
             ) : loadError ? (
-                <div className="flex items-center justify-between gap-2 rounded-lg border border-warning/30 bg-warning-sunk px-3 py-2 text-sm text-warning">
-                    <span>No se pudieron cargar los calendarios.</span>
-                    <Button variant="link-inherit" size="inline" type="button" onClick={() => void loadFeeds()}>
-                        Reintentar
-                    </Button>
-                </div>
+                <FeedbackBanner
+                    tone="warning"
+                    mode="dynamic"
+                    action={<Button type="button" size="sm" variant="outline" onClick={() => void loadFeeds()}>Reintentar</Button>}
+                >
+                    No se pudieron cargar los calendarios.
+                </FeedbackBanner>
             ) : feeds.length === 0 ? (
                 <EmptyState
                     title="Todavía no hay calendarios conectados"
@@ -210,7 +213,7 @@ export function AirbnbIcalPanel() {
             ) : (
                 <ul className="space-y-2">
                     {feeds.map((feed) => (
-                        <li key={feed.uuid} className="rounded-xl border border-rule bg-white p-4">
+                        <Surface as="li" flat className="p-4" key={feed.uuid}>
                             <div className="flex flex-wrap items-center justify-between gap-2">
                                 <div className="min-w-0">
                                     <p className="text-sm font-semibold text-ink">{listingName(feed.listingUuid)}</p>
@@ -266,7 +269,7 @@ export function AirbnbIcalPanel() {
                                     <Icon icon={Trash2} size="sm" /> Eliminar
                                 </UnstyledButton>
                             </div>
-                        </li>
+                        </Surface>
                     ))}
                 </ul>
             )}
@@ -506,13 +509,17 @@ function CreateFeedDialog({
                     </div>
 
                     {needsIntegration && (
-                        <div className="space-y-2 rounded-lg border border-warning/30 bg-warning-sunk px-3 py-2 text-sm text-warning">
-                            <p>{needsIntegration}</p>
-                            <Button size="sm" variant="outline" disabled={connecting} onClick={() => void connectAndRetry()}>
-                                {connecting && <Icon icon={Loader2} className="mr-1.5 animate-spin" />}
-                                Conectar Airbnb iCal ahora
-                            </Button>
-                        </div>
+                        <FeedbackBanner
+                            tone="warning"
+                            action={
+                                <Button size="sm" variant="outline" disabled={connecting} onClick={() => void connectAndRetry()}>
+                                    {connecting && <Icon icon={Loader2} className="mr-1.5 animate-spin" />}
+                                    Conectar Airbnb iCal ahora
+                                </Button>
+                            }
+                        >
+                            {needsIntegration}
+                        </FeedbackBanner>
                     )}
                 </div>
 

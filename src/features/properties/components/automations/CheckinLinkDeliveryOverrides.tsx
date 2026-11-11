@@ -163,14 +163,19 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                             const isLoading = loadingUuids.has(listing.uuid)
                             if (entry?.state === "failed" && !isLoading) {
                                 return (
-                                    <li key={listing.uuid} className="flex items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning-sunk/60 px-3 py-2">
-                                        <div className="min-w-0">
-                                            <p className="truncate text-xs font-semibold text-ink-2">{listing.name}</p>
-                                            <p className="text-xs text-warning">No se pudo cargar</p>
-                                        </div>
-                                        <Button type="button" size="sm" variant="outline" onClick={() => void loadListings([listing])}>
-                                            <Icon icon={RefreshCw} /> Reintentar
-                                        </Button>
+                                    <li key={listing.uuid}>
+                                        <FeedbackBanner
+                                            tone="warning"
+                                            density="compact"
+                                            title={listing.name}
+                                            action={
+                                                <Button type="button" size="sm" variant="outline" onClick={() => void loadListings([listing])}>
+                                                    <Icon icon={RefreshCw} /> Reintentar
+                                                </Button>
+                                            }
+                                        >
+                                            No se pudo cargar
+                                        </FeedbackBanner>
                                     </li>
                                 )
                             }

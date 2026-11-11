@@ -97,3 +97,22 @@ describe("Card", () => {
         expect(screen.getByText("Detalle")).toHaveClass("text-ink-2")
     })
 })
+
+describe("Surface", () => {
+    it("es la superficie de Card sin estructura, con la etiqueta pedida", async () => {
+        const { Surface } = await import("./card")
+        render(<Surface as="article" data-testid="s" className="p-5">x</Surface>)
+        const el = screen.getByTestId("s")
+        expect(el.tagName).toBe("ARTICLE")
+        expect(el).toHaveClass("bg-card", "border-rule", "rounded-xl", "shadow-sm", "p-5")
+    })
+
+    it("flat quita la sombra; floating es la superficie de un panel flotante", async () => {
+        const { Surface } = await import("./card")
+        render(<><Surface flat data-testid="f" /><Surface floating data-testid="p" /></>)
+        expect(screen.getByTestId("f")).toHaveClass("shadow-none")
+        expect(screen.getByTestId("f")).not.toHaveClass("shadow-sm")
+        expect(screen.getByTestId("p")).toHaveClass("rounded-md", "shadow-md")
+        expect(screen.getByTestId("p")).not.toHaveClass("rounded-xl")
+    })
+})

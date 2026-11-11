@@ -26,13 +26,14 @@ import { DynamicCheckinFields, areDynamicFieldsValid, getProviderUserFields } fr
 import { CollapsibleSection } from "@/features/checkin/components/CollapsibleSection"
 import { mockDocumentTypes, mockGenders } from "@/features/checkin/data/mock-guest-data"
 import { DocumentUpload } from "@/features/checkin/components/DocumentUpload"
-import { ArrowLeft, User, FileText, Globe, Plane, Loader2, CheckCircle2, ClipboardList, AlertTriangle } from "lucide-react"
+import { ArrowLeft, User, FileText, Globe, Plane, Loader2, CheckCircle2, ClipboardList } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Heading } from "@/components/ui/heading"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface SecondaryGuestFormScreenProps {
     reservationUuid: string
@@ -583,16 +584,10 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             {/* El documento venció: /secondary/complete lo rechaza con 403, así que
                 se avisa acá en vez de dejar que lo descubra al enviar. */}
             {documentExpired && (
-                <div className="flex items-start gap-3 rounded-xl border border-danger/20 bg-danger-sunk p-4">
-                    <Icon icon={AlertTriangle} size="lg" className="text-danger mt-0.5" />
-                    <div>
-                        <p className="text-sm font-bold text-danger">El documento está vencido</p>
-                        <p className="text-xs text-danger mt-0.5">
-                            No podemos completar el registro con un documento de identidad vencido.
-                            Revisa la fecha o contacta al anfitrión.
-                        </p>
-                    </div>
-                </div>
+                <FeedbackBanner tone="danger" title="El documento está vencido">
+                    No podemos completar el registro con un documento de identidad vencido.
+                    Revisa la fecha o contacta al anfitrión.
+                </FeedbackBanner>
             )}
 
             {/* ── Sticky Bottom Bar ── */}

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { ArrowLeft, CheckCircle2, FileText, User, Globe, Plane, Loader2, ClipboardList, AlertTriangle } from "lucide-react"
+import { ArrowLeft, CheckCircle2, FileText, User, Globe, Plane, Loader2, ClipboardList } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useState, useEffect } from "react"
 import { toast } from "sonner"
@@ -51,6 +51,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Heading } from "@/components/ui/heading"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface GuestFormScreenProps {
     reservationUuid: string
@@ -524,12 +525,7 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             <CollapsibleSection icon={<Icon icon={FileText} size="lg" />} title="Documento de identidad" expanded={expanded.document} onToggle={() => toggleSection("document")} badge={form.identificationNumber ? "✓" : undefined}>
                 <div className="space-y-4">
                     {docVerified && (
-                        <div className="flex items-center gap-2 bg-success-sunk border border-success/30 text-success rounded-xl px-3 py-2">
-                            <Icon icon={CheckCircle2} className="text-success" />
-                            <span className="text-xs font-semibold">
-                                {DOCUMENT_NOTICE_COPY[docNotice]}
-                            </span>
-                        </div>
+                        <FeedbackBanner tone="success" density="compact" title={DOCUMENT_NOTICE_COPY[docNotice]} />
                     )}
                     <SearchableSelect label="País del documento" options={countryOptions} value={form.documentCountryId} onChange={(v) => updateField("documentCountryId", v)} placeholder="Seleccionar país..." required />
                     <DocumentTypeNumberFields
@@ -682,16 +678,10 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             {/* El documento venció: el backend lo va a rechazar igual, así que se
                 dice acá y no después de que el huésped firme. */}
             {documentExpired && (
-                <div className="flex items-start gap-3 rounded-xl border border-danger/20 bg-danger-sunk p-4">
-                    <Icon icon={AlertTriangle} size="lg" className="text-danger mt-0.5" />
-                    <div>
-                        <p className="text-sm font-bold text-danger">Tu documento está vencido</p>
-                        <p className="text-xs text-danger mt-0.5">
-                            No podemos completar el registro con un documento de identidad vencido.
-                            Contacta al anfitrión para continuar con tu check-in.
-                        </p>
-                    </div>
-                </div>
+                <FeedbackBanner tone="danger" title="Tu documento está vencido">
+                    No podemos completar el registro con un documento de identidad vencido.
+                    Contacta al anfitrión para continuar con tu check-in.
+                </FeedbackBanner>
             )}
 
             {/* CTA */}

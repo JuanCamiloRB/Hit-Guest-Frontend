@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, Crown, AlertTriangle } from "lucide-react"
+import { Loader2, Crown } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import {
     Dialog,
@@ -25,6 +25,7 @@ import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
 import { authService } from "@/features/auth/services/auth-service"
 import type { User } from "@/features/auth/types"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface TransferOwnershipDialogProps {
     open: boolean
@@ -118,13 +119,10 @@ export function TransferOwnershipDialog({
                         </Select>
                     </div>
 
-                    <div className="flex items-start gap-2 rounded-lg bg-warning-sunk border border-warning/30 px-3 py-2.5">
-                        <Icon icon={AlertTriangle} className="text-warning mt-0.5" />
-                        <p className="text-xs text-warning">
-                            Dejarás de ser el dueño. No podrás deshacer esto tú mismo: solo el nuevo dueño
-                            podrá transferírtela de vuelta. Conservarás tu rol de Administrador.
-                        </p>
-                    </div>
+                    <FeedbackBanner tone="warning" density="compact">
+                        Dejarás de ser el dueño. No podrás deshacer esto tú mismo: solo el nuevo dueño
+                        podrá transferírtela de vuelta. Conservarás tu rol de Administrador.
+                    </FeedbackBanner>
                 </div>
 
                 <DialogFooter>

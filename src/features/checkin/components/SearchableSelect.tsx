@@ -6,6 +6,7 @@ import { Icon } from "@/components/ui/icon"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Surface } from "@/components/ui/card"
 
 interface Option {
   id: number
@@ -111,7 +112,7 @@ export function SearchableSelect({
 
         {/* Dropdown */}
         {isOpen && (
-          <div className="absolute top-full left-0 right-0 mt-1.5 z-50 bg-white rounded-xl shadow-md border border-rule overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+          <Surface floating className="absolute top-full left-0 right-0 mt-1.5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
             {/* Search Input */}
             <div className="p-2 border-b border-rule">
               <div className="relative">
@@ -160,7 +161,7 @@ export function SearchableSelect({
                 ))
               )}
             </div>
-          </div>
+          </Surface>
         )}
       </div>
     </div>

@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Input } from "@/components/ui/input"
+import { Surface } from "@/components/ui/card"
 
 export type PlaceDetails = GeocodePlaceDetails
 
@@ -240,7 +241,7 @@ export function AddressAutocomplete({
             </div>
 
             {open && suggestions.length > 0 && (
-                <ul className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-rule bg-white shadow-md">
+                <Surface as="ul" floating className="absolute z-50 mt-1 w-full overflow-hidden">
                     {suggestions.map((s) => (
                         <li key={s.placeId}>
                             <UnstyledButton
@@ -255,7 +256,7 @@ export function AddressAutocomplete({
                             </UnstyledButton>
                         </li>
                     ))}
-                </ul>
+                </Surface>
             )}
 
             {/*

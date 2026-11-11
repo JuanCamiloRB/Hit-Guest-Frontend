@@ -61,6 +61,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 const DEFAULT_ROUTING: SourceRouting = {
     contract_type: "agreement_only",
@@ -637,7 +638,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     }
 
     return (
-        <div className="space-y-6 rounded-xl border border-rule bg-white p-4 sm:p-5">
+        <Surface flat className="space-y-6 p-4 sm:p-5">
             <div className="flex items-start gap-3">
                 <div className="rounded-xl bg-primary/10 p-2.5">
                     <Icon icon={FileSignature} size="xl" className="text-primary" />
@@ -885,6 +886,6 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                     Guardar contrato y firma
                 </Button>
             </div>
-        </div>
+        </Surface>
     )
 }

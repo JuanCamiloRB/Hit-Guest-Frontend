@@ -28,6 +28,7 @@ import { API_BASE } from "@/lib/config"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
 
 interface AutomationStatusItemProps {
     item: AutomationStatusItemType
@@ -106,7 +107,7 @@ export function AutomationStatusItem({
     const signedContractUrl = `${API_BASE}/checkin/${reservationUuid}/contract/signed`
 
     return (
-        <div className="flex flex-col gap-3 rounded-xl border border-rule bg-card p-4 transition-colors hover:border-ink-4/60">
+        <Surface flat className="flex flex-col gap-3 p-4 transition-colors hover:border-ink-4/60">
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     {/* Sin `truncate`: el título es lo que identifica la fila, y
@@ -252,7 +253,7 @@ export function AutomationStatusItem({
                     )}
                 </div>
             </div>
-        </div>
+        </Surface>
     )
 }
 
