@@ -23,14 +23,16 @@ vi.mock("./columns", () => ({
 }))
 
 vi.mock("@/components/shared/data-table", () => ({
-    DataTable: ({ data, sorting, onSortingChange, onVisibleRowsChange }: {
+    DataTable: ({ data, sorting, onSortingChange, onVisibleRowsChange, empty }: {
         data: Reservation[]
+        empty?: React.ReactNode
         sorting?: { id: string; desc: boolean }[]
         onSortingChange?: (next: { id: string; desc: boolean }[]) => void
         onVisibleRowsChange?: (visible: Reservation[], next: Reservation[]) => void
     }) => (
         <>
             <span data-testid="row-count">{data.length}</span>
+            {data.length === 0 && empty}
             <span data-testid="sorting">{sorting?.map((s) => s.id).join(",")}</span>
             <span data-testid="sort-values">{data.map((r) => `${r.id}:${r.automationStatusForSort?.contract ?? "-"}`).join(",")}</span>
             <button type="button" onClick={() => mocks.deleteHandler?.(data[0])}>Solicitar eliminación</button>
@@ -241,10 +243,62 @@ describe("ReservationsList — la lista compartida", () => {
         mocks.list.mockRejectedValueOnce(new Error("503")).mockResolvedValueOnce([reservation])
         render(<ReservationsList />)
 
-        expect(await screen.findByText("No pudimos cargar las reservas")).toBeInTheDocument()
+        const failure = (await screen.findByText("No pudimos cargar las reservas")).closest("[data-slot=feedback-banner]")
+        // Un error de carga es un aviso de error bloqueante, no un estado vacío.
+        expect(failure).toHaveAttribute("data-tone", "danger")
+        expect(failure).toHaveAttribute("role", "alert")
+        expect(screen.queryByText(/Todavía no hay reservas/)).toBeNull()
         fireEvent.click(screen.getByRole("button", { name: "Reintentar" }))
         expect(await screen.findByTestId("row-count")).toHaveTextContent("1")
         expect(mocks.list).toHaveBeenCalledTimes(2)
+    })
+
+    it("sin reservas dice «Todavía no hay reservas»; con filtros sin coincidencias, «Sin resultados» y Limpiar filtros", async () => {
+        mocks.list.mockResolvedValueOnce([])
+        const { unmount } = render(<ReservationsList />)
+        const empty = (await screen.findByText("Todavía no hay reservas")).closest("[data-slot=empty-state]")
+        expect(empty).toHaveAttribute("data-kind", "empty")
+        expect(empty).not.toHaveAttribute("role")
+        unmount()
+
+        resetReservationsCache()
+        mocks.list.mockResolvedValueOnce([reservation])
+        render(<ReservationsList />)
+        expect(await screen.findByTestId("row-count")).toHaveTextContent("1")
+        fireEvent.change(screen.getByPlaceholderText(/Buscar huésped/), { target: { value: "zzz-sin-coincidencias" } })
+
+        const status = screen.getByText("Sin resultados para «zzz-sin-coincidencias»").closest("[data-slot=empty-state]")!
+        expect(status).toHaveAttribute("data-kind", "no-results")
+        expect(status).toHaveAttribute("role", "status")
+        fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }))
+        expect(screen.getByTestId("row-count")).toHaveTextContent("1")
+    })
+
+    it("mientras relee, las filas siguen y se anuncia «Actualizando reservas…»", async () => {
+        // Sin colas `Once`: `clearAllMocks` no las vacía y una pendiente se filtraba
+        // a la prueba siguiente. La primera llamada responde; las demás esperan.
+        let finish: ((value: Reservation[]) => void) | null = null
+        let calls = 0
+        mocks.list.mockReset()
+        mocks.list.mockImplementation(() => {
+            calls += 1
+            return calls === 1
+                ? Promise.resolve([reservation])
+                : new Promise<Reservation[]>((resolve) => { finish = resolve })
+        })
+        render(<ReservationsList />)
+        expect(await screen.findByTestId("row-count")).toHaveTextContent("1")
+        const indicator = document.querySelector("[data-slot=refresh-indicator]")!
+        await waitFor(() => expect(indicator).toBeEmptyDOMElement())
+
+        await act(async () => { window.dispatchEvent(new Event("reservationCreated")) })
+        await waitFor(() => expect(indicator).toHaveTextContent("Actualizando reservas…"))
+        expect(screen.getByTestId("row-count")).toHaveTextContent("1")
+
+        await act(async () => { finish?.([reservation]) })
+        await waitFor(() => expect(indicator).toBeEmptyDOMElement())
+        mocks.list.mockReset()
+        mocks.list.mockResolvedValue([reservation])
     })
 
     it("una actualización fallida conserva las filas y avisa, sin esqueleto", async () => {

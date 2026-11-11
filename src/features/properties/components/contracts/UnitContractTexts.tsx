@@ -23,6 +23,7 @@ import { DocumentEditor } from "../documents/DocumentEditor"
 import { DocumentPreviewModal } from "../documents/DocumentPreviewModal"
 import { ReservationSourceIdentity, reservationSourceSlug } from "./ReservationSourceIdentity"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface Props {
     propertyUuid: string
@@ -236,9 +237,7 @@ export function UnitContractTexts({
     }
     if (!loaded || !plan) {
         return (
-            <div className="flex items-center gap-2 py-3 text-sm text-slate-400">
-                <Loader2 size={16} className="animate-spin" /> Cargando el texto del contrato…
-            </div>
+            <LoadingState variant="spinner" label="Cargando el texto del contrato…" className="justify-start py-3" />
         )
     }
 

@@ -85,6 +85,8 @@ import { buttonVariants } from "@/components/ui/button"
 import type { ExternalPmsId } from "../types"
 import { invalidatePropertiesCaches } from "../lib/properties-cache"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 
 const defaultUnit = {
     name: "",
@@ -1074,9 +1076,7 @@ export function PropertiesUnits() {
 
                                                 {!unitForm.extra.inheritAmenities && (
                                                     amenityOptions === null ? (
-                                                        <div className="flex items-center gap-2 rounded-xl border bg-slate-50 p-4 text-xs text-slate-400">
-                                                            <Loader2 className="h-4 w-4 animate-spin" /> Cargando amenidades…
-                                                        </div>
+                                                        <LoadingState variant="spinner" label="Cargando amenidades…" className="rounded-xl border border-rule py-6" />
                                                     ) : amenityCatalogFailed ? (
                                                         <FeedbackBanner tone="warning" density="compact">
                                                             No se pudo cargar el catálogo de amenidades. Cierra y reabre el
@@ -1084,9 +1084,7 @@ export function PropertiesUnits() {
                                                             afectada.
                                                         </FeedbackBanner>
                                                     ) : amenityOptions.length === 0 ? (
-                                                        <div className="rounded-xl border bg-slate-50 p-4 text-xs text-slate-400">
-                                                            El catálogo de amenidades está vacío.
-                                                        </div>
+                                                        <EmptyState title="El catálogo de amenidades está vacío." className="rounded-xl border border-rule py-6" />
                                                     ) : (
                                                         <div className="grid grid-cols-1 gap-2 rounded-xl border bg-slate-50 p-4 sm:grid-cols-2">
                                                             {amenityOptions.map((item) => {
@@ -1246,17 +1244,13 @@ export function PropertiesUnits() {
                                             </div>
 
                                             {overridesLoading ? (
-                                                <div className="flex items-center justify-center py-8 gap-2 text-slate-400">
-                                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                                    <span className="text-sm">Cargando automatizaciones...</span>
-                                                </div>
+                                                <LoadingState rows={2} label="Cargando automatizaciones…" />
                                             ) : propertyAutomations.length === 0 ? (
-                                                <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl p-4">
-                                                    <Zap className="h-4 w-4 text-slate-400 shrink-0" />
-                                                    <p className="text-sm text-slate-500">
-                                                        No hay automatizaciones activas en esta propiedad.
-                                                    </p>
-                                                </div>
+                                                <EmptyState
+                                                    icon={<Zap className="h-5 w-5" />}
+                                                    title="No hay automatizaciones activas en esta propiedad."
+                                                    className="rounded-xl border border-rule py-8"
+                                                />
                                             ) : (
                                                 <div className="space-y-3">
                                                     {!(unitForm as any).uuid && (

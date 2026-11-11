@@ -8,6 +8,24 @@ interface Row { id: number; name: string }
 const columns: ColumnDef<Row>[] = [{ accessorKey: "name", header: "Nombre" }]
 const rows: Row[] = Array.from({ length: 12 }, (_, i) => ({ id: i + 1, name: `Fila ${i + 1}` }))
 
+describe("DataTable — sin filas", () => {
+    it("sin `empty`, el texto de siempre", () => {
+        render(<DataTable columns={columns} data={[]} />)
+        expect(screen.getByText("No hay resultados.")).toBeInTheDocument()
+    })
+
+    it("con `empty`, la pantalla decide qué se muestra (sin datos o sin resultados)", () => {
+        render(<DataTable columns={columns} data={[]} empty={<p>Todavía no hay reservas</p>} />)
+        expect(screen.getByText("Todavía no hay reservas")).toBeInTheDocument()
+        expect(screen.queryByText("No hay resultados.")).toBeNull()
+    })
+
+    it("con filas, `empty` no aparece", () => {
+        render(<DataTable columns={columns} data={rows.slice(0, 1)} empty={<p>vacío</p>} />)
+        expect(screen.queryByText("vacío")).toBeNull()
+    })
+})
+
 describe("DataTable — onVisibleRowsChange", () => {
     it("avisa las filas de la página en pantalla y vuelve a avisar al cambiar de página", () => {
         const onVisibleRowsChange = vi.fn()

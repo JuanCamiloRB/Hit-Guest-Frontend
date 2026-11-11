@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Loader2, FileText } from "lucide-react"
+import { FileText } from "lucide-react"
 import {
     Dialog,
     DialogContent,
@@ -18,6 +18,9 @@ import type {
 } from "@/features/properties/types/automation"
 import { formatRunDate, errorMessage, TRIGGERED_BY_LABELS } from "./automation-status-meta"
 import { CHANNEL_LABEL } from "@/features/properties/lib/checkin-link-delivery"
+import { LoadingState } from "@/components/ui/loading-state"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { EmptyState } from "@/components/ui/empty-state"
 
 interface AutomationHistoryModalProps {
     reservationUuid: string
@@ -92,16 +95,11 @@ export function AutomationHistoryModal({ reservationUuid, automation, onClose }:
                 </DialogHeader>
 
                 {isLoading ? (
-                    <div className="flex items-center justify-center gap-2 py-12 text-ink-3">
-                        <Loader2 className="animate-spin" size={20} />
-                        <span className="text-sm">Cargando historial...</span>
-                    </div>
+                    <LoadingState rows={3} label="Cargando historial…" />
                 ) : error ? (
-                    <p className="py-8 text-center text-sm text-danger">{error}</p>
+                    <FeedbackBanner tone="danger" mode="blocking">{error}</FeedbackBanner>
                 ) : records.length === 0 ? (
-                    <p className="py-8 text-center text-sm text-ink-3">
-                        Aún no hay ejecuciones registradas para esta automatización.
-                    </p>
+                    <EmptyState title="Aún no hay ejecuciones registradas para esta automatización." className="py-8" />
                 ) : (
                     /* Una lista, no una tabla. Con seis columnas —dos de ellas un id
                        crudo y un detalle casi siempre vacío— no había ancho de

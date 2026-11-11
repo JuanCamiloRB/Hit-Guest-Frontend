@@ -57,6 +57,7 @@ import { ContractModeToggle } from "./ContractModeToggle"
 import { SourceRoutingRow } from "./SourceRoutingRow"
 import { ContractChannelCard, type ContractChannelStatus } from "./ContractChannelCard"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 const DEFAULT_ROUTING: SourceRouting = {
     contract_type: "agreement_only",
@@ -622,10 +623,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white py-10 text-slate-400">
-                <Loader2 size={20} className="animate-spin" />
-                <span className="text-sm">Cargando contrato y firma…</span>
-            </div>
+            <LoadingState rows={3} label="Cargando contrato y firma…" className="rounded-xl border border-rule bg-card" />
         )
     }
 

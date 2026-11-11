@@ -24,7 +24,7 @@ import {
     PopoverTrigger,
 } from "@/components/ui/popover"
 import { Search, X, CalendarIcon } from "lucide-react"
-import { LoadingState } from "@/components/ui/loading-state"
+import { LoadingState, RefreshIndicator } from "@/components/ui/loading-state"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { format, isValid, isWithinInterval, startOfDay, endOfDay } from "date-fns"
 import { es } from "date-fns/locale"
@@ -336,14 +336,17 @@ export default function ReservationsList() {
     if (status === "error") {
         // Sin lista no hay nada que filtrar: un fallo se dice, no se muestra
         // como «no hay reservas».
-        return (
-            <div className="rounded-xl border border-rule bg-white">
-                <EmptyState
-                    title={syncing ? "Las reservas se están sincronizando" : "No pudimos cargar las reservas"}
-                    description={syncing ? "Intenta nuevamente en unos segundos." : "Revisa tu conexión e intenta de nuevo."}
-                    action={<Button variant="outline" size="sm" onClick={refresh}>Reintentar</Button>}
-                />
-            </div>
+        // Un error de carga no es un vacío (escala de la 2.2). Sincronizando (202)
+        // no es un error: se informa y se reintenta solo.
+        const retry = <Button variant="outline" size="sm" onClick={refresh}>Reintentar</Button>
+        return syncing ? (
+            <FeedbackBanner tone="info" mode="dynamic" title="Las reservas se están sincronizando" action={retry}>
+                Intenta nuevamente en unos segundos.
+            </FeedbackBanner>
+        ) : (
+            <FeedbackBanner tone="danger" mode="blocking" title="No pudimos cargar las reservas" action={retry}>
+                Revisa tu conexión e intenta de nuevo.
+            </FeedbackBanner>
         )
     }
 
@@ -456,6 +459,8 @@ export default function ReservationsList() {
                         Limpiar
                     </Button>
                 )}
+                {/* La lista sigue a la vista mientras se vuelve a pedir: solo se avisa. */}
+                <RefreshIndicator active={status === "refreshing"} label="Actualizando reservas…" className="sm:ml-auto" />
             </div>
 
             {refreshFailed && (
@@ -485,6 +490,19 @@ export default function ReservationsList() {
             <DataTable
                 columns={columns}
                 data={rows}
+                empty={reservations.length === 0 ? (
+                    <EmptyState
+                        title="Todavía no hay reservas"
+                        description="Las reservas que crees o que lleguen de tus canales aparecen aquí."
+                    />
+                ) : (
+                    <EmptyState
+                        kind="no-results"
+                        title={search.trim() ? `Sin resultados para «${search.trim()}»` : "Ninguna reserva coincide con los filtros"}
+                        description="Prueba con otra búsqueda o quita algún filtro."
+                        action={<Button variant="outline" size="sm" onClick={clearFilters}>Limpiar filtros</Button>}
+                    />
+                )}
                 sorting={tableSorting}
                 onSortingChange={handleSortingChange}
                 getRowId={rowId}

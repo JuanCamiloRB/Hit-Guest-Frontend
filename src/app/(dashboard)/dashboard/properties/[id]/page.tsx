@@ -7,7 +7,7 @@ import { propertiesService } from "@/features/properties/services/properties-ser
 import { listingsService } from "@/features/properties/services/listings-service"
 import { apiResponseToFormData } from "@/features/properties/types"
 import { Property } from "@/types"
-import { Loader2 } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function EditPropertyPage() {
     const { id } = useParams()
@@ -62,9 +62,15 @@ export default function EditPropertyPage() {
 
     if (isLoading) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-muted-foreground animate-pulse">Cargando detalles de la propiedad...</p>
+            // Esqueleto con la forma de la ficha (título, pestañas, formulario).
+            <div className="space-y-6" aria-busy>
+                <span className="sr-only" role="status">Cargando la propiedad…</span>
+                <div className="space-y-2">
+                    <Skeleton className="h-8 w-64" />
+                    <Skeleton className="h-4 w-80 max-w-full" />
+                </div>
+                <Skeleton className="h-12 w-full rounded-xl" />
+                <Skeleton className="h-96 w-full rounded-xl" />
             </div>
         )
     }
@@ -86,7 +92,7 @@ export default function EditPropertyPage() {
                     Edita los detalles, unidades y configuraciones de {property.name}.
                 </p>
             </div>
-            <Suspense fallback={<div className="h-20 w-full animate-pulse bg-slate-100 rounded-lg" />}>
+            <Suspense fallback={<Skeleton className="h-20 w-full rounded-lg" />}>
                 <PropertyForm initialData={property} />
             </Suspense>
         </div>

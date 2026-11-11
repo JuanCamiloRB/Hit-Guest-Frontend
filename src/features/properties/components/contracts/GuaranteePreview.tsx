@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ShieldCheck, Loader2 } from "lucide-react"
+import { ShieldCheck } from "lucide-react"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import {
     systemDocumentService,
@@ -10,6 +10,7 @@ import {
     type SystemDocument,
 } from "../../services/system-document-service"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 /**
  * Read-only preview of the HitGuest-maintained damage/consumption guarantee
@@ -35,10 +36,7 @@ export function GuaranteePreview() {
 
     if (loading) {
         return (
-            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-6 text-sm text-slate-400">
-                <Loader2 size={15} className="animate-spin" />
-                Cargando texto de garantía…
-            </div>
+            <LoadingState variant="spinner" label="Cargando texto de garantía…" className="rounded-xl border border-rule py-6" />
         )
     }
 

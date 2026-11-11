@@ -4,12 +4,12 @@ import { useState, useMemo, useCallback } from "react"
 import { Property, Unit } from "@/types"
 import { PropertyCard } from "./PropertyCard"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, Home, List, Loader2 } from "lucide-react"
+import { Plus, Search, Filter, Home, List } from "lucide-react"
 import { EmptyState } from "@/components/ui/empty-state"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { SectionCard } from "@/components/ui/section-card"
-import { LoadingState } from "@/components/ui/loading-state"
+import { LoadingState, RefreshIndicator } from "@/components/ui/loading-state"
 import {
     Select,
     SelectContent,
@@ -34,6 +34,8 @@ import {
 import { cn } from "@/lib/utils"
 import { useCachedLoad } from "@/hooks/useCachedLoad"
 import { portfolioCache, propertiesCache } from "../lib/properties-cache"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Skeleton } from "@/components/ui/skeleton"
 
 // ── Component ──────────────────────────────────────────────────────────
 
@@ -80,6 +82,12 @@ export function PropertiesList() {
         refreshPortfolio()
     }, [refreshPortfolio])
 
+    const clearFilters = useCallback(() => {
+        setSearchQuery("")
+        setStatusFilter("ALL")
+        setPropertyFilter("ALL")
+    }, [])
+
     const filteredProperties = useMemo(() => {
         return properties.filter((property: Property) => {
             const matchesSearch =
@@ -108,7 +116,14 @@ export function PropertiesList() {
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-extrabold tracking-tight text-[var(--color-brand-navy)] drop-shadow-sm">Propiedades y Alojamientos</h2>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <h2 className="text-3xl font-extrabold tracking-tight text-[var(--color-brand-navy)] drop-shadow-sm">Propiedades y Alojamientos</h2>
+                        {/* Lo cargado sigue a la vista mientras se relee (p. ej. tras activar una propiedad). */}
+                        <RefreshIndicator
+                            active={hasProperties && (light.status === "refreshing" || portfolio.status === "refreshing")}
+                            label="Actualizando propiedades…"
+                        />
+                    </div>
                     <p className="text-[var(--color-brand-navy)]/60 text-sm font-medium">
                         {properties.length > 0
                             ? `${properties.length} ${properties.length === 1 ? "propiedad" : "propiedades"}${overviewByProperty
@@ -169,25 +184,45 @@ export function PropertiesList() {
 
                 <TabsContent value="properties" className="space-y-6 outline-none">
                     {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-24 bg-gradient-to-b from-white to-slate-50 rounded-3xl border-[2px] border-dashed border-[var(--color-brand-purple)]/20">
-                            <Loader2 className="h-12 w-12 text-[var(--color-brand-purple)] animate-spin mb-4" />
-                            <p className="text-[var(--color-brand-navy)]/60 font-bold tracking-wide">Preparando tus propiedades...</p>
+                        // Esqueleto con la forma de la grilla de tarjetas: nada salta al llegar.
+                        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            <span className="sr-only" role="status">Cargando propiedades…</span>
+                            {Array.from({ length: 4 }, (_, i) => (
+                                <Skeleton key={i} aria-hidden className="h-72 rounded-xl" />
+                            ))}
                         </div>
                     ) : propertiesFailed ? (
-                        <div className="rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50">
-                            <EmptyState
-                                title="No pudimos cargar tus propiedades"
-                                description="Revisa tu conexión e intenta de nuevo."
-                                action={<Button variant="outline" size="sm" onClick={retryAll}>Reintentar</Button>}
-                            />
-                        </div>
+                        // Un error de carga no es un vacío (escala de la 2.2).
+                        <FeedbackBanner
+                            tone="danger"
+                            mode="blocking"
+                            title="No pudimos cargar tus propiedades"
+                            action={<Button variant="outline" size="sm" onClick={retryAll}>Reintentar</Button>}
+                        >
+                            Revisa tu conexión e intenta de nuevo.
+                        </FeedbackBanner>
                     ) : filteredProperties.length === 0 ? (
-                        <div className="text-center py-20 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200">
-                            <div className="bg-slate-100 h-16 w-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Home className="h-8 w-8 text-slate-400" />
-                            </div>
-                            <h3 className="text-lg font-bold text-slate-900">No se encontraron propiedades</h3>
-                            <p className="text-slate-500">Prueba ajustando tus filtros o añade una nueva propiedad.</p>
+                        <div className="rounded-2xl border-2 border-dashed border-rule bg-white">
+                            {properties.length === 0 ? (
+                                <EmptyState
+                                    icon={<Home className="h-8 w-8" />}
+                                    title="Todavía no tienes propiedades"
+                                    description="Añade tu primera propiedad para empezar a recibir check-ins."
+                                    action={
+                                        <Button asChild size="sm">
+                                            <Link href="/dashboard/properties/new"><Plus aria-hidden /> Añadir propiedad</Link>
+                                        </Button>
+                                    }
+                                />
+                            ) : (
+                                <EmptyState
+                                    kind="no-results"
+                                    icon={<Home className="h-8 w-8" />}
+                                    title={searchQuery.trim() ? `Sin resultados para «${searchQuery.trim()}»` : "Ninguna propiedad coincide con los filtros"}
+                                    description="Prueba con otra búsqueda o quita el filtro de estado."
+                                    action={<Button variant="outline" size="sm" onClick={clearFilters}>Limpiar filtros</Button>}
+                                />
+                            )}
                         </div>
                     ) : (
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -212,13 +247,14 @@ export function PropertiesList() {
                             <LoadingState rows={5} label="Cargando alojamientos" />
                         </SectionCard>
                     ) : listingsFailed ? (
-                        <SectionCard flush title="Listado de Alojamientos">
-                            <EmptyState
-                                title="No pudimos cargar los alojamientos"
-                                description="Revisa tu conexión e intenta de nuevo."
-                                action={<Button variant="outline" size="sm" onClick={refreshPortfolio}>Reintentar</Button>}
-                            />
-                        </SectionCard>
+                        <FeedbackBanner
+                            tone="danger"
+                            mode="blocking"
+                            title="No pudimos cargar los alojamientos"
+                            action={<Button variant="outline" size="sm" onClick={refreshPortfolio}>Reintentar</Button>}
+                        >
+                            Revisa tu conexión e intenta de nuevo.
+                        </FeedbackBanner>
                     ) : (
                         <SectionCard
                             flush
@@ -251,8 +287,20 @@ export function PropertiesList() {
                                 <TableBody>
                                     {filteredUnits.length === 0 ? (
                                         <TableRow>
-                                            <TableCell colSpan={6} className="text-center py-20 text-slate-500">
-                                                No se encontraron alojamientos con estos filtros.
+                                            <TableCell colSpan={6} className="p-0 whitespace-normal">
+                                                {units.length === 0 ? (
+                                                    <EmptyState
+                                                        title="Todavía no hay alojamientos"
+                                                        description="Los alojamientos se crean dentro de cada propiedad."
+                                                    />
+                                                ) : (
+                                                    <EmptyState
+                                                        kind="no-results"
+                                                        title={searchQuery.trim() ? `Sin resultados para «${searchQuery.trim()}»` : "Ningún alojamiento coincide con los filtros"}
+                                                        description="Prueba con otra búsqueda o quita algún filtro."
+                                                        action={<Button variant="outline" size="sm" onClick={clearFilters}>Limpiar filtros</Button>}
+                                                    />
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ) : (

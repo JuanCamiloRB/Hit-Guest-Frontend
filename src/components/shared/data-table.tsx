@@ -56,6 +56,11 @@ interface DataTableProps<TData, TValue> {
      * un cambio de filas visibles.
      */
     getRowId?: (row: TData) => string
+    /**
+     * Lo que se muestra sin filas: normalmente un `EmptyState` (`empty` o
+     * `no-results`). Sin él, «No hay resultados.» como siempre.
+     */
+    empty?: React.ReactNode
 }
 
 export function DataTable<TData, TValue>({
@@ -67,6 +72,7 @@ export function DataTable<TData, TValue>({
     onSortingChange,
     onVisibleRowsChange,
     getRowId,
+    empty,
 }: DataTableProps<TData, TValue>) {
     const [ownSorting, setOwnSorting] = React.useState<SortingState>(defaultSorting ?? [])
     const sorting = controlledSorting ?? ownSorting
@@ -228,8 +234,10 @@ export function DataTable<TData, TValue>({
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={columns.length} className="h-24 text-center">
-                                        No hay resultados.
+                                    {/* `empty` deja que la pantalla distinga «sin datos» de «sin
+                                        resultados» (EmptyState); sin él, el texto de siempre. */}
+                                    <TableCell colSpan={columns.length} className={empty ? "p-0 whitespace-normal" : "h-24 text-center"}>
+                                        {empty ?? "No hay resultados."}
                                     </TableCell>
                                 </TableRow>
                             )}

@@ -15,10 +15,11 @@ import {
     FormLabel,
 } from "@/components/ui/form"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Sparkles, Loader2 } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import { useEffect, useState } from "react"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { cn } from "@/lib/utils"
+import { LoadingState } from "@/components/ui/loading-state"
 
 export function PropertiesAmenities() {
     const form = useFormContext()
@@ -51,10 +52,7 @@ export function PropertiesAmenities() {
             </CardHeader>
             <CardContent className="pt-6">
                 {isLoading ? (
-                    <div className="flex items-center justify-center py-10">
-                        <Loader2 className="h-6 w-6 animate-spin text-[var(--color-brand-purple)]" />
-                        <span className="ml-2 text-sm text-slate-500">Cargando amenidades...</span>
-                    </div>
+                    <LoadingState rows={3} label="Cargando amenidades…" />
                 ) : (
                     <FormField
                         control={form.control}

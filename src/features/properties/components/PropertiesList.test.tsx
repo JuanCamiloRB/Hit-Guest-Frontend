@@ -38,7 +38,8 @@ function deferred<T>() {
     return { promise, resolve }
 }
 
-const spinner = () => screen.queryByText("Preparando tus propiedades...")
+// La carga inicial es un esqueleto con su anuncio (Fase 2.5), no un spinner.
+const spinner = () => screen.queryByText("Cargando propiedades…")
 
 describe("PropertiesList — sobre las cachés", () => {
     beforeEach(() => {
@@ -64,13 +65,45 @@ describe("PropertiesList — sobre las cachés", () => {
         mocks.bffFetch.mockRejectedValue(new Error("BFF error 503"))
         render(<PropertiesList />)
 
-        expect(await screen.findByText("No pudimos cargar tus propiedades")).toBeInTheDocument()
-        expect(screen.queryByText("No se encontraron propiedades")).toBeNull()
+        const failure = (await screen.findByText("No pudimos cargar tus propiedades")).closest("[data-slot=feedback-banner]")
+        expect(failure).toHaveAttribute("data-tone", "danger")
+        expect(failure).toHaveAttribute("role", "alert")
+        expect(screen.queryByText(/Todavía no tienes propiedades|Sin resultados/)).toBeNull()
 
         mocks.bffFetch.mockImplementation((path: string) =>
             Promise.resolve(path === LIGHT ? { data: [rawProperty("p1")] } : aggregate(1)))
         fireEvent.click(screen.getByRole("button", { name: "Reintentar" }))
         expect(await screen.findByText("Propiedad p1")).toBeInTheDocument()
+    })
+
+    it("la primera carga muestra el esqueleto con su anuncio", async () => {
+        const slow = deferred<unknown>()
+        mocks.bffFetch.mockImplementation(() => slow.promise)
+        render(<PropertiesList />)
+        expect(spinner()).toHaveAttribute("role", "status")
+        await act(async () => slow.resolve({ data: [] }))
+    })
+
+    it("sin propiedades invita a añadir la primera; con búsqueda sin coincidencias, «Sin resultados» y Limpiar filtros", async () => {
+        mocks.bffFetch.mockImplementation((path: string) =>
+            Promise.resolve(path === LIGHT ? { data: [] } : { properties: [], listings: [], automationsByProperty: {} }))
+        const first = render(<PropertiesList />)
+        const empty = (await screen.findByText("Todavía no tienes propiedades")).closest("[data-slot=empty-state]")
+        expect(empty).toHaveAttribute("data-kind", "empty")
+        expect(screen.getByRole("link", { name: /Añadir propiedad/ })).toHaveAttribute("href", "/dashboard/properties/new")
+        first.unmount()
+        resetPropertiesCaches()
+
+        mocks.bffFetch.mockImplementation((path: string) =>
+            Promise.resolve(path === LIGHT ? { data: [rawProperty("p1")] } : aggregate(1)))
+        render(<PropertiesList />)
+        await screen.findByText("Propiedad p1")
+        fireEvent.change(screen.getByPlaceholderText(/Buscar/), { target: { value: "zzz" } })
+        const noResults = screen.getByText("Sin resultados para «zzz»").closest("[data-slot=empty-state]")
+        expect(noResults).toHaveAttribute("data-kind", "no-results")
+        expect(noResults).toHaveAttribute("role", "status")
+        fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }))
+        expect(screen.getByText("Propiedad p1")).toBeInTheDocument()
     })
 
     it("volver a la pantalla muestra las propiedades al instante, sin el spinner, y las refresca detrás", async () => {
@@ -85,7 +118,11 @@ describe("PropertiesList — sobre las cachés", () => {
         expect(spinner()).toBeNull()
         expect(screen.getByText("Propiedad p1")).toBeInTheDocument()
         expect(screen.getByTestId("count-p1")).toHaveTextContent("1")
+        // Lo cargado sigue a la vista y la relectura se anuncia, sin interrumpir.
+        const indicator = document.querySelector("[data-slot=refresh-indicator]")!
+        await waitFor(() => expect(indicator).toHaveTextContent("Actualizando propiedades…"))
         await waitFor(() => expect(mocks.bffFetch).toHaveBeenCalledTimes(4))
+        await waitFor(() => expect(indicator).toBeEmptyDOMElement())
     })
 
     it("desactivar desde la tarjeta cambia en el acto y relee el portafolio (los alojamientos también cambian)", async () => {

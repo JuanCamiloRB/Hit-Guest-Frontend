@@ -195,9 +195,7 @@ export function DocumentPreviewModal({
                                 <Loader2 size={16} className="animate-spin" /> Cargando reservas...
                             </div>
                         ) : reservations.length === 0 ? (
-                            <p className="text-sm text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-                                No hay reservas disponibles para previsualizar.
-                            </p>
+                            <FeedbackBanner tone="info" density="compact">No hay reservas disponibles para previsualizar.</FeedbackBanner>
                         ) : (
                             <Select
                                 value={selectedReservation}

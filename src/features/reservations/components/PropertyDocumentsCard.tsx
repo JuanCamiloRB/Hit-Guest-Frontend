@@ -14,6 +14,7 @@ import { reservationsService } from "../services/reservations-service"
 import type { PropertyDocument } from "@/features/properties/types/document"
 import { documentTypeLabel, DOCUMENT_STATUS } from "@/features/properties/types/document"
 import { notifyError } from "@/lib/notify-error"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface PropertyDocumentsCardProps {
     reservationUuid: string
@@ -88,10 +89,7 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
     if (isLoading) {
         return (
             <SectionCard title="Documentos de la propiedad">
-                <div className="flex items-center justify-center gap-2 py-8 text-ink-3">
-                    <Loader2 size={18} className="animate-spin" />
-                    <span className="text-sm">Cargando…</span>
-                </div>
+                <LoadingState rows={2} label="Cargando documentos de la propiedad…" />
             </SectionCard>
         )
     }

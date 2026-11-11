@@ -53,6 +53,8 @@ import { DocumentFormModal } from "./DocumentFormModal"
 import { DocumentPreviewModal } from "./DocumentPreviewModal"
 import { ContractRoutingSection } from "../contracts/ContractRoutingSection"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 
 export function PropertiesDocuments() {
     const { watch } = useFormContext()
@@ -217,27 +219,18 @@ export function PropertiesDocuments() {
                     )}
 
                     {loading ? (
-                        <div className="flex items-center justify-center py-12 gap-3 text-slate-400">
-                            <Loader2 size={22} className="animate-spin" />
-                            <span className="text-sm">Cargando documentos...</span>
-                        </div>
+                        <LoadingState rows={3} label="Cargando documentos…" className="rounded-xl border border-rule bg-card" />
                     ) : visibleDocuments.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 py-14 text-center">
-                            <div className="rounded-full bg-slate-50 p-3 text-slate-300">
-                                <FileText size={24} />
-                            </div>
-                            <p className="text-sm text-slate-500">
-                                Aún no hay documentos para esta propiedad.
-                            </p>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={openCreate}
-                                className="mt-2 gap-1.5"
-                            >
-                                <Plus size={15} /> Crear el primero
-                            </Button>
-                        </div>
+                        <EmptyState
+                            className="rounded-xl border border-dashed border-rule"
+                            icon={<FileText size={24} />}
+                            title="Aún no hay documentos para esta propiedad."
+                            action={
+                                <Button type="button" variant="outline" size="sm" onClick={openCreate} className="gap-1.5">
+                                    <Plus size={15} aria-hidden /> Crear el primero
+                                </Button>
+                            }
+                        />
                     ) : (
                         <div className="grid grid-cols-1 gap-3">
                             {visibleDocuments.map((doc) => {

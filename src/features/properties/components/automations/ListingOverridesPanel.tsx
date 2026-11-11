@@ -12,6 +12,7 @@ import { AutomationOverrideModal, type ListingMeta } from "./AutomationOverrideM
 import { useIdentityProviderCatalog } from "../../hooks/useIdentityProviderCatalog"
 import { identityOverrideSummary, isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { EmptyState } from "@/components/ui/empty-state"
 
 /**
  * Estado de carga por unidad. «Falló» se distingue de «no cargado» a propósito:
@@ -124,7 +125,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
             {expanded && (
                 <div className="mt-2 space-y-1.5 pl-1">
                     {listings.length === 0 ? (
-                        <p className="text-xs text-slate-400 py-2 text-center">No hay unidades en esta propiedad.</p>
+                        <EmptyState title="No hay unidades en esta propiedad." className="py-4" />
                     ) : (
                         <>
                             {failedCount > 0 && !loading && (

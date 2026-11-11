@@ -70,6 +70,7 @@ import Link from "next/link"
 import { inactiveResourceAction, readInactiveResourceError } from "@/lib/inactive-resource"
 import { checkinLinkBlockedReason } from "../lib/reservation-availability"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { RefreshIndicator } from "@/components/ui/loading-state"
 
 export function OperationsPanel({ reservationId }: { reservationId: string }) {
     // Si la fila se precargó al pasar el cursor, la ficha se ve al instante y
@@ -277,6 +278,8 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                     </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
+                    {/* La ficha sigue a la vista mientras se relee (editar, volver a la pestaña). */}
+                    <RefreshIndicator active={status === "refreshing"} label="Actualizando reserva…" />
                     <Button onClick={() => window.print()} variant="outline" className="gap-2">
                         <Printer size={16} aria-hidden />
                         Imprimir

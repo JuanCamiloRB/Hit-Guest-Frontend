@@ -1,6 +1,7 @@
 import { Metadata } from "next"
 import { Suspense } from "react"
 import { PropertyForm } from "@/features/properties/components/PropertyForm"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export const metadata: Metadata = {
     title: "Nueva Propiedad - Hit Guest",
@@ -13,7 +14,7 @@ export default function NewPropertyPage() {
             <div className="flex items-center justify-between space-y-2">
                 <h2 className="text-3xl font-bold tracking-tight">Nueva Propiedad</h2>
             </div>
-            <Suspense fallback={<div className="h-20 w-full animate-pulse bg-slate-100 rounded-lg" />}>
+            <Suspense fallback={<Skeleton className="h-20 w-full rounded-lg" />}>
                 <PropertyForm />
             </Suspense>
         </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useFormContext } from "react-hook-form"
-import { Sparkles, Loader2 } from "lucide-react"
+import { Sparkles } from "lucide-react"
 import {
     Card,
     CardContent,
@@ -27,6 +27,8 @@ import type { PropertyAutomation, Provider } from "../types/automation"
 import { EMPTY_IDENTITY_CATALOG, resolveIdentityProviders, type IdentityProviderCatalog } from "../lib/identity-providers"
 import { AutomationCard, CheckinLinkDeliveryCard, type ListingMeta } from "./automations"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 
 interface CountryCatalogItem {
     id: string | number
@@ -294,10 +296,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             )}
 
             {loading ? (
-                <div className="flex items-center justify-center py-12 gap-3 text-slate-400">
-                    <Loader2 size={22} className="animate-spin" />
-                    <span className="text-sm">Cargando automatizaciones...</span>
-                </div>
+                <LoadingState rows={4} label="Cargando automatizaciones…" className="rounded-xl border border-rule bg-card" />
             ) : (
                 <div className="grid grid-cols-1 gap-4">
                     {/* Primera a propósito: es el primer paso del flujo del huésped
@@ -338,11 +337,17 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                     {/* La tarjeta del link se muestra siempre (email es el default sin
                         fila), así que este vacío habla de las DEMÁS automatizaciones. */}
                     {!loadError && propertyUuid && slots.length === 0 && (
-                        <div className="rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
-                            {countryProviderSlugs.length === 0
-                                ? "No se pudo determinar qué otras automatizaciones aplican al país de esta propiedad."
-                                : "No hay otras automatizaciones disponibles para el país de esta propiedad."}
-                        </div>
+                        countryProviderSlugs.length === 0 ? (
+                            // No es un vacío: faltó el dato para decidir qué aplica.
+                            <FeedbackBanner tone="warning">
+                                No se pudo determinar qué otras automatizaciones aplican al país de esta propiedad.
+                            </FeedbackBanner>
+                        ) : (
+                            <EmptyState
+                                title="No hay otras automatizaciones disponibles para el país de esta propiedad."
+                                className="rounded-xl border border-dashed border-rule py-8"
+                            />
+                        )
                     )}
                 </div>
             )}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Loader2, RefreshCw, Zap } from "lucide-react"
+import { RefreshCw, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { hasPendingWork, useAutomationStatus } from "@/features/reservations/hooks/useAutomationStatus"
 import type { AutomationStatusItem as AutomationStatusItemType } from "@/features/properties/types/automation"
@@ -10,6 +10,9 @@ import { AutomationHistoryModal } from "./AutomationHistoryModal"
 import { isSecondaryGuestAutomation } from "./automation-status-meta"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Button } from "@/components/ui/button"
+import { RefreshIndicator } from "@/components/ui/loading-state"
+import { Skeleton } from "@/components/ui/skeleton"
+import { EmptyState } from "@/components/ui/empty-state"
 
 interface AutomationStatusListProps {
     reservationUuid: string
@@ -25,6 +28,17 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
         useAutomationStatus(reservationUuid)
 
     const [historyFor, setHistoryFor] = useState<{ uuid: string; name: string } | null>(null)
+    // «Refrescar» vuelve a pedir conservando las tarjetas (el hook no expone ese
+    // estado): se marca acá, alrededor de la misma llamada.
+    const [refreshing, setRefreshing] = useState(false)
+    const handleRefresh = async () => {
+        setRefreshing(true)
+        try {
+            await refresh()
+        } finally {
+            setRefreshing(false)
+        }
+    }
 
     const isPolling = hasPendingWork(items)
 
@@ -41,19 +55,16 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                         así que el encabezado de la sección más importante del
                         panel no se distinguía de un metadato. */}
                     <h4 className="text-sm font-bold text-ink">Automatizaciones</h4>
-                    {isPolling && (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-warning">
-                            <Loader2 size={11} className="animate-spin" /> Actualizando
-                        </span>
-                    )}
+                    {/* Mientras hay trabajo pendiente el panel vuelve a consultar solo. */}
+                    <RefreshIndicator active={!isLoading && (isPolling || refreshing)} />
                 </div>
                 <button
                     type="button"
-                    onClick={refresh}
-                    disabled={isLoading}
+                    onClick={() => void handleRefresh()}
+                    disabled={isLoading || refreshing}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded text-xs font-medium text-ink-3 transition-colors hover:text-primary disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
-                    <RefreshCw size={13} className={cn(isLoading && "animate-spin")} />
+                    <RefreshCw size={13} aria-hidden className={cn((isLoading || refreshing) && "animate-spin")} />
                     Refrescar
                 </button>
             </div>
@@ -62,8 +73,9 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {/* Skeletons con la forma real de la tarjeta: el spinner
                         centrado hacía saltar el layout al llegar los datos. */}
+                    <span className="sr-only" role="status">Cargando automatizaciones…</span>
                     {Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="h-[104px] animate-pulse rounded-xl border border-rule bg-sunk" />
+                        <Skeleton key={i} aria-hidden className="h-[104px] rounded-xl" />
                     ))}
                 </div>
             ) : error ? (
@@ -75,14 +87,11 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                     {error}
                 </FeedbackBanner>
             ) : items.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-rule py-10 text-center">
-                    <div className="rounded-full bg-sunk p-3 text-ink-4">
-                        <Zap size={22} />
-                    </div>
-                    <p className="text-sm text-ink-3">
-                        No hay automatizaciones configuradas para esta propiedad.
-                    </p>
-                </div>
+                <EmptyState
+                    className="rounded-xl border border-dashed border-rule py-10"
+                    icon={<Zap size={22} />}
+                    title="No hay automatizaciones configuradas para esta propiedad."
+                />
             ) : (
                 <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                     {items.map(item => (

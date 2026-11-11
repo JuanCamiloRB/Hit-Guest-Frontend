@@ -126,6 +126,33 @@ describe("OperationsPanel — la ficha desde la caché", () => {
         expect(await screen.findByRole("heading", { level: 1, name: "Ana Editada" })).toBeInTheDocument()
     })
 
+    it("mientras relee, la ficha sigue a la vista y lo dice con «Actualizando reserva…»", async () => {
+        // Sin colas `Once` (clearAllMocks no las vacía): la primera responde, la
+        // segunda espera a `finish`; al final se restaura la respuesta por defecto.
+        let finish: ((value: unknown) => void) | null = null
+        let calls = 0
+        const previous = mocks.getById.getMockImplementation()
+        mocks.getById.mockImplementation(() => {
+            calls += 1
+            return calls === 1 ? Promise.resolve(detail("Ana García")) : new Promise((resolve) => { finish = resolve })
+        })
+        render(<OperationsPanel reservationId="r1" />)
+        await screen.findByRole("heading", { level: 1, name: "Ana García" })
+        const indicator = document.querySelector("[data-slot=refresh-indicator]")!
+        expect(indicator).toBeEmptyDOMElement()
+
+        await act(async () => { window.dispatchEvent(new Event("reservationCreated")) })
+        await waitFor(() => expect(indicator).toHaveTextContent("Actualizando reserva…"))
+        expect(screen.getByRole("heading", { level: 1, name: "Ana García" })).toBeInTheDocument()
+        expect(skeleton()).toBeNull()
+
+        await act(async () => { finish?.(detail("Ana Editada")) })
+        expect(await screen.findByRole("heading", { level: 1, name: "Ana Editada" })).toBeInTheDocument()
+        expect(indicator).toBeEmptyDOMElement()
+        if (previous) mocks.getById.mockImplementation(previous)
+        else mocks.getById.mockReset()
+    })
+
     it("el canal se dice tal cual: Expedia es externa, sin canal es «Origen no informado» (nunca «directa»)", async () => {
         mocks.getById.mockResolvedValueOnce({ ...detail("Ana García"), source: "Expedia", sourceSlug: "expedia" })
         const first = render(<OperationsPanel reservationId="r1" />)

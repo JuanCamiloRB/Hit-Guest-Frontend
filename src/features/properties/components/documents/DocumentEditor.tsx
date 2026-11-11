@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SHORTCODE_LABELS } from "../../types/document"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface DocumentEditorProps {
     value: string
@@ -82,7 +83,7 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
 
     if (!editor) {
         return (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 min-h-[320px] animate-pulse" />
+            <Skeleton className="min-h-[320px] rounded-xl" />
         )
     }
 

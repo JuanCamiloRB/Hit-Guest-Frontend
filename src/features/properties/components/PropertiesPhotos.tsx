@@ -7,7 +7,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
-import { Upload, Trash2, Camera, Loader2, ImageIcon, Info } from "lucide-react"
+import { Upload, Trash2, Camera, Loader2, ImageIcon } from "lucide-react"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -30,6 +30,7 @@ import {
     ALLOWED_IMAGE_ACCEPT,
     ALLOWED_IMAGE_FORMATS_LABEL,
 } from "../lib/property-image-validation"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 /**
  * Property photo gallery, backed by the real images endpoints:
@@ -139,15 +140,10 @@ export function PropertiesPhotos() {
             <CardContent>
                 {!uuid ? (
                     // Creation mode: no property UUID yet → nothing to attach images to.
-                    <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed bg-muted/20 py-12 text-center">
-                        <Info className="h-6 w-6 text-slate-400" />
-                        <p className="text-sm font-medium text-slate-600">
-                            Guarda la propiedad primero para añadir fotos.
-                        </p>
-                        <p className="text-xs text-slate-400">
-                            La galería estará disponible al editar la propiedad.
-                        </p>
-                    </div>
+                    // Mismo aviso que automatizaciones y documentos (Fase 2.4).
+                    <FeedbackBanner tone="info" title="Guarda la propiedad primero para añadir fotos.">
+                        La galería estará disponible al editar la propiedad.
+                    </FeedbackBanner>
                 ) : (
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
                         {picturesUrl.map((url, index) => (

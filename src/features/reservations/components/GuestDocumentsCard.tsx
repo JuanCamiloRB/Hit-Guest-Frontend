@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
     FileText,
-    Loader2,
     Image as ImageIcon,
     RefreshCw,
     Upload,
@@ -31,6 +30,7 @@ import { GuestVerificationActions } from "./GuestVerificationActions"
 import { WaivedDocumentUploadDialog } from "./WaivedDocumentUploadDialog"
 import { canUploadWaivedDocuments } from "../lib/waiver-document-upload"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState } from "@/components/ui/loading-state"
 
 interface GuestDocumentsCardProps {
     reservationUuid: string
@@ -130,10 +130,7 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
     if (isLoading) {
         return (
             <SectionCard title="Documentos de huéspedes" actions={refreshButton}>
-                <div className="flex items-center justify-center gap-2 py-8 text-ink-3">
-                    <Loader2 size={18} className="animate-spin" />
-                    <span className="text-sm">Cargando…</span>
-                </div>
+                <LoadingState rows={2} label="Cargando documentos de huéspedes…" />
             </SectionCard>
         )
     }

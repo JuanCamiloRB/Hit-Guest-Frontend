@@ -1,6 +1,6 @@
 "use client"
 
-import { MapPin, Globe, Search, Loader2 } from "lucide-react"
+import { MapPin, Globe, Search } from "lucide-react"
 import { useFormContext } from "react-hook-form"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
 import { useState, useCallback, useEffect, useRef } from "react"
@@ -32,13 +32,12 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Skeleton } from "@/components/ui/skeleton"
 
 const MapComponent = dynamic(() => import("./MapComponent"), {
     ssr: false,
     loading: () => (
-        <div className="flex items-center justify-center w-full h-full bg-slate-100 animate-pulse rounded-md">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-        </div>
+        <Skeleton className="h-full w-full rounded-md" />
     )
 })
 
