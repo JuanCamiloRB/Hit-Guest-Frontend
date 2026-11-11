@@ -8,6 +8,8 @@ import type { AutomationStatusItem as AutomationStatusItemType } from "@/feature
 import { AutomationStatusItem } from "./AutomationStatusItem"
 import { AutomationHistoryModal } from "./AutomationHistoryModal"
 import { isSecondaryGuestAutomation } from "./automation-status-meta"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Button } from "@/components/ui/button"
 
 interface AutomationStatusListProps {
     reservationUuid: string
@@ -65,16 +67,13 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                     ))}
                 </div>
             ) : error ? (
-                <div className="rounded-xl bg-danger-sunk px-4 py-6 text-center">
-                    <p className="text-sm text-danger">{error}</p>
-                    <button
-                        type="button"
-                        onClick={refresh}
-                        className="mt-2 text-xs font-semibold text-danger underline underline-offset-2"
-                    >
-                        Reintentar
-                    </button>
-                </div>
+                <FeedbackBanner
+                    tone="danger"
+                    mode="blocking"
+                    action={<Button type="button" size="sm" variant="outline" onClick={refresh}>Reintentar</Button>}
+                >
+                    {error}
+                </FeedbackBanner>
             ) : items.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-rule py-10 text-center">
                     <div className="rounded-full bg-sunk p-3 text-ink-4">

@@ -103,7 +103,11 @@ describe("OperationsPanel — la ficha desde la caché", () => {
         await screen.findByRole("heading", { level: 1, name: "Ana García" })
 
         await act(async () => { window.dispatchEvent(new Event("reservationCreated")) })
-        expect(await screen.findByText(/No pudimos actualizar la reserva/)).toBeInTheDocument()
+        const notice = (await screen.findByText(/No pudimos actualizar la reserva/)).closest("[data-slot=feedback-banner]")
+        // Aviso compartido: advertencia que aparece tras el fallo → status, sin interrumpir.
+        expect(notice).toHaveAttribute("data-tone", "warning")
+        expect(notice).toHaveAttribute("role", "status")
+        expect(notice).toContainElement(screen.getByRole("button", { name: "Reintentar" }))
         expect(screen.getByRole("heading", { level: 1, name: "Ana García" })).toBeInTheDocument()
 
         mocks.getById.mockResolvedValueOnce(detail("Ana García"))

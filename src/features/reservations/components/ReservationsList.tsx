@@ -84,6 +84,7 @@ import {
     AlertDialogHeader,
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 
 
@@ -459,12 +460,13 @@ export default function ReservationsList() {
 
             {refreshFailed && (
                 // Mismo aviso que el Tablero: la lista sigue a la vista, pero puede no ser la actual.
-                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-[13px] text-ink-2">
-                    <span>No pudimos actualizar la lista. Se muestra la última cargada.</span>
-                    <button type="button" onClick={refresh} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">
-                        Reintentar
-                    </button>
-                </div>
+                <FeedbackBanner
+                    tone="warning"
+                    mode="dynamic"
+                    action={<Button type="button" size="sm" variant="outline" onClick={refresh}>Reintentar</Button>}
+                >
+                    No pudimos actualizar la lista. Se muestra la última cargada.
+                </FeedbackBanner>
             )}
 
             {preparing ? (
@@ -475,9 +477,9 @@ export default function ReservationsList() {
                     </button>
                 </div>
             ) : failedInStatusSort > 0 ? (
-                <p role="status" className="rounded-lg bg-warning-sunk px-3 py-2 text-[13px] text-ink-2">
+                <FeedbackBanner tone="warning" mode="dynamic">
                     No se pudo cargar el estado de {failedInStatusSort} {failedInStatusSort === 1 ? "reserva" : "reservas"}: {failedInStatusSort === 1 ? "queda" : "quedan"} al final del orden.
-                </p>
+                </FeedbackBanner>
             ) : null}
 
             <DataTable
@@ -494,26 +496,33 @@ export default function ReservationsList() {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>¿Eliminar reserva?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Estás a punto de eliminar la reserva de <strong>{deleteTarget?.guestName}</strong>.
-                            Esta acción no se puede deshacer.
-                            {deleteConsumptionState?.status === "loading" && (
-                                <span role="status" className="mt-2 block rounded-lg bg-slate-50 px-3 py-2 text-slate-600">
-                                    Verificando el consumo registrado…
-                                </span>
-                            )}
-                            {deleteConsumptionState?.status === "error" && (
-                                <span role="alert" className="mt-2 block rounded-lg bg-red-50 px-3 py-2 text-red-700">
-                                    No pudimos verificar el consumo de esta reserva. Reintenta la consulta antes de eliminarla.
-                                </span>
-                            )}
-                            {deleteTargetConsumption !== null && deleteTargetConsumption > 0 && (
-                                <span className="mt-2 block rounded-lg bg-amber-50 px-3 py-2 text-amber-800">
-                                    Esta reserva tiene consumo registrado por{" "}
-                                    <strong>{formatUsd(deleteTargetConsumption)}</strong>. Al eliminarla,
-                                    ese consumo dejará de mostrarse en el tablero de saldos.
-                                </span>
-                            )}
+                        {/* `asChild` + div: los avisos son bloques y la descripción es un
+                            <p> por defecto (un div dentro de un p es HTML inválido). Siguen
+                            dentro de la descripción: se leen al abrir el diálogo. */}
+                        <AlertDialogDescription asChild>
+                            <div>
+                                <p>
+                                    Estás a punto de eliminar la reserva de <strong>{deleteTarget?.guestName}</strong>.
+                                    Esta acción no se puede deshacer.
+                                </p>
+                                {deleteConsumptionState?.status === "loading" && (
+                                    <p role="status" className="mt-2 rounded-lg bg-sunk px-3 py-2 text-ink-2">
+                                        Verificando el consumo registrado…
+                                    </p>
+                                )}
+                                {deleteConsumptionState?.status === "error" && (
+                                    <FeedbackBanner tone="danger" mode="blocking" className="mt-2">
+                                        No pudimos verificar el consumo de esta reserva. Reintenta la consulta antes de eliminarla.
+                                    </FeedbackBanner>
+                                )}
+                                {deleteTargetConsumption !== null && deleteTargetConsumption > 0 && (
+                                    <FeedbackBanner tone="warning" className="mt-2">
+                                        Esta reserva tiene consumo registrado por{" "}
+                                        <strong className="text-ink">{formatUsd(deleteTargetConsumption)}</strong>. Al eliminarla,
+                                        ese consumo dejará de mostrarse en el tablero de saldos.
+                                    </FeedbackBanner>
+                                )}
+                            </div>
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

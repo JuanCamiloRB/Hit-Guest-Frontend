@@ -24,6 +24,7 @@ import {
     MANUALLY_DISPATCHABLE_SLUGS,
 } from "./automation-status-meta"
 import { API_BASE } from "@/lib/config"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface AutomationStatusItemProps {
     item: AutomationStatusItemType
@@ -146,9 +147,9 @@ export function AutomationStatusItem({
             )}
 
             {!perGuest && item.status === "failed" && item.lastError && (
-                <p className="rounded-lg bg-danger-sunk px-3 py-2 text-xs break-words text-danger">
+                <FeedbackBanner tone="danger" density="compact" className="break-words">
                     {errorMessage(item.lastError)}
-                </p>
+                </FeedbackBanner>
             )}
 
             {blockedMessage && (

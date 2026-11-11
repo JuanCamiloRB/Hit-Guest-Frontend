@@ -74,8 +74,22 @@ const ICON: Record<FeedbackBannerTone, LucideIcon> = {
     danger: AlertCircle,
 }
 
+/**
+ * Las dos densidades de la Fase 1 (paso 4.5), aplicadas al aviso:
+ *  - `default`: avisos de página, de formulario y de diálogo (14 px).
+ *  - `compact`: dentro de tarjetas y filas densas (12 px, ícono de 14 px).
+ * Las clases de cada parte viven juntas para que no se desalineen.
+ */
+type FeedbackBannerDensity = "default" | "compact"
+
+const DENSITY: Record<FeedbackBannerDensity, { root: string; row: string; icon: string; action: string }> = {
+    default: { root: "gap-3 py-2.5 text-sm", row: "gap-2", icon: "mt-0.5 size-4", action: "pl-6" },
+    // ícono 14 px + separación 6 px = pl-5
+    compact: { root: "gap-2 py-2 text-xs", row: "gap-1.5", icon: "mt-px size-3.5", action: "pl-5" },
+}
+
 const feedbackBannerVariants = cva(
-    "flex flex-col gap-3 rounded-lg px-3 py-2.5 text-sm sm:flex-row sm:items-start sm:justify-between",
+    "flex flex-col rounded-lg px-3 sm:flex-row sm:items-start sm:justify-between",
     {
         variants: {
             tone: {
@@ -108,6 +122,8 @@ type FeedbackBannerProps = Omit<React.ComponentProps<"div">, "title" | Controlle
         children?: React.ReactNode
         /** Una acción que resuelve el aviso («Reintentar», «Configurar»). Normalmente un `<Button size="sm">`. */
         action?: React.ReactNode
+        /** `compact` dentro de tarjetas y filas densas. */
+        density?: FeedbackBannerDensity
     }
 
 function FeedbackBanner({
@@ -116,10 +132,12 @@ function FeedbackBanner({
     title,
     children,
     action,
+    density = "default",
     className,
     ...props
 }: FeedbackBannerProps) {
     const Icon = ICON[tone]
+    const size = DENSITY[density]
     return (
         <div
             {...props}
@@ -129,10 +147,11 @@ function FeedbackBanner({
             data-slot="feedback-banner"
             data-tone={tone}
             data-mode={mode}
-            className={cn(feedbackBannerVariants({ tone }), className)}
+            data-density={density}
+            className={cn(feedbackBannerVariants({ tone }), size.root, className)}
         >
-            <div className="flex min-w-0 items-start gap-2">
-                <Icon aria-hidden className={cn("mt-0.5 size-4 shrink-0", TONE_INK[tone])} />
+            <div className={cn("flex min-w-0 items-start", size.row)}>
+                <Icon aria-hidden className={cn("shrink-0", size.icon, TONE_INK[tone])} />
                 <div className="min-w-0 space-y-0.5">
                     {title != null && title !== "" && (
                         <p data-slot="feedback-banner-title" className={cn("font-semibold", TONE_INK[tone])}>
@@ -147,9 +166,8 @@ function FeedbackBanner({
                 </div>
             </div>
             {action != null && (
-                // En móvil la acción baja y se alinea con el texto, no con el ícono
-                // (ícono 16 px + separación 8 px = pl-6).
-                <div data-slot="feedback-banner-action" className="shrink-0 pl-6 sm:self-center sm:pl-0">
+                // En móvil la acción baja y se alinea con el texto, no con el ícono.
+                <div data-slot="feedback-banner-action" className={cn("shrink-0 sm:self-center sm:pl-0", size.action)}>
                     {action}
                 </div>
             )}
@@ -157,4 +175,4 @@ function FeedbackBanner({
     )
 }
 
-export { FeedbackBanner, type FeedbackBannerTone, type FeedbackBannerMode }
+export { FeedbackBanner, type FeedbackBannerTone, type FeedbackBannerMode, type FeedbackBannerDensity }

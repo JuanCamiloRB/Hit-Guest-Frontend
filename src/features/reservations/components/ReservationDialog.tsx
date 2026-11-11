@@ -88,6 +88,7 @@ import { readReservationChannel } from "@/lib/reservation-channel"
 import { reservationsService } from "@/features/reservations/services/reservations-service"
 import { createReservationWithFollowUp } from "@/features/reservations/lib/create-reservation-followup"
 import { readGuestNameParts } from "@/features/reservations/lib/guest-name"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 // ── Zod Schema ──────────────────────────────────────────────
 const reservationSchema = z.object({
@@ -658,10 +659,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                     gana después (§2g.4). Solo con `isImported === true` explícito —
                     una clave ausente no es noticia y no debe generar avisos falsos. */}
                 {mode === "edit" && editingOrigin?.isImported && (
-                    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                        <AlertCircle size={16} className="mt-0.5 shrink-0" />
-                        <p>{describeImportedReservationNotice(editingOrigin)}</p>
-                    </div>
+                    <FeedbackBanner tone="warning">{describeImportedReservationNotice(editingOrigin)}</FeedbackBanner>
                 )}
 
                 <Form {...form}>

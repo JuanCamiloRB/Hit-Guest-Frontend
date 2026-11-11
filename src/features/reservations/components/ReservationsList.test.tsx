@@ -124,7 +124,15 @@ describe("ReservationsList — verificación de consumo antes de eliminar", () =
         render(<ReservationsList />)
 
         fireEvent.click(await screen.findByRole("button", { name: "Solicitar eliminación" }))
-        expect(await screen.findByRole("alert")).toHaveTextContent(/No pudimos verificar el consumo/)
+        const alert = await screen.findByRole("alert")
+        expect(alert).toHaveTextContent(/No pudimos verificar el consumo/)
+        // Error que bloquea eliminar: aviso compartido `danger` + `blocking`, dentro de
+        // la descripción del diálogo (se lee al abrirlo) y sin un <div> dentro de un <p>.
+        expect(alert).toHaveAttribute("data-slot", "feedback-banner")
+        expect(alert).toHaveAttribute("data-tone", "danger")
+        const description = alert.closest("[data-slot=alert-dialog-description]")!
+        expect(description.tagName).toBe("DIV")
+        expect(screen.getByRole("alertdialog", { hidden: true })).toHaveAttribute("aria-describedby", description.id)
         expect(screen.getByRole("button", { name: "Eliminar" })).toBeDisabled()
 
         mocks.getReservationCost.mockResolvedValueOnce({ total: 0 })
@@ -245,7 +253,9 @@ describe("ReservationsList — la lista compartida", () => {
         expect(await screen.findByTestId("row-count")).toHaveTextContent("1")
 
         await act(async () => { window.dispatchEvent(new Event("reservationCreated")) })
-        expect(await screen.findByText(/No pudimos actualizar la lista/)).toBeInTheDocument()
+        const notice = (await screen.findByText(/No pudimos actualizar la lista/)).closest("[data-slot=feedback-banner]")
+        expect(notice).toHaveAttribute("data-tone", "warning")
+        expect(notice).toHaveAttribute("role", "status")
         expect(screen.getByTestId("row-count")).toHaveTextContent("1")
         expect(screen.queryByText("Cargando reservaciones")).toBeNull()
     })

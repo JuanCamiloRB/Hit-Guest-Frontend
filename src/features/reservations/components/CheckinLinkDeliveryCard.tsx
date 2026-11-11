@@ -1,7 +1,7 @@
 "use client"
 
 import type { ComponentType } from "react"
-import { Mail, MessageCircle, MessagesSquare, AlertTriangle, Info, Phone } from "lucide-react"
+import { Mail, MessageCircle, MessagesSquare, Phone } from "lucide-react"
 import { format, isValid } from "date-fns"
 import { es } from "date-fns/locale"
 import { SectionCard } from "@/components/ui/section-card"
@@ -24,6 +24,7 @@ import {
 } from "../lib/checkin-link-delivery-status"
 import { importSourceLabel, type ReservationOrigin } from "../lib/reservation-origin"
 import { ReservationDialog } from "./ReservationDialog"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface Props {
     reservationUuid: string
@@ -94,32 +95,33 @@ export function CheckinLinkDeliveryCard({
                 )}
 
                 {missingPhone && (
-                    <div className="flex flex-col gap-3 rounded-lg bg-warning-sunk px-3 py-2.5 text-xs text-warning sm:flex-row sm:items-center sm:justify-between">
-                        <p className="flex items-start gap-2">
-                            <AlertTriangle size={14} className="mt-0.5 shrink-0" aria-hidden />
-                            {phone
-                                ? "El teléfono de esta reserva no es utilizable. El link no saldrá por WhatsApp."
-                                : "Esta reserva no tiene teléfono. El link no saldrá por WhatsApp."}
-                        </p>
-                        {/* El diálogo emite `reservationCreated` también al editar; la
-                            ficha lo escucha y se recarga sola. */}
-                        <ReservationDialog
-                            mode="edit"
-                            reservationUuid={reservationUuid}
-                            trigger={
-                                <Button type="button" size="sm" variant="outline" className="h-8 gap-1.5 text-xs">
-                                    <Phone size={13} aria-hidden /> {phone ? "Corregir teléfono" : "Agregar teléfono"}
-                                </Button>
-                            }
-                        />
-                    </div>
+                    <FeedbackBanner
+                        tone="warning"
+                        density="compact"
+                        action={
+                            // El diálogo emite `reservationCreated` también al editar; la
+                            // ficha lo escucha y se recarga sola.
+                            <ReservationDialog
+                                mode="edit"
+                                reservationUuid={reservationUuid}
+                                trigger={
+                                    <Button type="button" size="sm" variant="outline" className="gap-1.5 text-xs">
+                                        <Phone size={13} aria-hidden /> {phone ? "Corregir teléfono" : "Agregar teléfono"}
+                                    </Button>
+                                }
+                            />
+                        }
+                    >
+                        {phone
+                            ? "El teléfono de esta reserva no es utilizable. El link no saldrá por WhatsApp."
+                            : "Esta reserva no tiene teléfono. El link no saldrá por WhatsApp."}
+                    </FeedbackBanner>
                 )}
 
                 {otaNotApplicable && (
-                    <p className="flex items-start gap-2 rounded-lg bg-info-sunk px-3 py-2.5 text-xs text-info">
-                        <Info size={14} className="mt-0.5 shrink-0" aria-hidden />
+                    <FeedbackBanner tone="info" density="compact">
                         Esta reserva no vino de un PMS: el mensaje en la OTA no aplica y el link sale por email.
-                    </p>
+                    </FeedbackBanner>
                 )}
             </div>
         </SectionCard>

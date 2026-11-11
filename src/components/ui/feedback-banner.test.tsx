@@ -116,6 +116,28 @@ describe("FeedbackBanner — rol según cómo aparece", () => {
     })
 })
 
+describe("FeedbackBanner — densidad", () => {
+    it.each([
+        ["default", "text-sm", "size-4", "pl-6"],
+        ["compact", "text-xs", "size-3.5", "pl-5"],
+    ] as const)("%s: texto, ícono y acción alineada con el texto", (density, text, icon, indent) => {
+        const { container } = render(
+            <FeedbackBanner tone="warning" density={density} action={<Button size="sm">Registrar</Button>}>
+                d
+            </FeedbackBanner>,
+        )
+        expect(banner(container)).toHaveClass(text)
+        expect(banner(container)).toHaveAttribute("data-density", density)
+        expect(banner(container).querySelector("svg")).toHaveClass(icon)
+        expect(container.querySelector("[data-slot=feedback-banner-action]")).toHaveClass(indent, "sm:pl-0")
+    })
+
+    it("la densidad no cambia cómo se anuncia", () => {
+        render(<FeedbackBanner tone="danger" mode="blocking" density="compact">Falló</FeedbackBanner>)
+        expect(screen.getByRole("alert")).toHaveAttribute("aria-live", "assertive")
+    })
+})
+
 describe("FeedbackBanner — contenido", () => {
     it("el título es opcional y no es un encabezado (no ensucia el índice de la página)", () => {
         const { container } = render(<FeedbackBanner tone="info">Solo detalle</FeedbackBanner>)

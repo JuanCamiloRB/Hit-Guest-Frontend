@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils"
 import type { ReservationGuest } from "../services/reservations-service"
 import { reservationsService } from "../services/reservations-service"
 import { describeWaiverUploadError, type WaiverUploadErrorView } from "../lib/waiver-document-upload"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 const ACCEPTED_TYPES = ["image/jpeg", "image/png"]
 const NO_ERRORS: WaiverUploadErrorView = { front: null, back: null, form: null, refresh: false }
@@ -236,7 +237,7 @@ export function WaivedDocumentUploadDialog({
                     </p>
 
                     {errors.form && (
-                        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{errors.form}</p>
+                        <FeedbackBanner tone="danger" mode="blocking">{errors.form}</FeedbackBanner>
                     )}
 
                     <DialogFooter>

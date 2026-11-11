@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
-import { RotateCcw, ShieldOff, Loader2, TriangleAlert } from "lucide-react"
+import { RotateCcw, ShieldOff, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
@@ -26,6 +26,7 @@ import {
     reservationsService,
     type ReservationGuest,
 } from "../services/reservations-service"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 /**
  * Acciones del PM sobre la verificación de UN huésped — contrato 2026-09-08/15
@@ -209,14 +210,11 @@ export function GuestVerificationActions({
 
                     {/* El estado que justifica la decisión, a la vista — que se decida
                         viendo el problema, no a ciegas (§6 del contrato). */}
-                    <div className="flex items-start gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning">
-                        <TriangleAlert size={14} aria-hidden className="mt-px shrink-0" />
-                        <span>
-                            Estado actual: {verificationPendingLabel(guest.verificationStatus)}
-                            {typeof attempts === "number" && ` · ${attempts === 0 ? "sin intentos restantes" : `${attempts} intento${attempts === 1 ? "" : "s"} restante${attempts === 1 ? "" : "s"}`}`}.
-                            Quedará registrado quién autorizó y por qué.
-                        </span>
-                    </div>
+                    <FeedbackBanner tone="warning" density="compact">
+                        Estado actual: {verificationPendingLabel(guest.verificationStatus)}
+                        {typeof attempts === "number" && ` · ${attempts === 0 ? "sin intentos restantes" : `${attempts} intento${attempts === 1 ? "" : "s"} restante${attempts === 1 ? "" : "s"}`}`}.
+                        Quedará registrado quién autorizó y por qué.
+                    </FeedbackBanner>
 
                     <div className="space-y-1.5">
                         <Label htmlFor="waiver-reason" className="text-xs font-semibold">

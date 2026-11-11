@@ -76,7 +76,10 @@ describe("RegisterPriceDialog", () => {
         expect(screen.getByRole("button", { name: "Guardar valor" })).toBeDisabled()
 
         resolveStatus(traSent)
-        expect(await screen.findByText(/ya se envió con el valor anterior/)).toBeInTheDocument()
+        const sent = (await screen.findByText(/ya se envió con el valor anterior/)).closest("[data-slot=feedback-banner]")
+        // Llega después de consultar el estado de TRA → status; compacto dentro del diálogo.
+        expect(sent).toHaveAttribute("role", "status")
+        expect(sent).toHaveAttribute("data-density", "compact")
         expect(screen.getByRole("button", { name: "Guardar valor" })).toBeEnabled()
 
         fireEvent.click(screen.getByRole("button", { name: "Guardar valor" }))

@@ -77,3 +77,14 @@ describe("AutomationStatusItem — automatización por huésped (contrato 2026-1
         expect(screen.getByRole("button", { name: "Despachar para Luis Gómez" })).toBeEnabled()
     })
 })
+
+describe("AutomationStatusItem — error de la última ejecución", () => {
+    it("se muestra con el aviso compartido: error compacto y fijo (no interrumpe al lector)", () => {
+        renderItem({ item: { ...SIRE, isPerGuest: false, guests: [], lastError: "El servicio de SIRE no respondió" } })
+        const notice = screen.getByText(/El servicio de SIRE no respondió/).closest("[data-slot=feedback-banner]")
+        expect(notice).toHaveAttribute("data-tone", "danger")
+        expect(notice).toHaveAttribute("data-mode", "static")
+        expect(notice).toHaveAttribute("data-density", "compact")
+        expect(notice).not.toHaveAttribute("role")
+    })
+})

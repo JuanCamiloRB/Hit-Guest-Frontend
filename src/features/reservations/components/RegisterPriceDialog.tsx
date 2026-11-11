@@ -18,6 +18,7 @@ import { ApiError } from "@/types/api"
 import { reservationsService } from "../services/reservations-service"
 import { automationService } from "@/features/properties/services/automation-service"
 import { classifyRecord } from "@/features/billing/lib/pricing"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 /**
  * ¿Ya salió el reporte a TRA con el valor anterior? (contrato 2026-09-27 §2.2)
@@ -148,14 +149,14 @@ export function RegisterPriceDialog({
                     </p>
                 )}
                 {traStatus === "sent" && (
-                    <p className="rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning" role="status">
+                    <FeedbackBanner tone="warning" mode="dynamic" density="compact">
                         El reporte a TRA ya se envió con el valor anterior; este cambio no lo modifica.
-                    </p>
+                    </FeedbackBanner>
                 )}
                 {traStatus === "unknown" && (
-                    <p className="rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning" role="status">
+                    <FeedbackBanner tone="warning" mode="dynamic" density="compact">
                         No pudimos comprobar si el reporte a TRA ya se envió. Si ya salió, este cambio no lo modifica.
-                    </p>
+                    </FeedbackBanner>
                 )}
 
                 <div className="space-y-1.5 py-1">

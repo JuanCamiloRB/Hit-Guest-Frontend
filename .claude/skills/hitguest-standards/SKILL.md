@@ -85,7 +85,11 @@ copiarlo, no reinventarlo:
   | Éxito | toast, o `FeedbackBanner` `tone="success"` `mode="dynamic"` si debe quedar en la pantalla |
 
   Cómo se anuncia (`role`, `aria-live`…) lo decide la primitiva y se aplica
-  después del spread: una pantalla no lo puede cambiar.
+  después del spread: una pantalla no lo puede cambiar. `FeedbackBanner`
+  `density="compact"` (12 px) dentro de tarjetas y filas densas; `default`
+  (14 px) en página, formulario y diálogo. Dentro de `AlertDialogDescription`
+  (un `<p>`), usar `asChild` con un `<div>`: un aviso es un bloque. Precedente:
+  Operaciones (Fase 2.3, `ReservationsList`, `OperationsPanel`).
 - **Tokens de diseño**: los colores de marca (`--color-brand-navy/purple/blue`)
   están registrados en `@theme inline` de `globals.css` — usar las clases
   Tailwind que genera (`bg-brand-purple`, `text-brand-navy`, etc.), nunca hex

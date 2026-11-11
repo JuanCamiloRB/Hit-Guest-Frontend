@@ -69,6 +69,7 @@ import { describeResendCharges } from "@/features/properties/lib/checkin-link-de
 import Link from "next/link"
 import { inactiveResourceAction, readInactiveResourceError } from "@/lib/inactive-resource"
 import { checkinLinkBlockedReason } from "../lib/reservation-availability"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 export function OperationsPanel({ reservationId }: { reservationId: string }) {
     // Si la fila se precargó al pasar el cursor, la ficha se ve al instante y
@@ -237,12 +238,13 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
         <div className="flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto pb-10">
             {refreshFailed && (
                 // Mismo aviso que las listas: la ficha sigue a la vista, pero puede no ser la actual.
-                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-[13px] text-ink-2">
-                    <span>No pudimos actualizar la reserva. Se muestra la última cargada.</span>
-                    <button type="button" onClick={reload} className="text-[13px] font-semibold text-primary underline-offset-2 hover:underline">
-                        Reintentar
-                    </button>
-                </div>
+                <FeedbackBanner
+                    tone="warning"
+                    mode="dynamic"
+                    action={<Button type="button" size="sm" variant="outline" onClick={reload}>Reintentar</Button>}
+                >
+                    No pudimos actualizar la reserva. Se muestra la última cargada.
+                </FeedbackBanner>
             )}
             {/* Breadcrumbs & Header */}
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
@@ -462,17 +464,19 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     El precio es del PM (accionable: TRA no corre sin él); la
                                     capacidad la declara el huésped (informativo). */}
                                 {data.priceUnconfirmed && (
-                                    <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning">
-                                        <span className="font-semibold">Falta registrar el valor de la reserva.</span>
-                                        <span>Hasta registrarlo, el reporte a TRA no puede ejecutarse.</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setPriceDialogOpen(true)}
-                                            className="font-semibold underline underline-offset-2 hover:opacity-80"
-                                        >
-                                            Registrar valor
-                                        </button>
-                                    </p>
+                                    <FeedbackBanner
+                                        tone="warning"
+                                        density="compact"
+                                        className="mt-2"
+                                        title="Falta registrar el valor de la reserva."
+                                        action={
+                                            <Button type="button" size="sm" variant="outline" onClick={() => setPriceDialogOpen(true)}>
+                                                Registrar valor
+                                            </Button>
+                                        }
+                                    >
+                                        Hasta registrarlo, el reporte a TRA no puede ejecutarse.
+                                    </FeedbackBanner>
                                 )}
                                 {data.capacityDeclarationRequired && (
                                     <p className="mt-2 rounded-lg bg-sunk px-3 py-2 text-xs text-ink-2">
@@ -489,25 +493,24 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         conflicto, para que la reversión deje de ser silenciosa.
                         `previous`/`incoming` son strings del backend para mostrar. */}
                     {data.overwrittenEdits.length > 0 && (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 space-y-2">
-                            <p className="text-sm font-bold text-amber-800">
-                                El PMS revirtió {data.overwrittenEdits.length}{" "}
-                                {data.overwrittenEdits.length === 1 ? "cambio manual" : "cambios manuales"}
-                            </p>
-                            <ul className="space-y-1">
+                        <FeedbackBanner
+                            tone="warning"
+                            title={`El PMS revirtió ${data.overwrittenEdits.length} ${data.overwrittenEdits.length === 1 ? "cambio manual" : "cambios manuales"}`}
+                        >
+                            <ul className="mt-1 space-y-1 text-xs">
                                 {data.overwrittenEdits.map((edit, index) => (
-                                    <li key={`${edit.fieldLabel}-${index}`} className="text-xs text-amber-800">
-                                        <span className="font-semibold">{edit.fieldLabel}:</span>{" "}
+                                    <li key={`${edit.fieldLabel}-${index}`}>
+                                        <span className="font-semibold text-ink">{edit.fieldLabel}:</span>{" "}
                                         {edit.previous} → {edit.incoming}
                                         {edit.overwrittenAt && (
-                                            <span className="text-amber-700">
+                                            <span className="text-ink-3">
                                                 {" "}· {format(new Date(edit.overwrittenAt), "d MMM yyyy, HH:mm", { locale: es })}
                                             </span>
                                         )}
                                     </li>
                                 ))}
                             </ul>
-                        </div>
+                        </FeedbackBanner>
                     )}
                 </div>
 

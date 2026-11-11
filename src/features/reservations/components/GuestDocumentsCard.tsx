@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
     FileText,
-    Info,
     Loader2,
     Image as ImageIcon,
     RefreshCw,
@@ -31,6 +30,7 @@ import {
 import { GuestVerificationActions } from "./GuestVerificationActions"
 import { WaivedDocumentUploadDialog } from "./WaivedDocumentUploadDialog"
 import { canUploadWaivedDocuments } from "../lib/waiver-document-upload"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 interface GuestDocumentsCardProps {
     reservationUuid: string
@@ -214,10 +214,7 @@ function DocumentOriginNotice({ guest }: { guest: ReservationGuest }) {
     const notice = describeDocumentOrigin(guest.identityDocument)
     if (!notice) return null
     return (
-        <div className="flex items-start gap-2 rounded-lg bg-info-sunk px-3 py-2 text-xs text-info">
-            <Info size={14} aria-hidden className="mt-px shrink-0" />
-            <span>{notice}</span>
-        </div>
+        <FeedbackBanner tone="info" density="compact">{notice}</FeedbackBanner>
     )
 }
 
@@ -286,7 +283,7 @@ function GuestDocumentRow({
                 cuenta— el motivo. `reason: null` es el caso NORMAL de staff, no un
                 error: ven QUE hay exoneración, no el texto (contrato §4.2). */}
             {guest.identityWaiver && (
-                <div className="rounded-lg bg-info-sunk px-3 py-2 text-xs text-info space-y-0.5">
+                <FeedbackBanner tone="info" density="compact" className="[&_[data-slot=feedback-banner-description]]:space-y-0.5">
                     <p>
                         Verificación exonerada
                         {guest.identityWaiver.grantedBy && ` por ${guest.identityWaiver.grantedBy}`}
@@ -299,7 +296,7 @@ function GuestDocumentRow({
                         <p className="italic">Motivo: {guest.identityWaiver.reason}</p>
                     )}
                     {pmUploadNotice && <p>{pmUploadNotice}</p>}
-                </div>
+                </FeedbackBanner>
             )}
 
             {/* Fotos del documento de un exonerado (contrato 2026-10-15): antes y
@@ -329,10 +326,7 @@ function GuestDocumentRow({
                 (contrato §4.4) — sin este aviso nadie sabía que había que pedirle
                 al huésped volver a subir el documento. */}
             {imageFailuresNotice && (
-                <div className="flex items-start gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-xs text-warning">
-                    <Info size={14} aria-hidden className="mt-px shrink-0" />
-                    <span>{imageFailuresNotice}</span>
-                </div>
+                <FeedbackBanner tone="warning" density="compact">{imageFailuresNotice}</FeedbackBanner>
             )}
 
             {/* Acciones del PM sobre la verificación (contrato §5). El componente
