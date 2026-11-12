@@ -692,7 +692,46 @@ automation activa · trigger coincide · override del listing · `requires_check
 Después el job aplica un **gate de saldo** (hoy inocuo: todos los costos están
 en 0).
 
-### ⚠️ TRA/SIRE solo por alojamiento (sin credenciales de propiedad) — NO soportado hoy (análisis 2026-10-13)
+### ⚠️ TRA/SIRE con credenciales por alojamiento — contrato 2026-11-10 (backend en rama `feat/tra-sire-credenciales-por-alojamiento`; front PARCIAL desde el 2026-11-12, fases 0b, 1 y 2 sin commit; plan `.claude/plans/20261112_tra-sire-credenciales-por-alojamiento.md`; NO verificado por curl)
+
+Responde el análisis del 2026-10-13 que sigue abajo y lo reemplaza. Ese análisis queda como historia.
+
+- **Modo:** `PATCH /property-automations/{uuid}/configure` con `{statusProviderId: 8, parameters: {credentials_scope: "listing"}}`.
+  - Valores: `"property"` (por defecto) o `"listing"`.
+  - Con `"listing"`, activar NO exige `token`/`rnt` (TRA) ni `document_type`/`document_number`/`password` (SIRE).
+  - Se guarda en `parameters` y vuelve en los GET. Volver al modo propiedad: `"property"` o `null`.
+  - Solo lo admiten TRA y SIRE. En cualquier otra automatización: 422 en `parameters.credentials_scope`.
+- **Override de TRA:** el token del Ministerio va en **`parameters.token`**, NO en el campo `token` del override. Ese campo es interno de HIT y TRA ya no lo lee.
+  - ✅ En código (2026-11-12): `AutomationOverrideModal` ya manda `parameters.token`.
+  - El único escritor del `token` del nivel superior es `draftOverrideCreatePayload` (`PropertiesUnits.tsx`), que copia el token interno.
+- **Override de SIRE:** `parameters.{document_type, document_number, password, company_code?}`.
+- **Cómo quedó en el front (2026-11-12, fases 0b, 1 y 2):**
+  - `lib/credentials-scope.ts` decide el modo con `readCredentialsScope`. Solo `"listing"` en TRA o SIRE cuenta; cualquier otro valor es `"property"`. Las claves obligatorias salen de los `required` del esquema (`getProviderParamSchema`). `listingCredentialState` usa solo los metadatos `credentialsComplete`/`missingCredentialKeys`, que el servicio lee en camelCase o snake_case (`readCredentialsComplete`, `readMissingCredentialKeys`). Si faltan, el estado es `unknown`.
+  - `ConfigModal`: interruptor «Credenciales por alojamiento». En TRA/SIRE manda `credentials_scope` siempre explícito y no borra las credenciales de la propiedad.
+  - `AutomationCard`: en modo `"listing"` activa sin credenciales de la propiedad y muestra la línea «Credenciales: por alojamiento». El 422 de `parameters.credentials_scope` va junto al interruptor, con `fieldErrorMessage` (`lib/notify-error.ts`).
+  - Fase 0b: el modal del alojamiento ya no pone valores de la propiedad en el placeholder. Usa «Usa el valor de la propiedad», y una prueba con centinelas lo comprueba.
+  - También ya están, porque no dependen del backend:
+    - el texto de `credentials_missing` en `ERROR_CODE_LABELS`;
+    - el `token` interno del override, que el front no escribe ni muestra (sin la insignia «Token»; los payloads ya no lo tipan);
+    - los textos de los dos paneles y del modal, que en modo `"listing"` no dicen «heredar» (`LISTING_CREDENTIALS_COPY`): sin override es «Sin credenciales · no se reporta» y con el override en 7 es «Excluido».
+  - Faltan, y esperan Q2: los campos obligatorios, los estados `ready`/`incomplete`/`unknown`, el conteo y el enlace directo.
+- **Validación, solo en modo por alojamiento:**
+  - Con el override activo (6), las credenciales tienen que estar completas. Si falta alguna: 422 por clave, p. ej. `errors["parameters.rnt"]`.
+  - El `PATCH` valida lo guardado más lo enviado.
+  - Excluir (7) no pide nada.
+  - En modo propiedad no cambia nada.
+- **Alojamiento sin credenciales:** no se reporta y **no se cobra**. La ejecución queda `failed` con `lastError: "credentials_missing"` en `automation-status`, y con `lastError.message: "credentials_missing"` en `automation-records`. Se reintenta con el redispatch de siempre.
+- **Interpretación fijada (revisión del 2026-11-12):** en modo `"listing"` las credenciales de la propiedad se IGNORAN. El contrato exige el override activo con las credenciales completas y dice que sin ellas no se reporta. Queda pendiente confirmarlo (Q1).
+- **Pedido al backend, bloquea la UI del alojamiento (Q2):** el front no puede deducir «configurado» o «incompleto» de los valores de `token` y `password`. Si vienen omitidos, diría «falta» y obligaría a reescribirlos. Se pidió agregar al GET actual del override `credentialsComplete` y `missingCredentialKeys`, sin los valores. Sin esos metadatos, el estado es `unknown` y nunca se adivina.
+- ⚠️ **Sin verificar por curl ni en Network:** si `GET /properties/{uuid}/automations` devuelve los valores reales de `token` y `password`, enmascarados u omitidos. Lo único demostrado es del front: `AutomationOverrideModal.tsx:544` ponía en claro, como placeholder (`Heredar: <valor>`), **cualquier** valor que recibiera en `parameters`, incluidos los campos `password`. Se corrige en la fase 0b del plan sin depender de la respuesta. (Revisión del 2026-11-12: acá decía «✅ devuelve en claro», que era una inferencia del código, no una respuesta observada.)
+- ⚠️ El `automationUuid` de `automation-status` se usa como el `{uuid}` de `/reservations/{r}/property-automations/{uuid}/dispatch` (`automation-service.ts:776`), así que sería el `uuid` de la `PropertyAutomation`. Falta confirmarlo por curl antes del enlace directo.
+- **Otras preguntas abiertas (Q3–Q6):**
+  - ¿Cada SIRE (check-in y check-out) tiene su modo y su override?
+  - ¿Hay overrides en producción con el token en el campo superior?
+  - ¿Volver a `"property"` exige las credenciales en la misma petición?
+  - ¿`credentials_missing` llega exacto?
+
+### ⚠️ (Reemplazado 2026-11-10) TRA/SIRE solo por alojamiento (sin credenciales de propiedad) — NO soportado hoy (análisis 2026-10-13)
 
 Pedido de producto (Didier): edificios con varios dueños donde el RNT/TRA y el
 login de SIRE existen solo por apartamento. Lo que hay:
