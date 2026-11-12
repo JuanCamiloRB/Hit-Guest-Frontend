@@ -23,7 +23,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { getErrorMessage } from "@/lib/notify-error"
+import { fieldErrorMessage, getErrorMessage } from "@/lib/notify-error"
 import { automationService } from "../../services/automation-service"
 import { getOverrideFieldSchema, isOverridableSlug } from "../../data/automation-definitions"
 import {
@@ -36,7 +36,6 @@ import { ParameterField } from "./ParameterField"
 import { IdentityOverrideSelector } from "./IdentityOverrideSelector"
 import { UnitContractTexts } from "../contracts/UnitContractTexts"
 import { automationTitle } from "../../lib/automation-display"
-import { ApiError } from "@/types/api"
 import { useIdentityProviderCatalog } from "../../hooks/useIdentityProviderCatalog"
 import {
     IdentityProviderUnavailableError,
@@ -93,18 +92,6 @@ interface Props {
 /** Resolve the provider slug for a property automation. */
 function slugOf(pa: PropertyAutomation | undefined | null): string {
     return pa?.provider?.parameters?.slug ?? pa?.providerName ?? ""
-}
-
-/** Primer mensaje del backend para alguno de los nombres de campo de un 422. */
-function fieldError(error: unknown, ...fields: string[]): string | null {
-    if (!(error instanceof ApiError) || error.status !== 422) return null
-    const errors = error.errors
-    if (!errors || Array.isArray(errors)) return null
-    for (const field of fields) {
-        const messages = errors[field]
-        if (Array.isArray(messages) && typeof messages[0] === "string") return messages[0]
-    }
-    return null
 }
 
 /** Ejecuta las llamadas en orden. Devuelve el override final, o `null` si terminó borrado (hereda). */
@@ -286,7 +273,7 @@ export function AutomationOverrideModal({
         try {
             saved = await runOverrideOperations(ops)
         } catch (error) {
-            if (!fieldError(error, "property_automation_uuid", "propertyAutomationUuid")) throw error
+            if (!fieldErrorMessage(error, "property_automation_uuid", "propertyAutomationUuid")) throw error
             const existing = (await automationService.listListingOverrides(listingUuid))
                 .find((o) => o.propertyAutomationUuid === selectedPaUuid) ?? null
             saved = await runOverrideOperations(plan(existing))
@@ -306,7 +293,7 @@ export function AutomationOverrideModal({
             } catch (error) {
                 if (error instanceof IdentityProviderUnavailableError) setIdentityError(error.message)
                 else {
-                    const providerProblem = fieldError(error, "provider_id", "providerId")
+                    const providerProblem = fieldErrorMessage(error, "provider_id", "providerId")
                     if (providerProblem) setIdentityError(providerProblem)
                     else toast.error(getErrorMessage(error, "No se pudo guardar la verificación de la unidad."))
                 }

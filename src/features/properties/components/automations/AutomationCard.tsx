@@ -19,7 +19,7 @@ import { StatusPill } from "@/components/ui/status-pill"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
-import { notifyError } from "@/lib/notify-error"
+import { fieldErrorMessage, notifyError } from "@/lib/notify-error"
 import { cn } from "@/lib/utils"
 import { automationService } from "../../services/automation-service"
 import { isSignatureProvider, AUTOMATION_STATUS, mapGuestTypeToApi } from "../../types/automation"
@@ -32,6 +32,7 @@ import { ConfigModal } from "./ConfigModal"
 import { ListingOverridesPanel } from "./ListingOverridesPanel"
 import { isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
 import { describeAutomationCost } from "../../lib/automation-cost"
+import { readCredentialsScope } from "../../lib/credentials-scope"
 import type { ListingMeta } from "./AutomationOverrideModal"
 import { ReservationSourceIdentity, reservationSourceName, reservationSourceSlug } from "../contracts/ReservationSourceIdentity"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
@@ -160,6 +161,8 @@ export function AutomationCard({
     const [toggling, setToggling] = useState(false)
     const [configOpen, setConfigOpen] = useState(false)
     const [configSaving, setConfigSaving] = useState(false)
+    /** 422 en `parameters.credentials_scope`: se muestra junto al interruptor del modal. */
+    const [configScopeError, setConfigScopeError] = useState<string | null>(null)
     // Optimistic provider choice: the Select holds the chosen option immediately,
     // even before (or if) the backend reflects it — so the picker doesn't snap back.
     const [optimisticProvider, setOptimisticProvider] = useState<string | null>(null)
@@ -218,7 +221,11 @@ export function AutomationCard({
      * Un array vacío cuenta como faltante: TTLock exige al menos una cerradura, y
      * `locks: []` pasaría cualquier chequeo de "existe la clave".
      */
-    const missingRequiredParams = (selectedProvider?.parametersSchema ?? [])
+    // TRA/SIRE en modo por alojamiento (contrato 2026-11-10): la propiedad no
+    // lleva credenciales, así que no falta ninguna para activar. Cada alojamiento
+    // las lleva en su override; sin ellas, ese alojamiento no se reporta.
+    const credentialsScope = readCredentialsScope(automation)
+    const missingRequiredParams = credentialsScope === "listing" ? [] : (selectedProvider?.parametersSchema ?? [])
         .filter((field) => field.required)
         .filter((field) => {
             const value = (automation?.parameters ?? {})[field.key]
@@ -413,6 +420,7 @@ export function AutomationCard({
             return
         }
         setConfigSaving(true)
+        setConfigScopeError(null)
         let createdTarget: PropertyAutomation | null = null
         try {
             // Strip the front-only "_init" marker so it isn't persisted/validated.
@@ -447,7 +455,9 @@ export function AutomationCard({
             // Crear y configurar son dos operaciones. Si solo falla la segunda,
             // la fila inactiva ya existe y debe quedar reflejada en el estado.
             if (createdTarget) onChanged(createdTarget)
-            notifyAutomationError(err, "Error al guardar la configuración")
+            const scopeProblem = fieldErrorMessage(err, "parameters.credentials_scope")
+            if (scopeProblem) setConfigScopeError(scopeProblem)
+            else notifyAutomationError(err, "Error al guardar la configuración")
         } finally {
             setConfigSaving(false)
         }
@@ -500,6 +510,11 @@ export function AutomationCard({
                                     <p className="text-xs text-ink-3">
                                         Costo: <span className="font-semibold text-ink-2">{costLabel}</span>
                                     </p>
+                                    {credentialsScope === "listing" && (
+                                        <p className="text-xs text-ink-3">
+                                            Credenciales: <span className="font-semibold text-ink-2">por alojamiento</span>
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="shrink-0">
                                     {toggling
@@ -717,12 +732,13 @@ export function AutomationCard({
             {configOpen && selectedProvider && (
                 <ConfigModal
                     open={configOpen}
-                    onClose={() => setConfigOpen(false)}
+                    onClose={() => { setConfigOpen(false); setConfigScopeError(null) }}
                     definition={definition}
                     provider={selectedProvider}
                     currentParameters={(automation?.parameters ?? {}) as Record<string, unknown>}
                     onSave={handleSaveConfig}
                     isSaving={configSaving}
+                    scopeError={configScopeError}
                 />
             )}
         </>

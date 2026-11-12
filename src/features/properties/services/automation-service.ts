@@ -298,6 +298,23 @@ function readEffectiveProvider(raw: unknown): OverrideEffectiveProvider | null {
  * `null` si lo manda nulo (la unidad no ejecuta nada). Un valor desconocido se
  * trata como ausente: no se afirma un origen que no se entiende.
  */
+/**
+ * `credentialsComplete` / `credentials_complete` del override (pedido Q2 del
+ * plan TRA/SIRE por alojamiento, sin confirmar). Solo un booleano cuenta: otro
+ * tipo se lee como ausente, y ausente es «no pudimos confirmar».
+ */
+export function readCredentialsComplete(r: Record<string, unknown>): boolean | undefined {
+    const raw = r.credentialsComplete !== undefined ? r.credentialsComplete : r.credentials_complete
+    return typeof raw === "boolean" ? raw : undefined
+}
+
+/** `missingCredentialKeys` / `missing_credential_keys`: solo un arreglo de strings; si no, ausente. */
+export function readMissingCredentialKeys(r: Record<string, unknown>): string[] | undefined {
+    const raw = r.missingCredentialKeys !== undefined ? r.missingCredentialKeys : r.missing_credential_keys
+    if (!Array.isArray(raw) || !raw.every((k) => typeof k === "string")) return undefined
+    return [...raw]
+}
+
 function readProviderSource(r: Record<string, unknown>): OverrideProviderSource | undefined {
     for (const key of ["providerSource", "provider_source"]) {
         if (key in r) {
@@ -837,6 +854,8 @@ class AutomationService {
             (r.statusRecordId ?? r.status_record_id ?? LISTING_OVERRIDE_STATUS.ACTIVE) as ListingOverrideStatus
         const rawPa = r.propertyAutomation ?? r.property_automation ?? null
         const paProvider = sanitizeProvider(rawPa?.provider ?? null)
+        const credentialsComplete = readCredentialsComplete(r)
+        const missingCredentialKeys = readMissingCredentialKeys(r)
         return {
             uuid: r.uuid,
             listingUuid: r.listingUuid ?? r.listing_uuid ?? listingUuid ?? "",
@@ -866,6 +885,9 @@ class AutomationService {
             ...(rawEffectiveProvider !== undefined ? { effectiveProvider: readEffectiveProvider(rawEffectiveProvider) } : {}),
             ...(providerSource !== undefined ? { providerSource } : {}),
             ...(contractRouting ? { contractRouting } : {}),
+            // TRA/SIRE por alojamiento (pedido Q2, sin confirmar): solo si vienen bien formados.
+            ...(credentialsComplete !== undefined ? { credentialsComplete } : {}),
+            ...(missingCredentialKeys !== undefined ? { missingCredentialKeys } : {}),
         }
     }
 

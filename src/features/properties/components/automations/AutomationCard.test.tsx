@@ -1011,3 +1011,95 @@ describe("AutomationCard — costo", () => {
         expect(costLine()).toHaveTextContent("Costo: depende del proveedor que elijas")
     })
 })
+
+describe("AutomationCard — TRA/SIRE con credenciales por alojamiento (contrato 2026-11-10)", () => {
+    const tra = makeProvider(1, "tra_colombia")
+    const traRow = (parameters: Record<string, unknown>) => makeAutomation({
+        uuid: "tra-row", providerId: 1, executionOrder: 40, provider: tra, providerName: "tra_colombia", parameters,
+    })
+    const renderTra = (parameters: Record<string, unknown>) => render(
+        <AutomationCard {...baseProps} definition={definitionFor("tra-colombia")} automation={traRow(parameters)} providers={[tra]} />,
+    )
+
+    it("en modo por alojamiento se activa sin token ni RNT de la propiedad, y la tarjeta dice el modo", async () => {
+        toggle.mockResolvedValue(traRow({ credentials_scope: "listing" }))
+        renderTra({ credentials_scope: "listing", triggerTypes: ["on_checkin_completed"] })
+        expect(screen.getByText("por alojamiento")).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole("switch", { name: "TRA Colombia" }))
+
+        await waitFor(() => expect(toggle).toHaveBeenCalledWith("tra-row", true, 1))
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    })
+
+    it("en modo propiedad sigue pidiendo las credenciales para activar", async () => {
+        renderTra({ triggerTypes: ["on_checkin_completed"] })
+        expect(screen.queryByText("por alojamiento")).not.toBeInTheDocument()
+        fireEvent.click(screen.getByRole("switch", { name: "TRA Colombia" }))
+        // Abre la configuración para cargarlas (el aviso va por toast).
+        expect(await screen.findByRole("dialog", { name: /Configurar: TRA Colombia/ })).toBeInTheDocument()
+        expect(toggle).not.toHaveBeenCalled()
+    })
+
+    it("encender el interruptor oculta las credenciales y guarda «listing» sin pedirlas", async () => {
+        configure.mockResolvedValue(traRow({ credentials_scope: "listing" }))
+        renderTra({ triggerTypes: ["on_checkin_completed"] })
+        fireEvent.click(screen.getByRole("button", { name: /Configurar/ }))
+        expect(screen.getByPlaceholderText("Número RNT del establecimiento")).toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole("switch", { name: "Credenciales por alojamiento" }))
+        expect(screen.queryByPlaceholderText("Número RNT del establecimiento")).not.toBeInTheDocument()
+        fireEvent.click(screen.getByRole("button", { name: "Guardar Configuración" }))
+
+        await waitFor(() => expect(configure).toHaveBeenCalledWith("tra-row", {
+            statusProviderId: AUTOMATION_STATUS.ACTIVE,
+            providerId: 1,
+            parameters: { triggerTypes: ["on_checkin_completed"], credentials_scope: "listing" },
+        }))
+    })
+
+    it("apagarlo vuelve a mostrar las credenciales, guarda «property» y no borra las que había", async () => {
+        configure.mockResolvedValue(traRow({}))
+        renderTra({ credentials_scope: "listing", token: "guardado", rnt: "123", triggerTypes: ["on_checkin_completed"] })
+        fireEvent.click(screen.getByRole("button", { name: /Configurar/ }))
+        expect(screen.queryByPlaceholderText("Número RNT del establecimiento")).not.toBeInTheDocument()
+
+        fireEvent.click(screen.getByRole("switch", { name: "Credenciales por alojamiento" }))
+        expect(screen.getByPlaceholderText("Número RNT del establecimiento")).toBeInTheDocument()
+        fireEvent.click(screen.getByRole("button", { name: "Guardar Configuración" }))
+
+        await waitFor(() => expect(configure).toHaveBeenCalledWith("tra-row", expect.objectContaining({
+            parameters: expect.objectContaining({ credentials_scope: "property", token: "guardado", rnt: "123" }),
+        })))
+    })
+
+    it("un 422 en credentials_scope aparece junto al interruptor, asociado a él", async () => {
+        const { ApiError } = await import("@/types/api")
+        configure.mockRejectedValue(new ApiError(422, {
+            message: "Datos inválidos",
+            errors: { "parameters.credentials_scope": ["Esta automatización no admite credenciales por alojamiento."] },
+        }))
+        renderTra({ triggerTypes: ["on_checkin_completed"] })
+        fireEvent.click(screen.getByRole("button", { name: /Configurar/ }))
+        fireEvent.click(screen.getByRole("switch", { name: "Credenciales por alojamiento" }))
+        fireEvent.click(screen.getByRole("button", { name: "Guardar Configuración" }))
+
+        const message = await screen.findByText("Esta automatización no admite credenciales por alojamiento.")
+        const scopeSwitch = screen.getByRole("switch", { name: "Credenciales por alojamiento" })
+        expect(scopeSwitch.getAttribute("aria-describedby")).toContain(message.id)
+        expect(scopeSwitch).toHaveAttribute("aria-invalid", "true")
+    })
+
+    it("fuera de TRA y SIRE no hay interruptor", () => {
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={{ ...definitionFor("guest-report-pdf"), order: 30 }}
+                automation={null}
+                providers={[makeProvider(1003, "pdf_report")]}
+            />,
+        )
+        fireEvent.click(screen.getByRole("button", { name: /Configurar/i }))
+        expect(screen.queryByRole("switch", { name: "Credenciales por alojamiento" })).not.toBeInTheDocument()
+    })
+})

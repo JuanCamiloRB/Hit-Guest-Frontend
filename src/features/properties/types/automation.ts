@@ -489,6 +489,15 @@ export interface ListingAutomationOverride {
   parameters: Record<string, unknown> | null   // delta merged over the automation's base parameters
   token: string | null                          // replaces automation token; null = use automation token
   statusRecordId: ListingOverrideStatus         // 6 = active, 7 = inactive
+  /**
+   * Completitud de las credenciales del override (TRA/SIRE en modo por
+   * alojamiento). ⚠️ PEDIDO al backend (plan 20261112, Q2), sin confirmar.
+   * `undefined` = el backend no lo informa: «no pudimos confirmar». Nunca se
+   * deduce de los valores, porque un secreto guardado puede venir omitido.
+   */
+  credentialsComplete?: boolean
+  /** Claves que faltan según el backend (mismo pedido Q2). `undefined` = no informado. */
+  missingCredentialKeys?: string[]
   /** Proveedor que ELIGIÓ la unidad (identidad). `null` = no eligió: hereda. */
   providerId?: number | null
   effectiveProvider?: OverrideEffectiveProvider | null

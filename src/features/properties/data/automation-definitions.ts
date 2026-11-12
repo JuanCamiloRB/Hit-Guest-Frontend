@@ -543,6 +543,15 @@ const PROVIDER_PARAM_SCHEMAS: Record<string, ParameterFieldSchema[]> = (() => {
 })()
 
 /**
+ * El esquema de configuración del proveedor TAL CUAL, con sus `required` (el
+ * requisito del contrato). Una copia: quien lo use no puede alterar el mapa.
+ * Vacío = el proveedor no tiene parámetros configurables.
+ */
+export function getProviderParamSchema(slug: string | null | undefined): ParameterFieldSchema[] {
+    return (PROVIDER_PARAM_SCHEMAS[normalizeSlug(slug)] ?? []).map((f) => ({ ...f }))
+}
+
+/**
  * Returns the override fields for a provider — identical to its property-level
  * config schema, but with every field made optional (leaving one empty inherits
  * that value from the property automation). Empty array = not overridable.

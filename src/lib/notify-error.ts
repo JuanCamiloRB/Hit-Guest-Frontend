@@ -136,6 +136,24 @@ export function validationMessages(error: unknown, fallback = DEFAULT_FALLBACK):
     return details.length > 0 ? details : [normalizeApiError(error, fallback).message]
 }
 
+/**
+ * El primer mensaje del backend para alguno de esos campos en un 422 de
+ * validación (`errors: {campo: [msg]}`), para mostrarlo junto a su control.
+ * `null` si no es un 422 o no trae ninguno de esos campos. Se decide por la
+ * clave, nunca por el texto.
+ */
+export function fieldErrorMessage(error: unknown, ...fields: string[]): string | null {
+    const e = error && typeof error === "object" ? error as Record<string, unknown> : null
+    if (!e || e.status !== 422) return null
+    const errors = e.errors
+    if (!errors || typeof errors !== "object" || Array.isArray(errors)) return null
+    for (const field of fields) {
+        const messages = (errors as Record<string, unknown>)[field]
+        if (Array.isArray(messages) && typeof messages[0] === "string") return messages[0]
+    }
+    return null
+}
+
 /** Extracts just the localized message (no toast) — for inline display. */
 export function getErrorMessage(error: unknown, fallback = DEFAULT_FALLBACK): string {
     return normalizeApiError(error, fallback).message
