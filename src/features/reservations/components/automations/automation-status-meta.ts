@@ -245,6 +245,11 @@ const ERROR_CODE_LABELS: Record<string, string> = {
     // estado por huésped vive en «Documentos de huéspedes».
     identity_not_verified:
         "La verificación de identidad no fue aprobada. Revisa el estado por huésped en «Documentos de huéspedes».",
+    // TRA/SIRE con credenciales por alojamiento (contrato 2026-11-10): a este
+    // alojamiento le faltan las suyas, así que no se reportó ni se cobró. Llega
+    // como string en automation-status y como {message} en automation-records.
+    credentials_missing:
+        "Faltan las credenciales de este alojamiento. Cárgalas en la propiedad y vuelve a ejecutar la automatización.",
 }
 
 /**

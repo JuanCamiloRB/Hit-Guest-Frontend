@@ -157,3 +157,12 @@ describe("errorMessage — códigos envueltos en mensajes largos", () => {
         expect(errorMessage("Algo específico del backend")).toBe("Algo específico del backend")
     })
 })
+
+describe("errorMessage — credentials_missing (TRA/SIRE por alojamiento, contrato 2026-11-10)", () => {
+    it("traduce el código, venga como string (automation-status) o como {message} (automation-records)", () => {
+        const expected = /Faltan las credenciales de este alojamiento/
+        expect(errorMessage("credentials_missing")).toMatch(expected)
+        expect(errorMessage({ message: "credentials_missing", httpStatus: null, httpBody: null })).toMatch(expected)
+        expect(errorMessage("credentials_missing")).not.toMatch(/credentials_missing/)
+    })
+})

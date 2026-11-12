@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { Building2, ChevronDown, ChevronUp, Settings2, Lock, RefreshCw } from "lucide-react"
+import { Building2, ChevronDown, ChevronUp, Settings2, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Badge } from "@/components/ui/badge"
 import { StatusPill } from "@/components/ui/status-pill"
@@ -13,6 +13,7 @@ import type { PropertyAutomation, ListingAutomationOverride } from "../../types/
 import { AutomationOverrideModal, type ListingMeta } from "./AutomationOverrideModal"
 import { useIdentityProviderCatalog } from "../../hooks/useIdentityProviderCatalog"
 import { identityOverrideSummary, isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
+import { LISTING_CREDENTIALS_COPY, readCredentialsScope } from "../../lib/credentials-scope"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { EmptyState } from "@/components/ui/empty-state"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
@@ -48,6 +49,8 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
     // mirando parámetros ni token: un override activo sin parámetros puede
     // heredar o tener su propio nivel.
     const isIdentity = isIdentityPropertyAutomation(automation)
+    // TRA/SIRE por alojamiento (contrato 2026-11-10): no existe «heredar».
+    const perListing = readCredentialsScope(automation) === "listing"
     const identityCatalog = useIdentityProviderCatalog(isIdentity)
 
     const loadListings = useCallback(async (targets: ListingMeta[]) => {
@@ -116,7 +119,9 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                         </Badge>
                     )}
                     {listings.length > 0 && overrideCount === 0 && allLoaded && (
-                        <span className="text-xs text-ink-3 font-normal">Todas heredan de la propiedad</span>
+                        <span className="text-xs text-ink-3 font-normal">
+                            {perListing ? LISTING_CREDENTIALS_COPY.noneConfigured : "Todas heredan de la propiedad"}
+                        </span>
                     )}
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -164,8 +169,6 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                 const ownContract = hasOverride && override.isActive && (
                                     override.contractRouting?.routingSource === "listing" || params.contract_mode != null
                                 )
-                                // El token de un override de identidad no aplica (el contrato lo manda null).
-                                const hasToken = !isIdentity && hasOverride && override.token != null
 
                                 if (isFailed) {
                                     return (
@@ -217,11 +220,6 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                         {listing.internalName}
                                                     </span>
                                                 )}
-                                                {hasToken && (
-                                                    <span className="inline-flex items-center gap-0.5 text-xs text-ink-3">
-                                                        <Icon icon={Lock} size="xs" /> token
-                                                    </span>
-                                                )}
                                             </div>
 
                                             {!isLoaded ? (
@@ -231,7 +229,9 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                     {identity.label}
                                                 </StatusPill>
                                             ) : isDisabledHere ? (
-                                                <StatusPill tone="danger" className="mt-0.5">Desactivada en esta unidad</StatusPill>
+                                                perListing
+                                                    ? <StatusPill tone="idle" className="mt-0.5">{LISTING_CREDENTIALS_COPY.excluded}</StatusPill>
+                                                    : <StatusPill tone="danger" className="mt-0.5">Desactivada en esta unidad</StatusPill>
                                             ) : override?.contractRouting?.replacedTexts.length ? (
                                                 <span className="text-xs font-medium text-warning">Textos propios sin aplicar · revisar</span>
                                             ) : ownContract ? (
@@ -258,6 +258,8 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                 // override y su estado manda (contrato de overrides). Se
                                                 // quita con «Volver a heredar» en el modal.
                                                 <span className="text-xs text-ink-3">Override activo sin parámetros propios</span>
+                                            ) : perListing ? (
+                                                <StatusPill tone="warning" className="mt-0.5">{LISTING_CREDENTIALS_COPY.noCredentials}</StatusPill>
                                             ) : (
                                                 <span className="text-xs text-ink-3">Hereda de la propiedad</span>
                                             )}

@@ -64,3 +64,16 @@ describe("PropertyCard — desactivar pide confirmación (pedido 2026-10-27)", (
         await vi.waitFor(() => expect(mocks.patch).toHaveBeenCalledWith("p-1", { statusRecordId: 6 }))
     })
 })
+
+describe("PropertyCard — menú de gestión", () => {
+    it("«Automatizaciones» abre la pestaña que existe (antes ?tab=automation la dejaba vacía)", async () => {
+        window.HTMLElement.prototype.hasPointerCapture = () => false
+        render(<PropertyCard property={property("ACTIVE")} />)
+        const user = userEvent.setup()
+        // El disparador del menú es el único botón sin nombre propio de acción de estado.
+        const triggers = screen.getAllByRole("button").filter((b) => b.getAttribute("aria-haspopup") === "menu")
+        await user.click(triggers[0])
+        expect(await screen.findByRole("menuitem", { name: "Automatizaciones" }))
+            .toHaveAttribute("href", "/dashboard/properties/p-1?tab=automations")
+    })
+})

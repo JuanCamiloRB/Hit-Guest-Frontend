@@ -47,6 +47,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { listingsService } from "../services/listings-service"
 import { automationService } from "../services/automation-service"
 import { getOverrideFieldSchema } from "../data/automation-definitions"
+import { LISTING_CREDENTIALS_COPY, readCredentialsScope } from "../lib/credentials-scope"
 import { type PropertyAutomation, type ListingAutomationOverride } from "../types/automation"
 import { AutomationOverrideModal } from "./automations/AutomationOverrideModal"
 import { useIdentityProviderCatalog } from "../hooks/useIdentityProviderCatalog"
@@ -136,7 +137,6 @@ export function draftOverrideCreatePayload(d: ListingAutomationOverride, listing
         propertyAutomationUuid: d.propertyAutomationUuid,
         statusRecordId: d.statusRecordId,
         parameters: d.parameters,
-        ...(d.token ? { token: d.token } : {}),
         ...(d.providerId != null && d.isActive ? { providerId: d.providerId } : {}),
     }
 }
@@ -145,7 +145,6 @@ export function isMeaningfulOverride(o: ListingAutomationOverride): boolean {
     if (!o.isActive) return true
     // Identidad: un nivel propio (Avanzada/Esencial) es configuración real.
     if (o.providerId != null) return true
-    if (o.token) return true
     const params = o.parameters ?? {}
     return Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
 }
@@ -1227,7 +1226,10 @@ export function PropertiesUnits() {
                                                 <div>
                                                     <p className="text-sm font-semibold text-primary">Sobreescribir automatizaciones</p>
                                                     <p className="text-xs text-primary leading-relaxed">
-                                                        Puedes desactivar o cambiar parámetros específicos para esta unidad. El resto hereda la configuración de la propiedad.
+                                                        Puedes desactivar o cambiar parámetros específicos para esta unidad. El resto hereda la configuración de la propiedad
+                                                        {propertyAutomations.some(pa => readCredentialsScope(pa) === "listing")
+                                                            ? ", salvo las que usan credenciales por alojamiento: sin las suyas, esta unidad no se reporta."
+                                                            : "."}
                                                     </p>
                                                 </div>
                                             </div>
@@ -1260,8 +1262,9 @@ export function PropertiesUnits() {
                                                         const params = override?.parameters ?? {}
                                                         const hasParams = !identity && hasOverride && override.isActive &&
                                                             Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
-                                                        const hasToken = !identity && hasOverride && override.token != null
                                                         const display = automationDisplay(automation, override ?? null)
+                                                        // TRA/SIRE por alojamiento: sin override no se reporta; apagado es excluido.
+                                                        const perListing = readCredentialsScope(automation) === "listing"
 
                                                         return (
                                                             <div key={automation.uuid} className={cn(
@@ -1282,16 +1285,13 @@ export function PropertiesUnits() {
                                                                             </Badge>
                                                                         )}
                                                                         {isInactive && (
-                                                                            <StatusPill tone="danger">Desactivada aquí</StatusPill>
+                                                                            perListing
+                                                                                ? <StatusPill tone="idle">{LISTING_CREDENTIALS_COPY.excluded}</StatusPill>
+                                                                                : <StatusPill tone="danger">Desactivada aquí</StatusPill>
                                                                         )}
                                                                         {hasParams && (
                                                                             <Badge tone="accent">
                                                                                 Personalizada
-                                                                            </Badge>
-                                                                        )}
-                                                                        {hasToken && (
-                                                                            <Badge>
-                                                                                Token
                                                                             </Badge>
                                                                         )}
                                                                     </div>
@@ -1301,10 +1301,12 @@ export function PropertiesUnits() {
                                                                             : hasParams
                                                                             ? schema.filter(f => params[f.key] != null && params[f.key] !== "").map(f => f.key).join(", ") || "Parámetros sobreescritos"
                                                                             : isInactive
-                                                                                ? "La automatización se omite para esta unidad."
+                                                                                ? perListing ? LISTING_CREDENTIALS_COPY.excludedHelp : "La automatización se omite para esta unidad."
                                                                                 : hasOverride
                                                                                     ? "Override activo sin parámetros propios."
-                                                                                    : "Hereda la configuración de la propiedad."}
+                                                                                    : perListing
+                                                                                        ? LISTING_CREDENTIALS_COPY.noCredentials
+                                                                                        : "Hereda la configuración de la propiedad."}
                                                                         {display.channels && ` · ${display.channels}`}
                                                                     </p>
                                                                 </div>

@@ -20,3 +20,16 @@ describe("borradores de override en una unidad nueva (contrato 2026-10-14)", () 
         expect(draftOverrideCreatePayload(draft({ statusRecordId: 7, isActive: false, providerId: 502 }), "unit-9")).not.toHaveProperty("providerId")
     })
 })
+
+describe("el token interno del override no lo escribe el front (contrato 2026-11-10)", () => {
+    it("el POST del borrador nunca lleva `token`, aunque el borrador lo traiga", () => {
+        const payload = draftOverrideCreatePayload(draft({ propertyAutomationUuid: "tra-row", token: "interno", parameters: { rnt: "1" } }), "unit-9")
+        expect(payload).not.toHaveProperty("token")
+        // El token del Ministerio de TRA sí viaja, dentro de `parameters`.
+        expect(draftOverrideCreatePayload(draft({ parameters: { token: "MINCIT" } }), "unit-9").parameters).toEqual({ token: "MINCIT" })
+    })
+
+    it("un token interno solo no convierte el borrador en configuración real", () => {
+        expect(isMeaningfulOverride(draft({ propertyAutomationUuid: "tra-row", token: "interno" }))).toBe(false)
+    })
+})

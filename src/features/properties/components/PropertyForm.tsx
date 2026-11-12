@@ -58,6 +58,7 @@ import { invalidatePropertiesCaches } from "../lib/properties-cache"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { COMMUNICATION_LOCALES, LOCALE_LABELS, DEFAULT_COMMUNICATION_LOCALE } from "@/lib/locales"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { isPropertyTab, propertyEditHref } from "../lib/property-tabs"
 
 interface PropertyFormProps {
     initialData?: any
@@ -94,8 +95,9 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     const searchParams = useSearchParams()
 
     useEffect(() => {
+        // Solo una pestaña que existe: un `?tab=` desconocido abría el formulario vacío.
         const tab = searchParams.get("tab")
-        if (tab) {
+        if (isPropertyTab(tab)) {
             setActiveTab(tab)
         }
     }, [searchParams])
@@ -306,7 +308,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     )
                 }
                 // A partial listing failure needs a visible recovery destination.
-                router.push(`/dashboard/properties/${propertyUuid}?tab=${failedUnits.length ? "units" : "automations"}`)
+                router.push(propertyEditHref(propertyUuid, failedUnits.length ? "units" : "automations"))
             }
         } catch (error) {
             console.error("[PropertyForm] Save error:", error)

@@ -92,3 +92,30 @@ export function listingCredentialState(override: ListingAutomationOverride | nul
     return { kind: "unknown" }
 }
 
+/**
+ * Textos del modo por alojamiento. En él no existe «heredar»: sin override el
+ * alojamiento no se reporta, y apagarlo es excluirlo a propósito. Una sola
+ * fuente para el modal del alojamiento y los dos paneles (por automatización y
+ * pestaña AUTOM. de la unidad), así no pueden divergir.
+ */
+export const LISTING_CREDENTIALS_COPY = {
+    /** Alojamiento sin override. */
+    noCredentials: "Sin credenciales · no se reporta",
+    /** Override apagado (7). */
+    excluded: "Excluido · no se reporta",
+    /** Panel cargado y ningún alojamiento con override. */
+    noneConfigured: "Ningún alojamiento tiene credenciales: no se reporta ninguno",
+    /** Interruptor del modal, encendido / apagado. */
+    activeLabel: "Se reporta con sus credenciales",
+    excludedLabel: "Excluido: no se reporta",
+    activeHelpNew: "Carga las credenciales de este alojamiento. Apágalo para excluirlo: no se reporta.",
+    activeHelpEdit: "Este alojamiento se reporta con las credenciales de abajo.",
+    excludedHelp: "Las reservas de este alojamiento no se reportan.",
+    /** Aviso sobre los campos del modal. */
+    fieldsNotice: "Estas credenciales son solo de este alojamiento. Sin ellas, sus reservas no se reportan.",
+    /** Guardar un alojamiento nuevo sin credenciales ni exclusión. */
+    emptyCreate: "Completa las credenciales de este alojamiento o exclúyelo.",
+    /** Borrar el override. */
+    remove: "Quitar credenciales",
+    removed: "Credenciales quitadas. Este alojamiento ya no se reporta.",
+} as const

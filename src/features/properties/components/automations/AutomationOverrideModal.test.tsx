@@ -364,3 +364,47 @@ describe("AutomationOverrideModal — identidad por unidad (contrato 2026-10-14)
         expect(handlers.onClose).toHaveBeenCalled()
     })
 })
+
+describe("AutomationOverrideModal — TRA con credenciales por alojamiento (contrato 2026-11-10)", () => {
+    const traListing = withCredentials("tra-row", "tra_colombia", { credentials_scope: "listing", token: "SENTINEL-TRA-TOKEN" })
+    const props = { propertyAutomations: [traListing], lockedPropertyAutomationUuid: "tra-row" }
+
+    it("no habla de herencia ni usa los valores de la propiedad como pista", () => {
+        renderModal(props)
+        const dialog = screen.getByRole("dialog")
+        expect(dialog).toHaveTextContent("Se reporta con sus credenciales")
+        expect(dialog).toHaveTextContent(/Sin ellas, sus reservas no se reportan/)
+        expect(dialog.textContent).not.toMatch(/hered/i)
+        expect(screen.queryByPlaceholderText("Usa el valor de la propiedad")).toBeNull()
+        expect(dialog.outerHTML).not.toMatch(/SENTINEL/)
+    })
+
+    it("guardar un alojamiento nuevo sin credenciales no lo da por bueno: avisa y no cierra", async () => {
+        const handlers = renderModal(props)
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        expect(mocks.toast.info).toHaveBeenCalledWith("Completa las credenciales de este alojamiento o exclúyelo.")
+        expect(handlers.onClose).not.toHaveBeenCalled()
+        expect(mocks.createListingOverride).not.toHaveBeenCalled()
+    })
+
+    it("apagarlo es excluir: crea el override inactivo", async () => {
+        mocks.createListingOverride.mockResolvedValue(override({ propertyAutomationUuid: "tra-row", statusRecordId: 7, isActive: false }))
+        renderModal(props)
+        const user = userEvent.setup()
+        await user.click(screen.getByRole("switch"))
+        expect(screen.getByRole("dialog")).toHaveTextContent("Excluido: no se reporta")
+        await user.click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(mocks.createListingOverride).toHaveBeenCalledWith(
+            expect.objectContaining({ propertyAutomationUuid: "tra-row", statusRecordId: 7 }),
+        ))
+    })
+
+    it("con override, borrarlo es «Quitar credenciales» y avisa que deja de reportarse", async () => {
+        mocks.deleteListingOverride.mockResolvedValue(undefined)
+        const handlers = renderModal({ ...props, override: override({ propertyAutomationUuid: "tra-row", parameters: { rnt: "1" } }) })
+        await userEvent.setup().click(screen.getByRole("button", { name: "Quitar credenciales" }))
+        await waitFor(() => expect(mocks.deleteListingOverride).toHaveBeenCalledWith("ov-1"))
+        expect(mocks.toast.success).toHaveBeenCalledWith("Credenciales quitadas. Este alojamiento ya no se reporta.")
+        expect(handlers.onInheritRestored).toHaveBeenCalled()
+    })
+})

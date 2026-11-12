@@ -29,6 +29,7 @@ import { RECORD_STATUS } from "../lib/record-status"
 import { DeactivationConfirmDialog } from "./DeactivationConfirmDialog"
 import { Heading } from "@/components/ui/heading"
 import { Spinner } from "@/components/ui/loading-state"
+import { propertyEditHref } from "../lib/property-tabs"
 
 interface PropertyCardProps {
     property: Property
@@ -172,7 +173,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                                 </Link>
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/properties/${propertyId}?tab=automation`} className="flex items-center">
+                                <Link href={propertyEditHref(propertyId, "automations")} className="flex items-center">
                                     Automatizaciones
                                 </Link>
                             </DropdownMenuItem>

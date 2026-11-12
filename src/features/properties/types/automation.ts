@@ -487,7 +487,12 @@ export interface ListingAutomationOverride {
   listingUuid: string
   propertyAutomationUuid: string
   parameters: Record<string, unknown> | null   // delta merged over the automation's base parameters
-  token: string | null                          // replaces automation token; null = use automation token
+  /**
+   * Token INTERNO de HIT del override. El PM no lo escribe ni lo ve: el token
+   * del Ministerio de TRA va en `parameters.token` (contrato 2026-11-10). Solo
+   * lectura; ningún payload lo envía.
+   */
+  token: string | null
   statusRecordId: ListingOverrideStatus         // 6 = active, 7 = inactive
   /**
    * Completitud de las credenciales del override (TRA/SIRE en modo por
@@ -520,7 +525,7 @@ export interface ListingAutomationOverrideCreatePayload {
   propertyAutomationUuid: string
   statusRecordId: ListingOverrideStatus
   parameters?: Record<string, unknown> | null
-  token?: string | null
+  // Sin `token`: es interno de HIT y el front no lo escribe (contrato 2026-11-10).
   /** Solo identidad y solo con `statusRecordId: 6` (con 7 el backend responde 422). */
   providerId?: number | null
 }
@@ -529,7 +534,7 @@ export interface ListingAutomationOverrideCreatePayload {
 export interface ListingAutomationOverrideUpdatePayload {
   statusRecordId?: ListingOverrideStatus
   parameters?: Record<string, unknown> | null
-  token?: string | null
+  // Sin `token`: es interno de HIT y el front no lo escribe (contrato 2026-11-10).
   /** `null` = volver a heredar el proveedor de la propiedad. */
   providerId?: number | null
 }

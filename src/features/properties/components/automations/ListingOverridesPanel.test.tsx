@@ -171,3 +171,40 @@ describe("ListingOverridesPanel — identidad por unidad (contrato 2026-10-14)",
         expect(await screen.findByRole("button", { name: /Unidad 4/ })).toHaveTextContent("Hereda de la propiedad (sin verificación)")
     })
 })
+
+describe("ListingOverridesPanel — TRA con credenciales por alojamiento (contrato 2026-11-10)", () => {
+    const traListing: PropertyAutomation = {
+        ...automation, uuid: "tra-row", name: "TRA Colombia", guestType: "all", executionOrder: 40,
+        providerName: "tra_colombia", provider: null, parameters: { credentials_scope: "listing" },
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.listListingOverrides.mockImplementation((listingUuid: string) => Promise.resolve(
+            listingUuid === "unit-1" ? [{ ...disabledOverride, propertyAutomationUuid: "tra-row" }] : [],
+        ))
+    })
+
+    it("sin override no «hereda»: no se reporta; apagado es «Excluido», sin tinta de error", async () => {
+        render(<ListingOverridesPanel automation={traListing} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+        expect(await screen.findByText("Sin credenciales · no se reporta")).toBeInTheDocument()
+        expect(screen.getByText("Excluido · no se reporta")).toBeInTheDocument()
+        expect(screen.queryByText(/hereda/i)).toBeNull()
+    })
+
+    it("ningún alojamiento con override: lo dice sin hablar de herencia", async () => {
+        mocks.listListingOverrides.mockResolvedValue([])
+        render(<ListingOverridesPanel automation={traListing} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+        expect(await screen.findByText(/Ningún alojamiento tiene credenciales/)).toBeInTheDocument()
+        expect(screen.queryByText(/Todas heredan/)).toBeNull()
+    })
+
+    it("en modo propiedad conserva los textos de herencia", async () => {
+        mocks.listListingOverrides.mockResolvedValue([])
+        render(<ListingOverridesPanel automation={{ ...traListing, parameters: {} }} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+        expect((await screen.findAllByText("Hereda de la propiedad")).length).toBe(2)
+    })
+})

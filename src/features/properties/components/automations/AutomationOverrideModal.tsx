@@ -49,6 +49,7 @@ import {
     type OverrideOperation,
 } from "../../lib/identity-listing-override"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LISTING_CREDENTIALS_COPY, readCredentialsScope } from "../../lib/credentials-scope"
 
 /** Minimal listing info needed to identify and label a unit. */
 export interface ListingMeta {
@@ -168,6 +169,9 @@ export function AutomationOverrideModal({
     // Identidad (contrato 2026-10-14): Heredar · Avanzada · Esencial · Desactivar
     // en vez del interruptor y los parámetros.
     const isIdentity = isIdentityPropertyAutomation(activePa ?? override?.propertyAutomation ?? null)
+    // TRA/SIRE con credenciales por alojamiento (contrato 2026-11-10): no existe
+    // «heredar». Sin override el alojamiento no se reporta; apagado, se excluye.
+    const perListing = readCredentialsScope(activePa ?? override?.propertyAutomation ?? null) === "listing"
     const catalog = useIdentityProviderCatalog(open && isIdentity)
     const [identityChoice, setIdentityChoice] = useState<IdentityChoice>("inherit")
     const [identityError, setIdentityError] = useState<string | null>(null)
@@ -319,6 +323,11 @@ export function AutomationOverrideModal({
             // propiedad» sin serlo, y no había forma de borrarla. Sin cambios no
             // se crea nada.
             if (!isEdit && isActive && !parameters) {
+                if (perListing) {
+                    // Cerrar acá diría que el alojamiento quedó bien, y no se reporta.
+                    toast.info(LISTING_CREDENTIALS_COPY.emptyCreate)
+                    return
+                }
                 toast.info("Sin cambios: la unidad sigue heredando de la propiedad.")
                 onClose()
                 return
@@ -384,7 +393,7 @@ export function AutomationOverrideModal({
             if (!draftMode && override.uuid) {
                 await automationService.deleteListingOverride(override.uuid)
             }
-            toast.success("La unidad vuelve a heredar de la propiedad")
+            toast.success(perListing ? LISTING_CREDENTIALS_COPY.removed : "La unidad vuelve a heredar de la propiedad")
             onInheritRestored()
             onClose()
         } catch (err) {
@@ -459,11 +468,14 @@ export function AutomationOverrideModal({
                     {!isIdentity && (
                     <div className={cn(
                         "flex items-center justify-between p-3 rounded-xl border transition-colors",
-                        isActive ? "bg-sunk/50 border-rule" : "bg-danger-sunk/30 border-danger/30"
+                        // Excluir en modo por alojamiento es una decisión, no un fallo: sin tinta de peligro.
+                        isActive || perListing ? "bg-sunk/50 border-rule" : "bg-danger-sunk/30 border-danger/30"
                     )}>
                         <div className="space-y-0.5">
                             <Label className="text-sm font-semibold">
-                                {isActive ? "Activa en esta unidad" : "Desactivada para esta unidad"}
+                                {perListing
+                                    ? isActive ? LISTING_CREDENTIALS_COPY.activeLabel : LISTING_CREDENTIALS_COPY.excludedLabel
+                                    : isActive ? "Activa en esta unidad" : "Desactivada para esta unidad"}
                             </Label>
                             <p className="text-xs text-ink-3">
                                 {isContract
@@ -472,6 +484,10 @@ export function AutomationOverrideModal({
                                         : contractHasOwnRouting
                                             ? "Esta unidad tiene su propio contrato por canal."
                                             : "Firman el contrato de la propiedad. Apágalo para que no firmen en esta unidad."
+                                    : perListing
+                                    ? !isActive
+                                        ? LISTING_CREDENTIALS_COPY.excludedHelp
+                                        : isEdit ? LISTING_CREDENTIALS_COPY.activeHelpEdit : LISTING_CREDENTIALS_COPY.activeHelpNew
                                     : !isActive
                                     ? "La automatización se omite para reservas de esta unidad."
                                     : isEdit
@@ -523,15 +539,17 @@ export function AutomationOverrideModal({
                             </div>
 
                             <FeedbackBanner tone="info" density="compact">
-                                Son los mismos campos que configuras en la propiedad. Completa solo lo que cambia
-                                en esta unidad — lo que dejes vacío hereda el valor de la propiedad.
+                                {perListing
+                                    ? LISTING_CREDENTIALS_COPY.fieldsNotice
+                                    : "Son los mismos campos que configuras en la propiedad. Completa solo lo que cambia en esta unidad — lo que dejes vacío hereda el valor de la propiedad."}
                             </FeedbackBanner>
 
                             {fieldSchema.map(field => {
                                 // Solo se mira SI la propiedad tiene el valor, nunca cuál es:
                                 // antes iba en el placeholder («Heredar: <valor>»), y un
                                 // placeholder se ve en claro aunque el campo sea de contraseña.
-                                const propertyHasValue = !isEmptyValue(baseParams?.[field.key])
+                                // En modo por alojamiento no se usa el de la propiedad: sin esa pista.
+                                const propertyHasValue = !perListing && !isEmptyValue(baseParams?.[field.key])
                                 return (
                                     <div key={field.key} className="space-y-1">
                                         <ParameterField
@@ -560,7 +578,7 @@ export function AutomationOverrideModal({
                             disabled={saving}
                             className="sm:mr-auto"
                         >
-                            Volver a heredar
+                            {perListing ? LISTING_CREDENTIALS_COPY.remove : "Volver a heredar"}
                         </Button>
                     )}
                     <Button variant="outline" onClick={onClose} disabled={saving}>Cancelar</Button>
