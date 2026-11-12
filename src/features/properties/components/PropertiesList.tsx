@@ -165,14 +165,15 @@ export function PropertiesList() {
                             />
                         </div>
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="w-45 shrink-0 h-10" aria-label="Filtrar por estado">
+                            {/* min-w, no w fijo: con ícono, flecha y «Cualquier estado» no cabía en 180 px y la flecha pisaba el texto. */}
+                            <SelectTrigger className="min-w-45 shrink-0 h-10" aria-label="Filtrar por estado">
                                 <div className="flex items-center gap-2 pointer-events-none min-w-0">
                                     <Icon icon={Filter} className="text-ink-3" />
                                     <SelectValue placeholder="Estado" />
                                 </div>
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="ALL">Cualquier Estado</SelectItem>
+                                <SelectItem value="ALL">Cualquier estado</SelectItem>
                                 <SelectItem value="ACTIVE">Activos</SelectItem>
                                 <SelectItem value="INACTIVE">Inactivos</SelectItem>
                             </SelectContent>
