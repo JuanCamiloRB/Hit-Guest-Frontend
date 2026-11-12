@@ -129,6 +129,9 @@ está terminado.
   explícitamente desarrollo guiado por pruebas.
 - `hitguest-standards` — reglas transversales (no inventar, no mockear,
   patrones, verificación real, mantener skills al día). Aplican acá también.
+- `hitguest-design-system` — la parte de UI: solo primitivas que existen; si
+  falta una, se crea primero en `components/ui` con su prueba (RED primero,
+  como cualquier otra pieza) y después se usa.
 
 ## Nota de mantenimiento — cleanup entre tests
 

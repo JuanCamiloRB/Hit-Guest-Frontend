@@ -113,7 +113,10 @@ etc.) — no hace falta pedir permiso para cosas mecánicas como nombres de arch
 4. **Componentes** — function components, `"use client"` cuando haga falta
    estado/efectos, Tailwind + primitivos de `components/ui`. Reusar
    `StatusPill`/`SectionCard`/`EmptyState`/`LoadingState` en vez de escribir
-   spinners o pastillas de estado a mano.
+   spinners o pastillas de estado a mano. Si la pantalla necesita una pieza
+   que no existe, se crea primero como primitiva en `components/ui` (con
+   prueba y en el catálogo) y después se usa: ver el skill
+   `hitguest-design-system`, Regla 1.
 5. **Conectar** — a una pestaña existente (`TabsContent` en un `PropertyForm`-like)
    o a una screen del portal. Preferir extender lo que existe sobre crear una
    ruta nueva, salvo que el feature genuinamente sea una pantalla nueva.

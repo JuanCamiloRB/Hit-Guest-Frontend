@@ -76,7 +76,9 @@ copiarlo, no reinventarlo:
   campo `Input`/`PasswordInput`/`FieldError`/`FieldHint`; enlace de dato
   `TextLink`; ícono `Icon`/`IconBadge`; persona `Avatar`; tabla `Table`/
   `DataTable`; modal `Dialog`/`Sheet`. No se rehacen a mano:
-  `npm run design:check` lo rechaza (DS-7, 2026-11-12).
+  `npm run design:check` lo rechaza (DS-7, 2026-11-12). Solo se usan
+  componentes que existen; si hace falta uno que no está, se crea primero en
+  `components/ui` y después se usa (`hitguest-design-system`, Regla 1).
 - **Escala de estados (Fase 2.2)**: cada estado de una pantalla tiene UNA forma.
 
   | Estado | Cómo se muestra |
@@ -97,11 +99,15 @@ copiarlo, no reinventarlo:
   (un `<p>`), usar `asChild` con un `<div>`: un aviso es un bloque. Precedente:
   Operaciones (Fase 2.3, `ReservationsList`, `OperationsPanel`).
 - **Tokens de diseño**: los colores de marca (`--color-brand-navy/purple/blue`)
-  están registrados en `@theme inline` de `globals.css` — usar las clases
-  Tailwind que genera (`bg-brand-purple`, `text-brand-navy`, etc.), nunca hex
+  están registrados en `@theme inline` de `globals.css`, pero en controles no
+  se usan sus utilidades (`bg-brand-purple`, `text-brand-blue`):
+  `design:check` las rechaza (`brand-color-interaction`). La marca llega a los
+  controles por tokens semánticos (`primary`, `--input`, `--ring`). Nunca hex
   hardcodeado. Si un mockup HTML trae sus propios hex, primero comparar contra
   `globals.css` — si coinciden (como pasó con el mockup de garantía), es señal
-  de que el diseño ya fue pensado para este sistema de tokens.
+  de que el diseño ya fue pensado para este sistema de tokens. El detalle, las
+  decisiones vigentes y la regla de crear la primitiva antes de usarla están
+  en el skill `hitguest-design-system`.
 - **Contrato visual ejecutable**: `docs/hitguest-design-system.md` define la
   tipografía, color, superficies, radios, sombras, iconos, densidades y el mapa
   de primitivas permitido. `npm run design:check` impide aumentar la deuda de
@@ -313,6 +319,10 @@ aplican, corregir esta sección (Regla 7):
   está verificado contra `guest.hit.tools` separado de lo que es solo
   documentación (y de lo que ya se demostró falso). Es la contraparte concreta
   de la Regla 1: cargarlo ANTES de tocar código que hable con la API.
+- `hitguest-design-system` — **el manual de marca en código**: catálogo de
+  primitivas con su archivo, crear la primitiva antes de usarla si falta,
+  tokens y decisiones visuales vigentes, sincronía con Figma. Cargarlo en
+  cualquier tarea que toque UI.
 - `hitguest-add-feature` — flujo paso a paso para agregar un feature completo.
 - `hitguest-add-feature-tdd` — la misma variante con TDD (Vitest + RTL).
 
