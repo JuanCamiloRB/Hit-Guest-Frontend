@@ -120,9 +120,10 @@ describe.each([
     })
 })
 
-describe("borde de campo en tema claro: navy de marca, hover primary", () => {
-    it("el borde del campo es el navy de marca", () => {
-        expect(light.input.toLowerCase()).toBe("#222755")
+describe("borde de campo en tema claro: azul de marca, hover primary", () => {
+    it("el borde del campo es el azul de marca (--color-brand-blue)", () => {
+        expect(light.input.toLowerCase()).toBe("#5467fa")
+        expect(css).toMatch(/--color-brand-blue:\s*#5467FA;/)
     })
     // El hover del campo (hover:border-primary) también es la señal del control.
     it.each(["background", "card", "sunk"])("hover primary sobre %s: 3:1", (surface) => {

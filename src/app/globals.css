@@ -165,12 +165,13 @@
   --border: var(--rule);
   /* Borde de un CAMPO (Input, Textarea, Select, teléfono, calendario, Button
      field): es la señal que lo identifica, así que necesita 3:1 (WCAG 1.4.11).
-     Es el navy de marca (#222755, mismo valor que --color-brand-navy): ~14:1
-     sobre card y fondo. Antes #8188A6 (3.50:1). Como la base ya es la tinta más
-     oscura, el hover del campo no puede oscurecerse más: pasa a `primary`
+     Es el azul de marca (#5467FA, mismo valor que --color-brand-blue): 4.47
+     card · 4.27 fondo · 4.01 sunk. El navy (#222755) se probó primero: en una
+     línea de 1 px se leía gris, aunque en el sidebar (superficie grande) se lee
+     azul. Antes #8188A6 (3.50:1). El hover del campo es `primary`
      (hover:border-primary), que se distingue del foco porque el foco suma el
      anillo de 3 px. --border sigue para separadores y tarjetas. */
-  --input: #222755;
+  --input: #5467FA;
   /* Hover de las tarjetas y opciones seleccionables (borde rule → ink-3,
      5.23:1). Ya no es el hover de los campos: ese es primary. */
   --input-hover: #636B8D;

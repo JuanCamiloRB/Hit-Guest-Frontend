@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
  * Estados de un campo de texto (Fase 1, paso 4.3), compartidos por Input y
  * Textarea:
  * - texto ink; placeholder ink-3 (5.23:1 sobre blanco, 4.70 sobre sunk).
- * - borde: --input, el navy de marca (~14:1).
+ * - borde: --input, el azul de marca (4.47:1 sobre card).
  * - hover: borde primary (5.44:1), solo si se puede escribir (no deshabilitado, no
  *   readonly, no inválido: el rojo del error manda) y SIN foco: el borde de
  *   foco gana siempre. Va con `hover:` de Tailwind, que solo aplica con

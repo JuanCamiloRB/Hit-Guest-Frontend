@@ -99,7 +99,7 @@ export function SearchableSelect({
             transition-all
             ${isOpen
               ? "border-primary ring-2 ring-primary/30"
-              // Es un campo: mismo borde (navy) y mismo hover (primary) que Input.
+              // Es un campo: mismo borde (azul de marca) y mismo hover (primary) que Input.
               : "border-input hover:border-primary"
             }
           `}

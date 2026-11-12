@@ -64,13 +64,16 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        // Inactiva en ink-3 (4.75:1 sobre la lista; foreground/60 daba 4.44). Activa:
-        // tinta ink (15.6:1) sobre una pastilla card elevada con sombra: la
-        // selección se ve por la forma, no solo por el tono. Sin cambiar el peso:
-        // varias pantallas ya usan font-bold y la activa quedaría más fina.
+        // Inactiva en ink-3 (4.75:1 sobre la lista; foreground/60 daba 4.44). Activa
+        // (variante default): pastilla card elevada con sombra, texto primary (5.44:1
+        // sobre card) y borde primary/30: el morado de selección. La selección se ve
+        // por la forma, no solo por el tono. Sin relleno primary/10: sobre la lista
+        // sunk el texto primary bajaría a 4.25:1. Sin cambiar el peso: varias
+        // pantallas ya usan font-bold y la activa quedaría más fina.
         "focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring text-ink-3 hover:text-ink dark:text-ink-3 dark:hover:text-ink relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-all group-data-[orientation=vertical]/tabs:w-full group-data-[orientation=vertical]/tabs:justify-start focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 group-data-[variant=default]/tabs-list:data-[state=active]:shadow-sm group-data-[variant=line]/tabs-list:data-[state=active]:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent",
         "data-[state=active]:bg-card dark:data-[state=active]:text-ink dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 data-[state=active]:text-ink",
+        "group-data-[variant=default]/tabs-list:data-[state=active]:text-primary group-data-[variant=default]/tabs-list:data-[state=active]:border-primary/30",
         "after:bg-ink after:absolute after:opacity-0 after:transition-opacity group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] group-data-[orientation=horizontal]/tabs:after:h-0.5 group-data-[orientation=vertical]/tabs:after:inset-y-0 group-data-[orientation=vertical]/tabs:after:-right-1 group-data-[orientation=vertical]/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-[state=active]:after:opacity-100",
         className
       )}

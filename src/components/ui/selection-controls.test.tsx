@@ -84,6 +84,11 @@ describe("Tabs", () => {
         const first = screen.getByRole("tab", { name: "Detalles" })
         const second = screen.getByRole("tab", { name: "Fotos" })
         expect(second).toHaveClass("text-ink-3", "data-[state=active]:bg-card", "data-[state=active]:text-ink")
+        // Activa en la variante default: el morado de selección (texto primary, borde primary/30).
+        expect(second).toHaveClass(
+            "group-data-[variant=default]/tabs-list:data-[state=active]:text-primary",
+            "group-data-[variant=default]/tabs-list:data-[state=active]:border-primary/30",
+        )
         expect(second.className).not.toMatch(/text-foreground\/60|font-semibold/)
         first.focus()
         await user.keyboard("{ArrowRight}")

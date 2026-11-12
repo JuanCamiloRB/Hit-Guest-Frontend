@@ -265,7 +265,7 @@ export function ReservationCostsList({
 function CostRow({ row }: { row: ReservationCost }) {
     const billed = row.total > 0
     return (
-        <TableRow className="hover:bg-sunk/50">
+        <TableRow>
             <TableCell className="py-2.5">
                 <GuestCell row={row} muted={!billed} />
             </TableCell>
