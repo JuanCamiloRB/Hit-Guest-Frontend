@@ -123,6 +123,12 @@ async function runOverrideOperations(ops: OverrideOperation[]): Promise<ListingA
     return result
 }
 
+/**
+ * Placeholder de un campo que, vacío, usa el valor de la propiedad. Genérico a
+ * propósito: el valor de la propiedad (token, contraseña, RNT…) no se muestra.
+ */
+const INHERITED_VALUE_PLACEHOLDER = "Usa el valor de la propiedad"
+
 function isEmptyValue(v: unknown): boolean {
     if (v == null) return true
     if (typeof v === "string") return v.trim() === ""
@@ -535,13 +541,16 @@ export function AutomationOverrideModal({
                             </FeedbackBanner>
 
                             {fieldSchema.map(field => {
-                                const baseHint = baseParams?.[field.key]
+                                // Solo se mira SI la propiedad tiene el valor, nunca cuál es:
+                                // antes iba en el placeholder («Heredar: <valor>»), y un
+                                // placeholder se ve en claro aunque el campo sea de contraseña.
+                                const propertyHasValue = !isEmptyValue(baseParams?.[field.key])
                                 return (
                                     <div key={field.key} className="space-y-1">
                                         <ParameterField
                                             schema={
-                                                field.type !== "array" && field.type !== "select" && baseHint != null
-                                                    ? { ...field, placeholder: `Heredar: ${String(baseHint)}` }
+                                                field.type !== "array" && field.type !== "select" && propertyHasValue
+                                                    ? { ...field, placeholder: INHERITED_VALUE_PLACEHOLDER }
                                                     : field
                                             }
                                             value={schemaValues[field.key]}

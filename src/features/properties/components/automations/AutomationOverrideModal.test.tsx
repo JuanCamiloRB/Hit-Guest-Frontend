@@ -114,6 +114,42 @@ beforeEach(() => {
     mocks.listProviders.mockResolvedValue([provider(1, "tra_colombia"), ADVANCED, ESSENTIAL])
 })
 
+/**
+ * Automatización con credenciales en `parameters`. Los valores son centinelas:
+ * si alguno aparece en el HTML del modal (texto, placeholder, aria-*), el
+ * modal está mostrando un valor de la propiedad que no debe ver nadie.
+ */
+function withCredentials(uuid: string, slug: string, parameters: Record<string, unknown>): PropertyAutomation {
+    return { ...PDF, uuid, providerName: slug, provider: provider(900, slug), name: slug, parameters }
+}
+
+describe("AutomationOverrideModal — nunca muestra los valores de la propiedad", () => {
+    const CASES: Array<[string, PropertyAutomation]> = [
+        ["TRA", withCredentials("tra-row", "tra_colombia", { token: "SENTINEL-TRA-TOKEN", rnt: "SENTINEL-RNT" })],
+        ["SIRE", withCredentials("sire-row", "sire_colombia", {
+            document_type: "CC", document_number: "SENTINEL-DOC", password: "SENTINEL-SIRE-PASS", company_code: "SENTINEL-NIT",
+        })],
+        ["TTLock", withCredentials("ttlock-row", "ttlock", {
+            username: "SENTINEL-USER", password: "SENTINEL-LOCK-PASS", client_id: "SENTINEL-CLIENT-ID", client_secret: "SENTINEL-CLIENT-SECRET",
+        })],
+    ]
+
+    it.each(CASES)("%s: ni secretos ni datos de la propiedad en texto, placeholder ni aria", (_name, automation) => {
+        renderModal({ propertyAutomations: [automation], lockedPropertyAutomationUuid: automation.uuid })
+        const dialog = screen.getByRole("dialog")
+        expect(dialog.outerHTML).not.toMatch(/SENTINEL/)
+        // El campo sigue diciendo que, vacío, usa lo de la propiedad, sin decir qué es.
+        expect(screen.getAllByPlaceholderText("Usa el valor de la propiedad").length).toBeGreaterThan(0)
+    })
+
+    it("un campo que la propiedad no tiene conserva su texto de ejemplo", () => {
+        const automation = withCredentials("tra-row", "tra_colombia", { token: "SENTINEL-TRA-TOKEN" })
+        renderModal({ propertyAutomations: [automation], lockedPropertyAutomationUuid: automation.uuid })
+        expect(screen.getByPlaceholderText("Número RNT del establecimiento")).toBeInTheDocument()
+        expect(screen.getByRole("dialog").outerHTML).not.toMatch(/SENTINEL/)
+    })
+})
+
 describe("AutomationOverrideModal — automatizaciones que no son de identidad", () => {
     const pdf = { propertyAutomations: [PDF], lockedPropertyAutomationUuid: "pdf-row" }
 
