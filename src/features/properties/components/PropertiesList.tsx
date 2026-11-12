@@ -143,17 +143,12 @@ export function PropertiesList() {
 
             <Tabs defaultValue="properties" value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                 <Surface className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-2">
-                    <TabsList className="grid grid-cols-2 w-full md:w-100 bg-sunk/50 p-1.5 h-12">
-                        <TabsTrigger
-                            value="properties"
-                            className="gap-2 rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white data-[state=active]:shadow-sm transition-all font-bold"
-                        >
+                    {/* Pestañas estándar (las de Operaciones): la pantalla solo pone el layout. */}
+                    <TabsList className="grid grid-cols-2 w-full md:w-100">
+                        <TabsTrigger value="properties">
                             <Icon icon={Home} /> Propiedades
                         </TabsTrigger>
-                        <TabsTrigger
-                            value="units"
-                            className="gap-2 rounded-lg data-[state=active]:bg-brand-navy data-[state=active]:text-white data-[state=active]:shadow-sm transition-all font-bold"
-                        >
+                        <TabsTrigger value="units">
                             <Icon icon={List} /> Alojamientos
                         </TabsTrigger>
                     </TabsList>

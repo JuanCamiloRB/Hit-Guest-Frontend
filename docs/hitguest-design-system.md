@@ -133,7 +133,7 @@ escala en hover.
 | Campo | `Input`, `PasswordInput` (contraseña o secreto, con mostrar/ocultar accesible), `Textarea`, `Select`, `PhoneInputField`, `FileInput` (oculto; lo abre un Button o una zona de carga) |
 | Error y ayuda de campo | `FormMessage` con react-hook-form; sin él, `FieldError` (error; `compact` en filas densas) y `FieldHint` (la ayuda que pasa a error con `invalid`, mismo nodo y mismo `id`) |
 | Etiqueta de campo | `Label` asociada mediante `htmlFor`; `Label variant="plain"` cuando envuelve otra cosa (casilla + texto largo, zona de carga); texto auxiliar con `FormDescription` |
-| Selección | `Checkbox`, `Radio` (nativo, grupo por `name`), `Switch`, `Tabs` |
+| Selección | `Checkbox`, `Radio` (nativo, grupo por `name`), `Switch`, `Tabs` (activa: card + texto `primary` + borde `primary/30`; `TabsList size="sm"` para muchas pestañas en poco ancho; desde la pantalla solo la grilla y el ancho) |
 | Superficie | `SectionCard` (sección con título), `Card` (encabezado y cuerpo estándar) o `Surface` (la superficie sola; el interior lo arma la pantalla). `Surface as=` para la etiqueta semántica, `flat` sin sombra (cuadrículas densas, dentro de otra superficie), `floating` para un panel flotante propio (radio y sombra `md`, como `Select`) |
 | Modal | `Dialog`, `AlertDialog` o `Sheet` |
 | Estado corto | `StatusPill tone=…` (`success`, `warning`, `info`, `danger`, `idle`, `accent`, `none`): punto + palabra; un estado nunca va solo por color |
@@ -221,6 +221,7 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `button-override` | `<Button className="bg-primary h-11 font-bold">` | `variant`/`size` (`lg`); solo layout en `className` |
 | `pressable-fill` | `<UnstyledButton className="bg-primary">`, `<Link className="h-12 bg-primary">` | `Button`, `Button asChild` |
 | `label-override` | `<Badge className="bg-success-sunk text-success">` | `tone="success"` |
+| `tabs-override` | `<TabsTrigger className="data-[state=active]:bg-brand-navy font-bold">`, `<TabsList className="bg-sunk/50 h-12">` | la primitiva tal cual; `TabsList size="sm"` para densidad; solo `grid`, `grid-cols-*`, ancho y márgenes |
 | `handmade-pill` | `<span className="rounded-full bg-success-sunk px-2 text-xs">` | `Badge` o `StatusPill` |
 | `icon-direct` | `<Mail />`, `<item.icon />` | `<Icon icon={Mail} />` |
 | `icon-size-override` | `<Icon className="h-5 w-5" />` | `<Icon size="lg" />` |

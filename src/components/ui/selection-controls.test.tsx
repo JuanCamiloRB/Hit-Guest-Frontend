@@ -100,6 +100,22 @@ describe("Tabs", () => {
         await user.keyboard("{End}")
         expect(second).toHaveFocus()
     })
+
+    it("densidad: la lista la declara (data-size) y cada pestaña la lee; por omisión default", () => {
+        render(
+            <>
+                <Tabs defaultValue="a">
+                    <TabsList aria-label="Normal"><TabsTrigger value="a">General</TabsTrigger></TabsList>
+                </Tabs>
+                <Tabs defaultValue="a">
+                    <TabsList aria-label="Compacta" size="sm"><TabsTrigger value="a">Políticas</TabsTrigger></TabsList>
+                </Tabs>
+            </>,
+        )
+        expect(screen.getByRole("tablist", { name: "Normal" })).toHaveAttribute("data-size", "default")
+        expect(screen.getByRole("tablist", { name: "Compacta" })).toHaveAttribute("data-size", "sm")
+        expect(screen.getByRole("tab", { name: "Políticas" })).toHaveClass("group-data-[size=sm]/tabs-list:text-xs")
+    })
 })
 
 describe("Select", () => {

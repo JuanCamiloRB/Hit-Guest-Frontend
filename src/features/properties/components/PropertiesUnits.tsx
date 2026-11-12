@@ -714,13 +714,14 @@ export function PropertiesUnits() {
                                     >
                                         {/* AUTOM tab only exists once the property is saved — mirrors the
                                             property-level Automatización tab behavior */}
-                                        <TabsList className={cn("grid mb-4", propertyUuid ? "grid-cols-5" : "grid-cols-4")}>
-                                            <TabsTrigger value="general" className="text-xs font-bold">General</TabsTrigger>
-                                            <TabsTrigger value="amenities" className="text-xs font-bold">Operación</TabsTrigger>
-                                            <TabsTrigger value="rooms" className="text-xs font-bold">Distribución</TabsTrigger>
-                                            <TabsTrigger value="policies" className="text-xs font-bold">Políticas</TabsTrigger>
+                                        {/* 5 pestañas en el diálogo: densidad sm de la primitiva, no clases propias. */}
+                                        <TabsList size="sm" className={cn("grid mb-4", propertyUuid ? "grid-cols-5" : "grid-cols-4")}>
+                                            <TabsTrigger value="general">General</TabsTrigger>
+                                            <TabsTrigger value="amenities">Operación</TabsTrigger>
+                                            <TabsTrigger value="rooms">Distribución</TabsTrigger>
+                                            <TabsTrigger value="policies">Políticas</TabsTrigger>
                                             {propertyUuid && (
-                                                <TabsTrigger value="automations" className="text-xs font-bold flex items-center gap-1">
+                                                <TabsTrigger value="automations">
                                                     <Icon icon={Zap} />
                                                     Autom.
                                                 </TabsTrigger>

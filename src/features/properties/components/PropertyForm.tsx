@@ -360,63 +360,40 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)} className="space-y-6">
+                    {/* Pestañas estándar (las de Operaciones): la pantalla solo pone la grilla. */}
                     <TabsList className={cn(
-                        "grid w-full h-auto bg-sunk/50 p-1 border border-rule/50 rounded-xl shadow-sm",
+                        "grid w-full",
                         initialData
                             ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-6"
                             : "grid-cols-2 md:grid-cols-2 lg:grid-cols-4"
                     )}>
-                        <TabsTrigger
-                            value="details"
-                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
-                        >
-                            <Icon icon={Info} className={cn("mr-2 transition-colors",
- activeTab ==="details"?"text-white":"text-primary")} />
-                            <span className="font-bold">Detalles</span>
+                        <TabsTrigger value="details">
+                            <Icon icon={Info} />
+                            Detalles
                         </TabsTrigger>
-                        <TabsTrigger
-                            value="units"
-                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
-                        >
-                            <Icon icon={Building} className={cn("mr-2 transition-colors",
- activeTab ==="units"?"text-white":"text-primary")} />
-                            <span className="font-bold">Alojamientos</span>
+                        <TabsTrigger value="units">
+                            <Icon icon={Building} />
+                            Alojamientos
                         </TabsTrigger>
                         {initialData && (
-                            <TabsTrigger
-                                value="automations"
-                                className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
-                            >
-                                <Icon icon={Sparkles} className={cn("mr-2 transition-colors",
- activeTab ==="automations"?"text-white":"text-primary")} />
-                                <span className="font-bold">Automatización</span>
+                            <TabsTrigger value="automations">
+                                <Icon icon={Sparkles} />
+                                Automatización
                             </TabsTrigger>
                         )}
                         {initialData && (
-                            <TabsTrigger
-                                value="documents"
-                                className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
-                            >
-                                <Icon icon={FileText} className={cn("mr-2 transition-colors",
- activeTab ==="documents"?"text-white":"text-primary")} />
-                                <span className="font-bold">Documentos</span>
+                            <TabsTrigger value="documents">
+                                <Icon icon={FileText} />
+                                Documentos
                             </TabsTrigger>
                         )}
-                        <TabsTrigger
-                            value="location"
-                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
-                        >
-                            <Icon icon={MapPin} className={cn("mr-2 transition-colors",
- activeTab ==="location"?"text-white":"text-primary")} />
-                            <span className="font-bold">Ubicación</span>
+                        <TabsTrigger value="location">
+                            <Icon icon={MapPin} />
+                            Ubicación
                         </TabsTrigger>
-                        <TabsTrigger
-                            value="photos"
-                            className="data-[state=active]:bg-primary data-[state=active]:text-white data-[state=active]:shadow-sm transition-all duration-300 rounded-lg py-2.5 h-full"
-                        >
-                            <Icon icon={Camera} className={cn("mr-2 transition-colors",
- activeTab ==="photos"?"text-white":"text-primary")} />
-                            <span className="font-bold">Fotos</span>
+                        <TabsTrigger value="photos">
+                            <Icon icon={Camera} />
+                            Fotos
                         </TabsTrigger>
                     </TabsList>
 

@@ -40,16 +40,24 @@ const tabsListVariants = cva(
   }
 )
 
+/**
+ * `size`: `default` (text-sm) en páginas y formularios; `sm` (text-xs) para
+ * muchas pestañas en poco ancho (las 5 del editor de alojamiento, dentro de un
+ * diálogo). La densidad la decide la lista y cada TabsTrigger la lee por
+ * `data-size`: desde la pantalla no se pisan las pestañas (`tabs-override`).
+ */
 function TabsList({
   className,
   variant = "default",
+  size = "default",
   ...props
 }: React.ComponentProps<typeof TabsPrimitive.List> &
-  VariantProps<typeof tabsListVariants>) {
+  VariantProps<typeof tabsListVariants> & { size?: "default" | "sm" }) {
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
       data-variant={variant}
+      data-size={size}
       className={cn(tabsListVariants({ variant }), className)}
       {...props}
     />
@@ -74,6 +82,7 @@ function TabsTrigger({
         "group-data-[variant=line]/tabs-list:bg-transparent group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-transparent dark:group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent",
         "data-[state=active]:bg-card dark:data-[state=active]:text-ink dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 data-[state=active]:text-ink",
         "group-data-[variant=default]/tabs-list:data-[state=active]:text-primary group-data-[variant=default]/tabs-list:data-[state=active]:border-primary/30",
+        "group-data-[size=sm]/tabs-list:text-xs group-data-[size=sm]/tabs-list:px-1.5",
         "after:bg-ink after:absolute after:opacity-0 after:transition-opacity group-data-[orientation=horizontal]/tabs:after:inset-x-0 group-data-[orientation=horizontal]/tabs:after:bottom-[-5px] group-data-[orientation=horizontal]/tabs:after:h-0.5 group-data-[orientation=vertical]/tabs:after:inset-y-0 group-data-[orientation=vertical]/tabs:after:-right-1 group-data-[orientation=vertical]/tabs:after:w-0.5 group-data-[variant=line]/tabs-list:data-[state=active]:after:opacity-100",
         className
       )}

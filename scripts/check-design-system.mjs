@@ -179,6 +179,16 @@ const rules = [
         ignore: UI_ONLY,
     },
     {
+        // Las pestañas traen forma, color, densidad y el estado activo (morado de
+        // selección) de la primitiva. Desde la pantalla solo layout: grilla,
+        // columnas, ancho, márgenes. La densidad va por `TabsList size="sm"`.
+        id: "tabs-override",
+        description: "pisa la apariencia de un TabsList o TabsTrigger; usa la primitiva (size=\"sm\" para densidad) y solo layout",
+        pattern: /(?<![\w-])(?:[a-z-]+:)*(?:bg|border|rounded|shadow|ring|outline|font|h|min-h|max-h|size|p|px|py|pt|pb|pl|pr|gap|transition|duration|opacity|leading|tracking|decoration|underline)(?:-[\w/\[\].%()-]+)?(?![\w-])|(?<![\w-])(?:[a-z-]+:)*text-(?!left\b|center\b|right\b|wrap\b|nowrap\b)[\w/\[\].-]+/g,
+        input: "tabsClasses",
+        ignore: UI_ONLY,
+    },
+    {
         // Badge (etiqueta) y StatusPill (estado) traen forma y color por `tone`.
         id: "label-override",
         description: "pisa la apariencia de un Badge, StatusPill, Avatar o IconBadge; elige `tone`/`size` (solo se permite layout)",
@@ -402,6 +412,7 @@ function inspect() {
         const linkClasses = []
         const unstyledClasses = []
         const labelClasses = []
+        const tabsClasses = []
         const headingClasses = []
         const pillElements = []
         const noticeElements = []
@@ -475,6 +486,7 @@ function inspect() {
                 if (tag === "UnstyledButton") unstyledClasses.push(...classTexts(node))
                 if (tag === "Badge" || tag === "StatusPill") labelClasses.push(...classTexts(node))
                 if (tag === "Heading") headingClasses.push(...classTexts(node))
+                if (tag === "TabsList" || tag === "TabsTrigger") tabsClasses.push(...classTexts(node))
                 if (tag === "Avatar" || tag === "AvatarFallback" || tag === "IconBadge") labelClasses.push(...classTexts(node))
                 if (/^(?:div|p|span|section|aside|li|article|header|form)$/.test(tag)) {
                     const joined = ` ${classTexts(node).join(" ")} `
@@ -551,6 +563,7 @@ function inspect() {
             linkClasses: linkClasses.join("\n"),
             unstyledClasses: unstyledClasses.join("\n"),
             labelClasses: labelClasses.join("\n"),
+            tabsClasses: tabsClasses.join("\n"),
             headingClasses: headingClasses.join("\n"),
             pillElements: pillElements.join("\n"),
             noticeElements: noticeElements.join("\n"),
