@@ -166,7 +166,8 @@ describe("AutomationOverrideModal — automatizaciones que no son de identidad",
         mocks.createListingOverride.mockResolvedValue(override({ propertyAutomationUuid: "pdf-row", statusRecordId: 7, isActive: false }))
         renderModal(pdf)
         const user = userEvent.setup()
-        await user.click(screen.getByRole("switch"))
+        // El interruptor tiene nombre (antes no: su título era un Label sin htmlFor).
+        await user.click(screen.getByRole("switch", { name: "Activa en esta unidad" }))
         await user.click(screen.getByRole("button", { name: "Guardar" }))
         await waitFor(() => expect(mocks.createListingOverride).toHaveBeenCalledWith({
             listingUuid: "unit-1", propertyAutomationUuid: "pdf-row", statusRecordId: 7, parameters: null,

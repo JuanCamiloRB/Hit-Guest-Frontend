@@ -22,6 +22,16 @@ describe("IconBadge", () => {
         const { container } = render(<IconBadge icon={CheckCircle2} size="lg" />)
         expect(container.querySelector('[data-slot="icon"]')).toHaveAttribute("data-size", "2xl")
     })
+
+    it("interactive sigue el hover del pulsable que lo contiene (tinte de selección); por omisión no", () => {
+        const { container, rerender } = render(<IconBadge icon={CheckCircle2} interactive />)
+        const badge = container.querySelector('[data-slot="icon-badge"]')!
+        expect(badge).toHaveAttribute("data-interactive", "true")
+        expect(badge).toHaveClass("group-hover:bg-primary/10", "group-hover:text-primary", "transition-colors")
+        rerender(<IconBadge icon={CheckCircle2} />)
+        expect(badge).not.toHaveAttribute("data-interactive")
+        expect(badge).not.toHaveClass("group-hover:bg-primary/10")
+    })
 })
 
 describe("Avatar — tono y tamaño desde la primitiva", () => {

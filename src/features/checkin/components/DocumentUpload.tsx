@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Camera, CheckCircle2, ScanLine, RotateCcw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { IconBadge } from "@/components/ui/icon-badge"
 import { prepareImageForUpload } from "@/lib/image-upload"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
@@ -165,9 +166,7 @@ export function DocumentUpload({
         {/* Done State */}
         {state === "done" && (
           <div className="p-5 flex items-center gap-4">
-            <div className="bg-success-sunk p-2.5 rounded-xl">
-              <Icon icon={CheckCircle2} size="xl" className="text-success" />
-            </div>
+            <IconBadge icon={CheckCircle2} tone="success" size="md" shape="square" />
             <div className="flex-1">
               <p className="text-sm font-semibold text-success">
                 Documento capturado

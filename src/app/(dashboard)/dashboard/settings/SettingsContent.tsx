@@ -80,7 +80,7 @@ export function SettingsContent() {
                             className={cn(
                                 "flex items-center gap-3 px-4 py-3 text-sm font-medium transition-all duration-200 rounded-xl group relative text-left w-full",
                                 activeTab === tab.id
-                                    ? "bg-white text-primary shadow-sm border border-rule"
+                                    ? "bg-card text-primary shadow-sm border border-rule"
                                     : "text-ink-3 hover:text-ink hover:bg-sunk/50"
                             )}
                         >

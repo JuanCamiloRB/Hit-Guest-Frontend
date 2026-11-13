@@ -202,7 +202,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                 ? "border-danger/30 bg-danger-sunk/50 hover:border-danger/30"
                                                 : hasParams
                                                     ? "border-primary/20 bg-primary/5 hover:border-primary/20"
-                                                    : "border-rule bg-white hover:border-rule"
+                                                    : "border-rule bg-card hover:border-rule"
                                         )}
                                     >
                                         <div className={cn(
@@ -223,7 +223,7 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                             </div>
 
                                             {!isLoaded ? (
-                                                <span className="text-xs text-ink-3">Cargando...</span>
+                                                <span className="flex items-center gap-1.5 text-xs text-ink-3"><Spinner size="xs" tone="muted" />Cargando…</span>
                                             ) : identity ? (
                                                 <StatusPill tone={identity.tone === "disabled" ? "danger" : identity.tone === "custom" ? "accent" : "idle"} className="mt-0.5">
                                                     {identity.label}

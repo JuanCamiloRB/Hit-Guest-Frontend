@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { FileText, Image as ImageIcon, RefreshCw, Upload } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { AuthenticatedImage } from "./AuthenticatedImage"
@@ -136,14 +137,11 @@ export function GuestDocumentsCard({ reservationUuid }: GuestDocumentsCardProps)
     if (guests.length === 0) {
         return (
             <SectionCard title="Documentos de huéspedes" actions={refreshButton}>
-                <div className="flex flex-col items-center gap-2 py-8 text-center">
-                    <div className="rounded-full bg-sunk p-3 text-ink-4">
-                        <Icon icon={FileText} size="lg" />
-                    </div>
-                    <p className="text-sm text-ink-3">
-                        Aún no hay huéspedes registrados. Aparecerán aquí en cuanto se identifiquen con el link de check-in, aunque no lo hayan completado.
-                    </p>
-                </div>
+                <EmptyState
+                    icon={FileText}
+                    title="Aún no hay huéspedes registrados"
+                    description="Aparecerán aquí en cuanto se identifiquen con el link de check-in, aunque no lo hayan completado."
+                />
             </SectionCard>
         )
     }

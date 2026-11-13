@@ -38,7 +38,7 @@ import { Icon } from "@/components/ui/icon"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import { useState, useEffect, useRef } from "react"
-import { Switch } from "@/components/ui/switch"
+import { SwitchField } from "@/components/ui/switch-field"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
@@ -688,23 +688,17 @@ export function PropertiesUnits() {
                               */}
                             <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2">
                                 <div className="space-y-6 pb-6">
-                                    <div className="flex items-center justify-between p-3 bg-sunk/20 rounded-lg border">
-                                        <div className="space-y-0.5">
-                                            <Label className="text-sm font-medium">Estado del Alojamiento</Label>
-                                            <p className={cn("text-xs", propertyInactive && !unitForm.isActive ? "font-medium text-warning" : "text-ink-3")}>
-                                                {propertyInactive && !unitForm.isActive
-                                                    ? "La propiedad está inactiva: actívala para poder activar este alojamiento."
-                                                    : "Activar o desactivar esta unidad específica."}
-                                            </p>
-                                        </div>
-                                        <Switch
-                                            checked={unitForm.isActive}
-                                            // Solo se bloquea ACTIVAR: desactivar sigue permitido.
-                                            disabled={propertyInactive && !unitForm.isActive}
-                                            aria-label="Alojamiento activo"
-                                            onCheckedChange={(checked) => setUnitForm({ ...unitForm, isActive: checked })}
-                                        />
-                                    </div>
+                                    <SwitchField
+                                        label="Alojamiento activo"
+                                        tone={propertyInactive && !unitForm.isActive ? "warning" : "neutral"}
+                                        description={propertyInactive && !unitForm.isActive
+                                            ? "La propiedad está inactiva: actívala para poder activar este alojamiento."
+                                            : "Activar o desactivar esta unidad específica."}
+                                        checked={unitForm.isActive}
+                                        // Solo se bloquea ACTIVAR: desactivar sigue permitido.
+                                        disabled={propertyInactive && !unitForm.isActive}
+                                        onCheckedChange={(checked) => setUnitForm({ ...unitForm, isActive: checked })}
+                                    />
 
                                     <Tabs
                                         value={activeTab}
@@ -934,16 +928,13 @@ export function PropertiesUnits() {
                                                         <Icon icon={Clock} className="text-primary" />
                                                         <Heading level={4} tone="muted">Horarios</Heading>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>
-                                                        <Switch
-                                                            checked={unitForm.extra.inheritSchedule}
-                                                            onCheckedChange={(checked) => setUnitForm({ 
-                                                                ...unitForm, 
-                                                                extra: { ...unitForm.extra, inheritSchedule: checked } 
-                                                            })}
-                                                        />
-                                                    </div>
+                                                    <SwitchField
+                                                        variant="plain"
+                                                        size="sm"
+                                                        label="Heredar de la propiedad"
+                                                        checked={unitForm.extra.inheritSchedule}
+                                                        onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritSchedule: checked } })}
+                                                    />
                                                 </div>
                                                 {!unitForm.extra.inheritSchedule && (
                                                     <div className="grid grid-cols-1 gap-6 rounded-xl border bg-sunk/50 p-4 sm:grid-cols-2">
@@ -991,16 +982,13 @@ export function PropertiesUnits() {
                                                         <Icon icon={Settings2} className="text-primary" />
                                                         <Heading level={4} tone="muted">WiFi Especial</Heading>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>
-                                                        <Switch
-                                                            checked={unitForm.extra.inheritWifi}
-                                                            onCheckedChange={(checked) => setUnitForm({ 
-                                                                ...unitForm, 
-                                                                extra: { ...unitForm.extra, inheritWifi: checked } 
-                                                            })}
-                                                        />
-                                                    </div>
+                                                    <SwitchField
+                                                        variant="plain"
+                                                        size="sm"
+                                                        label="Heredar de la propiedad"
+                                                        checked={unitForm.extra.inheritWifi}
+                                                        onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritWifi: checked } })}
+                                                    />
                                                 </div>
 
                                                 {!unitForm.extra.inheritWifi && (
@@ -1049,16 +1037,13 @@ export function PropertiesUnits() {
                                                         <Icon icon={Sparkles} className="text-primary" />
                                                         <Heading level={4} tone="muted">Amenidades</Heading>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>
-                                                        <Switch
-                                                            checked={unitForm.extra.inheritAmenities}
-                                                            onCheckedChange={(checked) => setUnitForm({
-                                                                ...unitForm,
-                                                                extra: { ...unitForm.extra, inheritAmenities: checked },
-                                                            })}
-                                                        />
-                                                    </div>
+                                                    <SwitchField
+                                                        variant="plain"
+                                                        size="sm"
+                                                        label="Heredar de la propiedad"
+                                                        checked={unitForm.extra.inheritAmenities}
+                                                        onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritAmenities: checked } })}
+                                                    />
                                                 </div>
 
                                                 {!unitForm.extra.inheritAmenities && (
@@ -1081,7 +1066,7 @@ export function PropertiesUnits() {
                                                                 return (
                                                                     <Label variant="plain"
                                                                         key={item.id}
-                                                                        className={`flex cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 text-sm transition-colors hover:bg-white ${selected ? "border-primary/20 bg-primary/5" : "border-transparent"}`}
+                                                                        className={`flex cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 text-sm transition-colors hover:bg-card ${selected ? "border-primary/20 bg-primary/5" : "border-transparent"}`}
                                                                     >
                                                                         <Checkbox
                                                                             checked={selected}
@@ -1169,16 +1154,13 @@ export function PropertiesUnits() {
                                                         <Icon icon={Shield} className="text-primary" />
                                                         <Heading level={4} tone="muted">Políticas</Heading>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-xs text-ink-3 font-bold">Heredar de Propiedad</span>
-                                                        <Switch
-                                                            checked={unitForm.extra.inheritPolicies}
-                                                            onCheckedChange={(checked) => setUnitForm({ 
-                                                                ...unitForm, 
-                                                                extra: { ...unitForm.extra, inheritPolicies: checked } 
-                                                            })}
-                                                        />
-                                                    </div>
+                                                    <SwitchField
+                                                        variant="plain"
+                                                        size="sm"
+                                                        label="Heredar de la propiedad"
+                                                        checked={unitForm.extra.inheritPolicies}
+                                                        onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritPolicies: checked } })}
+                                                    />
                                                 </div>
 
                                                 {unitForm.extra.inheritPolicies ? (

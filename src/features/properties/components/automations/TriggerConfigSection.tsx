@@ -169,7 +169,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                 {TRIGGER_TYPES.map((t) => {
                     const checked = triggerTypes.includes(t.key)
                     return (
-                        <div key={t.key} className="rounded-lg border border-rule bg-white px-3 py-2">
+                        <div key={t.key} className="rounded-lg border border-rule bg-card px-3 py-2">
                             <Label variant="plain" className="flex items-center gap-2.5 cursor-pointer">
                                 <Checkbox
                                     checked={checked}
@@ -228,7 +228,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                                     "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors " +
                                     (active
                                         ? "border-primary bg-primary/10 text-primary"
-                                        : "border-rule bg-white text-ink-2 hover:bg-sunk/50")
+                                        : "border-rule bg-card text-ink-2 hover:bg-sunk/50")
                                 }
                             >
                                 {g.label}

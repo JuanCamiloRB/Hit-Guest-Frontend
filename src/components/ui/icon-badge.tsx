@@ -58,15 +58,26 @@ type IconBadgeProps = Omit<React.ComponentProps<"span">, "children"> &
         /** El ícono. Para un contenido propio (un Spinner, un ícono que cambia), `children`. */
         icon?: LucideIcon
         children?: React.ReactNode
+        /**
+         * Dentro de un pulsable con `group` (una zona de carga, una opción): al
+         * pasar el cursor toma el tinte de selección (`primary/10`), como el
+         * resto de la opción. Es el hover del contenedor, no del ícono.
+         */
+        interactive?: boolean
     }
 
-function IconBadge({ icon, tone = "neutral", size = "md", shape = "circle", className, children, ...props }: IconBadgeProps) {
+function IconBadge({ icon, tone = "neutral", size = "md", shape = "circle", interactive = false, className, children, ...props }: IconBadgeProps) {
     return (
         <span
             data-slot="icon-badge"
             data-tone={tone}
+            data-interactive={interactive || undefined}
             aria-hidden={children ? undefined : true}
-            className={cn(iconBadgeVariants({ tone, size, shape }), className)}
+            className={cn(
+                iconBadgeVariants({ tone, size, shape }),
+                interactive && "transition-colors group-hover:bg-primary/10 group-hover:text-primary",
+                className,
+            )}
             {...props}
         >
             {icon ? <Icon icon={icon} size={GLYPH[size ?? "md"]} /> : children}

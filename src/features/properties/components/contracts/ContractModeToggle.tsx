@@ -29,7 +29,7 @@ export function ContractModeToggle({ value, onChange, disabled }: Props) {
                     "rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                     value === "all_sources"
                         ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                        : "border-rule bg-white hover:border-input-hover",
+                        : "border-rule bg-card hover:border-input-hover",
                 )}
             >
                 <span className={cn("block text-sm font-bold", value === "all_sources" ? "text-primary" : "text-ink")}>
@@ -49,7 +49,7 @@ export function ContractModeToggle({ value, onChange, disabled }: Props) {
                     "rounded-xl border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                     value === "per_source"
                         ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                        : "border-rule bg-white hover:border-input-hover",
+                        : "border-rule bg-card hover:border-input-hover",
                 )}
             >
                 <span className={cn("block text-sm font-bold", value === "per_source" ? "text-primary" : "text-ink")}>

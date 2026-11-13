@@ -182,7 +182,7 @@ export function CheckinLinkDeliveryOverrides({ automation, listings, pmsConnecte
                             }
                             if (entry?.state !== "loaded") {
                                 return (
-                                    <li key={listing.uuid} className="flex items-center justify-between gap-3 rounded-lg border border-rule bg-white px-3 py-2">
+                                    <li key={listing.uuid} className="flex items-center justify-between gap-3 rounded-lg border border-rule bg-card px-3 py-2">
                                         <p className="truncate text-xs font-semibold text-ink-2">{listing.name}</p>
                                         <Spinner size="xs" tone="muted" />
                                     </li>
@@ -289,7 +289,7 @@ function ListingDeliveryRow({
 
     const name = `delivery-${listing.uuid}`
     return (
-        <li className="space-y-2 rounded-lg border border-rule bg-white px-3 py-2">
+        <li className="space-y-2 rounded-lg border border-rule bg-card px-3 py-2">
             <div className="min-w-0">
                 <p className="truncate text-xs font-semibold text-ink-2">
                     {listing.name}

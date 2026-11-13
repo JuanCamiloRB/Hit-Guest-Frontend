@@ -201,7 +201,7 @@ export function PropertiesList() {
                             Revisa tu conexión e intenta de nuevo.
                         </FeedbackBanner>
                     ) : filteredProperties.length === 0 ? (
-                        <div className="rounded-xl border-2 border-dashed border-rule bg-white">
+                        <div className="rounded-xl border-2 border-dashed border-rule bg-card">
                             {properties.length === 0 ? (
                                 <EmptyState
                                     icon={Home}

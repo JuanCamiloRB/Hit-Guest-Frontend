@@ -49,6 +49,7 @@ archivo:
 | Error y ayuda de campo | `FormMessage`, `FieldError`, `FieldHint` | `ui/form.tsx` |
 | Etiqueta | `Label` | `ui/label.tsx` |
 | Selección | `Checkbox`, `Radio`, `Switch`, `Tabs` (`TabsList size="default" \| "sm"`) | `ui/checkbox.tsx`, `ui/radio.tsx`, `ui/switch.tsx`, `ui/tabs.tsx` |
+| Interruptor con texto | `SwitchField` (título = nombre del control; texto y error unidos; `variant`, `tone`, `size`) | `ui/switch-field.tsx` |
 | Superficie | `Surface`, `Card`, `SectionCard` | `ui/card.tsx`, `ui/section-card.tsx` |
 | Pantalla | `Page`, `PageHeader`, `PageBreadcrumb` | `ui/page.tsx` |
 | Título y rótulo | `Heading`, `Overline` | `ui/heading.tsx`, `ui/overline.tsx` |
@@ -58,7 +59,7 @@ archivo:
 | Vacío | `EmptyState` | `ui/empty-state.tsx` |
 | Tabla | `Table` (composición), `DataTable` (ordenar y paginar) | `ui/table.tsx`, `shared/data-table.tsx` |
 | Modal | `Dialog`, `AlertDialog`, `Sheet`, `Popover`, `DropdownMenu` | `ui/dialog.tsx`, `ui/alert-dialog.tsx`, `ui/sheet.tsx`, `ui/popover.tsx`, `ui/dropdown-menu.tsx` |
-| Ícono | `Icon`, `IconBadge` | `ui/icon.tsx`, `ui/icon-badge.tsx` |
+| Ícono | `Icon`, `IconBadge` (`interactive` dentro de un pulsable con `group`) | `ui/icon.tsx`, `ui/icon-badge.tsx` |
 | Persona | `Avatar` | `ui/avatar.tsx` |
 | Marca | `Logo`, `ChannelLogo`, `ProviderMarks` | `ui/Logo.tsx`, `brand/ChannelLogo.tsx`, `brand/ProviderMarks.tsx` |
 

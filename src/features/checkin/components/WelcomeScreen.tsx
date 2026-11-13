@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { Clock, CreditCard, IdCard, Key, ShieldCheck, Calendar, Users, CheckCircle2, Lock, UserCircle, ArrowRight, Share2, Mail } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { IconBadge } from "@/components/ui/icon-badge"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 import { isMainGuestCompleted } from "@/features/checkin/types/checkin"
 import { resolveContractSigningState } from "@/features/checkin/lib/contract-signing"
@@ -472,18 +473,14 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                     <p className="text-sm text-ink-2 mb-4 font-medium">Requisitos para completar el registro:</p>
                     <ul className="space-y-4">
                         <li className="flex items-start gap-3">
-                            <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm border border-rule text-primary">
-                                <Icon icon={IdCard} size="lg" />
-                            </div>
+                            <IconBadge icon={IdCard} tone="primary" size="sm" shape="square" className="mt-0.5" />
                             <div>
                                 <p className="text-sm font-semibold text-ink">Documento de identidad</p>
                                 <p className="text-xs text-ink-3 mt-0.5">Pasaporte o cédula original de todos los adultos.</p>
                             </div>
                         </li>
                         <li className="flex items-start gap-3">
-                            <div className="mt-0.5 bg-white p-1.5 rounded-lg shadow-sm border border-rule text-primary">
-                                <Icon icon={CreditCard} size="lg" />
-                            </div>
+                            <IconBadge icon={CreditCard} tone="primary" size="sm" shape="square" className="mt-0.5" />
                             <div>
                                 <p className="text-sm font-semibold text-ink">Datos de contacto</p>
                                 <p className="text-xs text-ink-3 mt-0.5">Teléfono, email y datos de viaje del titular.</p>

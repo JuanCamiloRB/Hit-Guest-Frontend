@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useState } from "react"
+import { useState } from "react"
 import { Settings2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import {
@@ -12,9 +12,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { FieldError, FieldHint } from "@/components/ui/form"
+import { SwitchField } from "@/components/ui/switch-field"
 import type { AutomationDefinition, ProviderOption } from "../../types/automation"
 import { readCredentialsScope, supportsListingCredentials } from "../../lib/credentials-scope"
 import { ParameterField } from "./ParameterField"
@@ -51,7 +49,6 @@ export function ConfigModal({
     // TRA y SIRE pueden tomar las credenciales de cada alojamiento (contrato 2026-11-10).
     const supportsScope = supportsListingCredentials(provider.value)
     const perListing = readCredentialsScope({ providerName: provider.value, parameters: params }) === "listing"
-    const scopeId = useId()
 
     const handleSave = () => {
         // El modo viaja SIEMPRE explícito en TRA/SIRE: `configure` reemplaza solo
@@ -76,26 +73,14 @@ export function ConfigModal({
 
                 <div className="space-y-4 py-2">
                     {supportsScope && (
-                        <div className="flex items-start justify-between gap-4 rounded-lg border border-rule p-3">
-                            <div className="space-y-1">
-                                <Label htmlFor={`${scopeId}-switch`} className="text-sm font-semibold">
-                                    Credenciales por alojamiento
-                                </Label>
-                                <FieldHint id={`${scopeId}-hint`} compact>
-                                    Para edificios con apartamentos de dueños distintos. Cada alojamiento lleva sus
-                                    propias credenciales; uno sin ellas no se reporta.
-                                </FieldHint>
-                                <FieldError id={`${scopeId}-error`} compact>{scopeError}</FieldError>
-                            </div>
-                            <Switch
-                                id={`${scopeId}-switch`}
-                                checked={perListing}
-                                onCheckedChange={(on) => setParams(prev => ({ ...prev, credentials_scope: on ? "listing" : "property" }))}
-                                aria-describedby={scopeError ? `${scopeId}-hint ${scopeId}-error` : `${scopeId}-hint`}
-                                aria-invalid={scopeError ? true : undefined}
-                                disabled={isSaving}
-                            />
-                        </div>
+                        <SwitchField
+                            label="Credenciales por alojamiento"
+                            description="Para edificios con apartamentos de dueños distintos. Cada alojamiento lleva sus propias credenciales; uno sin ellas no se reporta."
+                            error={scopeError}
+                            checked={perListing}
+                            onCheckedChange={(on) => setParams(prev => ({ ...prev, credentials_scope: on ? "listing" : "property" }))}
+                            disabled={isSaving}
+                        />
                     )}
 
                     {provider.parametersSchema.length === 0 ? (

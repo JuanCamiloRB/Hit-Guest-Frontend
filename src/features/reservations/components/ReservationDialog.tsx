@@ -24,7 +24,6 @@ import {
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -45,7 +44,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import { Switch } from "@/components/ui/switch"
+import { SwitchField } from "@/components/ui/switch-field"
 import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { useEffect, useState, useCallback, useRef } from "react"
 import { toast } from "sonner"
@@ -1085,22 +1084,14 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                 control={form.control}
                                 name="sendLinkNow"
                                 render={({ field }) => (
-                                    <FormItem className="flex items-center justify-between gap-4">
-                                        <div className="space-y-0.5">
-                                            <FormLabel className="text-sm font-semibold text-ink flex items-center gap-2 cursor-pointer">
-                                                <Icon icon={Send} className="text-primary" />
-                                                Enviar link de check-in ahora
-                                            </FormLabel>
-                                            <FormDescription className="text-xs text-ink-3">
-                                                Se enviará un email a <span className="font-medium">{form.watch("emailGuest") || "..."}</span> con el link para completar el check-in online
-                                            </FormDescription>
-                                        </div>
-                                        <FormControl>
-                                            <Switch
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                            />
-                                        </FormControl>
+                                    <FormItem>
+                                        <SwitchField
+                                            variant="plain"
+                                            label={<><Icon icon={Send} className="text-primary" />Enviar link de check-in ahora</>}
+                                            description={<>Se enviará un email a <span className="font-medium">{form.watch("emailGuest") || "..."}</span> con el link para completar el check-in online</>}
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
                                     </FormItem>
                                 )}
                             />

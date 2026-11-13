@@ -8,6 +8,7 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { Printer, Edit, ChevronRight, Send, Copy, MessageSquare, Calendar, Home, FileText, Users, Mail, Phone, Moon, type LucideIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { IconBadge } from "@/components/ui/icon-badge"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { Button } from "@/components/ui/button"
@@ -415,9 +416,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         description="El historial por evento aún no está disponible."
                     >
                         <div className="flex items-center gap-3">
-                            <div className="h-fit rounded-lg bg-sunk p-2 text-ink-3">
-                                <Icon icon={FileText} size="lg" />
-                            </div>
+                            <IconBadge icon={FileText} size="sm" shape="square" />
                             <div className="min-w-0">
                                 <p className="text-sm font-semibold text-ink">Reserva creada</p>
                                 <p className="truncate text-xs text-ink-3">

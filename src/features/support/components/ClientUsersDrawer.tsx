@@ -284,7 +284,7 @@ function DrawerBody({
                 </div>
 
                 {state.kind === "ready" && users.length > 0 && (
-                    <div className="space-y-3 border-t border-rule bg-white px-6 py-5">
+                    <div className="space-y-3 border-t border-rule bg-card px-6 py-5">
                         {selectedUser ? (
                             <>
                                 <div className="space-y-1.5">

@@ -198,6 +198,17 @@ describe("GuestDocumentsCard — procedencia del documento", () => {
 })
 
 describe("GuestDocumentsCard — estados vacíos", () => {
+    it("sin huéspedes muestra el vacío con su explicación, dentro de la sección", async () => {
+        getGuests.mockResolvedValue([])
+
+        render(<GuestDocumentsCard reservationUuid="res-1" />)
+
+        expect(await screen.findByText("Aún no hay huéspedes registrados")).toBeInTheDocument()
+        expect(screen.getByText(/Aparecerán aquí en cuanto se identifiquen con el link de check-in/)).toBeInTheDocument()
+        expect(document.querySelector('[data-slot="empty-state"]')).toHaveAttribute("data-kind", "empty")
+        expect(screen.getByText("Documentos de huéspedes")).toBeInTheDocument()
+    })
+
     it("explica que el proveedor conserva la evidencia cuando el backend lo reportó", async () => {
         getGuests.mockResolvedValue([makeGuest({
             identityDocument: {

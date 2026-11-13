@@ -1261,9 +1261,7 @@ export function VerifyScreen({
                                 </FeedbackBanner>
                                 ) : (
                                     <Label variant="plain" className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
-                                        <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                            <Icon icon={Camera} size="xl" />
-                                        </div>
+                                        <IconBadge icon={Camera} interactive />
                                         <span className="text-sm font-medium">Tomar foto o seleccionar</span>
                                         <FileInput
 
@@ -1292,9 +1290,7 @@ export function VerifyScreen({
                                 </FeedbackBanner>
                                     ) : (
                                         <Label variant="plain" className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
-                                            <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                                <Icon icon={Upload} size="xl" />
-                                            </div>
+                                            <IconBadge icon={Upload} interactive />
                                             <span className="text-sm font-medium">Subir reverso</span>
                                             <FileInput
 
@@ -1341,9 +1337,7 @@ export function VerifyScreen({
                                 </FeedbackBanner>
                             ) : (
                                 <Label variant="plain" className="w-full h-32 border-2 border-dashed border-rule rounded-xl flex flex-col items-center justify-center gap-2 hover:border-primary/50 hover:bg-primary/5 transition-all text-ink-3 cursor-pointer group">
-                                    <div className="bg-sunk p-3 rounded-full group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                        <Icon icon={Camera} size="xl" />
-                                    </div>
+                                    <IconBadge icon={Camera} interactive />
                                     <span className="text-sm font-medium">Tomar selfie</span>
                                     {/* capture="user" opens the front camera on mobile; desktop falls back to a file picker */}
                                     <FileInput

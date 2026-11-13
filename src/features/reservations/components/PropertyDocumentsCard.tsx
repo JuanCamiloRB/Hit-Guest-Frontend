@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { SectionCard } from "@/components/ui/section-card"
 import { FileText, Eye, Download, ChevronUp } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { IconBadge } from "@/components/ui/icon-badge"
 import { propertyDocumentService } from "@/features/properties/services/property-document-service"
 import { reservationsService } from "../services/reservations-service"
 import type { PropertyDocument } from "@/features/properties/types/document"
@@ -106,9 +107,7 @@ export function PropertyDocumentsCard({ reservationUuid }: PropertyDocumentsCard
                         <div key={doc.uuid} className="overflow-hidden rounded-xl border border-rule">
                             <div className="flex items-center justify-between gap-3 p-3">
                                 <div className="flex min-w-0 items-center gap-3">
-                                    <div className="rounded-lg bg-sunk p-2 text-ink-3">
-                                        <Icon icon={FileText} />
-                                    </div>
+                                    <IconBadge icon={FileText} size="sm" shape="square" />
                                     <span className="truncate text-sm font-semibold text-ink">
                                         {documentTypeLabel(doc.documentType)}
                                     </span>

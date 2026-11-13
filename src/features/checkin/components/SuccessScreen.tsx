@@ -342,9 +342,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
 
             <Surface className="p-4 w-full max-w-sm space-y-3">
                 <div className="flex items-center gap-3 text-left">
-                    <div className="bg-primary/10 p-2 rounded-xl">
-                        <Icon icon={MapPin} size="lg" className="text-primary" />
-                    </div>
+                    <IconBadge icon={MapPin} tone="primary" size="sm" shape="square" />
                     <div>
                         <Heading level={3} size="subsection">Tu alojamiento</Heading>
                         <p className="text-xs text-ink-3">{res.uuid.slice(0, 8)}...</p>
@@ -373,9 +371,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 <div className="w-full max-w-sm space-y-2">
                     {documents.map((doc) => (
                         <div key={doc.uuid} className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left">
-                            <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
-                                <Icon icon={FileText} size="lg" className="text-primary" />
-                            </div>
+                            <IconBadge icon={FileText} tone="primary" size="md" shape="square" />
                             <div className="flex-1 min-w-0">
                                 <Heading level={3} size="subsection" className="truncate">{doc.typeName}</Heading>
                                 <p className="text-xs text-ink-3">Descarga tu copia aquí.</p>
@@ -388,9 +384,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 </div>
             ) : (
                 <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left w-full max-w-sm">
-                    <div className="bg-primary/10 p-3 rounded-xl">
-                        <Icon icon={Download} size="xl" className="text-primary" />
-                    </div>
+                    <IconBadge icon={Download} tone="primary" size="md" shape="square" />
                     <div className="flex-1">
                         <Heading level={3} size="subsection">
                             {awaitingSignature ? "Registro guardado" : "Check-in Completado"}
@@ -401,9 +395,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             )}
 
             <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left w-full max-w-sm mt-2">
-                <div className="bg-primary/10 p-3 rounded-xl flex-shrink-0">
-                    <Icon icon={Home} size="xl" className="text-primary" />
-                </div>
+                <IconBadge icon={Home} tone="primary" size="md" shape="square" />
                 <div>
                     <Heading level={3} size="subsection">Todo Listo</Heading>
                     <p className="text-xs text-ink-3">Recibirás también esta información por email antes de tu llegada.</p>

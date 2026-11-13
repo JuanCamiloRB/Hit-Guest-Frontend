@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { SecondaryGateStatus } from "../types/checkin"
 import { AlertCircle, Clock, CheckCircle2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { IconBadge } from "@/components/ui/icon-badge"
 import { Heading } from "@/components/ui/heading"
 
 interface SecondaryGateScreenProps {
@@ -41,9 +42,7 @@ export function SecondaryGateScreen({ status, basePath }: SecondaryGateScreenPro
 
     return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-warning-sunk p-4 rounded-full mb-6">
-                <Icon icon={Clock} size="3xl" className="text-warning" />
-            </div>
+            <IconBadge icon={Clock} tone="warning" size="lg" className="mb-6" />
             
             <Heading level={1} className="mb-4">Registro en espera</Heading>
             

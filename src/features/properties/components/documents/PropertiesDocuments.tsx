@@ -6,6 +6,7 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { FileText, Plus, Pencil, Trash2, RotateCcw, Filter, Eye } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { IconBadge } from "@/components/ui/icon-badge"
 import {
     Card,
     CardDescription,
@@ -159,9 +160,7 @@ export function PropertiesDocuments() {
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                         <div>
                             <div className="flex items-center gap-2 mb-1">
-                                <div className="p-2 bg-primary/10 rounded-lg">
-                                    <Icon icon={FileText} size="lg" className="text-primary" />
-                                </div>
+                                <IconBadge icon={FileText} tone="primary" size="sm" shape="square" />
                                 <CardTitle className="text-2xl font-bold tracking-tight text-ink">
                                     Documentos
                                 </CardTitle>
@@ -230,9 +229,7 @@ export function PropertiesDocuments() {
                                 return (
                                     <Surface flat className={cn("flex items-center justify-between gap-4 p-4 transition-all", isDeleted && "bg-sunk/50 opacity-70")} key={doc.uuid}>
                                         <div className="flex items-center gap-3 min-w-0">
-                                            <div className="p-2.5 bg-sunk/50 rounded-xl text-primary shrink-0">
-                                                <Icon icon={FileText} size="lg" />
-                                            </div>
+                                            <IconBadge icon={FileText} size="md" shape="square" />
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <Heading level={4} size="section" className="truncate">

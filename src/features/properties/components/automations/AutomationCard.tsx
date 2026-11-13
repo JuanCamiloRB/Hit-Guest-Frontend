@@ -526,7 +526,6 @@ export function AutomationCard({
                                             // el PM sí puede activar y desactivar las verificaciones
                                             // de identidad. Nada se bloquea.
                                             aria-label={definition.title}
-                                            className="data-[state=checked]:bg-primary"
                                         />
                                     }
                                 </div>

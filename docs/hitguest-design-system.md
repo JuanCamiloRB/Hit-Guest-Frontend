@@ -134,6 +134,7 @@ escala en hover.
 | Error y ayuda de campo | `FormMessage` con react-hook-form; sin él, `FieldError` (error; `compact` en filas densas) y `FieldHint` (la ayuda que pasa a error con `invalid`, mismo nodo y mismo `id`) |
 | Etiqueta de campo | `Label` asociada mediante `htmlFor`; `Label variant="plain"` cuando envuelve otra cosa (casilla + texto largo, zona de carga); texto auxiliar con `FormDescription` |
 | Selección | `Checkbox`, `Radio` (nativo, grupo por `name`), `Switch`, `Tabs` (activa: card + texto `primary` + borde `primary/30`; `TabsList size="sm"` para muchas pestañas en poco ancho; desde la pantalla solo la grilla y el ancho) |
+| Interruptor con texto | `SwitchField label description error variant tone size`: la fila «título + explicación + interruptor». El título es el nombre del control (`htmlFor`), la explicación y el error quedan en `aria-describedby` y con error es `aria-invalid`. `variant="boxed"` (fila propia en un diálogo) o `"plain"` (dentro de una fila que ya existe); `tone` tiñe la fila por su estado (`warning`, `danger`); `size="sm"` para la fila compacta de un encabezado. Un interruptor suelto en una fila con otro contenido lleva `aria-label` |
 | Superficie | `SectionCard` (sección con título), `Card` (encabezado y cuerpo estándar) o `Surface` (la superficie sola; el interior lo arma la pantalla). `Surface as=` para la etiqueta semántica, `flat` sin sombra (cuadrículas densas, dentro de otra superficie), `floating` para un panel flotante propio (radio y sombra `md`, como `Select`) |
 | Modal | `Dialog`, `AlertDialog` o `Sheet` |
 | Estado corto | `StatusPill tone=…` (`success`, `warning`, `info`, `danger`, `idle`, `accent`, `none`): punto + palabra; un estado nunca va solo por color |
@@ -146,7 +147,7 @@ escala en hover.
 | Vacío | `EmptyState` (`empty` o `no-results`; `icon` recibe el componente de lucide y lo pinta en `2xl` light) |
 | Tabla | `Table` para composición especial; `DataTable` para ordenar/paginar |
 | Ícono | `Icon icon={…}` (escala `xs`…`4xl`, trazo `light`/`regular`/`bold`, decorativo salvo `label`) |
-| Ícono con fondo | `IconBadge icon tone size shape`: el círculo que encabeza una pantalla de resultado o el recuadro de una categoría. `size` sm 32 · md 44 · lg 64 · xl 96; `shape` `circle` (estado) o `square` (categoría); sin borde |
+| Ícono con fondo | `IconBadge icon tone size shape`: el círculo que encabeza una pantalla de resultado o el recuadro de una categoría. `size` sm 32 · md 44 · lg 64 · xl 96; `shape` `circle` (estado) o `square` (categoría); sin borde; `interactive` dentro de un pulsable con `group` (zona de carga, opción): toma el tinte de selección al pasar |
 | Persona o cuenta | `Avatar size tone` (`sm`, `default`, `lg`, `xl`; `neutral`, `primary`, `inverse` sobre la navegación) con `AvatarFallback` |
 | Marca | `Logo`, `ChannelLogo` |
 
@@ -217,7 +218,7 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `arbitrary-length` | `w-[180px]`, `h-[2.5rem]` | `w-45`, `h-10` |
 | `font-weight-scale` | `font-black` | `font-bold` |
 | `uppercase-text` | `uppercase`, `tracking-[0.2em]` | caso de oración; `Overline` para rótulos de grupo |
-| `primitive-override` | `<Input className="rounded-xl bg-sunk">` | la primitiva tal cual; solo layout (ancho, relleno para un ícono) |
+| `primitive-override` | `<Input className="rounded-xl bg-sunk">`, `<Switch className="data-[state=checked]:bg-primary">` | la primitiva tal cual; solo layout (ancho, relleno para un ícono) |
 | `button-override` | `<Button className="bg-primary h-11 font-bold">` | `variant`/`size` (`lg`); solo layout en `className` |
 | `pressable-fill` | `<UnstyledButton className="bg-primary">`, `<Link className="h-12 bg-primary">` | `Button`, `Button asChild` |
 | `label-override` | `<Badge className="bg-success-sunk text-success">` | `tone="success"` |
@@ -239,8 +240,10 @@ Qué rechaza (cada regla tiene su `id` en el reporte):
 | `type-scale-max` | `text-4xl` | `text-3xl` (el máximo) |
 | `native-table` | `<table>`, `<td>` | `Table`, `DataTable` |
 | `handmade-overlay` | `<div className="fixed inset-0 bg-black/70">` | `Dialog`, `AlertDialog`, `Sheet` |
-| `handmade-icon-badge` | `<div className="flex size-16 items-center justify-center rounded-full bg-success-sunk"><Icon … /></div>` | `IconBadge` |
+| `handmade-icon-badge` | `<div className="flex size-16 items-center justify-center rounded-full bg-success-sunk"><Icon … /></div>`, `<div className="rounded-xl bg-primary/10 p-3"><Icon … /></div>` | `IconBadge` |
 | `legacy-token` | `text-muted-foreground`, `text-destructive`, `bg-muted`, `border-border` | `text-ink-3`, `text-danger`, `bg-sunk`, `border-rule` |
+| `unnamed-switch` | `<Switch checked={on} onCheckedChange={…} />` junto a un `span` o a un `Label` sin `htmlFor` | `SwitchField` (título, texto y error unidos al control) o `aria-label` |
+| `surface-white` | `bg-white` como superficie | `bg-card` (`text-white` y `bg-white/80` sobre oscuro sí se permiten; un blanco pleno sobre navy, como el nodo de la línea de tiempo de la garantía, se exime por archivo en la regla con su motivo) |
 
 Revisa los textos fijos y también los trozos fijos de los template literals
 (`` `p-2 ${x}` ``). Las pruebas y las copias de Finder («Archivo 2.tsx») quedan

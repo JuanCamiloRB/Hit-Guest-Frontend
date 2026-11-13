@@ -162,7 +162,7 @@ const rules = [
         // primitiva (borde 3:1, hover y foco comunes). Desde la pantalla solo
         // layout: alto de densidad, ancho, relleno para un ícono.
         id: "primitive-override",
-        description: "pisa la apariencia de un campo (Input, Textarea, SelectTrigger, PhoneInputField); solo se permite layout",
+        description: "pisa la apariencia de un control (Input, Textarea, SelectTrigger, PhoneInputField, Switch, Checkbox); solo se permite layout",
         pattern: /(?<![\w-])(?:[a-z-]+:)*(?:bg|border|rounded|shadow|ring|outline)(?:-[\w/\[\].%-]+)?(?![\w-])/g,
         input: "fieldClasses",
         // Las primitivas que componen otras (PhoneInputField sobre Input) sí ajustan.
@@ -369,6 +369,29 @@ const rules = [
         ignore: UI_ONLY,
     },
     {
+        // DS-8a: cinco interruptores quedaron sin nombre porque su título era un
+        // `span` o un Label sin `htmlFor`. La fila «título + texto + interruptor»
+        // es `SwitchField`; un interruptor suelto lleva `aria-label`.
+        id: "unnamed-switch",
+        description: "deja un Switch sin nombre accesible; usa SwitchField (título, texto y error unidos) o aria-label",
+        pattern: /^.+$/gm,
+        input: "unnamedSwitchElements",
+        ignore: UI_ONLY,
+    },
+    {
+        // `white` no tiene tono numérico y escapaba a `tailwind-palette-color`. La
+        // superficie es el token `card` (hoy también #ffffff): si cambia, cambia
+        // en todas partes. `text-white` y `bg-white/NN` sobre oscuro sí se permiten.
+        id: "surface-white",
+        description: "usa bg-white como superficie; la superficie es bg-card",
+        pattern: /(?<![\w-])(?:[a-z-]+:)*bg-white(?![\w/-])/g,
+        // La regla no puede ver sobre qué fondo está el blanco. Única excepción
+        // conocida: el nodo «Registrada» de la línea de tiempo de la garantía,
+        // un punto blanco sobre la tarjeta navy (GuaranteeInfoCard). Si aparece
+        // otra, se agrega acá con su motivo; no se cambia el token para callar la regla.
+        ignore: (path) => COLOR_EXCEPTIONS(path) || path === "src/features/checkin/components/GuaranteeInfoCard.tsx",
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,
@@ -421,6 +444,7 @@ function inspect() {
         const fieldErrorElements = []
         const overlayElements = []
         const iconBadgeElements = []
+        const unnamedSwitchElements = []
         const lucideNames = new Set()
         for (const statement of sourceFile.statements) {
             if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
@@ -463,7 +487,7 @@ function inspect() {
             }
             // `className` de los campos: su apariencia es de la primitiva.
             if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node))
-                && /^(?:Input|Textarea|SelectTrigger|PhoneInputField)$/.test(node.tagName.getText(sourceFile))) {
+                && /^(?:Input|Textarea|SelectTrigger|PhoneInputField|Switch|Checkbox)$/.test(node.tagName.getText(sourceFile))) {
                 for (const attr of node.attributes.properties) {
                     if (!ts.isJsxAttribute(attr) || attr.name.getText(sourceFile) !== "className" || !attr.initializer) continue
                     const init = attr.initializer
@@ -481,6 +505,22 @@ function inspect() {
                 if (lucideNames.has(tag) || /\.icon$/i.test(tag)) lucideElements.push(`<${tag}>`)
                 if (tag === "Icon") iconClasses.push(...classTexts(node))
                 if (tag === "Button") buttonClasses.push(...classTexts(node))
+                // Un Switch sin nombre: un lector de pantalla dice solo «interruptor».
+                // El nombre llega por `id` (un Label con htmlFor, o SwitchField) o por aria-label.
+                // También lo nombra un `FormControl` (inyecta el id del FormLabel) o un
+                // `Label` que lo envuelve. Un spread (`{...field}`) puede traer el id:
+                // no se afirma nada. Lo que no se puede ver: que exista el `Label
+                // htmlFor` del `id` dado.
+                if (tag === "Switch") {
+                    const attrs = node.attributes.properties
+                    const names = attrs.filter((a) => ts.isJsxAttribute(a)).map((a) => a.name.getText(sourceFile))
+                    const hasSpread = attrs.some((a) => ts.isJsxSpreadAttribute(a))
+                    let parent = node.parent
+                    while (parent && !ts.isJsxElement(parent)) parent = parent.parent
+                    const wrapper = parent && ts.isJsxElement(parent) ? parent.openingElement.tagName.getText(sourceFile) : ""
+                    const named = names.some((n) => /^(?:id|aria-label|aria-labelledby)$/.test(n)) || hasSpread || /^(?:FormControl|Label|label)$/.test(wrapper)
+                    if (!named) unnamedSwitchElements.push("<Switch>")
+                }
                 if (tag === "UnstyledButton" || tag === "Link" || tag === "a") pressableClasses.push(...classTexts(node))
                 if (tag === "Link" || tag === "a") linkClasses.push(...classTexts(node))
                 if (tag === "UnstyledButton") unstyledClasses.push(...classTexts(node))
@@ -528,11 +568,15 @@ function inspect() {
                 const joined = ` ${classTexts(node.openingElement).join(" ")} `
                 const kids = node.children.filter((k) => !(ts.isJsxText(k) && !k.getText(sourceFile).trim()))
                 const onlyGlyph = kids.length > 0 && kids.every((k) => ts.isJsxSelfClosingElement(k) && /^(?:Icon|Spinner)$/.test(k.tagName.getText(sourceFile)))
-                if (onlyGlyph && /\sitems-center\s/.test(joined) && /\sjustify-center\s/.test(joined) && /\sbg-/.test(joined)
-                    && /\srounded-(?:full|xl|lg)\s/.test(joined)
-                    // Desde 32 px, donde empieza la escala de IconBadge; los nodos de una
-                    // línea de tiempo (26 px, la garantía) son otra pieza.
-                    && /\s(?:size|h|w)-(?:8|9|10|11|12|14|16|20|24)\s/.test(joined)) {
+                // Dos formas de armarlo: con medida fija y centrado, o solo con relleno
+                // alrededor del ícono (`p-3`), que lo centra por construcción.
+                // Desde 32 px, donde empieza la escala de IconBadge; los nodos de una
+                // línea de tiempo (26 px, la garantía) son otra pieza.
+                const sized = /\sitems-center\s/.test(joined) && /\sjustify-center\s/.test(joined)
+                    && /\s(?:size|h|w)-(?:8|9|10|11|12|14|16|20|24)\s/.test(joined)
+                // `w-full` o `h-auto` no son una medida: solo exime una medida numérica.
+                const padded = /\sp-(?:1\.5|2|2\.5|3|4)\s/.test(joined) && !/\s(?:size|h|w)-(?:\d|\[)/.test(joined)
+                if (onlyGlyph && /\sbg-/.test(joined) && /\srounded-(?:full|xl|lg)\s/.test(joined) && (sized || padded)) {
                     iconBadgeElements.push(`<${node.openingElement.tagName.getText(sourceFile)} class="${joined.trim().slice(0, 60)}">`)
                 }
             }
@@ -572,6 +616,7 @@ function inspect() {
             fieldErrorElements: fieldErrorElements.join("\n"),
             overlayElements: overlayElements.join("\n"),
             iconBadgeElements: iconBadgeElements.join("\n"),
+            unnamedSwitchElements: unnamedSwitchElements.join("\n"),
         }
         for (const rule of rules) {
             if (rule.ignore?.(path)) continue

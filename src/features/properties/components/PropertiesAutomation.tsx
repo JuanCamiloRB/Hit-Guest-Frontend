@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { useFormContext } from "react-hook-form"
 import { Sparkles } from "lucide-react"
-import { Icon } from "@/components/ui/icon"
+import { IconBadge } from "@/components/ui/icon-badge"
 import {
     Card,
     CardContent,
@@ -260,9 +260,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             <Card className="border-none shadow-none bg-transparent">
                 <CardHeader className="px-0 pt-0">
                     <div className="flex items-center gap-2 mb-1">
-                        <div className="p-2 bg-primary/10 rounded-lg">
-                            <Icon icon={Sparkles} size="lg" className="text-primary" />
-                        </div>
+                        <IconBadge icon={Sparkles} tone="primary" size="sm" shape="square" />
                         <CardTitle className="text-2xl font-bold tracking-tight text-ink">
                             Reglas de Automatización
                         </CardTitle>
@@ -357,9 +355,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             {/* Custom automation CTA */}
             <Card className="bg-sunk/50 border-dashed border-2 border-rule">
                 <CardContent className="p-8 text-center flex flex-col items-center justify-center space-y-3">
-                    <div className="p-3 bg-white rounded-full shadow-sm">
-                        <Icon icon={Sparkles} size="xl" className="text-primary" />
-                    </div>
+                    <IconBadge icon={Sparkles} tone="primary" size="md" />
                     <div>
                         <Heading level={4} size="section">¿Necesitas una regla personalizada?</Heading>
                         <p className="text-sm text-ink-3">

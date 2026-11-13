@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
+import { SwitchField } from "@/components/ui/switch-field"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { fieldErrorMessage, getErrorMessage } from "@/lib/notify-error"
@@ -466,41 +466,30 @@ export function AutomationOverrideModal({
 
                     {/* Status toggle */}
                     {!isIdentity && (
-                    <div className={cn(
-                        "flex items-center justify-between p-3 rounded-xl border transition-colors",
+                    <SwitchField
                         // Excluir en modo por alojamiento es una decisión, no un fallo: sin tinta de peligro.
-                        isActive || perListing ? "bg-sunk/50 border-rule" : "bg-danger-sunk/30 border-danger/30"
-                    )}>
-                        <div className="space-y-0.5">
-                            <Label className="text-sm font-semibold">
-                                {perListing
-                                    ? isActive ? LISTING_CREDENTIALS_COPY.activeLabel : LISTING_CREDENTIALS_COPY.excludedLabel
-                                    : isActive ? "Activa en esta unidad" : "Desactivada para esta unidad"}
-                            </Label>
-                            <p className="text-xs text-ink-3">
-                                {isContract
-                                    ? !isActive
-                                        ? "Los huéspedes de esta unidad no firmarán contrato."
-                                        : contractHasOwnRouting
-                                            ? "Esta unidad tiene su propio contrato por canal."
-                                            : "Firman el contrato de la propiedad. Apágalo para que no firmen en esta unidad."
-                                    : perListing
-                                    ? !isActive
-                                        ? LISTING_CREDENTIALS_COPY.excludedHelp
-                                        : isEdit ? LISTING_CREDENTIALS_COPY.activeHelpEdit : LISTING_CREDENTIALS_COPY.activeHelpNew
-                                    : !isActive
-                                    ? "La automatización se omite para reservas de esta unidad."
-                                    : isEdit
-                                        ? "Esta unidad tiene un override propio: aplica con los parámetros de abajo."
-                                        : "Hoy hereda de la propiedad. Apágala para omitirla en esta unidad."}
-                            </p>
-                        </div>
-                        <Switch
-                            checked={isActive}
-                            onCheckedChange={setIsActive}
-                            className="data-[state=checked]:bg-primary"
-                        />
-                    </div>
+                        tone={isActive || perListing ? "neutral" : "danger"}
+                        label={perListing
+                            ? isActive ? LISTING_CREDENTIALS_COPY.activeLabel : LISTING_CREDENTIALS_COPY.excludedLabel
+                            : isActive ? "Activa en esta unidad" : "Desactivada para esta unidad"}
+                        description={isContract
+                            ? !isActive
+                                ? "Los huéspedes de esta unidad no firmarán contrato."
+                                : contractHasOwnRouting
+                                    ? "Esta unidad tiene su propio contrato por canal."
+                                    : "Firman el contrato de la propiedad. Apágalo para que no firmen en esta unidad."
+                            : perListing
+                            ? !isActive
+                                ? LISTING_CREDENTIALS_COPY.excludedHelp
+                                : isEdit ? LISTING_CREDENTIALS_COPY.activeHelpEdit : LISTING_CREDENTIALS_COPY.activeHelpNew
+                            : !isActive
+                            ? "La automatización se omite para reservas de esta unidad."
+                            : isEdit
+                                ? "Esta unidad tiene un override propio: aplica con los parámetros de abajo."
+                                : "Hoy hereda de la propiedad. Apágala para omitirla en esta unidad."}
+                        checked={isActive}
+                        onCheckedChange={setIsActive}
+                    />
                     )}
 
                     {/* Texto del contrato de la unidad (contrato 2026-10-20): solo con el

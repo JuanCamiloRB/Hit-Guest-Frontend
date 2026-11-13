@@ -305,7 +305,7 @@ export function PropertiesLocation() {
                                                 <SelectValue placeholder="Seleccionar zona horaria" />
                                             </SelectTrigger>
                                             <SelectContent className="max-h-75">
-                                                <div className="p-2 sticky top-0 bg-white z-10 border-b border-rule mb-1">
+                                                <div className="p-2 sticky top-0 bg-card z-10 border-b border-rule mb-1">
                                                     <div className="relative">
                                                         <Icon icon={Search} size="sm" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
                                                         <Input

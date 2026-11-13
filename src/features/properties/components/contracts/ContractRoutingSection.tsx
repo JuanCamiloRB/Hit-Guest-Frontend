@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useFormContext } from "react-hook-form"
 import { AlertCircle, AlertTriangle, CheckCircle2, FileSignature } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { IconBadge } from "@/components/ui/icon-badge"
 import { toast } from "sonner"
 import { notifyError, validationMessages } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
@@ -639,9 +640,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
     return (
         <Surface flat className="space-y-6 p-4 sm:p-5">
             <div className="flex items-start gap-3">
-                <div className="rounded-xl bg-primary/10 p-2.5">
-                    <Icon icon={FileSignature} size="xl" className="text-primary" />
-                </div>
+                <IconBadge icon={FileSignature} tone="primary" size="md" shape="square" />
                 <div>
                     <Heading level={3} size="title">Contratos por canal</Heading>
                     <p className="mt-1 text-sm leading-relaxed text-ink-3">
