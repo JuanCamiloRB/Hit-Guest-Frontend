@@ -7,11 +7,7 @@ import { es } from "date-fns/locale"
 import { FileText, Plus, Pencil, Trash2, RotateCcw, Filter, Eye } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { IconBadge } from "@/components/ui/icon-badge"
-import {
-    Card,
-    CardDescription,
-    CardHeader,
-    CardTitle, Surface } from "@/components/ui/card"
+import { Surface } from "@/components/ui/card"
 import {
     Select,
     SelectContent,
@@ -31,7 +27,6 @@ import {
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
-import { cn } from "@/lib/utils"
 import { ApiError } from "@/types/api"
 import { propertyDocumentService } from "../../services/property-document-service"
 import {
@@ -155,20 +150,19 @@ export function PropertiesDocuments() {
 
     return (
         <div className="space-y-6">
-            <Card className="border-none shadow-none bg-transparent">
-                <CardHeader className="px-0 pt-0">
+            <header className="space-y-2">
                     <div className="flex items-center justify-between gap-4 flex-wrap">
                         <div>
                             <div className="flex items-center gap-2 mb-1">
                                 <IconBadge icon={FileText} tone="primary" size="sm" shape="square" />
-                                <CardTitle className="text-2xl font-bold tracking-tight text-ink">
+                                <Heading level={2} size="title">
                                     Documentos
-                                </CardTitle>
+                                </Heading>
                             </div>
-                            <CardDescription className="text-base text-ink-3">
+                            <p className="text-sm text-ink-2">
                                 Contratos, reglamentos, instrucciones y políticas con variables que se
                                 completan automáticamente por reserva.
-                            </CardDescription>
+                            </p>
                         </div>
                         {propertyUuid && (
                             <Button
@@ -179,8 +173,7 @@ export function PropertiesDocuments() {
                             </Button>
                         )}
                     </div>
-                </CardHeader>
-            </Card>
+                </header>
 
             {!propertyUuid ? (
                 <FeedbackBanner tone="info">Guarda la propiedad primero para gestionar sus documentos.</FeedbackBanner>
@@ -227,12 +220,12 @@ export function PropertiesDocuments() {
                                 const isDeleted = !!doc.deletedAt
                                 const isActive = doc.statusRecord?.id === DOCUMENT_STATUS.ACTIVE
                                 return (
-                                    <Surface flat className={cn("flex items-center justify-between gap-4 p-4 transition-all", isDeleted && "bg-sunk/50 opacity-70")} key={doc.uuid}>
+                                    <Surface flat tone={isDeleted ? "sunk" : "default"} className="flex items-center justify-between gap-4 p-4" key={doc.uuid}>
                                         <div className="flex items-center gap-3 min-w-0">
                                             <IconBadge icon={FileText} size="md" shape="square" />
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
-                                                    <Heading level={4} size="section" className="truncate">
+                                                    <Heading level={3} size="section" className="truncate">
                                                         {documentTypeLabel(doc.documentType)}
                                                     </Heading>
                                                     {isDeleted ? (

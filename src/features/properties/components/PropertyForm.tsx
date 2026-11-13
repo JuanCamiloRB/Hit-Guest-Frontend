@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, AlertCircle, FileText, Link2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Badge } from "@/components/ui/badge"
 import { useRouter, useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
@@ -22,7 +23,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { useState, useEffect, useRef } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Surface, Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
+import { Heading } from "@/components/ui/heading"
 import {
     Tabs,
     TabsContent,
@@ -402,10 +404,10 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     <TabsContent value="details" className="space-y-4">
                         <Card>
                             <CardHeader className="border-b bg-sunk/50">
-                                <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                                <Heading level={2} size="title" className="flex items-center gap-2">
                                     <Icon icon={LayoutDashboard} size="lg" className="text-primary" />
                                     Detalles de la Propiedad
-                                </CardTitle>
+                                </Heading>
                                 <CardDescription>
                                     Información básica y administrativa de la propiedad.
                                 </CardDescription>
@@ -582,10 +584,10 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
 
                         <Card>
                             <CardHeader className="border-b bg-sunk/50">
-                                <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                                <Heading level={2} size="title" className="flex items-center gap-2">
                                     <Icon icon={Link2} size="lg" className="text-primary" />
                                     Identificación Externa
-                                </CardTitle>
+                                </Heading>
                                 <CardDescription>
                                     Si esta propiedad ya existe en tu PMS o en un canal, registra
                                     aquí su origen y el ID que tiene allí. Es lo que permite asociar
@@ -701,13 +703,13 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     <DialogHeader>
                         <div className="flex items-center gap-3 text-danger mb-2">
                             <Icon icon={AlertCircle} size="xl" />
-                            <DialogTitle className="text-xl">Información Faltante</DialogTitle>
+                            <DialogTitle>Información Faltante</DialogTitle>
                         </div>
                         <DialogDescription className="text-ink-2">
                             Completa los siguientes campos para poder guardar la propiedad:
                         </DialogDescription>
                     </DialogHeader>
-                    <div className="bg-sunk/50 p-4 rounded-xl border border-rule my-2 max-h-64 overflow-y-auto">
+                    <Surface tone="sunk" className="my-2 max-h-64 overflow-y-auto p-4">
                         <ul className="space-y-2.5">
                             {validationErrors.map((err, i) => (
                                 <li key={i} className="flex items-start gap-2.5">
@@ -715,16 +717,14 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     <div className="min-w-0">
                                         <p className="text-sm font-semibold text-ink leading-tight">
                                             {err.label}
-                                            <span className="ml-2 text-xs font-bold text-ink-3 bg-sunk border border-rule rounded-xs px-1.5 py-0.5">
-                                                {err.tab}
-                                            </span>
+                                            <Badge tone="neutral" className="ml-2">{err.tab}</Badge>
                                         </p>
                                         <p className="text-xs text-ink-3">{err.message}</p>
                                     </div>
                                 </li>
                             ))}
                         </ul>
-                    </div>
+                    </Surface>
                     <DialogFooter>
                         <Button 
                             className="w-full"

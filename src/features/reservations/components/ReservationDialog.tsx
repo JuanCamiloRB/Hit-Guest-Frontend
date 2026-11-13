@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { CalendarIcon, Plus, User, Phone, Home, Users, DollarSign, Send, Edit, AlertCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { format, differenceInDays, addDays } from "date-fns"
 import { es } from "date-fns/locale"
 import { cn } from "@/lib/utils"
@@ -635,7 +636,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             </DialogTrigger>
             <DialogContent className="sm:max-w-170 max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
                 <DialogHeader className="pb-2">
-                    <DialogTitle className="text-2xl font-bold text-ink">
+                    <DialogTitle>
                         {mode === "edit" ? "Editar Reserva Manual" : "Crear Reserva Manual"}
                     </DialogTitle>
                     <DialogDescription className="text-ink-3">
@@ -1079,7 +1080,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                         </div>
 
                         {/* ─── Send Link Toggle ─── */}
-                        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                        <Note as="div" tone="accent" density="default">
                             <FormField
                                 control={form.control}
                                 name="sendLinkNow"
@@ -1095,7 +1096,7 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                                     </FormItem>
                                 )}
                             />
-                        </div>
+                        </Note>
 
                         {/* ─── Footer ─── */}
                         <DialogFooter className="gap-2 pt-2">

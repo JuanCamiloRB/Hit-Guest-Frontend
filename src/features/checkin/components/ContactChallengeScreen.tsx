@@ -13,6 +13,7 @@ import { asCheckinError } from "@/features/checkin/lib/checkin-error"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import type { IdentifySessionData, ContactChallengeDirective } from "@/features/checkin/types/checkin"
 import { Button } from "@/components/ui/button"
+import { BottomBar } from "@/components/ui/bottom-bar"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Heading } from "@/components/ui/heading"
@@ -275,9 +276,11 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
             <ProgressBar currentStep={2} totalSteps={isSecondary ? 3 : 5} />
 
             <div className="flex items-center justify-between">
-                <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                    <Icon icon={ArrowLeft} size="lg" />
-                </Link>
+                <Button variant="ghost" size="icon" asChild className="-ml-2">
+                    <Link href={basePath} aria-label="Volver">
+                        <Icon icon={ArrowLeft} size="lg" />
+                    </Link>
+                </Button>
                 <div className="text-sm font-bold text-ink-3">
                     {isSecondary ? "Paso 2 de 4" : "Paso 3 de 6"}
                 </div>
@@ -349,13 +352,11 @@ export function ContactChallengeScreen({ reservationUuid, guestUuid, basePath, i
                 </Button>
             </Surface>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
-                <div className="w-full max-w-lg">
-                    <Button type="button" size="xl" onClick={handleVerify} disabled={inputDisabled || code.length !== 6} className="w-full flex items-center justify-center" loading={submitting} loadingLabel="Verificando...">
-                        <><Icon icon={ShieldCheck} size="lg" /> Verificar código</>
-                    </Button>
-                </div>
-            </div>
+            <BottomBar>
+                <Button type="button" size="xl" onClick={handleVerify} disabled={inputDisabled || code.length !== 6} className="w-full flex items-center justify-center" loading={submitting} loadingLabel="Verificando...">
+                    <><Icon icon={ShieldCheck} size="lg" /> Verificar código</>
+                </Button>
+            </BottomBar>
         </div>
     )
 }

@@ -65,23 +65,148 @@ override cambia con su estado («Activa…»/«Desactivada…»); la forma corre
 nombre estable + descripción. Límite conocido de `unnamed-switch`: un `id` sin
 `Label htmlFor` pasa.
 
-## Fase 2 — portal del huésped (sin decisiones pendientes)
+## Fase 2 — portal del huésped · HECHA 2026-11-13
 
-| Hueco | Primitiva / regla |
+| Hueco | Qué se hizo |
 |---|---|
-| Barra inferior fija: 11 copias idénticas + `BOTTOM_BAR` en `WelcomeScreen` (`fixed bottom-0 … bg-white/80 backdrop-blur-md border-t border-rule/50`) | `BottomBar` en `ui/`. Regla: `fixed bottom-0` fuera de `ui/` |
-| 7 `<Link className="p-2 -ml-2 rounded-full hover:bg-sunk">` («volver») | `Button variant="ghost" size="icon" asChild`. Regla: `Link`/`a` con `rounded-full` + `hover:bg-` |
-| 4 barras de progreso a mano (`TopNodesPanel:56`, `WelcomeScreen:352`, `ProgressBar:27`, `VerifyScreen:932`) | `Progress` en `ui/` (subir `checkin/ProgressBar` y generalizarlo). Regla: `h-1…2 w-full rounded-full bg-sunk` |
-| `details/summary` a mano: `GuaranteeInfoCard` ×7, `ContractRoutingSection:665` | `Disclosure` sobre `radix-ui` Collapsible/Accordion (ya instalado, sin dependencia nueva). Regla: `<details`/`<summary` fuera de `ui/` |
+| Barra fija al pie: 13 copias en 10 pantallas (11 idénticas, `BOTTOM_BAR` en `WelcomeScreen`, y una sólida `z-40` en `SecondaryGuestFormScreen`) | `ui/bottom-bar.tsx` (`BottomBar`; `className` = layout del contenido). Migración con un script que busca el cierre por profundidad de `<div>`, no por regex. Regla `handmade-bottom-bar` |
+| 7 enlaces «volver» como botón redondo, **sin nombre accesible** (solo un ícono) | `Button variant="ghost" size="icon" asChild` + `aria-label="Volver"` en el `Link`. Regla `link-icon-button` |
+| Barras de progreso a mano: 4 del inventario + 1 que la regla destapó (`DocumentUpload`, clases en otro orden) | `ui/progress.tsx` (`Progress` sobre Radix: `role=progressbar`, `label` obligatorio, recorte a `[0,max]`, mínimo 2 px con avance). `checkin/ProgressBar` queda como composición (cuenta de pasos) sobre `Progress`. Regla `handmade-progress` |
+| `details/summary` a mano: `GuaranteeInfoCard` ×7, `ContractRoutingSection` | `ui/disclosure.tsx` (`Disclosure` sobre Radix Collapsible: botón real, `aria-expanded`; `row` e `inline`). Regla `native-disclosure` |
 
-## Fase 3 — datos (una decisión)
+Cambios intencionales: la barra de `SecondaryGuestFormScreen` pasa de sólida
+`z-40` a vidrio `z-10` (nada vive entre 10 y 50 en el portal); la barra de
+`TopNodesPanel` ya no cambia de color con el hover de la fila; la barra de
+`DocumentUpload` pasa de `secondary` a `primary` como todas; la flecha del
+plegable es `ChevronDown` que gira, no `ArrowRight`; cerrado, el contenido del
+plegable no está en el DOM (Radix), así que las dos pruebas que lo leían
+primero lo abren.
 
-| Hueco | Primitiva / regla |
+Verificado: `npm run verify` (tsc 0, lint:gate sin errores nuevos,
+`design:check` 0, 216 archivos / 1904 pruebas) y `next build`. NO visto en
+navegador: el portal pide una reserva.
+
+**Auditoría de regresión (revisor independiente, 2026-11-13)** — 10 hallazgos.
+Corregidos: (1) **bug** `TopNodesPanel`: el template del `label` perdió la
+interpolación (el shell se comió `${node.name}`) y toda barra se llamaba
+«:  ejecuciones»; (2) **a11y** `ProgressBar` decía «Paso 1 de 5» mientras la
+pantalla muestra «Paso 2 de 6» (la barra cuenta pasos internos): nombre neutro
+«Avance del check-in»; (3) **visual** `BottomBar` fijó la variante equivocada
+de relleno (`p-4` afuera): el contenido medía 512 px contra los 480 del `main`
+y el botón sobresalía 16 px por lado desde 544 px; `WelcomeScreen` era la única
+correcta y la primitiva la había regresado. Ahora `py-4` afuera y `max-w-lg
+px-4` adentro; (4) **a11y** el disparador de `Disclosure` usaba el anillo
+`ring-ring/50` que el repo ya rechazó (2,01:1): outline sólido como `Button`, y
+`cursor-pointer`; (5) `Progress` con `max` inválido mostraba N % de 100: ahora
+barra vacía; (6) doble `mt-1` en «Información técnica»; (7) cierres
+`</BottomBar>` reindentados; (8) clase `group` muerta en `TopNodesPanel`.
+Verificados sin regresión: las 13 barras con contenido byte a byte idéntico y
+sin hermanos tragados, `pb-24` en todas las raíces, 7 hrefs intactos,
+`Button asChild` → un solo `<a>`, el ícono conserva `size-5`, API de
+`ProgressBar` idéntica en 11 llamadas, 6 `<b>` del FAQ conservados.
+Para fase 4: el bloque «Procesando documento» de `DocumentUpload` está
+tematizado en `secondary` (texto, fondos, borde) y la barra ahora es `primary`:
+revisar el bloque entero, no la barra. Límites documentados de las reglas:
+`handmade-bottom-bar` no ve `fixed` y `bottom-0` repartidos en dos literales;
+`link-icon-button` marcaría un enlace-pastilla legítimo (hoy no hay).
+
+## Fase 3 — datos · HECHA 2026-11-13
+
+| Hueco | Qué se hizo |
 |---|---|
-| Cifras KPI: 11 usos en 8 variantes de clase; solo `AccountHistorySummary` en Gabarito aunque §3 lo exige | `Figure` (Gabarito, `tabular-nums`, tamaños `lg`/`xl`, tono `ink`/`muted`). Regla: `text-2xl|3xl font-bold|semibold` fuera de `ui/` |
-| 9 `CardTitle` con `className` de texto | Regla `card-title-override` (como `heading-override`) |
-| `dt/dd` en 3 variantes (`OperationsPanel` 684 y 712, `CheckinLinkDeliveryCard` 153) | `DefinitionList` / `DefinitionItem` |
-| 10 `Card` con clases de superficie: redundantes (`border-rule shadow-sm` ya es el default), anuladas (`border-none shadow-none bg-transparent` ×2: entonces no es una Card), vidrio (`SettingsContent:102`), punteada (`PropertiesAutomation:358`) | Regla `surface-override` (solo layout en `Card`/`Surface`). **Decisión:** `OperationsPanel:507` (`bg-primary text-white`) → ¿`Surface tone="inverse"` o excepción documentada? |
+| Cifras KPI: 8 reales en 5 variantes, solo 2 en Gabarito (§3 lo exige). Los otros 5 hits del inventario no eran cifras (un input OTP, el wordmark «Didit.», tres títulos) | `ui/figure.tsx` (`Figure`: Gabarito bold tabular; `md`/`lg`/`xl`; `ink`/`absent`/`warning`/`danger`; `kind="code"` para el código de la cerradura). Migradas 9 (`ReservationPriceCard`, `ActivitySummary`, `AccountBalanceStrip` ×2, `BillingSettings` ×2, `AccountHistorySummary` ×2, `SmartlockCodes`). Regla `handmade-figure` (grande + bold + `tabular-nums`\|`tracking-*`) |
+| 9 `CardTitle` con override: `CardTitle` era un `div`, **ningún título de tarjeta tenía semántica de encabezado** | → `Heading level={2} size="title"`; `CardTitle` retirado de `card.tsx` (nadie más lo usaba). 4 `DialogTitle`/`SheetTitle` con tipografía propia → la primitiva tal cual. Regla `title-override` |
+| `dt/dd` en 3 variantes, una con el ícono fuera del grupo (HTML inválido en un `<dl>`) | `ui/definition-list.tsx` (`DefinitionItem`: ícono dentro del `dt`, definición alineada, `prominent`, `hint`). Migrados `DetailCell`, `ContactRow` (OperationsPanel) y `ChannelRow` (CheckinLinkDeliveryCard). Regla `native-definition` |
+| 14 `Card`/`Surface` con clases de superficie (la regla destapó 4 más que el inventario) | `Surface`/`Card`: `tone` (`inverse` → «Acciones rápidas»; `selected` → automatización activa; `warning`/`danger` → `ContractChannelCard`; `muted` → documento eliminado, sin `opacity-70`), `interactive` (`PropertyCard`, `CheckinLinkDeliveryCard`, `AutomationCard`, `AutomationStatusItem`, `DocumentUpload`: borde `input-hover`, §4), `dashed` (CTA de automatizaciones y el vacío de la lista de propiedades, que era un `div` a mano). Redundantes quitadas (`border-rule shadow-sm`, vidrio de `SettingsContent`); las dos «Card» que anulaban su superficie son ahora un `<header>`. Regla `surface-override` |
+
+Decisión tomada sin preguntar (precedente: `Heading`/`Button`/`Avatar` ya
+tienen `inverse`): la tarjeta invertida es `tone="inverse"`, no una excepción.
+
+Cambios intencionales: títulos de tarjeta a `xl` (tres eran `2xl`) y en
+Gabarito; cifras del Tablero de `semibold` a `bold`; «— USD» en ink-4 (§2: el
+«—» es ausencia); las tarjetas con hover pierden la sombra y el borde morado al
+pasar (ahora `input-hover`); `AccountHistorySummary` deja `text-brand-navy`
+por `ink`; títulos de diálogo al tamaño de la primitiva (`ReservationDialog`
+era 2xl).
+
+**Auditoría de regresión (revisor independiente, 2026-11-13)** — 13 hallazgos,
+0 de comportamiento. Corregidos: (1) `interactive` + `tone="selected"`: la
+tarjeta activa perdía el borde morado al pasar (gris `input-hover` encima);
+ahora una tarjeta elegida refuerza el borde (`hover:border-primary`); (2) el
+collector de `handmade-figure` nunca admitía `dd` (puerta externa) y dejaba
+pasar `text-lg`: corregido; (3) `cn` sin uso en `PropertiesDocuments`; (4) los
+documentos de `PropertiesDocuments` saltaban de h2 a h4: ahora h3; (5)
+`DefinitionItem prominent` recupera `mt-1.5`; (6) `surface-override` ya no
+marca `border-t`/`rounded-t-none` (layout) y sí `opacity`/`scale`;
+`title-override` exime `text-start|end|justify`. Intencionales y documentados:
+`ContactRow` pasa a término/definición apilados (estructura `dl` válida);
+«— USD» en ink-4 (§2); `AccountHistorySummary` en `ink` en vez de
+`brand-navy`; `transition-colors` en toda superficie. Renombrado
+`tone="muted"` → `tone="sunk"` (es la superficie hundida del §2, no «apagada»).
+Backlog: 5 `CardHeader className="border-b bg-sunk/50"` (franja de cabecera a
+mano) → variante de `CardHeader`; `ReservationCostsList:302` total en
+`text-brand-navy` (color de marca como énfasis de tabla; su prueba lo fija).
+
+## Fase 4 — notas y cajas · HECHA 2026-11-13
+
+Decisión tomada (el usuario pidió continuar sin elegir): la que estandariza
+sin cambiar significado. `Note tone="neutral"` para la nota hundida y
+`Note tone="accent"` para la caja destacada en morado que ya existía (no
+`FeedbackBanner info`: una nota no anuncia nada).
+
+| Hueco | Qué se hizo |
+|---|---|
+| 23 notas a mano + 7 cajas destacadas | `ui/note.tsx` (`Note`: tone, density, icon, as). 30 migradas en 20 archivos |
+| 16 paneles hundidos + 8 que destapó la regla (`PropertiesUnits` ×5, `PropertyForm`, `ParameterField`, `SmartlockCodes`→`IconBadge`) | `Surface tone="sunk"` (y `dashed` para el hueco). La fila seleccionable de automatizaciones de la unidad usa `tone={isInactive ? "danger" : hasParams ? "selected" : "sunk"}` |
+| Chip de pestaña en `PropertyForm` | `Badge tone="neutral"` |
+| Filtro segmentado del calendario | `Tabs` con `TabsList size="sm"` (antes 3 `UnstyledButton` con clases de pestaña a mano) |
+| Barra «Preparando…» con Cancelar; «Verificando el consumo…»; línea de conteo de `DeactivationConfirmDialog` | `FeedbackBanner mode="dynamic"` con `action`; `LoadingState inline`; `FeedbackBanner` `danger`/`info` |
+| Bloques tematizados en `secondary` (`DocumentUpload` escaneo, `WelcomeScreen` requisitos y tiles) | `secondary` es «acción secundaria con relleno» (§2), no un tema: pasan a `primary`/`Note accent` |
+
+Reglas: `handmade-note`, `handmade-sunk-surface`. Quedan fuera a propósito:
+`GuaranteePreview` (`prose`: un documento, no una nota), `ReadOnlyField` y
+`DynamicCheckinFields` (campo de solo lectura: candidato a primitiva propia),
+`GuaranteeCardForm:509` (nodo host de Stripe con `ref`: no se envuelve),
+`AccessInstructionsPanel:68` (enlaces-fila con hover: pulsable, no panel).
+
+**Auditoría de regresión (revisor independiente, 2026-11-13)** — 11 hallazgos,
+0 de comportamiento. Corregidos: (1) el filtro del calendario como `Tabs` sin
+paneles emitía `aria-controls` a nada y cambiaba el teclado (tabindex rotativo,
+activación al mover flechas): ahora son conmutadores `Button ghost` con
+`aria-pressed` en un `role="group"` (§5: «outline/ghost con aria-pressed son
+conmutadores»); (2) la línea de conteo de `DeactivationConfirmDialog` como
+`FeedbackBanner info` ponía tinte azul y un ícono junto al `Spinner`: un conteo
+sin alarma es `Note role="status"`, y solo el alarmante es `FeedbackBanner
+danger`; (3) las filas de automatizaciones de la unidad mezclaban tarjeta
+elevada (`danger`/`selected`) y panel plano (`sunk`): todas `flat`; (4) `Note`
+ya no admite `icon` con `as="ul"|"li"` (tipos) y la prueba cubre el cuerpo
+`div`; (5) doc de `interactive` + `selected`, id de prueba, y
+`handmade-sunk-surface` acepta `px-/py-`. Aceptados y documentados: el escudo
+verde de `IdentifyScreen` pasa a ink-4 (una nota tranquilizadora no es un
+estado `success`), la caja de `SecondaryGateScreen` pasa a `accent` («qué debes
+hacer» es el siguiente paso), «Cancelar orden» hereda el color del aviso
+(`link-inherit`, §5), y la deriva de relleno/radio/opacidad que impone la
+escala (p-3→px-3 py-2, rounded-xl→lg en notas, sunk/30 y /70 → /50).
+Límite documentado: una caja hundida con `text-base` no la ve ninguna de las
+dos reglas.
+
+## Pendiente (backlog, fuera de las cuatro fases)
+
+- `CardHeader className="border-b bg-sunk/50"` ×5 (franja de cabecera de las
+  tarjetas de propiedad) → variante de `CardHeader`.
+- Campo de solo lectura (`checkin/ReadOnlyField`, `RegisterForm` correo,
+  `DynamicCheckinFields` cargando opciones) → primitiva `ReadOnlyField`.
+- `Label variant="plain" … bg-sunk/50 rounded-xl` (filas de casilla en
+  `IdentifyScreen`/`ContractScreen`): zona seleccionable a mano.
+- `AccessInstructionsPanel:68`: enlaces-fila con hover a mano (`Button asChild`
+  o `Surface interactive` con un enlace adentro).
+- `ReservationCostsList:302` total en `text-brand-navy` (color de marca como
+  énfasis de tabla; su prueba lo fija).
+- El wordmark «Didit.» tipografiado en `VerifyScreen` → marca en
+  `components/brand`.
+- Nombre estable del interruptor del override (`AutomationOverrideModal`):
+  hoy cambia con el estado («Activa…»/«Desactivada…»).
+- Duplicados de Finder en `src/` (~75 archivos `* 2.tsx`): borrar en local.
 
 ## Fase 4 — notas y cajas (dos decisiones)
 

@@ -392,6 +392,97 @@ const rules = [
         ignore: (path) => COLOR_EXCEPTIONS(path) || path === "src/features/checkin/components/GuaranteeInfoCard.tsx",
     },
     {
+        // DS-8b: la barra fija al pie del portal estaba copiada 13 veces con tres
+        // variantes. Es `BottomBar`.
+        id: "handmade-bottom-bar",
+        description: "arma la barra fija al pie a mano (fixed + bottom-0); usa BottomBar",
+        pattern: /^(?=.*(?<![\w-])fixed(?![\w-]))(?=.*(?<![\w-])bottom-0(?![\w-])).*$/gm,
+        ignore: UI_ONLY,
+    },
+    {
+        // Un enlace redondo con solo un ícono es un botón de ícono: `Button
+        // size="icon" asChild` sobre el Link (y con `aria-label`, que un ícono no da nombre).
+        id: "link-icon-button",
+        description: "pinta un Link/<a> como botón de ícono (rounded-full); usa Button size=\"icon\" asChild con aria-label",
+        pattern: /(?<![\w-])rounded-full(?![\w-])/g,
+        input: "linkClasses",
+        ignore: UI_ONLY,
+    },
+    {
+        // Pista `sunk` fina y a todo el ancho con un relleno adentro: es `Progress`
+        // (role=progressbar y nombre obligatorio).
+        id: "handmade-progress",
+        description: "arma una barra de progreso a mano (h-1…3 w-full rounded-full bg-sunk); usa Progress",
+        pattern: /^.+$/gm,
+        input: "progressElements",
+        ignore: UI_ONLY,
+    },
+    {
+        // `<details>` a mano esconde el marcador nativo de siete formas; `Disclosure`
+        // trae botón, flecha, foco y aria-expanded.
+        id: "native-disclosure",
+        description: "usa <details>/<summary> fuera de components/ui; usa Disclosure",
+        pattern: /<(?:details|summary)\b/g,
+        input: "elements",
+        ignore: UI_ONLY,
+    },
+    {
+        // DS-8c: la superficie es de la primitiva (`tone`, `interactive`, `dashed`,
+        // `flat`, `floating`). Desde la pantalla solo layout: relleno, overflow, grilla.
+        id: "surface-override",
+        description: "pisa la superficie de un Card, Surface o SectionCard; elige tone/interactive/dashed/flat (solo se permite layout)",
+        // Layout que sí se permite: un divisor (`border-t`, `border-b-0`) y un radio
+        // recortado contra un borde (`rounded-t-none`). Opacidad y escala no son layout.
+        pattern: /(?<![\w-])(?:[a-z-]+:)*(?!border-[trblxy](?:-\d+)?(?![\w-]))(?!rounded-(?:[trbl]|tl|tr|bl|br)-none(?![\w-]))(?:bg|border|rounded|shadow|ring|outline|backdrop-blur|opacity|scale)(?:-[\w/\[\].%-]+)?(?![\w-])/g,
+        input: "surfaceClasses",
+        ignore: UI_ONLY,
+    },
+    {
+        // DS-8c: el título de un diálogo o cajón es el de la primitiva; `CardTitle`
+        // (un div sin semántica) se retiró: el título de una tarjeta es `Heading`.
+        id: "title-override",
+        description: "pisa la tipografía de un DialogTitle, SheetTitle o AlertDialogTitle (solo se permite layout)",
+        pattern: /(?<![\w-])(?:[a-z-]+:)*(?:font|leading|tracking|uppercase|italic|line-clamp)(?:-[\w/\[\].-]+)?(?![\w-])|(?<![\w-])(?:[a-z-]+:)*text-(?!left\b|center\b|right\b|start\b|end\b|justify\b|wrap\b|nowrap\b|balance\b|pretty\b|ellipsis\b|clip\b)[\w/\[\].-]+/g,
+        input: "titleClasses",
+        ignore: UI_ONLY,
+    },
+    {
+        // DS-8c: una cifra grande y bold con dígitos tabulares o tracking es `Figure`
+        // (Gabarito, §3). Fuera del radar: una cifra sin ninguna de esas dos marcas.
+        id: "handmade-figure",
+        description: "arma una cifra protagonista a mano (text-2xl/3xl bold); usa Figure",
+        pattern: /^.+$/gm,
+        input: "figureElements",
+        ignore: UI_ONLY,
+    },
+    {
+        // DS-8c: un término con su definición es `DefinitionItem` (ícono dentro del dt,
+        // definición alineada). El `<dl>` y su layout sí los pone la pantalla.
+        id: "native-definition",
+        description: "arma un dt/dd a mano; usa DefinitionItem dentro del <dl>",
+        pattern: /<(?:dt|dd)\b/g,
+        input: "elements",
+        ignore: UI_ONLY,
+    },
+    {
+        // DS-8d: 23 notas a mano en 14 combinaciones (más 7 en tinte morado). `Note`
+        // trae tono, densidad e ícono; no es un aviso (eso es `FeedbackBanner`).
+        id: "handmade-note",
+        description: "arma una nota a mano (caja sunk o primary/5 con texto xs/sm); usa Note",
+        pattern: /^.+$/gm,
+        input: "noteElements",
+        ignore: UI_ONLY,
+    },
+    {
+        // DS-8d: el panel hundido que agrupa contenido dentro de una tarjeta es
+        // `Surface tone="sunk"` (y el hueco punteado, `Surface dashed`).
+        id: "handmade-sunk-surface",
+        description: "arma un panel hundido a mano (bg-sunk + borde + rounded-xl); usa Surface tone=\"sunk\"",
+        pattern: /^.+$/gm,
+        input: "sunkSurfaceElements",
+        ignore: UI_ONLY,
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,
@@ -445,6 +536,12 @@ function inspect() {
         const overlayElements = []
         const iconBadgeElements = []
         const unnamedSwitchElements = []
+        const progressElements = []
+        const surfaceClasses = []
+        const titleClasses = []
+        const figureElements = []
+        const noteElements = []
+        const sunkSurfaceElements = []
         const lucideNames = new Set()
         for (const statement of sourceFile.statements) {
             if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
@@ -528,7 +625,9 @@ function inspect() {
                 if (tag === "Heading") headingClasses.push(...classTexts(node))
                 if (tag === "TabsList" || tag === "TabsTrigger") tabsClasses.push(...classTexts(node))
                 if (tag === "Avatar" || tag === "AvatarFallback" || tag === "IconBadge") labelClasses.push(...classTexts(node))
-                if (/^(?:div|p|span|section|aside|li|article|header|form)$/.test(tag)) {
+                if (tag === "Card" || tag === "Surface" || tag === "SectionCard") surfaceClasses.push(...classTexts(node))
+                if (tag === "DialogTitle" || tag === "SheetTitle" || tag === "AlertDialogTitle") titleClasses.push(...classTexts(node))
+                if (/^(?:div|p|span|section|aside|li|article|header|form|dd|dt|strong)$/.test(tag)) {
                     const joined = ` ${classTexts(node).join(" ")} `
                     // Aviso: fondo de estado pleno (sin opacidad) con borde. Las filas
                     // que solo se tiñen (`bg-danger-sunk/40`) son estado de fila, no aviso.
@@ -544,6 +643,33 @@ function inspect() {
                     // Capa a pantalla completa armada a mano (sin foco atrapado ni Esc).
                     if (/\sfixed\s/.test(joined) && /\sinset-0\s/.test(joined)) {
                         overlayElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
+                    }
+                    // Nota a mano: caja hundida (o tinte primary/5 con borde primary/20) con
+                    // relleno y tamaño de texto propio. Es `Note`.
+                    const sunkBox = /\sbg-sunk(?:\/\d+)?\s/.test(joined)
+                    const accentBox = /\sbg-primary\/5\s/.test(joined) && /\sborder-primary\/20\s/.test(joined)
+                    if ((sunkBox || accentBox) && /\srounded-(?:md|lg|xl)\s/.test(joined) && /\sp[xy]?-\d/.test(joined)
+                        // Un documento renderizado (`prose`) es otra pieza: contenido, no nota.
+                        && /^(?:p|div|span|ul|li)$/.test(tag) && /\stext-(?:xs|sm)\s/.test(joined) && !/\sprose\s/.test(joined)) {
+                        noteElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
+                    }
+                    // Panel hundido a mano: superficie sunk con borde y relleno, sin tamaño de
+                    // texto propio (agrupa contenido). Es `Surface tone="sunk"`.
+                    // Un nodo que recibe foco por dentro (`focus-within:`) es el host de un campo
+                    // ajeno (Stripe monta ahí su iframe): es un campo, no un panel, y no se envuelve.
+                    if (sunkBox && /\srounded-xl\s/.test(joined) && /\sborder(?:-rule(?:\/\d+)?)?\s/.test(joined) && /\sp[xy]?-\d/.test(joined)
+                        && /^(?:div|li|section|article)$/.test(tag) && !/\stext-(?:xs|sm|base)\s/.test(joined) && !/\sfocus-within:/.test(joined)) {
+                        sunkSurfaceElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
+                    }
+                    // Cifra protagonista: grande, bold y con dígitos tabulares o tracking.
+                    if (/^(?:p|span|div|dd|strong)$/.test(tag) && /\stext-(?:lg|2xl|3xl|4xl)\s/.test(joined) && /\sfont-(?:bold|semibold)\s/.test(joined)
+                        && /\s(?:tabular-nums|tracking-tight|tracking-widest)\s/.test(joined)) {
+                        figureElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
+                    }
+                    // Barra de progreso: pista sunk fina a todo el ancho.
+                    if (tag === "div" && /\sw-full\s/.test(joined) && /\srounded-full\s/.test(joined) && /\sbg-sunk(?:\/\d+)?\s/.test(joined)
+                        && /\sh-(?:1|1\.5|2|2\.5|3)\s/.test(joined)) {
+                        progressElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
                     }
                     // Skeleton: bloque gris que pulsa.
                     if (/\sanimate-pulse\s/.test(joined) && /\sbg-(?:sunk|accent|muted|rule)(?:\/\d+)?\s/.test(joined)) {
@@ -617,6 +743,12 @@ function inspect() {
             overlayElements: overlayElements.join("\n"),
             iconBadgeElements: iconBadgeElements.join("\n"),
             unnamedSwitchElements: unnamedSwitchElements.join("\n"),
+            progressElements: progressElements.join("\n"),
+            surfaceClasses: surfaceClasses.join("\n"),
+            titleClasses: titleClasses.join("\n"),
+            figureElements: figureElements.join("\n"),
+            noteElements: noteElements.join("\n"),
+            sunkSurfaceElements: sunkSurfaceElements.join("\n"),
         }
         for (const rule of rules) {
             if (rule.ignore?.(path)) continue

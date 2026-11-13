@@ -194,7 +194,7 @@ function DrawerBody({
         <div className="flex h-full flex-col">
             <header className="flex items-start gap-3 border-b border-rule px-6 py-5">
                 <div className="min-w-0 flex-1">
-                    <SheetTitle className="truncate text-lg font-bold text-ink" title={client.name}>{client.name}</SheetTitle>
+                    <SheetTitle className="truncate" title={client.name}>{client.name}</SheetTitle>
                     <SheetDescription className="mt-0.5 text-sm text-ink-2">
                         {[client.email, client.identificationNumber ? `ID ${client.identificationNumber}` : null]
                             .filter(Boolean).join(" · ") || "Cliente"}

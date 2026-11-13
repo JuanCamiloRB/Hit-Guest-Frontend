@@ -10,6 +10,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, ShieldCheck, Users } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { checkinService } from "@/features/checkin/services/checkin-service"
@@ -32,6 +33,7 @@ import {
 } from "@/features/checkin/lib/declared-price"
 import { readCurrencyCode } from "@/lib/money"
 import { Button } from "@/components/ui/button"
+import { BottomBar } from "@/components/ui/bottom-bar"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -484,9 +486,11 @@ export function IdentifyScreen({
             <ProgressBar currentStep={1} totalSteps={isSecondary ? 3 : 5} />
 
             <div className="flex items-center justify-between">
-                <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                    <Icon icon={ArrowLeft} size="lg" />
-                </Link>
+                <Button variant="ghost" size="icon" asChild className="-ml-2">
+                    <Link href={basePath} aria-label="Volver">
+                        <Icon icon={ArrowLeft} size="lg" />
+                    </Link>
+                </Button>
                 <div className="text-sm font-bold text-ink-3">
                     {isSecondary ? "Paso 1 de 4" : "Paso 2 de 6"}
                 </div>
@@ -672,12 +676,9 @@ export function IdentifyScreen({
                 )}
             </Surface>
 
-            <div className="bg-sunk/50 border border-rule rounded-xl p-4 flex items-start gap-3">
-                <Icon icon={ShieldCheck} size="lg" className="text-success flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-ink-2">
-                    Tus datos están protegidos con cifrado de extremo a extremo y solo se usarán para el check-in.
-                </p>
-            </div>
+            <Note icon={ShieldCheck}>
+                Tus datos están protegidos con cifrado de extremo a extremo y solo se usarán para el check-in.
+            </Note>
 
             <Label variant="plain" className="flex items-start gap-3 p-3 bg-sunk/50 rounded-xl border border-rule cursor-pointer hover:border-primary/30 transition-colors">
                 {/* La casilla del sistema (estados, foco y contraste propios). */}
@@ -695,13 +696,11 @@ export function IdentifyScreen({
                 </span>
             </Label>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
-                <div className="w-full max-w-lg">
-                    <Button type="button" size="xl" onClick={handleVerify} disabled={!isValid || isLoadingCatalogs} className="w-full flex items-center justify-center" loading={isSubmitting} loadingLabel="Verificando...">
-                        {isLoadingCatalogs ? "Cargando..." : "Continuar"}
-                    </Button>
-                </div>
-            </div>
+            <BottomBar>
+                <Button type="button" size="xl" onClick={handleVerify} disabled={!isValid || isLoadingCatalogs} className="w-full flex items-center justify-center" loading={isSubmitting} loadingLabel="Verificando...">
+                    {isLoadingCatalogs ? "Cargando..." : "Continuar"}
+                </Button>
+            </BottomBar>
         </div>
     )
 }

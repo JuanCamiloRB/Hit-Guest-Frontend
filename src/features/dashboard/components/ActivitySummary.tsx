@@ -4,6 +4,7 @@ import { format, isSameYear, subMonths } from "date-fns"
 import { es } from "date-fns/locale"
 import { TrendingDown, TrendingUp } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Figure } from "@/components/ui/figure"
 import { formatUsd, type ConsumptionSummary } from "@/features/billing/types"
 
 /**
@@ -15,9 +16,7 @@ export function ActivitySummary({ summary, refMonth }: { summary: ConsumptionSum
         <div>
             <p className="text-sm font-medium text-ink-3">Consumo facturado</p>
             <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                <span className="text-3xl font-semibold leading-tight tracking-tight tabular-nums text-ink">
-                    {formatUsd(summary.monthTotal)}
-                </span>
+                <Figure size="xl">{formatUsd(summary.monthTotal)}</Figure>
                 <MonthDeltaLine summary={summary} refMonth={refMonth} />
             </div>
             <p className="mt-1 text-sm text-ink-3">

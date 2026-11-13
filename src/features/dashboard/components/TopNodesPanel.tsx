@@ -3,6 +3,7 @@
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { EmptyState } from "@/components/ui/empty-state"
+import { Progress } from "@/components/ui/progress"
 import type { NodeUsage } from "@/features/billing/types"
 import { AnalysisHeading } from "./AnalysisHeading"
 
@@ -44,7 +45,7 @@ export function TopNodesPanel({ topNodes, refMonth }: Props) {
                 ) : (
                     <div className="flex flex-col gap-3">
                         {rows.map((node) => (
-                            <div key={node.name} className="group">
+                            <div key={node.name}>
                                 <div className="flex items-baseline justify-between gap-3 pb-1">
                                     <span className="truncate text-sm font-medium text-ink">
                                         {node.name}
@@ -53,13 +54,7 @@ export function TopNodesPanel({ topNodes, refMonth }: Props) {
                                         {node.runs}
                                     </span>
                                 </div>
-                                <div className="h-1.5 w-full rounded-full bg-sunk">
-                                    <div
-                                        // Progreso en el morado de interacción sobre pista `sunk` (4,89:1).
-                                        className="h-full rounded-full bg-primary transition-colors group-hover:bg-primary-hover"
-                                        style={{ width: `max(${(node.runs / maxRuns) * 100}%, 2px)` }}
-                                    />
-                                </div>
+                                <Progress value={node.runs} max={maxRuns} label={`${node.name}: ${node.runs} ejecuciones`} />
                             </div>
                         ))}
 

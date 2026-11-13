@@ -10,9 +10,8 @@ import {
     Card,
     CardContent,
     CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
+    CardHeader } from "@/components/ui/card"
+import { Heading } from "@/components/ui/heading"
 import {
     User,
     Users,
@@ -99,11 +98,11 @@ export function SettingsContent() {
 
             {/* Content Area */}
             <main className="flex-1 w-full min-w-0">
-                <Card className="border-none shadow-sm shadow-black/5 bg-white/80 backdrop-blur-sm rounded-xl overflow-hidden">
+                <Card className="overflow-hidden">
                     <CardHeader className="border-b border-rule pb-6">
-                        <CardTitle className="text-2xl font-bold">
+                        <Heading level={2} size="title">
                             {filteredTabs.find(t => t.id === activeTab)?.label}
-                        </CardTitle>
+                        </Heading>
                         <CardDescription>
                             {activeTab === "profile" && "Actualiza tu información personal y cuenta de acceso."}
                             {activeTab === "team" && "Administra los usuarios secundarios y sus permisos."}

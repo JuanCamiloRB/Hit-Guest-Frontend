@@ -96,7 +96,7 @@ export function IntegrationsHub() {
                     />
                 </div>
 
-                <div className="rounded-xl border border-rule bg-sunk/50 p-5 sm:p-6">
+                <Surface tone="sunk" className="p-5 sm:p-6">
                     <div className="mb-5 flex items-center gap-3 border-b border-rule pb-4">
                         <IconBadge icon={Building2} tone="primary" size="sm" shape="square" />
                         <div>
@@ -105,7 +105,7 @@ export function IntegrationsHub() {
                         </div>
                     </div>
                     <KunasIntegrationPanel />
-                </div>
+                </Surface>
             </section>
 
             <section aria-labelledby="ota-integrations" className="space-y-5">

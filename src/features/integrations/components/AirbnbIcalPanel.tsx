@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { AlertTriangle, Copy, FileText, Plus, RefreshCw, Trash2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -588,7 +589,7 @@ function TemplateDialog({
                         ese texto decía «Menú > Mensajes > Mensajes programados», y en el
                         Airbnb actual no existe esa ruta (Didier, 2026-09-22). Quien ve la
                         interfaz de Airbnb es quien puede mantener los pasos al día. */}
-                    <div className="space-y-2 rounded-lg bg-sunk/50 p-3 text-xs text-ink-2">
+                    <Note as="div" className="space-y-2">
                         <p>
                             En Airbnb ve a <strong>Mensajes</strong>, abre la configuración (ícono de
                             engranaje) y entra a <strong>Administra tus respuestas rápidas</strong> →{" "}
@@ -611,7 +612,7 @@ function TemplateDialog({
                             antes, verá «Estamos preparando tu check-in» con un botón Reintentar y podrá
                             entrar en cuanto la reserva sincronice.
                         </p>
-                    </div>
+                    </Note>
                 </div>
             </DialogContent>
         </Dialog>

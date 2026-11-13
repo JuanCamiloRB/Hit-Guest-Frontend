@@ -2,6 +2,7 @@
 
 import { Zap } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Surface } from "@/components/ui/card"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -148,7 +149,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
     }
 
     return (
-        <div className="space-y-3 rounded-xl border border-rule bg-sunk/50 p-4">
+        <Surface tone="sunk" className="space-y-3 p-4">
             <div className="flex items-center gap-2">
                 <Icon icon={Zap} className="text-primary" />
                 <Heading level={4}>Disparador</Heading>
@@ -242,7 +243,7 @@ export function TriggerConfigSection({ params, setParams, providerSlug, required
                     </p>
                 )}
             </div>
-        </div>
+        </Surface>
     )
 }
 

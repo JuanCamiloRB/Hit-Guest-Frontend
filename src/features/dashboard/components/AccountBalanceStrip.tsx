@@ -1,6 +1,7 @@
 "use client"
 
 import { Skeleton } from "@/components/ui/skeleton"
+import { Figure } from "@/components/ui/figure"
 import { RechargeDialog } from "@/features/billing/components/RechargeDialog"
 import type { AccountBalance } from "@/features/billing/types"
 import { cn } from "@/lib/utils"
@@ -34,18 +35,15 @@ export function AccountBalanceStrip({ balance, isLoadingBalance, balanceError = 
                     <Skeleton className="mt-2 h-7 w-36" />
                 ) : !balance ? (
                     <>
-                        <p className="mt-1 text-3xl font-semibold leading-tight tracking-tight text-ink-4">— USD</p>
+                        <Figure as="p" size="xl" tone="absent" className="mt-1">— USD</Figure>
                         <BalanceNotice text="Saldo no disponible" onRetry={onRetryBalance} />
                     </>
                 ) : (
                     <>
                         <p className="mt-1 flex items-baseline gap-1.5">
-                            <span className="text-3xl font-semibold leading-tight tracking-tight tabular-nums text-ink">
-                                {balance.amount.toLocaleString("es-CO", {
-                                    minimumFractionDigits: 2,
-                                    maximumFractionDigits: 2,
-                                })}
-                            </span>
+                            <Figure size="xl">
+                                {balance.amount.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </Figure>
                             <span className="text-sm font-medium text-ink-3">{balance.currency}</span>
                         </p>
                         {/* El mismo valor que el header: se conserva, pero se dice

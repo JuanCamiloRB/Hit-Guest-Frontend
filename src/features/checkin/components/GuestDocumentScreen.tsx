@@ -8,6 +8,7 @@ import { Surface } from "@/components/ui/card"
 import { toast } from "sonner"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { Button } from "@/components/ui/button"
+import { BottomBar } from "@/components/ui/bottom-bar"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Heading } from "@/components/ui/heading"
 import { LoadingState } from "@/components/ui/loading-state"
@@ -97,14 +98,12 @@ export function GuestDocumentScreen({ reservationUuid, documentUuid, basePath }:
                 dangerouslySetInnerHTML={{ __html: rendered }}
             />
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
-                <div className="w-full max-w-lg">
-                    <Button type="button" size="xl" onClick={handleDownloadPdf} className="w-full flex items-center justify-center" loading={isDownloading}>
-                        <Icon icon={Download} size="lg" />
-                        Descargar PDF
-                    </Button>
-                </div>
-            </div>
+            <BottomBar>
+                <Button type="button" size="xl" onClick={handleDownloadPdf} className="w-full flex items-center justify-center" loading={isDownloading}>
+                    <Icon icon={Download} size="lg" />
+                    Descargar PDF
+                </Button>
+            </BottomBar>
         </div>
     )
 }

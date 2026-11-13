@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react"
 import { Mail, MessageCircle, MessagesSquare, Phone } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { DefinitionItem } from "@/components/ui/definition-list"
 import { format, isValid } from "date-fns"
 import { es } from "date-fns/locale"
 import { SectionCard } from "@/components/ui/section-card"
@@ -147,21 +148,15 @@ function ChannelRow({
     meta: DeliveryStatusMeta
 }) {
     return (
-        // Grupo dt/dd válido: el ícono va dentro del dt (en un <dl> solo caben
-        // dt y dd) y la definición se alinea con el texto (16 px + 6 px).
-        <div className="min-w-0">
-                <dt className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
-                    <Icon icon={icon} className="text-ink-4" />
-                    {label}
-                </dt>
-                <dd className="mt-0.5 space-y-1 pl-5.5">
+        <DefinitionItem icon={icon} label={label}>
+            <div className="space-y-1">
                     {to && <p className="truncate text-sm font-semibold text-ink">{to}</p>}
                     <p className="flex flex-wrap items-center gap-2 text-xs text-ink-3">
                         <StatusPill tone={meta.tone}>{meta.label}</StatusPill>
                         {when && <span>{when}</span>}
                     </p>
                     {meta.detail && <p className="text-xs text-ink-3">{meta.detail}</p>}
-                </dd>
-        </div>
+                </div>
+        </DefinitionItem>
     )
 }

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Camera, Upload, CheckCircle2, XCircle, RotateCcw, FileText, Clock } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { toast } from "sonner"
 import { normalizeVerificationResult } from "@/features/checkin/lib/verification-result"
 import { checkinService } from "@/features/checkin/services/checkin-service"
@@ -25,6 +26,8 @@ import { diditCompletionAction } from "@/features/checkin/lib/didit-completion"
 import type { VerificationResult } from "@didit-protocol/sdk-web"
 import { guestFormDraftKey } from "@/features/checkin/lib/guest-form-draft"
 import { Button } from "@/components/ui/button"
+import { BottomBar } from "@/components/ui/bottom-bar"
+import { Progress } from "@/components/ui/progress"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { FileInput } from "@/components/ui/file-input"
@@ -929,9 +932,7 @@ export function VerifyScreen({
                     )}
                     {verificationState === "polling" && (
                         <>
-                            <div className="h-2 w-full bg-sunk rounded-full overflow-hidden mt-6">
-                                <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
-                            </div>
+                            <Progress size="md" value={progress} label="Verificando documento" className="mt-6" />
                             <p className="text-xs text-ink-3 font-medium text-right mt-1">{progress}%</p>
                         </>
                     )}
@@ -994,23 +995,21 @@ export function VerifyScreen({
                     </div>
                 </Surface>
 
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center gap-3">
-                    <div className="w-full max-w-lg flex gap-3">
-                        <Button type="button" variant="outline" size="xl" onClick={handleRetry} className="flex-1">
-                            Reintentar
-                        </Button>
-                        <Button type="button" size="xl"
-                            onClick={handleOcrConfirm}
-                            disabled={
-                                !isValidDateValue(editOcr.dateOfBirth, localDateValue())
-                                || (!!editOcr.expirationDate && !isValidDateValue(editOcr.expirationDate))
-                            }
-                            className="flex-[2] flex items-center justify-center"
-                        >
-                            <Icon icon={CheckCircle2} size="lg" /> Continuar
-                        </Button>
-                    </div>
-                </div>
+                <BottomBar className="flex gap-3">
+                    <Button type="button" variant="outline" size="xl" onClick={handleRetry} className="flex-1">
+                        Reintentar
+                    </Button>
+                    <Button type="button" size="xl"
+                        onClick={handleOcrConfirm}
+                        disabled={
+                            !isValidDateValue(editOcr.dateOfBirth, localDateValue())
+                            || (!!editOcr.expirationDate && !isValidDateValue(editOcr.expirationDate))
+                        }
+                        className="flex-[2] flex items-center justify-center"
+                    >
+                        <Icon icon={CheckCircle2} size="lg" /> Continuar
+                    </Button>
+                </BottomBar>
             </div>
         )
     }
@@ -1160,9 +1159,11 @@ export function VerifyScreen({
             <div className="flex items-center justify-between">
                 {/* Back goes to the welcome hub, not /identify — re-identifying an existing
                     guest hits "document already registered" and lands on an empty form. */}
-                <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                    <Icon icon={ArrowLeft} size="lg" />
-                </Link>
+                <Button variant="ghost" size="icon" asChild className="-ml-2">
+                    <Link href={basePath} aria-label="Volver">
+                        <Icon icon={ArrowLeft} size="lg" />
+                    </Link>
+                </Button>
                 <div className="text-sm font-bold text-ink-3">
                     {isSecondary ? "Paso 2 de 4" : "Paso 3 de 6"}
                 </div>
@@ -1303,9 +1304,9 @@ export function VerifyScreen({
                                     )}
                                 </div>
                             ) : (
-                                <p className="text-xs text-ink-3 text-center bg-sunk/50 rounded-xl py-3 px-4">
+                                <Note className="text-center">
                                     Este documento solo requiere la imagen frontal.
-                                </p>
+                                </Note>
                             )}
                         </Surface>
                     ) : (
@@ -1350,45 +1351,43 @@ export function VerifyScreen({
                                 </Label>
                             )}
 
-                            <ul className="text-xs text-ink-3 space-y-1.5 bg-sunk/50 rounded-xl p-3">
+                            <Note as="ul" className="space-y-1.5">
                                 <li>· Mira directamente a la cámara</li>
                                 <li>· Asegúrate de tener buena iluminación, sin sombras</li>
                                 <li>· Sin lentes de sol ni gorras</li>
                                 <li>· Tu rostro debe estar centrado y visible completo</li>
-                            </ul>
+                            </Note>
                         </Surface>
                     )}
                 </div>
             )}
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
-                <div className="w-full max-w-lg">
-                    {verification.type === "session" ? (
-                        <Button type="button" size="xl"
-                            onClick={handleSessionVerification}
-                            className="w-full flex items-center justify-center"
-                        >
-                            {diditCopy[verification.sessionType].button}
-                        </Button>
-                    ) : captureStep === "documents" ? (
-                        <Button type="button" size="xl"
-                            onClick={handleDocumentsContinue}
-                            disabled={!frontFile || (requiresBackImage && !backFile)}
-                            className="w-full flex items-center justify-center"
-                        >
-                            {isCaptureMode ? "Enviar fotos" : "Continuar"}
-                        </Button>
-                    ) : (
-                        <Button type="button" size="xl"
-                            onClick={handleDocumentUpload}
-                            disabled={!selfieFile}
-                            className="w-full flex items-center justify-center"
-                        >
-                            Analizar Documento
-                        </Button>
-                    )}
-                </div>
-            </div>
+            <BottomBar>
+                {verification.type === "session" ? (
+                    <Button type="button" size="xl"
+                        onClick={handleSessionVerification}
+                        className="w-full flex items-center justify-center"
+                    >
+                        {diditCopy[verification.sessionType].button}
+                    </Button>
+                ) : captureStep === "documents" ? (
+                    <Button type="button" size="xl"
+                        onClick={handleDocumentsContinue}
+                        disabled={!frontFile || (requiresBackImage && !backFile)}
+                        className="w-full flex items-center justify-center"
+                    >
+                        {isCaptureMode ? "Enviar fotos" : "Continuar"}
+                    </Button>
+                ) : (
+                    <Button type="button" size="xl"
+                        onClick={handleDocumentUpload}
+                        disabled={!selfieFile}
+                        className="w-full flex items-center justify-center"
+                    >
+                        Analizar Documento
+                    </Button>
+                )}
+            </BottomBar>
         </div>
     )
 }

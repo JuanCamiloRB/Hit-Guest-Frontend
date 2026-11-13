@@ -6,7 +6,7 @@ import { useState } from "react"
 import { usePropertyTypeLabel } from "../hooks/usePropertyTypeLabel"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardFooter, CardHeader } from "@/components/ui/card"
+import { Surface, Card, CardFooter, CardHeader } from "@/components/ui/card"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -124,7 +124,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
     }
 
     return (
-        <Card className="overflow-hidden group hover:shadow-sm transition-all duration-500 border-primary/10 hover:border-primary/30 rounded-xl bg-white/50 backdrop-blur-sm">
+        <Card interactive className="group overflow-hidden">
             <div className="relative aspect-video bg-sunk">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -214,7 +214,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                 </div>
 
                 {/* Status switch */}
-                <div className="flex items-center justify-between px-1 py-2 bg-sunk/50 rounded-xl border border-rule">
+                <Surface tone="sunk" className="flex items-center justify-between px-1 py-2">
                     <div className="flex flex-col">
                         <span className="text-xs font-bold text-ink">Estado de la propiedad</span>
                         <span className={cn(
@@ -235,7 +235,7 @@ export function PropertyCard({ property, onStatusChange, activeListings = null, 
                             aria-label="Estado de la propiedad"
                         />
                     </div>
-                </div>
+                </Surface>
             </CardHeader>
             <CardFooter className="p-4 pt-0">
                 <Button variant="outline" className="w-full" asChild>

@@ -5,6 +5,7 @@ import { useFormContext } from "react-hook-form"
 import { AlertCircle, AlertTriangle, CheckCircle2, FileSignature } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { IconBadge } from "@/components/ui/icon-badge"
+import { Disclosure } from "@/components/ui/disclosure"
 import { toast } from "sonner"
 import { notifyError, validationMessages } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
@@ -661,9 +662,8 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                             Para evitar asignar un contrato al canal equivocado, la edición está bloqueada
                             temporalmente. Contacta a soporte para corregir la configuración.
                         </p>
-                        <details className="text-xs text-ink-3">
-                            <summary className="cursor-pointer font-medium">Información técnica</summary>
-                            <ul className="mt-1 space-y-0.5">
+                        <Disclosure variant="inline" title="Información técnica">
+                            <ul className="space-y-0.5">
                                 {orphanRouting.map(({ sourceKey, routing }) => (
                                     <li key={sourceKey}>
                                         Clave guardada «{sourceKey}» · {CONTRACT_TYPE_LABELS[routing.contract_type]} ·{" "}
@@ -675,7 +675,7 @@ export function ContractRoutingSection({ propertyUuid }: Props) {
                                 Ninguna de estas claves es el id de un canal del catálogo de canales de reserva
                                 (`by_source` de la automatización de Contrato).
                             </p>
-                        </details>
+                        </Disclosure>
                 </FeedbackBanner>
             )}
 

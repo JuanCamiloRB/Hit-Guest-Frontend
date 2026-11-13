@@ -50,12 +50,18 @@ archivo:
 | Etiqueta | `Label` | `ui/label.tsx` |
 | Selección | `Checkbox`, `Radio`, `Switch`, `Tabs` (`TabsList size="default" \| "sm"`) | `ui/checkbox.tsx`, `ui/radio.tsx`, `ui/switch.tsx`, `ui/tabs.tsx` |
 | Interruptor con texto | `SwitchField` (título = nombre del control; texto y error unidos; `variant`, `tone`, `size`) | `ui/switch-field.tsx` |
-| Superficie | `Surface`, `Card`, `SectionCard` | `ui/card.tsx`, `ui/section-card.tsx` |
+| Superficie | `Surface`, `Card`, `SectionCard` (`tone` inverse/selected/warning/danger/sunk, `interactive`, `dashed`, `flat`, `floating`; el título de una tarjeta es `Heading`, no hay `CardTitle`) | `ui/card.tsx`, `ui/section-card.tsx` |
 | Pantalla | `Page`, `PageHeader`, `PageBreadcrumb` | `ui/page.tsx` |
+| Barra fija al pie (portal) | `BottomBar` | `ui/bottom-bar.tsx` |
 | Título y rótulo | `Heading`, `Overline` | `ui/heading.tsx`, `ui/overline.tsx` |
 | Estado y etiqueta | `StatusPill`, `Badge` | `ui/status-pill.tsx`, `ui/badge.tsx` |
 | Aviso | `FeedbackBanner` | `ui/feedback-banner.tsx` |
+| Plegable | `Disclosure` (`row` | `inline`) | `ui/disclosure.tsx` |
+| Nota | `Note` (`tone` neutral/accent, `density`, `icon`, `as`) | `ui/note.tsx` |
 | Espera | `LoadingState`, `RefreshIndicator`, `Spinner`, `Skeleton`, `Button loading` | `ui/loading-state.tsx`, `ui/skeleton.tsx` |
+| Progreso | `Progress` (`value`, `max`, `label` obligatorio, `size`, `tone`) | `ui/progress.tsx` |
+| Cifra protagonista | `Figure` (`size`, `tone`, `kind`, `as`) | `ui/figure.tsx` |
+| Término y definición | `DefinitionItem` (dentro de un `<dl>`) | `ui/definition-list.tsx` |
 | Vacío | `EmptyState` | `ui/empty-state.tsx` |
 | Tabla | `Table` (composición), `DataTable` (ordenar y paginar) | `ui/table.tsx`, `shared/data-table.tsx` |
 | Modal | `Dialog`, `AlertDialog`, `Sheet`, `Popover`, `DropdownMenu` | `ui/dialog.tsx`, `ui/alert-dialog.tsx`, `ui/sheet.tsx`, `ui/popover.tsx`, `ui/dropdown-menu.tsx` |

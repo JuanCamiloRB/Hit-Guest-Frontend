@@ -475,12 +475,14 @@ export default function ReservationsList() {
             )}
 
             {preparing ? (
-                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-sunk px-3 py-2 text-sm text-ink-2">
-                    <span>Preparando todos los estados para ordenar… {settled} de {filtered.length}</span>
-                    <Button variant="link" size="inline" type="button" onClick={cancelPreparingSort}>
-                        Cancelar orden
-                    </Button>
-                </div>
+                <FeedbackBanner
+                    tone="info"
+                    mode="dynamic"
+                    density="compact"
+                    action={<Button variant="link-inherit" size="inline" type="button" onClick={cancelPreparingSort}>Cancelar orden</Button>}
+                >
+                    Preparando todos los estados para ordenar… {settled} de {filtered.length}
+                </FeedbackBanner>
             ) : failedInStatusSort > 0 ? (
                 <FeedbackBanner tone="warning" mode="dynamic">
                     No se pudo cargar el estado de {failedInStatusSort} {failedInStatusSort === 1 ? "reserva" : "reservas"}: {failedInStatusSort === 1 ? "queda" : "quedan"} al final del orden.
@@ -524,9 +526,7 @@ export default function ReservationsList() {
                                     Esta acción no se puede deshacer.
                                 </p>
                                 {deleteConsumptionState?.status === "loading" && (
-                                    <p role="status" className="mt-2 rounded-lg bg-sunk px-3 py-2 text-ink-2">
-                                        Verificando el consumo registrado…
-                                    </p>
+                                    <LoadingState variant="inline" label="Verificando el consumo registrado…" className="mt-2" />
                                 )}
                                 {deleteConsumptionState?.status === "error" && (
                                     <FeedbackBanner tone="danger" mode="blocking" className="mt-2">

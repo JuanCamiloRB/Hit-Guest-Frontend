@@ -6,12 +6,15 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { Clock, CreditCard, IdCard, Key, ShieldCheck, Calendar, Users, CheckCircle2, Lock, UserCircle, ArrowRight, Share2, Mail } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { IconBadge } from "@/components/ui/icon-badge"
 import type { CheckinPortalResponse } from "@/features/checkin/types/checkin"
 import { isMainGuestCompleted } from "@/features/checkin/types/checkin"
 import { resolveContractSigningState } from "@/features/checkin/lib/contract-signing"
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
 import { Button } from "@/components/ui/button"
+import { BottomBar } from "@/components/ui/bottom-bar"
+import { Progress } from "@/components/ui/progress"
 import { Heading } from "@/components/ui/heading"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Surface } from "@/components/ui/card"
@@ -28,23 +31,6 @@ const BADGE_BASE = "inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-x
 const BADGE_MAIN = `${BADGE_BASE} bg-primary/10 text-primary`
 const BADGE_DONE = `${BADGE_BASE} bg-success-sunk text-success`
 const BADGE_PENDING = `${BADGE_BASE} bg-sunk text-ink-3`
-
-/**
- * Fixed bottom action bar.
- *
- * The inner wrapper mirrors the checkin layout's `<main>` (`max-w-lg` + `px-4`)
- * EXACTLY — padding on the inner element, not the outer one. With the padding
- * outside, the bar's content box is 512px while the cards above are 480px, so
- * on any viewport ≥ 544px the button visibly overhangs the column by 16px a side.
- *
- * No `env(safe-area-inset-bottom)`: this app never sets `viewport-fit=cover`
- * (Next's default viewport meta is `width=device-width, initial-scale=1`), so
- * `env()` resolves to 0 and iOS already insets the layout viewport above the
- * home indicator. Adding it back only makes sense together with the viewport
- * meta AND the same padding on the other 11 checkin bottom bars.
- */
-const BOTTOM_BAR = "fixed bottom-0 left-0 right-0 z-10 flex justify-center border-t border-rule/70 bg-white/80 py-4 backdrop-blur-md"
-const BOTTOM_BAR_INNER = "w-full max-w-lg px-4"
 
 /**
  * Guest list row.
@@ -73,7 +59,7 @@ function GuestRow({
     actions?: ReactNode
 }) {
     return (
-        <li className="flex items-start gap-2.5 rounded-xl border border-rule/50 bg-sunk/50 p-3">
+        <Surface as="li" tone="sunk" className="flex items-start gap-2.5 p-3">
             <span className="mt-0.5 flex-shrink-0">{icon}</span>
             <div className="min-w-0 flex-1">
                 <p className={`break-words text-sm font-medium leading-snug ${nameClassName}`}>
@@ -86,7 +72,7 @@ function GuestRow({
                     <div className="mt-2.5 flex items-center gap-1.5">{actions}</div>
                 )}
             </div>
-        </li>
+        </Surface>
     )
 }
 
@@ -300,28 +286,25 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                 </div>
 
                 <div className="flex gap-3">
-                    <div className="flex-1 bg-sunk/50 rounded-xl p-3 border border-rule/50 flex items-center gap-2">
-                        <Icon icon={Calendar} className="text-secondary" />
+                    <Surface tone="sunk" className="flex flex-1 items-center gap-2 p-3">
+                        <Icon icon={Calendar} className="text-primary" />
                         <span className="text-sm font-medium text-ink-2">{nights} {nights === 1 ? "Noche" : "Noches"}</span>
-                    </div>
-                    <div className="flex-1 bg-sunk/50 rounded-xl p-3 border border-rule/50 flex items-center gap-2">
-                        <Icon icon={Users} className="text-secondary" />
+                    </Surface>
+                    <Surface tone="sunk" className="flex flex-1 items-center gap-2 p-3">
+                        <Icon icon={Users} className="text-primary" />
                         <span className="text-sm font-medium text-ink-2">{res.totalGuestsAllowed} {res.totalGuestsAllowed === 1 ? "Huésped" : "Huéspedes"}</span>
-                    </div>
+                    </Surface>
                 </div>
 
                 {/* El registro está cerrado para esta reserva: se explica una vez,
                     en vez de dejar que el huésped lo descubra chocando con un 422
                     después de llenar el formulario. */}
                 {!checkinOpen && (
-                    <div className="flex items-start gap-3 rounded-xl border border-rule bg-sunk/50 p-3">
-                        <Icon icon={Lock} className="text-ink-3 mt-0.5" />
-                        <p className="text-xs text-ink-2 leading-relaxed">
-                            El registro en línea está cerrado para esta reserva. Puedes seguir
+                    <Note icon={Lock}>
+                        El registro en línea está cerrado para esta reserva. Puedes seguir
                             consultando tus documentos, pero si necesitas modificar algo
                             contacta al anfitrión.
-                        </p>
-                    </div>
+                    </Note>
                 )}
 
                 {/* Antes de que el titular termine, solo lo que cambia lo que tiene
@@ -350,14 +333,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                             {completedCount}/{res.totalGuestsAllowed} completados
                         </span>
                     </div>
-                    <div className="h-2 w-full bg-sunk rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-primary transition-all duration-500"
-                            style={{ width: `${res.totalGuestsAllowed > 0
-                                ? Math.min(100, (completedCount / res.totalGuestsAllowed) * 100)
-                                : 0}%` }}
-                        />
-                    </div>
+                    <Progress size="md" value={completedCount} max={res.totalGuestsAllowed} label="Progreso del registro" />
                 </div>
 
                 {/* Lista: solo con el titular terminado, que es cuando sirve. Sin
@@ -431,7 +407,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
                     {/* Re-send the link so companions can register themselves. */}
                     {hasPendingCompanions && (
-                        <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                        <Note as="div" tone="accent" className="mt-3">
                             <p className="text-xs font-medium text-ink-2 mb-2">
                                 ¿Viajas acompañado? Envíales el link para que hagan su registro.
                             </p>
@@ -452,7 +428,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                                     Copiar
                                 </Button>
                             </div>
-                        </div>
+                        </Note>
                     )}
                 </div>
                 </>
@@ -465,8 +441,8 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
             {/* Info Box */}
             {!isFullyCompleted && (
-                <div className="bg-secondary/5 rounded-xl p-5 border border-secondary/10">
-                    <div className="flex items-center gap-3 mb-4 text-secondary">
+                <Note as="div" tone="accent" density="default">
+                    <div className="mb-4 flex items-center gap-3 text-primary">
                         <Icon icon={Clock} size="lg" />
                         <span className="font-semibold">Tomará aproximadamente 3 minutos</span>
                     </div>
@@ -487,7 +463,7 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
                             </div>
                         </li>
                     </ul>
-                </div>
+                </Note>
             )}
 
             {/* Security */}
@@ -506,32 +482,28 @@ export function WelcomeScreen({ portal, basePath }: WelcomeScreenProps) {
 
             {/* Global CTA — big, unmissable primary action fixed at the bottom. */}
             {isFullyCompleted ? (
-                <div className={BOTTOM_BAR}>
-                    <div className={BOTTOM_BAR_INNER}>
-                        <Button asChild size="xl">
-                            <Link
-                                href={`${basePath}/success`}
-                                className="w-full"
-                            >
-                                Ver Resumen de Check-in
-                            </Link>
-                        </Button>
-                    </div>
-                </div>
+                <BottomBar>
+                    <Button asChild size="xl">
+                        <Link
+                            href={`${basePath}/success`}
+                            className="w-full"
+                        >
+                            Ver Resumen de Check-in
+                        </Link>
+                    </Button>
+                </BottomBar>
             ) : primaryCtaHref ? (
-                <div className={BOTTOM_BAR}>
-                    <div className={BOTTOM_BAR_INNER}>
-                        <Button asChild size="xl">
-                            <Link
-                                href={primaryCtaHref}
-                                className="w-full"
-                            >
-                                {primaryCtaLabel}
-                                <Icon icon={ArrowRight} size="lg" />
-                            </Link>
-                        </Button>
-                    </div>
-                </div>
+                <BottomBar>
+                    <Button asChild size="xl">
+                        <Link
+                            href={primaryCtaHref}
+                            className="w-full"
+                        >
+                            {primaryCtaLabel}
+                            <Icon icon={ArrowRight} size="lg" />
+                        </Link>
+                    </Button>
+                </BottomBar>
             ) : null}
         </div>
     )

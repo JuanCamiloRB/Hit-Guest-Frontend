@@ -11,6 +11,8 @@ interface SectionCardProps extends Omit<React.ComponentProps<"section">, "title"
     actions?: React.ReactNode
     /** El cuerpo trae su propio espaciado (una tabla, un gráfico a sangre). */
     flush?: boolean
+    /** Sin sombra, como `Surface flat`: dentro de otra superficie o en una cuadrícula densa. */
+    flat?: boolean
     /**
      * Nivel del título en la página. Por defecto h3, como hasta ahora; al
      * migrar cada pantalla se ajusta a su jerarquía real.
@@ -36,6 +38,7 @@ function SectionCard({
     description,
     actions,
     flush = false,
+    flat = false,
     headingLevel = 3,
     className,
     children,
@@ -46,8 +49,9 @@ function SectionCard({
     return (
         <section
             data-slot="section-card"
+            data-flat={flat || undefined}
             aria-labelledby={titleId}
-            className={cn(cardSurface, "flex flex-col gap-0 overflow-hidden", className)}
+            className={cn(cardSurface, "flex flex-col gap-0 overflow-hidden", flat && "shadow-none", className)}
             {...props}
         >
             {/* El DOM sigue el orden visual: en móvil, título y después acciones. */}

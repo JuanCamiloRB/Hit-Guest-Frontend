@@ -96,6 +96,9 @@ describe("ContractRoutingSection — configuración guardada con claves que no s
         // El «Canal 0» ya no está a la vista: va plegado como información técnica.
         expect(alert).not.toHaveTextContent(/^Canal 0/)
         expect(within(alert).getByText("Información técnica")).toBeInTheDocument()
+        // Plegado de verdad: la clave no está hasta abrir «Información técnica» (Disclosure).
+        expect(alert).not.toHaveTextContent("Clave guardada «0»")
+        await userEvent.setup().click(within(alert).getByRole("button", { name: "Información técnica" }))
         expect(alert).toHaveTextContent("Clave guardada «0»")
 
         const save = screen.getByRole("button", { name: "Guardar contrato y firma" })

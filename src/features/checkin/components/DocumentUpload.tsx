@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Camera, CheckCircle2, ScanLine, RotateCcw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { IconBadge } from "@/components/ui/icon-badge"
+import { Progress } from "@/components/ui/progress"
 import { prepareImageForUpload } from "@/lib/image-upload"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
@@ -84,7 +85,7 @@ export function DocumentUpload({
           ${state === "done"
             ? "border-success/30 bg-success-sunk/50"
             : state === "scanning"
-            ? "border-secondary/30 bg-secondary/5"
+            ? "border-primary/30 bg-primary/5"
             : "border-rule bg-sunk/50 hover:border-primary/30 hover:bg-primary/5"
           }
         `}
@@ -120,7 +121,7 @@ export function DocumentUpload({
                 }
               }}
             />
-            <Surface className="p-3 group-hover:bg-primary/5 group-hover:border-primary/20 transition-all">
+            <Surface interactive className="p-3">
               <Icon icon={Camera} size="2xl" className="text-primary" />
             </Surface>
             <div className="text-center">
@@ -138,27 +139,22 @@ export function DocumentUpload({
         {state === "scanning" && (
           <div className="p-6 flex flex-col items-center gap-4">
             {/* Scanner visual */}
-            <div className="relative w-36 h-24 bg-white/50 rounded-xl border border-secondary/20 flex items-center justify-center overflow-hidden">
+            <div className="relative w-36 h-24 bg-white/50 rounded-xl border border-primary/20 flex items-center justify-center overflow-hidden">
               <IdCardPlaceholder />
-              <div className="absolute inset-0 bg-secondary/10 flex items-center justify-center">
-                <Icon icon={ScanLine} size="2xl" className="text-secondary animate-pulse" />
+              <div className="absolute inset-0 bg-primary/10 flex items-center justify-center">
+                <Icon icon={ScanLine} size="2xl" className="text-primary animate-pulse" />
               </div>
               <div
-                className="absolute bottom-0 left-0 bg-secondary/30 w-full transition-all duration-300"
+                className="absolute bottom-0 left-0 bg-primary/30 w-full transition-all duration-300"
                 style={{ height: `${progress}%` }}
               />
             </div>
 
             <div className="w-full space-y-2">
-              <p className="text-sm font-semibold text-secondary text-center animate-pulse">
+              <p className="text-sm font-semibold text-primary text-center animate-pulse">
                 Procesando documento...
               </p>
-              <div className="w-full bg-sunk h-2 rounded-full overflow-hidden">
-                <div
-                  className="bg-secondary h-full transition-all duration-300 rounded-full"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
+              <Progress size="md" value={progress} label="Procesando documento" />
             </div>
           </div>
         )}

@@ -201,7 +201,7 @@ export function PropertiesList() {
                             Revisa tu conexión e intenta de nuevo.
                         </FeedbackBanner>
                     ) : filteredProperties.length === 0 ? (
-                        <div className="rounded-xl border-2 border-dashed border-rule bg-card">
+                        <Surface dashed>
                             {properties.length === 0 ? (
                                 <EmptyState
                                     icon={Home}
@@ -222,7 +222,7 @@ export function PropertiesList() {
                                     action={<Button variant="outline" size="sm" onClick={clearFilters}>Limpiar filtros</Button>}
                                 />
                             )}
-                        </div>
+                        </Surface>
                     ) : (
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {filteredProperties.map((property: Property) => (

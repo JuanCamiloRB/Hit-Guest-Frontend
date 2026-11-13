@@ -2,6 +2,7 @@
 
 import { CreditCard, AlertTriangle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Figure } from "@/components/ui/figure"
 import { SectionCard } from "@/components/ui/section-card"
 import { StatusPill } from "@/components/ui/status-pill"
 import { formatMoney } from "@/lib/money"
@@ -38,7 +39,7 @@ export function ReservationPriceCard({
     return (
         <SectionCard title="Importe">
             <div className="flex items-baseline justify-between gap-3">
-                <span className="text-2xl font-bold tracking-tight text-ink">{formatMoney(totalPrice, currency)}</span>
+                <Figure>{formatMoney(totalPrice, currency)}</Figure>
                 <span className="shrink-0 text-xs text-ink-3">
                     {nights} {nights === 1 ? "noche" : "noches"}
                 </span>

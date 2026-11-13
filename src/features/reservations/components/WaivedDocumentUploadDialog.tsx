@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { ImagePlus, X } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
@@ -232,10 +233,10 @@ export function WaivedDocumentUploadDialog({
                         />
                     </div>
 
-                    <p className="rounded-lg bg-sunk/50 px-3 py-2 text-xs text-ink-2">
+                    <Note>
                         Sube cada cara en su propia imagen, JPG o PNG. Si te mandaron un PDF o una sola imagen con
                         las dos caras, toma un pantallazo de cada una.
-                    </p>
+                    </Note>
 
                     {errors.form && (
                         <FeedbackBanner tone="danger" mode="blocking">{errors.form}</FeedbackBanner>

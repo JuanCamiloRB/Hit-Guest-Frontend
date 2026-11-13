@@ -30,6 +30,7 @@ import { ArrowLeft, User, FileText, Globe, Plane, CheckCircle2, ClipboardList } 
 import { Icon } from "@/components/ui/icon"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { BottomBar } from "@/components/ui/bottom-bar"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Heading } from "@/components/ui/heading"
@@ -422,9 +423,11 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     {/* Back to the welcome hub, not /verify (avoids re-launching verification). */}
-                    <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                        <Icon icon={ArrowLeft} size="lg" />
-                    </Link>
+                    <Button variant="ghost" size="icon" asChild className="-ml-2">
+                        <Link href={basePath} aria-label="Volver">
+                            <Icon icon={ArrowLeft} size="lg" />
+                        </Link>
+                    </Button>
                     <div className="text-sm font-bold text-ink-3">
                         Paso 3 de 4
                     </div>
@@ -585,13 +588,11 @@ export function SecondaryGuestFormScreen({ reservationUuid, guestToken, basePath
             )}
 
             {/* ── Sticky Bottom Bar ── */}
-            <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-rule p-4 z-40">
-                <div className="max-w-lg mx-auto flex items-center justify-between gap-4">
-                    <Button size="xl" onClick={handleSubmit} disabled={!isFormValid} className="flex-1" loading={isSubmitting} loadingLabel="Guardando...">
-                        <><Icon icon={CheckCircle2} className="mr-2" /> Continuar</>
-                    </Button>
-                </div>
-            </div>
+            <BottomBar className="flex items-center justify-between gap-4">
+                <Button size="xl" onClick={handleSubmit} disabled={!isFormValid} className="flex-1" loading={isSubmitting} loadingLabel="Guardando...">
+                    <><Icon icon={CheckCircle2} className="mr-2" /> Continuar</>
+                </Button>
+            </BottomBar>
         </div>
     )
 }

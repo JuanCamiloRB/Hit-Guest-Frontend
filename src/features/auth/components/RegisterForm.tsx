@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Mail, User, Building2, ArrowLeft, CheckCircle2, MapPin, Gift } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -107,10 +108,10 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             Tu cuenta ya está creada. Te enviamos un correo de bienvenida.
                         </p>
                     </div>
-                    <div className="w-full rounded-lg border border-rule bg-sunk px-4 py-3 text-left">
+                    <Surface tone="sunk" className="w-full px-4 py-3 text-left">
                         <p className="text-xs text-ink-3">Correo de la cuenta</p>
                         <p className="mt-0.5 break-all text-sm font-semibold text-ink">{registeredEmail}</p>
-                    </div>
+                    </Surface>
                 </div>
 
                 <div className="grid gap-2">
@@ -145,12 +146,12 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                     <Surface className="grid gap-5 p-6 relative">
 
                         {/* Welcome credit — the backend credits USD 10 to every new account. */}
-                        <div className="flex items-center gap-3 rounded-lg border border-primary/20 bg-primary/5 px-4 py-3">
+                        <Note as="div" tone="accent" density="default" className="flex items-center gap-3">
                             <IconBadge icon={Gift} tone="primary" size="sm" />
-                            <p className="text-sm text-ink-2">
+                            <p>
                                 <span className="font-bold text-primary">USD 10 de regalo</span> — tu cuenta inicia con saldo de bienvenida para ejecutar tus primeras automatizaciones.
                             </p>
-                        </div>
+                        </Note>
 
                         <FormField
                             control={form.control}

@@ -15,6 +15,8 @@ import {
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Spinner } from "@/components/ui/loading-state"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Note } from "@/components/ui/note"
 
 export interface DeactivationTarget {
     kind: "property" | "listing"
@@ -136,18 +138,15 @@ export function DeactivationConfirmDialog({ target, onConfirm, onCancel }: Props
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 {countLine && (
-                    <p
-                        role="status"
-                        className={cn(
-                            "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold",
-                            count !== null && count !== "loading" && "total" in count && count.total > 0
-                                ? "bg-danger-sunk text-danger"
-                                : "bg-sunk/50 text-ink-2",
-                        )}
-                    >
-                        {count === "loading" && <Spinner size="sm" />}
-                        {countLine}
-                    </p>
+                    count !== null && count !== "loading" && "total" in count && count.total > 0 ? (
+                        <FeedbackBanner tone="danger" mode="dynamic" density="compact">{countLine}</FeedbackBanner>
+                    ) : (
+                        // Un conteo sin alarma es una nota que se anuncia al llegar, no un aviso.
+                        <Note role="status" density="default" className="flex items-center gap-2">
+                            {count === "loading" && <Spinner size="sm" />}
+                            {countLine}
+                        </Note>
+                    )
                 )}
                 <ul className="max-h-[50vh] list-disc space-y-1.5 overflow-y-auto pl-5 text-sm text-ink-2">
                     {copy?.consequences.map((line) => <li key={line}>{line}</li>)}

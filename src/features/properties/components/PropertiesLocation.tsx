@@ -27,9 +27,8 @@ import {
     Card,
     CardContent,
     CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
+    CardHeader } from "@/components/ui/card"
+import { Heading } from "@/components/ui/heading"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
@@ -143,12 +142,12 @@ export function PropertiesLocation() {
     }
 
     return (
-        <Card className="border-rule shadow-sm">
+        <Card>
             <CardHeader className="border-b bg-sunk/50">
-                <CardTitle className="text-xl font-bold text-ink flex items-center gap-2">
+                <Heading level={2} size="title" className="flex items-center gap-2">
                     <Icon icon={MapPin} size="lg" className="text-primary" />
                     Ubicación de la Propiedad
-                </CardTitle>
+                </Heading>
                 <CardDescription>
                     Ubica tu propiedad en el mapa. Puedes buscar la dirección o arrastrar el pin manualmente para precisión exacta.
                 </CardDescription>

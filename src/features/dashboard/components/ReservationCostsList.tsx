@@ -121,7 +121,7 @@ export function ReservationCostsList({
             headingLevel={2}
             flush
             title="Detalle por reserva"
-            className="shadow-none"
+            flat
             description="Desglose de las reservas cargadas, con o sin consumo facturado."
             actions={
                 <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">

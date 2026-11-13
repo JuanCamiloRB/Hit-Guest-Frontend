@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { RotateCcw, History, Play, FileText, Send, Lock } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import type {
@@ -107,7 +108,7 @@ export function AutomationStatusItem({
     const signedContractUrl = `${API_BASE}/checkin/${reservationUuid}/contract/signed`
 
     return (
-        <Surface flat className="flex flex-col gap-3 p-4 transition-colors hover:border-ink-4/50">
+        <Surface flat interactive className="flex flex-col gap-3 p-4">
             <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                     {/* Sin `truncate`: el título es lo que identifica la fila, y
@@ -157,10 +158,7 @@ export function AutomationStatusItem({
             )}
 
             {blockedMessage && (
-                <p className="inline-flex items-start gap-1.5 rounded-lg bg-sunk px-3 py-2 text-xs break-words text-ink-2">
-                    <Icon icon={Lock} size="sm" className="mt-0.5 text-ink-3" />
-                    {blockedMessage}
-                </p>
+                <Note icon={Lock} className="break-words">{blockedMessage}</Note>
             )}
 
             {hasSignedContract && (
@@ -268,7 +266,7 @@ function GuestRow({
     const failure = guest.status === "failed" ? errorMessage(guest.lastError) : null
 
     return (
-        <li className="space-y-1.5 rounded-lg bg-sunk/50 px-3 py-2">
+        <Surface as="li" tone="sunk" className="space-y-1.5 px-3 py-2">
             <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
                     <p className="truncate text-xs font-semibold text-ink">
@@ -298,6 +296,6 @@ function GuestRow({
                 </div>
             </div>
             {failure && <FieldError compact className="break-words">{failure}</FieldError>}
-        </li>
+        </Surface>
     )
 }

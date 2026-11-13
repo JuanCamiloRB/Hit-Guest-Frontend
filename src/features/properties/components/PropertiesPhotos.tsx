@@ -1,12 +1,10 @@
 "use client"
 
-import {
-    Card,
+import { Card,
     CardContent,
     CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
+    CardHeader } from "@/components/ui/card"
+import { Heading } from "@/components/ui/heading"
 import { Upload, Trash2, Camera, ImageIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
@@ -125,10 +123,10 @@ export function PropertiesPhotos() {
     return (
         <Card>
             <CardHeader className="border-b bg-sunk/50">
-                <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                <Heading level={2} size="title" className="flex items-center gap-2">
                     <Icon icon={Camera} size="lg" className="text-primary" />
                     Galería de Fotos
-                </CardTitle>
+                </Heading>
                 <CardDescription>
                     Sube fotos de alta calidad para atraer a más huéspedes. La primera imagen será la portada.
                     <br />

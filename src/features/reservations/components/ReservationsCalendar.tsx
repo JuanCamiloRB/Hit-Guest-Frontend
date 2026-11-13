@@ -234,21 +234,12 @@ export function ReservationsCalendar() {
                         onClear={() => setSelectedUnits(new Set())}
                     />
 
-                    <div className="inline-flex rounded-lg bg-sunk p-0.5">
+                    {/* Conmutadores (contrato §5): ghost con aria-pressed, no Tabs sin paneles. */}
+                    <div role="group" aria-label="Filtrar movimientos" className="inline-flex gap-1">
                         {FILTER_OPTIONS.map((opt) => (
-                            <UnstyledButton
-                                key={opt.value}
-                                type="button"
-                                onClick={() => setFilter(opt.value)}
-                                className={cn(
-                                    "px-3 py-1.5 text-xs font-semibold rounded-md transition-colors",
-                                    filter === opt.value
-                                        ? "bg-background text-ink shadow-sm"
-                                        : "text-ink-3 hover:text-ink-2"
-                                )}
-                            >
+                            <Button key={opt.value} type="button" variant="ghost" size="sm" aria-pressed={filter === opt.value} onClick={() => setFilter(opt.value)}>
                                 {opt.label}
-                            </UnstyledButton>
+                            </Button>
                         ))}
                     </div>
                 </div>

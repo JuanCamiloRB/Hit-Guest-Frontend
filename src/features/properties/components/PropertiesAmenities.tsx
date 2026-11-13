@@ -5,9 +5,8 @@ import {
     Card,
     CardContent,
     CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
+    CardHeader } from "@/components/ui/card"
+import { Heading } from "@/components/ui/heading"
 import {
     FormControl,
     FormField,
@@ -45,10 +44,10 @@ export function PropertiesAmenities() {
     return (
         <Card>
             <CardHeader className="border-b bg-sunk/50">
-                <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                <Heading level={2} size="title" className="flex items-center gap-2">
                     <Icon icon={Sparkles} size="lg" className="text-primary" />
                     Amenidades de la Propiedad
-                </CardTitle>
+                </Heading>
                 <CardDescription>Selecciona las características y servicios incluidos en este alojamiento.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6">

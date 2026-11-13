@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { loadStripe, type Stripe, type StripeCardElement } from "@stripe/stripe-js"
 import { ShieldCheck, CreditCard } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { checkinService } from "@/features/checkin/services/checkin-service"
 import { normalizeApiError } from "@/lib/notify-error"
 import { asCheckinError } from "@/features/checkin/lib/checkin-error"
@@ -511,7 +512,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
 
             {isPending ? (
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2 rounded-xl border border-rule bg-sunk/50 p-4 text-sm text-ink-3">
+                    <Note as="div" density="default" className="flex items-center gap-2">
                         {pollTimedOut
                             ? <Icon icon={CreditCard} className="text-ink-3" />
                             : <Spinner tone="primary" />}
@@ -521,7 +522,7 @@ export function GuaranteeCardForm({ reservationUuid, guestUuid, onStatusChange, 
                                  un texto congelado se lee como cuelgue y provoca los
                                  clics de pánico (Didier, 2026-09-06). */
                               <ReassuranceTicker script={CARD_WAIT_SCRIPT} />}
-                    </div>
+                    </Note>
                     {/* Única salida cuando el webhook de Stripe tarda más que la
                         ventana de sondeo: sin esto el estado quedaba en "pending"
                         para siempre y el botón de finalizar el check-in —que exige

@@ -2,6 +2,8 @@
 
 import { Key, DoorOpen, Building2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { IconBadge } from "@/components/ui/icon-badge"
+import { Figure } from "@/components/ui/figure"
 import type { SmartlockCode } from "@/features/checkin/types/checkin"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
@@ -30,12 +32,12 @@ export function SmartlockCodes({ codes }: SmartlockCodesProps) {
             <div className="grid gap-3">
                 {codes.map((code, idx) => (
                     <Surface className="p-4 flex items-center gap-4 text-left" key={idx}>
-                        <div className="bg-sunk/50 p-3 rounded-xl border border-rule">
+                        <IconBadge shape="square">
                             {getIcon(code.type)}
-                        </div>
+                        </IconBadge>
                         <div className="flex-1">
                             <p className="text-xs text-ink-3 font-medium">{code.name}</p>
-                            <p className="text-2xl font-bold text-ink tracking-widest mt-0.5">{code.code}</p>
+                            <Figure as="p" kind="code" className="mt-0.5">{code.code}</Figure>
                         </div>
                         <div className="text-right">
                             <span className="text-xs font-semibold text-success bg-success-sunk px-2 py-1 rounded-xs">Activo</span>

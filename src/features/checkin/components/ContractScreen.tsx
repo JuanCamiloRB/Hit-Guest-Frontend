@@ -5,6 +5,7 @@ import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { ArrowLeft, FileText, ChevronDown, ChevronUp, Mail, RefreshCw, XCircle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { toast } from "sonner"
 import { normalizeApiError, notifyError } from "@/lib/notify-error"
 import { normalizeVerificationResult } from "@/features/checkin/lib/verification-result"
@@ -32,6 +33,7 @@ import type {
     GuaranteeStatus,
 } from "@/features/checkin/types/checkin"
 import { Button } from "@/components/ui/button"
+import { BottomBar } from "@/components/ui/bottom-bar"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -766,9 +768,11 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 <ProgressBar currentStep={4} totalSteps={5} />
 
                 <div className="flex items-center justify-between">
-                    <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                        <Icon icon={ArrowLeft} size="lg" />
-                    </Link>
+                    <Button variant="ghost" size="icon" asChild className="-ml-2">
+                        <Link href={basePath} aria-label="Volver">
+                            <Icon icon={ArrowLeft} size="lg" />
+                        </Link>
+                    </Button>
                     <div className="text-sm font-bold text-ink-3">Paso 5 de 6</div>
                 </div>
 
@@ -793,30 +797,28 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     )}
                 </Card>
 
-                <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
-                    <div className="w-full max-w-lg flex flex-col gap-2">
-                        {!isRejected && (
-                            <Button size="xl"
-                                type="button"
-                                onClick={() => {
-                                    setIsLoading(true)
-                                    loadDocuments()
-                                }}
-                                className="w-full flex items-center justify-center"
-                            >
-                                <Icon icon={RefreshCw} /> Ya firmé, actualizar
-                            </Button>
-                        )}
-                        <Button asChild variant="outline" size="xl">
-                            <Link
-                                href={basePath}
-                                className="w-full"
-                            >
-                                Volver al inicio
-                            </Link>
+                <BottomBar className="flex flex-col gap-2">
+                    {!isRejected && (
+                        <Button size="xl"
+                            type="button"
+                            onClick={() => {
+                                setIsLoading(true)
+                                loadDocuments()
+                            }}
+                            className="w-full flex items-center justify-center"
+                        >
+                            <Icon icon={RefreshCw} /> Ya firmé, actualizar
                         </Button>
-                    </div>
-                </div>
+                    )}
+                    <Button asChild variant="outline" size="xl">
+                        <Link
+                            href={basePath}
+                            className="w-full"
+                        >
+                            Volver al inicio
+                        </Link>
+                    </Button>
+                </BottomBar>
             </div>
         )
     }
@@ -869,9 +871,11 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             <ProgressBar currentStep={4} totalSteps={5} />
 
             <div className="flex items-center justify-between">
-                <Link href={`${basePath}/guest?guest_uuid=${guestUuid}`} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                    <Icon icon={ArrowLeft} size="lg" />
-                </Link>
+                <Button variant="ghost" size="icon" asChild className="-ml-2">
+                    <Link href={`${basePath}/guest?guest_uuid=${guestUuid}`} aria-label="Volver">
+                        <Icon icon={ArrowLeft} size="lg" />
+                    </Link>
+                </Button>
                 <div className="text-sm font-bold text-ink-3">Paso 5 de 6</div>
             </div>
 
@@ -1018,13 +1022,10 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                 )}
 
                 {signingProvider === "tufirma" && (
-                    <div className="flex items-start gap-3 p-4 bg-primary/5 border border-primary/20 rounded-xl">
-                        <Icon icon={Mail} size="lg" className="text-primary flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-ink-2">
-                            Recibirás un correo de <strong>TuFirma</strong> para completar la firma digital de tu
+                    <Note tone="accent" density="default" icon={Mail}>
+                        Recibirás un correo de <strong>TuFirma</strong> para completar la firma digital de tu
                             contrato. No necesitas firmar aquí.
-                        </p>
-                    </div>
+                    </Note>
                 )}
 
                 <Label variant="plain" className="flex items-start gap-3 p-3 bg-sunk/50 rounded-xl border border-rule cursor-pointer hover:border-primary/30 transition-colors">
@@ -1038,34 +1039,32 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
             )}
 
             {!fixedCtaHidden && (
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
-                <div className="w-full max-w-lg">
-                    {/* Un solo botón primario en pantalla, siempre. Antes convivían
-                        el CTA de la tarjeta y el de finalizar, y competían entre sí. */}
-                    <Button type="button" size="xl"
-                        onClick={isContractPhaseCta ? handleContractContinue : handleComplete}
-                        disabled={isContractPhaseCta ? !contractPartValid : !isFormValid}
-                        loading={isSubmitting}
-                        // El paso concreto («Subiendo firma…») dice más que el genérico.
-                        loadingLabel={submitStatus || (isContractPhaseCta ? "Guardando firma..." : "Finalizando...")}
-                        className="w-full"
-                    >
-                        {configurationError
-                                ? (isRetryable ? "Reintentar carga" : "Contrato no disponible")
-                                : isContractPhaseCta
-                                    ? (needsSignature ? "Firmar y continuar" : "Aceptar y continuar")
-                                : showGuaranteePhase
-                                    ? "Completar check-in"
-                                : signatureRecorded
-                                    ? "Finalizar check-in"
-                                : signingProvider === null
-                                    ? "Completar check-in"
-                                : needsSignature
-                                    ? "Firmar y Completar"
-                                    : "Aceptar y Completar"}
-                    </Button>
-                </div>
-            </div>
+            <BottomBar>
+                {/* Un solo botón primario en pantalla, siempre. Antes convivían
+                    el CTA de la tarjeta y el de finalizar, y competían entre sí. */}
+                <Button type="button" size="xl"
+                    onClick={isContractPhaseCta ? handleContractContinue : handleComplete}
+                    disabled={isContractPhaseCta ? !contractPartValid : !isFormValid}
+                    loading={isSubmitting}
+                    // El paso concreto («Subiendo firma…») dice más que el genérico.
+                    loadingLabel={submitStatus || (isContractPhaseCta ? "Guardando firma..." : "Finalizando...")}
+                    className="w-full"
+                >
+                    {configurationError
+                            ? (isRetryable ? "Reintentar carga" : "Contrato no disponible")
+                            : isContractPhaseCta
+                                ? (needsSignature ? "Firmar y continuar" : "Aceptar y continuar")
+                            : showGuaranteePhase
+                                ? "Completar check-in"
+                            : signatureRecorded
+                                ? "Finalizar check-in"
+                            : signingProvider === null
+                                ? "Completar check-in"
+                            : needsSignature
+                                ? "Firmar y Completar"
+                                : "Aceptar y Completar"}
+                </Button>
+            </BottomBar>
             )}
         </div>
     )

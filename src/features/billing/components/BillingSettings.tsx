@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { toast } from "sonner"
 import { Wallet, Plus } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Figure } from "@/components/ui/figure"
 import { ApiError } from "@/types/api"
 import { billingService, BillingNotConfiguredError } from "../services/billing-service"
 import { useBalanceStore } from "../hooks/useBalanceStore"
@@ -100,12 +101,7 @@ export function BillingSettings() {
     }
 
     const state = getBalanceState(amount)
-    const balanceColor =
-        state === "depleted"
-            ? "text-danger"
-            : state === "low"
-              ? "text-warning"
-              : "text-ink"
+    const balanceTone = state === "depleted" ? "danger" : state === "low" ? "warning" : "ink"
 
     return (
         <div className="max-w-3xl space-y-6">
@@ -127,7 +123,7 @@ export function BillingSettings() {
                     ) : amount === null ? (
                         // Sin saldo conocido se dice; «0,00 USD» en rojo sería un dato inventado.
                         <div>
-                            <span className="text-3xl font-bold tabular-nums text-ink-3">— USD</span>
+                            <Figure size="xl" tone="absent">— USD</Figure>
                             <p className="mt-1 text-xs font-medium text-warning">
                                 Saldo no disponible ·{" "}
                                 <Button variant="link-inherit" size="inline" type="button" onClick={() => void refresh()}>
@@ -137,9 +133,7 @@ export function BillingSettings() {
                         </div>
                     ) : (
                         <div>
-                            <span className={`text-3xl font-bold tabular-nums ${balanceColor}`}>
-                                {formatUsd(amount)}
-                            </span>
+                            <Figure size="xl" tone={balanceTone}>{formatUsd(amount)}</Figure>
                             {balanceError && (
                                 <p className="mt-1 text-xs font-medium text-warning">No se pudo actualizar el saldo</p>
                             )}

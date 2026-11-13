@@ -7,6 +7,7 @@ import {
     type ReservationGuest,
 } from "../services/reservations-service"
 import { SectionCard } from "@/components/ui/section-card"
+import { Note } from "@/components/ui/note"
 import { StatusPill } from "@/components/ui/status-pill"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -339,12 +340,7 @@ function GuestDocumentRow({
                     )}
                 </div>
             ) : (
-                <div className="flex items-center gap-2 rounded-lg bg-sunk px-4 py-3">
-                    <Icon icon={ImageIcon} className="text-ink-4" />
-                    <span className="text-xs text-ink-3">
-                        {describeMissingImages(guest.identityDocument, isIdentityVerified)}
-                    </span>
-                </div>
+                <Note icon={ImageIcon}>{describeMissingImages(guest.identityDocument, isIdentityVerified)}</Note>
             )}
         </div>
     )

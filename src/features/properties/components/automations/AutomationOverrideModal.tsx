@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { Building2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import {
     Dialog,
     DialogContent,
@@ -411,7 +412,7 @@ export function AutomationOverrideModal({
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
             <DialogContent className={cn("max-h-[88vh] overflow-y-auto", isContract ? "sm:max-w-3xl" : "sm:max-w-lg")}>
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-base">
+                    <DialogTitle className="flex items-center gap-2">
                         <Icon icon={Building2} className="text-primary" />
                         {isEdit ? "Editar override" : "Configurar override"}
                         {listingName && (
@@ -496,13 +497,13 @@ export function AutomationOverrideModal({
                         contrato activo en la unidad, y solo en una unidad ya guardada. */}
                     {isContract && isActive && (
                         draftMode || !listingUuid || !contractPropertyUuid || !onOverrideChanged ? (
-                            <p className="rounded-lg bg-sunk/50 px-3 py-2 text-xs text-ink-2">
+                            <Note>
                                 Guarda la unidad para poder personalizar el texto de su contrato.
-                            </p>
+                            </Note>
                         ) : override && !override.isActive ? (
-                            <p className="rounded-lg bg-sunk/50 px-3 py-2 text-xs text-ink-2">
+                            <Note>
                                 Guarda primero para activar el contrato en esta unidad; después podrás personalizar su texto.
-                            </p>
+                            </Note>
                         ) : (
                             <UnitContractTexts
                                 propertyUuid={contractPropertyUuid}

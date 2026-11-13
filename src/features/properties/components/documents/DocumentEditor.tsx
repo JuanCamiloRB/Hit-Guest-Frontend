@@ -16,6 +16,7 @@ import {
     Plus,
 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { SHORTCODE_LABELS } from "../../types/document"
@@ -146,7 +147,7 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
 
             {/* Shortcode panel */}
             {shortcodes.length > 0 && (
-                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3">
+                <Note as="div" tone="accent">
                     <p className="text-xs font-bold text-primary mb-2">
                         Variables disponibles
                     </p>
@@ -168,7 +169,7 @@ export function DocumentEditor({ value, onChange, shortcodes = [] }: DocumentEdi
                             </Button>
                         ))}
                     </div>
-                </div>
+                </Note>
             )}
         </div>
     )

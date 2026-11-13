@@ -2,6 +2,7 @@ import { Check, CreditCard, Lock, Trash2, ArrowRight } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Disclosure } from "@/components/ui/disclosure"
 
 interface GuaranteeInfoCardProps {
     onContinue: () => void
@@ -77,69 +78,41 @@ export function GuaranteeInfoCard({ onContinue }: GuaranteeInfoCardProps) {
 
             {/* FAQ */}
             <div className="divide-y divide-rule">
-                <details className="group py-1" open>
-                    <summary className="flex items-center justify-between gap-3 py-3 cursor-pointer font-bold text-sm text-ink list-none [&::-webkit-details-marker]:hidden">
-                        <span>¿Por qué piden una tarjeta?</span>
-                        <Icon icon={ArrowRight} size="sm" className="text-ink-4 group-open:rotate-90 transition-transform" />
-                    </summary>
-                    <p className="pb-3 text-sm leading-relaxed text-ink-3">
+                <Disclosure title="¿Por qué piden una tarjeta?" defaultOpen>
+                    <p>
                         Como respaldo del <b className="text-ink">contrato de garantía</b> que firmas en tu check-in. Protege la propiedad frente a daños y define por escrito, con montos claros, qué se puede cobrar y qué no.
                     </p>
-                </details>
-                <details className="group py-1">
-                    <summary className="flex items-center justify-between gap-3 py-3 cursor-pointer font-bold text-sm text-ink list-none [&::-webkit-details-marker]:hidden">
-                        <span>¿Me cobran algo ahora?</span>
-                        <Icon icon={ArrowRight} size="sm" className="text-ink-4 group-open:rotate-90 transition-transform" />
-                    </summary>
-                    <p className="pb-3 text-sm leading-relaxed text-ink-3">
+                </Disclosure>
+                <Disclosure title="¿Me cobran algo ahora?">
+                    <p>
                         No. Solo se registra como garantía. Si todo está en orden al final de tu estadía, <b className="text-ink">no se cobra nada</b> y el token se elimina.
                     </p>
-                </details>
-                <details className="group py-1">
-                    <summary className="flex items-center justify-between gap-3 py-3 cursor-pointer font-bold text-sm text-ink list-none [&::-webkit-details-marker]:hidden">
-                        <span>¿Cuál es el monto máximo que podrían cobrar?</span>
-                        <Icon icon={ArrowRight} size="sm" className="text-ink-4 group-open:rotate-90 transition-transform" />
-                    </summary>
-                    <p className="pb-3 text-sm leading-relaxed text-ink-3">
+                </Disclosure>
+                <Disclosure title="¿Cuál es el monto máximo que podrían cobrar?">
+                    <p>
                         El tope está definido en el <b className="text-ink">contrato de garantía</b> que ya leíste en esta misma pantalla, junto con la política de cancelación.
                     </p>
-                </details>
-                <details className="group py-1">
-                    <summary className="flex items-center justify-between gap-3 py-3 cursor-pointer font-bold text-sm text-ink list-none [&::-webkit-details-marker]:hidden">
-                        <span>¿Qué pasa si hay un daño?</span>
-                        <Icon icon={ArrowRight} size="sm" className="text-ink-4 group-open:rotate-90 transition-transform" />
-                    </summary>
-                    <p className="pb-3 text-sm leading-relaxed text-ink-3">
+                </Disclosure>
+                <Disclosure title="¿Qué pasa si hay un daño?">
+                    <p>
                         Te contactamos primero por <b className="text-ink">WhatsApp y correo electrónico</b>, con evidencia fotográfica y el monto según el contrato. Tienes oportunidad de responder antes de que se procese cualquier cargo.
                     </p>
-                </details>
-                <details className="group py-1">
-                    <summary className="flex items-center justify-between gap-3 py-3 cursor-pointer font-bold text-sm text-ink list-none [&::-webkit-details-marker]:hidden">
-                        <span>¿Hasta cuándo guardan mis datos?</span>
-                        <Icon icon={ArrowRight} size="sm" className="text-ink-4 group-open:rotate-90 transition-transform" />
-                    </summary>
-                    <p className="pb-3 text-sm leading-relaxed text-ink-3">
+                </Disclosure>
+                <Disclosure title="¿Hasta cuándo guardan mis datos?">
+                    <p>
                         El token de tu tarjeta se elimina automáticamente <b className="text-ink">2 días después de tu check-out</b>. Después de eso, no queda ningún dato tuyo en el sistema.
                     </p>
-                </details>
-                <details className="group py-1">
-                    <summary className="flex items-center justify-between gap-3 py-3 cursor-pointer font-bold text-sm text-ink list-none [&::-webkit-details-marker]:hidden">
-                        <span>¿Tarjeta de crédito o débito?</span>
-                        <Icon icon={ArrowRight} size="sm" className="text-ink-4 group-open:rotate-90 transition-transform" />
-                    </summary>
-                    <p className="pb-3 text-sm leading-relaxed text-ink-3">
+                </Disclosure>
+                <Disclosure title="¿Tarjeta de crédito o débito?">
+                    <p>
                         Cualquiera de las dos, siempre que tenga código de seguridad (CVV) y permita compras en línea.
                     </p>
-                </details>
-                <details className="group py-1">
-                    <summary className="flex items-center justify-between gap-3 py-3 cursor-pointer font-bold text-sm text-ink list-none [&::-webkit-details-marker]:hidden">
-                        <span>¿Es seguro?</span>
-                        <Icon icon={ArrowRight} size="sm" className="text-ink-4 group-open:rotate-90 transition-transform" />
-                    </summary>
-                    <p className="pb-3 text-sm leading-relaxed text-ink-3">
+                </Disclosure>
+                <Disclosure title="¿Es seguro?">
+                    <p>
                         Sí. Usamos <b className="text-ink">tokenización certificada</b>: tu número de tarjeta nunca se guarda en texto plano ni queda expuesto a nuestro equipo.
                     </p>
-                </details>
+                </Disclosure>
             </div>
 
             <div className="pt-1">

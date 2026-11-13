@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Eye, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { validationMessages } from "@/lib/notify-error"
@@ -300,9 +301,9 @@ export function UnitContractTexts({
             )}
 
             {plan.textMode === null ? (
-                <p className="rounded-lg bg-sunk/50 px-3 py-2 text-sm text-ink-2">
+                <Note density="default">
                     La propiedad todavía no tiene texto de contrato. Créalo primero en Documentos de la propiedad.
-                </p>
+                </Note>
             ) : (
                 <ul className="space-y-2">
                     {plan.rows.map((row) => {

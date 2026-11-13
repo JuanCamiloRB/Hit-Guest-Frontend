@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from "react"
 import { Settings2, AlertCircle, AlertTriangle, CheckCircle2, Clock, FileSignature } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
-import {
+import { Surface,
     Card,
     CardContent,
 } from "@/components/ui/card"
@@ -479,10 +479,7 @@ export function AutomationCard({
 
     return (
         <>
-            <Card className={cn(
-                "group overflow-hidden border-rule/50 hover:border-primary/30 hover:shadow-sm transition-all duration-300",
-                isActive && "border-primary/20"
-            )}>
+            <Card interactive tone={isActive ? "selected" : "default"} className="group overflow-hidden">
                 <CardContent className="p-0">
                     <div className="flex flex-col md:flex-row items-stretch">
                         {/* Icon column */}
@@ -610,7 +607,7 @@ export function AutomationCard({
                                                 </FeedbackBanner>
                                             )}
                                             {routingView.channels.map((channel) => (
-                                                <div key={channel.key} className="flex items-center justify-between gap-3 rounded-xl border border-rule bg-sunk/70 p-2.5">
+                                                <Surface key={channel.key} tone="sunk" className="flex items-center justify-between gap-3 p-2.5">
                                                     <div className="min-w-0">
                                                         <ReservationSourceIdentity name={channel.channel.name} slug={channel.channel.slug} compact />
                                                         {/* `summary` empieza con el nombre del canal, que ya está junto
@@ -625,7 +622,7 @@ export function AutomationCard({
                                                     ) : (
                                                         <Icon icon={AlertTriangle} className="text-warning" aria-label="Requiere atención" />
                                                     )}
-                                                </div>
+                                                </Surface>
                                             ))}
                                         </div>
                                     ) : routingSummary ? (
@@ -636,7 +633,7 @@ export function AutomationCard({
                                                     : sources?.find((item) => String(item.id) === channel.sourceKey)
                                                 const sourceMissing = channel.sourceKey !== ALL_SOURCES_KEY && !source
                                                 return (
-                                                    <div key={channel.sourceKey} className="flex items-center justify-between gap-3 rounded-xl border border-rule bg-sunk/70 p-2.5">
+                                                    <Surface key={channel.sourceKey} tone="sunk" className="flex items-center justify-between gap-3 p-2.5">
                                                         <div className="min-w-0">
                                                             <ReservationSourceIdentity
                                                                 name={source
@@ -656,7 +653,7 @@ export function AutomationCard({
                                                                 ID guardado: {channel.sourceKey}
                                                             </span>
                                                         )}
-                                                    </div>
+                                                    </Surface>
                                                 )
                                             })}
                                         </div>

@@ -2,6 +2,7 @@
 
 import { Plus, Trash2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Surface } from "@/components/ui/card"
 import {
     Select,
     SelectContent,
@@ -41,7 +42,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
             <div className="space-y-3">
                 <Label className="text-sm font-semibold text-ink-2">{schema.label}</Label>
                 {items.map((item, i) => (
-                    <div key={i} className="border border-rule rounded-xl p-3 space-y-2 bg-sunk/50">
+                    <Surface key={i} tone="sunk" className="space-y-2 p-3">
                         <div className="flex justify-between items-center">
                             <span className="text-xs font-semibold text-ink-3">
                                 Elemento {i + 1}
@@ -58,7 +59,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                                 onChange={v => updateItem(i, sub.key, v)}
                             />
                         ))}
-                    </div>
+                    </Surface>
                 ))}
                 <Button
                     type="button"

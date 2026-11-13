@@ -48,6 +48,7 @@ import {
 } from "@/features/checkin/data/mock-guest-data"
 import { emptyGuestForm } from "@/features/checkin/types/checkin"
 import { Button } from "@/components/ui/button"
+import { BottomBar } from "@/components/ui/bottom-bar"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Heading } from "@/components/ui/heading"
@@ -500,9 +501,11 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
                 <div className="flex items-center gap-2">
                     {/* Back goes to the welcome hub, not /verify — revisiting verify would
                         re-launch (or bounce a Textract-verified guest) and confuse the flow. */}
-                    <Link href={basePath} className="p-2 -ml-2 rounded-full hover:bg-sunk text-ink-3 transition-colors">
-                        <Icon icon={ArrowLeft} size="lg" />
-                    </Link>
+                    <Button variant="ghost" size="icon" asChild className="-ml-2">
+                        <Link href={basePath} aria-label="Volver">
+                            <Icon icon={ArrowLeft} size="lg" />
+                        </Link>
+                    </Button>
                     <div className="text-sm font-bold text-ink-3">
                         Paso 4 de 6
                     </div>
@@ -683,27 +686,25 @@ export function GuestFormScreen({ reservationUuid, basePath }: GuestFormScreenPr
             )}
 
             {/* CTA */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
-                <div className="w-full max-w-lg">
-                    {documentExpired ? (
-                        <Button type="button" size="xl" disabled className="w-full flex items-center justify-center">
-                            Documento vencido
-                        </Button>
-                    ) : isFormValid ? (
-                        <Button type="button" size="xl"
-                            onClick={handleSubmit} 
-                            className="w-full flex items-center justify-center"
-                        >
-                            <Icon icon={CheckCircle2} size="lg" />
-                            Continuar
-                        </Button>
-                    ) : (
-                        <Button type="button" size="xl" disabled className="w-full flex items-center justify-center">
-                            Completa los campos requeridos
-                        </Button>
-                    )}
-                </div>
-            </div>
+            <BottomBar>
+                {documentExpired ? (
+                    <Button type="button" size="xl" disabled className="w-full flex items-center justify-center">
+                        Documento vencido
+                    </Button>
+                ) : isFormValid ? (
+                    <Button type="button" size="xl"
+                        onClick={handleSubmit} 
+                        className="w-full flex items-center justify-center"
+                    >
+                        <Icon icon={CheckCircle2} size="lg" />
+                        Continuar
+                    </Button>
+                ) : (
+                    <Button type="button" size="xl" disabled className="w-full flex items-center justify-center">
+                        Completa los campos requeridos
+                    </Button>
+                )}
+            </BottomBar>
         </div>
     )
 }

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import { CheckCircle2, Home, Users, Calendar, MapPin, Download, Clock, FileText, Mail, XCircle, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
 import { useSearchParams } from "next/navigation"
 import { toast } from "sonner"
 import { normalizeApiError } from "@/lib/notify-error"
@@ -14,6 +15,7 @@ import { resolveContractSigningState, isContractTransitional } from "@/features/
 import { completedEntryCopy, resolveCompletedEntryReason } from "@/features/checkin/lib/success-entry"
 import { AccessInstructionsPanel } from "./AccessInstructionsPanel"
 import { Button } from "@/components/ui/button"
+import { BottomBar } from "@/components/ui/bottom-bar"
 import { Heading } from "@/components/ui/heading"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Surface } from "@/components/ui/card"
@@ -260,8 +262,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                 esperar a que el estado se persista. Cuando el portal lo confirma,
                 lo reemplaza la tarjeta de "esperando la firma" de abajo. */}
             {contractPending && contractState === "awaiting_guest" && (
-                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 w-full max-w-sm flex items-start gap-3 text-left">
-                    <Icon icon={Mail} size="lg" className="text-primary flex-shrink-0 mt-0.5" />
+                <Note as="div" tone="accent" density="default" icon={Mail} className="w-full max-w-sm text-left">
                     <div>
                         <p className="text-sm font-bold text-ink">Falta firmar el contrato</p>
                         <p className="text-xs text-ink-3 mt-0.5">
@@ -269,7 +270,7 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                             ya quedó guardado.
                         </p>
                     </div>
-                </div>
+                </Note>
             )}
 
             {/* Contract ready → download the SIGNED PDF (with legal evidence page). */}
@@ -366,11 +367,11 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
             )}
 
             {docsLoading ? (
-                <LoadingState variant="inline" compact label="Cargando documentos..." className="w-full max-w-sm rounded-xl border border-rule bg-sunk/50 p-4" />
+                <Surface tone="sunk" className="w-full max-w-sm p-4"><LoadingState variant="inline" compact label="Cargando documentos..." /></Surface>
             ) : documents.length > 0 ? (
                 <div className="w-full max-w-sm space-y-2">
                     {documents.map((doc) => (
-                        <div key={doc.uuid} className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left">
+                        <Surface key={doc.uuid} tone="sunk" className="flex items-center gap-4 p-4 text-left">
                             <IconBadge icon={FileText} tone="primary" size="md" shape="square" />
                             <div className="flex-1 min-w-0">
                                 <Heading level={3} size="subsection" className="truncate">{doc.typeName}</Heading>
@@ -379,11 +380,11 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                             <Button type="button" variant="link" size="inline" onClick={() => handleDownloadPdf(doc.uuid)} className="flex-shrink-0" loading={downloadingDoc === doc.uuid}>
                                 Descargar
                             </Button>
-                        </div>
+                        </Surface>
                     ))}
                 </div>
             ) : (
-                <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left w-full max-w-sm">
+                <Surface tone="sunk" className="flex w-full max-w-sm items-center gap-4 p-4 text-left">
                     <IconBadge icon={Download} tone="primary" size="md" shape="square" />
                     <div className="flex-1">
                         <Heading level={3} size="subsection">
@@ -391,37 +392,35 @@ export function SuccessScreen({ portal, reservationUuid }: SuccessScreenProps) {
                         </Heading>
                         <p className="text-xs text-ink-3">No hay documentos disponibles para descargar.</p>
                     </div>
-                </div>
+                </Surface>
             )}
 
-            <div className="bg-sunk/50 border border-rule p-4 rounded-xl flex items-center gap-4 text-left w-full max-w-sm mt-2">
+            <Surface tone="sunk" className="mt-2 flex w-full max-w-sm items-center gap-4 p-4 text-left">
                 <IconBadge icon={Home} tone="primary" size="md" shape="square" />
                 <div>
                     <Heading level={3} size="subsection">Todo Listo</Heading>
                     <p className="text-xs text-ink-3">Recibirás también esta información por email antes de tu llegada.</p>
                 </div>
-            </div>
+            </Surface>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-md border-t border-rule/50 z-10 flex justify-center">
-                <div className="w-full max-w-lg flex flex-col gap-2">
-                    {hasPendingSecondaries && (
-                        <Button asChild size="xl">
-                            <Link href={welcomeHref} className="w-full">
-                                <Icon icon={Users} size="lg" />
-                                Ver inicio para acompañantes
-                            </Link>
-                        </Button>
-                    )}
-                    <Button asChild variant="outline" size="xl">
-                        <Link
-                            href={hasPendingSecondaries ? welcomeHref : "/"}
-                            className="w-full"
-                        >
-                            {hasPendingSecondaries ? "Cerrar y volver al inicio" : "Cerrar"}
+            <BottomBar className="flex flex-col gap-2">
+                {hasPendingSecondaries && (
+                    <Button asChild size="xl">
+                        <Link href={welcomeHref} className="w-full">
+                            <Icon icon={Users} size="lg" />
+                            Ver inicio para acompañantes
                         </Link>
                     </Button>
-                </div>
-            </div>
+                )}
+                <Button asChild variant="outline" size="xl">
+                    <Link
+                        href={hasPendingSecondaries ? welcomeHref : "/"}
+                        className="w-full"
+                    >
+                        {hasPendingSecondaries ? "Cerrar y volver al inicio" : "Cerrar"}
+                    </Link>
+                </Button>
+            </BottomBar>
         </div>
     )
 }

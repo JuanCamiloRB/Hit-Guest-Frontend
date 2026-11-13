@@ -4,13 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react"
 import { useFormContext } from "react-hook-form"
 import { Sparkles } from "lucide-react"
 import { IconBadge } from "@/components/ui/icon-badge"
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { automationService, canonicalSlug } from "../services/automation-service"
 import { listingsService } from "../services/listings-service"
@@ -257,19 +251,17 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
     return (
         <div className="space-y-6">
             {/* Header */}
-            <Card className="border-none shadow-none bg-transparent">
-                <CardHeader className="px-0 pt-0">
+            <header className="space-y-2">
                     <div className="flex items-center gap-2 mb-1">
                         <IconBadge icon={Sparkles} tone="primary" size="sm" shape="square" />
-                        <CardTitle className="text-2xl font-bold tracking-tight text-ink">
+                        <Heading level={2} size="title">
                             Reglas de Automatización
-                        </CardTitle>
+                        </Heading>
                     </div>
-                    <CardDescription className="text-base text-ink-3">
+                    <p className="text-sm text-ink-2">
                         Configura disparadores automáticos para mejorar la experiencia del huésped y agilizar tu operación.
-                    </CardDescription>
-                </CardHeader>
-            </Card>
+                    </p>
+                </header>
 
             {/* Guard: property not saved yet */}
             {!propertyUuid && (
@@ -353,7 +345,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             )}
 
             {/* Custom automation CTA */}
-            <Card className="bg-sunk/50 border-dashed border-2 border-rule">
+            <Card dashed>
                 <CardContent className="p-8 text-center flex flex-col items-center justify-center space-y-3">
                     <IconBadge icon={Sparkles} tone="primary" size="md" />
                     <div>

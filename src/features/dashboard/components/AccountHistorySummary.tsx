@@ -1,6 +1,7 @@
 "use client"
 
 import { Skeleton } from "@/components/ui/skeleton"
+import { Figure } from "@/components/ui/figure"
 import { formatUsd, type ConsumptionSummary } from "@/features/billing/types"
 import { Heading } from "@/components/ui/heading"
 
@@ -31,15 +32,11 @@ export function AccountHistorySummary({ summary, isLoading }: { summary: Consump
             ) : (
                 <>
                     <p>
-                        <span className="font-sans text-lg font-bold tabular-nums text-brand-navy">
-                            {lifetime ? lifetime.processedReservations : "—"}
-                        </span>{" "}
+                        <Figure size="md">{lifetime ? lifetime.processedReservations : "—"}</Figure>{" "}
                         reservas con consumo facturado
                     </p>
                     <p>
-                        <span className="font-sans text-lg font-bold tabular-nums text-brand-navy">
-                            {lifetime?.avgPerReservation != null ? formatUsd(lifetime.avgPerReservation) : "—"}
-                        </span>{" "}
+                        <Figure size="md">{lifetime?.avgPerReservation != null ? formatUsd(lifetime.avgPerReservation) : "—"}</Figure>{" "}
                         promedio por reserva facturada
                     </p>
                 </>

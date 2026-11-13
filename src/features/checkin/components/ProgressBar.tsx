@@ -1,16 +1,21 @@
 "use client"
 
+import { Progress } from "@/components/ui/progress"
+
 /**
  * ProgressBar — Indicador de progreso mínimo para el flujo de check-in.
  *
  * Reemplaza al StepIndicator numerado para reducir la fricción percibida.
- * No muestra números de paso ni labels — solo una barra que avanza.
+ * No muestra números de paso ni labels — solo una barra que avanza. La barra
+ * es la primitiva `Progress` (DS-8b); aquí solo vive la cuenta de pasos.
  *
  * Uso:
  *   Flujo principal (main guest):  totalSteps=5 (identify→verify→guest→contract→success)
- *   Flujo secundario:              totalSteps=3 (identify→verify→guest→success) 
+ *   Flujo secundario:              totalSteps=3 (identify→verify→guest→success)
  *
- * currentStep: 1-indexed. 0 = oculto (WelcomeScreen no lo usa).
+ * currentStep: 1-indexed (WelcomeScreen no la usa). La barra cuenta los pasos
+ * internos y la pantalla muestra «Paso N de M» contando la bienvenida: por eso el
+ * nombre accesible es neutro y no repite una cuenta que contradiga al texto.
  */
 
 interface ProgressBarProps {
@@ -20,18 +25,14 @@ interface ProgressBarProps {
 }
 
 export function ProgressBar({ currentStep, totalSteps, isSuccess = false }: ProgressBarProps) {
-    const pct = Math.min(100, Math.round((currentStep / totalSteps) * 100))
-
     return (
-        <div className="w-full space-y-1.5">
-            <div className="h-1 w-full bg-sunk rounded-full overflow-hidden">
-                <div
-                    className={`h-full rounded-full transition-all duration-700 ease-out ${
-                        isSuccess ? "bg-success" : "bg-primary"
-                    }`}
-                    style={{ width: `${pct}%` }}
-                />
-            </div>
-        </div>
+        <Progress
+            size="xs"
+            tone={isSuccess ? "success" : "primary"}
+            value={currentStep}
+            max={totalSteps}
+            label="Avance del check-in"
+            className="w-full"
+        />
     )
 }

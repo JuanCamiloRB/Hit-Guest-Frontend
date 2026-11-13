@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
+import { Note } from "@/components/ui/note"
 import { SecondaryGateStatus } from "../types/checkin"
 import { AlertCircle, Clock, CheckCircle2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
@@ -50,13 +51,10 @@ export function SecondaryGateScreen({ status, basePath }: SecondaryGateScreenPro
                 Hola. El titular de la reserva, <strong>{status.mainGuestName || "tu anfitrión"}</strong>, aún no ha completado su proceso de check-in obligatorio.
             </p>
             
-            <div className="bg-sunk/50 border border-rule rounded-xl p-5 w-full max-w-sm mb-8 flex items-start gap-3 text-left">
-                <Icon icon={AlertCircle} size="lg" className="text-primary mt-0.5" />
-                <div className="text-sm text-ink-2">
+            <Note as="div" tone="accent" density="default" icon={AlertCircle} className="mb-8 w-full max-w-sm text-left">
                     <span className="font-semibold block mb-1">¿Qué debes hacer?</span>
                     Pídele al titular que finalice su registro. Una vez lo haga, esta página te permitirá ingresar tus datos.
-                </div>
-            </div>
+                </Note>
 
             <Button size="xl"
                 onClick={handleRefresh}

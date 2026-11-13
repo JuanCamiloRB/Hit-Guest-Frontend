@@ -28,15 +28,16 @@ describe("GuaranteeInfoCard", () => {
         expect(onContinue).toHaveBeenCalledTimes(1)
     })
 
-    it("opens a closed FAQ item on click (native <details> accordion)", async () => {
+    it("opens a closed FAQ item on click (Disclosure: botón real con aria-expanded)", async () => {
         const user = userEvent.setup()
         render(<GuaranteeInfoCard onContinue={() => {}} />)
 
-        const question = screen.getByText("¿Me cobran algo ahora?")
-        const details = question.closest("details") as HTMLDetailsElement
-        expect(details.open).toBe(false)
+        const question = screen.getByRole("button", { name: "¿Me cobran algo ahora?" })
+        expect(question).toHaveAttribute("aria-expanded", "false")
+        expect(screen.queryByText(/Solo se registra como garantía/)).toBeNull()
 
         await user.click(question)
-        expect(details.open).toBe(true)
+        expect(question).toHaveAttribute("aria-expanded", "true")
+        expect(screen.getByText(/Solo se registra como garantía/)).toBeInTheDocument()
     })
 })

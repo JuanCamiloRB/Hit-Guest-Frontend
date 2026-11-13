@@ -8,6 +8,8 @@ import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { Printer, Edit, ChevronRight, Send, Copy, MessageSquare, Calendar, Home, FileText, Users, Mail, Phone, Moon, type LucideIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
+import { DefinitionItem } from "@/components/ui/definition-list"
 import { IconBadge } from "@/components/ui/icon-badge"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
@@ -301,7 +303,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                 {/* Main Content Area */}
                 <div className="lg:col-span-8 flex flex-col gap-6">
                     {/* Guest & Reservation Info Card */}
-                    <Card className="overflow-hidden border-rule p-0 shadow-sm">
+                    <Card className="overflow-hidden p-0">
                         <CardContent className="p-5 sm:p-6">
                             {/* Top row: Guest & Status */}
                             <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
@@ -461,10 +463,10 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                     </FeedbackBanner>
                                 )}
                                 {data.capacityDeclarationRequired && (
-                                    <p className="mt-2 rounded-lg bg-sunk px-3 py-2 text-xs text-ink-2">
+                                    <Note className="mt-2">
                                         Capacidad por confirmar: el huésped principal la declarará al iniciar
                                         su check-in. No necesitas hacer nada.
-                                    </p>
+                                    </Note>
                                 )}
                             </div>
                         </div>
@@ -503,7 +505,7 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                         decir morado al 50% SOBRE morado: invisibles. Todo lo que
                         va dentro de esta tarjeta se pinta con blancos, también el
                         foco: el outline morado del Button daría 1,23:1 aquí. */}
-                    <Card className="border-none bg-primary p-0 text-white shadow-sm">
+                    <Card tone="inverse" className="p-0">
                         <CardContent className="p-5">
                             <Heading level={3} size="subsection" tone="inverse">Acciones rápidas</Heading>
                             {linkDisabledReason && (
@@ -679,16 +681,9 @@ function DetailCell({
     hint?: string
 }) {
     return (
-        <div className="min-w-0">
-            <dt className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
-                <Icon icon={icon} size="sm" className="text-ink-4" />
-                {label}
-            </dt>
-            <dd className="mt-1.5 truncate text-base font-bold leading-snug text-ink">{value}</dd>
-            {/* Segundo `dd` del mismo término: dentro de un <dl> solo caben dt/dd
-                (un <p> rompía la lista de definiciones para el lector). */}
-            {hint && <dd className="mt-0.5 truncate text-xs text-ink-3">{hint}</dd>}
-        </div>
+        <DefinitionItem icon={icon} label={label} prominent hint={hint}>
+            {value}
+        </DefinitionItem>
     )
 }
 
@@ -705,16 +700,10 @@ function ContactRow({
     href: string
 }) {
     return (
-        <div className="flex items-center gap-3">
-            <Icon icon={icon} className="text-ink-4" />
-            <div className="min-w-0">
-                <dt className="text-xs text-ink-3">{label}</dt>
-                <dd>
-                    <TextLink href={href} className="block truncate text-sm">
-                        {value}
-                    </TextLink>
-                </dd>
-            </div>
-        </div>
+        <DefinitionItem icon={icon} label={label}>
+            <TextLink href={href} className="block truncate">
+                {value}
+            </TextLink>
+        </DefinitionItem>
     )
 }

@@ -1,13 +1,12 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import {
+import { Note } from "@/components/ui/note"
+import { Surface,
     Card,
     CardContent,
     CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card"
+    CardHeader } from "@/components/ui/card"
 import {
     Dialog,
     DialogContent,
@@ -622,10 +621,10 @@ export function PropertiesUnits() {
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div className="space-y-1">
-                        <CardTitle className="flex items-center gap-2 text-xl font-bold">
+                        <Heading level={2} size="title" className="flex items-center gap-2">
                             <Icon icon={Building} size="lg" className="text-primary" />
                             Alojamientos
-                        </CardTitle>
+                        </Heading>
                         <CardDescription>
                             Gestiona los alojamientos disponibles para reservar en esta propiedad.
                         </CardDescription>
@@ -937,7 +936,7 @@ export function PropertiesUnits() {
                                                     />
                                                 </div>
                                                 {!unitForm.extra.inheritSchedule && (
-                                                    <div className="grid grid-cols-1 gap-6 rounded-xl border bg-sunk/50 p-4 sm:grid-cols-2">
+                                                    <Surface tone="sunk" className="grid grid-cols-1 gap-6 p-4 sm:grid-cols-2">
                                                         <div className="space-y-3">
                                                             <p className="text-xs font-bold text-ink-3">Check-in</p>
                                                             <div className="grid grid-cols-1 gap-2">
@@ -972,7 +971,7 @@ export function PropertiesUnits() {
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
+                                                    </Surface>
                                                 )}
                                             </div>
 
@@ -1059,7 +1058,7 @@ export function PropertiesUnits() {
                                                     ) : amenityOptions.length === 0 ? (
                                                         <EmptyState title="El catálogo de amenidades está vacío." className="rounded-xl border border-rule py-6" />
                                                     ) : (
-                                                        <div className="grid grid-cols-1 gap-2 rounded-xl border bg-sunk/50 p-4 sm:grid-cols-2">
+                                                        <Surface tone="sunk" className="grid grid-cols-1 gap-2 p-4 sm:grid-cols-2">
                                                             {amenityOptions.map((item) => {
                                                                 const id = Number(item.id)
                                                                 const selected = (unitForm.extra.amenities ?? []).includes(id)
@@ -1087,7 +1086,7 @@ export function PropertiesUnits() {
                                                                     </Label>
                                                                 )
                                                             })}
-                                                        </div>
+                                                        </Surface>
                                                     )
                                                 )}
                                             </div>
@@ -1095,7 +1094,7 @@ export function PropertiesUnits() {
 
                                         <TabsContent value="rooms" className="space-y-6">
                                             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                                <div className="space-y-4 p-4 border rounded-xl bg-sunk/30">
+                                                <Surface tone="sunk" className="space-y-4 p-4">
                                                     <div className="flex items-center gap-2">
                                                         <Icon icon={BedDouble} className="text-primary" />
                                                         <Heading level={4} size="group" tone="muted">Dormitorios</Heading>
@@ -1118,9 +1117,9 @@ export function PropertiesUnits() {
                                                             <FieldError role="alert">{fieldErrors.bedRoom}</FieldError>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                </Surface>
 
-                                                <div className="space-y-4 p-4 border rounded-xl bg-sunk/30">
+                                                <Surface tone="sunk" className="space-y-4 p-4">
                                                     <div className="flex items-center gap-2">
                                                         <Icon icon={Bath} className="text-primary" />
                                                         <Heading level={4} size="group" tone="muted">Baños</Heading>
@@ -1143,7 +1142,7 @@ export function PropertiesUnits() {
                                                             <FieldError role="alert">{fieldErrors.bathRoom}</FieldError>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                </Surface>
                                             </div>
                                         </TabsContent>
 
@@ -1174,7 +1173,7 @@ export function PropertiesUnits() {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div className="bg-sunk/50 p-4 rounded-xl border space-y-4">
+                                                    <Surface tone="sunk" className="space-y-4 p-4">
                                                         <div className="space-y-2">
                                                             <Label className="text-xs">Política de Cancelación Específica</Label>
                                                             <Select 
@@ -1195,7 +1194,7 @@ export function PropertiesUnits() {
                                                                 </SelectContent>
                                                             </Select>
                                                         </div>
-                                                    </div>
+                                                    </Surface>
                                                 )}
                                             </div>
                                         </TabsContent>
@@ -1227,9 +1226,9 @@ export function PropertiesUnits() {
                                             ) : (
                                                 <div className="space-y-3">
                                                     {!(unitForm as any).uuid && (
-                                                        <p className="text-xs text-ink-3 bg-sunk/50 border border-rule rounded-lg px-3 py-2">
+                                                        <Note>
                                                             Configura los overrides ahora; se crearán automáticamente al guardar la unidad.
-                                                        </p>
+                                                        </Note>
                                                     )}
                                                     {propertyAutomations.map((automation) => {
                                                         const slug = automation.provider?.parameters?.slug ?? automation.providerName ?? ""
@@ -1249,14 +1248,7 @@ export function PropertiesUnits() {
                                                         const perListing = readCredentialsScope(automation) === "listing"
 
                                                         return (
-                                                            <div key={automation.uuid} className={cn(
-                                                                "border rounded-xl p-4 flex items-center justify-between gap-3 transition-all duration-200",
-                                                                isInactive
-                                                                    ? "border-danger/30 bg-danger-sunk/30"
-                                                                    : hasParams
-                                                                        ? "border-primary/20 bg-primary/5"
-                                                                        : "border-rule bg-sunk/30"
-                                                            )}>
+                                                            <Surface key={automation.uuid} flat tone={isInactive ? "danger" : hasParams ? "selected" : "sunk"} className="flex items-center justify-between gap-3 p-4">
                                                                 <div className="min-w-0 space-y-0.5">
                                                                     <div className="flex items-center gap-2 flex-wrap">
                                                                         <Icon icon={Settings2} className="text-ink-3" />
@@ -1301,7 +1293,7 @@ export function PropertiesUnits() {
                                                                 >
                                                                     {hasOverride ? "Editar" : "Configurar"}
                                                                 </Button>
-                                                            </div>
+                                                            </Surface>
                                                         )
                                                     })}
                                                 </div>
