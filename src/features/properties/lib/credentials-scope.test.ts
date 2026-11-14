@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
     credentialLabel,
     listingCredentialState,
+    listingCredentialSummary,
     readCredentialsScope,
     requiredListingCredentialKeys,
     supportsListingCredentials,
@@ -91,6 +92,39 @@ describe("listingCredentialState", () => {
 
     it("metadatos contradictorios: no se elige uno", () => {
         expect(listingCredentialState(override({ credentialsComplete: true, missingCredentialKeys: ["rnt"] }))).toEqual({ kind: "unknown" })
+    })
+})
+
+describe("listingCredentialSummary", () => {
+    it("no infiere el estado desde parameters cuando faltan metadatos", () => {
+        const result = listingCredentialSummary("tra_colombia", override({ parameters: { token: "x", rnt: "1" } }))
+        expect(result).toEqual({ tone: "warning", label: "No pudimos confirmar las credenciales" })
+    })
+
+    it("nombra las claves faltantes con las etiquetas del formulario", () => {
+        const result = listingCredentialSummary("tra_colombia", override({
+            credentialsComplete: false,
+            missingCredentialKeys: ["rnt"],
+        }))
+        expect(result.tone).toBe("warning")
+        expect(result.label).toMatch(/RNT/)
+        expect(result.label).not.toContain("missingCredentialKeys")
+    })
+
+    it("solo muestra configuradas cuando el backend lo confirma", () => {
+        expect(listingCredentialSummary("tra_colombia", override({ credentialsComplete: true })))
+            .toEqual({ tone: "success", label: "Credenciales configuradas" })
+    })
+
+    it("un borrador (sin uuid) es local: se juzga por lo que trae, sin hablar del backend", () => {
+        expect(listingCredentialSummary("tra_colombia", override({ uuid: "", parameters: { token: "x", rnt: "1" } })))
+            .toEqual({ tone: "idle", label: "Se envían al guardar la unidad" })
+        const incomplete = listingCredentialSummary("tra_colombia", override({ uuid: "", parameters: { token: "x" } }))
+        expect(incomplete.tone).toBe("warning")
+        expect(incomplete.label).toMatch(/^Faltan: .*RNT/)
+        // Un borrador excluido sigue siendo «excluido».
+        expect(listingCredentialSummary("tra_colombia", override({ uuid: "", statusRecordId: 7, isActive: false })).label)
+            .toBe("Excluido · no se reporta")
     })
 })
 

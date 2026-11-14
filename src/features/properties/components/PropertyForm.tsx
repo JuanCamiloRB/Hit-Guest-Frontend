@@ -403,7 +403,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
 
                     <TabsContent value="details" className="space-y-4">
                         <Card>
-                            <CardHeader className="border-b bg-sunk/50">
+                            <CardHeader divided>
                                 <Heading level={2} size="title" className="flex items-center gap-2">
                                     <Icon icon={LayoutDashboard} size="lg" className="text-primary" />
                                     Detalles de la Propiedad
@@ -583,7 +583,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                         </Card>
 
                         <Card>
-                            <CardHeader className="border-b bg-sunk/50">
+                            <CardHeader divided>
                                 <Heading level={2} size="title" className="flex items-center gap-2">
                                     <Icon icon={Link2} size="lg" className="text-primary" />
                                     Identificación Externa

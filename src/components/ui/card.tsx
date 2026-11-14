@@ -31,7 +31,7 @@ const SURFACE_TONE: Record<SurfaceTone, string | undefined> = {
   default: undefined,
   inverse: "border-primary bg-primary text-white",
   /** La tarjeta activa o elegida: borde de selección `primary/30` (Regla 3 del skill). */
-  selected: "border-primary/30",
+  selected: "border-primary/30 bg-primary/5",
   warning: "border-warning/30",
   danger: "border-danger/30",
   sunk: "bg-sunk/50 shadow-none",
@@ -77,7 +77,7 @@ function surfaceData({ tone = "default", flat, floating, interactive, dashed }: 
   }
 }
 
-type SurfaceTag = "div" | "section" | "article" | "li" | "ul" | "aside" | "header" | "form"
+type SurfaceTag = "div" | "span" | "section" | "article" | "li" | "ul" | "aside" | "header" | "form"
 
 interface SurfaceProps extends React.HTMLAttributes<HTMLElement>, SurfaceVariantProps {
   /** La etiqueta semántica (una tarjeta de una lista es `li`, una ficha `article`). */
@@ -116,12 +116,19 @@ function Card({ tone, flat, floating, interactive, dashed, className, ...props }
   )
 }
 
-function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
+/**
+ * `divided`: el encabezado separado del cuerpo por el divisor del sistema
+ * (DS-8e). Antes se escribía `border-b bg-sunk/50` a mano en seis tarjetas;
+ * la franja hundida se retiró: la jerarquía la da el título, no el fondo.
+ */
+function CardHeader({ divided = false, className, ...props }: React.ComponentProps<"div"> & { divided?: boolean }) {
   return (
     <div
       data-slot="card-header"
+      data-divided={divided || undefined}
       className={cn(
-        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto] [.border-b]:pb-6",
+        "@container/card-header grid auto-rows-min grid-rows-[auto_auto] items-start gap-2 px-6 has-data-[slot=card-action]:grid-cols-[1fr_auto]",
+        divided && "border-b border-rule pb-6",
         className
       )}
       {...props}

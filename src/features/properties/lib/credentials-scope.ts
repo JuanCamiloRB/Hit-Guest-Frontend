@@ -92,6 +92,51 @@ export function listingCredentialState(override: ListingAutomationOverride | nul
     return { kind: "unknown" }
 }
 
+export type ListingCredentialSummary = {
+    tone: "success" | "warning" | "idle"
+    label: string
+}
+
+/**
+ * Texto visible del estado, derivado exclusivamente de
+ * `listingCredentialState`. Centralizarlo evita que una pantalla vuelva a
+ * interpretar la presencia de `parameters` como credenciales completas.
+ */
+export function listingCredentialSummary(
+    slug: string | null | undefined,
+    override: ListingAutomationOverride | null | undefined,
+): ListingCredentialSummary {
+    // Un borrador (unidad nueva, `uuid` vacío) es estado local: lo que trae es
+    // exactamente lo que el PM escribió, así que acá SÍ se puede mirar el valor.
+    // Sin esto todo borrador decía «No pudimos confirmar…», que habla de un
+    // backend que todavía no lo vio.
+    if (override && !override.uuid && override.statusRecordId !== LISTING_OVERRIDE_STATUS.INACTIVE) {
+        const params = (override.parameters ?? {}) as Record<string, unknown>
+        const missing = requiredListingCredentialKeys(slug).filter((key) => params[key] == null || params[key] === "")
+        return missing.length > 0
+            ? { tone: "warning", label: `Faltan: ${missing.map((key) => credentialLabel(slug, key)).join(", ")}` }
+            : { tone: "idle", label: "Se envían al guardar la unidad" }
+    }
+    const state = listingCredentialState(override)
+    switch (state.kind) {
+        case "missing":
+            return { tone: "warning", label: LISTING_CREDENTIALS_COPY.noCredentials }
+        case "excluded":
+            return { tone: "idle", label: LISTING_CREDENTIALS_COPY.excluded }
+        case "ready":
+            return { tone: "success", label: "Credenciales configuradas" }
+        case "incomplete": {
+            const labels = state.missing.map((key) => credentialLabel(slug, key))
+            return {
+                tone: "warning",
+                label: labels.length > 0 ? `Faltan: ${labels.join(", ")}` : "Credenciales incompletas",
+            }
+        }
+        case "unknown":
+            return { tone: "warning", label: "No pudimos confirmar las credenciales" }
+    }
+}
+
 /**
  * Textos del modo por alojamiento. En él no existe «heredar»: sin override el
  * alojamiento no se reporta, y apagarlo es excluirlo a propósito. Una sola

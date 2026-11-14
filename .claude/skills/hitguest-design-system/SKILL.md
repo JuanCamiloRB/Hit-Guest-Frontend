@@ -46,10 +46,12 @@ archivo:
 | Pulsable sin forma de botón | `UnstyledButton` | `ui/unstyled-button.tsx` |
 | Enlace de dato | `TextLink` | `ui/text-link.tsx` |
 | Campo | `Input`, `Textarea`, `PasswordInput`, `Select`, `PhoneInputField`, `FileInput` | `ui/input.tsx`, `ui/textarea.tsx`, `ui/password-input.tsx`, `ui/select.tsx`, `ui/phone-input-field.tsx`, `ui/file-input.tsx` |
+| Campo de solo lectura | `ReadOnlyField` (`label`, `value`, `hint`, `locked`) | `ui/read-only-field.tsx` |
 | Error y ayuda de campo | `FormMessage`, `FieldError`, `FieldHint` | `ui/form.tsx` |
 | Etiqueta | `Label` | `ui/label.tsx` |
 | Selección | `Checkbox`, `Radio`, `Switch`, `Tabs` (`TabsList size="default" \| "sm"`) | `ui/checkbox.tsx`, `ui/radio.tsx`, `ui/switch.tsx`, `ui/tabs.tsx` |
 | Interruptor con texto | `SwitchField` (título = nombre del control; texto y error unidos; `variant`, `tone`, `size`) | `ui/switch-field.tsx` |
+| Casilla con texto | `CheckboxField` (`label`, `action` fuera de la etiqueta) | `ui/checkbox-field.tsx` |
 | Superficie | `Surface`, `Card`, `SectionCard` (`tone` inverse/selected/warning/danger/sunk, `interactive`, `dashed`, `flat`, `floating`; el título de una tarjeta es `Heading`, no hay `CardTitle`) | `ui/card.tsx`, `ui/section-card.tsx` |
 | Pantalla | `Page`, `PageHeader`, `PageBreadcrumb` | `ui/page.tsx` |
 | Barra fija al pie (portal) | `BottomBar` | `ui/bottom-bar.tsx` |

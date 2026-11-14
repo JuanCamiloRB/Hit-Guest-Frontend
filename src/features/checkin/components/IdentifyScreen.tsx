@@ -17,7 +17,8 @@ import { checkinService } from "@/features/checkin/services/checkin-service"
 import { useIdentifySession } from "@/features/checkin/hooks/useIdentifySession"
 import { ProgressBar } from "@/features/checkin/components/ProgressBar"
 import { SearchableSelect } from "@/features/checkin/components/SearchableSelect"
-import { ReadOnlyField } from "@/features/checkin/components/ReadOnlyField"
+import { ReadOnlyField } from "@/components/ui/read-only-field"
+import { CheckboxField } from "@/components/ui/checkbox-field"
 import { CatalogService } from "@/features/auth/services/catalog-service"
 import type { IdentifyPayload, IdentifySessionData } from "@/features/checkin/types/checkin"
 import { getVerificationToken } from "@/features/checkin/lib/verification-token"
@@ -36,7 +37,6 @@ import { Button } from "@/components/ui/button"
 import { BottomBar } from "@/components/ui/bottom-bar"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Heading } from "@/components/ui/heading"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Surface } from "@/components/ui/card"
@@ -680,21 +680,20 @@ export function IdentifyScreen({
                 Tus datos están protegidos con cifrado de extremo a extremo y solo se usarán para el check-in.
             </Note>
 
-            <Label variant="plain" className="flex items-start gap-3 p-3 bg-sunk/50 rounded-xl border border-rule cursor-pointer hover:border-primary/30 transition-colors">
-                {/* La casilla del sistema (estados, foco y contraste propios). */}
-                <Checkbox checked={acceptedTerms} onCheckedChange={(value) => setAcceptedTerms(value === true)} className="mt-0.5 size-5" />
-                <span className="text-sm text-ink-2 font-medium select-none">
-                    Acepto los Términos y Condiciones de HIT —{" "}
+            <CheckboxField
+                checked={acceptedTerms}
+                onCheckedChange={(value) => setAcceptedTerms(value === true)}
+                label="Acepto los Términos y Condiciones de HIT"
+                action={
                     <Button asChild variant="link" size="inline"><a
                         href={GUEST_TERMS_URL}
                         target="_blank"
                         rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
                     >
                         Ver términos y condiciones
                     </a></Button>
-                </span>
-            </Label>
+                }
+            />
 
             <BottomBar>
                 <Button type="button" size="xl" onClick={handleVerify} disabled={!isValid || isLoadingCatalogs} className="w-full flex items-center justify-center" loading={isSubmitting} loadingLabel="Verificando...">

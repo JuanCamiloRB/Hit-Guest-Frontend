@@ -35,12 +35,11 @@ import type {
 import { Button } from "@/components/ui/button"
 import { BottomBar } from "@/components/ui/bottom-bar"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Heading } from "@/components/ui/heading"
 import { Card, Surface } from "@/components/ui/card"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
+import { CheckboxField } from "@/components/ui/checkbox-field"
 
 interface RenderedDocument {
     /** The agreement's real uuid, or the literal "guarantee" — the guarantee
@@ -1028,13 +1027,11 @@ export function ContractScreen({ reservationUuid, basePath }: { reservationUuid:
                     </Note>
                 )}
 
-                <Label variant="plain" className="flex items-start gap-3 p-3 bg-sunk/50 rounded-xl border border-rule cursor-pointer hover:border-primary/30 transition-colors">
-                    {/* La casilla del sistema (estados, foco y contraste propios). */}
-                    <Checkbox checked={accepted} onCheckedChange={(value) => setAccepted(value === true)} className="mt-0.5 size-5" />
-                    <span className="text-sm text-ink-2 font-medium select-none">
-                        He leído y acepto los términos del contrato de arrendamiento.
-                    </span>
-                </Label>
+                <CheckboxField
+                    checked={accepted}
+                    onCheckedChange={(value) => setAccepted(value === true)}
+                    label="He leído y acepto los términos del contrato de arrendamiento."
+                />
             </Surface>
             )}
 

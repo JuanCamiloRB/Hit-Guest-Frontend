@@ -46,7 +46,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { listingsService } from "../services/listings-service"
 import { automationService } from "../services/automation-service"
 import { getOverrideFieldSchema } from "../data/automation-definitions"
-import { LISTING_CREDENTIALS_COPY, readCredentialsScope } from "../lib/credentials-scope"
+import { LISTING_CREDENTIALS_COPY, listingCredentialSummary, readCredentialsScope } from "../lib/credentials-scope"
 import { type PropertyAutomation, type ListingAutomationOverride } from "../types/automation"
 import { AutomationOverrideModal } from "./automations/AutomationOverrideModal"
 import { useIdentityProviderCatalog } from "../hooks/useIdentityProviderCatalog"
@@ -1246,6 +1246,9 @@ export function PropertiesUnits() {
                                                         const display = automationDisplay(automation, override ?? null)
                                                         // TRA/SIRE por alojamiento: sin override no se reporta; apagado es excluido.
                                                         const perListing = readCredentialsScope(automation) === "listing"
+                                                        const credentialSummary = perListing
+                                                            ? listingCredentialSummary(slug, override)
+                                                            : null
 
                                                         return (
                                                             <Surface key={automation.uuid} flat tone={isInactive ? "danger" : hasParams ? "selected" : "sunk"} className="flex items-center justify-between gap-3 p-4">
@@ -1258,20 +1261,32 @@ export function PropertiesUnits() {
                                                                                 {display.detail}
                                                                             </Badge>
                                                                         )}
-                                                                        {isInactive && (
+                                                                        {credentialSummary ? (
+                                                                            <StatusPill tone={credentialSummary.tone}>
+                                                                                {credentialSummary.label}
+                                                                            </StatusPill>
+                                                                        ) : isInactive && (
                                                                             perListing
                                                                                 ? <StatusPill tone="idle">{LISTING_CREDENTIALS_COPY.excluded}</StatusPill>
                                                                                 : <StatusPill tone="danger">Desactivada aquí</StatusPill>
                                                                         )}
-                                                                        {hasParams && (
+                                                                        {hasParams && !perListing && (
                                                                             <Badge tone="accent">
                                                                                 Personalizada
                                                                             </Badge>
                                                                         )}
                                                                     </div>
                                                                     <p className="text-xs text-ink-3">
+                                                                        {/* El estado ya está en la pastilla: acá va lo que significa,
+                                                                            no el mismo texto dos veces (el lector lo leía doble). */}
                                                                         {identity
                                                                             ? identity.label
+                                                                            : credentialSummary
+                                                                            ? isInactive
+                                                                                ? LISTING_CREDENTIALS_COPY.excludedHelp
+                                                                                : hasOverride
+                                                                                    ? "Se reporta con las credenciales de este alojamiento."
+                                                                                    : "Sus reservas no se reportan hasta cargarlas."
                                                                             : hasParams
                                                                             ? schema.filter(f => params[f.key] != null && params[f.key] !== "").map(f => f.key).join(", ") || "Parámetros sobreescritos"
                                                                             : isInactive

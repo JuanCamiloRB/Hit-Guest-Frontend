@@ -43,7 +43,7 @@ export function PropertiesAmenities() {
 
     return (
         <Card>
-            <CardHeader className="border-b bg-sunk/50">
+            <CardHeader divided>
                 <Heading level={2} size="title" className="flex items-center gap-2">
                     <Icon icon={Sparkles} size="lg" className="text-primary" />
                     Amenidades de la Propiedad

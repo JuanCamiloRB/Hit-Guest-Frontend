@@ -108,7 +108,7 @@ describe("Surface y Card — variantes", () => {
             </>,
         )
         render(<Surface tone="selected" data-testid="selected">S</Surface>)
-        expect(screen.getByTestId("selected")).toHaveClass("border-primary/30", "bg-card")
+        expect(screen.getByTestId("selected")).toHaveClass("border-primary/30", "bg-primary/5")
         expect(screen.getByTestId("warning")).toHaveClass("border-warning/30", "bg-card")
         expect(screen.getByTestId("danger")).toHaveClass("border-danger/30", "bg-card")
         const sunk = screen.getByTestId("sunk")

@@ -190,16 +190,59 @@ escala (p-3→px-3 py-2, rounded-xl→lg en notas, sunk/30 y /70 → /50).
 Límite documentado: una caja hundida con `text-base` no la ve ninguna de las
 dos reglas.
 
-## Pendiente (backlog, fuera de las cuatro fases)
+## Fase 5 — backlog sin decisiones · HECHA 2026-11-13
 
-- `CardHeader className="border-b bg-sunk/50"` ×5 (franja de cabecera de las
-  tarjetas de propiedad) → variante de `CardHeader`.
-- Campo de solo lectura (`checkin/ReadOnlyField`, `RegisterForm` correo,
-  `DynamicCheckinFields` cargando opciones) → primitiva `ReadOnlyField`.
-- `Label variant="plain" … bg-sunk/50 rounded-xl` (filas de casilla en
-  `IdentifyScreen`/`ContractScreen`): zona seleccionable a mano.
-- `AccessInstructionsPanel:68`: enlaces-fila con hover a mano (`Button asChild`
-  o `Surface interactive` con un enlace adentro).
+| Hueco | Qué se hizo |
+|---|---|
+| `CardHeader className="border-b bg-sunk/50"` ×5 + `border-b border-rule pb-6` ×1 | `CardHeader divided` (divisor del sistema; la franja hundida se retiró: la jerarquía la da el título). El hack `[.border-b]:pb-6` se quitó. `CardHeader`/`CardContent`/`CardFooter` entran en `surface-override` |
+| Campo de solo lectura (`checkin/ReadOnlyField` ×2, correo de `RegisterForm` a mano) | `ui/read-only-field.tsx` (`ReadOnlyField`: `Surface sunk`, `role="textbox"` + `aria-readonly`, `aria-labelledby`, `hint`, `locked`). El de `checkin/` se borra |
+| 3 filas de casilla `Label variant="plain" … bg-sunk/50 hover:border-primary/30` | `CheckboxField` (`ui/checkbox-field.tsx`, hecho en paralelo por otra herramienta y adoptado): `Label htmlFor` explícito, el enlace a los términos fuera de la etiqueta, superficie `sunk` interactiva. Reemplaza la primera versión de esta fase (`Label` envolviendo una `Surface`), que dejaba un enlace anidado dentro de un `<label>` |
+| Enlaces-fila de `AccessInstructionsPanel` | `Link` (`group block`) + `Surface tone="sunk" interactive` adentro. `Label`/`Link`/`a` entran en el collector de `handmade-sunk-surface` |
+| 2 filas de opción con tres estados a mano (`IdentityOverrideSelector`, `ClientUsersDrawer`: deshabilitada sunk + `opacity-70`, elegida `border-primary bg-primary/5`, normal con hover) | `Surface tone={disabled ? "sunk" : checked ? "selected" : "default"} interactive={!disabled}` dentro del `Label`. Sin `opacity` (la superficie hundida ya dice «deshabilitada», §: no opacidad para deshabilitado); la elegida lleva el borde de selección `primary/30` |
+| Fichas de reserva del calendario (enlaces teñidos por estado) | Quedan como están: un enlace teñido es un pulsable, no un aviso; `handmade-notice` deja fuera `Link`/`a` |
+
+**Auditoría del árbol combinado (2026-11-14).** Otra herramienta trabajó en
+paralelo sobre el mismo árbol (`CheckboxField`, validación de credenciales del
+modal, accesibilidad de `ParameterField` = A5); el usuario indicó adoptarlo.
+Un revisor independiente revisó el diff combinado: 15 hallazgos, **2 bugs
+reales en la validación de credenciales**, corregidos con pruebas que fallan
+sin el arreglo (comprobado revirtiendo la lógica):
+
+1. **Bug** — reabrir un borrador (unidad nueva) y guardar sin tocar el secreto
+   lo perdía: el secreto no se precarga y la rama del borrador no lo
+   arrastraba; el POST posterior salía sin token (422 en modo por
+   alojamiento, pérdida silenciosa en modo propiedad). Ahora el borrador
+   arrastra sus secretos locales.
+2. **Bug** — escribir en un secreto y borrarlo enviaba `token: null` y borraba
+   el guardado, contra el aviso «déjalo vacío para conservarlo». Vacío ya
+   nunca es `null` en un secreto.
+3. **Seguridad** — los campos secretos vacíos invitaban al gestor de
+   contraseñas a rellenar el login de HIT (SIRE: número + clave = login);
+   eso marcaba el campo y lo enviaba como credencial. `autoComplete=
+   "new-password"` + `data-1p-ignore`/`data-lpignore`.
+4. **Bug** — una clave faltante sin campo (desconocida o en camelCase) dejaba
+   un error sin campo que enfocar y Guardar no hacía nada: se exige solo lo
+   que el modal muestra (normalizando camelCase), lo demás lo valida el 422.
+
+También: `CheckboxField` vuelve a activarse desde toda la fila de texto
+(`block`), no admite un `ref` externo que rompía el clic, y deshabilitado se
+ve en ink-3; `tone="selected"` recupera el tinte `primary/5` (la fila elegida
+apenas se distinguía); el borrador de credenciales dice «Se envían al guardar
+la unidad» o «Faltan: …» en vez de «No pudimos confirmar…»; la fila de la
+unidad ya no repite el estado dos veces; `aria-required` y nombre por fila en
+`ParameterField`; sin hover en usuarios mientras `busy`.
+
+⚠️ **Abierto con backend, no resoluble en front:** conservar un secreto
+OMITIÉNDOLO del `PATCH /listing-automation-overrides/{uuid}` presupone que el
+backend hace merge de `parameters`. Para `PATCH /property-automations` el skill
+dice que **reemplaza** el objeto entero; para overrides no está verificado.
+Si también reemplaza, cambiar el RNT borraría el token guardado. Verificar con
+curl antes de desplegar (registrado en `hitguest-api-contracts`).
+
+## Pendiente (backlog con decisión)
+
+- `DynamicCheckinFields:159`: `LoadingState` con clases de campo (cargando
+  opciones) → ¿`ReadOnlyField` con un `Spinner` o `Skeleton` con forma de campo?
 - `ReservationCostsList:302` total en `text-brand-navy` (color de marca como
   énfasis de tabla; su prueba lo fija).
 - El wordmark «Didit.» tipografiado en `VerifyScreen` → marca en

@@ -13,7 +13,12 @@ import type { PropertyAutomation, ListingAutomationOverride } from "../../types/
 import { AutomationOverrideModal, type ListingMeta } from "./AutomationOverrideModal"
 import { useIdentityProviderCatalog } from "../../hooks/useIdentityProviderCatalog"
 import { identityOverrideSummary, isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
-import { LISTING_CREDENTIALS_COPY, readCredentialsScope } from "../../lib/credentials-scope"
+import {
+    LISTING_CREDENTIALS_COPY,
+    listingCredentialState,
+    listingCredentialSummary,
+    readCredentialsScope,
+} from "../../lib/credentials-scope"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { EmptyState } from "@/components/ui/empty-state"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
@@ -94,9 +99,18 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
         return entry?.state === "loaded" ? [entry] : []
     })
     // En identidad, un override que hereda no cuenta como «configurada».
-    const overrideCount = loadedEntries.filter((entry) => entry.override != null && (
-        !isIdentity || identityOverrideSummary(entry.override, automation, identityCatalog.catalog).tone !== "inherit"
-    )).length
+    const overrideCount = loadedEntries.filter((entry) => {
+        if (perListing) return listingCredentialState(entry.override).kind === "ready"
+        return entry.override != null && (
+            !isIdentity || identityOverrideSummary(entry.override, automation, identityCatalog.catalog).tone !== "inherit"
+        )
+    }).length
+    const unconfirmedCredentialCount = perListing
+        ? loadedEntries.filter((entry) => listingCredentialState(entry.override).kind === "unknown").length
+        : 0
+    const incompleteCredentialCount = perListing
+        ? loadedEntries.filter((entry) => listingCredentialState(entry.override).kind === "incomplete").length
+        : 0
     const failedCount = listings.filter((listing) => entries[listing.uuid]?.state === "failed").length
     const allLoaded = loadedEntries.length === listings.length
     const loading = loadingUuids.size > 0
@@ -118,9 +132,19 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                             {overrideCount} configurada{overrideCount > 1 ? "s" : ""}
                         </Badge>
                     )}
-                    {listings.length > 0 && overrideCount === 0 && allLoaded && (
+                    {listings.length > 0 && overrideCount === 0 && allLoaded && unconfirmedCredentialCount === 0 && incompleteCredentialCount === 0 && (
                         <span className="text-xs text-ink-3 font-normal">
                             {perListing ? LISTING_CREDENTIALS_COPY.noneConfigured : "Todas heredan de la propiedad"}
+                        </span>
+                    )}
+                    {unconfirmedCredentialCount > 0 && allLoaded && (
+                        <span className="text-xs text-warning font-normal">
+                            Estado sin confirmar en {unconfirmedCredentialCount} {unconfirmedCredentialCount === 1 ? "unidad" : "unidades"}
+                        </span>
+                    )}
+                    {incompleteCredentialCount > 0 && allLoaded && (
+                        <span className="text-xs text-warning font-normal">
+                            {incompleteCredentialCount} {incompleteCredentialCount === 1 ? "unidad incompleta" : "unidades incompletas"}
                         </span>
                     )}
                 </div>
@@ -165,6 +189,9 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                 const params = hasOverride ? (override.parameters ?? {}) : {}
                                 const hasParams = identity ? identity.tone === "custom" : hasOverride && override.isActive &&
                                     Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
+                                const credentialSummary = perListing
+                                    ? listingCredentialSummary(slug, override)
+                                    : null
                                 // Ruteo de contrato propio de la unidad: no son campos de este panel.
                                 const ownContract = hasOverride && override.isActive && (
                                     override.contractRouting?.routingSource === "listing" || params.contract_mode != null
@@ -228,6 +255,10 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                 <StatusPill tone={identity.tone === "disabled" ? "danger" : identity.tone === "custom" ? "accent" : "idle"} className="mt-0.5">
                                                     {identity.label}
                                                 </StatusPill>
+                                            ) : credentialSummary ? (
+                                                <StatusPill tone={credentialSummary.tone} className="mt-0.5">
+                                                    {credentialSummary.label}
+                                                </StatusPill>
                                             ) : isDisabledHere ? (
                                                 perListing
                                                     ? <StatusPill tone="idle" className="mt-0.5">{LISTING_CREDENTIALS_COPY.excluded}</StatusPill>
@@ -258,8 +289,6 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                 // override y su estado manda (contrato de overrides). Se
                                                 // quita con «Volver a heredar» en el modal.
                                                 <span className="text-xs text-ink-3">Override activo sin parámetros propios</span>
-                                            ) : perListing ? (
-                                                <StatusPill tone="warning" className="mt-0.5">{LISTING_CREDENTIALS_COPY.noCredentials}</StatusPill>
                                             ) : (
                                                 <span className="text-xs text-ink-3">Hereda de la propiedad</span>
                                             )}

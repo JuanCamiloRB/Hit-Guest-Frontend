@@ -4,6 +4,8 @@ import * as React from "react"
 import { Mail, User, Building2, ArrowLeft, CheckCircle2, MapPin, Gift } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Note } from "@/components/ui/note"
+import { ReadOnlyField } from "@/components/ui/read-only-field"
+import { CheckboxField } from "@/components/ui/checkbox-field"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,8 +29,6 @@ import { catalogService, CatalogOption } from "@/features/auth/services/catalog-
 import { PhoneInputField } from "@/components/ui/phone-input-field"
 import { Honeypot } from "./Honeypot"
 import Link from "next/link"
-import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
 import { IconBadge } from "@/components/ui/icon-badge"
@@ -108,10 +108,7 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             Tu cuenta ya está creada. Te enviamos un correo de bienvenida.
                         </p>
                     </div>
-                    <Surface tone="sunk" className="w-full px-4 py-3 text-left">
-                        <p className="text-xs text-ink-3">Correo de la cuenta</p>
-                        <p className="mt-0.5 break-all text-sm font-semibold text-ink">{registeredEmail}</p>
-                    </Surface>
+                    <ReadOnlyField label="Correo de la cuenta" value={registeredEmail} locked={false} className="w-full text-left" />
                 </div>
 
                 <div className="grid gap-2">
@@ -442,21 +439,20 @@ export function RegisterForm({ className, ...props }: UserRegisterFormProps) {
                             />
                         </div>
 
-                        <Label variant="plain" className="flex items-start gap-3 p-3 bg-sunk/30 rounded-xl border border-rule/50 cursor-pointer hover:border-primary/30 transition-colors">
-                            {/* La casilla del sistema (estados, foco y contraste propios). */}
-                            <Checkbox checked={acceptedTerms} onCheckedChange={(value) => setAcceptedTerms(value === true)} className="mt-0.5 size-5" />
-                            <span className="text-sm text-ink-3 font-medium select-none">
-                                Acepto los Términos y Condiciones de HIT —{" "}
+                        <CheckboxField
+                            checked={acceptedTerms}
+                            onCheckedChange={(value) => setAcceptedTerms(value === true)}
+                            label="Acepto los Términos y Condiciones de HIT"
+                            action={
                                 <Button asChild variant="link" size="inline"><a
                                     href={ACCOUNT_TERMS_URL}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    onClick={(e) => e.stopPropagation()}
                                 >
                                     Ver términos y condiciones
                                 </a></Button>
-                            </span>
-                        </Label>
+                            }
+                        />
 
                         <div className="pt-2">
                             <Button size="lg" type="submit" disabled={!acceptedTerms} className="w-full" loading={isLoading}>

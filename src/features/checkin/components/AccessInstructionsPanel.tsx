@@ -65,8 +65,9 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
                             <Link
                                 key={document.uuid}
                                 href={`/checkin/${portal.reservation.uuid}/documents/${document.uuid}`}
-                                className="flex items-center justify-between gap-3 rounded-xl border border-rule bg-sunk/50 px-4 py-3 transition-colors hover:border-primary/20 hover:bg-primary/5"
+                                className="group block rounded-xl outline-none focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                             >
+                                <Surface tone="sunk" interactive className="flex items-center justify-between gap-3 px-4 py-3">
                                 <span className="flex min-w-0 items-center gap-3">
                                     <Icon icon={FileText} className="text-primary" />
                                     <span className="truncate text-sm font-semibold text-ink-2">
@@ -74,6 +75,7 @@ export function AccessInstructionsPanel({ portal, unlocked }: AccessInstructions
                                     </span>
                                 </span>
                                 <span className="shrink-0 text-xs font-bold text-primary">Ver</span>
+                            </Surface>
                             </Link>
                         ))}
 

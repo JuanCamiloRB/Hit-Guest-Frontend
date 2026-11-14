@@ -99,7 +99,7 @@ export function SettingsContent() {
             {/* Content Area */}
             <main className="flex-1 w-full min-w-0">
                 <Card className="overflow-hidden">
-                    <CardHeader className="border-b border-rule pb-6">
+                    <CardHeader divided>
                         <Heading level={2} size="title">
                             {filteredTabs.find(t => t.id === activeTab)?.label}
                         </Heading>

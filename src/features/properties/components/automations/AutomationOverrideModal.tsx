@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Building2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Note } from "@/components/ui/note"
@@ -50,7 +50,12 @@ import {
     type OverrideOperation,
 } from "../../lib/identity-listing-override"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
-import { LISTING_CREDENTIALS_COPY, readCredentialsScope } from "../../lib/credentials-scope"
+import {
+    LISTING_CREDENTIALS_COPY,
+    listingCredentialState,
+    readCredentialsScope,
+    requiredListingCredentialKeys,
+} from "../../lib/credentials-scope"
 
 /** Minimal listing info needed to identify and label a unit. */
 export interface ListingMeta {
@@ -149,6 +154,9 @@ export function AutomationOverrideModal({
 
     const [isActive, setIsActive] = useState(override ? override.isActive : true)
     const [schemaValues, setSchemaValues] = useState<Record<string, unknown>>({})
+    const [dirtySchemaKeys, setDirtySchemaKeys] = useState<ReadonlySet<string>>(new Set())
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+    const contentRef = useRef<HTMLDivElement>(null)
 
     // Automation backing this override (edit: from override; create: from selection)
     const activePa = useMemo<PropertyAutomation | undefined>(() => {
@@ -173,6 +181,7 @@ export function AutomationOverrideModal({
     // TRA/SIRE con credenciales por alojamiento (contrato 2026-11-10): no existe
     // «heredar». Sin override el alojamiento no se reporta; apagado, se excluye.
     const perListing = readCredentialsScope(activePa ?? override?.propertyAutomation ?? null) === "listing"
+    const credentialState = perListing ? listingCredentialState(override) : null
     const catalog = useIdentityProviderCatalog(open && isIdentity)
     const [identityChoice, setIdentityChoice] = useState<IdentityChoice>("inherit")
     const [identityError, setIdentityError] = useState<string | null>(null)
@@ -207,8 +216,16 @@ export function AutomationOverrideModal({
         if (!open) return
         setSelectedPaUuid(override?.propertyAutomationUuid ?? lockedPropertyAutomationUuid ?? "")
         setIsActive(override ? override.isActive : true)
-        // Seed the known provider fields from the saved override parameters.
-        setSchemaValues((override?.parameters as Record<string, unknown>) ?? {})
+        // Los secretos nunca se precargan en el DOM. Si el backend devuelve un
+        // valor real o enmascarado, dejarlo en un input permitiría verlo o
+        // reenviarlo como si fuera la credencial. Vacío significa «sin cambio».
+        const saved = (override?.parameters as Record<string, unknown>) ?? {}
+        const passwordKeys = new Set(getOverrideFieldSchema(
+            override?.propertyAutomation?.provider?.parameters?.slug ?? slugOf(activePa),
+        ).filter((field) => field.type === "password").map((field) => field.key))
+        setSchemaValues(Object.fromEntries(Object.entries(saved).filter(([key]) => !passwordKeys.has(key))))
+        setDirtySchemaKeys(new Set())
+        setFieldErrors({})
         setIdentityChoice(readIdentityOverrideState(override, catalog.catalog).choice)
         setIdentityError(null)
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -218,6 +235,8 @@ export function AutomationOverrideModal({
     useEffect(() => {
         if (isEdit || !open) return
         setSchemaValues({})
+        setDirtySchemaKeys(new Set())
+        setFieldErrors({})
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedPaUuid])
 
@@ -228,7 +247,19 @@ export function AutomationOverrideModal({
         const allowNullClears = isEdit && !draftMode
 
         for (const key of schemaKeys) {
+            const field = fieldSchema.find((candidate) => candidate.key === key)
             const value = schemaValues[key]
+            // Un secreto vacío significa «sin cambio», también si el PM escribió y
+            // borró: el aviso dice «déjalo vacío para conservarlo», así que vacío
+            // nunca se convierte en `null` (eso borraba el secreto guardado).
+            if (field?.type === "password" && isEdit && (!dirtySchemaKeys.has(key) || isEmptyValue(value))) {
+                // En un borrador el secreto solo existe en este estado local (no
+                // se precarga en el DOM): se arrastra tal cual, o se perdía al
+                // reabrir y guardar, y el POST posterior salía sin él.
+                const kept = override?.parameters?.[key]
+                if (draftMode && !isEmptyValue(kept)) out[key] = kept
+                continue
+            }
             if (!isEmptyValue(value)) {
                 out[key] = value
             } else if (allowNullClears && override?.parameters && key in override.parameters) {
@@ -237,6 +268,34 @@ export function AutomationOverrideModal({
         }
 
         return Object.keys(out).length === 0 ? null : out
+    }
+
+    const requiredForThisSave = useMemo(() => {
+        if (!perListing || !isActive) return new Set<string>()
+        // Solo se exige lo que este modal muestra: una clave que no tiene campo
+        // (o que llega en camelCase) dejaba un error sin campo que enfocar y el
+        // guardado no hacía nada, sin mensaje. Lo demás lo valida el backend (422).
+        const rendered = (keys: Iterable<string>) => new Set(
+            [...keys].map((key) => key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)).filter((key) => schemaKeys.includes(key)),
+        )
+        if (!isEdit) return rendered(requiredListingCredentialKeys(slug))
+        if (draftMode) {
+            // Un borrador es local: se sabe qué tiene. Lo que ya trae (un secreto
+            // que no se precarga) no se vuelve a pedir.
+            return rendered(requiredListingCredentialKeys(slug).filter((key) => isEmptyValue(override?.parameters?.[key])))
+        }
+        if (credentialState?.kind === "incomplete" && credentialState.missing.length > 0) {
+            return rendered(credentialState.missing)
+        }
+        // Con credenciales confirmadas o metadatos ausentes no se obliga a
+        // reescribir secretos que el backend puede haber omitido.
+        return new Set<string>()
+    }, [credentialState, draftMode, isActive, isEdit, override, perListing, schemaKeys, slug])
+
+    const focusFirstInvalidField = () => {
+        requestAnimationFrame(() => {
+            contentRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus()
+        })
     }
 
     /**
@@ -311,7 +370,18 @@ export function AutomationOverrideModal({
             toast.error("Selecciona una automatización")
             return
         }
+        const localErrors = Object.fromEntries(
+            [...requiredForThisSave]
+                .filter((key) => isEmptyValue(schemaValues[key]))
+                .map((key) => [key, "Este campo es obligatorio para reportar este alojamiento."]),
+        )
+        if (Object.keys(localErrors).length > 0) {
+            setFieldErrors(localErrors)
+            focusFirstInvalidField()
+            return
+        }
         setSaving(true)
+        setFieldErrors({})
         try {
             const statusRecordId = isActive ? LISTING_OVERRIDE_STATUS.ACTIVE : LISTING_OVERRIDE_STATUS.INACTIVE
             // Contrato: sin campos en este modal, `parameters: null` borraría el
@@ -379,8 +449,19 @@ export function AutomationOverrideModal({
             onSaved(saved)
             onClose()
         } catch (err: any) {
-            const msg = err?.data?.message || err?.message || "Error al guardar el override"
-            toast.error(msg)
+            const backendFieldErrors = Object.fromEntries(
+                fieldSchema.flatMap((field) => {
+                    const message = fieldErrorMessage(err, `parameters.${field.key}`, field.key)
+                    return message ? [[field.key, message]] : []
+                }),
+            )
+            if (Object.keys(backendFieldErrors).length > 0) {
+                setFieldErrors(backendFieldErrors)
+                focusFirstInvalidField()
+            } else {
+                const msg = err?.data?.message || err?.message || "Error al guardar el override"
+                toast.error(msg)
+            }
         } finally {
             setSaving(false)
         }
@@ -410,7 +491,7 @@ export function AutomationOverrideModal({
 
     return (
         <Dialog open={open} onOpenChange={v => !v && onClose()}>
-            <DialogContent className={cn("max-h-[88vh] overflow-y-auto", isContract ? "sm:max-w-3xl" : "sm:max-w-lg")}>
+            <DialogContent ref={contentRef} className={cn("max-h-[88vh] overflow-y-auto", isContract ? "sm:max-w-3xl" : "sm:max-w-lg")}>
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <Icon icon={Building2} className="text-primary" />
@@ -540,16 +621,40 @@ export function AutomationOverrideModal({
                                 // placeholder se ve en claro aunque el campo sea de contraseña.
                                 // En modo por alojamiento no se usa el de la propiedad: sin esa pista.
                                 const propertyHasValue = !perListing && !isEmptyValue(baseParams?.[field.key])
+                                const overrideHasSecretValue = !isEmptyValue(override?.parameters?.[field.key])
+                                const alreadyConfiguredSecret = isEdit
+                                    && field.type === "password"
+                                    && (overrideHasSecretValue
+                                        || credentialState?.kind === "ready"
+                                        || (credentialState?.kind === "incomplete" && !credentialState.missing.includes(field.key)))
+                                const required = requiredForThisSave.has(field.key)
                                 return (
                                     <div key={field.key} className="space-y-1">
                                         <ParameterField
                                             schema={
-                                                field.type !== "array" && field.type !== "select" && propertyHasValue
-                                                    ? { ...field, placeholder: INHERITED_VALUE_PLACEHOLDER }
-                                                    : field
+                                                {
+                                                    ...field,
+                                                    required,
+                                                    ...(field.type !== "array" && field.type !== "select" && propertyHasValue
+                                                        ? { placeholder: INHERITED_VALUE_PLACEHOLDER }
+                                                        : alreadyConfiguredSecret
+                                                            ? { placeholder: "Ya configurado · escribe para reemplazarlo" }
+                                                            : {}),
+                                                }
                                             }
                                             value={schemaValues[field.key]}
-                                            onChange={v => setSchemaValues(prev => ({ ...prev, [field.key]: v }))}
+                                            onChange={v => {
+                                                setDirtySchemaKeys((prev) => new Set([...prev, field.key]))
+                                                setSchemaValues(prev => ({ ...prev, [field.key]: v }))
+                                                setFieldErrors((prev) => {
+                                                    if (!(field.key in prev)) return prev
+                                                    const next = { ...prev }
+                                                    delete next[field.key]
+                                                    return next
+                                                })
+                                            }}
+                                            error={fieldErrors[field.key]}
+                                            hint={alreadyConfiguredSecret ? "Ya configurado; déjalo vacío para conservarlo." : undefined}
                                         />
                                     </div>
                                 )

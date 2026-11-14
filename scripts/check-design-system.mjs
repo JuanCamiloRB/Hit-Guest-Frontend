@@ -430,7 +430,7 @@ const rules = [
         // DS-8c: la superficie es de la primitiva (`tone`, `interactive`, `dashed`,
         // `flat`, `floating`). Desde la pantalla solo layout: relleno, overflow, grilla.
         id: "surface-override",
-        description: "pisa la superficie de un Card, Surface o SectionCard; elige tone/interactive/dashed/flat (solo se permite layout)",
+        description: "pisa la superficie de un Card, Surface, SectionCard o sus partes (CardHeader divided, CardContent, CardFooter); elige tone/interactive/dashed/flat/divided (solo se permite layout)",
         // Layout que sí se permite: un divisor (`border-t`, `border-b-0`) y un radio
         // recortado contra un borde (`rounded-t-none`). Opacidad y escala no son layout.
         pattern: /(?<![\w-])(?:[a-z-]+:)*(?!border-[trblxy](?:-\d+)?(?![\w-]))(?!rounded-(?:[trbl]|tl|tr|bl|br)-none(?![\w-]))(?:bg|border|rounded|shadow|ring|outline|backdrop-blur|opacity|scale)(?:-[\w/\[\].%-]+)?(?![\w-])/g,
@@ -625,14 +625,20 @@ function inspect() {
                 if (tag === "Heading") headingClasses.push(...classTexts(node))
                 if (tag === "TabsList" || tag === "TabsTrigger") tabsClasses.push(...classTexts(node))
                 if (tag === "Avatar" || tag === "AvatarFallback" || tag === "IconBadge") labelClasses.push(...classTexts(node))
-                if (tag === "Card" || tag === "Surface" || tag === "SectionCard") surfaceClasses.push(...classTexts(node))
+                if (/^(?:Card|Surface|SectionCard|CardHeader|CardContent|CardFooter)$/.test(tag)) surfaceClasses.push(...classTexts(node))
                 if (tag === "DialogTitle" || tag === "SheetTitle" || tag === "AlertDialogTitle") titleClasses.push(...classTexts(node))
-                if (/^(?:div|p|span|section|aside|li|article|header|form|dd|dt|strong)$/.test(tag)) {
+                // `Label`, `Link` y `a` entran por el panel hundido a mano (una fila de casilla,
+                // un enlace-fila). OJO: también pasan por overlay, skeleton y handmade-card, a
+                // propósito: un `<Link className="rounded-xl border bg-card">` es una tarjeta a mano
+                // y un `<a className="fixed inset-0">` una capa sin foco atrapado. Hoy no hay ninguno.
+                if (/^(?:div|p|span|section|aside|li|article|header|form|dd|dt|strong|Label|Link|a)$/.test(tag)) {
                     const joined = ` ${classTexts(node).join(" ")} `
                     // Aviso: fondo de estado pleno (sin opacidad) con borde. Las filas
                     // que solo se tiñen (`bg-danger-sunk/40`) son estado de fila, no aviso.
+                    // Un enlace teñido por estado (la ficha de una reserva en el calendario) es
+                    // un pulsable, no un aviso: `Link`/`a` quedan fuera de este collector.
                     if (/\sbg-(?:(?:success|warning|danger|info)-sunk|(?:success|warning|danger|info|destructive)\/\d+)\s/.test(joined) && /\sborder(?:-[a-z]+\/\d+)?\s/.test(joined)
-                        && !/\srounded-full\s/.test(joined)) {
+                        && !/\srounded-full\s/.test(joined) && tag !== "Link" && tag !== "a") {
                         noticeElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
                     }
                     // Error de campo: texto chico en rojo, sin fondo de aviso.
@@ -658,7 +664,9 @@ function inspect() {
                     // Un nodo que recibe foco por dentro (`focus-within:`) es el host de un campo
                     // ajeno (Stripe monta ahí su iframe): es un campo, no un panel, y no se envuelve.
                     if (sunkBox && /\srounded-xl\s/.test(joined) && /\sborder(?:-rule(?:\/\d+)?)?\s/.test(joined) && /\sp[xy]?-\d/.test(joined)
-                        && /^(?:div|li|section|article)$/.test(tag) && !/\stext-(?:xs|sm|base)\s/.test(joined) && !/\sfocus-within:/.test(joined)) {
+                        // También una fila de casilla (`Label`) o un enlace-fila (`Link`, `a`) con
+                        // superficie hundida: la semántica se queda afuera y la superficie va adentro.
+                        && /^(?:div|li|section|article|Label|Link|a)$/.test(tag) && !/\stext-(?:xs|sm|base)\s/.test(joined) && !/\sfocus-within:/.test(joined)) {
                         sunkSurfaceElements.push(`<${tag} class="${joined.trim().slice(0, 60)}">`)
                     }
                     // Cifra protagonista: grande, bold y con dígitos tabulares o tracking.

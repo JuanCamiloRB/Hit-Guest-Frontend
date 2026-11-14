@@ -6,6 +6,7 @@ import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Label } from "@/components/ui/label"
+import { Surface } from "@/components/ui/card"
 import { LoadingState } from "@/components/ui/loading-state"
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet"
 import { StatusPill } from "@/components/ui/status-pill"
@@ -246,36 +247,30 @@ function DrawerBody({
                                 return (
                                     <Label variant="plain"
                                         key={u.uuid}
-                                        className={cn(
-                                            "flex items-start gap-3 rounded-xl border px-4 py-3 transition-colors",
-                                            !u.canOpenSession
-                                                ? "cursor-not-allowed border-rule bg-sunk/50 opacity-70"
-                                                : checked
-                                                    ? "cursor-pointer border-primary bg-primary/5"
-                                                    : "cursor-pointer border-rule hover:border-input-hover",
-                                        )}
+                                        className={cn("group block", !u.canOpenSession ? "cursor-not-allowed" : "cursor-pointer")}
                                     >
-                                        <Radio
-
-                                            name="support-user"
-                                            value={u.uuid}
-                                            checked={checked}
-                                            disabled={!u.canOpenSession || busy}
-                                            onChange={() => { setSelectedUuid(u.uuid); setError(null) }}
-                                            className="mt-1 accent-primary"
-                                        />
-                                        <span className="min-w-0 flex-1">
-                                            <span className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ink">
-                                                <span className="truncate" title={u.name}>{u.name}</span>
-                                                {u.isAccountOwner && <StatusPill tone="info">Dueño</StatusPill>}
+                                        <Surface as="span" tone={!u.canOpenSession ? "sunk" : checked ? "selected" : "default"} interactive={u.canOpenSession && !busy} className="flex items-start gap-3 px-4 py-3">
+                                                <Radio
+                                                name="support-user"
+                                                value={u.uuid}
+                                                checked={checked}
+                                                disabled={!u.canOpenSession || busy}
+                                                onChange={() => { setSelectedUuid(u.uuid); setError(null) }}
+                                                className="mt-1 accent-primary"
+                                            />
+                                            <span className="min-w-0 flex-1">
+                                                <span className={cn("flex flex-wrap items-center gap-2 text-sm font-semibold", u.canOpenSession ? "text-ink" : "text-ink-3")}>
+                                                    <span className="truncate" title={u.name}>{u.name}</span>
+                                                    {u.isAccountOwner && <StatusPill tone="info">Dueño</StatusPill>}
+                                                </span>
+                                                <span className={cn("block truncate text-sm", u.canOpenSession ? "text-ink-2" : "text-ink-3")}>
+                                                    {[u.email, role].filter(Boolean).join(" · ")}
+                                                </span>
+                                                {!u.canOpenSession && (
+                                                    <span className="block text-xs text-warning">{BLOCKED_USER_HINT}</span>
+                                                )}
                                             </span>
-                                            <span className="block truncate text-sm text-ink-2">
-                                                {[u.email, role].filter(Boolean).join(" · ")}
-                                            </span>
-                                            {!u.canOpenSession && (
-                                                <span className="block text-xs text-warning">{BLOCKED_USER_HINT}</span>
-                                            )}
-                                        </span>
+                                        </Surface>
                                     </Label>
                                 )
                             })}

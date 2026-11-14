@@ -10,6 +10,7 @@ import type { IdentityChoice } from "../../lib/identity-listing-override"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Radio } from "@/components/ui/radio"
 import { Label } from "@/components/ui/label"
+import { Surface } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/loading-state"
 import { FieldError } from "@/components/ui/form"
 
@@ -94,34 +95,30 @@ export function IdentityOverrideSelector({
                 return (
                     <Label variant="plain"
                         key={choice}
-                        className={cn(
-                            "flex items-start gap-3 rounded-xl border px-4 py-3 transition-colors",
-                            isDisabled
-                                ? "cursor-not-allowed border-rule bg-sunk/50 opacity-70"
-                                : checked
-                                    ? "cursor-pointer border-primary bg-primary/5"
-                                    : "cursor-pointer border-rule hover:border-input-hover",
-                        )}
+                        className={cn("group block", isDisabled ? "cursor-not-allowed" : "cursor-pointer")}
                     >
-                        <Radio
-
-                            name="identity-override"
-                            value={choice}
-                            checked={checked}
-                            disabled={isDisabled}
-                            onChange={() => onChange(choice)}
-                            className="mt-1 accent-primary"
-                        />
-                        <span className="min-w-0 flex-1">
-                            <span className="block text-sm font-semibold text-ink">{OPTION_COPY[choice].label}</span>
-                            {description && <span className="block text-sm text-ink-2">{description}</span>}
-                            {blocked && (
-                                <span className="mt-0.5 flex items-center gap-1 text-xs text-warning">
-                                    {catalog.status === "loading" && canOverrideLevel && <Spinner size="xs" />}
-                                    {blocked}
-                                </span>
-                            )}
-                        </span>
+                        {/* `span`: dentro de un <label> solo cabe contenido de frase. Deshabilitada =
+                            superficie hundida + tinta ink-3, sin opacidad. */}
+                        <Surface as="span" tone={isDisabled ? "sunk" : checked ? "selected" : "default"} interactive={!isDisabled} className="flex items-start gap-3 px-4 py-3">
+                            <Radio
+                                name="identity-override"
+                                value={choice}
+                                checked={checked}
+                                disabled={isDisabled}
+                                onChange={() => onChange(choice)}
+                                className="mt-1 accent-primary"
+                            />
+                            <span className="min-w-0 flex-1">
+                                <span className={cn("block text-sm font-semibold", isDisabled ? "text-ink-3" : "text-ink")}>{OPTION_COPY[choice].label}</span>
+                                {description && <span className={cn("block text-sm", isDisabled ? "text-ink-3" : "text-ink-2")}>{description}</span>}
+                                {blocked && (
+                                    <span className="mt-0.5 flex items-center gap-1 text-xs text-warning">
+                                        {catalog.status === "loading" && canOverrideLevel && <Spinner size="xs" />}
+                                        {blocked}
+                                    </span>
+                                )}
+                            </span>
+                        </Surface>
                     </Label>
                 )
             })}

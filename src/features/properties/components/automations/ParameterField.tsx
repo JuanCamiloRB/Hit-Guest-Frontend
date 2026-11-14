@@ -1,5 +1,6 @@
 "use client"
 
+import { useId } from "react"
 import { Plus, Trash2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Surface } from "@/components/ui/card"
@@ -16,14 +17,22 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import type { ParameterFieldSchema } from "../../types/automation"
 import { Textarea } from "@/components/ui/textarea"
+import { FieldError, FieldHint } from "@/components/ui/form"
 
 interface Props {
     schema: ParameterFieldSchema
     value: any
     onChange: (v: any) => void
+    error?: string | null
+    hint?: string
 }
 
-export function ParameterField({ schema, value, onChange }: Props) {
+export function ParameterField({ schema, value, onChange, error, hint }: Props) {
+    const generatedId = useId()
+    const inputId = `${generatedId}-input`
+    const hintId = `${generatedId}-hint`
+    const errorId = `${generatedId}-error`
+    const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined
 
     if (schema.type === "array") {
         const items: any[] = Array.isArray(value) ? value : []
@@ -47,7 +56,7 @@ export function ParameterField({ schema, value, onChange }: Props) {
                             <span className="text-xs font-semibold text-ink-3">
                                 Elemento {i + 1}
                             </span>
-                            <Button type="button" variant="ghost-destructive" size="icon-sm" onClick={() => removeItem(i)} aria-label="Quitar">
+                            <Button type="button" variant="ghost-destructive" size="icon-sm" onClick={() => removeItem(i)} aria-label={`Quitar elemento ${i + 1}`}>
                                 <Icon icon={Trash2} />
                             </Button>
                         </div>
@@ -70,6 +79,8 @@ export function ParameterField({ schema, value, onChange }: Props) {
                 >
                     <Icon icon={Plus} /> Agregar {schema.label}
                 </Button>
+                {hint && <FieldHint id={hintId} compact>{hint}</FieldHint>}
+                <FieldError id={errorId} compact>{error}</FieldError>
             </div>
         )
     }
@@ -93,12 +104,16 @@ export function ParameterField({ schema, value, onChange }: Props) {
                 {items.map((item, i) => (
                     <div key={i} className="flex items-center gap-2">
                         <Input
+                            aria-label={`${schema.label} ${i + 1}`}
+                            aria-required={schema.required && i === 0 ? true : undefined}
+                            aria-invalid={error ? true : undefined}
+                            aria-describedby={describedBy}
                             type={schema.itemType === "email" ? "email" : "text"}
                             value={item}
                             onChange={e => updateItem(i, e.target.value)}
                             placeholder={schema.placeholder}
                         />
-                        <Button type="button" variant="ghost-destructive" size="icon-sm" onClick={() => removeItem(i)} aria-label="Quitar" className="shrink-0">
+                        <Button type="button" variant="ghost-destructive" size="icon-sm" onClick={() => removeItem(i)} aria-label={`Quitar ${schema.label} ${i + 1}`} className="shrink-0">
                             <Icon icon={Trash2} />
                         </Button>
                     </div>
@@ -112,6 +127,8 @@ export function ParameterField({ schema, value, onChange }: Props) {
                 >
                     <Icon icon={Plus} /> Agregar {schema.label.toLowerCase()}
                 </Button>
+                {hint && <FieldHint id={hintId} compact>{hint}</FieldHint>}
+                <FieldError id={errorId} compact>{error}</FieldError>
             </div>
         )
     }
@@ -119,17 +136,23 @@ export function ParameterField({ schema, value, onChange }: Props) {
     if (schema.type === "textarea") {
         return (
             <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-ink-2">
+                <Label htmlFor={inputId} className="text-sm font-semibold text-ink-2">
                     {schema.label}
                     {schema.required && <span className="text-danger ml-0.5">*</span>}
                 </Label>
                 <Textarea
+                    id={inputId}
+                    aria-required={schema.required || undefined}
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={describedBy}
                     value={value ?? ""}
                     onChange={e => onChange(e.target.value)}
                     placeholder={schema.placeholder}
                     rows={4}
                     className="w-full px-3 py-2 text-sm placeholder:text-ink-3 resize-y"
                 />
+                {hint && <FieldHint id={hintId} compact>{hint}</FieldHint>}
+                <FieldError id={errorId} compact>{error}</FieldError>
             </div>
         )
     }
@@ -137,12 +160,12 @@ export function ParameterField({ schema, value, onChange }: Props) {
     if (schema.type === "select") {
         return (
             <div className="space-y-1.5">
-                <Label className="text-sm font-semibold text-ink-2">
+                <Label htmlFor={inputId} className="text-sm font-semibold text-ink-2">
                     {schema.label}
                     {schema.required && <span className="text-danger ml-0.5">*</span>}
                 </Label>
                 <Select value={value ?? ""} onValueChange={onChange}>
-                    <SelectTrigger>
+                    <SelectTrigger id={inputId} aria-required={schema.required || undefined} aria-invalid={error ? true : undefined} aria-describedby={describedBy}>
                         <SelectValue placeholder={schema.placeholder ?? `Selecciona ${schema.label}`} />
                     </SelectTrigger>
                     <SelectContent>
@@ -151,6 +174,8 @@ export function ParameterField({ schema, value, onChange }: Props) {
                         ))}
                     </SelectContent>
                 </Select>
+                {hint && <FieldHint id={hintId} compact>{hint}</FieldHint>}
+                <FieldError id={errorId} compact>{error}</FieldError>
             </div>
         )
     }
@@ -158,24 +183,42 @@ export function ParameterField({ schema, value, onChange }: Props) {
     const isPassword = schema.type === "password"
     return (
         <div className="space-y-1.5">
-            <Label className="text-sm font-semibold text-ink-2">
+            <Label htmlFor={inputId} className="text-sm font-semibold text-ink-2">
                 {schema.label}
                 {schema.required && <span className="text-danger ml-0.5">*</span>}
             </Label>
             {isPassword ? (
                 <PasswordInput
+                    id={inputId}
+                    aria-required={schema.required || undefined}
+                    // Un gestor de contraseñas ve «texto + contraseña» (SIRE: número de documento
+                    // y clave) como un login y rellenaba la clave del PM en HIT: eso marcaba el
+                    // campo como cambiado y la enviaba como credencial del Ministerio.
+                    autoComplete="new-password"
+                    data-1p-ignore
+                    data-lpignore="true"
+                    data-form-type="other"
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={describedBy}
                     value={value ?? ""}
                     onChange={e => onChange(e.target.value)}
                     placeholder={schema.placeholder}
                 />
             ) : (
                 <Input
+                    id={inputId}
+                    aria-required={schema.required || undefined}
+                    autoComplete="off"
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={describedBy}
                     type="text"
                     value={value ?? ""}
                     onChange={e => onChange(e.target.value)}
                     placeholder={schema.placeholder}
                 />
             )}
+            {hint && <FieldHint id={hintId} compact>{hint}</FieldHint>}
+            <FieldError id={errorId} compact>{error}</FieldError>
         </div>
     )
 }

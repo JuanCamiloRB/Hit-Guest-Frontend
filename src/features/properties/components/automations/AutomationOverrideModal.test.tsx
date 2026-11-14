@@ -380,12 +380,137 @@ describe("AutomationOverrideModal — TRA con credenciales por alojamiento (cont
         expect(dialog.outerHTML).not.toMatch(/SENTINEL/)
     })
 
-    it("guardar un alojamiento nuevo sin credenciales no lo da por bueno: avisa y no cierra", async () => {
+    it("guardar un alojamiento nuevo sin credenciales marca los campos, enfoca el primero y no cierra", async () => {
         const handlers = renderModal(props)
         await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
-        expect(mocks.toast.info).toHaveBeenCalledWith("Completa las credenciales de este alojamiento o exclúyelo.")
+        const errors = screen.getAllByText("Este campo es obligatorio para reportar este alojamiento.")
+        expect(errors).toHaveLength(2)
+        const token = screen.getByLabelText(/Token API TRA/)
+        expect(token).toHaveAttribute("aria-invalid", "true")
+        expect(token).toHaveAttribute("aria-describedby", expect.stringContaining(errors[0].id))
+        await waitFor(() => expect(token).toHaveFocus())
         expect(handlers.onClose).not.toHaveBeenCalled()
         expect(mocks.createListingOverride).not.toHaveBeenCalled()
+    })
+
+    it("un secreto recibido nunca se precarga ni se reenvía si el PM no lo cambia", async () => {
+        mocks.updateListingOverride.mockResolvedValue(override({
+            propertyAutomationUuid: "tra-row",
+            credentialsComplete: true,
+            parameters: { rnt: "123" },
+        }))
+        renderModal({
+            ...props,
+            override: override({
+                propertyAutomationUuid: "tra-row",
+                credentialsComplete: true,
+                parameters: { token: "SENTINEL-OVERRIDE-TOKEN", rnt: "123" },
+            }),
+        })
+        const token = screen.getByLabelText(/Token API TRA/)
+        expect(token).toHaveValue("")
+        expect(token).toHaveAttribute("placeholder", "Ya configurado · escribe para reemplazarlo")
+        expect(screen.getByRole("dialog").outerHTML).not.toContain("SENTINEL-OVERRIDE-TOKEN")
+
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(mocks.updateListingOverride).toHaveBeenCalled())
+        const payload = mocks.updateListingOverride.mock.calls[0][1]
+        expect(payload.parameters).toEqual({ rnt: "123" })
+        expect(JSON.stringify(payload)).not.toContain("SENTINEL-OVERRIDE-TOKEN")
+    })
+
+    it("escribir en un secreto y borrarlo lo conserva: vacío nunca se envía como null", async () => {
+        mocks.updateListingOverride.mockResolvedValue(override({ propertyAutomationUuid: "tra-row", credentialsComplete: true }))
+        renderModal({
+            ...props,
+            override: override({
+                propertyAutomationUuid: "tra-row",
+                credentialsComplete: true,
+                parameters: { token: "SENTINEL-OVERRIDE-TOKEN", rnt: "123" },
+            }),
+        })
+        const user = userEvent.setup()
+        const token = screen.getByLabelText(/Token API TRA/)
+        await user.type(token, "abc")
+        await user.clear(token)
+        await user.click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(mocks.updateListingOverride).toHaveBeenCalled())
+        const payload = mocks.updateListingOverride.mock.calls[0][1]
+        expect(payload.parameters).toEqual({ rnt: "123" })
+        expect("token" in payload.parameters).toBe(false)
+    })
+
+    it("reabrir un borrador y guardar sin tocar el secreto lo arrastra (no se pierde antes del POST)", async () => {
+        const handlers = renderModal({
+            ...props,
+            draftMode: true,
+            override: override({ uuid: "", propertyAutomationUuid: "tra-row", parameters: { token: "SENTINEL-DRAFT-TOKEN", rnt: "123" } }),
+        })
+        // El secreto del borrador tampoco se precarga en el DOM.
+        expect(screen.getByLabelText(/Token API TRA/)).toHaveValue("")
+        expect(screen.getByRole("dialog").outerHTML).not.toContain("SENTINEL-DRAFT-TOKEN")
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(handlers.onSaved).toHaveBeenCalled())
+        expect(handlers.onSaved.mock.calls[0][0].parameters).toEqual({ token: "SENTINEL-DRAFT-TOKEN", rnt: "123" })
+    })
+
+    it("una clave faltante que el modal no muestra no bloquea el guardado en silencio", async () => {
+        mocks.updateListingOverride.mockResolvedValue(override({ propertyAutomationUuid: "tra-row" }))
+        renderModal({
+            ...props,
+            override: override({
+                propertyAutomationUuid: "tra-row",
+                credentialsComplete: false,
+                missingCredentialKeys: ["foo"],
+                parameters: { rnt: "123" },
+            }),
+        })
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        // Sin campo que marcar, el guardado sigue y el backend valida (422 por clave).
+        await waitFor(() => expect(mocks.updateListingOverride).toHaveBeenCalled())
+        expect(screen.queryByText("Este campo es obligatorio para reportar este alojamiento.")).toBeNull()
+    })
+
+    it("una clave faltante en camelCase marca su campo", async () => {
+        renderModal({
+            ...props,
+            override: override({
+                propertyAutomationUuid: "tra-row",
+                credentialsComplete: false,
+                missingCredentialKeys: ["rnt"],
+                parameters: {},
+            }),
+        })
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        expect(await screen.findByText("Este campo es obligatorio para reportar este alojamiento.")).toBeInTheDocument()
+        expect(screen.getByLabelText(/RNT \(Registro/)).toHaveAttribute("aria-invalid", "true")
+        expect(mocks.updateListingOverride).not.toHaveBeenCalled()
+    })
+
+    it("el campo secreto no invita al gestor de contraseñas a rellenarlo con el login de HIT", () => {
+        renderModal(props)
+        const token = screen.getByLabelText(/Token API TRA/)
+        expect(token).toHaveAttribute("autocomplete", "new-password")
+        expect(token).toHaveAttribute("data-1p-ignore")
+        expect(token).toHaveAttribute("data-lpignore", "true")
+        expect(token).toHaveAttribute("aria-required", "true")
+    })
+
+    it("un 422 de credenciales se muestra en su campo y no como toast genérico", async () => {
+        mocks.createListingOverride.mockRejectedValue(new ApiError(422, {
+            message: "Credenciales incompletas",
+            errors: { "parameters.rnt": ["El RNT es obligatorio para este alojamiento."] },
+        }))
+        renderModal(props)
+        const user = userEvent.setup()
+        await user.type(screen.getByLabelText(/Token API TRA/), "token-nuevo")
+        await user.type(screen.getByLabelText(/RNT \(Registro/), "123")
+        await user.click(screen.getByRole("button", { name: "Guardar" }))
+        const error = await screen.findByText("El RNT es obligatorio para este alojamiento.")
+        const rnt = screen.getByLabelText(/RNT \(Registro/)
+        expect(rnt).toHaveAttribute("aria-invalid", "true")
+        expect(rnt).toHaveAttribute("aria-describedby", expect.stringContaining(error.id))
+        expect(mocks.toast.error).not.toHaveBeenCalled()
     })
 
     it("apagarlo es excluir: crea el override inactivo", async () => {

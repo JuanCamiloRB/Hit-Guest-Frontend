@@ -207,4 +207,29 @@ describe("ListingOverridesPanel — TRA con credenciales por alojamiento (contra
         fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
         expect((await screen.findAllByText("Hereda de la propiedad")).length).toBe(2)
     })
+
+    it("un override activo sin metadatos no se presenta como configurado", async () => {
+        mocks.listListingOverrides.mockImplementation((listingUuid: string) => Promise.resolve(
+            listingUuid === "unit-1"
+                ? [{ ...disabledOverride, propertyAutomationUuid: "tra-row", statusRecordId: 6, isActive: true, parameters: { token: "x", rnt: "1" } }]
+                : [],
+        ))
+        render(<ListingOverridesPanel automation={traListing} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+        expect(await screen.findByText("No pudimos confirmar las credenciales")).toBeInTheDocument()
+        expect(screen.queryByText("Credenciales configuradas")).toBeNull()
+        expect(screen.getByText(/Estado sin confirmar en 1 unidad/)).toBeInTheDocument()
+    })
+
+    it("solo el metadato del backend permite mostrar credenciales configuradas", async () => {
+        mocks.listListingOverrides.mockImplementation((listingUuid: string) => Promise.resolve(
+            listingUuid === "unit-1"
+                ? [{ ...disabledOverride, propertyAutomationUuid: "tra-row", statusRecordId: 6, isActive: true, credentialsComplete: true }]
+                : [],
+        ))
+        render(<ListingOverridesPanel automation={traListing} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+        expect(await screen.findByText("Credenciales configuradas")).toBeInTheDocument()
+        expect(screen.getByText("1 configurada")).toBeInTheDocument()
+    })
 })
