@@ -6,7 +6,7 @@ import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { blockWhenUnavailable, buttonVariants } from "@/components/ui/button"
-import { modalSurface } from "@/components/ui/dialog"
+import { modalSurface, useRestoreFocusToOpener } from "@/components/ui/dialog"
 
 function AlertDialog({
   ...props
@@ -46,6 +46,8 @@ function AlertDialogContent({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+  // Abierto por estado (borrar foto, borrar alojamiento): el foco vuelve a quien abrió.
+  const focusHandlers = useRestoreFocusToOpener(props)
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
@@ -53,6 +55,7 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         className={cn(modalSurface, className)}
         {...props}
+        {...focusHandlers}
       />
     </AlertDialogPortal>
   )

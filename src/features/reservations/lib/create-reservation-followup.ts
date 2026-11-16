@@ -25,6 +25,8 @@ export interface CreationOutcome {
     tone: "success" | "warning"
     title: string
     description: string
+    /** La reserva creada, para «Ver reserva». `null` si la respuesta no la trajo. */
+    reservationUuid: string | null
 }
 
 /**
@@ -62,6 +64,7 @@ export async function followUpCreatedReservation(input: {
 
     if (!sendLinkNow) {
         return {
+            reservationUuid: createdUuid,
             tone: "success",
             title: "Reserva creada exitosamente",
             description: `Reserva para ${guestName} creada. Link no enviado.`,
@@ -69,6 +72,7 @@ export async function followUpCreatedReservation(input: {
     }
     if (!createdUuid) {
         return {
+            reservationUuid: null,
             tone: "warning",
             title: "Reserva creada, pero el link no se envió",
             description: "La respuesta no trajo el identificador de la reserva. Envíalo desde la ficha de la reserva.",
@@ -77,12 +81,14 @@ export async function followUpCreatedReservation(input: {
     try {
         const message = await sendLink(createdUuid)
         return {
+            reservationUuid: createdUuid,
             tone: "success",
             title: "Reserva creada · envío del link solicitado",
             description: `${message || "El backend recibió la solicitud"} · ${email}. La entrega se verá en la ficha de la reserva.`,
         }
     } catch (error) {
         return {
+            reservationUuid: createdUuid,
             tone: "warning",
             title: "Reserva creada, pero el link no se envió",
             description: `${describeError(error)} Puedes reenviarlo desde la ficha de la reserva.`,

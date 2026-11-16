@@ -49,8 +49,8 @@ async function openDialog() {
     return user
 }
 
-const channelSelect = () => screen.findByRole("combobox", { name: /Canal de Reserva/ })
-const createButton = () => screen.getByRole("button", { name: /Crear Reserva/ })
+const channelSelect = () => screen.findByRole("combobox", { name: /Canal de reserva/i })
+const createButton = () => screen.getByRole("button", { name: /Crear (reserva|y enviar link)/i })
 
 describe("ReservationDialog — canales: sin catálogo no se crea la reserva", () => {
     beforeEach(() => {
@@ -136,7 +136,7 @@ describe("ReservationDialog — canales: sin catálogo no se crea la reserva", (
         expect(alert).not.toHaveTextContent("Sin canal no se puede crear la reserva.")
         expect(await channelSelect()).toHaveTextContent("Airbnb")
 
-        const save = screen.getByRole("button", { name: /Guardar Cambios/ })
+        const save = screen.getByRole("button", { name: /Guardar cambios/i })
         await waitFor(() => expect(save).toBeEnabled())
         await user.click(save)
         await waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(1))

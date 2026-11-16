@@ -63,27 +63,67 @@ function DialogOverlay({
   )
 }
 
+/**
+ * Radix devuelve el foco al `Trigger` al cerrar; un diálogo abierto por estado
+ * (sin `DialogTrigger`, como los de alojamiento, foto o reserva) lo dejaba en
+ * `<body>`. Se recuerda quién tenía el foco al abrir (en `onOpenAutoFocus`,
+ * antes de que el diálogo lo tome) y se le devuelve al cerrar si sigue en la
+ * página. Un `onCloseAutoFocus` propio que haga `preventDefault` manda.
+ */
+export function useRestoreFocusToOpener<E extends Event>(props: {
+  onOpenAutoFocus?: (event: E) => void
+  onCloseAutoFocus?: (event: E) => void
+}) {
+  const openerRef = React.useRef<HTMLElement | null>(null)
+  const onOpenAutoFocus = (event: E) => {
+    openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    props.onOpenAutoFocus?.(event)
+  }
+  const onCloseAutoFocus = (event: E) => {
+    props.onCloseAutoFocus?.(event)
+    if (event.defaultPrevented) return
+    const opener = openerRef.current
+    if (opener && opener.isConnected && opener !== document.body) {
+      event.preventDefault()
+      opener.focus()
+    }
+  }
+  return { onOpenAutoFocus, onCloseAutoFocus }
+}
+
 function DialogContent({
   className,
   children,
   showCloseButton = true,
+  layout = "default",
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
+  /**
+   * `panel`: encabezado y pie fijos con el cuerpo (`DialogBody`) con scroll
+   * propio. Para un formulario largo: la acción principal nunca queda bajo el
+   * scroll. El relleno lo ponen `DialogHeader divided`, `DialogBody` y
+   * `DialogFooter divided`.
+   */
+  layout?: "default" | "panel"
 }) {
+  const focusHandlers = useRestoreFocusToOpener(props)
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        data-layout={layout}
         className={cn(
           modalSurface,
           // Con la X, el título le deja su espacio: uno largo no se mete debajo.
           // En móvil el título va centrado, así que el margen es simétrico.
           showCloseButton && "[&_[data-slot=dialog-title]]:px-8 sm:[&_[data-slot=dialog-title]]:pl-0",
+          layout === "panel" && "flex flex-col gap-0 overflow-hidden p-0",
           className
         )}
         {...props}
+        {...focusHandlers}
       >
         {children}
         {showCloseButton && (
@@ -100,11 +140,33 @@ function DialogContent({
   )
 }
 
-function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
+function DialogHeader({ className, divided = false, ...props }: React.ComponentProps<"div"> & {
+  /** Encabezado fijo de un `DialogContent layout="panel"`: con su relleno y el divisor del sistema. */
+  divided?: boolean
+}) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
+      data-divided={divided || undefined}
+      className={cn(
+        "flex flex-col gap-2 text-center sm:text-left",
+        divided && "shrink-0 border-b border-rule px-6 py-5",
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+/**
+ * El cuerpo con scroll propio de un `DialogContent layout="panel"`. Lo único
+ * que se desplaza: encabezado y pie quedan fijos.
+ */
+function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      data-slot="dialog-body"
+      className={cn("min-h-0 flex-1 overflow-y-auto px-6 py-5", className)}
       {...props}
     />
   )
@@ -113,16 +175,22 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 function DialogFooter({
   className,
   showCloseButton = false,
+  divided = false,
   children,
   ...props
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
+  /** Pie fijo de un `DialogContent layout="panel"`: con su relleno, el divisor del sistema y fondo de tarjeta. */
+  divided?: boolean
 }) {
   return (
     <div
       data-slot="dialog-footer"
+      data-divided={divided || undefined}
       className={cn(
         "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        // En móvil, el pie no queda bajo la barra de inicio del sistema.
+        divided && "shrink-0 border-t border-rule bg-card px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]",
         className
       )}
       {...props}
@@ -166,6 +234,7 @@ function DialogDescription({
 
 export {
   Dialog,
+  DialogBody,
   DialogClose,
   DialogContent,
   DialogDescription,

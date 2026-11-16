@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest"
 import { fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { useState } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "./dialog"
+import { Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./dialog"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -53,6 +53,27 @@ describe("Dialog", () => {
         expect(content).toHaveClass("overflow-hidden", "p-0")
         expect(content).not.toHaveClass("overflow-y-auto")
         expect(content).not.toHaveClass("p-6")
+    })
+
+    it("layout «panel»: encabezado y pie fijos, el cuerpo es lo único con scroll", async () => {
+        render(
+            <Dialog open>
+                <DialogContent layout="panel">
+                    <DialogHeader divided><DialogTitle>Nueva reserva</DialogTitle></DialogHeader>
+                    <DialogBody><p>Campos</p></DialogBody>
+                    <DialogFooter divided><button type="button">Crear</button></DialogFooter>
+                </DialogContent>
+            </Dialog>,
+        )
+        const content = await screen.findByRole("dialog")
+        expect(content).toHaveAttribute("data-layout", "panel")
+        expect(content).toHaveClass("flex", "flex-col", "overflow-hidden", "p-0")
+        expect(content).not.toHaveClass("overflow-y-auto")
+        const body = screen.getByText("Campos").parentElement
+        expect(body).toHaveAttribute("data-slot", "dialog-body")
+        expect(body).toHaveClass("min-h-0", "flex-1", "overflow-y-auto")
+        expect(screen.getByText("Nueva reserva").parentElement).toHaveClass("shrink-0", "border-b", "border-rule")
+        expect(screen.getByText("Crear").parentElement).toHaveClass("shrink-0", "border-t", "border-rule", "bg-card", "pb-[max(1rem,env(safe-area-inset-bottom))]")
     })
 
     it("el botón de cerrar del pie también dice «Cerrar»", async () => {
@@ -199,3 +220,35 @@ describe("AlertDialogAction — acciones asíncronas", () => {
     })
 })
 
+
+
+function OpenedByState() {
+    const [open, setOpen] = useState(false)
+    return (
+        <>
+            <button type="button" onClick={() => setOpen(true)}>Abrir</button>
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Sin trigger</DialogTitle>
+                        <DialogDescription>Abierto por estado.</DialogDescription>
+                    </DialogHeader>
+                    <input aria-label="Campo" />
+                </DialogContent>
+            </Dialog>
+        </>
+    )
+}
+
+describe("Dialog abierto por estado — el foco vuelve a quien lo abrió", () => {
+    it("sin DialogTrigger, Escape devuelve el foco al botón que abrió (antes quedaba en body)", async () => {
+        const user = userEvent.setup()
+        render(<OpenedByState />)
+        const opener = screen.getByRole("button", { name: "Abrir" })
+        await user.click(opener)
+        await screen.findByRole("dialog")
+        await user.keyboard("{Escape}")
+        await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
+        await waitFor(() => expect(opener).toHaveFocus())
+    })
+})

@@ -1,20 +1,14 @@
 "use client"
 
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useForm } from "react-hook-form"
-import { hasUsablePhone } from "../lib/checkin-link-delivery-status"
 import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
-import { CalendarIcon, Plus, User, Phone, Home, Users, DollarSign, Send, Edit, AlertCircle } from "lucide-react"
-import { Icon } from "@/components/ui/icon"
-import { Note } from "@/components/ui/note"
-import { format, differenceInDays, addDays } from "date-fns"
-import { es } from "date-fns/locale"
-import { cn } from "@/lib/utils"
-import { parseCalendarDate } from "@/lib/calendar-date"
-
+import { Plus, Send } from "lucide-react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
+    DialogBody,
     DialogContent,
     DialogDescription,
     DialogFooter,
@@ -23,374 +17,205 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog"
 import {
-    Form,
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-    FieldError,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
-import { Calendar } from "@/components/ui/calendar"
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from "@/components/ui/popover"
-import { SwitchField } from "@/components/ui/switch-field"
-import { PhoneInputField } from "@/components/ui/phone-input-field"
-import { useEffect, useState, useCallback, useRef } from "react"
-import { toast } from "sonner"
-import { notifyError } from "@/lib/notify-error"
-import {
-    describeImportedReservationNotice,
-    readReservationOrigin,
-    type ReservationOrigin,
-} from "../lib/reservation-origin"
-import { readReservationFieldErrors } from "../lib/reservation-edit-errors"
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { Form } from "@/components/ui/form"
+import { Icon } from "@/components/ui/icon"
+import { Note } from "@/components/ui/note"
+import { Skeleton } from "@/components/ui/skeleton"
+import { normalizeApiError, notifyError } from "@/lib/notify-error"
+import { inactiveResourceAction, readInactiveResourceError } from "@/lib/inactive-resource"
+import { formatMoney } from "@/lib/money"
+import { parseCalendarDate } from "@/lib/calendar-date"
+import { readReservationChannel } from "@/lib/reservation-channel"
 import { propertiesService } from "@/features/properties/services/properties-service"
 import { listingsService } from "@/features/properties/services/listings-service"
-import { readRecordStatus, type RecordStatus } from "@/features/properties/lib/record-status"
-import {
-    BOOKING_RULE,
-    NO_ACTIVE_LISTINGS,
-    NO_ACTIVE_PROPERTIES,
-    bookingBlock,
-    reservationOperability,
-    statusTag,
-} from "../lib/reservation-availability"
-import { inactiveResourceAction, readInactiveResourceError } from "@/lib/inactive-resource"
-import { catalogService } from "@/features/auth/services/catalog-service"
-import { readReservationChannel } from "@/lib/reservation-channel"
 import { reservationsService } from "@/features/reservations/services/reservations-service"
 import { createReservationWithFollowUp } from "@/features/reservations/lib/create-reservation-followup"
 import { readGuestNameParts } from "@/features/reservations/lib/guest-name"
-import { FeedbackBanner } from "@/components/ui/feedback-banner"
-import { Badge } from "@/components/ui/badge"
-import { useTranslation } from "@/hooks/useTranslation"
-import { Heading } from "@/components/ui/heading"
+import { describeImportedReservationNotice, readReservationOrigin, type ReservationOrigin } from "../lib/reservation-origin"
+import { readReservationFieldErrors } from "../lib/reservation-edit-errors"
+import { BOOKING_RULE, bookingBlock, reservationOperability } from "../lib/reservation-availability"
+import {
+    FORM_FIELD_BY_API_KEY,
+    buildReservationPayload,
+    reservationSchema,
+    type ReservationFormInput,
+    type ReservationFormValues,
+} from "./reservation-form/payload"
+import { nightsBetween, prefillFromListing, pricePerNight, readListingDefaults, type ListingDefaults, type PrefillTouched } from "./reservation-form/stay"
+import { useReservationCatalogs } from "./reservation-form/useReservationCatalogs"
+import { StaySection } from "./reservation-form/StaySection"
+import { PrimaryGuestSection } from "./reservation-form/PrimaryGuestSection"
+import { ReservationValueSection } from "./reservation-form/ReservationValueSection"
+import { CheckinLinkSection } from "./reservation-form/CheckinLinkSection"
+import { ReservationSummary } from "./reservation-form/ReservationSummary"
 
-// ── Zod Schema ──────────────────────────────────────────────
-const reservationSchema = z.object({
-    // Guest Info
-    // Nombre y apellido separados, igual que en el resto del modelo (GuestProfile,
-    // RegisteredGuest, ReservationGuest). `extra` era la única excepción y era
-    // decisión del frontend: guardarlo junto obligaba a partirlo después, y
-    // partir "María González Pérez" es indecidible en español.
-    guestName: z.string().min(2, "El nombre del huésped es requerido").max(60),
-    guestLastname: z.string().min(2, "Los apellidos son requeridos").max(60),
-    guestCountry: z.string().min(1, "Selecciona el país o nacionalidad"),
-    emailGuest: z.string().email("Email inválido").max(60),
-    guestPhone: z.string().optional(),
+/**
+ * Crear o editar una reserva manual.
+ *
+ * Rediseño 2026-11-16 (plan `20261116_reserva-manual-ux.md`): los mismos 13
+ * campos y el mismo payload de antes (`reservation-form/payload.ts`, fijado por
+ * pruebas), en el orden del PM —estancia, titular, valor, envío del link— con
+ * resumen para confirmar y la acción principal siempre a la vista.
+ */
 
-    // Property & Listing
-    propertyUuid: z.string().min(1, "Selecciona una propiedad"),
-    listingId: z.string().min(1, "Selecciona un alojamiento"),
-
-    // Source
-    reservationSourceId: z.string().min(1, "Selecciona el canal"),
-
-    // Dates — use z.any() for react-day-picker range compatibility
-    dates: z.any().refine(
-        (val: any) => val?.from instanceof Date && val?.to instanceof Date,
-        { message: "Selecciona las fechas de llegada y salida" }
-    ),
-
-    // Guests count
-    totalGuests: z.coerce.number().min(1, "Mínimo 1 huésped"),
-
-    // Pricing
-    totalPrice: z.coerce.number().min(0, "El precio debe ser positivo"),
-    currency: z.string().min(1, "Selecciona moneda"),
-
-    // Send link
-    sendLinkNow: z.boolean().optional(),
-})
-
-type ReservationFormValues = z.infer<typeof reservationSchema>
-
-// ── Interfaces for API data ──────────────────────────────────
-interface PropertyOption {
-    uuid: string
-    name: string
-    id: number
-    /** Solo se reserva en una activa; `unknown` cuenta como no activa. */
-    status: RecordStatus
-}
-
-interface ListingOption {
-    id: number
-    uuid: string
-    name: string
-    propertyUuid?: string
-    status: RecordStatus
-}
-
-interface CatalogOption {
-    id: number
-    name: string
-    code?: string
-}
-
-// ── Component ────────────────────────────────────────────────
 interface ReservationDialogProps {
     mode?: "create" | "edit"
     reservationUuid?: string
     trigger?: React.ReactNode
 }
 
-export function ReservationDialog({ mode = "create", reservationUuid, trigger }: ReservationDialogProps) {
-    const { t } = useTranslation()
-    const [open, setOpen] = useState(false)
-    const [isSmallScreen, setIsSmallScreen] = useState(false)
+const EMPTY_VALUES: ReservationFormInput = {
+    guestName: "", guestLastname: "", guestCountry: "", emailGuest: "", guestPhone: "",
+    propertyUuid: "", listingId: "", reservationSourceId: "",
+    dates: { from: undefined, to: undefined },
+    totalGuests: 1, totalPrice: "", currency: "COP", sendLinkNow: true,
+}
+
+const UNTOUCHED: PrefillTouched = { totalGuests: false, totalPrice: false, currency: false }
+
+const SMALL_SCREEN = "(max-width: 640px)"
+
+/** Solo decide cuántos meses muestra el calendario (que no se pinta hasta abrirlo). */
+function useSmallScreen(): boolean {
+    const [isSmallScreen, setIsSmallScreen] = useState(() => typeof window !== "undefined" && window.matchMedia(SMALL_SCREEN).matches)
     useEffect(() => {
-        const mq = window.matchMedia("(max-width: 640px)")
-        setIsSmallScreen(mq.matches)
+        const mq = window.matchMedia(SMALL_SCREEN)
         const handler = (e: MediaQueryListEvent) => setIsSmallScreen(e.matches)
         mq.addEventListener("change", handler)
         return () => mq.removeEventListener("change", handler)
     }, [])
+    return isSmallScreen
+}
 
-    // Data from API
-    const [properties, setProperties] = useState<PropertyOption[]>([])
-    const [listings, setListings] = useState<ListingOption[]>([])
-    const [reservationSources, setReservationSources] = useState<any[]>([])
-    const [countries, setCountries] = useState<any[]>([])
-    const [currencies, setCurrencies] = useState<any[]>([])
+/**
+ * Mientras llega la reserva a editar, la forma de los campos (no un formulario
+ * vacío que después cambia solo, ni un spinner suelto).
+ */
+function EditLoadingSkeleton() {
+    return (
+        <div className="space-y-8" role="status" aria-label="Cargando la reserva">
+            {[3, 3, 1].map((rows, section) => (
+                <div key={section} className="space-y-4">
+                    <Skeleton className="h-5 w-40" />
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        {Array.from({ length: rows * 2 }).map((_, i) => (
+                            <div key={i} className="space-y-2">
+                                <Skeleton className="h-4 w-24" />
+                                <Skeleton className="h-10 w-full" />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ))}
+            <span className="sr-only">Cargando la reserva…</span>
+        </div>
+    )
+}
 
-    // ── Loading States ──
-    const [isLoading, setIsLoading] = useState(false)
-    const [loadingProperties, setLoadingProperties] = useState(false)
-    const [loadingListings, setLoadingListings] = useState(false)
-    const [loadingSources, setLoadingSources] = useState(false)
-    // Sin catálogo de canales no se crea la reserva: nunca un id supuesto.
-    const [sourcesFailed, setSourcesFailed] = useState(false)
-    // Tras un «Reintentar» que funciona, el foco pasa al selector de canal
-    // (el aviso con el botón desaparece y el foco no puede quedar en el aire).
-    const channelTriggerRef = useRef<HTMLButtonElement>(null)
-    // Al editar, el canal que ya tiene la reserva: si el catálogo falla o no lo
-    // trae, se ofrece igual, para que se vea y se reenvíe tal cual.
-    const [editSource, setEditSource] = useState<{ id: number; name: string } | null>(null)
-    const [loadingCountries, setLoadingCountries] = useState(false)
-    const [loadingCurrencies, setLoadingCurrencies] = useState(false)
+export function ReservationDialog({ mode = "create", reservationUuid, trigger }: ReservationDialogProps) {
+    const isCreate = mode !== "edit"
+    const [open, setOpen] = useState(false)
+    const [confirmingDiscard, setConfirmingDiscard] = useState(false)
+    const isSmallScreen = useSmallScreen()
+    const catalogs = useReservationCatalogs()
 
-    const form = useForm<ReservationFormValues>({
-        resolver: zodResolver(reservationSchema) as any,
-        defaultValues: {
-            guestName: "",
-            guestLastname: "",
-            guestCountry: "",
-            emailGuest: "",
-            guestPhone: "",
-            propertyUuid: "",
-            listingId: "",
-            reservationSourceId: "",
-            dates: {
-                from: undefined,
-                to: undefined,
-            } as any,
-            totalGuests: 1,
-            totalPrice: 0,
-            currency: "COP",
-            sendLinkNow: true,
-        },
-    })
+    // Tres esperas distintas, cada una con su forma: cargar la reserva (edición),
+    // los catálogos (en el hook, por catálogo) y enviar (el botón).
+    const [isLoadingReservation, setIsLoadingReservation] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [submitError, setSubmitError] = useState<string | null>(null)
+    // Tras un envío inválido, el aviso cuenta los errores EN VIVO: al corregir
+    // los campos, baja y desaparece sin esperar otro envío.
+    const [showInvalidSummary, setShowInvalidSummary] = useState(false)
 
-    const selectedPropertyUuid = form.watch("propertyUuid")
-    const selectedListingId = form.watch("listingId")
     // En edición, la propiedad y el alojamiento que la reserva ya tiene: se
     // pueden conservar aunque estén inactivos (solo se bloquea CREAR).
     const [editOriginal, setEditOriginal] = useState<{ propertyUuid: string; listingId: string } | null>(null)
-    const selectedDates = form.watch("dates")
-    const nights = selectedDates?.from && selectedDates?.to
-        ? differenceInDays(selectedDates.to, selectedDates.from)
-        : 0
-
-    // ── Load Properties ──
-    const loadProperties = useCallback(async () => {
-        setLoadingProperties(true)
-        try {
-            const data = await propertiesService.list()
-            setProperties(
-                data.map((p: any) => ({
-                    uuid: p.uuid,
-                    name: p.name,
-                    id: p.id,
-                    status: readRecordStatus(p),
-                }))
-            )
-        } catch (error) {
-            console.error("[ReservationDialog] Error loading properties:", error)
-        } finally {
-            setLoadingProperties(false)
-        }
-    }, [])
-
-    // ── Load Listings by Property ──
-    const loadListings = useCallback(async (propertyUuid: string) => {
-        if (!propertyUuid) {
-            setListings([])
-            return
-        }
-        setLoadingListings(true)
-        try {
-            const data = await listingsService.listByProperty(propertyUuid)
-            const list = Array.isArray(data) ? data : []
-
-            // Real property reference of a listing, tolerating every shape variant.
-            const propRefOf = (l: any): string | null => {
-                const ref = l?.property_uuid ?? l?.propertyUuid ?? l?.property?.uuid ?? l?.property_id ?? l?.propertyId
-                return ref == null ? null : String(ref)
-            }
-
-            // Defense-in-depth: the backend currently returns ALL of the PM's listings
-            // ignoring the ?property_uuid= filter, so scope to the selected property
-            // here. A listing with NO property ref is kept (can't attribute it), but
-            // one belonging to a DIFFERENT property is dropped — that was the bug where
-            // other properties' accommodations showed up in the picker.
-            const scoped = list.filter((l: any) => {
-                const ref = propRefOf(l)
-                return ref === null || ref === String(propertyUuid)
-            })
-
-            setListings(
-                scoped.map((l: any) => ({
-                    id: l.id,
-                    uuid: l.uuid || String(l.id),
-                    name: l.name || l.internal_name || `Alojamiento ${l.id || (l.uuid || "").slice(0, 8)}`,
-                    propertyUuid: propRefOf(l) ?? propertyUuid,
-                    status: readRecordStatus(l),
-                }))
-            )
-        } catch (error) {
-            console.error("[ReservationDialog] Error loading listings:", error)
-            setListings([])
-        } finally {
-            setLoadingListings(false)
-        }
-    }, [])
-
-    // On listing selection, prefill guests / price / currency with the listing's
-    // configured defaults (only triggered by user choice, never by the edit-mode
-    // form.reset — so an existing reservation's values aren't overwritten on load).
-    const handleListingChange = useCallback(async (uuid: string) => {
-        form.setValue("listingId", uuid, { shouldValidate: true, shouldDirty: true })
-        try {
-            const listing: any = await listingsService.getById(uuid)
-            if (!listing) return
-            const ex = listing.extra ?? {}
-            const guests = Number(ex.maxOccupancy ?? ex.max_occupancy ?? listing.maxOccupancy ?? 0)
-            const price = Number(
-                ex.startPrice ?? ex.start_price ?? ex.price ??
-                listing.startPrice ?? listing.start_price ?? listing.price ?? 0,
-            )
-            const currency = ex.currency ?? listing.currency ?? null
-            if (guests > 0) form.setValue("totalGuests", guests, { shouldValidate: true, shouldDirty: true })
-            if (price > 0) form.setValue("totalPrice", price, { shouldValidate: true, shouldDirty: true })
-            if (currency) form.setValue("currency", String(currency), { shouldValidate: true, shouldDirty: true })
-        } catch {
-            // Non-fatal: keep whatever the user had if the listing can't be fetched.
-        }
-    }, [form])
-
-    // ── Load Reservation Sources ──
-    /** `true` si quedaron canales para elegir. */
-    const loadReservationSources = useCallback(async (): Promise<boolean> => {
-        setLoadingSources(true)
-        try {
-            const sources = (await catalogService.getReservationSources())
-                .map((s: any) => ({ id: Number(s.id), name: s.name, code: s.code }))
-                // El backend espera el id numérico: uno que no lo sea no se ofrece.
-                .filter((s) => Number.isInteger(s.id) && s.id > 0)
-            if (sources.length === 0) throw new Error("catálogo de canales sin ids válidos")
-            setReservationSources(sources)
-            setSourcesFailed(false)
-            return true
-        } catch (error) {
-            // Sin respaldo inventado: antes caía a 14/15/16, que no son los ids
-            // reales, y la reserva quedaba en otro canal sin aviso.
-            console.error("[ReservationDialog] Error loading sources:", error)
-            setReservationSources([])
-            setSourcesFailed(true)
-            return false
-        } finally {
-            setLoadingSources(false)
-        }
-    }, [])
-
-    // ── Load Countries & Currencies ──
-    const loadCountries = useCallback(async () => {
-        setLoadingCountries(true)
-        try {
-            const data = await catalogService.getCountries()
-            setCountries(data)
-        } catch (error) {
-            console.error("[ReservationDialog] Error loading countries:", error)
-        } finally {
-            setLoadingCountries(false)
-        }
-    }, [])
-
-    const loadCurrencies = useCallback(async () => {
-        setLoadingCurrencies(true)
-        try {
-            const data = await catalogService.getCurrencies()
-            setCurrencies(data)
-        } catch (error) {
-            console.error("[ReservationDialog] Error loading currencies:", error)
-        } finally {
-            setLoadingCurrencies(false)
-        }
-    }, [])
-
-    // ── Load data when dialog opens ──
-    useEffect(() => {
-        if (open) {
-            loadProperties()
-            loadReservationSources()
-            loadCountries()
-            loadCurrencies()
-        }
-    }, [open, loadProperties, loadReservationSources, loadCountries, loadCurrencies])
-
-    // Origen técnico de la reserva en edición: solo informa (aviso «gestionado
-    // por el PMS»), nunca bloquea — decisión de producto del backend: el PM
-    // manda y el PMS gana después (contrato §2g.4).
+    // Al editar, el canal que ya tiene la reserva: si el catálogo falla o no lo
+    // trae, se ofrece igual, para que se vea y se reenvíe tal cual.
+    const [editSource, setEditSource] = useState<{ id: number; name: string } | null>(null)
+    // Origen técnico de la reserva en edición: solo informa, nunca bloquea
+    // (decisión de producto del backend: el PM manda y el PMS gana después).
     const [editingOrigin, setEditingOrigin] = useState<ReservationOrigin | null>(null)
 
-    // ── Load Reservation for Edit ──
+    // Lo que sugiere el alojamiento elegido (capacidad, precio, moneda) y si el
+    // precio que se ve sigue siendo el sugerido.
+    const [listingDefaults, setListingDefaults] = useState<ListingDefaults | null>(null)
+    const [priceSuggested, setPriceSuggested] = useState(false)
+    // Campos que el PM tocó: la precarga (que llega tarde) no los pisa.
+    const touchedRef = useRef<PrefillTouched>({ ...UNTOUCHED })
+    const listingDetailRequestRef = useRef(0)
+    // Tras un «Reintentar» que funciona, el foco pasa al selector de canal.
+    const channelTriggerRef = useRef<HTMLButtonElement>(null)
+
+    const form = useForm<ReservationFormInput, unknown, ReservationFormValues>({
+        resolver: zodResolver(reservationSchema),
+        defaultValues: EMPTY_VALUES,
+    })
+    const { loadListings, loadAll } = catalogs
+    // Leído en el render a propósito: `formState` es un proxy y solo informa lo
+    // que se lee aquí; leerlo solo dentro del callback de cerrar lo dejaba en falso.
+    const { isDirty, errors } = form.formState
+    const invalidCount = showInvalidSummary ? Object.keys(errors).length : 0
+
+    const selectedPropertyUuid = form.watch("propertyUuid")
+    const selectedListingId = form.watch("listingId")
+    const selectedSourceId = form.watch("reservationSourceId")
+    const selectedDates = form.watch("dates") as { from?: Date; to?: Date } | undefined
+    const guests = Number(form.watch("totalGuests")) || 0
+    const rawPrice = String(form.watch("totalPrice") ?? "").trim()
+    const currency = form.watch("currency")
+    const sendLinkNow = form.watch("sendLinkNow") === true
+    const nights = nightsBetween(selectedDates?.from, selectedDates?.to)
+    const total = rawPrice === "" || Number.isNaN(Number(rawPrice)) ? null : Number(rawPrice)
+
+    const markTouched = useCallback((key: keyof PrefillTouched) => {
+        touchedRef.current[key] = true
+        if (key === "totalPrice") setPriceSuggested(false)
+    }, [])
+
+    // ── Abrir: catálogos y, al editar, la reserva ──
     useEffect(() => {
-        if (open && mode === "edit" && reservationUuid) {
+        if (!open) return
+        loadAll()
+        touchedRef.current = { ...UNTOUCHED }
+        setListingDefaults(null)
+        setPriceSuggested(false)
+        setSubmitError(null)
+        setShowInvalidSummary(false)
+        setEditOriginal(null)
+        setEditSource(null)
+        setEditingOrigin(null)
+
+        if (mode === "edit" && reservationUuid) {
+            let cancelled = false
             const loadReservation = async () => {
-                setIsLoading(true)
-                setEditingOrigin(null)
-                setEditSource(null)
+                setIsLoadingReservation(true)
                 try {
                     const raw = await reservationsService.getRawById(reservationUuid)
+                    if (cancelled) return
                     setEditingOrigin(readReservationOrigin(raw))
-
-                    // Pre-fill form
                     const fromDate = parseCalendarDate(raw.arrivalDate || raw.arrival_date)
                     const toDate = parseCalendarDate(raw.departureDate || raw.departure_date)
-
-                    let propertyUuid = raw.listing?.property?.uuid || raw.listing?.propertyUuid || raw.listing?.property_uuid || ""
-                    const listingId = raw.listing?.uuid || raw.listingId?.toString() || ""
-
-                    // If we have listingId but no propertyUuid, we must search properties to find which one owns this listing
+                    let propertyUuid: string = raw.listing?.property?.uuid || raw.listing?.propertyUuid || raw.listing?.property_uuid || ""
+                    const listingId: string = raw.listing?.uuid || raw.listingId?.toString() || ""
+                    // Con alojamiento pero sin propiedad: buscar a cuál pertenece.
                     if (!propertyUuid && listingId) {
                         try {
                             const allProps = await propertiesService.list()
                             for (const prop of allProps) {
                                 const propListings = await listingsService.listByProperty(prop.uuid)
-                                if (propListings.some((l: any) => l.uuid === listingId || l.id === listingId)) {
+                                if (propListings.some((l: { uuid?: string; id?: unknown }) => l.uuid === listingId || l.id === listingId)) {
                                     propertyUuid = prop.uuid
                                     break
                                 }
@@ -399,85 +224,136 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                             console.error("[ReservationDialog] Failed to fetch properties to get propertyUuid", err)
                         }
                     }
-
+                    if (cancelled) return
                     setEditOriginal({ propertyUuid, listingId })
                     const ownSourceId = Number(raw.source?.id ?? raw.reservationSourceId ?? raw.reservation_source_id)
                     setEditSource(Number.isInteger(ownSourceId) && ownSourceId > 0
                         ? { id: ownSourceId, name: readReservationChannel(raw)?.name ?? "Canal actual" }
                         : null)
                     form.reset({
-                        // Una reserva antigua trae el nombre entero en `guest_name`
-                        // y ningún apellido. Se carga tal cual para que el PM lo
-                        // separe él: partirlo aquí por espacios daría un apellido
-                        // que parece correcto y acabaría en los reportes SIRE/TRA.
+                        // Una reserva antigua trae el nombre entero en `guest_name` y
+                        // ningún apellido. Se carga tal cual para que el PM lo separe él.
                         guestName: readGuestNameParts(raw.extra).name || raw.mainGuest?.name || raw.emailGuest?.split("@")[0] || "",
                         guestLastname: readGuestNameParts(raw.extra).lastname || raw.mainGuest?.lastname || "",
                         guestCountry: raw.extra?.guestCountry || raw.extra?.guest_country || "",
                         emailGuest: raw.emailGuest || raw.email_guest || "",
                         guestPhone: raw.extra?.guestPhone || raw.extra?.guest_phone || "",
-                        propertyUuid: propertyUuid,
-                        listingId: listingId,
+                        propertyUuid,
+                        listingId,
                         reservationSourceId: raw.source?.id?.toString() || raw.reservationSourceId?.toString() || raw.reservation_source_id?.toString() || "",
-                        dates: {
-                            from: fromDate,
-                            to: toDate,
-                        },
+                        dates: { from: fromDate, to: toDate },
                         totalGuests: raw.totalGuests ?? raw.total_guests ?? 1,
-                        totalPrice: Number(raw.totalPrice || raw.total_price || 0),
+                        totalPrice: String(Number(raw.totalPrice || raw.total_price || 0)),
                         currency: raw.currency || "COP",
                         sendLinkNow: false,
                     })
-
-                    if (propertyUuid) {
-                        loadListings(propertyUuid)
-                    }
+                    // Lo que ya tiene la reserva cuenta como tocado: nada lo pisa.
+                    // Los alojamientos los carga el efecto de la propiedad (una sola vez).
+                    touchedRef.current = { totalGuests: true, totalPrice: true, currency: true }
                 } catch (error) {
+                    if (cancelled) return
                     console.error("[ReservationDialog] Error loading reservation for edit:", error)
                     notifyError(error, "Error al cargar los datos de la reserva")
                 } finally {
-                    setIsLoading(false)
+                    if (!cancelled) setIsLoadingReservation(false)
                 }
             }
-            loadReservation()
-        } else if (open && mode === "create") {
-            setEditOriginal(null)
-            setEditSource(null)
-            form.reset({
-                guestName: "", guestLastname: "", guestCountry: "", emailGuest: "", guestPhone: "",
-                propertyUuid: "", listingId: "", reservationSourceId: "",
-                dates: { from: undefined, to: undefined } as any,
-                totalGuests: 1, totalPrice: 0, currency: "COP", sendLinkNow: true,
-            })
+            void loadReservation()
+            return () => {
+                cancelled = true
+                setIsLoadingReservation(false)
+            }
         }
-    }, [open, mode, reservationUuid, loadListings, form])
 
-    // ── Load listings when property changes ──
+        form.reset(EMPTY_VALUES)
+        return undefined
+    }, [open, mode, reservationUuid, form, loadAll, loadListings])
+
+    // ── Propiedad → alojamientos (solo escribe la última petición) ──
     useEffect(() => {
-        if (selectedPropertyUuid) {
-            loadListings(selectedPropertyUuid)
-        }
-    }, [selectedPropertyUuid, loadListings, form])
+        if (open && selectedPropertyUuid) void loadListings(selectedPropertyUuid)
+    }, [open, selectedPropertyUuid, loadListings])
 
-    // ── Propiedades y alojamientos inactivos ──
-    const isCreate = mode !== "edit"
-    const selectedProperty = properties.find((p) => p.uuid === selectedPropertyUuid)
-    const selectedListing = listings.find((l) => l.uuid === selectedListingId)
-    const isOriginal = (field: "propertyUuid" | "listingId", uuid: string) => !isCreate && editOriginal?.[field] === uuid
-    const noActiveProperties = isCreate && !loadingProperties && properties.length > 0
-        && !properties.some((p) => p.status === "active")
-    const noActiveListings = isCreate && selectedProperty?.status === "active" && !loadingListings
-        && listings.length > 0 && !listings.some((l) => l.status === "active")
-    const selectionBlock = selectedProperty
-        ? bookingBlock(selectedProperty.status, selectedListing?.status ?? null)
+    const handlePropertyChange = useCallback(() => {
+        form.setValue("listingId", "", { shouldDirty: true })
+        // Una sugerencia en vuelo del alojamiento anterior ya no aplica.
+        listingDetailRequestRef.current++
+        // Un precio que solo sugería el alojamiento anterior no se queda como si
+        // fuera de esta propiedad: vuelve a vacío (requerido). Lo escrito se respeta.
+        if (priceSuggested && !touchedRef.current.totalPrice) {
+            form.setValue("totalPrice", "", { shouldDirty: true })
+        }
+        setListingDefaults(null)
+        setPriceSuggested(false)
+    }, [form, priceSuggested])
+
+    // Al elegir alojamiento se sugieren huéspedes, precio y moneda, SOLO en lo
+    // que el PM no tocó, y solo si la respuesta es la del alojamiento vigente.
+    const handleListingChange = useCallback(async (uuid: string) => {
+        form.setValue("listingId", uuid, { shouldValidate: true, shouldDirty: true })
+        const request = ++listingDetailRequestRef.current
+        try {
+            const listing = await listingsService.getById(uuid)
+            if (request !== listingDetailRequestRef.current || !listing) return
+            const defaults = readListingDefaults(listing)
+            setListingDefaults(defaults)
+            const patch = prefillFromListing(defaults, touchedRef.current)
+            if (patch.totalGuests != null) form.setValue("totalGuests", patch.totalGuests, { shouldValidate: true, shouldDirty: true })
+            if (patch.totalPrice != null) {
+                form.setValue("totalPrice", patch.totalPrice, { shouldValidate: true, shouldDirty: true })
+                setPriceSuggested(true)
+            }
+            if (patch.currency != null) form.setValue("currency", patch.currency, { shouldValidate: true, shouldDirty: true })
+        } catch {
+            // No fatal: se conserva lo que el PM tenía si el alojamiento no se pudo leer.
+        }
+    }, [form])
+
+    // ── Activos / inactivos ──
+    const selectedProperty = catalogs.properties.find((p) => p.uuid === selectedPropertyUuid)
+    const selectedListing = catalogs.listings.find((l) => l.uuid === selectedListingId)
+    const noActiveProperties = isCreate && !catalogs.loading.properties && catalogs.properties.length > 0
+        && !catalogs.properties.some((p) => p.status === "active")
+    const noActiveListings = isCreate && selectedProperty?.status === "active" && !catalogs.loading.listings
+        && catalogs.listings.length > 0 && !catalogs.listings.some((l) => l.status === "active")
+    const selectionBlock = selectedProperty ? bookingBlock(selectedProperty.status, selectedListing?.status ?? null) : null
+    const inactiveNotice = !isCreate && selectionBlock
+        ? selectionBlock.startsWith("property")
+            ? "La propiedad de esta reserva está inactiva: sus automatizaciones están detenidas."
+            : "El alojamiento de esta reserva está inactivo: sus automatizaciones están detenidas."
         : null
 
-    // ── Submit ──
-    async function onSubmit(values: ReservationFormValues) {
+    // ── Cerrar: con cambios, se confirma ──
+    const closeNow = useCallback(() => {
+        setConfirmingDiscard(false)
+        setOpen(false)
+        form.reset(EMPTY_VALUES)
+    }, [form])
+
+    const requestClose = useCallback(() => {
+        if (isSubmitting) return
+        if (isDirty) setConfirmingDiscard(true)
+        else closeNow()
+    }, [isSubmitting, isDirty, closeNow])
+
+    const handleOpenChange = useCallback((next: boolean) => {
+        if (next) setOpen(true)
+        else requestClose()
+    }, [requestClose])
+
+    // ── Enviar ──
+    const onInvalid = useCallback(() => {
+        setShowInvalidSummary(true)
+        setSubmitError(null)
+    }, [])
+
+    async function onValid(values: ReservationFormValues) {
+        setShowInvalidSummary(false)
+        setSubmitError(null)
         // Última validación local antes del POST/PUT (el backend es la autoridad
-        // final). Crear exige todo activo; editar solo si MUEVE la reserva, y
-        // entonces el destino. Lo que no se puede leer cuenta como inactivo.
-        const property = properties.find((p) => p.uuid === values.propertyUuid)
-        const listing = listings.find((l) => l.uuid === values.listingId)
+        // final). Crear exige todo activo; editar solo si MUEVE la reserva.
+        const property = catalogs.properties.find((p) => p.uuid === values.propertyUuid)
+        const listing = catalogs.listings.find((l) => l.uuid === values.listingId)
         const operability = reservationOperability({
             operation: isCreate ? "create" : "edit",
             propertyStatus: property?.status ?? "unknown",
@@ -492,64 +368,19 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
             return
         }
         // Defensa: el botón ya está deshabilitado en este caso.
-        if (mode === "create" && sourcesFailed) return
-        setIsLoading(true)
+        if (isCreate && catalogs.sourcesFailed) return
+        setIsSubmitting(true)
 
-        // Ensure departure is at least 1 day after arrival if user only clicked once
-        const departure = values.dates.to && values.dates.to > values.dates.from 
-            ? values.dates.to 
-            : addDays(values.dates.from, 1);
-
-        const payload: Record<string, unknown> = {
-            listingUuid: values.listingId,
-            listing_uuid: values.listingId,
-            listingId: values.listingId,
-            listing_id: values.listingId,
-            reservationSourceId: Number(values.reservationSourceId),
-            arrivalDate: format(values.dates.from, "yyyy-MM-dd"),
-            departureDate: format(departure, "yyyy-MM-dd"),
-            emailGuest: values.emailGuest,
-            totalGuests: values.totalGuests,
-            currency: values.currency,
-            totalPrice: values.totalPrice,
-            extra: {
-                guest_name: values.guestName,
-                guest_lastname: values.guestLastname,
-                guest_country: values.guestCountry,
-                // El selector de país itera el catálogo (que trae `c.id`) pero
-                // guardaba solo `c.name`, tirando el id. Ese id es el mismo
-                // `nationalityId` que pide el check-in, así que perderlo obligaba
-                // a resolver el país por texto más adelante. Se manda junto al
-                // nombre — aditivo, sin romper lo que ya lee `guest_country`.
-                guest_country_id: countries.find((c) => c.name === values.guestCountry)?.id ?? null,
-                // El campo deja solo el prefijo (`+57`) al vaciarse; eso no es un
-                // teléfono y guardarlo hacía que el panel prometiera WhatsApp.
-                guest_phone: hasUsablePhone(values.guestPhone) ? values.guestPhone : null,
-            },
-        }
-
-        // Solo al CREAR: el código manual y el estado inicial. En EDICIÓN ambos
-        // se omiten a propósito (contrato §2g: omitir `externalId` está bien):
-        // este mismo payload regeneraba `MANUAL-XXXXXX` en cada edición —
-        // rompiendo el vínculo de una reserva importada con su código del PMS,
-        // que es la llave con la que los imports la encuentran— y forzaba el
-        // estado de vuelta a Confirmada (27), reseteando una reserva En Progreso.
-        if (mode !== "edit") {
-            payload.externalId = `MANUAL-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-            payload.statusReservationId = 27 // 27 = Confirmada
-        }
+        const payload = buildReservationPayload(values, { mode: isCreate ? "create" : "edit", countries: catalogs.countries })
 
         try {
-            if (mode === "edit" && reservationUuid) {
+            if (!isCreate && reservationUuid) {
                 await reservationsService.update(reservationUuid, payload)
-                toast.success("Reserva actualizada exitosamente", {
-                    description: "Los cambios han sido guardados.",
-                })
+                toast.success("Reserva actualizada exitosamente", { description: "Los cambios han sido guardados." })
             } else {
-                // Según la documentación del backend, el link solo sale solo al
-                // IMPORTAR (pendiente de verificar contra producción, ver
-                // `create-reservation-followup.ts`); en una manual lo pide el
-                // front si el PM dejó la casilla marcada.
+                // El link solo sale solo al IMPORTAR; en una manual lo pide el
+                // front si el PM dejó la casilla marcada. Si el link falla, la
+                // reserva YA existe: el aviso lo distingue.
                 const outcome = await createReservationWithFollowUp({
                     payload,
                     sendLinkNow: values.sendLinkNow === true,
@@ -559,569 +390,211 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
                 if (outcome.tone === "success") {
                     toast.success(outcome.title, { description: outcome.description })
                 } else {
-                    toast.warning(outcome.title, { description: outcome.description, duration: 8000 })
+                    // La reserva YA existe: el aviso lleva a su ficha, donde se reenvía el link.
+                    const createdUuid = outcome.reservationUuid
+                    toast.warning(outcome.title, {
+                        description: outcome.description,
+                        duration: 8000,
+                        ...(createdUuid
+                            ? { action: { label: "Ver reserva", onClick: () => window.location.assign(`/dashboard/reservations/${createdUuid}`) } }
+                            : {}),
+                    })
                 }
             }
-
-            setOpen(false)
-            form.reset()
+            closeNow()
             window.dispatchEvent(new Event("reservationCreated"))
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("[ReservationDialog] Submit error:", error)
-            // Algo se desactivó después de abrir el formulario (contrato
-            // 2026-10-27). Se conserva el borrador, se muestra el mensaje del
-            // backend tal cual y se releen los estados. El enlace lleva a
-            // gestionar, no activa: activar una propiedad tiene efectos en
-            // cascada y pide su propia confirmación.
+            const title = isCreate ? "No se pudo crear la reserva" : "No se pudo actualizar la reserva"
+            // Algo se desactivó después de abrir el formulario: se conserva el
+            // borrador, se muestra el mensaje del backend y se releen los estados.
             const inactive = readInactiveResourceError(error)
             if (inactive) {
                 const manage = inactiveResourceAction(inactive, values.propertyUuid)
                 form.setError("listingId", { type: "inactive", message: inactive.message })
-                toast.error(mode === "edit" ? "No se pudo actualizar la reserva" : "No se pudo crear la reserva", {
+                setSubmitError(inactive.message)
+                toast.error(title, {
                     description: inactive.message,
                     ...(manage ? { action: { label: manage.label, onClick: () => window.location.assign(manage.href) } } : {}),
                 })
-                void loadProperties()
+                void catalogs.loadProperties()
                 if (values.propertyUuid) void loadListings(values.propertyUuid)
                 return
             }
-            // 422 con claves de campo (contrato §2g.5): se ancla cada mensaje —ya
-            // localizado, se muestra tal cual— al control real del formulario. Las
-            // claves que este formulario no edita (p. ej. `externalId`, que en
-            // edición ya ni se envía) caen al toast con el texto del backend, que
-            // es el único que trae el detalle específico.
+            // 422 con claves de campo: cada mensaje (ya localizado) se ancla al
+            // control real. Las claves que este formulario no edita caen al aviso.
             const fieldErrors = readReservationFieldErrors(error)
-            const FORM_FIELD_BY_API_KEY: Record<string, keyof ReservationFormValues> = {
-                arrivalDate: "dates",
-                departureDate: "dates",
-                listingId: "listingId",
-                listingUuid: "listingId",
-                emailGuest: "emailGuest",
-                totalGuests: "totalGuests",
-                totalPrice: "totalPrice",
-                currency: "currency",
-                reservationSourceId: "reservationSourceId",
-            }
+            let anchored = 0
             for (const fieldError of fieldErrors) {
                 const formField = FORM_FIELD_BY_API_KEY[fieldError.field]
                 if (!formField) continue
                 form.setError(formField, { type: "server", message: fieldError.message })
+                anchored++
             }
             if (fieldErrors.length > 0) {
-                toast.error(
-                    mode === "edit" ? "No se pudo actualizar la reserva" : "No se pudo crear la reserva",
-                    { description: fieldErrors[0].message },
-                )
+                setSubmitError(anchored === fieldErrors.length ? "Revisa los campos marcados." : fieldErrors[0].message)
+                toast.error(title, { description: fieldErrors[0].message })
             } else {
-                // El fallback distingue el modo: al editar decía "Error al crear la
-                // reserva". `notifyError` ya prefiere el texto del backend cuando viene.
-                notifyError(error, mode === "edit" ? "Error al actualizar la reserva" : "Error al crear la reserva")
+                const normalized = normalizeApiError(error, isCreate ? "Error al crear la reserva" : "Error al actualizar la reserva")
+                setSubmitError(normalized.message)
+                notifyError(error, isCreate ? "Error al crear la reserva" : "Error al actualizar la reserva")
             }
         } finally {
-            setIsLoading(false)
+            setIsSubmitting(false)
         }
     }
 
+    const retrySources = useCallback(async () => {
+        if (catalogs.loading.sources) return
+        if (await catalogs.loadSources()) {
+            requestAnimationFrame(() => channelTriggerRef.current?.focus())
+        }
+    }, [catalogs])
+
+    const ctaLabel = !isCreate ? "Guardar cambios" : sendLinkNow ? "Crear y enviar link" : "Crear reserva"
+    const channelName = (catalogs.sources.find((s) => String(s.id) === selectedSourceId) ?? (editSource && String(editSource.id) === selectedSourceId ? editSource : null))?.name ?? null
+
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={handleOpenChange}>
             <DialogTrigger asChild>
                 {trigger ? trigger : (
-                    // Botón principal estándar: el morado de marca con texto blanco
-                    // daba 4,42:1 (no AA); `primary` es su versión de interacción.
                     <Button>
                         <Icon icon={Plus} />
                         Nueva reserva
                     </Button>
                 )}
             </DialogTrigger>
-            <DialogContent className="sm:max-w-170 max-h-[90vh] overflow-y-auto w-[95vw] sm:w-auto">
-                <DialogHeader className="pb-2">
-                    <DialogTitle>
-                        {mode === "edit" ? "Editar Reserva Manual" : "Crear Reserva Manual"}
-                    </DialogTitle>
-                    <DialogDescription className="text-ink-3">
-                        {mode === "edit" 
-                            ? "Edita los detalles de la reserva seleccionada." 
-                            : "Registra una nueva reserva. El huésped recibirá el link para completar su check-in online."}
+            <DialogContent layout="panel" className="sm:max-w-5xl">
+                <DialogHeader divided>
+                    <DialogTitle>{isCreate ? "Nueva reserva" : "Editar reserva"}</DialogTitle>
+                    <DialogDescription>
+                        {isCreate
+                            ? "Regístrala y, si quieres, envía al huésped el link de su check-in online."
+                            : "Edita los detalles de la reserva seleccionada."}
                     </DialogDescription>
                 </DialogHeader>
 
-                {/* Aviso, no bloqueo: el backend decidió que el PM manda y el PMS
-                    gana después (§2g.4). Solo con `isImported === true` explícito —
-                    una clave ausente no es noticia y no debe generar avisos falsos. */}
-                {mode === "edit" && editingOrigin?.isImported && (
-                    <FeedbackBanner tone="warning">{describeImportedReservationNotice(editingOrigin)}</FeedbackBanner>
-                )}
-
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-
-                        {/* ─── Section: Guest Info ─── */}
-                        <div className="space-y-1">
-                            <Heading level={3} size="group" tone="muted" className="flex items-center gap-2">
-                                <Icon icon={User} size="sm" />
-                                Datos del Huésped
-                            </Heading>
-                            <div className="h-px bg-sunk" />
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <FormField
-                                control={form.control}
-                                name="guestName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-semibold text-ink-2">Nombres del huésped *</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder="Ej: María"
-                                                autoComplete="given-name"
-                                                className="h-11"
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
+                    <form onSubmit={form.handleSubmit(onValid, onInvalid)} className="contents">
+                        <DialogBody className="lg:flex lg:items-start lg:gap-8">
+                            <div className="min-w-0 flex-1 space-y-8">
+                                {!isCreate && editingOrigin?.isImported && (
+                                    <FeedbackBanner tone="warning">{describeImportedReservationNotice(editingOrigin)}</FeedbackBanner>
                                 )}
-                            />
-                            {/* Separado del nombre a propósito: así viaja partido a
-                                `extra` y el check-in del titular puede precargarlo.
-                                Con un solo campo habría que adivinar dónde acaba el
-                                nombre, y esto alimenta reportes SIRE/TRA. */}
-                            <FormField
-                                control={form.control}
-                                name="guestLastname"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-semibold text-ink-2">Apellidos del huésped *</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder="Ej: González Pérez"
-                                                autoComplete="family-name"
-                                                className="h-11"
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
+                                {invalidCount > 0 && (
+                                    <FeedbackBanner tone="danger" mode="blocking">
+                                        {invalidCount === 1 ? "Falta 1 campo. Lo marcamos abajo." : `Faltan ${invalidCount} campos. Los marcamos abajo.`}
+                                    </FeedbackBanner>
                                 )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="guestCountry"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-semibold text-ink-2">País / Nacionalidad *</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value} disabled={loadingCountries}>
-                                            <FormControl>
-                                                <SelectTrigger className="h-11">
-                                                    <SelectValue placeholder={loadingCountries ? "Cargando..." : "Selecciona un país"} />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent position="popper" className="z-[100] max-h-75">
-                                                {countries.map((c) => (
-                                                    <SelectItem key={c.id} value={c.name}>
-                                                        {c.extra?.emoji ? `${c.extra.emoji} ` : ""}{c.name}
-                                                    </SelectItem>
-                                                ))}
-                                                {countries.length === 0 && !loadingCountries && (
-                                                    <div className="px-3 py-2 text-xs text-ink-3">No hay países disponibles</div>
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
+                                {submitError && (
+                                    <FeedbackBanner tone="danger" mode="blocking">{submitError}</FeedbackBanner>
                                 )}
-                            />
-                        </div>
+                                {isCreate && <Note>{BOOKING_RULE}</Note>}
 
-                        {/* ─── Section: Property & Source ─── */}
-                        <div className="space-y-1.5 pt-2">
-                            <Heading level={3} size="group" tone="muted" className="flex items-center gap-2">
-                                <Icon icon={Home} size="sm" />
-                                Alojamiento y Canal
-                            </Heading>
-                            <div className="h-px w-full bg-rule" />
-                        </div>
+                                {isLoadingReservation && <EditLoadingSkeleton />}
+                                <div className={isLoadingReservation ? "hidden" : "space-y-8"}>
 
-                        {isCreate && (
-                            <p className="flex items-start gap-2 text-xs text-ink-3">
-                                <Icon icon={AlertCircle} size="sm" className="mt-0.5 text-ink-3" /> {BOOKING_RULE}
-                            </p>
-                        )}
-
-                        {/* Property gets its own full-width row (names are long, e.g.
-                            "KeyPöint Retreat | Green Höuse"); Alojamiento + Canal share
-                            a 2-column row so none of the three selects get cramped. */}
-                        <div className="space-y-5">
-                            <FormField
-                                control={form.control}
-                                name="propertyUuid"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-semibold text-ink-2">Propiedad *</FormLabel>
-                                        <Select 
-                                            onValueChange={(val) => {
-                                                field.onChange(val);
-                                                form.setValue("listingId", "");
-                                            }} 
-                                            value={field.value} 
-                                            disabled={loadingProperties}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger className="h-11">
-                                                    <SelectValue placeholder={loadingProperties ? "Cargando..." : "Selecciona..."} />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {properties.map((p) => {
-                                                    const tag = statusTag(p.status, true)
-                                                    return (
-                                                        <SelectItem key={p.uuid} value={p.uuid} disabled={!!tag && !isOriginal("propertyUuid", p.uuid)}>
-                                                            {p.name}{tag && <>{" "}<span className="text-xs text-ink-3">· {tag}</span></>}
-                                                        </SelectItem>
-                                                    )
-                                                })}
-                                                {properties.length === 0 && !loadingProperties && (
-                                                    <div className="px-3 py-2 text-xs text-ink-3">No hay opciones</div>
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                        {noActiveProperties && (
-                                            <p role="alert" className="text-xs font-medium text-warning">{NO_ACTIVE_PROPERTIES}</p>
-                                        )}
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <FormField
-                                control={form.control}
-                                name="listingId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-semibold text-ink-2">Alojamiento *</FormLabel>
-                                        <Select
-                                            onValueChange={handleListingChange}
-                                            value={field.value}
-                                            disabled={!selectedPropertyUuid || loadingListings || (!!selectedPropertyUuid && !loadingListings && listings.length === 0)}
-                                        >
-                                            <FormControl>
-                                                <SelectTrigger className={cn(
-                                                    "h-11",
-                                                    !!selectedPropertyUuid && !loadingListings && listings.length === 0 && "disabled:text-primary data-[placeholder]:text-primary text-primary font-medium placeholder:text-primary"
-                                                )}>
-                                                    <SelectValue className="text-primary" placeholder={
-                                                        !selectedPropertyUuid
-                                                            ? "Selecciona..."
-                                                            : loadingListings
-                                                                ? "Cargando..."
-                                                                : listings.length === 0
-                                                                    ? t("reservations.noListings")
-                                                                    : "Selecciona..."
-                                                    } />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {listings.map((l) => {
-                                                    const tag = statusTag(l.status, false)
-                                                    return (
-                                                        <SelectItem key={l.uuid} value={l.uuid} disabled={!!tag && !isOriginal("listingId", l.uuid)}>
-                                                            {l.name}{tag && <>{" "}<span className="text-xs text-ink-3">· {tag}</span></>}
-                                                        </SelectItem>
-                                                    )
-                                                })}
-                                                {listings.length === 0 && !loadingListings && selectedPropertyUuid && (
-                                                    <div className="px-3 py-2 text-xs text-ink-3">No hay alojamientos</div>
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                        {noActiveListings && (
-                                            <p role="alert" className="text-xs font-medium text-warning">{NO_ACTIVE_LISTINGS}</p>
-                                        )}
-                                        {/* En edición se conserva el alojamiento aunque esté inactivo,
-                                            pero se avisa: sus automatizaciones no corren. */}
-                                        {!isCreate && selectionBlock && (
-                                            <p className="text-xs font-medium text-warning">
-                                                {selectionBlock.startsWith("property")
-                                                    ? "La propiedad de esta reserva está inactiva: sus automatizaciones están detenidas."
-                                                    : "El alojamiento de esta reserva está inactivo: sus automatizaciones están detenidas."}
-                                            </p>
-                                        )}
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="reservationSourceId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-semibold text-ink-2">Canal de Reserva *</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value} disabled={loadingSources || sourcesFailed}>
-                                            <FormControl>
-                                                <SelectTrigger ref={channelTriggerRef} className="h-11">
-                                                    <SelectValue placeholder={loadingSources ? "Cargando..." : "Selecciona..."} />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                                {(mode === "edit" && editSource && !reservationSources.some((s) => s.id === editSource.id)
-                                                    ? [editSource, ...reservationSources]
-                                                    : reservationSources
-                                                ).map((s) => (
-                                                    <SelectItem key={s.id} value={String(s.id)}>
-                                                        {s.name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        {sourcesFailed && (
-                                            <FieldError role="alert">
-                                                No pudimos cargar los canales de reserva.
-                                                {mode === "create" && " Sin canal no se puede crear la reserva."}
-                                                {mode === "edit" && editSource && " Se conserva el canal actual."}{" "}
-                                                {/* `aria-disabled`, no `disabled`: el foco se queda en el botón mientras reintenta. */}
-                                                <Button variant="link" size="inline"
-                                                    type="button"
-                                                    aria-disabled={loadingSources}
-                                                    onClick={async () => {
-                                                        if (loadingSources) return
-                                                        if (await loadReservationSources()) {
-                                                            requestAnimationFrame(() => channelTriggerRef.current?.focus())
-                                                        }
-                                                    }}
-                                                >
-                                                    {loadingSources ? "Reintentando…" : "Reintentar"}
-                                                </Button>
-                                            </FieldError>
-                                        )}
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                                <StaySection
+                                    mode={mode}
+                                    catalogs={catalogs}
+                                    editOriginal={editOriginal}
+                                    editSource={editSource}
+                                    channelTriggerRef={channelTriggerRef}
+                                    onRetrySources={() => void retrySources()}
+                                    onPropertyChange={handlePropertyChange}
+                                    onListingChange={(uuid) => void handleListingChange(uuid)}
+                                    onGuestsEdited={() => markTouched("totalGuests")}
+                                    capacity={listingDefaults?.guests ?? null}
+                                    inactiveNotice={inactiveNotice}
+                                    noActiveProperties={noActiveProperties}
+                                    noActiveListings={noActiveListings}
+                                    isSmallScreen={isSmallScreen}
+                                />
+                                <PrimaryGuestSection
+                                    countries={catalogs.countries}
+                                    loadingCountries={catalogs.loading.countries}
+                                    countriesFailed={catalogs.failed.countries}
+                                    onRetryCountries={() => void catalogs.loadCountries()}
+                                />
+                                <ReservationValueSection
+                                    currencies={catalogs.currencies}
+                                    loadingCurrencies={catalogs.loading.currencies}
+                                    currenciesFailed={catalogs.failed.currencies}
+                                    onRetryCurrencies={() => void catalogs.loadCurrencies()}
+                                    nights={nights}
+                                    priceSuggested={priceSuggested}
+                                    onPriceEdited={() => markTouched("totalPrice")}
+                                    onCurrencyEdited={() => markTouched("currency")}
+                                />
+                                <CheckinLinkSection mode={mode} />
+                                </div>
                             </div>
-                        </div>
-
-                        {/* ─── Section: Dates ─── */}
-                        <div className="space-y-1.5 pt-2">
-                            <Heading level={3} size="group" tone="muted" className="flex items-center gap-2">
-                                <Icon icon={CalendarIcon} size="sm" />
-                                Fechas y Huéspedes
-                            </Heading>
-                            <div className="h-px w-full bg-rule" />
-                        </div>
-
-                        <FormField
-                            control={form.control}
-                            name="dates"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-col">
-                                    <FormLabel className="font-semibold text-ink-2">Fechas de estancia *</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                                <Button
-                                                    variant="field"
-                                                    data-placeholder={!field.value?.from || undefined}
-                                                    className="w-full"
-                                                >
-                                                    {field.value?.from ? (
-                                                        field.value.to ? (
-                                                            <span>
-                                                                {format(field.value.from, "d MMM yyyy", { locale: es })} — {format(field.value.to, "d MMM yyyy", { locale: es })}
-                                                                {nights > 0 && (
-                                                                    <Badge tone="accent" className="ml-2">
-                                                                        {nights} {nights === 1 ? "noche" : "noches"}
-                                                                    </Badge>
-                                                                )}
-                                                            </span>
-                                                        ) : (
-                                                            format(field.value.from, "d MMM yyyy", { locale: es })
-                                                        )
-                                                    ) : (
-                                                        <span>Seleccionar fechas</span>
-                                                    )}
-                                                    <Icon icon={CalendarIcon} className="opacity-50" />
-                                                </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar
-                                                initialFocus
-                                                mode="range"
-                                                selected={field.value as any}
-                                                onSelect={field.onChange}
-                                                numberOfMonths={isSmallScreen ? 1 : 2}
-                                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                                            />
-                                        </PopoverContent>
-                                    </Popover>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                            <FormField
-                                control={form.control}
-                                name="totalGuests"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-semibold text-ink-2 flex items-center gap-1.5">
-                                            <Icon icon={Users} size="sm" className="text-primary" />
-                                            Huéspedes *
-                                        </FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="number"
-                                                min={1}
-                                                placeholder="1"
-                                                className="h-11"
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
+                            <ReservationSummary
+                                className="hidden shrink-0 lg:sticky lg:top-0 lg:block lg:w-72"
+                                data={{
+                                    propertyName: selectedProperty?.name ?? null,
+                                    listingName: selectedListing?.name ?? null,
+                                    channelName,
+                                    from: selectedDates?.from,
+                                    to: selectedDates?.to,
+                                    nights,
+                                    guests,
+                                    total,
+                                    perNight: pricePerNight(total, nights),
+                                    currency,
+                                    mode,
+                                    sendLinkNow,
+                                }}
                             />
-                            <FormField
-                                control={form.control}
-                                name="totalPrice"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-semibold text-ink-2 flex items-center gap-1.5">
-                                            <Icon icon={DollarSign} size="sm" className="text-primary" />
-                                            Precio total *
-                                        </FormLabel>
-                                        <FormControl>
-                                            <Input type="number" min={0} step="0.01" className="h-11" placeholder="0.00" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="currency"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-semibold text-ink-2">Moneda *</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value} disabled={loadingCurrencies}>
-                                            <FormControl>
-                                                <SelectTrigger className="h-11">
-                                                    <SelectValue placeholder={loadingCurrencies ? "Cargando..." : "Moneda"} />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent position="popper" className="z-[100] max-h-75">
-                                                {currencies.map((c) => (
-                                                    <SelectItem key={c.id} value={c.id}>
-                                                        {c.name}
-                                                    </SelectItem>
-                                                ))}
-                                                {currencies.length === 0 && !loadingCurrencies && (
-                                                    <div className="px-3 py-2 text-xs text-ink-3">No hay opciones</div>
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
+                        </DialogBody>
 
-                        {/* ─── Contact Info ─── */}
-                        <div className="space-y-1.5 pt-2">
-                            <Heading level={3} size="group" tone="muted" className="flex items-center gap-2">
-                                <Icon icon={Phone} size="sm" />
-                                Contacto y Enlace Móvil
-                            </Heading>
-                            <div className="h-px w-full bg-rule" />
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <FormField
-                                control={form.control}
-                                name="guestPhone"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-semibold text-ink-2">WhatsApp / Teléfono *</FormLabel>
-                                        <FormControl>
-                                            <PhoneInputField 
-                                                value={field.value} 
-                                                onChange={field.onChange} 
-                                                placeholder="300 123 4567" 
-                                                disabled={isLoading} 
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="emailGuest"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-semibold text-ink-2">Email (Se enviará el link ahora) *</FormLabel>
-                                        <FormControl>
-                                            <Input 
-                                                type="email" 
-                                                placeholder="huesped@email.com" 
-                                                className="h-11"
-                                                {...field} 
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-
-                        {/* ─── Send Link Toggle ─── */}
-                        <Note as="div" tone="accent" density="default">
-                            <FormField
-                                control={form.control}
-                                name="sendLinkNow"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <SwitchField
-                                            variant="plain"
-                                            label={<><Icon icon={Send} className="text-primary" />Enviar link de check-in ahora</>}
-                                            description={<>Se enviará un email a <span className="font-medium">{form.watch("emailGuest") || "..."}</span> con el link para completar el check-in online</>}
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormItem>
-                                )}
-                            />
-                        </Note>
-
-                        {/* ─── Footer ─── */}
-                        <DialogFooter className="gap-2 pt-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setOpen(false)}
-                                disabled={isLoading}
-                            >
+                        <DialogFooter divided className="sm:items-center">
+                            <Button type="button" variant="outline" onClick={requestClose} disabled={isSubmitting}>
                                 Cancelar
                             </Button>
                             <Button
                                 type="submit"
-                                disabled={mode === "create" && (sourcesFailed || loadingSources)}
-                                loading={isLoading}
-                                loadingLabel={mode === "edit" ? "Guardando..." : "Creando..."}
-                                className="min-w-40"
+                                disabled={isLoadingReservation || (isCreate && (catalogs.sourcesFailed || catalogs.loading.sources))}
+                                loading={isSubmitting}
+                                loadingLabel={isCreate ? "Creando reserva…" : "Guardando…"}
+                                className="min-w-44"
                             >
-                                {mode === "edit" ? <Icon icon={Edit} /> : <Icon icon={Plus} />}
-                                {mode === "edit" ? "Guardar Cambios" : "Crear Reserva"}
+                                {isCreate && sendLinkNow && <Icon icon={Send} />}
+                                {ctaLabel}
                             </Button>
+                            {/* Último en el DOM: con `flex-col-reverse` queda ARRIBA de los botones
+                                en móvil; en escritorio `order-first` lo pone a la izquierda. */}
+                            <p className="text-xs text-ink-3 sm:order-first sm:mr-auto">
+                                <span className="hidden sm:inline"><span className="text-danger">*</span> Campos obligatorios</span>
+                                {/* En móvil no hay columna de resumen: se condensa aquí. */}
+                                <span className="sm:hidden">
+                                    {selectedListing
+                                        ? <>
+                                            {nights > 0 ? `${nights} ${nights === 1 ? "noche" : "noches"} · ` : ""}{guests} {guests === 1 ? "huésped" : "huéspedes"}
+                                            {total != null && total > 0 ? ` · ${formatMoney(total, currency)}` : total === 0 ? " · Sin costo" : ""}
+                                        </>
+                                        : <><span className="text-danger">*</span> Campos obligatorios</>}
+                                </span>
+                            </p>
                         </DialogFooter>
                     </form>
                 </Form>
             </DialogContent>
+
+            <AlertDialog open={confirmingDiscard} onOpenChange={(next) => { if (!next) setConfirmingDiscard(false) }}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>{isCreate ? "¿Descartar la reserva?" : "¿Descartar los cambios?"}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            {isCreate ? "Lo que escribiste se pierde. La reserva no se crea." : "Los cambios no se guardan."}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Seguir editando</AlertDialogCancel>
+                        <AlertDialogAction onClick={closeNow}>Descartar</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Dialog>
     )
 }

@@ -92,3 +92,21 @@ describe("createReservationWithFollowUp — cableado completo con lo que entrega
         expect(sendLink).not.toHaveBeenCalled()
     })
 })
+
+
+describe("CreationOutcome.reservationUuid — para «Ver reserva»", () => {
+    it("lo trae cuando la reserva se creó, aunque el link falle; null si la respuesta no lo dio", async () => {
+        const deps = (sendLink: () => Promise<string>, created: unknown = { reservation: { uuid: "res-1" } }) => ({
+            post: async () => created,
+            sendLink,
+            describeError: () => "Mailgun no respondió.",
+        })
+        const base = { payload: {}, sendLinkNow: true, guestName: "Ana", email: "ana@correo.com" }
+        expect(await createReservationWithFollowUp(base, deps(async () => { throw new Error("x") })))
+            .toMatchObject({ tone: "warning", reservationUuid: "res-1" })
+        expect(await createReservationWithFollowUp(base, deps(async () => "Encolado")))
+            .toMatchObject({ tone: "success", reservationUuid: "res-1" })
+        expect(await createReservationWithFollowUp(base, deps(async () => "Encolado", {})))
+            .toMatchObject({ tone: "warning", reservationUuid: null })
+    })
+})
