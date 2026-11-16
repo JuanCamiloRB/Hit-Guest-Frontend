@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { SKIPPED_REASON_COPY, chargeLabel, describePayload } from "./AutomationHistoryModal"
+import { SKIPPED_REASON_COPY, chargeLabel, describePayload, recordDetail } from "./AutomationHistoryModal"
 
 describe("describePayload", () => {
     it("explica el skip documentado de PDF", () => {
@@ -56,5 +56,19 @@ describe("chargeLabel", () => {
     it("billable con tarifa la muestra; no billable es «Sin cargo»", () => {
         expect(chargeLabel({ ...base, unitCost: "0.0625" })).toBe("Facturable · 0.0625")
         expect(chargeLabel({ ...base, billable: false })).toBe("Sin cargo")
+    })
+})
+
+describe("recordDetail — credenciales rechazadas (nota backend 2026-11-11)", () => {
+    it("traduce el código y agrega el mensaje del proveedor, con el estado que llegue", () => {
+        for (const status of ["pending", "failed"] as const) {
+            expect(recordDetail({ status, lastError: { message: "credentials_rejected", httpStatus: null, httpBody: null }, responsePayload: { provider_message: "[infoEmpresaNoActualizada]" } }))
+                .toBe("En espera: el proveedor rechazó las credenciales. Se reanuda sola al guardar las credenciales. Mensaje del proveedor: [infoEmpresaNoActualizada]")
+        }
+    })
+
+    it("una completada que arrastra el código conserva su detalle", () => {
+        expect(recordDetail({ status: "completed", lastError: { message: "credentials_rejected", httpStatus: null, httpBody: null }, responsePayload: { skipped: true, reason: "no_recipients" } }))
+            .toBe("No se envió: no hay destinatarios configurados.")
     })
 })

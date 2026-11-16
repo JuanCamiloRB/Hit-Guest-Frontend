@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
     deleteListingOverride: vi.fn(),
     listListingOverrides: vi.fn(),
     listProviders: vi.fn(),
-    toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
+    toast: { success: vi.fn(), error: vi.fn(), info: vi.fn(), warning: vi.fn() },
 }))
 
 vi.mock("../../services/automation-service", async (importOriginal) => {
@@ -393,7 +393,7 @@ describe("AutomationOverrideModal — TRA con credenciales por alojamiento (cont
         expect(mocks.createListingOverride).not.toHaveBeenCalled()
     })
 
-    it("un secreto recibido nunca se precarga ni se reenvía si el PM no lo cambia", async () => {
+    it("el dueño (el valor llegó) ve su secreto en un campo de contraseña y no se reenvía si no lo cambia", async () => {
         mocks.updateListingOverride.mockResolvedValue(override({
             propertyAutomationUuid: "tra-row",
             credentialsComplete: true,
@@ -404,19 +404,44 @@ describe("AutomationOverrideModal — TRA con credenciales por alojamiento (cont
             override: override({
                 propertyAutomationUuid: "tra-row",
                 credentialsComplete: true,
+                storedSecretKeys: ["token"],
+                secretHints: {},
                 parameters: { token: "SENTINEL-OVERRIDE-TOKEN", rnt: "123" },
             }),
         })
         const token = screen.getByLabelText(/Token API TRA/)
-        expect(token).toHaveValue("")
-        expect(token).toHaveAttribute("placeholder", "Ya configurado · escribe para reemplazarlo")
-        expect(screen.getByRole("dialog").outerHTML).not.toContain("SENTINEL-OVERRIDE-TOKEN")
+        // Decisión 2026-11-14 (sugerencia del backend): el dueño lo ve, enmascarado y con mostrar/ocultar.
+        expect(token).toHaveAttribute("type", "password")
+        expect(token).toHaveValue("SENTINEL-OVERRIDE-TOKEN")
+        expect(screen.getByRole("button", { name: /Mostrar/i })).toBeInTheDocument()
 
         await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
         await waitFor(() => expect(mocks.updateListingOverride).toHaveBeenCalled())
         const payload = mocks.updateListingOverride.mock.calls[0][1]
+        // Sin cambio no se reenvía: el backend conserva el guardado (nota 2026-11-12 §4).
         expect(payload.parameters).toEqual({ rnt: "123" })
         expect(JSON.stringify(payload)).not.toContain("SENTINEL-OVERRIDE-TOKEN")
+    })
+
+    it("quien no es el dueño (guardado sin valor) ve «Guardada» con la pista, sin campo ni forma de pisarlo", async () => {
+        mocks.updateListingOverride.mockResolvedValue(override({ propertyAutomationUuid: "tra-row", credentialsComplete: true }))
+        renderModal({
+            ...props,
+            override: override({
+                propertyAutomationUuid: "tra-row",
+                credentialsComplete: true,
+                storedSecretKeys: ["token"],
+                secretHints: { token: "3f9a" },
+                parameters: { rnt: "123" },
+            }),
+        })
+        expect(screen.queryByLabelText(/Token API TRA/, { selector: "input" })).toBeNull()
+        expect(screen.getByText("••••3f9a · Guardada")).toBeInTheDocument()
+        expect(screen.getByText("Solo el dueño de la propiedad puede verla o cambiarla.")).toBeInTheDocument()
+        // Guardar no le exige el token ni lo manda: el backend conserva el suyo.
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(mocks.updateListingOverride).toHaveBeenCalled())
+        expect(mocks.updateListingOverride.mock.calls[0][1].parameters).toEqual({ rnt: "123" })
     })
 
     it("escribir en un secreto y borrarlo lo conserva: vacío nunca se envía como null", async () => {
@@ -446,9 +471,10 @@ describe("AutomationOverrideModal — TRA con credenciales por alojamiento (cont
             draftMode: true,
             override: override({ uuid: "", propertyAutomationUuid: "tra-row", parameters: { token: "SENTINEL-DRAFT-TOKEN", rnt: "123" } }),
         })
-        // El secreto del borrador tampoco se precarga en el DOM.
-        expect(screen.getByLabelText(/Token API TRA/)).toHaveValue("")
-        expect(screen.getByRole("dialog").outerHTML).not.toContain("SENTINEL-DRAFT-TOKEN")
+        // El borrador es del PM que lo escribe: lo ve enmascarado, como el dueño.
+        const token = screen.getByLabelText(/Token API TRA/)
+        expect(token).toHaveAttribute("type", "password")
+        expect(token).toHaveValue("SENTINEL-DRAFT-TOKEN")
         await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
         await waitFor(() => expect(handlers.onSaved).toHaveBeenCalled())
         expect(handlers.onSaved.mock.calls[0][0].parameters).toEqual({ token: "SENTINEL-DRAFT-TOKEN", rnt: "123" })
@@ -532,5 +558,200 @@ describe("AutomationOverrideModal — TRA con credenciales por alojamiento (cont
         await waitFor(() => expect(mocks.deleteListingOverride).toHaveBeenCalledWith("ov-1"))
         expect(mocks.toast.success).toHaveBeenCalledWith("Credenciales quitadas. Este alojamiento ya no se reporta.")
         expect(handlers.onInheritRestored).toHaveBeenCalled()
+    })
+})
+
+describe("AutomationOverrideModal — SIRE: las credenciales se piden una vez (nota backend 2026-11-12, Q4)", () => {
+    const sireIn = { ...withCredentials("sire-in", "sire_colombia", { credentials_scope: "listing" }), name: "SIRE Colombia - Check-in" }
+    const sireOut = { ...withCredentials("sire-out", "sire_colombia", { credentials_scope: "listing" }), name: "SIRE Colombia - Check-out" }
+    const creds = { document_type: "CC", document_number: "1020", password: "SENTINEL-SIRE-PASS" }
+    const existing = () => override({
+        propertyAutomationUuid: "sire-in", credentialsComplete: true, storedSecretKeys: ["password"], parameters: { ...creds },
+    })
+    const base = () => ({
+        propertyAutomations: [sireIn],
+        lockedPropertyAutomationUuid: "sire-in",
+        override: existing(),
+        credentialSibling: { automation: sireOut, override: null },
+        onSiblingSaved: vi.fn(),
+    })
+
+    // La copia relee el override de la otra al guardar: por omisión, la unidad no tiene ninguno.
+    beforeEach(() => { mocks.listListingOverrides.mockResolvedValue([]) })
+
+    it("ofrece guardar en la otra SIRE (marcado) y copia todo lo del formulario, incluido el secreto del dueño", async () => {
+        mocks.updateListingOverride.mockResolvedValue(existing())
+        mocks.createListingOverride.mockResolvedValue(override({ propertyAutomationUuid: "sire-out", parameters: { document_number: "1020" } }))
+        const props = base()
+        const handlers = renderModal(props)
+        const mirror = screen.getByRole("checkbox", { name: /Usar estas mismas credenciales en «SIRE Colombia - Check-out»/ })
+        expect(mirror).toHaveAttribute("aria-checked", "true")
+
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(handlers.onSaved).toHaveBeenCalled())
+        // La principal no reenvía el secreto sin cambio…
+        expect(mocks.updateListingOverride.mock.calls[0][1].parameters).toEqual({ document_type: "CC", document_number: "1020" })
+        // …y la otra SIRE recibe las credenciales completas, activa.
+        expect(mocks.createListingOverride).toHaveBeenCalledWith({
+            listingUuid: "unit-1", propertyAutomationUuid: "sire-out", statusRecordId: 6, parameters: creds,
+        })
+        expect(props.onSiblingSaved).toHaveBeenCalledWith(expect.objectContaining({ propertyAutomationUuid: "sire-out" }))
+        expect(mocks.toast.success).toHaveBeenCalledWith("Credenciales guardadas aquí y en «SIRE Colombia - Check-out»")
+    })
+
+    it("si la otra ya tiene credenciales propias, reemplazarlas es opt-in; marcado, la actualiza y vacía lo que aquí está vacío", async () => {
+        mocks.updateListingOverride.mockResolvedValue(existing())
+        const outOverride = override({
+            uuid: "ov-out", propertyAutomationUuid: "sire-out",
+            parameters: { document_type: "CC", document_number: "999", company_code: "NIT1" }, storedSecretKeys: ["password"],
+        })
+        // La relectura al guardar la encuentra igual.
+        mocks.listListingOverrides.mockResolvedValue([outOverride])
+        const props = { ...base(), credentialSibling: { automation: sireOut, override: outOverride } }
+        renderModal(props)
+        const replace = screen.getByRole("checkbox", { name: /Reemplazar las credenciales de «SIRE Colombia - Check-out» con estas/ })
+        expect(replace).toHaveAttribute("aria-checked", "false")
+
+        const user = userEvent.setup()
+        await user.click(replace)
+        await user.click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(mocks.updateListingOverride).toHaveBeenCalledTimes(2))
+        // «Las mismas»: el NIT que aquí no hay se vacía allá; el secreto no se toca si estaba vacío.
+        // Sin `statusRecordId`: ya se comprobó activa; un estado mal leído no reactiva nada.
+        expect(mocks.updateListingOverride).toHaveBeenCalledWith("ov-out", {
+            parameters: { ...creds, company_code: null },
+        })
+        expect(mocks.createListingOverride).not.toHaveBeenCalled()
+    })
+
+    it("la otra se relee al guardar: si la excluyeron en otra tarjeta, no se reactiva", async () => {
+        mocks.updateListingOverride.mockResolvedValue(existing())
+        mocks.listListingOverrides.mockResolvedValue([
+            override({ uuid: "ov-out", propertyAutomationUuid: "sire-out", statusRecordId: 7, isActive: false }),
+        ])
+        const props = base()
+        const handlers = renderModal(props)
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(handlers.onSaved).toHaveBeenCalled())
+        expect(mocks.updateListingOverride).toHaveBeenCalledTimes(1)
+        expect(mocks.createListingOverride).not.toHaveBeenCalled()
+        expect(mocks.toast.info).toHaveBeenCalledWith(expect.stringContaining("está excluida en este alojamiento"))
+    })
+
+    it("quien no ve la contraseña no puede copiar: no se ofrece (la otra quedaría con documento de una y clave de otra)", () => {
+        renderModal({
+            ...base(),
+            override: override({
+                propertyAutomationUuid: "sire-in", credentialsComplete: true, storedSecretKeys: ["password"],
+                parameters: { document_type: "CC", document_number: "1020" },
+            }),
+        })
+        expect(screen.getByText("•••••••• · Guardada")).toBeInTheDocument()
+        expect(screen.queryByRole("checkbox", { name: /credenciales/ })).toBeNull()
+    })
+
+    it("con un backend anterior a la nota, un secreto que llega (quizá enmascarado) no se precarga ni se copia", () => {
+        renderModal({
+            ...base(),
+            override: override({
+                propertyAutomationUuid: "sire-in", credentialsComplete: true,
+                parameters: { document_type: "CC", document_number: "1020", password: "********" },
+            }),
+        })
+        expect(screen.getByLabelText(/Contraseña/, { selector: "input" })).toHaveValue("")
+        expect(screen.queryByRole("checkbox", { name: /credenciales/ })).toBeNull()
+    })
+
+    it("desmarcado, solo se guarda esta", async () => {
+        mocks.updateListingOverride.mockResolvedValue(existing())
+        const props = base()
+        const handlers = renderModal(props)
+        const user = userEvent.setup()
+        await user.click(screen.getByRole("checkbox", { name: /Usar estas mismas credenciales/ }))
+        await user.click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(handlers.onSaved).toHaveBeenCalled())
+        expect(mocks.createListingOverride).not.toHaveBeenCalled()
+        expect(props.onSiblingSaved).not.toHaveBeenCalled()
+    })
+
+    it("si falla la otra, la principal queda guardada y se dice qué no se guardó", async () => {
+        mocks.updateListingOverride.mockResolvedValue(existing())
+        mocks.createListingOverride.mockRejectedValue(new ApiError(500, { message: "Servidor caído" }))
+        const props = base()
+        const handlers = renderModal(props)
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(handlers.onSaved).toHaveBeenCalled())
+        expect(mocks.toast.warning).toHaveBeenCalledWith(expect.stringContaining("pero no en «SIRE Colombia - Check-out»"))
+        // El aviso ya dice qué se guardó: sin un «guardado» encima que lo contradiga.
+        expect(mocks.toast.success).not.toHaveBeenCalled()
+        expect(props.onSiblingSaved).not.toHaveBeenCalled()
+    })
+
+    it("no se ofrece si la otra SIRE está excluida en esta unidad (copiar la reactivaría)", () => {
+        renderModal({ ...base(), credentialSibling: { automation: sireOut, override: override({ propertyAutomationUuid: "sire-out", statusRecordId: 7, isActive: false }) } })
+        expect(screen.queryByRole("checkbox", { name: /Usar estas mismas credenciales/ })).toBeNull()
+    })
+
+    it("si el panel estaba viejo y la otra YA tiene credenciales, no las reemplaza en silencio", async () => {
+        mocks.updateListingOverride.mockResolvedValue(existing())
+        // El panel la cargó sin override («Usar…», marcado); al guardar ya tiene las suyas.
+        mocks.listListingOverrides.mockResolvedValue([override({
+            uuid: "ov-out", propertyAutomationUuid: "sire-out",
+            parameters: { document_type: "CE", document_number: "999" }, storedSecretKeys: ["password"],
+        })])
+        const handlers = renderModal(base())
+        expect(screen.getByRole("checkbox", { name: /Usar estas mismas credenciales/ })).toHaveAttribute("aria-checked", "true")
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(handlers.onSaved).toHaveBeenCalled())
+        expect(mocks.updateListingOverride).toHaveBeenCalledTimes(1)
+        expect(mocks.createListingOverride).not.toHaveBeenCalled()
+        expect(mocks.toast.info).toHaveBeenCalledWith(expect.stringContaining("ya tiene credenciales propias"))
+        expect(mocks.toast.success).not.toHaveBeenCalled()
+    })
+
+    it("si la otra se creó después de abrir el panel (sin credenciales), la actualiza en vez de duplicarla", async () => {
+        mocks.updateListingOverride.mockResolvedValue(existing())
+        mocks.listListingOverrides.mockResolvedValue([override({ uuid: "ov-out", propertyAutomationUuid: "sire-out", parameters: {} })])
+        renderModal(base())
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(mocks.updateListingOverride).toHaveBeenCalledTimes(2))
+        expect(mocks.updateListingOverride).toHaveBeenLastCalledWith("ov-out", { parameters: creds })
+        expect(mocks.createListingOverride).not.toHaveBeenCalled()
+    })
+
+    it("si el dueño vacía su contraseña (se conserva aquí), a la otra se copia la guardada", async () => {
+        mocks.updateListingOverride.mockResolvedValue(existing())
+        mocks.createListingOverride.mockResolvedValue(override({ propertyAutomationUuid: "sire-out" }))
+        renderModal(base())
+        const user = userEvent.setup()
+        await user.clear(screen.getByLabelText(/Contraseña/, { selector: "input" }))
+        expect(screen.getByText("Ya configurado; déjalo vacío para conservarlo.")).toBeInTheDocument()
+        await user.click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(mocks.createListingOverride).toHaveBeenCalled())
+        expect(mocks.createListingOverride.mock.calls[0][0].parameters).toEqual(creds)
+        expect(mocks.toast.warning).not.toHaveBeenCalled()
+    })
+
+    it("sin una credencial obligatoria no copia nada a la otra, y dice qué sí se guardó", async () => {
+        mocks.updateListingOverride.mockResolvedValue(existing())
+        const handlers = renderModal(base())
+        const user = userEvent.setup()
+        await user.clear(screen.getByLabelText(/Número de documento/i, { selector: "input" }))
+        await user.click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(handlers.onSaved).toHaveBeenCalled())
+        expect(mocks.createListingOverride).not.toHaveBeenCalled()
+        expect(mocks.toast.warning).toHaveBeenCalledWith(expect.stringMatching(/^Se guardó en esta automatización, pero no se copiaron .*faltan .*documento/i))
+    })
+
+    it("en borrador (unidad nueva) sintetiza el override de la otra sin llamar al servidor", async () => {
+        const props = { ...base(), draftMode: true, override: override({ uuid: "", propertyAutomationUuid: "sire-in", parameters: { ...creds } }) }
+        const handlers = renderModal(props)
+        await userEvent.setup().click(screen.getByRole("button", { name: "Guardar" }))
+        await waitFor(() => expect(handlers.onSaved).toHaveBeenCalled())
+        expect(props.onSiblingSaved).toHaveBeenCalledWith(expect.objectContaining({
+            uuid: "", propertyAutomationUuid: "sire-out", statusRecordId: 6, isActive: true, parameters: creds,
+        }))
+        expect(mocks.createListingOverride).not.toHaveBeenCalled()
+        expect(mocks.updateListingOverride).not.toHaveBeenCalled()
     })
 })

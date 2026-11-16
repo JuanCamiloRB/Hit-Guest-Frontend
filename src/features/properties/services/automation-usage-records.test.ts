@@ -8,6 +8,7 @@ vi.mock("@/lib/api-client", () => ({
 }))
 
 import { automationService } from "./automation-service"
+import { recordDetail } from "@/features/reservations/components/automations/AutomationHistoryModal"
 
 describe("automationService.listUsageRecords — cancelación (tablero, fase 1)", () => {
     beforeEach(() => {
@@ -41,5 +42,30 @@ describe("automationService.listUsageRecords — cancelación (tablero, fase 1)"
 
         await expect(automationService.listUsageRecords("res-1")).rejects.toBe(failure)
         expect(console.error).toHaveBeenCalledWith("[AutomationService] listUsageRecords error:", failure)
+    })
+})
+
+describe("automationService.listUsageRecords — mensaje del proveedor (nota backend 2026-11-11)", () => {
+    beforeEach(() => vi.clearAllMocks())
+
+    const raw = (payload: Record<string, unknown>) => ({
+        id: 9, status: "pending", billable: false, unitCost: 0,
+        lastError: { message: "credentials_rejected" },
+        responsePayload: payload,
+    })
+
+    it("de la respuesta de la API al detalle visible: el código traducido y el texto del proveedor", async () => {
+        mocks.get.mockResolvedValue({ data: [raw({ provider_message: "  [infoEmpresaNoActualizada] ", credential_rejection_id: 77, token: "no-entra" })] })
+        const [record] = await automationService.listUsageRecords("res-1")
+        expect(record.responsePayload).toEqual({ provider_message: "[infoEmpresaNoActualizada]" })
+        expect(recordDetail(record)).toBe(
+            "En espera: el proveedor rechazó las credenciales. Se reanuda sola al guardar las credenciales. Mensaje del proveedor: [infoEmpresaNoActualizada]",
+        )
+    })
+
+    it("un provider_message que no es texto no entra", async () => {
+        mocks.get.mockResolvedValue({ data: [raw({ provider_message: { secreto: "x" } }), raw({ provider_message: "   " })] })
+        const records = await automationService.listUsageRecords("res-1")
+        for (const record of records) expect(record.responsePayload).toEqual({})
     })
 })

@@ -3,6 +3,7 @@ import {
     credentialLabel,
     listingCredentialState,
     listingCredentialSummary,
+    findCredentialSibling,
     readCredentialsScope,
     requiredListingCredentialKeys,
     supportsListingCredentials,
@@ -140,5 +141,26 @@ describe("lectura de los metadatos en el servicio", () => {
         for (const value of ["false", 0, null, {}]) expect(readCredentialsComplete({ credentialsComplete: value })).toBeUndefined()
         expect(readCredentialsComplete({})).toBeUndefined()
         for (const value of ["rnt", [1], [null], {}]) expect(readMissingCredentialKeys({ missingCredentialKeys: value })).toBeUndefined()
+    })
+})
+
+describe("findCredentialSibling", () => {
+    const sire = (uuid: string, scope: "listing" | "property") => ({
+        uuid, providerName: "sire_colombia", parameters: { credentials_scope: scope },
+    })
+    const tra = { uuid: "tra", providerName: "tra_colombia", parameters: { credentials_scope: "listing" } }
+
+    it("la otra SIRE de la propiedad, si las dos van por alojamiento", () => {
+        const checkin = sire("in", "listing")
+        const checkout = sire("out", "listing")
+        expect(findCredentialSibling(checkin, [tra, checkin, checkout])).toBe(checkout)
+        expect(findCredentialSibling(checkout, [tra, checkin, checkout])).toBe(checkin)
+    })
+
+    it("nada si una va en modo propiedad, si no es SIRE o si no hay otra", () => {
+        expect(findCredentialSibling(sire("in", "listing"), [sire("in", "listing"), sire("out", "property")])).toBeNull()
+        expect(findCredentialSibling(tra, [tra])).toBeNull()
+        expect(findCredentialSibling(sire("in", "listing"), [sire("in", "listing")])).toBeNull()
+        expect(findCredentialSibling(null, [])).toBeNull()
     })
 })

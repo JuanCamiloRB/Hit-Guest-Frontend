@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef } from "react"
-import { Settings2, AlertCircle, AlertTriangle, CheckCircle2, Clock, FileSignature } from "lucide-react"
+import { Settings2, AlertCircle, AlertTriangle, CheckCircle2, Clock, FileSignature, KeyRound } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Surface,
     Card,
@@ -33,9 +33,11 @@ import { ListingOverridesPanel } from "./ListingOverridesPanel"
 import { isIdentityPropertyAutomation } from "../../lib/identity-listing-override"
 import { describeAutomationCost } from "../../lib/automation-cost"
 import { readCredentialsScope } from "../../lib/credentials-scope"
+import { hasCredentialValue } from "../../lib/stored-secrets"
 import type { ListingMeta } from "./AutomationOverrideModal"
 import { ReservationSourceIdentity, reservationSourceName, reservationSourceSlug } from "../contracts/ReservationSourceIdentity"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { CredentialsRejectedNotice } from "@/components/shared/credentials-rejected-notice"
 import { Heading } from "@/components/ui/heading"
 import { Spinner } from "@/components/ui/loading-state"
 
@@ -94,6 +96,11 @@ interface Props {
      * tarjeta muestra el id crudo del canal en vez de ocultar el routing.
      */
     sources?: ReservationSource[]
+    /** La otra SIRE (modo por alojamiento): se ofrece guardar las mismas credenciales en las dos. */
+    credentialSibling?: PropertyAutomation | null
+    /** Sube cuando otra tarjeta copió credenciales a esta: su panel recarga. */
+    credentialsMirrorVersion?: number
+    onCredentialsMirrored?: () => void
 }
 
 export function AutomationCard({
@@ -105,6 +112,9 @@ export function AutomationCard({
     onChanged,
     onNavigateToDocuments,
     sources,
+    credentialSibling = null,
+    credentialsMirrorVersion = 0,
+    onCredentialsMirrored,
 }: Props) {
     const isActive = automation?.isActive ?? false
     // La tarjeta de Contrato NO elige proveedor acá. Quién firma se decide por canal en
@@ -225,14 +235,32 @@ export function AutomationCard({
     // lleva credenciales, así que no falta ninguna para activar. Cada alojamiento
     // las lleva en su override; sin ellas, ese alojamiento no se reporta.
     const credentialsScope = readCredentialsScope(automation)
-    const missingRequiredParams = credentialsScope === "listing" ? [] : (selectedProvider?.parametersSchema ?? [])
-        .filter((field) => field.required)
-        .filter((field) => {
-            const value = (automation?.parameters ?? {})[field.key]
-            if (Array.isArray(value)) return value.length === 0
-            return value == null || value === ""
-        })
-        .map((field) => field.key)
+    const requiredKeys = (selectedProvider?.parametersSchema ?? []).filter((field) => field.required).map((field) => field.key)
+    // Nota backend 2026-11-12: a quien no es el dueño el secreto le llega
+    // OMITIDO de `parameters`. Mirar solo los valores marcaba «Configurar
+    // (requerido)» y bloqueaba activar a todo el staff. Manda el backend cuando
+    // informa la completitud (TRA/SIRE en modo propiedad); si no, cuenta lo
+    // guardado aunque no se vea (`storedSecretKeys`).
+    const byValues = () => requiredKeys.filter((key) => {
+        const value = (automation?.parameters ?? {})[key]
+        if (Array.isArray(value)) return value.length === 0
+        return !hasCredentialValue(automation, key)
+    })
+    // Lo que el backend dice que falta, en las claves del formulario. Si dice
+    // «incompleto» pero ninguna clave suya corresponde a un campo, no se da por
+    // completo: se mira lo que hay (un falso «listo» activaba algo que no corre).
+    const backendMissing = (automation?.missingCredentialKeys ?? [])
+        .map((key) => (/^[a-z]/.test(key) ? key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`) : key.toLowerCase()))
+        .filter((key) => requiredKeys.includes(key))
+    const missingRequiredParams = credentialsScope === "listing"
+        ? []
+        : automation?.credentialsComplete === true
+            ? []
+            : automation?.credentialsComplete === false
+                // «Incompleto» nunca termina en «listo»: si sus claves no son campos
+                // conocidos y los valores están, se piden todas.
+                ? backendMissing.length > 0 ? backendMissing : byValues().length > 0 ? byValues() : requiredKeys
+                : byValues()
     const hasOperationalTrigger = Array.isArray(automation?.parameters?.triggerTypes)
         && automation.parameters.triggerTypes.length > 0
 
@@ -677,6 +705,19 @@ export function AutomationCard({
                                 </div>
                             )}
 
+                            {/* Nota backend 2026-11-11: el proveedor rechazó las credenciales y
+                                la automatización está en pausa hasta volver a guardarlas. */}
+                            {automation?.credentialsStatus && (
+                                <CredentialsRejectedNotice
+                                    status={automation.credentialsStatus}
+                                    action={selectedProviderNeedsConfig && selectedProvider ? (
+                                        <Button type="button" variant="outline" size="sm" onClick={() => setConfigOpen(true)}>
+                                            <Icon icon={KeyRound} /> Actualizar credenciales
+                                        </Button>
+                                    ) : undefined}
+                                />
+                            )}
+
                             {/* Footer: time indicator + config button */}
                             <div className="flex items-center justify-between pt-2 border-t border-rule">
                                 <div className="flex items-center gap-1.5 text-xs font-medium text-ink-3">
@@ -715,8 +756,12 @@ export function AutomationCard({
                             {/* Listing overrides panel */}
                             {showOverridesPanel && (
                                 <ListingOverridesPanel
+                                    // Otra tarjeta copió credenciales a esta: remontar descarta lo ya cargado.
+                                    key={credentialsMirrorVersion}
                                     automation={automation!}
                                     listings={listings}
+                                    siblingAutomation={credentialSibling}
+                                    onCredentialsMirrored={onCredentialsMirrored}
                                 />
                             )}
                         </div>
@@ -735,6 +780,7 @@ export function AutomationCard({
                     onSave={handleSaveConfig}
                     isSaving={configSaving}
                     scopeError={configScopeError}
+                    secretSource={automation}
                 />
             )}
         </>

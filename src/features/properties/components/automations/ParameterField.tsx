@@ -18,6 +18,8 @@ import { Button } from "@/components/ui/button"
 import type { ParameterFieldSchema } from "../../types/automation"
 import { Textarea } from "@/components/ui/textarea"
 import { FieldError, FieldHint } from "@/components/ui/form"
+import { ReadOnlyField } from "@/components/ui/read-only-field"
+import { maskedSecret } from "../../lib/stored-secrets"
 
 interface Props {
     schema: ParameterFieldSchema
@@ -25,14 +27,35 @@ interface Props {
     onChange: (v: any) => void
     error?: string | null
     hint?: string
+    /**
+     * Secreto guardado que quien mira no puede ver (nota backend 2026-11-12: el
+     * valor solo le llega al dueño). Se muestra «Guardada» con la pista, de solo
+     * lectura: sin el valor no hay nada que editar, y un campo vacío invitaría a
+     * escribir encima de una credencial que no es suya.
+     */
+    hiddenSecret?: { hint: string | null }
 }
 
-export function ParameterField({ schema, value, onChange, error, hint }: Props) {
+export function ParameterField({ schema, value, onChange, error, hint, hiddenSecret }: Props) {
     const generatedId = useId()
     const inputId = `${generatedId}-input`
     const hintId = `${generatedId}-hint`
     const errorId = `${generatedId}-error`
     const describedBy = [hint ? hintId : null, error ? errorId : null].filter(Boolean).join(" ") || undefined
+
+    if (hiddenSecret && schema.type === "password") {
+        return (
+            <div className="space-y-1.5">
+                <ReadOnlyField
+                    label={schema.label}
+                    value={`${maskedSecret(hiddenSecret.hint)} · Guardada`}
+                    hint="Solo el dueño de la propiedad puede verla o cambiarla."
+                />
+                {/* Un 422 sobre esta clave no se puede quedar sin mostrar. */}
+                <FieldError id={errorId} compact>{error}</FieldError>
+            </div>
+        )
+    }
 
     if (schema.type === "array") {
         const items: any[] = Array.isArray(value) ? value : []

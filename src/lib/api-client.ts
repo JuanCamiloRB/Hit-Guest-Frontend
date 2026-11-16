@@ -3,6 +3,7 @@ import { useAuthStore } from "@/lib/store/auth-store"
 import { useLanguageStore } from "@/store/useLanguageStore"
 import { DEFAULT_LANGUAGE, dictionaries } from "@/lib/i18n/dictionaries"
 import { noteRateLimited } from "@/lib/rate-limit"
+import { loginHref } from "@/lib/return-to"
 
 /**
  * Handle a session-expiry 401: clear the session and bounce to /login, but only
@@ -29,7 +30,9 @@ export function handleSessionExpired() {
     if (hadSession && typeof window !== "undefined") {
         // Avoid redirect loops if we're already on the login page.
         if (!window.location.pathname.startsWith("/login")) {
-            window.location.href = "/login"
+            // Con el destino: tras el código, el PM vuelve a la pantalla donde
+            // estaba (p. ej. el enlace del correo de credenciales rechazadas).
+            window.location.href = loginHref(`${window.location.pathname}${window.location.search}`)
         }
     }
 }

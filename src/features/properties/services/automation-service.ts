@@ -22,6 +22,7 @@ import { apiClient, handleSessionExpired } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
 import { useAuthStore } from "@/lib/store/auth-store"
 import { ApiError, type ApiErrorResponse } from "@/types/api"
+import { readCredentialsStatus, type CredentialsStatus } from "@/lib/credentials-rejection"
 import type {
     PropertyAutomation,
     PropertyAutomationCreatePayload,
@@ -315,6 +316,48 @@ export function readMissingCredentialKeys(r: Record<string, unknown>): string[] 
     return [...raw]
 }
 
+/** `storedSecretKeys` / `stored_secret_keys` (nota 2026-11-12): solo un arreglo de strings; si no, ausente. */
+export function readStoredSecretKeys(r: Record<string, unknown>): string[] | undefined {
+    const raw = r.storedSecretKeys !== undefined ? r.storedSecretKeys : r.stored_secret_keys
+    if (!Array.isArray(raw) || !raw.every((k) => typeof k === "string")) return undefined
+    return [...raw]
+}
+
+/**
+ * `secretHints` / `secret_hints`: objeto de strings. Una pista que no es un
+ * string de exactamente 4 caracteres se descarta: lo que se muestre como «los
+ * últimos 4» tiene que ser eso y nada más (nunca un valor completo).
+ */
+export function readSecretHints(r: Record<string, unknown>): Record<string, string> | undefined {
+    const raw = r.secretHints !== undefined ? r.secretHints : r.secret_hints
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined
+    return Object.fromEntries(
+        Object.entries(raw as Record<string, unknown>).filter(
+            (entry): entry is [string, string] => typeof entry[1] === "string" && entry[1].length === 4,
+        ),
+    )
+}
+
+/** Los cuatro campos de la nota 2026-11-12, solo los que vienen bien formados. */
+/** `credentialsStatus` solo si la respuesta lo trae (ver `readCredentialsStatus`). */
+function withCredentialsStatus(r: unknown): { credentialsStatus?: CredentialsStatus | null } {
+    const credentialsStatus = readCredentialsStatus(r)
+    return credentialsStatus !== undefined ? { credentialsStatus } : {}
+}
+
+export function readSecretMetadata(r: Record<string, unknown>) {
+    const credentialsComplete = readCredentialsComplete(r)
+    const missingCredentialKeys = readMissingCredentialKeys(r)
+    const storedSecretKeys = readStoredSecretKeys(r)
+    const secretHints = readSecretHints(r)
+    return {
+        ...(credentialsComplete !== undefined ? { credentialsComplete } : {}),
+        ...(missingCredentialKeys !== undefined ? { missingCredentialKeys } : {}),
+        ...(storedSecretKeys !== undefined ? { storedSecretKeys } : {}),
+        ...(secretHints !== undefined ? { secretHints } : {}),
+    }
+}
+
 function readProviderSource(r: Record<string, unknown>): OverrideProviderSource | undefined {
     for (const key of ["providerSource", "provider_source"]) {
         if (key in r) {
@@ -358,6 +401,11 @@ class AutomationService {
             statusProviderId,
             deletedAt: raw.deletedAt ?? raw.deleted_at ?? null,
             provider,
+            // Nota backend 2026-11-12: completitud (null fuera de TRA/SIRE o en modo por
+            // alojamiento → ausente) y qué secretos están guardados.
+            ...readSecretMetadata(raw),
+            // Nota backend 2026-11-11: pausa por credenciales rechazadas.
+            ...withCredentialsStatus(raw),
             // `property` y `usageRecords` NO se copian: llegan como objetos crudos
             // del backend y ningún consumidor del frontend los lee en este flujo.
             // Dejarlos entrar contradecía la garantía de que solo entra lo que el
@@ -704,6 +752,16 @@ class AutomationService {
                     .map((key) => [key, (rawPayload as Record<string, unknown>)[key]]),
             )
             : null
+        // Nota backend 2026-11-11: el texto que devolvió el proveedor al rechazar
+        // las credenciales (p. ej. `[infoEmpresaNoActualizada]`). Solo un string
+        // no vacío y acotado: la nota garantiza que nunca trae claves, pero es
+        // texto ajeno y va a la pantalla. `credential_rejection_id` no se usa.
+        const rawProviderMessage = rawPayload && typeof rawPayload === "object"
+            ? (rawPayload as Record<string, unknown>).provider_message
+            : undefined
+        if (responsePayload && typeof rawProviderMessage === "string" && rawProviderMessage.trim() !== "") {
+            responsePayload.provider_message = rawProviderMessage.trim().slice(0, 500)
+        }
 
         // Contrato 2026-09-27 §13.6: `channel` es lo único que separa un cobro de
         // WhatsApp de uno de OTA (comparten `providerSlug`). Se conserva SOLO
@@ -854,8 +912,6 @@ class AutomationService {
             (r.statusRecordId ?? r.status_record_id ?? LISTING_OVERRIDE_STATUS.ACTIVE) as ListingOverrideStatus
         const rawPa = r.propertyAutomation ?? r.property_automation ?? null
         const paProvider = sanitizeProvider(rawPa?.provider ?? null)
-        const credentialsComplete = readCredentialsComplete(r)
-        const missingCredentialKeys = readMissingCredentialKeys(r)
         return {
             uuid: r.uuid,
             listingUuid: r.listingUuid ?? r.listing_uuid ?? listingUuid ?? "",
@@ -885,9 +941,10 @@ class AutomationService {
             ...(rawEffectiveProvider !== undefined ? { effectiveProvider: readEffectiveProvider(rawEffectiveProvider) } : {}),
             ...(providerSource !== undefined ? { providerSource } : {}),
             ...(contractRouting ? { contractRouting } : {}),
-            // TRA/SIRE por alojamiento (pedido Q2, sin confirmar): solo si vienen bien formados.
-            ...(credentialsComplete !== undefined ? { credentialsComplete } : {}),
-            ...(missingCredentialKeys !== undefined ? { missingCredentialKeys } : {}),
+            // Nota backend 2026-11-12: completitud y secretos guardados, solo si vienen bien formados.
+            ...readSecretMetadata(r),
+            // Nota backend 2026-11-11: pausa de la credencial propia del alojamiento.
+            ...withCredentialsStatus(r),
         }
     }
 

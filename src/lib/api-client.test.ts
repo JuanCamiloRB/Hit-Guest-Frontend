@@ -40,6 +40,24 @@ describe("apiClient auth semantics", () => {
         expect(mocks.clearSession).toHaveBeenCalledOnce()
     })
 
+    it("401 con sesión manda al login con el destino del panel (vuelve tras el código)", async () => {
+        let assigned = ""
+        vi.stubGlobal("location", {
+            pathname: "/dashboard/properties/abc",
+            search: "?tab=automations",
+            set href(value: string) { assigned = value },
+            get href() { return assigned },
+        })
+        try {
+            vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: "x" }), { status: 401, headers: { "Content-Type": "application/json" } })))
+            await expect(request("/api/guest/property-automations")).rejects.toMatchObject({ status: 401 })
+            expect(assigned).toBe("/login?returnTo=%2Fdashboard%2Fproperties%2Fabc%3Ftab%3Dautomations")
+        } finally {
+            // Aunque falle una aserción, `location` no se filtra a las pruebas siguientes.
+            vi.unstubAllGlobals()
+        }
+    })
+
     it("403 de policy conserva la sesión del PM", async () => {
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
             message: "You do not have permission to perform this action.",

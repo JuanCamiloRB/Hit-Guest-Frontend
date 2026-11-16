@@ -10,6 +10,8 @@
  * never returned. See the API contract for details.
  */
 
+import type { CredentialsStatus } from "@/lib/credentials-rejection"
+
 /** statusProviderId values. 8 = active, 10 = inactive. */
 export const INTEGRATION_STATUS = {
     ACTIVE: 8,
@@ -60,6 +62,12 @@ export interface Integration {
     name: string
     parameters: IntegrationParameters
     statusProviderId: IntegrationStatus
+    /**
+     * Nota backend 2026-11-11: no-`null` = KunasPMS rechazó las credenciales y
+     * la integración está en pausa hasta volver a guardarlas. Ausente = la
+     * respuesta no lo trajo (no se sabe).
+     */
+    credentialsStatus?: CredentialsStatus | null
     /** Present in the live response; absent from the published doc. Unused. */
     userUuid?: string
     /** In the published doc; absent from the live response. Unused — never address by it. */

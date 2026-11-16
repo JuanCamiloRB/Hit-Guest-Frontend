@@ -67,3 +67,22 @@ describe("integrationsService — addressing by root token", () => {
         expect(del).not.toHaveBeenCalled()
     })
 })
+
+describe("integrationsService — credentialsStatus (nota backend 2026-11-11)", () => {
+    const STATUS = { status: "rejected", reason: "login_rejected", providerMessage: "HTTP 401", since: null }
+    const base = { token: ROOT_TOKEN, providerId: 5, name: "Kunas", parameters: {}, statusProviderId: 8 }
+
+    beforeEach(() => patch.mockReset())
+
+    it("lo normaliza al leer y al guardar; ausente queda ausente (no se inventa «sin pausa»)", async () => {
+        const { apiClient } = await import("@/lib/api-client")
+        vi.mocked(apiClient.get).mockResolvedValueOnce({ ...base, credentialsStatus: STATUS })
+        expect((await integrationsService.getKunas())?.credentialsStatus).toEqual(STATUS)
+
+        patch.mockResolvedValueOnce({ ...base, credentialsStatus: null })
+        expect((await integrationsService.updateConfiguration({ email: "a@b.co", password: "x" })).credentialsStatus).toBeNull()
+
+        patch.mockResolvedValueOnce({ ...base })
+        expect("credentialsStatus" in await integrationsService.activate(ROOT_TOKEN)).toBe(false)
+    })
+})

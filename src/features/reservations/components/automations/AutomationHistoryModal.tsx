@@ -1,5 +1,6 @@
 "use client"
 
+import { isCredentialsRejectedError } from "@/lib/credentials-rejection"
 import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import { FileText } from "lucide-react"
@@ -120,6 +121,28 @@ export function AutomationHistoryModal({ reservationUuid, automation, onClose }:
     )
 }
 
+
+/**
+ * La línea de detalle de un registro del historial.
+ *
+ * Nota backend 2026-11-11: una ejecución en pausa por credenciales rechazadas
+ * trae el código en `lastError` (`pending` o `failed`) y el texto del proveedor
+ * en `responsePayload.provider_message`. Una completada conserva su detalle
+ * aunque arrastre el código.
+ */
+export function recordDetail(record: Pick<AutomationUsageRecord, "status" | "lastError" | "responsePayload">): string {
+    const providerMessage = record.responsePayload?.provider_message
+    if (record.status !== "completed" && isCredentialsRejectedError(record.lastError)) {
+        return [
+            errorMessage(record.lastError),
+            typeof providerMessage === "string" && providerMessage.trim() ? `Mensaje del proveedor: ${providerMessage.trim()}` : null,
+        ].filter(Boolean).join(" ")
+    }
+    return record.status === "failed"
+        ? (errorMessage(record.lastError) || "Error")
+        : describePayload(record.responsePayload)
+}
+
 function HistoryRow({
     record,
     reservationUuid,
@@ -128,9 +151,7 @@ function HistoryRow({
     reservationUuid: string
 }) {
     const meta = RECORD_STATUS_META[record.status]
-    const detail = record.status === "failed"
-        ? (errorMessage(record.lastError) || "Error")
-        : describePayload(record.responsePayload)
+    const detail = recordDetail(record)
     const trigger = record.triggeredBy
         ? (TRIGGERED_BY_LABELS[record.triggeredBy] ?? record.triggeredBy)
         : "—"

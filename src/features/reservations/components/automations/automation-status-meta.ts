@@ -53,6 +53,17 @@ export const FAILED_AFTER_SUCCESS_META: StatusMeta = {
  * not a state, and a grey "No aplica" chip competed for attention with the
  * rows that actually need the operator to do something.
  */
+/**
+ * En espera porque el proveedor rechazó las credenciales (nota backend
+ * 2026-11-11). Manda sobre el `status` que traiga la fila: el backend no dijo
+ * si una ejecución en pausa llega como `pending` o `failed`, y ninguno de los
+ * dos es cierto para el PM (no se está procesando y no hay nada que reintentar).
+ */
+export const CREDENTIALS_PAUSED_META: StatusMeta = {
+    label: "En pausa",
+    tone: "warning",
+}
+
 export const NOT_APPLICABLE_META: StatusMeta = {
     label: "No aplica",
     tone: "none",
@@ -250,6 +261,11 @@ const ERROR_CODE_LABELS: Record<string, string> = {
     // como string en automation-status y como {message} en automation-records.
     credentials_missing:
         "Faltan las credenciales de este alojamiento. Cárgalas en la propiedad y vuelve a ejecutar la automatización.",
+    // Nota backend 2026-11-11: la configuración está en pausa hasta volver a
+    // guardar las credenciales. Llega como string en automation-status y como
+    // {message} en automation-records.
+    credentials_rejected:
+        "En espera: el proveedor rechazó las credenciales. Se reanuda sola al guardar las credenciales.",
 }
 
 /**

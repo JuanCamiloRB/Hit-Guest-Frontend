@@ -51,3 +51,33 @@ describe("automationService — override con proveedor de identidad", () => {
         expect(patch.mock.calls[0][1]).toEqual({ providerId: null })
     })
 })
+
+describe("automationService — credentialsStatus (nota backend 2026-11-11)", () => {
+    const STATUS = { status: "rejected", reason: "token_rejected", providerMessage: "Token inválido.", since: "2026-11-11T08:15:02-05:00" }
+
+    it("el override lo trae en camel o snake; null es «sin pausa» y ausente es «no se sabe»", async () => {
+        vi.spyOn(apiClient, "get").mockResolvedValue([
+            { ...CAMEL, credentialsStatus: STATUS },
+            { ...SNAKE, credentials_status: { ...STATUS, provider_message: "HTTP 401", providerMessage: undefined } },
+            { ...CAMEL, uuid: "ov-3", credentialsStatus: null },
+            { ...CAMEL, uuid: "ov-4" },
+        ])
+        const [rejected, snake, clear, unknown] = await automationService.listListingOverrides("unit-1")
+        expect(rejected.credentialsStatus).toEqual(STATUS)
+        expect(snake.credentialsStatus).toMatchObject({ reason: "token_rejected", providerMessage: "HTTP 401" })
+        expect(clear.credentialsStatus).toBeNull()
+        expect("credentialsStatus" in unknown).toBe(false)
+    })
+
+    it("la automatización de la propiedad también (lista y configure)", async () => {
+        const row = { uuid: "pa-1", propertyUuid: "p", providerId: 1, name: "TRA", executionOrder: 40, parameters: {}, statusProviderId: 8 }
+        vi.spyOn(apiClient, "get").mockResolvedValue([{ ...row, credentialsStatus: STATUS }, { ...row, uuid: "pa-2" }])
+        const [paused, unknown] = await automationService.listGlobal({ propertyUuid: "p" })
+        expect(paused.credentialsStatus).toEqual(STATUS)
+        expect("credentialsStatus" in unknown).toBe(false)
+
+        vi.spyOn(apiClient, "patch").mockResolvedValue({ ...row, credentialsStatus: null })
+        const saved = await automationService.configure("pa-1", { statusProviderId: 8 })
+        expect(saved.credentialsStatus).toBeNull()
+    })
+})

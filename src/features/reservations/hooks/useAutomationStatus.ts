@@ -6,6 +6,7 @@ import { normalizeApiError } from "@/lib/notify-error"
 import { automationService } from "@/features/properties/services/automation-service"
 import type { AutomationGuestStatus, AutomationStatusItem } from "@/features/properties/types/automation"
 import { readInactiveResourceError } from "@/lib/inactive-resource"
+import { isCredentialsRejectedError, readCredentialsRejectedDispatchError } from "@/lib/credentials-rejection"
 
 const POLL_INTERVAL_MS = 10_000
 const COOLDOWN_SECONDS = 300
@@ -28,9 +29,89 @@ function showInactive(error: unknown, title: string): boolean {
     return true
 }
 
-/** Algo sigue procesándose: la automatización o alguno de sus huéspedes. */
-export function hasPendingWork(list: AutomationStatusItem[]): boolean {
-    return list.some((item) => item.status === "pending" || (item.guests ?? []).some((guest) => guest.status === "pending"))
+/**
+ * Una fila (automatización o huésped) en pausa por credenciales rechazadas
+ * (nota backend 2026-11-11). Lo que ya terminó NO está en pausa aunque arrastre
+ * el código en `lastError`: no se sabe si el backend lo limpia al reanudar, y
+ * pintar «En pausa» (sin reintento) sobre algo completado sería falso.
+ */
+export function isPausedRow(row: { status: string; lastError: unknown }): boolean {
+    return row.status !== "completed" && row.status !== "skipped" && isCredentialsRejectedError(row.lastError)
+}
+
+/** Un huésped que de verdad se está procesando (no en pausa). */
+function isWorking(row: { status: string; lastError: unknown }): boolean {
+    return row.status === "pending" && !isPausedRow(row)
+}
+
+/**
+ * Algo sigue procesándose: la automatización o alguno de sus huéspedes.
+ *
+ * Una ejecución en pausa por credenciales rechazadas NO cuenta aunque llegue
+ * como `pending`: no avanza sola hasta que el PM guarde las credenciales, y
+ * sondear cada 10 s sería consultar indefinidamente. Tampoco cuenta una
+ * automatización `pending` cuyos huéspedes están en pausa y ninguno trabajando
+ * (el `pending` de arriba sería solo el resumen de los de abajo), ni una que
+ * respondió 422 `CREDENTIALS_REJECTED` (`rejectedKeys`): su `pending` puede ser
+ * una lectura atrasada, no una reanudación.
+ */
+export function hasPendingWork(
+    list: AutomationStatusItem[],
+    rejectedKeys: { has(key: string): boolean } = new Set<string>(),
+): boolean {
+    return list.some((item) => {
+        if (rejectedKeys.has(automationActionKey(item.automationUuid))) return false
+        const guests = item.guests ?? []
+        if (guests.some(isWorking)) return true
+        if (item.status !== "pending" || isPausedRow(item)) return false
+        return !guests.some(isPausedRow)
+    })
+}
+
+/**
+ * La automatización está en pausa por credenciales rechazadas: lo dice la fila,
+ * alguno de sus huéspedes, o un 422 `CREDENTIALS_REJECTED` al despacharla
+ * (`rejectedKeys`).
+ */
+export function isCredentialsPaused(item: AutomationStatusItem, rejectedKeys: ReadonlySet<string>): boolean {
+    return rejectedKeys.has(automationActionKey(item.automationUuid))
+        || isPausedRow(item)
+        || (item.guests ?? []).some(isPausedRow)
+}
+
+/** La última ejecución que se conoce de una automatización (ella o sus huéspedes). */
+interface RunMark {
+    lastRunAt: string | null
+    usageRecordId: number | null
+}
+
+function latestRun(item: AutomationStatusItem): RunMark {
+    const rows = [item, ...(item.guests ?? [])]
+    let lastRunAt: string | null = null
+    let usageRecordId: number | null = null
+    for (const row of rows) {
+        // "YYYY-MM-DD HH:mm:ss" (misma zona): el orden de texto es el orden en el tiempo.
+        if (row.lastRunAt && (!lastRunAt || row.lastRunAt > lastRunAt)) lastRunAt = row.lastRunAt
+        if (typeof row.usageRecordId === "number" && (usageRecordId == null || row.usageRecordId > usageRecordId)) usageRecordId = row.usageRecordId
+    }
+    return { lastRunAt, usageRecordId }
+}
+
+/**
+ * Una automatización marcada por un 422 deja de estarlo SOLO con evidencia
+ * inequívoca de que se reanudó: una ejecución MÁS NUEVA que la que había al
+ * recibir el 422 (otra fecha de ejecución u otro registro de uso), y que no esté
+ * ella misma en pausa. Un `pending` o un `completed` sin ejecución nueva puede
+ * ser una lectura atrasada: no levanta nada. Sin limpiar, si el PM arregla las
+ * credenciales en otra pestaña y pulsa «Refrescar», la tarjeta seguiría «En
+ * pausa» hasta remontar el panel.
+ */
+function hasResumedSince(item: AutomationStatusItem, mark: RunMark): boolean {
+    if (isPausedRow(item) || (item.guests ?? []).some(isPausedRow)) return false
+    const now = latestRun(item)
+    const newerRunAt = now.lastRunAt != null && (mark.lastRunAt == null || now.lastRunAt > mark.lastRunAt)
+    const newerRecord = now.usageRecordId != null && (mark.usageRecordId == null || now.usageRecordId > mark.usageRecordId)
+    return newerRunAt || newerRecord
 }
 
 interface UseAutomationStatusResult {
@@ -45,6 +126,14 @@ interface UseAutomationStatusResult {
     now: number
     /** `automationActionKey` → epoch ms until which a 429 cooldown applies. */
     cooldownUntil: Record<string, number>
+    /**
+     * Automatizaciones (`automationActionKey` sin huésped) que respondieron 422
+     * `CREDENTIALS_REJECTED` al despacharlas. Se recuerdan aunque el estado no
+     * lo diga (p. ej. una que nunca corrió): el aviso no puede ser un toast que
+     * se va. Se olvidan solo ante una ejecución más nueva que la del 422 (ver
+     * `hasResumedSince`), o al desmontar el panel.
+     */
+    credentialsRejectedKeys: ReadonlySet<string>
     refresh: () => Promise<void>
     /** Reintenta la automatización o, con `guest`, solo a ese huésped (su `usageRecordId`). */
     redispatch: (item: AutomationStatusItem, guest?: AutomationGuestStatus) => Promise<void>
@@ -62,6 +151,10 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
     const [dispatchingKeys, setDispatchingKeys] = useState<Set<string>>(new Set())
     const [now, setNow] = useState(() => Date.now())
     const [cooldownUntil, setCooldownUntil] = useState<Record<string, number>>({})
+    const [credentialsRejectedKeys, setCredentialsRejectedKeys] = useState<ReadonlySet<string>>(new Set())
+    // La fuente de las claves de arriba, con la última ejecución conocida al recibir
+    // el 422. Ref y no solo estado: el sondeo decide con ella de forma síncrona.
+    const rejectedRunsRef = useRef<Map<string, RunMark>>(new Map())
 
     const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const mountedRef = useRef(true)
@@ -92,11 +185,45 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
 
     const hasPending = hasPendingWork
 
+    /**
+     * 422 `CREDENTIALS_REJECTED` (nota backend 2026-11-11): la configuración está
+     * en pausa. Se recuerda la automatización (aviso persistente con «Actualizar
+     * credenciales» en vez de los botones), se avisa con el mensaje del backend y
+     * se resincroniza. `false` = era otro error.
+     */
+    const handleCredentialsRejected = useCallback(async (error: unknown, item: AutomationStatusItem): Promise<boolean> => {
+        const rejected = readCredentialsRejectedDispatchError(error)
+        if (!rejected) return false
+        if (isCurrent()) {
+            rejectedRunsRef.current.set(automationActionKey(item.automationUuid), latestRun(item))
+            setCredentialsRejectedKeys(new Set(rejectedRunsRef.current.keys()))
+            // Se corta el sondeo ya: quien llama hace `refresh()` enseguida y
+            // `scheduleNext` lo reprograma solo si queda trabajo de otra
+            // automatización (esta ya no cuenta, aunque la lectura venga atrasada).
+            if (pollTimerRef.current) {
+                clearTimeout(pollTimerRef.current)
+                pollTimerRef.current = null
+            }
+        }
+        toast.error("Credenciales rechazadas", { description: rejected.message })
+        return true
+    }, [isCurrent])
+
     const fetchStatus = useCallback(async (): Promise<AutomationStatusItem[]> => {
         const data = await automationService.getReservationStatus(reservationUuid)
         if (isCurrent()) {
             setItems(data)
             setError(null)
+            let cleared = false
+            for (const item of data) {
+                const key = automationActionKey(item.automationUuid)
+                const mark = rejectedRunsRef.current.get(key)
+                if (mark && hasResumedSince(item, mark)) {
+                    rejectedRunsRef.current.delete(key)
+                    cleared = true
+                }
+            }
+            if (cleared) setCredentialsRejectedKeys(new Set(rejectedRunsRef.current.keys()))
         }
         return data
     }, [reservationUuid, isCurrent])
@@ -112,7 +239,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
      */
     const scheduleNext = useCallback(function scheduleNextPoll(list: AutomationStatusItem[]) {
         if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
-        if (!hasPending(list) || !isCurrent()) return
+        if (!hasPending(list, rejectedRunsRef.current) || !isCurrent()) return
         pollTimerRef.current = setTimeout(async () => {
             if (!isCurrent()) return
             try {
@@ -148,7 +275,9 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
             scheduleNext(data)
         } catch (error: unknown) {
             const { status, message } = normalizeApiError(error, "")
-            if (showInactive(error, "No se pudo reintentar la automatización")) {
+            if (await handleCredentialsRejected(error, item)) {
+                await refresh()
+            } else if (showInactive(error, "No se pudo reintentar la automatización")) {
                 // Nada que reintentar mientras siga inactivo.
             } else if (status === 429) {
                 startCooldown(key)
@@ -172,7 +301,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 })
             }
         }
-    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown, isCurrent])
+    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown, isCurrent, handleCredentialsRejected, refresh])
 
     const dispatch = useCallback(async (item: AutomationStatusItem, guest?: AutomationGuestStatus) => {
         if (!item.automationUuid) return
@@ -186,7 +315,9 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
             scheduleNext(data)
         } catch (error: unknown) {
             const { status, message } = normalizeApiError(error, "")
-            if (showInactive(error, "No se pudo despachar la automatización")) {
+            if (await handleCredentialsRejected(error, item)) {
+                await refresh()
+            } else if (showInactive(error, "No se pudo despachar la automatización")) {
                 // Nada que despachar mientras siga inactivo.
             } else if (status === 429) {
                 startCooldown(key)
@@ -212,7 +343,7 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
                 })
             }
         }
-    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown, isCurrent, refresh])
+    }, [reservationUuid, fetchStatus, scheduleNext, startCooldown, isCurrent, refresh, handleCredentialsRejected])
 
     const resendPdf = useCallback(async (item: AutomationStatusItem) => {
         if (!item.automationUuid) return
@@ -282,5 +413,5 @@ export function useAutomationStatus(reservationUuid: string): UseAutomationStatu
         return () => clearInterval(t)
     }, [now, cooldownUntil])
 
-    return { items, isLoading, error, redispatchingKeys, dispatchingKeys, now, cooldownUntil, refresh, redispatch, dispatch, resendPdf }
+    return { items, isLoading, error, redispatchingKeys, dispatchingKeys, now, cooldownUntil, credentialsRejectedKeys, refresh, redispatch, dispatch, resendPdf }
 }

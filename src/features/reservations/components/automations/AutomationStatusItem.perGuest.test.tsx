@@ -88,3 +88,63 @@ describe("AutomationStatusItem — error de la última ejecución", () => {
         expect(notice).not.toHaveAttribute("role")
     })
 })
+
+describe("AutomationStatusItem — en pausa por credenciales rechazadas (nota backend 2026-11-11)", () => {
+    const TRA: Item = {
+        ...SIRE, automationUuid: "tra", automationName: "TRA", providerSlug: "tra_colombia",
+        status: "pending", lastError: "credentials_rejected", isPerGuest: false, guests: [],
+    }
+
+    it("aunque llegue como pending: pastilla «En pausa», aviso con el enlace a la propiedad y sin despachar", () => {
+        renderItem({ item: TRA, credentialsPaused: true, propertyUuid: "prop-1" })
+        expect(screen.getByText("En pausa")).toBeInTheDocument()
+        expect(screen.queryByText("Procesando")).toBeNull()
+        expect(screen.getByText(/proveedor rechazó las credenciales/)).toBeInTheDocument()
+        expect(screen.getByRole("link", { name: /Actualizar credenciales/ })).toHaveAttribute("href", "/dashboard/properties/prop-1?tab=automations")
+        expect(screen.queryByRole("button", { name: /Reintentar|Disparar|Despachar/ })).toBeNull()
+    })
+
+    it("también con status failed: el aviso de pausa reemplaza al error genérico", () => {
+        renderItem({ item: { ...TRA, status: "failed" }, credentialsPaused: true, propertyUuid: "prop-1" })
+        expect(screen.getAllByText(/proveedor rechazó las credenciales/)).toHaveLength(1)
+        expect(screen.queryByRole("button", { name: /Reintentar/ })).toBeNull()
+    })
+
+    it("por huésped: sin botones en las filas y el que ya terminó conserva su estado", () => {
+        const item: Item = {
+            ...SIRE,
+            guests: [
+                guest("g-ana", "Ana Pérez", { status: "pending", lastError: "credentials_rejected", canRedispatch: true, usageRecordId: 11 }),
+                guest("g-luis", "Luis Gómez", { status: "completed" }),
+            ],
+        }
+        renderItem({ item, credentialsPaused: true, propertyUuid: "prop-1" })
+        const rows = within(screen.getByRole("list", { name: /Huéspedes de/ })).getAllByRole("listitem")
+        expect(rows[0]).toHaveTextContent("En pausa")
+        expect(rows[1]).toHaveTextContent("Completado")
+        expect(screen.queryByRole("button", { name: /para Ana Pérez|Despachar pendientes/ })).toBeNull()
+        expect(screen.getByRole("link", { name: /Actualizar credenciales/ })).toBeInTheDocument()
+    })
+
+    it("sin la propiedad, el aviso va sin enlace (nunca a una URL rota)", () => {
+        renderItem({ item: TRA, credentialsPaused: true })
+        expect(screen.getByText(/proveedor rechazó las credenciales/)).toBeInTheDocument()
+        expect(screen.queryByRole("link", { name: /Actualizar credenciales/ })).toBeNull()
+    })
+
+    it("en pausa no se muestra el candado del check-in: el arreglo es guardar las credenciales", () => {
+        renderItem({
+            item: { ...TRA, status: "not_started", lastError: null, canDispatch: false, requiresCheckin: "reservation", reservationCheckinCompleted: false },
+            credentialsPaused: true,
+            propertyUuid: "prop-1",
+        })
+        expect(screen.queryByText(/Todos los huéspedes deben completar el check-in/)).toBeNull()
+    })
+
+    it("un huésped completado conserva su estado aunque arrastre el código", () => {
+        const item: Item = { ...SIRE, guests: [guest("g-ana", "Ana Pérez", { status: "completed", lastError: "credentials_rejected" })] }
+        renderItem({ item, credentialsPaused: true, propertyUuid: "prop-1" })
+        const rows = within(screen.getByRole("list", { name: /Huéspedes de/ })).getAllByRole("listitem")
+        expect(rows[0]).toHaveTextContent("Completado")
+    })
+})

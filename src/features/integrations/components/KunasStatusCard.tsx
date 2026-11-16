@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
-import { Pause, Play, Pencil, Unplug, Mail, Building2 } from "lucide-react"
+import { Pause, Play, Pencil, Unplug, Mail, Building2, KeyRound } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { notifyError } from "@/lib/notify-error"
 import { isActive as computeIsActive, type Integration, type KunasConfigurationPayload } from "../types"
@@ -13,6 +13,7 @@ import { StatusPill } from "@/components/ui/status-pill"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
 import { RefreshIndicator } from "@/components/ui/loading-state"
+import { CredentialsRejectedNotice } from "@/components/shared/credentials-rejected-notice"
 
 interface Props {
     integration: Integration
@@ -74,6 +75,11 @@ export function KunasStatusCard({
                         </span>
                     )}
                 </div>
+                {/* Nota backend 2026-11-11: KunasPMS rechazó las credenciales y la
+                    integración está en pausa hasta volver a guardarlas. */}
+                {integration.credentialsStatus && (
+                    <CredentialsRejectedNotice status={integration.credentialsStatus} density="default" />
+                )}
                 {!active && (
                     <p className="text-sm text-warning">
                         Integración pausada — los webhooks de KunasPMS se rechazan mientras esté inactiva.
@@ -83,12 +89,18 @@ export function KunasStatusCard({
 
             {/* Actions */}
             <div className="flex flex-wrap items-center gap-2 border-t border-rule px-5 py-4">
+                {/* Un solo diálogo, siempre montado: si viviera dentro del aviso, al
+                    guardar (que levanta la pausa y quita el aviso) se desmontaba
+                    abierto y el foco caía al body. Con la pausa, el mismo botón
+                    dice qué hacer. */}
                 <KunasCredentialsDialog
                     currentEmail={integration.parameters.email ?? ""}
                     onSave={onUpdateCredentials}
                     trigger={
                         <Button variant="outline" size="sm">
-                            <Icon icon={Pencil} /> Editar credenciales
+                            {integration.credentialsStatus
+                                ? <><Icon icon={KeyRound} /> Actualizar credenciales</>
+                                : <><Icon icon={Pencil} /> Editar credenciales</>}
                         </Button>
                     }
                 />

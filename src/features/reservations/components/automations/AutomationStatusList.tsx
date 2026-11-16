@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { RefreshCw, Zap } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
-import { hasPendingWork, useAutomationStatus } from "@/features/reservations/hooks/useAutomationStatus"
+import { hasPendingWork, isCredentialsPaused, useAutomationStatus } from "@/features/reservations/hooks/useAutomationStatus"
 import type { AutomationStatusItem as AutomationStatusItemType } from "@/features/properties/types/automation"
 import { AutomationStatusItem } from "./AutomationStatusItem"
 import { AutomationHistoryModal } from "./AutomationHistoryModal"
@@ -22,10 +22,12 @@ interface AutomationStatusListProps {
      *  when there's only 1 guest, since there's no secondary guest for it to
      *  ever run for. */
     totalGuests: number
+    /** Para «Actualizar credenciales» de una automatización en pausa. `null` = no se ofrece el enlace. */
+    propertyUuid?: string | null
 }
 
-export function AutomationStatusList({ reservationUuid, totalGuests }: AutomationStatusListProps) {
-    const { items, isLoading, error, redispatchingKeys, dispatchingKeys, now, cooldownUntil, refresh, redispatch, dispatch, resendPdf } =
+export function AutomationStatusList({ reservationUuid, totalGuests, propertyUuid = null }: AutomationStatusListProps) {
+    const { items, isLoading, error, redispatchingKeys, dispatchingKeys, now, cooldownUntil, credentialsRejectedKeys, refresh, redispatch, dispatch, resendPdf } =
         useAutomationStatus(reservationUuid)
 
     const [historyFor, setHistoryFor] = useState<{ uuid: string; name: string } | null>(null)
@@ -41,7 +43,7 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
         }
     }
 
-    const isPolling = hasPendingWork(items)
+    const isPolling = hasPendingWork(items, credentialsRejectedKeys)
 
     const handleViewHistory = (item: AutomationStatusItemType) => {
         setHistoryFor({ uuid: item.automationUuid, name: item.automationName })
@@ -106,6 +108,8 @@ export function AutomationStatusList({ reservationUuid, totalGuests }: Automatio
                             redispatchingKeys={redispatchingKeys}
                             dispatchingKeys={dispatchingKeys}
                             cooldownUntil={cooldownUntil}
+                            credentialsPaused={isCredentialsPaused(item, credentialsRejectedKeys)}
+                            propertyUuid={propertyUuid}
                             notApplicable={
                                 totalGuests <= 1
                                 && item.status === "not_started"

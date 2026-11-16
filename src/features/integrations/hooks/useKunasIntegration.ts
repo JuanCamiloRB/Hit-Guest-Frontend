@@ -64,7 +64,9 @@ export function useKunasIntegration(): UseKunasIntegration {
     const updateCredentials = useCallback(
         async (payload: KunasConfigurationPayload) => {
             const result = await integrationsService.updateConfiguration(payload)
-            setIntegration(result)
+            // Guardar credenciales SIEMPRE levanta la pausa (nota 2026-11-11 §5):
+            // si la respuesta no trae el campo, la pausa ya no aplica.
+            setIntegration({ ...result, credentialsStatus: result.credentialsStatus ?? null })
         },
         [],
     )
@@ -75,7 +77,11 @@ export function useKunasIntegration(): UseKunasIntegration {
             const result = active
                 ? await integrationsService.activate(integration.token)
                 : await integrationsService.deactivate(integration.token)
-            setIntegration(result)
+            // Pausar o activar no levanta un rechazo de credenciales: si la
+            // respuesta no trae el campo, se conserva el que ya se veía.
+            setIntegration(result.credentialsStatus !== undefined
+                ? result
+                : { ...result, credentialsStatus: integration.credentialsStatus })
         },
         [integration],
     )

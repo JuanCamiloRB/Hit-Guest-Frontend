@@ -19,6 +19,7 @@
 import { apiClient } from "@/lib/api-client"
 import { API_BASE } from "@/lib/config"
 import { isNotFound } from "../lib/integration-errors"
+import { readCredentialsStatus } from "@/lib/credentials-rejection"
 import {
     INTEGRATION_STATUS,
     type Integration,
@@ -26,6 +27,21 @@ import {
     type KunasConfigurationPayload,
     type KunasConnectPayload,
 } from "../types"
+
+/**
+ * El recurso llega tal cual del backend; lo único que se normaliza es
+ * `credentialsStatus` (nota 2026-11-11), que decide un aviso: queda `null`, un
+ * objeto bien formado, o ausente si la respuesta no lo trajo (pausar la
+ * integración no levanta un rechazo: el hook conserva lo que ya sabía).
+ */
+function withCredentialsStatus(integration: Integration): Integration {
+    if (typeof integration !== "object" || integration === null) return integration
+    const credentialsStatus = readCredentialsStatus(integration)
+    const next: Integration = { ...integration }
+    delete next.credentialsStatus
+    if (credentialsStatus !== undefined) next.credentialsStatus = credentialsStatus
+    return next
+}
 
 class IntegrationsService {
     /**
@@ -36,7 +52,7 @@ class IntegrationsService {
     async getKunas(): Promise<Integration | null> {
         const url = `${API_BASE}/kunas-pms/integration`
         try {
-            return await apiClient.get<Integration>(url)
+            return withCredentialsStatus(await apiClient.get<Integration>(url))
         } catch (error) {
             if (isNotFound(error)) return null
             throw error
@@ -50,7 +66,7 @@ class IntegrationsService {
      */
     async connect(payload: KunasConnectPayload): Promise<Integration> {
         const url = `${API_BASE}/kunas-pms/connect`
-        return apiClient.post<Integration>(url, payload)
+        return withCredentialsStatus(await apiClient.post<Integration>(url, payload))
     }
 
     /**
@@ -61,7 +77,7 @@ class IntegrationsService {
         payload: KunasConfigurationPayload,
     ): Promise<Integration> {
         const url = `${API_BASE}/kunas-pms/configuration`
-        return apiClient.patch<Integration>(url, payload)
+        return withCredentialsStatus(await apiClient.patch<Integration>(url, payload))
     }
 
     /**
@@ -88,7 +104,7 @@ class IntegrationsService {
         token: string,
         statusProviderId: IntegrationStatus,
     ): Promise<Integration> {
-        return apiClient.patch<Integration>(this.integrationUrl(token), { statusProviderId })
+        return withCredentialsStatus(await apiClient.patch<Integration>(this.integrationUrl(token), { statusProviderId }))
     }
 
     activate(token: string): Promise<Integration> {

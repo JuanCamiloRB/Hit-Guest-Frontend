@@ -164,3 +164,26 @@ export const LISTING_CREDENTIALS_COPY = {
     remove: "Quitar credenciales",
     removed: "Credenciales quitadas. Este alojamiento ya no se reporta.",
 } as const
+
+/**
+ * SIRE check-in y SIRE check-out son dos automatizaciones independientes, cada
+ * una con sus propios overrides (nota backend 2026-11-12, Q4): en modo por
+ * alojamiento, cada alojamiento necesita las credenciales en las dos. Para
+ * pedirlas una sola vez, el modal de una guarda también en la otra.
+ *
+ * Devuelve la otra SIRE de la misma propiedad, solo si las dos están en modo por
+ * alojamiento (en modo propiedad el override es un delta sobre la propiedad y
+ * copiarlo cambiaría otra cosa). TRA tiene una sola automatización: `null`.
+ */
+export function findCredentialSibling<T extends ScopedAutomation & { uuid: string }>(
+    automation: T | null | undefined,
+    automations: readonly T[],
+): T | null {
+    if (!automation || canonicalSlug(slugOf(automation)) !== "sire_colombia") return null
+    if (readCredentialsScope(automation) !== "listing") return null
+    return automations.find((candidate) =>
+        candidate.uuid !== automation.uuid
+        && canonicalSlug(slugOf(candidate)) === "sire_colombia"
+        && readCredentialsScope(candidate) === "listing",
+    ) ?? null
+}

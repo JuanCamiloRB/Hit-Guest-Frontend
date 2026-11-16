@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { SwitchField } from "@/components/ui/switch-field"
+import { secretPresence, type SecretSource } from "../../lib/stored-secrets"
 import type { AutomationDefinition, ProviderOption } from "../../types/automation"
 import { readCredentialsScope, supportsListingCredentials } from "../../lib/credentials-scope"
 import { ParameterField } from "./ParameterField"
@@ -29,6 +30,8 @@ interface Props {
     isSaving: boolean
     /** 422 del backend en `parameters.credentials_scope`, para mostrarlo junto al interruptor. */
     scopeError?: string | null
+    /** Origen de `storedSecretKeys` y `secretHints` (la automatización): quién ve qué secreto. */
+    secretSource?: SecretSource | null
 }
 
 export function ConfigModal({
@@ -40,11 +43,25 @@ export function ConfigModal({
     onSave,
     isSaving,
     scopeError,
+    secretSource,
 }: Props) {
     // AutomationCard mounts this modal only while it is open, so the initializer
     // receives a fresh snapshot every time. An effect that copied props into state
     // caused an avoidable second render and tripped React's set-state-in-effect rule.
-    const [params, setParams] = useState<Record<string, unknown>>(() => currentParameters ?? {})
+    // Secretos: con la nota backend 2026-11-12 (`storedSecretKeys`) el valor llega
+    // completo y solo al dueño, y se precarga con mostrar/ocultar. Antes podía
+    // llegar enmascarado: no se precarga y se dice «Ya configurado».
+    const passwordKeys = new Set(provider.parametersSchema.filter((field) => field.type === "password").map((field) => field.key))
+    const trustsSecretValues = secretSource?.storedSecretKeys !== undefined
+    const [params, setParams] = useState<Record<string, unknown>>(() => {
+        const initial = currentParameters ?? {}
+        return trustsSecretValues ? { ...initial } : Object.fromEntries(Object.entries(initial).filter(([key]) => !passwordKeys.has(key)))
+    })
+    // Un secreto solo viaja si el PM lo cambió: reenviarlo intacto pisaba una
+    // rotación hecha en otra sesión (o escribía un valor enmascarado). Ojo: esto
+    // NO evita reanudar una pausa: los demás campos de credenciales (RNT, documento)
+    // viajan siempre, y según la nota 2026-11-12 eso ya reanuda.
+    const [dirtySecretKeys, setDirtySecretKeys] = useState<ReadonlySet<string>>(new Set())
 
     // TRA y SIRE pueden tomar las credenciales de cada alojamiento (contrato 2026-11-10).
     const supportsScope = supportsListingCredentials(provider.value)
@@ -55,7 +72,13 @@ export function ConfigModal({
         // las claves que se envían, así que omitirlo no devolvería a «property».
         // Las credenciales de la propiedad no se borran al cambiar de modo: en
         // «listing» el backend no las usa y se conservan para volver.
-        onSave(supportsScope ? { ...params, credentials_scope: perListing ? "listing" : "property" } : params)
+        const toSend: Record<string, unknown> = { ...params }
+        for (const key of passwordKeys) {
+            const value = toSend[key]
+            // Vacío también se omite: vacío conserva el guardado (nota 2026-11-12 §4).
+            if (!dirtySecretKeys.has(key) || value == null || value === "") delete toSend[key]
+        }
+        onSave(supportsScope ? { ...toSend, credentials_scope: perListing ? "listing" : "property" } : toSend)
     }
 
     return (
@@ -98,7 +121,14 @@ export function ConfigModal({
                                 key={schema.key}
                                 schema={schema}
                                 value={params[schema.key]}
-                                onChange={v => setParams(prev => ({ ...prev, [schema.key]: v }))}
+                                onChange={v => {
+                                    if (passwordKeys.has(schema.key)) setDirtySecretKeys((prev) => new Set([...prev, schema.key]))
+                                    setParams(prev => ({ ...prev, [schema.key]: v }))
+                                }}
+                                hint={passwordKeys.has(schema.key) && hasStoredSecret(secretSource, currentParameters, schema.key) && (params[schema.key] == null || params[schema.key] === "")
+                                    ? "Ya configurado; déjalo vacío para conservarlo."
+                                    : undefined}
+                                hiddenSecret={schema.type === "password" ? hiddenSecretOf(secretSource, schema.key) : undefined}
                             />
                         ))
                     )}
@@ -122,4 +152,17 @@ export function ConfigModal({
             </DialogContent>
         </Dialog>
     )
+}
+
+/** Un secreto guardado que quien mira no recibe: se muestra de solo lectura. */
+function hiddenSecretOf(source: SecretSource | null | undefined, key: string) {
+    const presence = secretPresence(source, key)
+    return presence.kind === "hidden" ? { hint: presence.hint } : undefined
+}
+
+/** Hay un secreto guardado (con la nota, `storedSecretKeys`; antes, que llegara algo). */
+function hasStoredSecret(source: SecretSource | null | undefined, initial: Record<string, unknown> | undefined, key: string) {
+    if (source?.storedSecretKeys !== undefined) return source.storedSecretKeys.includes(key)
+    const value = initial?.[key]
+    return value != null && value !== ""
 }

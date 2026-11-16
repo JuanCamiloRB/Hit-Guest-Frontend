@@ -17,6 +17,7 @@ import {
     withIdentityProviders,
 } from "../lib/automation-catalog"
 import { DELIVERY_PROVIDERS, partitionCheckinLinkDelivery } from "../lib/checkin-link-delivery"
+import { findCredentialSibling } from "../lib/credentials-scope"
 import { catalogService } from "@/features/auth/services/catalog-service"
 import type { PropertyAutomation, Provider } from "../types/automation"
 import { EMPTY_IDENTITY_CATALOG, resolveIdentityProviders, type IdentityProviderCatalog } from "../lib/identity-providers"
@@ -42,6 +43,23 @@ interface PropertyListingRow {
 interface Props {
     /** Jumps the parent Tabs to "documents" — where contract text + signature routing now lives. */
     onNavigateToDocuments?: () => void
+}
+
+
+/**
+ * La fila que queda tras guardar una automatización.
+ * - Algunas respuestas de `configure` omiten el provider anidado: se conserva
+ *   hasta la próxima lectura completa para que el ruteo semántico no cambie.
+ * - Una respuesta sin `credentialsStatus` no levanta una pausa que ya se veía
+ *   (nota 2026-11-11): se conserva hasta la próxima lectura completa.
+ */
+export function mergeConfiguredAutomation(previous: PropertyAutomation, updated: PropertyAutomation): PropertyAutomation {
+    return {
+        ...updated,
+        provider: updated.provider ?? previous.provider,
+        providerName: updated.providerName ?? previous.providerName,
+        credentialsStatus: updated.credentialsStatus !== undefined ? updated.credentialsStatus : previous.credentialsStatus,
+    }
 }
 
 export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
@@ -85,6 +103,9 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
      */
     const [identityCatalogFailedKey, setIdentityCatalogFailedKey] = useState<string | null>(null)
     const [reloadCount, setReloadCount] = useState(0)
+    // Al guardar credenciales de SIRE en las dos automatizaciones, el panel de la
+    // otra tarjeta tiene datos viejos: este contador le pide recargar.
+    const [mirrorVersions, setMirrorVersions] = useState<Record<string, number>>({})
     const requestKey = `${propertyUuid}:${countryId ?? ""}:${reloadCount}`
     const loading = !!propertyUuid && completedRequestKey !== requestKey
     const loadError = loadFailure?.key === requestKey ? loadFailure.message : null
@@ -207,13 +228,7 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
             }
             if (!updated) return prev.filter(a => a.uuid !== automationUuid)
             const previous = prev.find(a => a.uuid === automationUuid)
-            const merged = previous ? {
-                ...updated,
-                // Some configure responses omit sideloaded provider data. Keep it
-                // until the next full refresh so semantic routing remains stable.
-                provider: updated.provider ?? previous.provider,
-                providerName: updated.providerName ?? previous.providerName,
-            } : updated
+            const merged = previous ? mergeConfiguredAutomation(previous, updated) : updated
             const exists = previous != null
             return exists
                 ? prev.map(a => a.uuid === automationUuid ? merged : a)
@@ -323,6 +338,13 @@ export function PropertiesAutomation({ onNavigateToDocuments }: Props) {
                                 onChanged={updated => handleChanged(updated, automation?.uuid ?? null)}
                                 onNavigateToDocuments={onNavigateToDocuments}
                                 sources={sources}
+                                credentialSibling={findCredentialSibling(automation, automations)}
+                                credentialsMirrorVersion={automation ? mirrorVersions[automation.uuid] ?? 0 : 0}
+                                onCredentialsMirrored={() => {
+                                    // Solo la OTRA tarjeta recarga: la que guardó ya tiene lo suyo al día.
+                                    const sibling = findCredentialSibling(automation, automations)
+                                    if (sibling) setMirrorVersions((prev) => ({ ...prev, [sibling.uuid]: (prev[sibling.uuid] ?? 0) + 1 }))
+                                }}
                             />
                         )
                     })}

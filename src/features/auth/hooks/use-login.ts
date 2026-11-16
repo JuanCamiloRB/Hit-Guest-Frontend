@@ -1,5 +1,6 @@
 "use client"
 
+import { readReturnTo } from "@/lib/return-to"
 import { useState, useEffect, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -12,6 +13,16 @@ import { useRouter } from "next/navigation"
 import { useFormSecurity } from "./use-form-security"
 import { isSupportAgentOnly } from "@/features/support/lib/support-access"
 import { SUPPORT_HOME } from "@/features/support/lib/support-session"
+
+
+/**
+ * A dónde va quien acaba de verificar el código. Un agente de soporte no es PM:
+ * su inicio es la consola (contrato §5b). Un PM vuelve a donde iba si el login
+ * lo trajo con `?returnTo=` (validado: solo rutas del panel), si no al inicio.
+ */
+export function postLoginDestination(user: Parameters<typeof isSupportAgentOnly>[0], search: string): string {
+    return isSupportAgentOnly(user) ? SUPPORT_HOME : readReturnTo(search) ?? "/dashboard"
+}
 
 export function useLogin() {
     const router = useRouter()
@@ -102,8 +113,7 @@ export function useLogin() {
             toast.success("¡Bienvenido de nuevo!", {
                 description: `Sesión iniciada correctamente`,
             })
-            // Un agente de soporte no es PM: su inicio es la consola (contrato §5b).
-            router.push(isSupportAgentOnly(user) ? SUPPORT_HOME : "/dashboard")
+            router.push(postLoginDestination(user, window.location.search))
         } catch (err: any) {
             setError(err.message || "Error al verificar el código")
 

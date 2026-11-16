@@ -1,7 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { RotateCcw, History, Play, FileText, Send, Lock } from "lucide-react"
+import Link from "next/link"
+import { RotateCcw, History, Play, FileText, Send, Lock, KeyRound } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Note } from "@/components/ui/note"
 import { cn } from "@/lib/utils"
@@ -11,11 +12,13 @@ import type {
     AutomationStatusItem as AutomationStatusItemType,
 } from "@/features/properties/types/automation"
 import { automationActionKey } from "@/features/reservations/hooks/useAutomationStatus"
+import { propertyEditHref } from "@/features/properties/lib/property-tabs"
 import { StatusPill } from "@/components/ui/status-pill"
 import {
     getStatusMeta,
     GUEST_STATUS_META,
     NOT_APPLICABLE_META,
+    CREDENTIALS_PAUSED_META,
     PROVIDER_LABELS,
     automationTitle,
     formatRunDate,
@@ -43,6 +46,14 @@ interface AutomationStatusItemProps {
     /** True when this is a secondary-guest automation and the reservation only
      *  has 1 total guest — there's no secondary guest for it to ever run for. */
     notApplicable?: boolean
+    /**
+     * En pausa por credenciales rechazadas (nota backend 2026-11-11), lo diga la
+     * fila, un huésped o un 422 previo. Manda sobre el `status`: se muestra el
+     * aviso con «Actualizar credenciales» y no se ofrece reintentar.
+     */
+    credentialsPaused?: boolean
+    /** Destino de «Actualizar credenciales»; sin él, el aviso va sin enlace. */
+    propertyUuid?: string | null
     onRedispatch: (item: AutomationStatusItemType, guest?: AutomationGuestStatus) => void
     onDispatch: (item: AutomationStatusItemType, guest?: AutomationGuestStatus) => void
     onResendPdf: (item: AutomationStatusItemType) => void
@@ -57,12 +68,15 @@ export function AutomationStatusItem({
     dispatchingKeys,
     cooldownUntil,
     notApplicable = false,
+    credentialsPaused = false,
+    propertyUuid = null,
     onRedispatch,
     onDispatch,
     onResendPdf,
     onViewHistory,
 }: AutomationStatusItemProps) {
-    const meta = notApplicable ? NOT_APPLICABLE_META : getStatusMeta(item)
+    const paused = credentialsPaused && !notApplicable
+    const meta = notApplicable ? NOT_APPLICABLE_META : paused ? CREDENTIALS_PAUSED_META : getStatusMeta(item)
     const title = automationTitle(item.providerSlug, item.automationName)
     const providerLabel = PROVIDER_LABELS[item.providerSlug] || item.providerSlug
     const [confirmingResend, setConfirmingResend] = useState(false)
@@ -81,8 +95,10 @@ export function AutomationStatusItem({
     // verification, signature, TTLock, etc. never show a manual button even if the
     // backend sends canDispatch/canRedispatch — and still honor an explicit
     // can_manual_dispatch=false from the backend on top of it.
+    // En pausa no se ofrece despachar: el backend respondería 422 hasta que se
+    // guarden las credenciales, y el arreglo es el enlace del aviso.
     const canManual =
-        !notApplicable && MANUALLY_DISPATCHABLE_SLUGS.has(item.providerSlug) && item.canManualDispatch
+        !notApplicable && !paused && MANUALLY_DISPATCHABLE_SLUGS.has(item.providerSlug) && item.canManualDispatch
     // Por huésped (contrato 2026-10-27 §2.4): se reintenta a cada huésped con
     // su propio `usageRecordId`, en su fila. Arriba solo queda «despachar los
     // pendientes», que el backend reparte entre los huéspedes elegibles.
@@ -90,7 +106,7 @@ export function AutomationStatusItem({
     // Why an action is blocked by an unmet checkin gate (null when not blocked).
     // Only relevant for manually-dispatchable automations — otherwise there's no
     // button to explain, so we don't show a "blocked" note either.
-    const blockedMessage = MANUALLY_DISPATCHABLE_SLUGS.has(item.providerSlug)
+    const blockedMessage = !paused && MANUALLY_DISPATCHABLE_SLUGS.has(item.providerSlug)
         ? (getCheckinBlockedMessage(item) ?? getRedispatchBlockedMessage(item))
         : null
     // item.providerSlug is canonicalized (underscore) upstream in normalizeStatusItem.
@@ -140,6 +156,7 @@ export function AutomationStatusItem({
                             item={item}
                             guest={guest}
                             canManual={canManual}
+                            paused={paused}
                             now={now}
                             redispatchingKeys={redispatchingKeys}
                             dispatchingKeys={dispatchingKeys}
@@ -151,7 +168,22 @@ export function AutomationStatusItem({
                 </ul>
             )}
 
-            {!perGuest && item.status === "failed" && item.lastError && (
+            {paused ? (
+                <FeedbackBanner
+                    tone="danger"
+                    density="compact"
+                    className="break-words"
+                    action={propertyUuid ? (
+                        <Button asChild variant="outline" size="sm">
+                            <Link href={propertyEditHref(propertyUuid, "automations")}>
+                                <Icon icon={KeyRound} /> Actualizar credenciales
+                            </Link>
+                        </Button>
+                    ) : undefined}
+                >
+                    {errorMessage("credentials_rejected")}
+                </FeedbackBanner>
+            ) : !perGuest && item.status === "failed" && item.lastError && (
                 <FeedbackBanner tone="danger" density="compact" className="break-words">
                     {errorMessage(item.lastError)}
                 </FeedbackBanner>
@@ -239,6 +271,7 @@ function GuestRow({
     item,
     guest,
     canManual,
+    paused,
     now,
     redispatchingKeys,
     dispatchingKeys,
@@ -249,6 +282,8 @@ function GuestRow({
     item: AutomationStatusItemType
     guest: AutomationGuestStatus
     canManual: boolean
+    /** La automatización está en pausa por credenciales rechazadas: el aviso va arriba, una vez. */
+    paused: boolean
     now: number
     redispatchingKeys: ReadonlySet<string>
     dispatchingKeys: ReadonlySet<string>
@@ -257,13 +292,16 @@ function GuestRow({
     onDispatch: (item: AutomationStatusItemType, guest?: AutomationGuestStatus) => void
 }) {
     const key = automationActionKey(item.automationUuid, guest.guestUuid)
-    const meta = GUEST_STATUS_META[guest.status]
+    // Un huésped que ya terminó (o no aplica) conserva su estado aunque arrastre
+    // el código en `lastError`; el resto espera a que se guarden las credenciales.
+    const guestPaused = paused && guest.status !== "completed" && guest.status !== "skipped"
+    const meta = guestPaused ? CREDENTIALS_PAUSED_META : GUEST_STATUS_META[guest.status]
     const until = cooldownUntil[key]
     const cooldownLeft = until ? Math.max(0, Math.ceil((until - now) / 1000)) : 0
     const inCooldown = cooldownLeft > 0
     const isRedispatching = redispatchingKeys.has(key)
     const isDispatching = dispatchingKeys.has(key)
-    const failure = guest.status === "failed" ? errorMessage(guest.lastError) : null
+    const failure = guest.status === "failed" && !guestPaused ? errorMessage(guest.lastError) : null
 
     return (
         <Surface as="li" tone="sunk" className="space-y-1.5 px-3 py-2">

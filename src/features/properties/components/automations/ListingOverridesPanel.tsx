@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useCallback } from "react"
-import { Building2, ChevronDown, ChevronUp, Settings2, RefreshCw } from "lucide-react"
+import { useState, useCallback, useRef } from "react"
+import { Building2, ChevronDown, ChevronUp, Settings2, RefreshCw , KeyRound } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Badge } from "@/components/ui/badge"
 import { StatusPill } from "@/components/ui/status-pill"
+import { CredentialsRejectedNotice } from "@/components/shared/credentials-rejected-notice"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { automationService } from "../../services/automation-service"
@@ -23,6 +24,7 @@ import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { EmptyState } from "@/components/ui/empty-state"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Spinner } from "@/components/ui/loading-state"
+import { maskedSecret, secretPresence } from "../../lib/stored-secrets"
 
 /**
  * Estado de carga por unidad. «Falló» se distingue de «no cargado» a propósito:
@@ -40,13 +42,22 @@ type EntriesMap = Record<string, ListingEntry | undefined>
 interface Props {
     automation: PropertyAutomation
     listings: ListingMeta[]
+    /** La otra SIRE en modo por alojamiento (`findCredentialSibling`). */
+    siblingAutomation?: PropertyAutomation | null
+    /** Se copiaron credenciales a la otra SIRE: su panel tiene que recargar. */
+    onCredentialsMirrored?: () => void
 }
 
-export function ListingOverridesPanel({ automation, listings }: Props) {
+export function ListingOverridesPanel({ automation, listings, siblingAutomation = null, onCredentialsMirrored }: Props) {
     const [entries, setEntries] = useState<EntriesMap>({})
+    // El override de la otra SIRE en cada unidad, de la MISMA consulta (lista los
+    // overrides de toda la unidad): sin pedir nada más.
+    const [siblingOverrides, setSiblingOverrides] = useState<Record<string, ListingAutomationOverride | null>>({})
     const [expanded, setExpanded] = useState(false)
     const [loadingUuids, setLoadingUuids] = useState<ReadonlySet<string>>(new Set())
     const [editingListing, setEditingListing] = useState<ListingMeta | null>(null)
+    // Guardados por unidad: una relectura vieja no pisa un guardado más nuevo.
+    const saveSeqRef = useRef<Record<string, number>>({})
 
     const slug = automation.provider?.parameters?.slug ?? automation.providerName ?? ""
     const fieldSchema = getOverrideFieldSchema(slug)
@@ -77,12 +88,23 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
             })
             return next
         })
+        if (siblingAutomation) {
+            setSiblingOverrides((prev) => {
+                const next = { ...prev }
+                results.forEach((result, index) => {
+                    if (result.status === "fulfilled") {
+                        next[targets[index].uuid] = result.value.find((o) => o.propertyAutomationUuid === siblingAutomation.uuid) ?? null
+                    }
+                })
+                return next
+            })
+        }
         setLoadingUuids((prev) => {
             const next = new Set(prev)
             for (const listing of targets) next.delete(listing.uuid)
             return next
         })
-    }, [automation.uuid])
+    }, [automation.uuid, siblingAutomation])
 
     /** Carga lo que falte o haya fallado; lo ya cargado no se vuelve a pedir. */
     const loadPending = useCallback(async () => {
@@ -188,7 +210,9 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                 const isDisabledHere = identity ? identity.tone === "disabled" : hasOverride && !override.isActive
                                 const params = hasOverride ? (override.parameters ?? {}) : {}
                                 const hasParams = identity ? identity.tone === "custom" : hasOverride && override.isActive &&
-                                    Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
+                                    (Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
+                                        // Un secreto guardado cuenta aunque no llegue (nota 2026-11-12: solo lo ve el dueño).
+                                        || (override.storedSecretKeys?.length ?? 0) > 0)
                                 const credentialSummary = perListing
                                     ? listingCredentialSummary(slug, override)
                                     : null
@@ -215,9 +239,8 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                     )
                                 }
 
-                                return (
+                                const row = (
                                     <UnstyledButton
-                                        key={listing.uuid}
                                         type="button"
                                         // Sin cargar no se edita: el modal decidiría crear/actualizar
                                         // sin saber si la unidad ya tiene override.
@@ -271,9 +294,10 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                                 <div className="flex flex-wrap gap-x-3 mt-0.5">
                                                     {fieldSchema.map(field => {
                                                         const val = params[field.key]
-                                                        if (val == null || val === "") return null
-                                                        const display = field.type === "password"
-                                                            ? "••••••••"
+                                                        const secret = field.type === "password" ? secretPresence(override, field.key) : null
+                                                        if (secret?.kind === "missing" || (!secret && (val == null || val === ""))) return null
+                                                        const display = secret
+                                                            ? maskedSecret(secret.kind === "hidden" ? secret.hint : null)
                                                             : Array.isArray(val)
                                                                 ? `${val.length} elemento${val.length > 1 ? "s" : ""}`
                                                                 : String(val)
@@ -297,6 +321,24 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                                         <Icon icon={Settings2} size="xs" className="text-ink-4" />
                                     </UnstyledButton>
                                 )
+                                // Nota backend 2026-11-11: la credencial propia de este alojamiento
+                                // fue rechazada. El aviso va debajo de la fila (no dentro: la fila
+                                // ya es un botón) y abre el mismo formulario.
+                                const rejection = override?.credentialsStatus
+                                if (!rejection) return <div key={listing.uuid}>{row}</div>
+                                return (
+                                    <div key={listing.uuid} className="space-y-1">
+                                        {row}
+                                        <CredentialsRejectedNotice
+                                            status={rejection}
+                                            action={
+                                                <Button type="button" size="sm" variant="outline" onClick={() => setEditingListing(listing)}>
+                                                    <Icon icon={KeyRound} /> Actualizar credenciales
+                                                </Button>
+                                            }
+                                        />
+                                    </div>
+                                )
                             })}
                             <p className="text-xs text-ink-3 text-center py-1">
                                 Click en una unidad para editar su override
@@ -316,8 +358,29 @@ export function ListingOverridesPanel({ automation, listings }: Props) {
                     propertyAutomations={[automation]}
                     override={editingEntry.override}
                     lockedPropertyAutomationUuid={automation.uuid}
+                    credentialSibling={siblingAutomation
+                        ? { automation: siblingAutomation, override: siblingOverrides[editingListing.uuid] ?? null }
+                        : null}
+                    onSiblingSaved={(siblingSaved) => {
+                        setSiblingOverrides((prev) => ({ ...prev, [editingListing.uuid]: siblingSaved }))
+                        onCredentialsMirrored?.()
+                    }}
                     onSaved={saved => {
                         setEntries(prev => ({ ...prev, [editingListing.uuid]: { state: "loaded", override: saved } }))
+                        // Estaba en pausa y la respuesta no dice si la levantó (la nota
+                        // solo garantiza el campo en los GET): se relee esta unidad. Si
+                        // se vuelve a guardar antes de que llegue, la relectura vieja no
+                        // pisa el guardado nuevo.
+                        const listing = editingListing
+                        const saveSeq = (saveSeqRef.current[listing.uuid] ?? 0) + 1
+                        saveSeqRef.current[listing.uuid] = saveSeq
+                        if (editingEntry.override?.credentialsStatus && saved.credentialsStatus === undefined) {
+                            void automationService.listListingOverrides(listing.uuid).then((fresh) => {
+                                if (saveSeqRef.current[listing.uuid] !== saveSeq) return
+                                const current = fresh.find((o) => o.propertyAutomationUuid === automation.uuid)
+                                if (current) setEntries(prev => ({ ...prev, [listing.uuid]: { state: "loaded", override: current } }))
+                            }).catch(() => { /* se queda lo guardado; al recargar se relee */ })
+                        }
                         setEditingListing(null)
                     }}
                     onOverrideChanged={changed => {

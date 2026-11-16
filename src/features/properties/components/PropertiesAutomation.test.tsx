@@ -9,7 +9,7 @@ window.HTMLElement.prototype.hasPointerCapture = () => false
 window.HTMLElement.prototype.releasePointerCapture = () => {}
 window.HTMLElement.prototype.scrollIntoView = () => {}
 
-import { PropertiesAutomation } from "./PropertiesAutomation"
+import { PropertiesAutomation, mergeConfiguredAutomation } from "./PropertiesAutomation"
 import { AUTOMATION_STATUS, type PropertyAutomation, type Provider } from "../types/automation"
 
 const listAutomations = vi.fn()
@@ -153,5 +153,22 @@ describe("PropertiesAutomation — Avanzada guardada no bloquea la Esencial (Did
         await waitFor(() => expect(screen.queryByText(/No pudimos cargar todos los proveedores de identidad/)).not.toBeInTheDocument())
         await openIdentitySelector()
         expect(await screen.findByRole("option", { name: /verificación esencial/i })).toBeInTheDocument()
+    })
+})
+
+describe("mergeConfiguredAutomation — la pausa por credenciales no se pierde por una respuesta incompleta (nota 2026-11-11)", () => {
+    const status = { status: "rejected", reason: "token_rejected", providerMessage: null, since: null }
+    const previous = { uuid: "pa", credentialsStatus: status, provider: null, providerName: "tra_colombia" } as unknown as PropertyAutomation
+
+    it("sin el campo en la respuesta, se conserva el anterior", () => {
+        const updated = { uuid: "pa", provider: null, providerName: null } as unknown as PropertyAutomation
+        expect(mergeConfiguredAutomation(previous, updated).credentialsStatus).toEqual(status)
+        expect(mergeConfiguredAutomation(previous, updated).providerName).toBe("tra_colombia")
+    })
+
+    it("con el campo (null o un rechazo nuevo), manda la respuesta", () => {
+        expect(mergeConfiguredAutomation(previous, { ...previous, credentialsStatus: null }).credentialsStatus).toBeNull()
+        const fresh = { ...status, reason: "login_rejected" }
+        expect(mergeConfiguredAutomation(previous, { ...previous, credentialsStatus: fresh }).credentialsStatus).toEqual(fresh)
     })
 })

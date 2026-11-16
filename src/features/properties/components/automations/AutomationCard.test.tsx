@@ -1068,9 +1068,12 @@ describe("AutomationCard — TRA/SIRE con credenciales por alojamiento (contrato
         expect(screen.getByPlaceholderText("Número RNT del establecimiento")).toBeInTheDocument()
         fireEvent.click(screen.getByRole("button", { name: "Guardar Configuración" }))
 
+        // «No borra las que había»: el token intacto NO se reenvía (nota backend
+        // 2026-11-12 §4: omitido conserva el guardado), el resto sí.
         await waitFor(() => expect(configure).toHaveBeenCalledWith("tra-row", expect.objectContaining({
-            parameters: expect.objectContaining({ credentials_scope: "property", token: "guardado", rnt: "123" }),
+            parameters: expect.objectContaining({ credentials_scope: "property", rnt: "123" }),
         })))
+        expect("token" in configure.mock.calls[0][1].parameters).toBe(false)
     })
 
     it("un 422 en credentials_scope aparece junto al interruptor, asociado a él", async () => {
@@ -1101,5 +1104,191 @@ describe("AutomationCard — TRA/SIRE con credenciales por alojamiento (contrato
         )
         fireEvent.click(screen.getByRole("button", { name: /Configurar/i }))
         expect(screen.queryByRole("switch", { name: "Credenciales por alojamiento" })).not.toBeInTheDocument()
+    })
+})
+
+describe("AutomationCard — quien no es el dueño no recibe el secreto (nota backend 2026-11-12)", () => {
+    const tra = makeProvider(1, "tra_colombia")
+    const renderTraWith = (over: Partial<PropertyAutomation>) => render(
+        <AutomationCard
+            {...baseProps}
+            definition={definitionFor("tra-colombia")}
+            automation={makeAutomation({
+                uuid: "tra-row", providerId: 1, executionOrder: 40, provider: tra, providerName: "tra_colombia", ...over,
+            })}
+            providers={[tra]}
+        />,
+    )
+
+    it("un token guardado que no llega (staff) no cuenta como faltante: se activa sin pedirlo", async () => {
+        toggle.mockResolvedValue(makeAutomation({ uuid: "tra-row", providerId: 1, provider: tra, providerName: "tra_colombia" }))
+        renderTraWith({ parameters: { rnt: "123", triggerTypes: ["on_checkin_completed"] }, storedSecretKeys: ["token"], secretHints: { token: "3f9a" } })
+        fireEvent.click(screen.getByRole("switch", { name: "TRA Colombia" }))
+        await waitFor(() => expect(toggle).toHaveBeenCalledWith("tra-row", true, 1))
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
+    })
+
+    it("cuando el backend informa la completitud, manda él: completas activa, incompletas pide lo que falta", async () => {
+        toggle.mockResolvedValue(makeAutomation({ uuid: "tra-row", providerId: 1, provider: tra, providerName: "tra_colombia" }))
+        const { unmount } = renderTraWith({ parameters: { triggerTypes: ["on_checkin_completed"] }, credentialsComplete: true })
+        fireEvent.click(screen.getByRole("switch", { name: "TRA Colombia" }))
+        await waitFor(() => expect(toggle).toHaveBeenCalled())
+        unmount()
+        toggle.mockClear()
+
+        renderTraWith({ parameters: { token: "x", rnt: "1", triggerTypes: ["on_checkin_completed"] }, credentialsComplete: false, missingCredentialKeys: ["rnt"] })
+        fireEvent.click(screen.getByRole("switch", { name: "TRA Colombia" }))
+        expect(await screen.findByRole("dialog", { name: /Configurar: TRA Colombia/ })).toBeInTheDocument()
+        expect(toggle).not.toHaveBeenCalled()
+    })
+
+    it("en la configuración, el secreto oculto se ve «Guardada» con la pista y no se puede pisar", () => {
+        renderTraWith({ parameters: { rnt: "123", triggerTypes: ["on_checkin_completed"] }, storedSecretKeys: ["token"], secretHints: { token: "3f9a" } })
+        fireEvent.click(screen.getByRole("button", { name: /Configurar/ }))
+        const dialog = screen.getByRole("dialog", { name: /Configurar: TRA Colombia/ })
+        expect(dialog).toHaveTextContent("••••3f9a · Guardada")
+        expect(dialog).toHaveTextContent("Solo el dueño de la propiedad puede verla o cambiarla.")
+        expect(dialog.querySelector('input[type="password"]')).toBeNull()
+    })
+})
+
+describe("AutomationCard — la configuración no reenvía un secreto intacto (auditoría 2026-11-14)", () => {
+    const tra = makeProvider(1, "tra_colombia")
+    const owner = () => makeAutomation({
+        uuid: "tra-row", providerId: 1, executionOrder: 40, provider: tra, providerName: "tra_colombia",
+        parameters: { token: "SENTINEL-OWNER-TOKEN", rnt: "123", triggerTypes: ["on_checkin_completed"] },
+        storedSecretKeys: ["token"], secretHints: {},
+    })
+    const renderOwner = () => render(
+        <AutomationCard {...baseProps} definition={definitionFor("tra-colombia")} automation={owner()} providers={[tra]} />,
+    )
+
+    it("el dueño ve su token y, si no lo cambia, guardar no lo manda (no pisa una rotación hecha en otra sesión)", async () => {
+        configure.mockResolvedValue(owner())
+        renderOwner()
+        fireEvent.click(screen.getByRole("button", { name: /Configurar/ }))
+        const token = screen.getByLabelText(/Token API TRA/)
+        expect(token).toHaveAttribute("type", "password")
+        expect(token).toHaveValue("SENTINEL-OWNER-TOKEN")
+        fireEvent.click(screen.getByRole("button", { name: "Guardar Configuración" }))
+        await waitFor(() => expect(configure).toHaveBeenCalled())
+        const sent = configure.mock.calls[0][1].parameters
+        expect(sent).toEqual(expect.objectContaining({ rnt: "123" }))
+        expect("token" in sent).toBe(false)
+        expect(JSON.stringify(configure.mock.calls[0])).not.toContain("SENTINEL-OWNER-TOKEN")
+    })
+
+    it("escribir y vaciar el token tampoco lo manda: vacío conserva el guardado", async () => {
+        configure.mockResolvedValue(owner())
+        renderOwner()
+        fireEvent.click(screen.getByRole("button", { name: /Configurar/ }))
+        const token = screen.getByLabelText(/Token API TRA/)
+        fireEvent.change(token, { target: { value: "otro" } })
+        fireEvent.change(token, { target: { value: "" } })
+        expect(screen.getByText("Ya configurado; déjalo vacío para conservarlo.")).toBeInTheDocument()
+        fireEvent.click(screen.getByRole("button", { name: "Guardar Configuración" }))
+        await waitFor(() => expect(configure).toHaveBeenCalled())
+        expect("token" in configure.mock.calls[0][1].parameters).toBe(false)
+    })
+
+    it("si lo reemplaza, se manda el nuevo", async () => {
+        configure.mockResolvedValue(owner())
+        renderOwner()
+        fireEvent.click(screen.getByRole("button", { name: /Configurar/ }))
+        fireEvent.change(screen.getByLabelText(/Token API TRA/), { target: { value: "token-nuevo" } })
+        fireEvent.click(screen.getByRole("button", { name: "Guardar Configuración" }))
+        await waitFor(() => expect(configure).toHaveBeenCalled())
+        expect(configure.mock.calls[0][1].parameters.token).toBe("token-nuevo")
+    })
+
+    it("con un backend anterior a la nota (sin storedSecretKeys) no precarga el valor: podía venir enmascarado", () => {
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={definitionFor("tra-colombia")}
+                automation={makeAutomation({
+                    uuid: "tra-row", providerId: 1, executionOrder: 40, provider: tra, providerName: "tra_colombia",
+                    parameters: { token: "********", rnt: "123", triggerTypes: ["on_checkin_completed"] },
+                })}
+                providers={[tra]}
+            />,
+        )
+        fireEvent.click(screen.getByRole("button", { name: /Configurar/ }))
+        expect(screen.getByLabelText(/Token API TRA/)).toHaveValue("")
+        expect(screen.getByText("Ya configurado; déjalo vacío para conservarlo.")).toBeInTheDocument()
+    })
+
+    it("«incompleto» con claves desconocidas y todos los valores presentes tampoco termina en «listo»", async () => {
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={definitionFor("tra-colombia")}
+                automation={makeAutomation({
+                    uuid: "tra-row", providerId: 1, executionOrder: 40, provider: tra, providerName: "tra_colombia",
+                    parameters: { token: "x", rnt: "1", triggerTypes: ["on_checkin_completed"] },
+                    credentialsComplete: false, missingCredentialKeys: ["otra_cosa"],
+                })}
+                providers={[tra]}
+            />,
+        )
+        fireEvent.click(screen.getByRole("switch", { name: "TRA Colombia" }))
+        expect(await screen.findByRole("dialog", { name: /Configurar: TRA Colombia/ })).toBeInTheDocument()
+        expect(toggle).not.toHaveBeenCalled()
+    })
+
+    it("«incompleto» con claves que no corresponden a ningún campo no se da por completo", async () => {
+        render(
+            <AutomationCard
+                {...baseProps}
+                definition={definitionFor("tra-colombia")}
+                automation={makeAutomation({
+                    uuid: "tra-row", providerId: 1, executionOrder: 40, provider: tra, providerName: "tra_colombia",
+                    parameters: { triggerTypes: ["on_checkin_completed"] },
+                    credentialsComplete: false, missingCredentialKeys: ["algo_que_el_front_no_conoce"],
+                })}
+                providers={[tra]}
+            />,
+        )
+        fireEvent.click(screen.getByRole("switch", { name: "TRA Colombia" }))
+        expect(await screen.findByRole("dialog", { name: /Configurar: TRA Colombia/ })).toBeInTheDocument()
+        expect(toggle).not.toHaveBeenCalled()
+    })
+})
+
+describe("AutomationCard — credenciales rechazadas (nota backend 2026-11-11)", () => {
+    const tra = makeProvider(1, "tra_colombia")
+    const paused = () => makeAutomation({
+        uuid: "tra-row", providerId: 1, executionOrder: 40, provider: tra, providerName: "tra_colombia",
+        parameters: { rnt: "123", triggerTypes: ["on_checkin_completed"] },
+        storedSecretKeys: ["token"], secretHints: {},
+        credentialsStatus: { status: "rejected", reason: "token_rejected", providerMessage: "Token inválido.", since: "2026-11-11T08:15:02-05:00" },
+    })
+
+    it("muestra el aviso con el motivo traducido, el mensaje del proveedor y desde cuándo", () => {
+        render(<AutomationCard {...baseProps} definition={definitionFor("tra-colombia")} automation={paused()} providers={[tra]} />)
+        expect(screen.getByText(/Credenciales rechazadas desde el/)).toBeInTheDocument()
+        expect(screen.getByText(/Ministerio rechazó el token/)).toBeInTheDocument()
+        expect(screen.getByText("Mensaje del proveedor: Token inválido.")).toBeInTheDocument()
+    })
+
+    it("«Actualizar credenciales» abre la configuración, y guardar sin tocar nada manda el RNT: reanuda la pausa A PROPÓSITO", async () => {
+        // Decisión explícita (nota §5): cualquier guardado con campos de credenciales
+        // levanta la pausa; volver a guardar es el «inténtalo otra vez» del PM. El
+        // secreto intacto sigue sin viajar.
+        configure.mockResolvedValue({ ...paused(), credentialsStatus: null })
+        render(<AutomationCard {...baseProps} definition={definitionFor("tra-colombia")} automation={paused()} providers={[tra]} />)
+        fireEvent.click(screen.getByRole("button", { name: /Actualizar credenciales/ }))
+        expect(screen.getByRole("dialog", { name: /Configurar: TRA Colombia/ })).toBeInTheDocument()
+        fireEvent.click(screen.getByRole("button", { name: "Guardar Configuración" }))
+        await waitFor(() => expect(configure).toHaveBeenCalled())
+        const sent = configure.mock.calls[0][1].parameters
+        expect(sent).toEqual(expect.objectContaining({ rnt: "123" }))
+        expect("token" in sent).toBe(false)
+    })
+
+    it("sin pausa no hay aviso", () => {
+        render(<AutomationCard {...baseProps} definition={definitionFor("tra-colombia")} automation={{ ...paused(), credentialsStatus: null }} providers={[tra]} />)
+        expect(screen.queryByText(/Credenciales rechazadas/)).toBeNull()
+        expect(screen.queryByRole("button", { name: /Actualizar credenciales/ })).toBeNull()
     })
 })

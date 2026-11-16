@@ -8,6 +8,7 @@
 
 import type { LucideIcon } from "lucide-react"
 import type { ContractRoutingView, ContractType } from "./contract-routing"
+import type { CredentialsStatus } from "@/lib/credentials-rejection"
 
 // ─── Primitive Types ──────────────────────────────────────────────────
 
@@ -61,6 +62,21 @@ export interface PropertyAutomation {
   usageRecords?: AutomationUsageRecord[] | null
   /** Solo en la automation de firma (contrato 2026-10-19). Ausente = backend anterior. */
   contractRouting?: ContractRoutingView | null
+  /**
+   * Nota backend 2026-11-12 (`fix/secretos-solo-dueno`), ver `SecretMetadata`.
+   * En la automatización de la propiedad la completitud vale `null` si no es
+   * TRA/SIRE o si está en modo por alojamiento; el lector la deja ausente.
+   */
+  credentialsComplete?: boolean
+  missingCredentialKeys?: string[]
+  storedSecretKeys?: string[]
+  secretHints?: Record<string, string>
+  /**
+   * Nota backend 2026-11-11: no-`null` = el proveedor rechazó las credenciales
+   * y esta configuración está en pausa hasta volver a guardarlas. El
+   * normalizador solo lo deja si la respuesta lo trae: ausente = no se sabe.
+   */
+  credentialsStatus?: CredentialsStatus | null
   // Derived helpers — set by service normalize(), never sent to API
   isActive: boolean                     // = statusProviderId === 8
   providerName?: string | null          // = provider.parameters.slug
@@ -495,14 +511,32 @@ export interface ListingAutomationOverride {
   token: string | null
   statusRecordId: ListingOverrideStatus         // 6 = active, 7 = inactive
   /**
-   * Completitud de las credenciales del override (TRA/SIRE en modo por
-   * alojamiento). ⚠️ PEDIDO al backend (plan 20261112, Q2), sin confirmar.
-   * `undefined` = el backend no lo informa: «no pudimos confirmar». Nunca se
-   * deduce de los valores, porque un secreto guardado puede venir omitido.
+   * Completitud de las credenciales del override (TRA/SIRE). Documentada en la
+   * nota backend 2026-11-12, sin verificar por curl. `undefined` = el backend
+   * no lo informa: «no pudimos confirmar». Nunca se deduce de los valores,
+   * porque un secreto guardado le llega omitido a quien no es el dueño.
    */
   credentialsComplete?: boolean
-  /** Claves que faltan según el backend (mismo pedido Q2). `undefined` = no informado. */
+  /** Claves que faltan según el backend. `undefined` = no informado. */
   missingCredentialKeys?: string[]
+  /**
+   * Secretos con valor guardado (nota 2026-11-12). Lo reciben todos, también
+   * quien no puede ver el valor: es la única forma de decir «Guardada» sin él.
+   * `undefined` = backend anterior a la nota.
+   */
+  storedSecretKeys?: string[]
+  /**
+   * Últimos 4 caracteres del token de TRA y del `client_secret` de TTLock,
+   * solo cuando el secreto está oculto para quien pregunta. Las contraseñas
+   * nunca traen pista.
+   */
+  secretHints?: Record<string, string>
+  /**
+   * Nota backend 2026-11-11: no-`null` = el proveedor rechazó las credenciales
+   * y la credencial propia de este alojamiento está en pausa hasta volver a guardarlas. El
+   * normalizador solo lo deja si la respuesta lo trae: ausente = no se sabe.
+   */
+  credentialsStatus?: CredentialsStatus | null
   /** Proveedor que ELIGIÓ la unidad (identidad). `null` = no eligió: hereda. */
   providerId?: number | null
   effectiveProvider?: OverrideEffectiveProvider | null

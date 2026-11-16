@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { SwitchField } from "@/components/ui/switch-field"
+import { CheckboxField } from "@/components/ui/checkbox-field"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { fieldErrorMessage, getErrorMessage } from "@/lib/notify-error"
@@ -52,10 +53,12 @@ import {
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import {
     LISTING_CREDENTIALS_COPY,
+    credentialLabel,
     listingCredentialState,
     readCredentialsScope,
     requiredListingCredentialKeys,
 } from "../../lib/credentials-scope"
+import { secretPresence } from "../../lib/stored-secrets"
 
 /** Minimal listing info needed to identify and label a unit. */
 export interface ListingMeta {
@@ -83,6 +86,14 @@ interface Props {
      */
     draftMode?: boolean
     onSaved: (override: ListingAutomationOverride) => void
+    /**
+     * La otra SIRE (check-in ↔ check-out) en modo por alojamiento y su override
+     * en esta unidad (`findCredentialSibling`). Con ella, el modal ofrece guardar
+     * las mismas credenciales en las dos: el backend no las copia (nota 2026-11-12, Q4).
+     */
+    credentialSibling?: { automation: PropertyAutomation; override: ListingAutomationOverride | null } | null
+    /** El override de la otra SIRE quedó guardado (o, en borrador, sintetizado). */
+    onSiblingSaved?: (override: ListingAutomationOverride) => void
     /**
      * El override cambió SIN cerrar el modal: lo creó o lo releyó la sección de
      * texto del contrato de la unidad (contrato 2026-10-20). Sin esto, el modal
@@ -143,9 +154,13 @@ export function AutomationOverrideModal({
     onSaved,
     onInheritRestored,
     onOverrideChanged,
+    credentialSibling = null,
+    onSiblingSaved,
 }: Props) {
     const isEdit = !!override
     const [saving, setSaving] = useState(false)
+    // SIRE check-in ↔ check-out: guardar las mismas credenciales en las dos. Activo por omisión.
+    const [mirrorToSibling, setMirrorToSibling] = useState(() => !siblingOverrideHasCredentials(credentialSibling?.override ?? null))
 
     // Create-mode automation selection
     const [selectedPaUuid, setSelectedPaUuid] = useState<string>(
@@ -174,6 +189,11 @@ export function AutomationOverrideModal({
     // Override fields = the property-level config fields for this provider (all optional).
     const fieldSchema = useMemo(() => getOverrideFieldSchema(slug), [slug])
     const schemaKeys = useMemo(() => fieldSchema.map(f => f.key), [fieldSchema])
+    // Un valor de secreto recibido se confía (se precarga y se puede copiar) solo si
+    // el backend implementa la nota 2026-11-12: con ella el valor llega completo y
+    // solo al dueño; antes podía llegar enmascarado y copiarlo pisaba la credencial
+    // real. Un borrador es local, y una creación no trae nada precargado.
+    const trustsSecretValues = draftMode || !override || override.storedSecretKeys !== undefined
 
     // Identidad (contrato 2026-10-14): Heredar · Avanzada · Esencial · Desactivar
     // en vez del interruptor y los parámetros.
@@ -216,14 +236,23 @@ export function AutomationOverrideModal({
         if (!open) return
         setSelectedPaUuid(override?.propertyAutomationUuid ?? lockedPropertyAutomationUuid ?? "")
         setIsActive(override ? override.isActive : true)
-        // Los secretos nunca se precargan en el DOM. Si el backend devuelve un
-        // valor real o enmascarado, dejarlo en un input permitiría verlo o
-        // reenviarlo como si fuera la credencial. Vacío significa «sin cambio».
+        // Nota backend 2026-11-12: el valor de un secreto solo le llega al dueño
+        // de la propiedad (o a soporte sobre él); a los demás les llega omitido.
+        // Si llegó, quien mira es el dueño y lo ve en su campo de contraseña,
+        // con mostrar/ocultar (decisión de producto 2026-11-14). Si no llegó y
+        // está guardado, se muestra «Guardada» de solo lectura (`hiddenSecret`).
+        // En ningún caso se reenvía sin cambio: ver `buildParameters`.
+        // Con un backend anterior a la nota (sin `storedSecretKeys`) el valor puede
+        // venir enmascarado: no se precarga, como antes, y se dice «Ya configurado».
         const saved = (override?.parameters as Record<string, unknown>) ?? {}
+        const trusted = trustsSecretValues
         const passwordKeys = new Set(getOverrideFieldSchema(
             override?.propertyAutomation?.provider?.parameters?.slug ?? slugOf(activePa),
         ).filter((field) => field.type === "password").map((field) => field.key))
-        setSchemaValues(Object.fromEntries(Object.entries(saved).filter(([key]) => !passwordKeys.has(key))))
+        setSchemaValues(trusted ? { ...saved } : Object.fromEntries(Object.entries(saved).filter(([key]) => !passwordKeys.has(key))))
+        // Copiar a la otra SIRE viene marcado solo si la otra todavía no tiene las
+        // suyas: si ya las tiene, reemplazarlas es una decisión, no un default.
+        setMirrorToSibling(!siblingOverrideHasCredentials(credentialSibling?.override ?? null))
         setDirtySchemaKeys(new Set())
         setFieldErrors({})
         setIdentityChoice(readIdentityOverrideState(override, catalog.catalog).choice)
@@ -291,6 +320,115 @@ export function AutomationOverrideModal({
         // reescribir secretos que el backend puede haber omitido.
         return new Set<string>()
     }, [credentialState, draftMode, isActive, isEdit, override, perListing, schemaKeys, slug])
+
+    // La copia a la otra SIRE solo se ofrece si puede dejarla COMPLETA y
+    // correcta. Si no, se calla: una copia a medias (sin la contraseña que quien
+    // mira no ve) emparejaba el documento de una con la clave de la otra, y la
+    // otra seguía diciendo «completas» (auditoría 2026-11-14).
+    //  - El valor de un secreto se confía solo si el backend ya implementa la nota
+    //    2026-11-12 (`storedSecretKeys`); antes podía llegar enmascarado. Un
+    //    borrador o una creación no traen nada precargado: lo que hay lo escribió el PM.
+    //  - Ningún secreto obligatorio oculto para quien mira.
+    //  - La otra SIRE no excluida a propósito (copiar la reactivaría).
+    const siblingEligible = !!credentialSibling && perListing && isActive && !isIdentity && !isContract
+        && trustsSecretValues
+        && !requiredListingCredentialKeys(slug).some((key) => secretPresence(override, key).kind === "hidden")
+        && (credentialSibling.override == null || credentialSibling.override.isActive)
+    const siblingHasCredentials = siblingOverrideHasCredentials(credentialSibling?.override ?? null)
+
+    /**
+     * Copia a la otra SIRE lo que el formulario tiene, incluido el secreto que el
+     * dueño ve. Va DESPUÉS del guardado principal y nunca lo deshace: si falla o
+     * no se puede, se dice qué quedó guardado y qué no.
+     */
+    // `noted`: no se copió y ya se dijo por qué (con lo que sí se guardó).
+    const mirrorCredentials = async (): Promise<"skipped" | "noted" | "saved" | "failed"> => {
+        if (!siblingEligible || !mirrorToSibling || !credentialSibling) return "skipped"
+        const { automation: sibling } = credentialSibling
+        const values: Record<string, unknown> = {}
+        for (const field of fieldSchema) {
+            const value = schemaValues[field.key]
+            if (!isEmptyValue(value)) {
+                values[field.key] = value
+            } else if (field.type === "password" && secretPresence(override, field.key).kind === "visible") {
+                // El dueño vació su secreto precargado: aquí se conserva el guardado
+                // («déjalo vacío para conservarlo»), así que lo que se copia es ese.
+                values[field.key] = override?.parameters?.[field.key]
+            }
+        }
+        // El override de la otra se lee AHORA, antes de decidir nada: el del panel
+        // puede ser viejo (excluida o borrada en otra tarjeta, con credenciales
+        // cargadas después, o creada después de abrir este panel).
+        let siblingOverride = credentialSibling.override
+        if (!draftMode) {
+            try {
+                const current = await automationService.listListingOverrides(listingUuid)
+                siblingOverride = current.find((candidate) => candidate.propertyAutomationUuid === sibling.uuid) ?? null
+            } catch (error) {
+                toast.warning(`Se guardó en esta automatización, pero no se pudo copiar a «${sibling.name}»: ${getErrorMessage(error, "error desconocido")}.`)
+                return "failed"
+            }
+            if (siblingOverride && !siblingOverride.isActive) {
+                toast.info(`Se guardó en esta automatización. «${sibling.name}» está excluida en este alojamiento: no se copiaron las credenciales.`)
+                return "noted"
+            }
+            // La casilla decía «Usar…» porque la otra no tenía credenciales; si ahora
+            // las tiene, reemplazarlas sin haberlo dicho sería pisarlas en silencio.
+            if (!siblingHasCredentials && siblingOverrideHasCredentials(siblingOverride)) {
+                toast.info(`Se guardó en esta automatización. «${sibling.name}» ya tiene credenciales propias en este alojamiento: no se reemplazaron. Abre de nuevo la unidad si quieres reemplazarlas.`)
+                return "noted"
+            }
+        }
+        // Completas o nada: la otra no queda con un par documento/clave mezclado.
+        const missing = requiredListingCredentialKeys(slug).filter((key) => isEmptyValue(values[key]))
+        if (missing.length > 0) {
+            toast.warning(`Se guardó en esta automatización, pero no se copiaron las credenciales a «${sibling.name}»: faltan ${missing.map((key) => credentialLabel(slug, key)).join(", ")}.`)
+            return "failed"
+        }
+        // «Las mismas credenciales»: un campo vaciado aquí se vacía allá. Los
+        // secretos no (no se borran por la API; vacío conserva el guardado).
+        for (const field of fieldSchema) {
+            if (field.key in values || field.type === "password") continue
+            if (!isEmptyValue(siblingOverride?.parameters?.[field.key])) values[field.key] = null
+        }
+        if (draftMode) {
+            const merged: Record<string, unknown> = { ...(siblingOverride?.parameters ?? {}), ...values }
+            for (const [key, value] of Object.entries(merged)) if (value === null) delete merged[key]
+            onSiblingSaved?.({
+                uuid: siblingOverride?.uuid ?? "",
+                listingUuid,
+                propertyAutomationUuid: sibling.uuid,
+                parameters: merged,
+                token: siblingOverride?.token ?? null,
+                statusRecordId: LISTING_OVERRIDE_STATUS.ACTIVE,
+                deletedAt: null,
+                propertyAutomation: { uuid: sibling.uuid, name: sibling.name, parameters: sibling.parameters ?? null, provider: sibling.provider ?? null },
+                isActive: true,
+            })
+            return "saved"
+        }
+        try {
+            // Al actualizar NO se manda `statusRecordId`: ya se comprobó activa, y así
+            // un estado mal leído nunca reactiva una exclusión (falla cerrado). Copiar
+            // credenciales sí reanuda una pausa de la otra (nota 2026-11-12): es lo
+            // que se pide al reemplazarlas.
+            const saved = siblingOverride?.uuid
+                ? await automationService.updateListingOverride(siblingOverride.uuid, { parameters: values })
+                : await automationService.createListingOverride({
+                    listingUuid,
+                    propertyAutomationUuid: sibling.uuid,
+                    statusRecordId: LISTING_OVERRIDE_STATUS.ACTIVE,
+                    parameters: Object.fromEntries(Object.entries(values).filter(([, value]) => value !== null)),
+                })
+            onSiblingSaved?.(saved)
+            return "saved"
+        } catch (error) {
+            toast.warning(
+                `Se guardó en esta automatización, pero no en «${sibling.name}»: ${getErrorMessage(error, "error desconocido")}. Ábrela para cargar sus credenciales.`,
+            )
+            return "failed"
+        }
+    }
 
     const focusFirstInvalidField = () => {
         requestAnimationFrame(() => {
@@ -427,6 +565,7 @@ export function AutomationOverrideModal({
                         : override?.propertyAutomation ?? null,
                     isActive,
                 }
+                await mirrorCredentials()
                 onSaved(saved)
                 onClose()
                 return
@@ -445,7 +584,13 @@ export function AutomationOverrideModal({
                     parameters: parameters ?? null,
                 })
             }
-            toast.success("Override guardado")
+            const mirrored = await mirrorCredentials()
+            // Si la copia falló, su aviso ya dice qué quedó guardado: un «guardado» encima lo contradecía.
+            if (mirrored === "skipped" || mirrored === "saved") {
+                toast.success(mirrored === "saved" && credentialSibling
+                    ? `Credenciales guardadas aquí y en «${credentialSibling.automation.name}»`
+                    : "Override guardado")
+            }
             onSaved(saved)
             onClose()
         } catch (err: any) {
@@ -621,12 +766,19 @@ export function AutomationOverrideModal({
                                 // placeholder se ve en claro aunque el campo sea de contraseña.
                                 // En modo por alojamiento no se usa el de la propiedad: sin esa pista.
                                 const propertyHasValue = !perListing && !isEmptyValue(baseParams?.[field.key])
-                                const overrideHasSecretValue = !isEmptyValue(override?.parameters?.[field.key])
-                                const alreadyConfiguredSecret = isEdit
-                                    && field.type === "password"
-                                    && (overrideHasSecretValue
+                                const presence = isEdit && field.type === "password" && trustsSecretValues
+                                    ? secretPresence(override, field.key)
+                                    : null
+                                // Backend anterior a la nota 2026-11-12 (sin `storedSecretKeys`): el
+                                // secreto no se precarga (podía venir enmascarado) y se dice «ya
+                                // configurado» si llegó algo o la completitud lo confirma.
+                                const alreadyConfiguredSecret = isEdit && field.type === "password" && !trustsSecretValues
+                                    && (!isEmptyValue(override?.parameters?.[field.key])
                                         || credentialState?.kind === "ready"
                                         || (credentialState?.kind === "incomplete" && !credentialState.missing.includes(field.key)))
+                                // El dueño vació su secreto precargado: se conserva, y hay que decirlo
+                                // (si no, cree que lo borró).
+                                const ownerClearedSecret = presence?.kind === "visible" && isEmptyValue(schemaValues[field.key])
                                 const required = requiredForThisSave.has(field.key)
                                 return (
                                     <div key={field.key} className="space-y-1">
@@ -654,11 +806,28 @@ export function AutomationOverrideModal({
                                                 })
                                             }}
                                             error={fieldErrors[field.key]}
-                                            hint={alreadyConfiguredSecret ? "Ya configurado; déjalo vacío para conservarlo." : undefined}
+                                            hiddenSecret={presence?.kind === "hidden" ? { hint: presence.hint } : undefined}
+                                            hint={alreadyConfiguredSecret || ownerClearedSecret ? "Ya configurado; déjalo vacío para conservarlo." : undefined}
                                         />
                                     </div>
                                 )
                             })}
+
+                            {siblingEligible && credentialSibling && (
+                                <CheckboxField
+                                    checked={mirrorToSibling}
+                                    onCheckedChange={(value) => setMirrorToSibling(value === true)}
+                                    disabled={saving}
+                                    label={siblingHasCredentials
+                                        ? `Reemplazar las credenciales de «${credentialSibling.automation.name}» con estas`
+                                        : `Usar estas mismas credenciales en «${credentialSibling.automation.name}»`}
+                                    action={
+                                        <span className="text-xs text-ink-3">
+                                            SIRE de check-in y de check-out son dos automatizaciones: cada una necesita las suyas.
+                                        </span>
+                                    }
+                                />
+                            )}
                         </div>
                     )}
                 </div>
@@ -684,4 +853,11 @@ export function AutomationOverrideModal({
             </DialogContent>
         </Dialog>
     )
+}
+
+/** La otra SIRE ya tiene credenciales propias en este alojamiento (visibles o guardadas). */
+function siblingOverrideHasCredentials(override: ListingAutomationOverride | null): boolean {
+    if (!override) return false
+    if ((override.storedSecretKeys?.length ?? 0) > 0) return true
+    return Object.values(override.parameters ?? {}).some((value) => !isEmptyValue(value))
 }

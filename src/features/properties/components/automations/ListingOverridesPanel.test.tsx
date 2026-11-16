@@ -12,9 +12,24 @@ vi.mock("../../services/automation-service", async (importOriginal) => {
 })
 vi.mock("./AutomationOverrideModal", () => ({
     // El modal tiene sus propios tests; acá solo se expone su salida de «heredar».
-    AutomationOverrideModal: ({ onInheritRestored }: { onInheritRestored: () => void }) => (
+    AutomationOverrideModal: ({ onInheritRestored, onSaved, override }: {
+        onInheritRestored: () => void
+        onSaved: (saved: ListingAutomationOverride) => void
+        override: ListingAutomationOverride | null
+    }) => (
         <div data-testid="override-modal">
             <button type="button" onClick={onInheritRestored}>simular volver a heredar</button>
+            {/* Un guardado cuya respuesta NO trae `credentialsStatus` (la nota solo lo garantiza en los GET). */}
+            <button
+                type="button"
+                onClick={() => {
+                    const saved = { ...override! }
+                    delete saved.credentialsStatus
+                    onSaved(saved)
+                }}
+            >
+                simular guardar
+            </button>
         </div>
     ),
 }))
@@ -231,5 +246,96 @@ describe("ListingOverridesPanel — TRA con credenciales por alojamiento (contra
         fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
         expect(await screen.findByText("Credenciales configuradas")).toBeInTheDocument()
         expect(screen.getByText("1 configurada")).toBeInTheDocument()
+    })
+})
+
+describe("ListingOverridesPanel — secreto guardado que quien mira no recibe (nota backend 2026-11-12)", () => {
+    const staffOverride: ListingAutomationOverride = {
+        ...disabledOverride, propertyAutomationUuid: "tra-row", statusRecordId: 6, isActive: true,
+        // Al staff no le llega el token: solo que está guardado y sus últimos 4.
+        parameters: { rnt: "123" }, storedSecretKeys: ["token"], secretHints: { token: "3f9a" },
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.listListingOverrides.mockImplementation((listingUuid: string) =>
+            Promise.resolve(listingUuid === "unit-1" ? [staffOverride] : []))
+    })
+
+    it("lo muestra guardado con la pista, sin el valor, y la unidad cuenta como personalizada", async () => {
+        render(<ListingOverridesPanel automation={tra} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+        expect(await screen.findByText("token: ••••3f9a")).toBeInTheDocument()
+        expect(screen.getByText("rnt: 123")).toBeInTheDocument()
+        expect(screen.queryByText("Override activo sin parámetros propios")).toBeNull()
+    })
+
+    it("con solo el secreto guardado (nada visible) tampoco se presenta como «sin parámetros»", async () => {
+        mocks.listListingOverrides.mockImplementation((listingUuid: string) =>
+            Promise.resolve(listingUuid === "unit-1" ? [{ ...staffOverride, parameters: {}, secretHints: {} }] : []))
+        render(<ListingOverridesPanel automation={tra} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+        expect(await screen.findByText("token: ••••••••")).toBeInTheDocument()
+        expect(screen.queryByText("Override activo sin parámetros propios")).toBeNull()
+    })
+})
+
+describe("ListingOverridesPanel — credencial del alojamiento rechazada (nota backend 2026-11-11)", () => {
+    const traListing: PropertyAutomation = {
+        ...automation, uuid: "tra-row", name: "TRA Colombia", guestType: "all", executionOrder: 40,
+        providerName: "tra_colombia", provider: null, parameters: { credentials_scope: "listing" },
+    }
+    const rejected: ListingAutomationOverride = {
+        ...disabledOverride, propertyAutomationUuid: "tra-row", statusRecordId: 6, isActive: true,
+        parameters: { rnt: "123" }, storedSecretKeys: ["token"], credentialsComplete: true,
+        credentialsStatus: { status: "rejected", reason: "token_rejected", providerMessage: null, since: null },
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.listListingOverrides.mockImplementation((listingUuid: string) =>
+            Promise.resolve(listingUuid === "unit-1" ? [rejected] : []))
+    })
+
+    it("el aviso va debajo de SU fila y «Actualizar credenciales» abre el formulario de esa unidad", async () => {
+        render(<ListingOverridesPanel automation={traListing} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+        expect(await screen.findByText("Credenciales rechazadas")).toBeInTheDocument()
+        expect(screen.getByText(/Ministerio rechazó el token/)).toBeInTheDocument()
+        // Una sola unidad en pausa: un solo aviso.
+        expect(screen.getAllByRole("button", { name: /Actualizar credenciales/ })).toHaveLength(1)
+        fireEvent.click(screen.getByRole("button", { name: /Actualizar credenciales/ }))
+        expect(screen.getByTestId("override-modal")).toBeInTheDocument()
+    })
+
+    it("si la respuesta del guardado no dice si levantó la pausa, se relee la unidad", async () => {
+        render(<ListingOverridesPanel automation={traListing} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+        fireEvent.click(await screen.findByRole("button", { name: /Actualizar credenciales/ }))
+        mocks.listListingOverrides.mockClear()
+        mocks.listListingOverrides.mockResolvedValue([{ ...rejected, credentialsStatus: null }])
+        fireEvent.click(screen.getByRole("button", { name: "simular guardar" }))
+        await waitFor(() => expect(mocks.listListingOverrides).toHaveBeenCalledWith("unit-1"))
+        await waitFor(() => expect(screen.queryByText("Credenciales rechazadas")).toBeNull())
+    })
+
+    it("una relectura vieja no pisa un guardado más nuevo de la misma unidad", async () => {
+        render(<ListingOverridesPanel automation={traListing} listings={listings} />)
+        fireEvent.click(screen.getByRole("button", { name: /Overrides por unidad/ }))
+        fireEvent.click(await screen.findByRole("button", { name: /Actualizar credenciales/ }))
+
+        let resolveReread!: (value: ListingAutomationOverride[]) => void
+        mocks.listListingOverrides.mockImplementation(() => new Promise((done) => { resolveReread = done }))
+        fireEvent.click(screen.getByRole("button", { name: "simular guardar" }))
+        await waitFor(() => expect(mocks.listListingOverrides).toHaveBeenCalled())
+
+        // Antes de que vuelva la relectura, el PM abre la unidad y guarda otra vez.
+        fireEvent.click(screen.getByRole("button", { name: /Unidad 1/ }))
+        fireEvent.click(screen.getByRole("button", { name: "simular guardar" }))
+
+        // Llega la relectura vieja (todavía en pausa): no debe volver a pintar el aviso.
+        resolveReread([rejected])
+        await new Promise((done) => setTimeout(done, 0))
+        expect(screen.queryByText("Credenciales rechazadas")).toBeNull()
     })
 })
