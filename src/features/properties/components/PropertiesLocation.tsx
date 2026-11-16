@@ -1,21 +1,10 @@
 "use client"
 
-import { MapPin, Globe, Search } from "lucide-react"
-import { Icon } from "@/components/ui/icon"
-import { useFormContext } from "react-hook-form"
+import { useFormContext, useFormState } from "react-hook-form"
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form"
-import { useState, useCallback, useEffect, useRef } from "react"
+import { useState, useCallback, useEffect, useRef, useId, type ComponentProps } from "react"
 import dynamic from "next/dynamic"
 import { toast } from "sonner"
-import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectLabel,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select"
 import {
     catalogService,
     type CatalogOption,
@@ -23,16 +12,16 @@ import {
 } from "@/features/auth/services/catalog-service"
 import { AddressAutocomplete, type PlaceDetails } from "./AddressAutocomplete"
 import { resolveMapView } from "../lib/map-view"
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader } from "@/components/ui/card"
-import { Heading } from "@/components/ui/heading"
+import { Surface } from "@/components/ui/card"
+import { SectionCard } from "@/components/ui/section-card"
 import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Combobox } from "@/components/ui/combobox"
+import { DefinitionItem } from "@/components/ui/definition-list"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Skeleton } from "@/components/ui/skeleton"
+import { CatalogError } from "@/components/shared/catalog-error"
+import { RequiredMark } from "@/components/shared/required-mark"
 
 const MapComponent = dynamic(() => import("./MapComponent"), {
     ssr: false,
@@ -41,29 +30,102 @@ const MapComponent = dynamic(() => import("./MapComponent"), {
     )
 })
 
-export function PropertiesLocation() {
-    const form = useFormContext()
-    const [countries, setCountries] = useState<CountryOption[]>([])
-    const [timezoneGroups, setTimezoneGroups] = useState<{group: string, options: CatalogOption[]}[]>([])
-    const [tzSearch, setTzSearch] = useState("")
-    const pendingCountryCodeRef = useRef("")
+type TimezoneGroup = { group: string; options: CatalogOption[] }
 
-    const filteredTimezoneGroups = timezoneGroups.map(tg => ({
-        ...tg,
-        options: tg.options.filter(tz => tz.name.toLowerCase().includes(tzSearch.toLowerCase()))
-    })).filter(tg => tg.options.length > 0)
+/**
+ * Un catálogo con sus tres estados (cargando, listo, falló) y «Reintentar».
+ * País y zona horaria se piden por separado: si uno falla, el otro sigue
+ * sirviendo y el PM ve el error junto al campo que sí le falta.
+ */
+function useCatalog<T>(load: () => Promise<T>, empty: T) {
+    const [data, setData] = useState<T>(empty)
+    const [loading, setLoading] = useState(true)
+    const [failed, setFailed] = useState(false)
+
+    // Solo escribe estado cuando la promesa responde: la primera carga arranca
+    // ya en «cargando» (estado inicial) y el efecto no escribe nada en el acto.
+    const run = useCallback(() => load()
+        .then((next) => {
+            setData(next)
+            setFailed(false)
+        }, () => setFailed(true))
+        .finally(() => setLoading(false)), [load])
 
     useEffect(() => {
-        async function loadCatalogs() {
-            const [countriesData, timezonesData] = await Promise.all([
-                catalogService.getCountries(),
-                catalogService.getTimezonesGrouped()
-            ])
-            setCountries(countriesData)
-            setTimezoneGroups(timezonesData)
-        }
-        loadCatalogs()
-    }, [])
+        void run()
+    }, [run])
+
+    // `failed` se conserva durante el reintento: así el aviso dice «Reintentando…»
+    // en vez de desaparecer y volver.
+    const reload = useCallback(() => {
+        setLoading(true)
+        void run()
+    }, [run])
+
+    return { data, loading, failed, reload }
+}
+
+/**
+ * Un `Input type="number"` controlado por un número no deja escribir «-74»: al
+ * teclear «-» el valor parseado es 0 y React reescribe el campo con «0». Se
+ * conserva lo tecleado mientras diga lo mismo que el valor del formulario; si
+ * el valor cambia por fuera (soltar el pin), manda el valor. Lo que se escribe
+ * en el formulario no cambia: `parseFloat(texto) || 0`.
+ */
+function CoordinateInput({
+    value,
+    onChange,
+    ...props
+}: Omit<ComponentProps<typeof Input>, "value" | "onChange" | "type" | "step"> & {
+    value: unknown
+    onChange: (next: number) => void
+}) {
+    const [draft, setDraft] = useState<string | null>(null)
+    const current = parseFloat(String(value ?? "")) || 0
+    const shown = draft !== null && (parseFloat(draft) || 0) === current ? draft : String(value ?? "")
+    return (
+        <Input
+            type="number"
+            step="any"
+            {...props}
+            value={shown}
+            onChange={(e) => {
+                setDraft(e.target.value)
+                onChange(parseFloat(e.target.value) || 0)
+            }}
+        />
+    )
+}
+
+const loadCountries = () => catalogService.getCountries()
+const loadTimezones = () => catalogService.getTimezonesGrouped()
+
+
+/** Cinco decimales (~1 m): lo que se lee del dato; el valor guardado no se redondea. */
+const formatCoordinate = (value: unknown): string | null => {
+    const n = Number(value)
+    return Number.isFinite(n) ? n.toFixed(5) : null
+}
+
+export function PropertiesLocation() {
+    const form = useFormContext()
+    const countries = useCatalog<CountryOption[]>(loadCountries, [])
+    const timezones = useCatalog<TimezoneGroup[]>(loadTimezones, [])
+    const pendingCountryCodeRef = useRef("")
+    const [manualCoordinates, setManualCoordinates] = useState(false)
+    const coordinatesFieldsId = useId()
+
+    // Los grupos (América, Europa…) se conservan como texto buscable: el
+    // Combobox no agrupa, pero «america» sigue encontrando America/Bogota.
+    const timezoneOptions = timezones.data.flatMap((tg) =>
+        tg.options.map((tz) => ({ value: tz.id, label: tz.name, keywords: tg.group })),
+    )
+    const countryOptions = countries.data.map((c) => ({
+        value: String(c.id),
+        label: c.name,
+        leading: c.extra?.emoji ? <span aria-hidden>{c.extra.emoji}</span> : undefined,
+        keywords: c.extra?.iso2,
+    }))
 
     // Using flat structure from PropertyFormData.
     //
@@ -75,16 +137,22 @@ export function PropertiesLocation() {
     const rawLng = form.watch("longitude")
     const mapView = resolveMapView(rawLat, rawLng)
 
+    // Un error de coordenada (fuera de rango) tiene que verse aunque el PM no
+    // haya abierto la edición a mano: se abre sola mientras dure el error.
+    const { errors: coordinateErrors } = useFormState({ control: form.control, name: ["latitude", "longitude"] })
+    const coordinatesOpen = manualCoordinates || !!coordinateErrors.latitude || !!coordinateErrors.longitude
+
     const handleMapChange = useCallback((newLat: number, newLng: number) => {
         form.setValue("latitude", newLat, { shouldValidate: true, shouldDirty: true })
         form.setValue("longitude", newLng, { shouldValidate: true, shouldDirty: true })
     }, [form])
 
+    const countryList = countries.data
     const applyCountry = useCallback((countryCode: string): boolean => {
         const normalizedCountryCode = countryCode.trim().toUpperCase()
         if (!normalizedCountryCode) return false
 
-        const countryMatch = countries.find(
+        const countryMatch = countryList.find(
             (country) => country.extra.iso2?.toUpperCase() === normalizedCountryCode,
         )
         if (!countryMatch) return false
@@ -106,7 +174,7 @@ export function PropertiesLocation() {
             })
         }
         return true
-    }, [countries, form])
+    }, [countryList, form])
 
     // A fast geocode response can beat the country catalog request. Keep the ISO
     // code pending and apply it as soon as the catalog becomes available.
@@ -142,25 +210,18 @@ export function PropertiesLocation() {
     }
 
     return (
-        <Card>
-            <CardHeader divided>
-                <Heading level={2} size="title" className="flex items-center gap-2">
-                    <Icon icon={MapPin} size="lg" className="text-primary" />
-                    Ubicación de la Propiedad
-                </Heading>
-                <CardDescription>
-                    Ubica tu propiedad en el mapa. Puedes buscar la dirección o arrastrar el pin manualmente para precisión exacta.
-                </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
+        <SectionCard
+            title="Ubicación"
+            description="Busca la dirección o arrastra el pin. Sin ubicación no se calculan distancias ni se muestra en el mapa."
+            headingLevel={2}
+        >
+            <div className="space-y-6">
                 <FormField
                     control={form.control}
                     name="address"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="text-ink-2 font-semibold">
-                                Dirección Principal <span className="text-danger">*</span>
-                            </FormLabel>
+                            <FormLabel>Dirección <RequiredMark /></FormLabel>
                             <FormControl>
                                 <AddressAutocomplete
                                     value={field.value ?? ""}
@@ -183,15 +244,15 @@ export function PropertiesLocation() {
                     )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <FormField
                         control={form.control}
                         name="addressDetail"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-ink-2 font-semibold">Dirección Línea 2 (Opcional)</FormLabel>
+                                <FormLabel>Dirección, línea 2 · opcional</FormLabel>
                                 <FormControl>
-                                    <Input className="h-11" placeholder="Apto, Suite, etc." {...field} />
+                                    <Input placeholder="Apto, suite, torre…" {...field} value={field.value ?? ""} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -202,191 +263,175 @@ export function PropertiesLocation() {
                         name="state"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-ink-2 font-semibold">Estado/Depto <span className="text-danger">*</span></FormLabel>
+                                <FormLabel>Departamento o estado <RequiredMark /></FormLabel>
                                 <FormControl>
-                                    <Input className="h-11" placeholder="Bolívar" {...field} />
+                                    <Input placeholder="Bolívar" {...field} value={field.value ?? ""} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
-                </div>
-
-                {/*
-                  * Sin coordenadas el formulario igual se guarda —el esquema las
-                  * rellena con 0— y la propiedad queda registrada en mar abierto.
-                  * Antes eso no se avisaba en ninguna parte: el único indicio era
-                  * un mapa azul que parecía estar cargando.
-                  */}
-                {!mapView.hasCoordinates && (
-                    <FeedbackBanner tone="warning" density="compact" title="Esta propiedad todavía no tiene ubicación en el mapa.">
-                        Elige una sugerencia en la dirección, o arrastra el pin hasta el punto exacto.
-                        Sin esto no podremos mostrar la propiedad ni calcular distancias.
-                    </FeedbackBanner>
-                )}
-
-                <div className="aspect-video w-full rounded-xl bg-sunk border-2 border-rule relative overflow-hidden shadow-inner group">
-                    <MapComponent
-                        lat={mapView.lat}
-                        lng={mapView.lng}
-                        zoom={mapView.zoom}
-                        onChange={handleMapChange}
-                    />
-                    <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Badge tone="surface">
-                            Arrastra el pin para ajustar
-                        </Badge>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
                         control={form.control}
                         name="city"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-ink-2 font-semibold">Ciudad <span className="text-danger">*</span></FormLabel>
+                                <FormLabel>Ciudad <RequiredMark /></FormLabel>
                                 <FormControl>
-                                    <Input
-                                        className="h-11"
-                                        placeholder="Cartagena"
-                                        {...field}
-                                    />
+                                    <Input placeholder="Cartagena" {...field} value={field.value ?? ""} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
                     <FormField
-                         control={form.control}
-                         name="countryId"
-                         render={({ field }) => (
-                             <FormItem>
-                                 <FormLabel className="text-ink-2 font-semibold">País <span className="text-danger">*</span></FormLabel>
-                                 <Select
-                                         onValueChange={(val) => field.onChange(parseInt(val))}
-                                         value={String(field.value || "")}
-                                     >
-                                         <FormControl>
-                                         <SelectTrigger className="w-full h-11">
-                                             <SelectValue placeholder="Seleccionar país" />
-                                         </SelectTrigger>
-                                         </FormControl>
-                                         <SelectContent>
-                                             {countries.map((c) => (
-                                                 <SelectItem key={c.id} value={String(c.id)}>
-                                                     <div className="flex items-center gap-2">
-                                                         <span>{c.extra?.emoji || "🏳️"}</span>
-                                                         <span>{c.name}</span>
-                                                     </div>
-                                                 </SelectItem>
-                                             ))}
-                                         </SelectContent>
-                                     </Select>
-                                 <FormMessage />
-                             </FormItem>
-                         )}
+                        control={form.control}
+                        name="countryId"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>País <RequiredMark /></FormLabel>
+                                <FormControl>
+                                    <Combobox
+                                        ref={field.ref}
+                                        // El formulario guarda `countryId` como número; el Combobox habla en texto.
+                                        value={field.value ? String(field.value) : null}
+                                        onValueChange={(value) => {
+                                            if (value != null) field.onChange(Number(value))
+                                        }}
+                                        options={countryOptions}
+                                        placeholder="Busca un país"
+                                        searchPlaceholder="Buscar país…"
+                                        emptyText="No hay países con ese nombre"
+                                        loading={countries.loading}
+                                    />
+                                </FormControl>
+                                {countries.failed && (
+                                    <CatalogError
+                                        what="los países"
+                                        consequence="El país es obligatorio."
+                                        retrying={countries.loading}
+                                        onRetry={() => void countries.reload()}
+                                    />
+                                )}
+                                <FormMessage />
+                            </FormItem>
+                        )}
                     />
-                     <FormField
+                    <FormField
                         control={form.control}
                         name="timezone"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel className="text-ink-2 font-semibold">Zona Horaria</FormLabel>
+                                <FormLabel>Zona horaria</FormLabel>
                                 <FormControl>
-                                    <div className="relative">
-                                        <Icon icon={Globe} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3 z-10" />
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            value={field.value || ""}
-                                        >
-                                            <SelectTrigger className="w-full pl-9 h-11">
-                                                <SelectValue placeholder="Seleccionar zona horaria" />
-                                            </SelectTrigger>
-                                            <SelectContent className="max-h-75">
-                                                <div className="p-2 sticky top-0 bg-card z-10 border-b border-rule mb-1">
-                                                    <div className="relative">
-                                                        <Icon icon={Search} size="sm" className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3" />
-                                                        <Input
-                                                            placeholder="Buscar zona horaria..."
-                                                            value={tzSearch}
-                                                            onChange={(e) => setTzSearch(e.target.value)}
-                                                            onKeyDown={(e) => e.stopPropagation()}
-                                                            className="h-8 pl-8 text-sm"
-                                                        />
-                                                    </div>
-                                                </div>
-                                                {filteredTimezoneGroups.length === 0 ? (
-                                                    <div className="p-4 text-center text-sm text-ink-3">
-                                                        No se encontraron resultados
-                                                    </div>
-                                                ) : (
-                                                    filteredTimezoneGroups.map((tg, gIdx) => (
-                                                        <SelectGroup key={`tg-${tg.group}-${gIdx}`}>
-                                                            <SelectLabel className="px-2 py-1.5 text-xs font-bold text-primary bg-primary/5">
-                                                                {tg.group}
-                                                            </SelectLabel>
-                                                            {tg.options.map((tz, tIdx) => (
-                                                                <SelectItem key={`tz-${tz.id}-${tIdx}`} value={tz.id}>
-                                                                    {tz.name}
-                                                                </SelectItem>
-                                                            ))}
-                                                        </SelectGroup>
-                                                    ))
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
+                                    <Combobox
+                                        ref={field.ref}
+                                        value={field.value || null}
+                                        onValueChange={(value) => field.onChange(value ?? "")}
+                                        options={timezoneOptions}
+                                        placeholder="Busca una zona horaria"
+                                        searchPlaceholder="Buscar zona horaria…"
+                                        emptyText="No hay zonas horarias con ese nombre"
+                                        loading={timezones.loading}
+                                    />
                                 </FormControl>
+                                {timezones.failed && (
+                                    <CatalogError
+                                        what="las zonas horarias"
+                                        retrying={timezones.loading}
+                                        onRetry={() => void timezones.reload()}
+                                    />
+                                )}
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
                 </div>
 
-                <div className="bg-primary/5 p-4 rounded-xl border border-primary/10 space-y-3">
-                    <p className="text-xs font-bold text-primary">Coordenadas Exactas</p>
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                            control={form.control}
-                            name="latitude"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs text-ink-3">Latitud</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            className="h-10"
-                                            {...field}
-                                            value={field.value ?? ""}
-                                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                                        />
-                                    </FormControl>
-                                </FormItem>
+                {/* MapField: aviso + mapa + coordenadas, en una sola composición. */}
+                <div className="space-y-3">
+                    {/*
+                      * Sin coordenadas el formulario igual se guarda —el esquema las
+                      * rellena con 0— y la propiedad queda registrada en mar abierto.
+                      * Antes eso no se avisaba en ninguna parte: el único indicio era
+                      * un mapa azul que parecía estar cargando.
+                      */}
+                    {!mapView.hasCoordinates && (
+                        <FeedbackBanner tone="warning" density="compact" title="Esta propiedad todavía no tiene ubicación en el mapa.">
+                            Elige una sugerencia en la dirección, o arrastra el pin hasta el punto exacto.
+                            Sin esto no podremos mostrar la propiedad ni calcular distancias.
+                        </FeedbackBanner>
+                    )}
+
+                    <Surface flat className="overflow-hidden">
+                        <div className="h-72 w-full lg:h-90">
+                            <MapComponent
+                                lat={mapView.lat}
+                                lng={mapView.lng}
+                                zoom={mapView.zoom}
+                                onChange={handleMapChange}
+                            />
+                        </div>
+                    </Surface>
+
+                    <Surface tone="sunk" flat className="px-4 py-3">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                            {coordinatesOpen ? (
+                                <div id={coordinatesFieldsId} className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="latitude"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Latitud</FormLabel>
+                                                <FormControl>
+                                                    <CoordinateInput {...field} value={field.value} onChange={field.onChange} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="longitude"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Longitud</FormLabel>
+                                                <FormControl>
+                                                    <CoordinateInput {...field} value={field.value} onChange={field.onChange} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            ) : (
+                                <dl className="grid flex-1 grid-cols-2 gap-4 tabular-nums">
+                                    <DefinitionItem label="Latitud">
+                                        {mapView.hasCoordinates ? formatCoordinate(rawLat) : "—"}
+                                    </DefinitionItem>
+                                    <DefinitionItem label="Longitud">
+                                        {mapView.hasCoordinates ? formatCoordinate(rawLng) : "—"}
+                                    </DefinitionItem>
+                                </dl>
                             )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="longitude"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="text-xs text-ink-3">Longitud</FormLabel>
-                                    <FormControl>
-                                        <Input
-                                            type="number"
-                                            className="h-10"
-                                            {...field}
-                                            value={field.value ?? ""}
-                                            onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                                        />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                    <p className="text-xs text-ink-3 italic">Estas coordenadas se actualizan automáticamente al mover el pin en el mapa.</p>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                aria-expanded={coordinatesOpen}
+                                aria-controls={coordinatesOpen ? coordinatesFieldsId : undefined}
+                                // Con un error de coordenadas el panel queda abierto a la fuerza:
+                                // el botón no puede cerrarlo, así que no finge que sí.
+                                disabled={coordinatesOpen && !manualCoordinates}
+                                onClick={() => setManualCoordinates((open) => !open)}
+                            >
+                                {coordinatesOpen ? "Ocultar coordenadas" : "Ajustar a mano"}
+                            </Button>
+                        </div>
+                    </Surface>
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </SectionCard>
     )
 }

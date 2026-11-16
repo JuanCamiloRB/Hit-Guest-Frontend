@@ -3,6 +3,14 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
+ * La SUPERFICIE de una barra al pie (vidrio, divisor y relleno vertical), sin
+ * su geometría: la comparten `BottomBar` (fija, portal del huésped) y
+ * `FormActionBar` (pegajosa, formularios del panel). Cada una pone su propia
+ * posición, capa y ancho.
+ */
+const bottomBarSurface = "border-t border-rule/50 bg-white/80 py-4 backdrop-blur-md"
+
+/**
  * La barra fija al pie del portal del huésped (DS-8b, 2026-11-13): el lugar de
  * la acción principal de cada paso («Continuar», «Firmar», «Volver al
  * inicio»). Estaba copiada 13 veces, con tres variantes de borde, fondo y
@@ -24,7 +32,7 @@ function BottomBar({ className, children, ...props }: React.ComponentProps<"div"
     return (
         <div
             data-slot="bottom-bar"
-            className="fixed inset-x-0 bottom-0 z-10 flex justify-center border-t border-rule/50 bg-white/80 py-4 backdrop-blur-md"
+            className={cn("fixed inset-x-0 bottom-0 z-10 flex justify-center", bottomBarSurface)}
             {...props}
         >
             <div data-slot="bottom-bar-content" className={cn("w-full max-w-lg px-4", className)}>
@@ -34,4 +42,4 @@ function BottomBar({ className, children, ...props }: React.ComponentProps<"div"
     )
 }
 
-export { BottomBar }
+export { BottomBar, bottomBarSurface }

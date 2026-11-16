@@ -1,106 +1,86 @@
 "use client"
 
 import { useFormContext } from "react-hook-form"
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader } from "@/components/ui/card"
-import { Heading } from "@/components/ui/heading"
-import {
-    FormControl,
-    FormField,
-    FormItem,
-    FormLabel,
-} from "@/components/ui/form"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Sparkles } from "lucide-react"
-import { Icon } from "@/components/ui/icon"
-import { useEffect, useState } from "react"
+import { FormField, FormItem, FormMessage } from "@/components/ui/form"
+import { SectionCard } from "@/components/ui/section-card"
+import { CheckboxCard } from "@/components/ui/checkbox-card"
+import { CatalogError } from "@/components/shared/catalog-error"
+import { useCallback, useEffect, useState } from "react"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
-import { cn } from "@/lib/utils"
 import { LoadingState } from "@/components/ui/loading-state"
+import { EmptyState } from "@/components/ui/empty-state"
 
+/**
+ * Las amenidades de la propiedad: una grilla de `CheckboxCard` sobre el campo
+ * `amenities` (ids como string, el shape que ya viajaba). Sin ícono en el
+ * título ni tarjeta hecha a mano: la selección la pinta la primitiva.
+ */
 export function PropertiesAmenities() {
     const form = useFormContext()
     const [amenities, setAmenities] = useState<CatalogOption[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const [failed, setFailed] = useState(false)
 
-    useEffect(() => {
-        const fetchAmenities = async () => {
-            setIsLoading(true)
-            try {
-                const data = await catalogService.getAmenities()
-                setAmenities(data)
-            } catch (error) {
+    // Cadena `.then()`: `react-hooks/set-state-in-effect` solo acepta setState en callbacks.
+    const fetchAmenities = useCallback(() =>
+        catalogService.getAmenities()
+            .then((data) => { setAmenities(data); setFailed(false) })
+            .catch((error) => {
                 console.error("Error fetching amenities:", error)
-            } finally {
-                setIsLoading(false)
-            }
-        }
-        fetchAmenities()
-    }, [])
+                setFailed(true)
+            })
+            .finally(() => setIsLoading(false)), [])
+
+    useEffect(() => { void fetchAmenities() }, [fetchAmenities])
+
+    const retry = () => {
+        setIsLoading(true)
+        void fetchAmenities()
+    }
 
     return (
-        <Card>
-            <CardHeader divided>
-                <Heading level={2} size="title" className="flex items-center gap-2">
-                    <Icon icon={Sparkles} size="lg" className="text-primary" />
-                    Amenidades de la Propiedad
-                </Heading>
-                <CardDescription>Selecciona las características y servicios incluidos en este alojamiento.</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-                {isLoading ? (
-                    <LoadingState rows={3} label="Cargando amenidades…" />
-                ) : (
-                    <FormField
-                        control={form.control}
-                        name="amenities"
-                        render={() => (
+        <SectionCard
+            title="Amenidades"
+            description="Lo que incluye la propiedad. Cada alojamiento las hereda, salvo que defina las suyas."
+            headingLevel={2}
+        >
+            {isLoading && !failed ? (
+                <LoadingState rows={3} label="Cargando amenidades…" />
+            ) : failed ? (
+                <CatalogError what="las amenidades" consequence="Puedes guardar sin ellas y agregarlas después." retrying={isLoading} onRetry={retry} />
+            ) : amenities.length === 0 ? (
+                <EmptyState title="El catálogo de amenidades está vacío." />
+            ) : (
+                <FormField
+                    control={form.control}
+                    name="amenities"
+                    render={({ field }) => {
+                        const selected: string[] = field.value || []
+                        return (
                             <FormItem>
-                                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                                    {amenities.map((item) => (
-                                        <FormField
-                                            key={item.id}
-                                            control={form.control}
-                                            name="amenities"
-                                            render={({ field }) => {
-                                                const isChecked = (field.value || []).includes(String(item.id))
-                                                return (
-                                                    <FormItem
-                                                        key={item.id}
-                                                        className={cn(
-                                                            "flex flex-row items-start space-x-3 space-y-0 rounded-md border p-3 transition-colors hover:bg-sunk/50",
-                                                            isChecked && "bg-primary/5 border-primary/20"
-                                                        )}
-                                                    >
-                                                        <FormControl>
-                                                            <Checkbox
-                                                                checked={isChecked}
-                                                                onCheckedChange={(checked) => {
-                                                                    const currentValues = field.value || []
-                                                                    const newValue = checked
-                                                                        ? [...currentValues, String(item.id)]
-                                                                        : currentValues.filter((v: string) => v !== String(item.id))
-                                                                    field.onChange(newValue)
-                                                                }}
-                                                            />
-                                                        </FormControl>
-                                                        <FormLabel className="text-sm font-medium leading-none cursor-pointer">
-                                                            {item.name}
-                                                        </FormLabel>
-                                                    </FormItem>
-                                                )
-                                            }}
-                                        />
-                                    ))}
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                    {amenities.map((item) => {
+                                        const id = String(item.id)
+                                        return (
+                                            <CheckboxCard
+                                                key={id}
+                                                label={item.name}
+                                                checked={selected.includes(id)}
+                                                onCheckedChange={(checked) => {
+                                                    field.onChange(checked
+                                                        ? [...selected, id]
+                                                        : selected.filter((v) => v !== id))
+                                                }}
+                                            />
+                                        )
+                                    })}
                                 </div>
+                                <FormMessage />
                             </FormItem>
-                        )}
-                    />
-                )}
-            </CardContent>
-        </Card>
+                        )
+                    }}
+                />
+            )}
+        </SectionCard>
     )
 }

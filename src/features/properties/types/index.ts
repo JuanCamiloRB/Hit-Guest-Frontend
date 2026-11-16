@@ -255,11 +255,11 @@ export const propertyFormSchema = z.object({
     addressDetail: z.string().max(255, "Máximo 255 caracteres").optional(),
     city: z.string().min(2, "La ciudad es obligatoria").max(120, "Máximo 120 caracteres"),
     state: z.string().min(2, "El estado/departamento es obligatorio").max(120, "Máximo 120 caracteres"),
-    countryId: z.number().int().positive(),
+    countryId: z.number({ message: "Elige el país" }).int().positive("Elige el país"),
     latitude: z.coerce.number().min(-90).max(90).default(0),
     longitude: z.coerce.number().min(-180).max(180).default(0),
     timezone: z.string().max(120, "Máximo 120 caracteres").optional(),
-    statusRecordId: z.number().int().positive(),
+    statusRecordId: z.number({ message: "Elige el estado" }).int().positive("Elige el estado"),
     propertyTypeId: z.coerce.number().min(1, "El tipo de propiedad es obligatorio"),
     thumbnailUrl: z.string().optional(),
     /** Language used for guest communications (check-in link email, etc.). Stored in extra. */

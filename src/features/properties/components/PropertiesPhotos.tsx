@@ -1,11 +1,6 @@
 "use client"
 
-import { Card,
-    CardContent,
-    CardDescription,
-    CardHeader } from "@/components/ui/card"
-import { Heading } from "@/components/ui/heading"
-import { Upload, Trash2, Camera, ImageIcon } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,7 +17,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { useFormContext } from "react-hook-form"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
-import { notifyError } from "@/lib/notify-error"
+import { notifyError, normalizeApiError } from "@/lib/notify-error"
 import { propertiesService, PROPERTY_IMAGE_LIMITS, extractPicturesUrl } from "../services/properties-service"
 import { invalidatePropertiesCaches } from "../lib/properties-cache"
 import {
@@ -31,8 +26,9 @@ import {
     ALLOWED_IMAGE_FORMATS_LABEL,
 } from "../lib/property-image-validation"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
-import { FileInput } from "@/components/ui/file-input"
-import { Spinner } from "@/components/ui/loading-state"
+import { SectionCard } from "@/components/ui/section-card"
+import { UploadZone } from "@/components/ui/upload-zone"
+import { Badge } from "@/components/ui/badge"
 
 /**
  * Property photo gallery, backed by the real images endpoints:
@@ -48,9 +44,10 @@ export function PropertiesPhotos() {
     const { watch, setValue } = useFormContext()
     const uuid = watch("uuid") as string | undefined
     const picturesUrl = (watch("picturesUrl") as string[] | undefined) ?? []
-    const fileInputRef = useRef<HTMLInputElement>(null)
 
     const [isUploading, setIsUploading] = useState(false)
+    // El último lote que falló al subir: la zona ofrece «Reintentar» con los mismos archivos.
+    const [failedBatch, setFailedBatch] = useState<{ files: File[]; message: string } | null>(null)
     // Borrar una foto se confirma (antes era al primer clic, con un botón que
     // solo aparecía al pasar el mouse). Mientras se borra no se cierra.
     const [photoToDelete, setPhotoToDelete] = useState<{ url: string; position: number; total: number } | null>(null)
@@ -68,10 +65,7 @@ export function PropertiesPhotos() {
         setValue("thumbnailUrl", list[0] ?? "", { shouldDirty: true })
     }
 
-    async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-        const files = e.target.files ? Array.from(e.target.files) : []
-        // Reset the input so re-selecting the same file still fires onChange.
-        e.target.value = ""
+    async function uploadFiles(files: File[]) {
         if (files.length === 0 || !uuid) return
 
         // El guardarraíl del cliente; el backend revalida y tiene la última
@@ -84,6 +78,7 @@ export function PropertiesPhotos() {
             return
         }
 
+        setFailedBatch(null)
         setIsUploading(true)
         try {
             const updated = await propertiesService.uploadImages(uuid, files)
@@ -92,7 +87,10 @@ export function PropertiesPhotos() {
             syncGallery(extractPicturesUrl(updated))
             toast.success(files.length > 1 ? "Fotos subidas" : "Foto subida")
         } catch (err) {
-            notifyError(err, "No se pudieron subir las fotos")
+            // Un solo aviso: el de la zona, con «Reintentar» sobre el mismo lote, y con
+            // el mensaje real del backend (mismo normalizador que el toast).
+            const { message } = normalizeApiError(err, files.length > 1 ? "No se pudieron subir las fotos." : "No se pudo subir la foto.")
+            setFailedBatch({ files, message })
         } finally {
             setIsUploading(false)
         }
@@ -121,98 +119,75 @@ export function PropertiesPhotos() {
         `foto ${position} de ${total}${position === 1 ? " (portada)" : ""}`
 
     return (
-        <Card>
-            <CardHeader divided>
-                <Heading level={2} size="title" className="flex items-center gap-2">
-                    <Icon icon={Camera} size="lg" className="text-primary" />
-                    Galería de Fotos
-                </Heading>
-                <CardDescription>
-                    Sube fotos de alta calidad para atraer a más huéspedes. La primera imagen será la portada.
-                    <br />
+        <SectionCard
+            title="Fotos"
+            description="La primera foto es la portada. Sube fotos horizontales y nítidas: son lo primero que ve el huésped."
+            headingLevel={2}
+        >
+            {!uuid ? (
+                // Creation mode: no property UUID yet → nothing to attach images to.
+                // Mismo aviso que automatizaciones y documentos (Fase 2.4).
+                <FeedbackBanner tone="info" title="Guarda la propiedad primero para añadir fotos.">
+                    La galería estará disponible al editar la propiedad.
+                </FeedbackBanner>
+            ) : (
+                <div className="space-y-4">
                     {/* Los formatos se nombran ANTES de elegir el archivo: descubrirlos
-                        por un rechazo es lo que hacía perder una carga entera. */}
-                    <span className="font-medium text-ink-2">
-                        Formatos: {ALLOWED_IMAGE_FORMATS_LABEL}
-                    </span>
-                    {" · "}
-                    Máx. {PROPERTY_IMAGE_LIMITS.maxPerUpload} por carga · 5 MB c/u.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {!uuid ? (
-                    // Creation mode: no property UUID yet → nothing to attach images to.
-                    // Mismo aviso que automatizaciones y documentos (Fase 2.4).
-                    <FeedbackBanner tone="info" title="Guarda la propiedad primero para añadir fotos.">
-                        La galería estará disponible al editar la propiedad.
-                    </FeedbackBanner>
-                ) : (
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                        {picturesUrl.map((url, index) => (
-                            <div
-                                key={url}
-                                className="aspect-video relative rounded-md overflow-hidden border bg-sunk/50"
-                            >
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img
-                                    src={url}
-                                    alt={`Foto ${index + 1} de ${picturesUrl.length} de la propiedad${index === 0 ? " (portada)" : ""}`}
-                                    className="object-cover w-full h-full"
-                                />
-                                {/* Siempre visible: con teclado y en pantallas táctiles no
-                                    hay «pasar el mouse». 32 px, la densidad compacta. */}
-                                <Button variant="overlay" size="icon-sm"
-                                    type="button"
-                                    onClick={() => setPhotoToDelete({ url, position: index + 1, total: picturesUrl.length })}
-                                    disabled={isUploading}
-                                    className="absolute top-1.5 right-1.5"
-                                    aria-label={`Eliminar ${photoLabel(index + 1, picturesUrl.length)}`}
+                        por un rechazo es lo que hacía perder una carga entera. Sin
+                        «N de M»: es una sola petición por lote. */}
+                    <UploadZone
+                        accept={ALLOWED_IMAGE_ACCEPT}
+                        multiple
+                        status={isUploading ? "uploading" : failedBatch ? "error" : "idle"}
+                        title="Arrastra fotos aquí o haz clic para elegirlas"
+                        hint={`${ALLOWED_IMAGE_FORMATS_LABEL} · hasta ${PROPERTY_IMAGE_LIMITS.maxPerUpload} por carga · 5 MB cada una`}
+                        uploadingLabel="Subiendo fotos…"
+                        errorMessage={failedBatch?.message}
+                        onFiles={(files) => void uploadFiles(files)}
+                        onRetry={failedBatch ? () => void uploadFiles(failedBatch.files) : undefined}
+                        // Los que no pasan el filtro de formato se explican con el mismo
+                        // mensaje de siempre (`validatePropertyImages`); los válidos sí suben.
+                        onRejected={(rejected) => {
+                            const failure = validatePropertyImages(rejected, PROPERTY_IMAGE_LIMITS)
+                            toast.error(failure?.title ?? "Formato no admitido", { description: failure?.description ?? `Solo ${ALLOWED_IMAGE_FORMATS_LABEL}.` })
+                        }}
+                    />
+
+                    {picturesUrl.length === 0 ? (
+                        <p className="text-sm text-ink-3">Aún no hay fotos. La primera que subas será la portada.</p>
+                    ) : (
+                        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" aria-label="Fotos de la propiedad">
+                            {picturesUrl.map((url, index) => (
+                                <li
+                                    key={url}
+                                    className="relative aspect-video overflow-hidden rounded-lg border border-rule bg-sunk"
                                 >
-                                    <Icon icon={Trash2} />
-                                </Button>
-                            </div>
-                        ))}
-
-                        {/* Upload tile */}
-                        <div
-                            className={`flex aspect-video items-center justify-center rounded-md border border-dashed bg-sunk/20 transition-colors ${
-                                isUploading ? "cursor-wait opacity-70" : "hover:bg-sunk/50 cursor-pointer"
-                            }`}
-                            onClick={() => !isUploading && fileInputRef.current?.click()}
-                        >
-                            <FileInput
-
-                                multiple
-                                accept={ALLOWED_IMAGE_ACCEPT}
-                                className="hidden"
-                                ref={fileInputRef}
-                                onChange={handleFileChange}
-                                disabled={isUploading}
-                            />
-                            <div className="flex flex-col items-center gap-2 text-ink-3 pointer-events-none">
-                                {isUploading ? (
-                                    <>
-                                        <Spinner size="2xl" />
-                                        <span className="text-sm">Subiendo…</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Icon icon={Upload} size="2xl" />
-                                        <span className="text-sm">Subir Fotos</span>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-
-                        {picturesUrl.length === 0 && !isUploading && (
-                            <div className="col-span-full flex items-center gap-2 text-xs text-ink-3 pt-1">
-                                <Icon icon={ImageIcon} />
-                                Aún no hay fotos. Sube la primera para crear la portada.
-                            </div>
-                        )}
-                    </div>
-                )}
-            </CardContent>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                        src={url}
+                                        alt={`Foto ${index + 1} de ${picturesUrl.length} de la propiedad${index === 0 ? " (portada)" : ""}`}
+                                        className="h-full w-full object-cover"
+                                    />
+                                    {index === 0 && (
+                                        <Badge tone="surface" className="absolute bottom-1.5 left-1.5">Portada</Badge>
+                                    )}
+                                    {/* Siempre visible: con teclado y en pantallas táctiles no
+                                        hay «pasar el mouse». 32 px, la densidad compacta. */}
+                                    <Button variant="overlay" size="icon-sm"
+                                        type="button"
+                                        onClick={() => setPhotoToDelete({ url, position: index + 1, total: picturesUrl.length })}
+                                        disabled={isUploading}
+                                        className="absolute top-1.5 right-1.5"
+                                        aria-label={`Eliminar ${photoLabel(index + 1, picturesUrl.length)}`}
+                                    >
+                                        <Icon icon={Trash2} />
+                                    </Button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            )}
 
             <AlertDialog
                 open={photoToDelete !== null}
@@ -225,7 +200,7 @@ export function PropertiesPhotos() {
                             Se elimina la {photoToDelete ? photoLabel(photoToDelete.position, photoToDelete.total) : "foto"} de
                             la galería de la propiedad.
                             {/* La portada nueva la fija el formulario (`syncGallery`) y se
-                                guarda con «Actualizar Propiedad»: no se promete más que eso. */}
+                                guarda con «Guardar cambios»: no se promete más que eso. */}
                             {photoToDelete?.position === 1 && (photoToDelete.total > 1
                                 ? " Es la portada: al guardar la propiedad, la siguiente foto queda como portada."
                                 : " Es la única foto: al guardar la propiedad, se queda sin portada.")}
@@ -250,6 +225,6 @@ export function PropertiesPhotos() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </Card>
+        </SectionCard>
     )
 }

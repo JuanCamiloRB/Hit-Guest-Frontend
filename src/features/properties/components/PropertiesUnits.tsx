@@ -1,15 +1,20 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
+import { DEFAULT_CANCELLATION_POLICY, DEFAULT_LISTING_THUMBNAIL_URL } from "../lib/property-defaults"
+import { createListingWithOverrideDrafts } from "../lib/property-save"
 import { Note } from "@/components/ui/note"
-import { Surface,
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader } from "@/components/ui/card"
+import { Surface } from "@/components/ui/card"
+import { SectionCard } from "@/components/ui/section-card"
+import { CheckboxCard } from "@/components/ui/checkbox-card"
+import { NumberStepper } from "@/components/ui/number-stepper"
+import { MoneyField } from "@/components/ui/money-field"
+import { CatalogError } from "@/components/shared/catalog-error"
+import { RequiredMark } from "@/components/shared/required-mark"
 import {
     Dialog,
     DialogContent,
+    DialogBody,
     DialogDescription,
     DialogFooter,
     DialogHeader,
@@ -32,13 +37,11 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { Plus, Trash2, Edit2, Building, BedDouble, Bath, Clock, Settings2, Shield, Zap, Info, TriangleAlert, Sparkles } from "lucide-react"
+import { Plus, Trash2, Edit2, Settings2, Zap, Info, KeyRound } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
-import { Checkbox } from "@/components/ui/checkbox"
 import { useFormContext, useFieldArray } from "react-hook-form"
-import { useState, useEffect, useRef } from "react"
+import { useCallback, useState, useEffect, useRef } from "react"
 import { SwitchField } from "@/components/ui/switch-field"
-import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
@@ -46,13 +49,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { listingsService } from "../services/listings-service"
 import { automationService } from "../services/automation-service"
 import { getOverrideFieldSchema } from "../data/automation-definitions"
-import { LISTING_CREDENTIALS_COPY, listingCredentialSummary, readCredentialsScope } from "../lib/credentials-scope"
+import { LISTING_CREDENTIALS_COPY, findCredentialSibling, listingCredentialSummary, readCredentialsScope } from "../lib/credentials-scope"
 import { type PropertyAutomation, type ListingAutomationOverride } from "../types/automation"
 import { AutomationOverrideModal } from "./automations/AutomationOverrideModal"
 import { useIdentityProviderCatalog } from "../hooks/useIdentityProviderCatalog"
 import { identityOverrideSummary, isIdentityPropertyAutomation } from "../lib/identity-listing-override"
 import { Badge } from "@/components/ui/badge"
 import { StatusPill } from "@/components/ui/status-pill"
+import { CredentialsRejectedNotice } from "@/components/shared/credentials-rejected-notice"
 import { ExternalPmsIdsField } from "./ExternalPmsIdsField"
 import {
     hasIncompleteExternalPmsId,
@@ -89,14 +93,13 @@ import { invalidatePropertiesCaches } from "../lib/properties-cache"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Heading } from "@/components/ui/heading"
 import { FieldError } from "@/components/ui/form"
 
 const defaultUnit = {
     name: "",
     internalName: "",
     roomTypeId: 0,
-    thumbnailUrl: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=800&auto=format&fit=crop&q=60",
+    thumbnailUrl: DEFAULT_LISTING_THUMBNAIL_URL,
     contactName: "",
     contactEmail: "",
     contactPhone: "",
@@ -116,7 +119,7 @@ const defaultUnit = {
         checkOut: "11:00",
         wifiDetails: { network: "", password: "" },
         amenities: [] as number[],
-        cancellationPolicy: "STANDARD",
+        cancellationPolicy: DEFAULT_CANCELLATION_POLICY,
         inheritAmenities: true,
         inheritWifi: true,
         inheritSchedule: true,
@@ -148,7 +151,18 @@ export function isMeaningfulOverride(o: ListingAutomationOverride): boolean {
     return Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
 }
 
-/** Nombre para mostrar de una unidad: nombre, si no su número interno. */
+/** La lista fija que ya existía para cuando el catálogo de monedas viene vacío. */
+const FALLBACK_CURRENCIES = [
+    { value: "ARS", label: "ARS - Argentine peso" },
+    { value: "CAD", label: "CAD - Canadian dollar" },
+    { value: "CLP", label: "CLP - Chilean peso" },
+    { value: "COP", label: "COP - Colombian peso" },
+    { value: "USD", label: "USD - United States dollar" },
+    { value: "EUR", label: "EUR - Euro" },
+    { value: "MXN", label: "MXN - Mexican peso" },
+]
+
+/** Nombre para mostrar de un alojamiento: nombre, si no su número interno. */
 function unitDisplayName(unit: { name?: string; internalName?: string; internal_name?: string }, fallback: string): string {
     return unit.name || unit.internalName || unit.internal_name || fallback
 }
@@ -175,10 +189,14 @@ export function PropertiesUnits() {
     const [amenityOptions, setAmenityOptions] = useState<CatalogOption[] | null>(null)
     const [amenityCatalogFailed, setAmenityCatalogFailed] = useState(false)
     const [roomTypesLoading, setRoomTypesLoading] = useState(true)
+    // Persiste durante el reintento, para que el aviso diga «Reintentando…» en vez de desaparecer.
+    const [roomTypesFailed, setRoomTypesFailed] = useState(false)
     const [isSavingUnit, setIsSavingUnit] = useState(false)
     const saveLockRef = useRef(false)
     /** Turno de la última carga de automatizaciones/overrides del diálogo: solo esa escribe. */
     const overridesRequestRef = useRef(0)
+    // Cada guardado de un override de la unidad: una relectura vieja no pisa uno más nuevo.
+    const overrideSaveSeqRef = useRef(0)
 
     // ── Automations overrides state ──────────────────────────────────────────
     // Active property-level automations of the parent property
@@ -229,22 +247,39 @@ export function PropertiesUnits() {
         }))
         : undefined
 
+    // Con «Reintentar» junto al campo: antes, un catálogo caído obligaba a
+    // recargar la página. `mountedRef` como el `active` del resto del repo
+    // (ContractRoutingSection, GuaranteePreview): salir de la propiedad antes
+    // de que responda no escribe estado sobre un componente desmontado.
+    const mountedRef = useRef(true)
     useEffect(() => {
-        // `active` como en el resto del repo (ContractRoutingSection,
-        // GuaranteePreview): sin él, salir de la propiedad antes de que el
-        // catálogo responda escribe estado sobre un componente desmontado.
-        let active = true
+        mountedRef.current = true
+        return () => { mountedRef.current = false }
+    }, [])
+    // Cadena `.then()` a propósito: `react-hooks/set-state-in-effect` sigue las
+    // llamadas a funciones locales y solo acepta setState dentro de callbacks.
+    const fetchRoomTypes = useCallback(() =>
         Promise.all([catalogService.getRoomTypes(), catalogService.getCurrencies()])
             .then(([rooms, curr]) => {
-                if (!active) return
+                if (!mountedRef.current) return
                 setRoomTypes(rooms)
+                setRoomTypesFailed(rooms.length === 0)
                 if (curr.length > 0) setCurrencies(curr)
             })
-            .finally(() => {
-                if (active) setRoomTypesLoading(false)
+            .catch((error) => {
+                console.error("[PropertiesUnits] Error fetching room types:", error)
+                if (!mountedRef.current) return
+                setRoomTypes([])
+                setRoomTypesFailed(true)
             })
-        return () => { active = false }
-    }, [])
+            .finally(() => {
+                if (mountedRef.current) setRoomTypesLoading(false)
+            }), [])
+    useEffect(() => { void fetchRoomTypes() }, [fetchRoomTypes])
+    const loadRoomTypes = () => {
+        setRoomTypesLoading(true)
+        void fetchRoomTypes()
+    }
 
     // Aparte del Promise.all de arriba a propósito: si amenidades falla, el
     // resto del formulario de unidades sigue funcionando.
@@ -397,7 +432,7 @@ export function PropertiesUnits() {
             setActiveTab(errors[0].tab)
             window.setTimeout(() => document.getElementById(errors[0].field)?.focus(), 0)
             toast.error(
-                errors.length === 1 ? "Falta un dato de la unidad" : `Faltan ${errors.length} datos de la unidad`,
+                errors.length === 1 ? "Falta un dato del alojamiento" : `Faltan ${errors.length} datos del alojamiento`,
                 { description: errors[0].message },
             )
             return
@@ -480,55 +515,48 @@ export function PropertiesUnits() {
                         },
                     }
                     update(editingIndex, refreshed)
-                    toast.success("Unidad actualizada")
+                    toast.success("Alojamiento actualizado")
                 } else {
-                    // CREATE new listing
-                    const created = await listingsService.create(payload as any)
-                    invalidatePropertiesCaches()
-                    const apiData = created?.data ?? created ?? {}
-                    const newListingUuid = apiData.uuid || created?.uuid
-                    if (!newListingUuid) {
-                        throw new Error("El backend creó la unidad sin devolver su UUID.")
-                    }
-                    const savedUnit = {
-                        ...unitForm,
-                        uuid: newListingUuid,
-                        // Los `id` de las filas recién creadas vienen en la
-                        // respuesta del POST; sin rehidratarlos, editar sin
-                        // recargar la página fallaría con 422 (contrato §1).
-                        externalPmsIds: readExternalPmsIds(apiData) ?? unitForm.externalPmsIds,
-                        // Restore price checking root and extra
-                        price: apiData.price || apiData.startPrice || apiData.start_price || apiData.extra?.price || apiData.extra?.startPrice || unitForm.price,
-                        extra: {
-                            ...unitForm.extra,
-                            ...(apiData.extra || {}),
-                            startPrice: Number(unitForm.price) || 0,
-                            price: Number(unitForm.price) || 0,
-                            currency:   apiData.extra?.currency || unitForm.extra.currency,
-                        },
-                    }
-                    append(savedUnit)
-
-                    // ── Requirement A: create override drafts sequentially after the listing ──
+                    // CREATE new listing. La secuencia alojamiento → overrides (en
+                    // borrador, solo con propiedad existente) está fijada en `property-save.ts`.
                     const drafts = Object.values(listingOverrides).filter(o => !o.uuid && isMeaningfulOverride(o))
-                    if (newListingUuid && drafts.length > 0) {
-                        const failed: string[] = []
-                        for (const d of drafts) {
-                            try {
-                                await automationService.createListingOverride(draftOverrideCreatePayload(d, newListingUuid))
-                            } catch {
-                                failed.push(d.propertyAutomation?.name ?? d.propertyAutomationUuid)
+                    const { failedOverrides } = await createListingWithOverrideDrafts({
+                        payload,
+                        drafts,
+                        createListing: (p) => listingsService.create(p),
+                        onListingCreated: (apiData, listingUuid) => {
+                            invalidatePropertiesCaches()
+                            const savedUnit = {
+                                ...unitForm,
+                                uuid: listingUuid,
+                                // Los `id` de las filas recién creadas vienen en la
+                                // respuesta del POST; sin rehidratarlos, editar sin
+                                // recargar la página fallaría con 422 (contrato §1).
+                                externalPmsIds: readExternalPmsIds(apiData) ?? unitForm.externalPmsIds,
+                                // Restore price checking root and extra
+                                price: apiData.price || apiData.startPrice || apiData.start_price || apiData.extra?.price || apiData.extra?.startPrice || unitForm.price,
+                                extra: {
+                                    ...unitForm.extra,
+                                    ...(apiData.extra || {}),
+                                    startPrice: Number(unitForm.price) || 0,
+                                    price: Number(unitForm.price) || 0,
+                                    currency:   apiData.extra?.currency || unitForm.extra.currency,
+                                },
                             }
-                        }
-                        if (failed.length > 0) {
-                            toast.warning("Unidad creada, pero algunos overrides fallaron", {
-                                description: `No se configuraron: ${failed.join(", ")}. Edita la unidad para reintentar.`,
+                            append(savedUnit)
+                        },
+                        createOverride: (d, listingUuid) => automationService.createListingOverride(draftOverrideCreatePayload(d, listingUuid)),
+                    })
+                    if (drafts.length > 0) {
+                        if (failedOverrides.length > 0) {
+                            toast.warning("Alojamiento creado, pero algunos overrides fallaron", {
+                                description: `No se configuraron: ${failedOverrides.join(", ")}. Edita el alojamiento para reintentar.`,
                             })
                         } else {
-                            toast.success("Unidad y overrides creados correctamente")
+                            toast.success("Alojamiento y overrides creados")
                         }
                     } else {
-                        toast.success("Unidad creada correctamente")
+                        toast.success("Alojamiento creado")
                     }
                 }
             } catch (err) {
@@ -555,8 +583,8 @@ export function PropertiesUnits() {
                     // La propiedad se desactivó mientras se editaba (422
                     // PROPERTY_INACTIVE): el mensaje del backend lo explica tal cual.
                     const inactive = readInactiveResourceError(err)
-                    if (inactive) toast.error("No se pudo guardar la unidad", { description: inactive.message })
-                    else notifyError(err, "Error al guardar la unidad. Intenta de nuevo o guarda la propiedad completa.")
+                    if (inactive) toast.error("No se pudo guardar el alojamiento", { description: inactive.message })
+                    else notifyError(err, "No se pudo guardar el alojamiento. Intenta de nuevo o guarda la propiedad completa.")
                 }
                 saveLockRef.current = false
                 setIsSavingUnit(false)
@@ -617,82 +645,45 @@ export function PropertiesUnits() {
     }
 
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                        <Heading level={2} size="title" className="flex items-center gap-2">
-                            <Icon icon={Building} size="lg" className="text-primary" />
-                            Alojamientos
-                        </Heading>
-                        <CardDescription>
-                            Gestiona los alojamientos disponibles para reservar en esta propiedad.
-                        </CardDescription>
-                    </div>
-                    <Button
-                        type="button"
-                        size="sm"
-                        onClick={handleOpenAddDialog}
-                    >
-                        <Icon icon={Plus} className="mr-2" /> Añadir Unidad
-                    </Button>
-
+        <SectionCard
+            title="Alojamientos"
+            description="Lo que se puede reservar en esta propiedad: cada uno con su capacidad, precio y contacto."
+            headingLevel={2}
+            flush
+            actions={
+                <Button type="button" size="sm" onClick={handleOpenAddDialog}>
+                    <Icon icon={Plus} /> Añadir alojamiento
+                </Button>
+            }
+        >
+            <>
                     <Dialog
                         open={isDialogOpen}
                         onOpenChange={(open) => {
                             if (!isSavingUnit) setIsDialogOpen(open)
                         }}
                     >
-                        {/*
-                          * `overflow-hidden` acompaña a `max-h-[90vh]`: sin él, cuando el
-                          * contenido excedía la altura máxima no se recortaba, se PINTABA
-                          * FUERA de la caja del diálogo. Con esto, cualquier regresión
-                          * futura del scroll se ve como contenido cortado (evidente) en
-                          * vez de campos flotando fuera del modal.
-                          */}
-                        <DialogContent className="flex max-h-[90dvh] flex-col overflow-hidden p-0 sm:max-w-150">
-                            <DialogHeader className="p-6 pb-2 shrink-0">
-                                <DialogTitle>{editingIndex !== null ? "Editar Unidad" : "Añadir Unidad"}</DialogTitle>
+                        {/* Formulario largo: encabezado y pie fijos, el cuerpo con scroll propio
+                            (`layout="panel"`, el mismo que la reserva manual). */}
+                        <DialogContent layout="panel" className="sm:max-w-150">
+                            <DialogHeader divided>
+                                <DialogTitle>{editingIndex !== null ? "Editar alojamiento" : "Añadir alojamiento"}</DialogTitle>
                                 <DialogDescription>
-                                    Configura los detalles del alojamiento.
+                                    {editingIndex !== null ? "Los cambios se guardan al confirmar." : "Lo que el huésped reserva: nombre, capacidad, precio y contacto."}
                                 </DialogDescription>
                             </DialogHeader>
 
-                            {/*
-                              * Contenedor de scroll NATIVO, no `ScrollArea` de Radix.
-                              *
-                              * Con `ScrollArea` el `min-h-0` sí limitaba su Root (medido:
-                              * 494px en una ventana de 768), pero el Viewport de Radix es
-                              * `size-full`, o sea `height: 100%`, y un porcentaje NO resuelve
-                              * contra un padre cuya altura la fijó flexbox y no la propiedad
-                              * `height`: el Viewport caía a `height: auto` y medía **824px
-                              * siempre**, la altura del formulario completo. Consecuencia
-                              * medida en Chrome: `scrollHeight === clientHeight`, así que no
-                              * había nada que scrollear, Radix no montaba la barra, y el
-                              * excedente se pintaba FUERA de la caja del diálogo —de ahí que
-                              * en el reporte se vieran campos por debajo de los botones—. El
-                              * correo de contacto, que es obligatorio, quedaba fuera del
-                              * diálogo e inalcanzable: era imposible crear un alojamiento sin
-                              * bajar el zoom del navegador.
-                              *
-                              * `overflow-hidden` en el Root (lo que trae el shadcn canónico)
-                              * NO lo arregla: se comprobó y el Viewport sigue midiendo 824 —
-                              * solo recortaría el desborde, dejando el campo igual de
-                              * inalcanzable pero sin la pista visual.
-                              *
-                              * Un `div` con `overflow-y-auto` no depende de ningún porcentaje:
-                              * `flex-1 min-h-0` le da la altura y el desbordamiento es suyo.
-                              * De paso, en Windows la barra nativa se ve siempre, que es
-                              * justo lo que faltaba para saber que había más formulario.
-                              */}
-                            <div className="flex-1 min-h-0 overflow-y-auto px-6 py-2">
-                                <div className="space-y-6 pb-6">
+                            {/* `DialogBody` es un div con `overflow-y-auto` nativo, no `ScrollArea`:
+                                el Viewport de Radix (`height: 100%`) no resuelve contra una altura
+                                fijada por flexbox y el formulario se pintaba fuera del diálogo. */}
+                            <DialogBody>
+                                <div className="space-y-6">
                                     <SwitchField
                                         label="Alojamiento activo"
                                         tone={propertyInactive && !unitForm.isActive ? "warning" : "neutral"}
                                         description={propertyInactive && !unitForm.isActive
                                             ? "La propiedad está inactiva: actívala para poder activar este alojamiento."
-                                            : "Activar o desactivar esta unidad específica."}
+                                            : "Un alojamiento inactivo no recibe reservas nuevas."}
                                         checked={unitForm.isActive}
                                         // Solo se bloquea ACTIVAR: desactivar sigue permitido.
                                         disabled={propertyInactive && !unitForm.isActive}
@@ -706,24 +697,22 @@ export function PropertiesUnits() {
                                     >
                                         {/* AUTOM tab only exists once the property is saved — mirrors the
                                             property-level Automatización tab behavior */}
-                                        {/* 5 pestañas en el diálogo: densidad sm de la primitiva, no clases propias. */}
-                                        <TabsList size="sm" className={cn("grid mb-4", propertyUuid ? "grid-cols-5" : "grid-cols-4")}>
-                                            <TabsTrigger value="general">General</TabsTrigger>
-                                            <TabsTrigger value="amenities">Operación</TabsTrigger>
-                                            <TabsTrigger value="rooms">Distribución</TabsTrigger>
-                                            <TabsTrigger value="policies">Políticas</TabsTrigger>
-                                            {propertyUuid && (
-                                                <TabsTrigger value="automations">
-                                                    <Icon icon={Zap} />
-                                                    Autom.
-                                                </TabsTrigger>
-                                            )}
-                                        </TabsList>
+                                        {/* 5 pestañas: densidad sm de la primitiva; con nombre completo y
+                                            scroll horizontal en móvil en vez de abreviar. */}
+                                        <div className="mb-4 overflow-x-auto">
+                                            <TabsList size="sm" className="w-full min-w-max sm:min-w-0">
+                                                <TabsTrigger value="general">General</TabsTrigger>
+                                                <TabsTrigger value="amenities">Operación</TabsTrigger>
+                                                <TabsTrigger value="rooms">Distribución</TabsTrigger>
+                                                <TabsTrigger value="policies">Políticas</TabsTrigger>
+                                                {propertyUuid && <TabsTrigger value="automations">Automatizaciones</TabsTrigger>}
+                                            </TabsList>
+                                        </div>
 
                                         <TabsContent value="general" className="space-y-4">
                                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="name">Nombre de Unidad <span className="text-danger">*</span></Label>
+                                                    <Label htmlFor="name">Nombre del alojamiento <RequiredMark /></Label>
                                                     <Input
                                                         id="name"
                                                         placeholder="Suite Junior"
@@ -735,7 +724,7 @@ export function PropertiesUnits() {
                                                     <FieldError role="alert">{fieldErrors.name}</FieldError>
                                                 </div>
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="internalName">Nombre Interno / Número</Label>
+                                                    <Label htmlFor="internalName">Nombre interno o número</Label>
                                                     <Input
                                                         id="internalName"
                                                         placeholder="Ej. SJ-101"
@@ -752,7 +741,7 @@ export function PropertiesUnits() {
 
                                             <div className="grid gap-2 border-t border-rule pt-4">
                                                 <div className="space-y-0.5">
-                                                    <Label className="text-sm font-medium">Identificación Externa</Label>
+                                                    <Label className="text-sm font-medium">Identificación externa</Label>
                                                     <p className="text-xs text-ink-3">
                                                         Si este alojamiento ya existe en tu PMS o canal, registra su
                                                         origen y el ID que tiene allí.
@@ -787,14 +776,14 @@ export function PropertiesUnits() {
 
                                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="roomTypeId">Categoría del Alojamiento</Label>
+                                                    <Label htmlFor="roomTypeId">Categoría <RequiredMark /></Label>
                                                     <Select
                                                         value={unitForm.roomTypeId ? String(unitForm.roomTypeId) : undefined}
                                                         onValueChange={(value) => setUnitForm({ ...unitForm, roomTypeId: parseInt(value) })}
                                                         disabled={roomTypesLoading || roomTypes.length === 0}
                                                     >
-                                                        <SelectTrigger id="roomTypeId" aria-invalid={!!fieldErrors.roomTypeId}>
-                                                            <SelectValue placeholder="Seleccionar tipo" />
+                                                        <SelectTrigger id="roomTypeId" aria-invalid={!!fieldErrors.roomTypeId} className="w-full">
+                                                            <SelectValue placeholder={roomTypesLoading ? "Cargando…" : "Elige la categoría"} />
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             {roomTypes.map(rt => (
@@ -803,81 +792,57 @@ export function PropertiesUnits() {
                                                         </SelectContent>
                                                     </Select>
                                                     <FieldError role="alert">{fieldErrors.roomTypeId}</FieldError>
-                                                    {!roomTypesLoading && roomTypes.length === 0 && (
-                                                        <p className="flex items-start gap-1.5 text-xs text-warning">
-                                                            <Icon icon={TriangleAlert} size="sm" className="mt-0.5" />
-                                                            No se pudo cargar el catálogo. Recarga la página antes de guardar.
-                                                        </p>
+                                                    {roomTypesFailed && (
+                                                        <CatalogError
+                                                            what="las categorías"
+                                                            consequence="Sin categoría no se puede guardar."
+                                                            retrying={roomTypesLoading}
+                                                            onRetry={() => void loadRoomTypes()}
+                                                        />
                                                     )}
                                                 </div>
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="maxOccupancy">Capacidad Máxima</Label>
-                                                    <Input
+                                                    <Label htmlFor="maxOccupancy">Capacidad máxima</Label>
+                                                    <NumberStepper
                                                         id="maxOccupancy"
-                                                        type="number"
                                                         min={1}
-                                                        step={1}
                                                         aria-invalid={!!fieldErrors.maxOccupancy}
-                                                        value={unitForm.extra.maxOccupancy ?? 2}
-                                                        onChange={(e) => setUnitForm({ 
-                                                            ...unitForm, 
-                                                            extra: { ...unitForm.extra, maxOccupancy: parseInt(e.target.value) || 0 } 
+                                                        value={Number(unitForm.extra.maxOccupancy) || 2}
+                                                        onValueChange={(value) => setUnitForm({
+                                                            ...unitForm,
+                                                            extra: { ...unitForm.extra, maxOccupancy: value },
                                                         })}
+                                                        decrementLabel="Un huésped menos"
+                                                        incrementLabel="Un huésped más"
                                                     />
                                                     <FieldError role="alert">{fieldErrors.maxOccupancy}</FieldError>
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                                <div className="grid gap-2">
-                                                    <Label htmlFor="currency">Moneda</Label>
-                                                    <Select
-                                                        value={unitForm.extra.currency ?? "COP"}
-                                                        onValueChange={(val) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, currency: val } })}
-                                                    >
-                                                        <SelectTrigger id="currency">
-                                                            <SelectValue placeholder="COP" />
-                                                        </SelectTrigger>
-                                                        <SelectContent>
-                                                            {currencies.length > 0 ? (
-                                                                currencies.map(c => (
-                                                                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                                                                ))
-                                                            ) : (
-                                                                <>
-                                                                    <SelectItem value="ARS">ARS - Argentine peso</SelectItem>
-                                                                    <SelectItem value="CAD">CAD - Canadian dollar</SelectItem>
-                                                                    <SelectItem value="CLP">CLP - Chilean peso</SelectItem>
-                                                                    <SelectItem value="COP">COP - Colombian peso</SelectItem>
-                                                                    <SelectItem value="USD">USD - United States dollar</SelectItem>
-                                                                    <SelectItem value="EUR">EUR - Euro</SelectItem>
-                                                                    <SelectItem value="MXN">MXN - Mexican peso</SelectItem>
-                                                                </>
-                                                            )}
-                                                        </SelectContent>
-                                                    </Select>
-                                                </div>
-                                                <div className="grid gap-2">
-                                                    <Label htmlFor="price">Precio Inicial por Noche</Label>
-                                                    <Input
-                                                        id="price"
-                                                        type="number"
-                                                        // `type="number"` por sí solo acepta negativos; el
-                                                        // guardado hacía `Number(price) || 0` y publicaba la
-                                                        // unidad sin precio en silencio.
-                                                        min={0}
-                                                        placeholder="250000"
-                                                        aria-invalid={!!fieldErrors.price}
-                                                        value={unitForm.price ?? ""}
-                                                        onChange={(e) => setUnitForm({ ...unitForm, price: e.target.value })}
-                                                    />
-                                                    <FieldError role="alert">{fieldErrors.price}</FieldError>
-                                                </div>
+                                            {/* Monto y moneda en un solo campo: son los mismos dos valores de
+                                                siempre (`price` y `extra.currency`) y el payload no cambia. El
+                                                catálogo vacío cae a la lista fija que ya existía. */}
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="price">Precio inicial por noche</Label>
+                                                <MoneyField
+                                                    id="price"
+                                                    amount={unitForm.price ?? ""}
+                                                    onAmountChange={(value) => setUnitForm({ ...unitForm, price: value })}
+                                                    currency={unitForm.extra.currency ?? "COP"}
+                                                    onCurrencyChange={(val) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, currency: val } })}
+                                                    currencies={currencies.length > 0
+                                                        ? currencies.map((c) => ({ value: c.id, label: c.name }))
+                                                        : FALLBACK_CURRENCIES}
+                                                    currencyLabel="Moneda"
+                                                    placeholder="250000"
+                                                    aria-invalid={!!fieldErrors.price}
+                                                />
+                                                <FieldError role="alert">{fieldErrors.price}</FieldError>
                                             </div>
 
                                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="contactName">Nombre de Contacto</Label>
+                                                    <Label htmlFor="contactName">Nombre de contacto</Label>
                                                     <Input
                                                         id="contactName"
                                                         placeholder="Nombre del encargado"
@@ -889,10 +854,10 @@ export function PropertiesUnits() {
                                                     <FieldError role="alert">{fieldErrors.contactName}</FieldError>
                                                 </div>
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="contactPhone">Teléfono de Contacto</Label>
+                                                    <Label htmlFor="contactPhone">Teléfono de contacto</Label>
                                                     <Input
                                                         id="contactPhone"
-                                                        placeholder="+57..."
+                                                        placeholder="+57 300 123 4567"
                                                         maxLength={UNIT_LIMITS.contactPhone}
                                                         aria-invalid={!!fieldErrors.contactPhone}
                                                         value={unitForm.contactPhone ?? ""}
@@ -904,11 +869,11 @@ export function PropertiesUnits() {
 
                                             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                 <div className="grid gap-2">
-                                                    <Label htmlFor="contactEmail">Correo Electrónico <span className="text-danger">*</span></Label>
+                                                    <Label htmlFor="contactEmail">Correo de contacto <RequiredMark /></Label>
                                                     <Input
                                                         id="contactEmail"
                                                         type="email"
-                                                        placeholder="ejemplo@kunas.co"
+                                                        placeholder="contacto@tupropiedad.com"
                                                         maxLength={UNIT_LIMITS.contactEmail}
                                                         aria-invalid={!!fieldErrors.contactEmail}
                                                         value={unitForm.contactEmail ?? ""}
@@ -920,80 +885,60 @@ export function PropertiesUnits() {
 
                                         </TabsContent>
 
+                                        {/* Cada bloque heredable: `SwitchField boxed` y, apagado, sus campos
+                                            debajo. Sin íconos de título ni tamaños propios (plan v3 §3). */}
                                         <TabsContent value="amenities" className="space-y-6">
                                             <div className="space-y-4">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <Icon icon={Clock} className="text-primary" />
-                                                        <Heading level={4} tone="muted">Horarios</Heading>
-                                                    </div>
-                                                    <SwitchField
-                                                        variant="plain"
-                                                        size="sm"
-                                                        label="Heredar de la propiedad"
-                                                        checked={unitForm.extra.inheritSchedule}
-                                                        onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritSchedule: checked } })}
-                                                    />
-                                                </div>
+                                                <SwitchField
+                                                    variant="boxed"
+                                                    label="Heredar horarios de la propiedad"
+                                                    description="Apágalo para fijar un check-in y check-out propios."
+                                                    checked={unitForm.extra.inheritSchedule}
+                                                    onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritSchedule: checked } })}
+                                                />
                                                 {!unitForm.extra.inheritSchedule && (
-                                                    <Surface tone="sunk" className="grid grid-cols-1 gap-6 p-4 sm:grid-cols-2">
-                                                        <div className="space-y-3">
-                                                            <p className="text-xs font-bold text-ink-3">Check-in</p>
-                                                            <div className="grid grid-cols-1 gap-2">
-                                                                <div className="space-y-1">
-                                                                    <Label className="text-xs">Hora</Label>
-                                                                    <Input 
-                                                                        type="time" 
-                                                                        value={unitForm.extra.checkIn ?? ""}
-                                                                        onChange={(e) => setUnitForm({ 
-                                                                            ...unitForm, 
-                                                                            extra: { ...unitForm.extra, checkIn: e.target.value }
-                                                                        })}
-                                                                        className="h-8 text-xs"
-                                                                    />
-                                                                </div>
-                                                            </div>
+                                                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                        <div className="grid gap-2">
+                                                            <Label htmlFor="unitCheckIn">Check-in</Label>
+                                                            <Input
+                                                                id="unitCheckIn"
+                                                                type="time"
+                                                                value={unitForm.extra.checkIn ?? ""}
+                                                                onChange={(e) => setUnitForm({
+                                                                    ...unitForm,
+                                                                    extra: { ...unitForm.extra, checkIn: e.target.value }
+                                                                })}
+                                                            />
                                                         </div>
-                                                        <div className="space-y-3 border-l pl-6">
-                                                            <p className="text-xs font-bold text-ink-3">Check-out</p>
-                                                            <div className="grid grid-cols-1 gap-2">
-                                                                <div className="space-y-1">
-                                                                    <Label className="text-xs">Hora</Label>
-                                                                    <Input 
-                                                                        type="time"
-                                                                        value={unitForm.extra.checkOut ?? ""}
-                                                                        onChange={(e) => setUnitForm({ 
-                                                                            ...unitForm, 
-                                                                            extra: { ...unitForm.extra, checkOut: e.target.value }
-                                                                        })}
-                                                                        className="h-8 text-xs"
-                                                                    />
-                                                                </div>
-                                                            </div>
+                                                        <div className="grid gap-2">
+                                                            <Label htmlFor="unitCheckOut">Check-out</Label>
+                                                            <Input
+                                                                id="unitCheckOut"
+                                                                type="time"
+                                                                value={unitForm.extra.checkOut ?? ""}
+                                                                onChange={(e) => setUnitForm({
+                                                                    ...unitForm,
+                                                                    extra: { ...unitForm.extra, checkOut: e.target.value }
+                                                                })}
+                                                            />
                                                         </div>
-                                                    </Surface>
+                                                    </div>
                                                 )}
                                             </div>
 
-                                            <div className="space-y-4 pt-4 border-t">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <Icon icon={Settings2} className="text-primary" />
-                                                        <Heading level={4} tone="muted">WiFi Especial</Heading>
-                                                    </div>
-                                                    <SwitchField
-                                                        variant="plain"
-                                                        size="sm"
-                                                        label="Heredar de la propiedad"
-                                                        checked={unitForm.extra.inheritWifi}
-                                                        onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritWifi: checked } })}
-                                                    />
-                                                </div>
+                                            <div className="space-y-4">
+                                                <SwitchField
+                                                    variant="boxed"
+                                                    label="Heredar WiFi de la propiedad"
+                                                    description="Apágalo si este alojamiento tiene su propia red."
+                                                    checked={unitForm.extra.inheritWifi}
+                                                    onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritWifi: checked } })}
+                                                />
 
                                                 {!unitForm.extra.inheritWifi && (
                                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                                         <div className="grid gap-2">
-                                                            <Label htmlFor="unitWifiNetwork">Red WiFi Especial</Label>
+                                                            <Label htmlFor="unitWifiNetwork">Red WiFi</Label>
                                                             <Input
                                                                 id="unitWifiNetwork"
                                                                 placeholder="Red específica"
@@ -1008,7 +953,7 @@ export function PropertiesUnits() {
                                                             />
                                                         </div>
                                                         <div className="grid gap-2">
-                                                            <Label htmlFor="unitWifiPassword">Clave WiFi Especial</Label>
+                                                            <Label htmlFor="unitWifiPassword">Clave WiFi</Label>
                                                             <Input
                                                                 id="unitWifiPassword"
                                                                 placeholder="Clave específica"
@@ -1030,24 +975,18 @@ export function PropertiesUnits() {
                                                 Didier, 2026-09-06): el estado `inheritAmenities` y el payload ya
                                                 la soportaban, pero ninguna UI podía cambiarla — el override era
                                                 imposible. Mismo patrón que Horarios y WiFi. */}
-                                            <div className="space-y-4 pt-4 border-t">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <Icon icon={Sparkles} className="text-primary" />
-                                                        <Heading level={4} tone="muted">Amenidades</Heading>
-                                                    </div>
-                                                    <SwitchField
-                                                        variant="plain"
-                                                        size="sm"
-                                                        label="Heredar de la propiedad"
-                                                        checked={unitForm.extra.inheritAmenities}
-                                                        onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritAmenities: checked } })}
-                                                    />
-                                                </div>
+                                            <div className="space-y-4">
+                                                <SwitchField
+                                                    variant="boxed"
+                                                    label="Heredar amenidades de la propiedad"
+                                                    description="Apágalo para elegir solo las de este alojamiento."
+                                                    checked={unitForm.extra.inheritAmenities}
+                                                    onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritAmenities: checked } })}
+                                                />
 
                                                 {!unitForm.extra.inheritAmenities && (
                                                     amenityOptions === null ? (
-                                                        <LoadingState variant="spinner" label="Cargando amenidades…" className="rounded-xl border border-rule py-6" />
+                                                        <LoadingState variant="spinner" label="Cargando amenidades…" />
                                                     ) : amenityCatalogFailed ? (
                                                         // Llega después de pedir el catálogo: dinámico.
                                                         <FeedbackBanner tone="warning" mode="dynamic" density="compact">
@@ -1056,126 +995,85 @@ export function PropertiesUnits() {
                                                             afectada.
                                                         </FeedbackBanner>
                                                     ) : amenityOptions.length === 0 ? (
-                                                        <EmptyState title="El catálogo de amenidades está vacío." className="rounded-xl border border-rule py-6" />
+                                                        <EmptyState title="El catálogo de amenidades está vacío." />
                                                     ) : (
-                                                        <Surface tone="sunk" className="grid grid-cols-1 gap-2 p-4 sm:grid-cols-2">
+                                                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                                                             {amenityOptions.map((item) => {
                                                                 const id = Number(item.id)
                                                                 const selected = (unitForm.extra.amenities ?? []).includes(id)
                                                                 return (
-                                                                    <Label variant="plain"
+                                                                    <CheckboxCard
                                                                         key={item.id}
-                                                                        className={`flex cursor-pointer items-center gap-2.5 rounded-lg border p-2.5 text-sm transition-colors hover:bg-card ${selected ? "border-primary/20 bg-primary/5" : "border-transparent"}`}
-                                                                    >
-                                                                        <Checkbox
-                                                                            checked={selected}
-                                                                            onCheckedChange={(checked) => {
-                                                                                const current: number[] = unitForm.extra.amenities ?? []
-                                                                                // Siempre ids numéricos: es el shape que el
-                                                                                // backend exige al escribir.
-                                                                                const next = checked
-                                                                                    ? [...current, id]
-                                                                                    : current.filter((v) => v !== id)
-                                                                                setUnitForm({
-                                                                                    ...unitForm,
-                                                                                    extra: { ...unitForm.extra, amenities: next },
-                                                                                })
-                                                                            }}
-                                                                        />
-                                                                        <span className="font-medium text-ink-2">{item.name}</span>
-                                                                    </Label>
+                                                                        label={item.name}
+                                                                        checked={selected}
+                                                                        onCheckedChange={(checked) => {
+                                                                            const current: number[] = unitForm.extra.amenities ?? []
+                                                                            // Siempre ids numéricos: es el shape que el
+                                                                            // backend exige al escribir.
+                                                                            const next = checked
+                                                                                ? [...current, id]
+                                                                                : current.filter((v) => v !== id)
+                                                                            setUnitForm({
+                                                                                ...unitForm,
+                                                                                extra: { ...unitForm.extra, amenities: next },
+                                                                            })
+                                                                        }}
+                                                                    />
                                                                 )
                                                             })}
-                                                        </Surface>
+                                                        </div>
                                                     )
                                                 )}
                                             </div>
                                         </TabsContent>
 
                                         <TabsContent value="rooms" className="space-y-6">
-                                            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                                                <Surface tone="sunk" className="space-y-4 p-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <Icon icon={BedDouble} className="text-primary" />
-                                                        <Heading level={4} size="group" tone="muted">Dormitorios</Heading>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 gap-3">
-                                                        <div className="space-y-1">
-                                                            <Label className="text-xs">Cant. Habitaciones / Camas</Label>
-                                                            <Input 
+                                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                                <div className="grid gap-2">
+                                                            <Label htmlFor="bedRoom">Habitaciones o camas</Label>
+                                                            <NumberStepper
                                                                 id="bedRoom"
-                                                                type="number" 
                                                                 min={1}
-                                                                step={1}
                                                                 aria-invalid={!!fieldErrors.bedRoom}
-                                                                value={unitForm.extra.bedRoom ?? 1}
-                                                                onChange={(e) => setUnitForm({
+                                                                value={Number(unitForm.extra.bedRoom) || 1}
+                                                                onValueChange={(value) => setUnitForm({
                                                                     ...unitForm,
-                                                                    extra: { ...unitForm.extra, bedRoom: parseInt(e.target.value) || 1 }
+                                                                    extra: { ...unitForm.extra, bedRoom: value },
                                                                 })}
                                                             />
                                                             <FieldError role="alert">{fieldErrors.bedRoom}</FieldError>
-                                                        </div>
-                                                    </div>
-                                                </Surface>
+                                                </div>
 
-                                                <Surface tone="sunk" className="space-y-4 p-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <Icon icon={Bath} className="text-primary" />
-                                                        <Heading level={4} size="group" tone="muted">Baños</Heading>
-                                                    </div>
-                                                    <div className="grid grid-cols-1 gap-3">
-                                                        <div className="space-y-1">
-                                                            <Label className="text-xs">Cantidad</Label>
-                                                            <Input 
+                                                <div className="grid gap-2">
+                                                            <Label htmlFor="bathRoom">Baños</Label>
+                                                            <NumberStepper
                                                                 id="bathRoom"
-                                                                type="number" 
                                                                 min={1}
-                                                                step={1}
                                                                 aria-invalid={!!fieldErrors.bathRoom}
-                                                                value={unitForm.extra.bathRoom ?? 1}
-                                                                onChange={(e) => setUnitForm({
+                                                                value={Number(unitForm.extra.bathRoom) || 1}
+                                                                onValueChange={(value) => setUnitForm({
                                                                     ...unitForm,
-                                                                    extra: { ...unitForm.extra, bathRoom: parseInt(e.target.value) || 1 }
+                                                                    extra: { ...unitForm.extra, bathRoom: value },
                                                                 })}
                                                             />
                                                             <FieldError role="alert">{fieldErrors.bathRoom}</FieldError>
-                                                        </div>
-                                                    </div>
-                                                </Surface>
+                                                </div>
                                             </div>
                                         </TabsContent>
 
                                         <TabsContent value="policies" className="space-y-4">
-                                            <div className="space-y-4 pt-2">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <Icon icon={Shield} className="text-primary" />
-                                                        <Heading level={4} tone="muted">Políticas</Heading>
-                                                    </div>
-                                                    <SwitchField
-                                                        variant="plain"
-                                                        size="sm"
-                                                        label="Heredar de la propiedad"
-                                                        checked={unitForm.extra.inheritPolicies}
-                                                        onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritPolicies: checked } })}
-                                                    />
-                                                </div>
+                                            <div className="space-y-4">
+                                                <SwitchField
+                                                    variant="boxed"
+                                                    label="Heredar políticas de la propiedad"
+                                                    description="Apágalo para fijarle una política de cancelación propia."
+                                                    checked={unitForm.extra.inheritPolicies}
+                                                    onCheckedChange={(checked) => setUnitForm({ ...unitForm, extra: { ...unitForm.extra, inheritPolicies: checked } })}
+                                                />
 
-                                                {unitForm.extra.inheritPolicies ? (
-                                                    <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex gap-3">
-                                                        <Icon icon={Shield} size="lg" className="text-primary mt-0.5" />
-                                                        <div className="space-y-1">
-                                                            <p className="text-sm font-bold text-primary">Políticas del Tipo de Alojamiento</p>
-                                                            <p className="text-xs text-primary leading-relaxed">
-                                                                Este tipo de habitación heredará las políticas generales de la propiedad. Puedes definir políticas específicas o excepciones en la integración final.
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <Surface tone="sunk" className="space-y-4 p-4">
-                                                        <div className="space-y-2">
-                                                            <Label className="text-xs">Política de Cancelación Específica</Label>
+                                                {!unitForm.extra.inheritPolicies && (
+                                                    <div className="grid gap-2">
+                                                            <Label htmlFor="cancellationPolicy">Política de cancelación</Label>
                                                             <Select 
                                                                 value={unitForm.extra.cancellationPolicy ?? ""}
                                                                 onValueChange={(val) => setUnitForm({
@@ -1183,18 +1081,20 @@ export function PropertiesUnits() {
                                                                     extra: { ...unitForm.extra, cancellationPolicy: val }
                                                                 })}
                                                             >
-                                                                <SelectTrigger className="h-10 text-xs">
-                                                                    <SelectValue placeholder="Selecciona una política (Ej: Flexible)" />
+                                                                <SelectTrigger id="cancellationPolicy" className="w-full">
+                                                                    <SelectValue placeholder="Elige una política" />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
-                                                                    <SelectItem value="FLEXIBLE">Flexible (Reembolso completo hasta 24h antes)</SelectItem>
-                                                                    <SelectItem value="MODERATE">Moderada (Reembolso completo hasta 5 días antes)</SelectItem>
-                                                                    <SelectItem value="STRICT_14">Estricta (Reembolso completo hasta 14 días antes)</SelectItem>
-                                                                    <SelectItem value="NON_REFUNDABLE">No Reembolsable</SelectItem>
+                                                                    {/* `STANDARD` es el valor que viaja por defecto (`DEFAULT_CANCELLATION_POLICY`):
+                                                                        sin esta opción, un alojamiento guardado con él se mostraba vacío. */}
+                                                                    <SelectItem value={DEFAULT_CANCELLATION_POLICY}>Estándar</SelectItem>
+                                                                    <SelectItem value="FLEXIBLE">Flexible (reembolso completo hasta 24 h antes)</SelectItem>
+                                                                    <SelectItem value="MODERATE">Moderada (reembolso completo hasta 5 días antes)</SelectItem>
+                                                                    <SelectItem value="STRICT_14">Estricta (reembolso completo hasta 14 días antes)</SelectItem>
+                                                                    <SelectItem value="NON_REFUNDABLE">No reembolsable</SelectItem>
                                                                 </SelectContent>
                                                             </Select>
-                                                        </div>
-                                                    </Surface>
+                                                    </div>
                                                 )}
                                             </div>
                                         </TabsContent>
@@ -1202,18 +1102,12 @@ export function PropertiesUnits() {
                                         {/* ── Automations Overrides Tab (only when the property is saved) ── */}
                                         {propertyUuid && (
                                         <TabsContent value="automations" className="space-y-4">
-                                            <div className="flex items-start gap-3 bg-primary/10 border border-primary/20 rounded-xl p-4">
-                                                <Icon icon={Info} className="text-primary mt-0.5" />
-                                                <div>
-                                                    <p className="text-sm font-semibold text-primary">Sobreescribir automatizaciones</p>
-                                                    <p className="text-xs text-primary leading-relaxed">
-                                                        Puedes desactivar o cambiar parámetros específicos para esta unidad. El resto hereda la configuración de la propiedad
-                                                        {propertyAutomations.some(pa => readCredentialsScope(pa) === "listing")
-                                                            ? ", salvo las que usan credenciales por alojamiento: sin las suyas, esta unidad no se reporta."
-                                                            : "."}
-                                                    </p>
-                                                </div>
-                                            </div>
+                                            <Note tone="accent" density="default" icon={Info}>
+                                                Puedes desactivar o cambiar parámetros para este alojamiento. El resto hereda la configuración de la propiedad
+                                                {propertyAutomations.some(pa => readCredentialsScope(pa) === "listing")
+                                                    ? ", salvo las que usan credenciales por alojamiento: sin las suyas, este alojamiento no se reporta."
+                                                    : "."}
+                                            </Note>
 
                                             {overridesLoading ? (
                                                 <LoadingState rows={2} label="Cargando automatizaciones…" />
@@ -1227,7 +1121,7 @@ export function PropertiesUnits() {
                                                 <div className="space-y-3">
                                                     {!(unitForm as any).uuid && (
                                                         <Note>
-                                                            Configura los overrides ahora; se crearán automáticamente al guardar la unidad.
+                                                            Configura los overrides ahora; se crearán al guardar el alojamiento.
                                                         </Note>
                                                     )}
                                                     {propertyAutomations.map((automation) => {
@@ -1242,7 +1136,9 @@ export function PropertiesUnits() {
                                                         const isInactive = identity ? identity.tone === "disabled" : hasOverride && !override.isActive
                                                         const params = override?.parameters ?? {}
                                                         const hasParams = !identity && hasOverride && override.isActive &&
-                                                            Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
+                                                            (Object.values(params).some(v => v !== "" && v !== null && v !== undefined)
+                                                                // Un secreto guardado cuenta aunque no llegue (nota 2026-11-12).
+                                                                || (override.storedSecretKeys?.length ?? 0) > 0)
                                                         const display = automationDisplay(automation, override ?? null)
                                                         // TRA/SIRE por alojamiento: sin override no se reporta; apagado es excluido.
                                                         const perListing = readCredentialsScope(automation) === "listing"
@@ -1251,7 +1147,8 @@ export function PropertiesUnits() {
                                                             : null
 
                                                         return (
-                                                            <Surface key={automation.uuid} flat tone={isInactive ? "danger" : hasParams ? "selected" : "sunk"} className="flex items-center justify-between gap-3 p-4">
+                                                            <div key={automation.uuid} className="space-y-1">
+                                                            <Surface flat tone={isInactive ? "danger" : hasParams ? "selected" : "sunk"} className="flex items-center justify-between gap-3 p-4">
                                                                 <div className="min-w-0 space-y-0.5">
                                                                     <div className="flex items-center gap-2 flex-wrap">
                                                                         <Icon icon={Settings2} className="text-ink-3" />
@@ -1288,9 +1185,9 @@ export function PropertiesUnits() {
                                                                                     ? "Se reporta con las credenciales de este alojamiento."
                                                                                     : "Sus reservas no se reportan hasta cargarlas."
                                                                             : hasParams
-                                                                            ? schema.filter(f => params[f.key] != null && params[f.key] !== "").map(f => f.key).join(", ") || "Parámetros sobreescritos"
+                                                                            ? schema.filter(f => (params[f.key] != null && params[f.key] !== "") || override?.storedSecretKeys?.includes(f.key)).map(f => f.key).join(", ") || "Parámetros sobreescritos"
                                                                             : isInactive
-                                                                                ? perListing ? LISTING_CREDENTIALS_COPY.excludedHelp : "La automatización se omite para esta unidad."
+                                                                                ? perListing ? LISTING_CREDENTIALS_COPY.excludedHelp : "La automatización se omite para este alojamiento."
                                                                                 : hasOverride
                                                                                     ? "Override activo sin parámetros propios."
                                                                                     : perListing
@@ -1309,6 +1206,19 @@ export function PropertiesUnits() {
                                                                     {hasOverride ? "Editar" : "Configurar"}
                                                                 </Button>
                                                             </Surface>
+                                                            {/* Nota backend 2026-11-11: la credencial propia de este
+                                                                alojamiento fue rechazada y está en pausa. */}
+                                                            {override?.credentialsStatus && (
+                                                                <CredentialsRejectedNotice
+                                                                    status={override.credentialsStatus}
+                                                                    action={
+                                                                        <Button type="button" variant="outline" size="sm" onClick={() => setEditingOverrideAutomation(automation)}>
+                                                                            <Icon icon={KeyRound} /> Actualizar credenciales
+                                                                        </Button>
+                                                                    }
+                                                                />
+                                                            )}
+                                                            </div>
                                                         )
                                                     })}
                                                 </div>
@@ -1318,21 +1228,12 @@ export function PropertiesUnits() {
 
                                     </Tabs>
                                 </div>
-                            </div>
+                            </DialogBody>
 
-                            {/*
-                              * `shrink-0` es la contraparte del header, que ya lo tiene.
-                              * Sin él, el footer es el ÚNICO ítem encogible de la columna
-                              * flex: en un viewport bajo el navegador le quita altura para
-                              * que el diálogo quepa en `max-h-[90vh]`, y los botones se
-                              * comprimen contra el último campo del formulario en vez de
-                              * quedar en su propia banda. Con esto, el que cede es el área
-                              * de scroll, que para eso está.
-                              */}
-                            <DialogFooter className="p-6 border-t bg-sunk/5 shrink-0">
+                            <DialogFooter divided>
                                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSavingUnit}>Cancelar</Button>
-                                <Button type="button" onClick={() => void handleSaveUnit()} disabled={roomTypesLoading || roomTypes.length === 0} loading={isSavingUnit}>
-                                    {editingIndex !== null ? "Guardar Cambios" : "Añadir Unidad"}
+                                <Button type="button" onClick={() => void handleSaveUnit()} disabled={roomTypesLoading || roomTypes.length === 0} loading={isSavingUnit} loadingLabel="Guardando…">
+                                    {editingIndex !== null ? "Guardar cambios" : "Añadir alojamiento"}
                                 </Button>
                             </DialogFooter>
                         </DialogContent>
@@ -1358,8 +1259,33 @@ export function PropertiesUnits() {
                             override={listingOverrides[editingOverrideAutomation.uuid] ?? null}
                             lockedPropertyAutomationUuid={editingOverrideAutomation.uuid}
                             draftMode={!(unitForm as any).uuid}
+                            credentialSibling={(() => {
+                                // SIRE check-in ↔ check-out: se piden una vez y se guardan en las dos.
+                                const sibling = findCredentialSibling(editingOverrideAutomation, propertyAutomations)
+                                return sibling ? { automation: sibling, override: listingOverrides[sibling.uuid] ?? null } : null
+                            })()}
+                            onSiblingSaved={(siblingSaved) => {
+                                setListingOverrides(prev => ({ ...prev, [siblingSaved.propertyAutomationUuid]: siblingSaved }))
+                            }}
                             onSaved={(saved) => {
-                                setListingOverrides(prev => ({ ...prev, [editingOverrideAutomation.uuid]: saved }))
+                                const paUuid = editingOverrideAutomation.uuid
+                                const wasRejected = !!listingOverrides[paUuid]?.credentialsStatus
+                                setListingOverrides(prev => ({ ...prev, [paUuid]: saved }))
+                                // Estaba en pausa y la respuesta no dice si la levantó (la nota
+                                // solo garantiza el campo en los GET): se relee este override.
+                                const listingUuid = (unitForm as { uuid?: string }).uuid
+                                const saveSeq = ++overrideSaveSeqRef.current
+                                if (wasRejected && saved.credentialsStatus === undefined && listingUuid) {
+                                    // Mismo guardia que la carga del diálogo: si se abrió otra
+                                    // unidad (o se volvió a guardar) mientras tanto, la relectura
+                                    // ya no es de esta pantalla y no escribe.
+                                    const dialogRequest = overridesRequestRef.current
+                                    void automationService.listListingOverrides(listingUuid).then((fresh) => {
+                                        if (dialogRequest !== overridesRequestRef.current || saveSeq !== overrideSaveSeqRef.current) return
+                                        const current = fresh.find((o) => o.propertyAutomationUuid === paUuid)
+                                        if (current) setListingOverrides(prev => ({ ...prev, [paUuid]: current }))
+                                    }).catch(() => { /* se queda lo guardado; la próxima apertura relee */ })
+                                }
                                 setEditingOverrideAutomation(null)
                             }}
                             onOverrideChanged={(changed) => {
@@ -1375,14 +1301,11 @@ export function PropertiesUnits() {
                             }}
                         />
                     )}
-                </div>
-            </CardHeader>
-            <CardContent>
                 <Table>
                     <TableHeader>
                         <TableRow>
-                            <TableHead className="w-30">ID / Núm</TableHead>
-                            <TableHead>Nombre / Alojamiento</TableHead>
+                            <TableHead className="w-30">Número</TableHead>
+                            <TableHead>Nombre</TableHead>
                             <TableHead>Capacidad</TableHead>
                             <TableHead>Estado</TableHead>
                             <TableHead className="text-right">Precio</TableHead>
@@ -1393,16 +1316,16 @@ export function PropertiesUnits() {
                         {fields.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={6} className="text-center py-6 text-ink-3">
-                                    Aún no hay unidades. Haz clic en "Añadir Unidad" para crear una.
+                                    Aún no hay alojamientos. Añade el primero para poder recibir reservas.
                                 </TableCell>
                             </TableRow>
                         ) : (
                             fields.map((field: any, index) => (
                                 <TableRow key={field.id}>
                                     <TableCell className="font-bold text-primary">{field.internalName || field.internal_name || '-'}</TableCell>
-                                    <TableCell className="font-medium text-ink">{field.name || 'Unidad sin nombre'}</TableCell>
+                                    <TableCell className="font-medium text-ink">{field.name || 'Sin nombre'}</TableCell>
                                     <TableCell className="text-sm">
-                                        {field.extra?.maxOccupancy || field.extra?.max_occupancy || 0} Huéspedes
+                                        {field.extra?.maxOccupancy || field.extra?.max_occupancy || 0} huéspedes
                                     </TableCell>
                                     <TableCell>
                                         <StatusPill tone={field.isActive !== false ? "success" : "idle"}>{field.isActive !== false ? "Activo" : "Inactivo"}</StatusPill>
@@ -1411,7 +1334,7 @@ export function PropertiesUnits() {
                                         ${Number(field.price || field.extra?.startPrice || field.extra?.price || 0).toLocaleString()}
                                     </TableCell>
                                     <TableCell className="text-right space-x-1 flex justify-end">
-                                        <Button type="button" variant="ghost" size="icon-sm" className="w-8" onClick={() => handleOpenEditDialog(index)}>
+                                        <Button type="button" variant="ghost" size="icon-sm" aria-label={`Editar ${unitDisplayName(field, "alojamiento")}`} className="w-8" onClick={() => handleOpenEditDialog(index)}>
                                             <Icon icon={Edit2} />
                                         </Button>
                                         <Button
@@ -1430,7 +1353,6 @@ export function PropertiesUnits() {
                         )}
                     </TableBody>
                 </Table>
-            </CardContent>
 
             <AlertDialog
                 open={unitToDelete !== null}
@@ -1468,6 +1390,7 @@ export function PropertiesUnits() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-        </Card>
+            </>
+        </SectionCard>
     )
 }

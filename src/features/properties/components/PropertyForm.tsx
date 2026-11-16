@@ -1,14 +1,13 @@
 "use client"
 
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Trash2, LayoutDashboard, MapPin, Building, Camera, Sparkles, Info, AlertCircle, FileText, Link2 } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Badge } from "@/components/ui/badge"
 import { useRouter, useSearchParams } from "next/navigation"
 
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button, buttonVariants } from "@/components/ui/button"
 import {
     Form,
     FormControl,
@@ -22,9 +21,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
-import { useState, useEffect, useRef } from "react"
-import { Surface, Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
-import { Heading } from "@/components/ui/heading"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { SectionCard } from "@/components/ui/section-card"
 import {
     Tabs,
     TabsContent,
@@ -32,15 +30,19 @@ import {
     TabsTrigger,
 } from "@/components/ui/tabs"
 import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@/components/ui/dialog"
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { FormActionBar } from "@/components/ui/form-action-bar"
+import { CatalogError } from "@/components/shared/catalog-error"
 import { PropertiesLocation } from "./PropertiesLocation"
 import { PropertiesUnits } from "./PropertiesUnits"
 import { PropertiesPhotos } from "./PropertiesPhotos"
@@ -48,10 +50,11 @@ import { PropertiesAmenities } from "./PropertiesAmenities"
 import { PropertiesAutomation } from "./PropertiesAutomation"
 import { PropertiesDocuments } from "./documents"
 import { ExternalPmsIdsField } from "./ExternalPmsIdsField"
-import { propertyFormSchema, PropertyFormData, type PropertyApiResponse } from "../types"
+import { propertyFormSchema, PropertyFormData } from "../types"
 import { propertiesService } from "../services/properties-service"
 import { listingsService } from "../services/listings-service"
-import { toListingPayload, type ListingDraft } from "../lib/listing-payload"
+import { createPropertyWithUnits, tabAfterCreate, withExternalIdsGating } from "../lib/property-save"
+import { DEFAULT_PROPERTY_THUMBNAIL_URL } from "../lib/property-defaults"
 import { readExternalIdentifierServerErrors } from "../lib/external-pms-ids"
 import { ApiError } from "@/types/api"
 import { RECORD_STATUS, readRecordStatus } from "../lib/record-status"
@@ -60,66 +63,96 @@ import { invalidatePropertiesCaches } from "../lib/properties-cache"
 import { catalogService, CatalogOption } from "@/features/auth/services/catalog-service"
 import { COMMUNICATION_LOCALES, LOCALE_LABELS, DEFAULT_COMMUNICATION_LOCALE } from "@/lib/locales"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
-import { isPropertyTab, propertyEditHref } from "../lib/property-tabs"
+import { isPropertyTab, propertyEditHref, type PropertyTab } from "../lib/property-tabs"
+import { RequiredMark } from "@/components/shared/required-mark"
+import { PROPERTY_FIELD_META, countErrorsByTab, orphanErrorMessages, TAB_LABELS, type FormTabId } from "../lib/property-form-errors"
 
 interface PropertyFormProps {
     initialData?: any
 }
 
 export function PropertyForm({ initialData }: PropertyFormProps) {
+    const isCreate = !initialData?.uuid
     const [isLoading, setIsLoading] = useState(false)
     const submitLockRef = useRef(false)
     const [propertyTypes, setPropertyTypes] = useState<CatalogOption[]>([])
     const [isLoadingCatalogs, setIsLoadingCatalogs] = useState(true)
-
-    useEffect(() => {
-        async function loadCatalogs() {
-            try {
-                const [propertyTypesData] = await Promise.all([
-                    catalogService.getPropertyTypes()
-                ])
-                setPropertyTypes(propertyTypesData)
-            } finally {
-                setIsLoadingCatalogs(false)
-            }
-        }
-        loadCatalogs()
-    }, [])
+    const [propertyTypesFailed, setPropertyTypesFailed] = useState(false)
+    const [statusRecords, setStatusRecords] = useState<CatalogOption[]>([])
+    const [isLoadingStatuses, setIsLoadingStatuses] = useState(true)
+    const [statusesFailed, setStatusesFailed] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-    const [isValidationErrorOpen, setIsValidationErrorOpen] = useState(false)
+    // Tras un envío inválido: el aviso con el conteo por pestaña (se recalcula en vivo).
+    const [showErrorSummary, setShowErrorSummary] = useState(false)
     // Guardado en espera de que el PM confirme que desactiva la propiedad.
     const [pendingDeactivation, setPendingDeactivation] = useState<PropertyFormData | null>(null)
-    const [validationErrors, setValidationErrors] = useState<{ label: string; tab: string; message: string }[]>([])
-    const [activeTab, setActiveTab] = useState("details")
-    const [statusRecords, setStatusRecords] = useState<CatalogOption[]>([])
+    const [activeTab, setActiveTab] = useState<PropertyTab>("details")
     const router = useRouter()
     const searchParams = useSearchParams()
 
-    useEffect(() => {
-        // Solo una pestaña que existe: un `?tab=` desconocido abría el formulario vacío.
-        const tab = searchParams.get("tab")
-        if (isPropertyTab(tab)) {
-            setActiveTab(tab)
-        }
-    }, [searchParams])
+    // Orden del trabajo: Detalles → Ubicación → Alojamientos → Fotos; al editar, además
+    // Automatización → Documentos (se guardan solas). Las claves y los `?tab=` no cambian.
+    const availableTabs: PropertyTab[] = isCreate
+        ? ["details", "location", "units", "photos"]
+        : ["details", "location", "units", "photos", "automations", "documents"]
 
-    useEffect(() => {
-        const fetchCatalogs = async () => {
-            try {
-                const [statuses] = await Promise.all([
-                    catalogService.getStatusRecords()
-                ])
-                if (statuses.length > 0) setStatusRecords(statuses)
-            } catch (error) {
+    // Un catálogo que falla se dice junto a su campo, con «Reintentar»: sin tipo o sin
+    // estado no hay ids válidos que ofrecer (los que estaban fijos acá no coincidían con
+    // el catálogo real).
+    // Cadenas `.then()` a propósito: `react-hooks/set-state-in-effect` sigue las
+    // llamadas a funciones locales y solo acepta setState dentro de callbacks.
+    const fetchPropertyTypes = useCallback(() =>
+        catalogService.getPropertyTypes()
+            .then((data) => {
+                setPropertyTypes(data)
+                setPropertyTypesFailed(data.length === 0)
+            })
+            .catch((error) => {
+                console.error("[PropertyForm] Error fetching property types:", error)
+                setPropertyTypes([])
+                setPropertyTypesFailed(true)
+            })
+            .finally(() => setIsLoadingCatalogs(false)), [])
+
+    const fetchStatusRecords = useCallback(() =>
+        catalogService.getStatusRecords()
+            .then((statuses) => {
+                setStatusRecords(statuses)
+                setStatusesFailed(statuses.length === 0)
+            })
+            .catch((error) => {
                 console.error("[PropertyForm] Error fetching calendars/statuses:", error)
                 // Sin respaldo inventado: los ids 1/2 que había acá no existen en
                 // el catálogo real (6 activo, 7 inactivo) y podían guardarse.
                 setStatusRecords([])
-            }
+                setStatusesFailed(true)
+            })
+            .finally(() => setIsLoadingStatuses(false)), [])
+
+    useEffect(() => {
+        void fetchPropertyTypes()
+        void fetchStatusRecords()
+    }, [fetchPropertyTypes, fetchStatusRecords])
+
+    const loadPropertyTypes = () => {
+        setIsLoadingCatalogs(true)
+        void fetchPropertyTypes()
+    }
+    const loadStatusRecords = () => {
+        setIsLoadingStatuses(true)
+        void fetchStatusRecords()
+    }
+
+    useEffect(() => {
+        // Solo una pestaña que existe EN ESTE MODO: `/new?tab=automations` abría un panel vacío.
+        const tab = searchParams.get("tab")
+        if (isPropertyTab(tab) && availableTabs.includes(tab)) {
+            setActiveTab(tab)
         }
-        fetchCatalogs()
-    }, [])
+        // `availableTabs` depende solo del modo, fijo durante la vida del formulario.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [searchParams, isCreate])
 
     const form = useForm<PropertyFormData>({
         resolver: zodResolver(propertyFormSchema) as any,
@@ -143,7 +176,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             wifiNetwork: "",
             wifiPassword: "",
             picturesUrl: [],
-            thumbnailUrl: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?w=800&auto=format&fit=crop&q=60",
+            thumbnailUrl: DEFAULT_PROPERTY_THUMBNAIL_URL,
             units: [],
             externalPmsIds: [],
             policies: [],
@@ -157,6 +190,8 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             },
         } as any),
     })
+    const thumbnailUrl = useWatch({ control: form.control, name: "thumbnailUrl" })
+    const [brokenThumbnail, setBrokenThumbnail] = useState<string | null>(null)
 
     // Reset form when initialData arrives from async fetch
     // Preserve uuid so child components can watch('uuid') to know they are in edit mode
@@ -179,60 +214,36 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         }))
         : undefined
 
-    // Field → friendly label + tab where the user can fix it
-    const FIELD_META: Record<string, { label: string; tab: string }> = {
-        name:           { label: "Nombre de la propiedad", tab: "Detalles" },
-        email:          { label: "Email de contacto",      tab: "Detalles" },
-        phone:          { label: "Teléfono",               tab: "Detalles" },
-        propertyTypeId: { label: "Tipo de propiedad",      tab: "Detalles" },
-        statusRecordId: { label: "Estado",                 tab: "Detalles" },
-        externalPmsIds: { label: "Identificación externa", tab: "Detalles" },
-        description:    { label: "Descripción",            tab: "Detalles" },
-        thumbnailUrl:   { label: "URL de miniatura",       tab: "Detalles" },
-        address:        { label: "Dirección",              tab: "Ubicación" },
-        addressDetail:  { label: "Detalle de dirección",   tab: "Ubicación" },
-        city:           { label: "Ciudad",                 tab: "Ubicación" },
-        state:          { label: "Estado / Departamento",  tab: "Ubicación" },
-        countryId:      { label: "País",                   tab: "Ubicación" },
-        latitude:       { label: "Latitud",                tab: "Ubicación" },
-        longitude:      { label: "Longitud",               tab: "Ubicación" },
-        timezone:       { label: "Zona horaria",           tab: "Ubicación" },
-        units:          { label: "Unidades",               tab: "Unidades" },
-        picturesUrl:    { label: "Fotos",                  tab: "Fotos" },
-    }
+    // Los errores se leen en el render a propósito (`formState` es un proxy):
+    // así el contador por pestaña y el aviso bajan al corregir, sin otro envío.
+    const { isDirty, errors } = form.formState
+    const errorsByTab = countErrorsByTab(errors)
+    const totalErrors = Object.values(errorsByTab).reduce((sum, n) => sum + n, 0)
+    const orphanMessages = orphanErrorMessages(errors)
 
     /**
-     * An array field's error has no `message` of its own — the real one sits on
-     * the offending row (`externalPmsIds.0.externalId`). Without this, the dialog
-     * showed the generic "Campo obligatorio o inválido" for those fields.
+     * Activa la pestaña y, ya montada, enfoca el primer campo inválido de ella.
+     * `source`: en `onInvalid` llegan los errores recién calculados; el `errors`
+     * del render es el del render ANTERIOR (react-hook-form llama a `onInvalid`
+     * antes de notificar al proxy), así que ahí no sirve.
      */
-    function firstMessage(err: unknown): string | undefined {
-        if (!err || typeof err !== "object") return undefined
-
-        const direct = (err as { message?: string }).message
-        if (direct) return direct
-
-        if (Array.isArray(err)) {
-            for (const row of err as Record<string, { message?: string } | undefined>[]) {
-                for (const nested of Object.values(row ?? {})) {
-                    if (nested?.message) return nested.message
-                }
-            }
-        }
-        return undefined
-    }
-
-    function onInvalid(errors: Record<string, any>) {
-        const items = Object.entries(errors).map(([field, err]) => {
-            const meta = FIELD_META[field] ?? { label: field, tab: "Detalles" }
-            return {
-                label: meta.label,
-                tab: meta.tab,
-                message: firstMessage(err) || "Campo obligatorio o inválido",
+    function goToTabAndFocus(tab: FormTabId, source: Record<string, unknown> = errors) {
+        setActiveTab(tab)
+        const firstField = Object.keys(source).find((field) => (PROPERTY_FIELD_META[field]?.tab ?? "details") === tab)
+        if (!firstField) return
+        requestAnimationFrame(() => {
+            try {
+                form.setFocus(firstField as Parameters<typeof form.setFocus>[0])
+            } catch {
+                // Un campo sin ref registrado (por ejemplo una lista): basta con la pestaña.
             }
         })
-        setValidationErrors(items)
-        setIsValidationErrorOpen(true)
+    }
+
+    function onInvalid(invalid: Record<string, unknown>) {
+        setShowErrorSummary(true)
+        const firstField = Object.keys(invalid)[0]
+        goToTabAndFocus(PROPERTY_FIELD_META[firstField]?.tab ?? "details", invalid)
     }
 
     /**
@@ -254,17 +265,13 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
     async function saveProperty(values: PropertyFormData) {
         if (submitLockRef.current) return
         submitLockRef.current = true
+        setShowErrorSummary(false)
         setIsLoading(true)
         try {
             let propertyUuid = initialData?.uuid
 
-            // Contrato 2026-08-23: `externalPmsIds: []` BORRA todas las filas y
-            // la clave omitida no toca nada. Solo viaja si el PM editó la
-            // sección — mandarla siempre convertía cualquier guardado en un
-            // borrado potencial (o en un 422 al reenviar filas sin editar).
-            const submitValues: PropertyFormData = form.formState.dirtyFields.externalPmsIds
-                ? values
-                : { ...values, externalPmsIds: undefined }
+            // La clave `externalPmsIds` solo viaja si el PM editó la sección (ver `property-save.ts`).
+            const submitValues = withExternalIdsGating(values, !!form.formState.dirtyFields.externalPmsIds)
 
             if (propertyUuid) {
                 await propertiesService.update(propertyUuid, submitValues)
@@ -272,31 +279,17 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                 toast.success("Propiedad actualizada")
                 router.push("/dashboard/properties")
             } else {
-                const response = await propertiesService.create(submitValues)
-                invalidatePropertiesCaches()
-                const responseWithEnvelope = response as PropertyApiResponse & { data?: PropertyApiResponse }
-                propertyUuid = response.uuid || responseWithEnvelope.data?.uuid
-                if (!propertyUuid) {
-                    throw new Error("El backend creó la propiedad sin devolver su UUID.")
-                }
-                // Restore manual creation: units MUST be created via separate /listings endpoint
-                const pendingUnits = (values.units ?? []) as ListingDraft[]
-                const failedUnits: string[] = []
-                for (const [index, unit] of pendingUnits.entries()) {
-                    try {
-                        // Sequential on purpose: this endpoint also creates related
-                        // records and the API does not document bulk/rate semantics.
-                        // Sin identificadores no se manda la clave (contrato
-                        // 2026-08-23: presencia = intención).
-                        await listingsService.create(toListingPayload(propertyUuid, {
-                            ...unit,
-                            externalPmsIds: unit.externalPmsIds?.length ? unit.externalPmsIds : undefined,
-                        }))
-                    } catch (unitError) {
-                        console.error("[PropertyForm] Error creating listing:", unitError)
-                        failedUnits.push(String(unit.name || `Unidad ${index + 1}`))
-                    }
-                }
+                // Propiedad y, con su uuid, cada alojamiento en borrador (secuencia fijada en `property-save.ts`).
+                const created = await createPropertyWithUnits({
+                    values,
+                    submitValues,
+                    createProperty: (v) => propertiesService.create(v),
+                    onPropertyCreated: invalidatePropertiesCaches,
+                    createListing: (payload) => listingsService.create(payload),
+                    onListingError: (unitError) => console.error("[PropertyForm] Error creating listing:", unitError),
+                })
+                propertyUuid = created.propertyUuid
+                const { failedUnits, pendingUnits } = created
 
                 if (failedUnits.length > 0) {
                     toast.warning("Propiedad creada con alojamientos pendientes", {
@@ -304,13 +297,13 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                     })
                 } else {
                     toast.success(
-                        pendingUnits.length > 0
-                            ? `Propiedad y ${pendingUnits.length} alojamiento(s) creados`
+                        pendingUnits > 0
+                            ? `Propiedad y ${pendingUnits} alojamiento(s) creados`
                             : "Propiedad creada",
                     )
                 }
                 // A partial listing failure needs a visible recovery destination.
-                router.push(propertyEditHref(propertyUuid, failedUnits.length ? "units" : "automations"))
+                router.push(propertyEditHref(propertyUuid, tabAfterCreate(failedUnits)))
             }
         } catch (error) {
             console.error("[PropertyForm] Save error:", error)
@@ -351,68 +344,72 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             toast.success("Propiedad eliminada", {
                 description: "La propiedad ha sido eliminada exitosamente.",
             })
+            setIsDeleteDialogOpen(false)
             router.push("/dashboard/properties")
         } catch (error) {
+            // El diálogo sigue abierto: se puede reintentar o cancelar (mismo patrón que fotos y alojamientos).
             notifyError(error, "Hubo un problema al intentar eliminar la propiedad.")
         } finally {
             setIsDeleting(false)
-            setIsDeleteDialogOpen(false)
         }
     }
 
+    // v3: al crear siempre; al editar solo con cambios pendientes del formulario raíz,
+    // en cualquier pestaña (también en las que se guardan solas).
+    const showActionBar = isCreate || isDirty
+    const barStatus = isCreate ? <><RequiredMark /> Campos obligatorios</> : "Cambios sin guardar"
+    const isDefaultThumbnail = thumbnailUrl === DEFAULT_PROPERTY_THUMBNAIL_URL
+
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-8">
-                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v)} className="space-y-6">
-                    {/* Pestañas estándar (las de Operaciones): la pantalla solo pone la grilla. */}
-                    <TabsList className={cn(
-                        "grid w-full",
-                        initialData
-                            ? "grid-cols-2 md:grid-cols-3 lg:grid-cols-6"
-                            : "grid-cols-2 md:grid-cols-2 lg:grid-cols-4"
-                    )}>
-                        <TabsTrigger value="details">
-                            <Icon icon={Info} />
-                            Detalles
-                        </TabsTrigger>
-                        <TabsTrigger value="units">
-                            <Icon icon={Building} />
-                            Alojamientos
-                        </TabsTrigger>
-                        {initialData && (
-                            <TabsTrigger value="automations">
-                                <Icon icon={Sparkles} />
-                                Automatización
-                            </TabsTrigger>
+            {/* `pb-24`: el formulario reserva el alto de la barra fija para que nunca tape un campo. */}
+            {/* `noValidate`: zod es el único validador. Sin esto, `type="email"`/`type="url"`
+                disparan la burbuja nativa y `onInvalid` (aviso, pestaña, foco) nunca corre. */}
+            <form noValidate onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6 pb-24">
+                {showErrorSummary && totalErrors > 0 && (
+                    <FeedbackBanner tone="danger" mode="blocking" title={totalErrors === 1 ? "Falta 1 campo" : `Faltan ${totalErrors} campos`}>
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            {(Object.keys(errorsByTab) as FormTabId[]).filter((tab) => errorsByTab[tab] > 0).map((tab) => (
+                                <Button key={tab} type="button" variant="link" size="inline" onClick={() => goToTabAndFocus(tab)}>
+                                    {TAB_LABELS[tab]} ({errorsByTab[tab]})
+                                </Button>
+                            ))}
+                            <span>Los marcamos en cada pestaña.</span>
+                        </span>
+                        {/* Lo que no tiene campo donde mostrarse (listas, fotos) se dice aquí. */}
+                        {orphanMessages.length > 0 && (
+                            <ul className="mt-2 list-disc pl-5">
+                                {orphanMessages.map(({ field, label, message }) => (
+                                    <li key={field}>{label}: {message}</li>
+                                ))}
+                            </ul>
                         )}
-                        {initialData && (
-                            <TabsTrigger value="documents">
-                                <Icon icon={FileText} />
-                                Documentos
-                            </TabsTrigger>
-                        )}
-                        <TabsTrigger value="location">
-                            <Icon icon={MapPin} />
-                            Ubicación
-                        </TabsTrigger>
-                        <TabsTrigger value="photos">
-                            <Icon icon={Camera} />
-                            Fotos
-                        </TabsTrigger>
-                    </TabsList>
+                    </FeedbackBanner>
+                )}
 
-                    <TabsContent value="details" className="space-y-4">
-                        <Card>
-                            <CardHeader divided>
-                                <Heading level={2} size="title" className="flex items-center gap-2">
-                                    <Icon icon={LayoutDashboard} size="lg" className="text-primary" />
-                                    Detalles de la Propiedad
-                                </Heading>
-                                <CardDescription>
-                                    Información básica y administrativa de la propiedad.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="space-y-4 pt-6">
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PropertyTab)} className="space-y-6">
+                    {/* Pestañas estándar: la pantalla solo pone la grilla. Con scroll horizontal en móvil. */}
+                    <div className="overflow-x-auto">
+                        <TabsList className="w-full min-w-max sm:min-w-0">
+                            {availableTabs.map((tab) => {
+                                const count = errorsByTab[tab as FormTabId] ?? 0
+                                return (
+                                    <TabsTrigger
+                                        key={tab}
+                                        value={tab}
+                                        aria-label={count > 0 ? `${TAB_LABELS[tab]}, ${count} ${count === 1 ? "error" : "errores"}` : undefined}
+                                    >
+                                        {TAB_LABELS[tab]}
+                                        {count > 0 && <Badge tone="danger">{count}</Badge>}
+                                    </TabsTrigger>
+                                )
+                            })}
+                        </TabsList>
+                    </div>
+
+                    <TabsContent value="details" className="space-y-6">
+                        <SectionCard title="Datos de la propiedad" description="Lo que verá el huésped y lo que HIT necesita para escribirle." headingLevel={2}>
+                            <div className="space-y-4">
                                 {/*
                                   * `internal_name` es exclusivo de los Listings: el backend no
                                   * lo acepta en el `extra` de una propiedad. El campo se quitó
@@ -423,9 +420,9 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     name="name"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Nombre de la Propiedad <span className="text-danger">*</span></FormLabel>
+                                            <FormLabel>Nombre de la propiedad <RequiredMark /></FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Hotel Oasis" {...field} />
+                                                <Input placeholder="Ej: Edificio Mirador" autoComplete="organization" {...field} />
                                             </FormControl>
                                             <FormDescription>El nombre comercial que verán los huéspedes.</FormDescription>
                                             <FormMessage />
@@ -433,66 +430,69 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     )}
                                 />
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <FormField
                                         control={form.control}
                                         name="email"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Email de Contacto <span className="text-danger">*</span></FormLabel>
+                                                <FormLabel>Correo de contacto <RequiredMark /></FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="info@hotel.com" {...field} />
+                                                    <Input type="email" placeholder="contacto@tupropiedad.com" autoComplete="email" {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
+                                    {/* Texto libre a propósito: se guarda tal como se escribe (extensiones
+                                        incluidas). `PhoneInputField` normaliza y al vaciarse deja el prefijo. */}
                                     <FormField
                                         control={form.control}
                                         name="phone"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Teléfono</FormLabel>
+                                                <FormLabel>Teléfono <span className="font-normal text-ink-3">· opcional</span></FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="+57 ..." {...field} />
+                                                    <Input type="tel" placeholder="+57 300 123 4567" autoComplete="tel" {...field} />
                                                 </FormControl>
+                                                <FormDescription>Con indicativo. Se guarda tal como lo escribes.</FormDescription>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <FormField
                                         control={form.control}
                                         name="propertyTypeId"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Tipo de Propiedad <span className="text-danger">*</span></FormLabel>
-                                                <Select onValueChange={(v) => field.onChange(parseInt(v))} value={field.value ? String(field.value) : ""}>
+                                                <FormLabel>Tipo de propiedad <RequiredMark /></FormLabel>
+                                                <Select
+                                                    onValueChange={(v) => field.onChange(parseInt(v))}
+                                                    value={field.value ? String(field.value) : ""}
+                                                    disabled={isLoadingCatalogs || propertyTypesFailed}
+                                                >
                                                     <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Seleccionar tipo de propiedad" />
+                                                        <SelectTrigger ref={field.ref} className="w-full">
+                                                            <SelectValue placeholder={isLoadingCatalogs ? "Cargando…" : "Elige el tipo"} />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        {isLoadingCatalogs ? (
-                                                            <SelectItem value="__loading" disabled>
-                                                                Cargando tipos…
-                                                            </SelectItem>
-                                                        ) : propertyTypes.length > 0 ? (
-                                                            propertyTypes.map(t => (
-                                                                <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
-                                                            ))
-                                                        ) : (
-                                                            // Sin catálogo no hay ids válidos que ofrecer: los que
-                                                            // estaban fijos acá no coincidían con el catálogo real.
-                                                            <SelectItem value="__unavailable" disabled>
-                                                                No se pudo cargar el catálogo de tipos
-                                                            </SelectItem>
-                                                        )}
+                                                        {propertyTypes.map(t => (
+                                                            <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                                                        ))}
                                                     </SelectContent>
                                                 </Select>
+                                                {propertyTypesFailed && (
+                                                    <CatalogError
+                                                        what="los tipos de propiedad"
+                                                        consequence="Sin tipo no se puede guardar."
+                                                        retrying={isLoadingCatalogs}
+                                                        onRetry={loadPropertyTypes}
+                                                    />
+                                                )}
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -502,55 +502,50 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                         name="statusRecordId"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Estado <span className="text-danger">*</span></FormLabel>
-                                                <Select onValueChange={(v) => field.onChange(parseInt(v))} value={String(field.value)}>
+                                                <FormLabel>Estado <RequiredMark /></FormLabel>
+                                                <Select
+                                                    onValueChange={(v) => field.onChange(parseInt(v))}
+                                                    value={String(field.value)}
+                                                    disabled={isLoadingStatuses || statusesFailed}
+                                                >
                                                     <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Seleccionar estado" />
+                                                        <SelectTrigger ref={field.ref} className="w-full">
+                                                            <SelectValue placeholder={isLoadingStatuses ? "Cargando…" : "Elige el estado"} />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
-                                                        {statusRecords.length > 0 ? (
-                                                            statusRecords.map(s => (
-                                                                <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                                                            ))
-                                                        ) : (
-                                                            <SelectItem value="__unavailable" disabled>
-                                                                No se pudo cargar el catálogo de estados
-                                                            </SelectItem>
-                                                        )}
+                                                        {statusRecords.map(s => (
+                                                            <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                                                        ))}
                                                     </SelectContent>
                                                 </Select>
+                                                {statusesFailed ? (
+                                                    <CatalogError
+                                                        what="los estados"
+                                                        consequence="Se conserva el estado actual."
+                                                        retrying={isLoadingStatuses}
+                                                        onRetry={loadStatusRecords}
+                                                    />
+                                                ) : (
+                                                    <FormDescription>Inactiva: sus reservas no se procesan y no se pueden crear nuevas.</FormDescription>
+                                                )}
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="thumbnailUrl"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>URL de Miniatura (Thumbnail)</FormLabel>
-                                                <FormControl>
-                                                    <Input placeholder="https://..." {...field} value={field.value || ""} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                                     <FormField
                                         control={form.control}
                                         name="communicationsLocale"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Idioma de Comunicaciones</FormLabel>
+                                                <FormLabel>Idioma de comunicaciones</FormLabel>
                                                 <Select onValueChange={field.onChange} value={field.value || DEFAULT_COMMUNICATION_LOCALE}>
                                                     <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder="Seleccionar idioma" />
+                                                        <SelectTrigger className="w-full">
+                                                            <SelectValue placeholder="Elige el idioma" />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>
@@ -559,7 +554,39 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                                         ))}
                                                     </SelectContent>
                                                 </Select>
-                                                <FormDescription>Idioma de los correos al huésped (link de check-in, etc.).</FormDescription>
+                                                <FormDescription>Correos al huésped: link de check-in y recordatorios.</FormDescription>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    {/* La portada predeterminada VIAJA aunque no se toque: se muestra como
+                                        dato real, con vista previa, nunca escondida como placeholder. */}
+                                    <FormField
+                                        control={form.control}
+                                        name="thumbnailUrl"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Portada</FormLabel>
+                                                <div className="flex items-center gap-3">
+                                                    {field.value && brokenThumbnail !== field.value ? (
+                                                        // eslint-disable-next-line @next/next/no-img-element
+                                                        <img
+                                                            src={field.value}
+                                                            alt={isDefaultThumbnail ? "Portada predeterminada" : "Portada de la propiedad"}
+                                                            className="h-10 w-14 shrink-0 rounded-md border border-rule object-cover"
+                                                            // Una URL que no carga no deja el glifo de imagen rota: se oculta.
+                                                            onError={() => setBrokenThumbnail(field.value ?? null)}
+                                                        />
+                                                    ) : null}
+                                                    <FormControl>
+                                                        <Input type="url" placeholder="https://…" {...field} value={field.value || ""} />
+                                                    </FormControl>
+                                                </div>
+                                                <FormDescription>
+                                                    {isDefaultThumbnail
+                                                        ? "Portada predeterminada: se usa hasta que subas una foto en Fotos."
+                                                        : "La primera foto de la galería. Puedes cambiarla en Fotos."}
+                                                </FormDescription>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -571,121 +598,126 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                                     name="description"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Descripción</FormLabel>
+                                            <FormLabel>Descripción <span className="font-normal text-ink-3">· opcional</span></FormLabel>
                                             <FormControl>
-                                                <Textarea placeholder="Una hermosa propiedad..." className="min-h-25" {...field} />
+                                                <Textarea placeholder="Qué hace especial a esta propiedad." className="min-h-25" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
-                            </CardContent>
-                        </Card>
+                            </div>
+                        </SectionCard>
 
-                        <Card>
-                            <CardHeader divided>
-                                <Heading level={2} size="title" className="flex items-center gap-2">
-                                    <Icon icon={Link2} size="lg" className="text-primary" />
-                                    Identificación Externa
-                                </Heading>
-                                <CardDescription>
-                                    Si esta propiedad ya existe en tu PMS o en un canal, registra
-                                    aquí su origen y el ID que tiene allí. Es lo que permite asociar
-                                    sus reservas externas cuando la propiedad se creó manualmente.
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="pt-6">
-                                <FormField
-                                    control={form.control}
-                                    name="externalPmsIds"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <ExternalPmsIdsField
-                                                subject="propiedad"
-                                                value={field.value ?? []}
-                                                onChange={field.onChange}
-                                                rowErrors={externalPmsIdRowErrors}
-                                            />
-                                            {/* Quitar la última fila y guardar ES el borrado
-                                                (`externalPmsIds: []`, sin deshacer): se avisa
-                                                antes de que el PM pulse guardar, no después. */}
-                                            {(initialData?.externalPmsIds?.length ?? 0) > 0
-                                                && form.formState.dirtyFields.externalPmsIds
-                                                && (field.value ?? []).length === 0 && (
-                                                // Aparece al vaciar el campo: dinámico, se anuncia sin interrumpir.
-                                                <FeedbackBanner tone="warning" mode="dynamic" className="mt-3">
-                                                    Al guardar se eliminarán los vínculos con el PMS/canal
-                                                    y las reservas externas de esos orígenes dejarán de
-                                                    asociarse a esta propiedad.
-                                                </FeedbackBanner>
-                                            )}
-                                        </FormItem>
-                                    )}
-                                />
-                            </CardContent>
-                        </Card>
+                        <SectionCard
+                            title="Identificación externa"
+                            description="Si esta propiedad ya existe en tu PMS o en un canal, su ID aquí asocia sus reservas externas."
+                            headingLevel={2}
+                        >
+                            <FormField
+                                control={form.control}
+                                name="externalPmsIds"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <ExternalPmsIdsField
+                                            subject="propiedad"
+                                            value={field.value ?? []}
+                                            onChange={field.onChange}
+                                            rowErrors={externalPmsIdRowErrors}
+                                        />
+                                        {/* Quitar la última fila y guardar ES el borrado
+                                            (`externalPmsIds: []`, sin deshacer): se avisa
+                                            antes de que el PM pulse guardar, no después. */}
+                                        {(initialData?.externalPmsIds?.length ?? 0) > 0
+                                            && form.formState.dirtyFields.externalPmsIds
+                                            && (field.value ?? []).length === 0 && (
+                                            // Aparece al vaciar el campo: dinámico, se anuncia sin interrumpir.
+                                            <FeedbackBanner tone="warning" mode="dynamic" className="mt-3">
+                                                Al guardar se eliminarán los vínculos con el PMS/canal
+                                                y las reservas externas de esos orígenes dejarán de
+                                                asociarse a esta propiedad.
+                                            </FeedbackBanner>
+                                        )}
+                                    </FormItem>
+                                )}
+                            />
+                        </SectionCard>
 
                         <PropertiesAmenities />
+
+                        {/* Zona de peligro: solo al editar y lejos de la acción principal. */}
+                        {!isCreate && (
+                            <SectionCard
+                                title="Eliminar propiedad"
+                                description="Sus alojamientos y reservas se pierden. Esta acción no se puede deshacer."
+                                headingLevel={2}
+                                flush
+                                actions={
+                                    <AlertDialog open={isDeleteDialogOpen} onOpenChange={(open) => { if (!open && isDeleting) return; setIsDeleteDialogOpen(open) }}>
+                                        <AlertDialogTrigger asChild>
+                                            <Button type="button" variant="outline-destructive">
+                                                <Icon icon={Trash2} />
+                                                Eliminar propiedad
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>¿Eliminar esta propiedad?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    Se elimina {initialData?.name ? `«${initialData.name}»` : "la propiedad"} con todos
+                                                    sus datos asociados. No se puede deshacer.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+                                                <AlertDialogAction className={buttonVariants({ variant: "destructive" })} keepOpen pending={isDeleting} pendingLabel="Eliminando…" onClick={() => void onDelete()}>
+                                                    Eliminar propiedad
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                }
+                            >
+                                <span className="sr-only">Zona de peligro</span>
+                            </SectionCard>
+                        )}
                     </TabsContent>
 
-                    <TabsContent value="location" className="space-y-4">
+                    <TabsContent value="location" className="space-y-6">
                         <PropertiesLocation />
                     </TabsContent>
 
-                    <TabsContent value="units" className="space-y-4">
+                    <TabsContent value="units" className="space-y-6">
                         <PropertiesUnits />
                     </TabsContent>
 
-                    <TabsContent value="photos" className="space-y-4">
+                    <TabsContent value="photos" className="space-y-6">
                         <PropertiesPhotos />
                     </TabsContent>
 
-                    {initialData && (
-                        <TabsContent value="automations" className="space-y-4">
+                    {!isCreate && (
+                        <TabsContent value="automations" className="space-y-6">
                             <PropertiesAutomation onNavigateToDocuments={() => setActiveTab("documents")} />
                         </TabsContent>
                     )}
 
-                    {initialData && (
-                        <TabsContent value="documents" className="space-y-4">
+                    {!isCreate && (
+                        <TabsContent value="documents" className="space-y-6">
                             <PropertiesDocuments />
                         </TabsContent>
                     )}
                 </Tabs>
 
-                <div className="flex justify-between items-center">
-                    {initialData ? (
-                        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-                            <DialogTrigger asChild>
-                                <Button type="button" variant="outline-destructive">
-                                    <Icon icon={Trash2} className="mr-2" />
-                                    Eliminar Propiedad
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>¿Estás completamente seguro?</DialogTitle>
-                                    <DialogDescription>
-                                        Esta acción no se puede deshacer. Esto eliminará permanentemente la propiedad
-                                        y todos sus datos asociados.
-                                    </DialogDescription>
-                                </DialogHeader>
-                                <DialogFooter>
-                                    <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeleting}>
-                                        Cancelar
-                                    </Button>
-                                    <Button variant="destructive" onClick={onDelete} loading={isDeleting}>
-                                        Confirmar Eliminación
-                                    </Button>
-                                </DialogFooter>
-                            </DialogContent>
-                        </Dialog>
-                    ) : <div />}
-
-                    <Button size="lg" type="submit" loading={isLoading}>
-                        {initialData ? "Actualizar Propiedad" : "Crear Propiedad"}
-                    </Button>
-                </div>
+                {showActionBar && (
+                    <FormActionBar status={barStatus}>
+                        <Button type="button" variant="outline" onClick={() => router.push("/dashboard/properties")} disabled={isLoading}>
+                            Cancelar
+                        </Button>
+                        <Button type="submit" loading={isLoading} loadingLabel={isCreate ? "Creando…" : "Guardando…"} className="min-w-44">
+                            {isCreate ? "Crear propiedad" : "Guardar cambios"}
+                        </Button>
+                    </FormActionBar>
+                )}
             </form>
 
             <DeactivationConfirmDialog
@@ -697,52 +729,6 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
                 }}
                 onCancel={() => setPendingDeactivation(null)}
             />
-
-            <Dialog open={isValidationErrorOpen} onOpenChange={setIsValidationErrorOpen}>
-                <DialogContent className="sm:max-w-110">
-                    <DialogHeader>
-                        <div className="flex items-center gap-3 text-danger mb-2">
-                            <Icon icon={AlertCircle} size="xl" />
-                            <DialogTitle>Información Faltante</DialogTitle>
-                        </div>
-                        <DialogDescription className="text-ink-2">
-                            Completa los siguientes campos para poder guardar la propiedad:
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Surface tone="sunk" className="my-2 max-h-64 overflow-y-auto p-4">
-                        <ul className="space-y-2.5">
-                            {validationErrors.map((err, i) => (
-                                <li key={i} className="flex items-start gap-2.5">
-                                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-destructive shrink-0" />
-                                    <div className="min-w-0">
-                                        <p className="text-sm font-semibold text-ink leading-tight">
-                                            {err.label}
-                                            <Badge tone="neutral" className="ml-2">{err.tab}</Badge>
-                                        </p>
-                                        <p className="text-xs text-ink-3">{err.message}</p>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </Surface>
-                    <DialogFooter>
-                        <Button 
-                            className="w-full"
-                            onClick={() => {
-                                setIsValidationErrorOpen(false)
-                                // Jump to the tab of the first missing field
-                                const firstTab = validationErrors[0]?.tab
-                                if (firstTab === "Ubicación") setActiveTab("location")
-                                else if (firstTab === "Unidades") setActiveTab("units")
-                                else if (firstTab === "Fotos") setActiveTab("photos")
-                                else setActiveTab("details")
-                            }}
-                        >
-                            Entendido, voy a revisar
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </Form>
     )
 }

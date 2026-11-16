@@ -46,15 +46,23 @@ archivo:
 | Pulsable sin forma de botón | `UnstyledButton` | `ui/unstyled-button.tsx` |
 | Enlace de dato | `TextLink` | `ui/text-link.tsx` |
 | Campo | `Input`, `Textarea`, `PasswordInput`, `Select`, `PhoneInputField`, `FileInput` | `ui/input.tsx`, `ui/textarea.tsx`, `ui/password-input.tsx`, `ui/select.tsx`, `ui/phone-input-field.tsx`, `ui/file-input.tsx` |
+| Selector con buscador | `Combobox` (`value`, `onValueChange`, `options`, `placeholder`, `loading`, `size`, `name`) — reemplaza a `Select` con listas largas | `ui/combobox.tsx` |
+| Entero con − y + | `NumberStepper` (`value`, `onValueChange`, `min`, `max`, `step`, `decrementLabel`, `incrementLabel`) | `ui/number-stepper.tsx` |
+| Monto con moneda | `MoneyField` (`amount`, `onAmountChange`, `currency`, `onCurrencyChange`, `currencies`, `currencyLabel`, `loadingCurrencies`) | `ui/money-field.tsx` |
 | Campo de solo lectura | `ReadOnlyField` (`label`, `value`, `hint`, `locked`) | `ui/read-only-field.tsx` |
 | Error y ayuda de campo | `FormMessage`, `FieldError`, `FieldHint` | `ui/form.tsx` |
+| Catálogo que no cargó | `CatalogError` (`what`, `consequence`, `retrying`, `onRetry`; error + «Reintentar» junto al campo) | `shared/catalog-error.tsx` |
+| Marca de obligatorio | `RequiredMark` (asterisco `text-danger` en la `Label`) | `shared/required-mark.tsx` |
 | Etiqueta | `Label` | `ui/label.tsx` |
 | Selección | `Checkbox`, `Radio`, `Switch`, `Tabs` (`TabsList size="default" \| "sm"`) | `ui/checkbox.tsx`, `ui/radio.tsx`, `ui/switch.tsx`, `ui/tabs.tsx` |
 | Interruptor con texto | `SwitchField` (título = nombre del control; texto y error unidos; `variant`, `tone`, `size`) | `ui/switch-field.tsx` |
 | Casilla con texto | `CheckboxField` (`label`, `action` fuera de la etiqueta) | `ui/checkbox-field.tsx` |
+| Casilla en tarjeta | `CheckboxCard` (`label`, `description`, `checked`, `onCheckedChange`, `disabled`, `name`, `value`; la tarjeta entera es la etiqueta, `Label htmlFor` hermana del control) | `ui/checkbox-card.tsx` |
+| Zona de carga | `UploadZone` (`accept`, `multiple`, `status` idle/uploading/error, `title`, `hint`, `uploadingLabel`, `errorMessage`, `onFiles`, `onRejected`, `onRetry`; botón real + `FileInput` hermano) | `ui/upload-zone.tsx` |
 | Superficie | `Surface`, `Card`, `SectionCard` (`tone` inverse/selected/warning/danger/sunk, `interactive`, `dashed`, `flat`, `floating`; el título de una tarjeta es `Heading`, no hay `CardTitle`) | `ui/card.tsx`, `ui/section-card.tsx` |
 | Pantalla | `Page`, `PageHeader`, `PageBreadcrumb` | `ui/page.tsx` |
-| Barra fija al pie (portal) | `BottomBar` | `ui/bottom-bar.tsx` |
+| Barra fija al pie (portal) | `BottomBar` (superficie compartida: `bottomBarSurface`) | `ui/bottom-bar.tsx` |
+| Barra de acciones de un formulario (panel) | `FormActionBar` (`status` a la izquierda, `Button` a la derecha; `sticky bottom-0 z-20`, ancho de la `Page`; el formulario reserva `pb-24`) | `ui/form-action-bar.tsx` |
 | Título y rótulo | `Heading`, `Overline` | `ui/heading.tsx`, `ui/overline.tsx` |
 | Estado y etiqueta | `StatusPill`, `Badge` | `ui/status-pill.tsx`, `ui/badge.tsx` |
 | Aviso | `FeedbackBanner` | `ui/feedback-banner.tsx` |
@@ -66,7 +74,7 @@ archivo:
 | Término y definición | `DefinitionItem` (dentro de un `<dl>`) | `ui/definition-list.tsx` |
 | Vacío | `EmptyState` | `ui/empty-state.tsx` |
 | Tabla | `Table` (composición), `DataTable` (ordenar y paginar) | `ui/table.tsx`, `shared/data-table.tsx` |
-| Modal | `Dialog`, `AlertDialog`, `Sheet`, `Popover`, `DropdownMenu` | `ui/dialog.tsx`, `ui/alert-dialog.tsx`, `ui/sheet.tsx`, `ui/popover.tsx`, `ui/dropdown-menu.tsx` |
+| Modal | `Dialog`, `AlertDialog`, `Sheet`, `Popover`, `DropdownMenu`; formulario largo: `DialogContent layout="panel"` + `DialogHeader divided` + `DialogBody` (scroll) + `DialogFooter divided` (fijo) (`Dialog`/`AlertDialog` devuelven el foco a quien abrió aunque se abran por estado: `useRestoreFocusToOpener`) | `ui/dialog.tsx`, `ui/alert-dialog.tsx`, `ui/sheet.tsx`, `ui/popover.tsx`, `ui/dropdown-menu.tsx` |
 | Ícono | `Icon`, `IconBadge` (`interactive` dentro de un pulsable con `group`) | `ui/icon.tsx`, `ui/icon-badge.tsx` |
 | Persona | `Avatar` | `ui/avatar.tsx` |
 | Marca | `Logo`, `ChannelLogo`, `ProviderMarks` | `ui/Logo.tsx`, `brand/ChannelLogo.tsx`, `brand/ProviderMarks.tsx` |

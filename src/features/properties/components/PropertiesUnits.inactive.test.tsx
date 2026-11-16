@@ -28,7 +28,7 @@ function Wrapper({ children, statusRecordId }: { children: ReactNode; statusReco
 
 async function openNewUnit(statusRecordId: number) {
     render(<Wrapper statusRecordId={statusRecordId}><PropertiesUnits /></Wrapper>)
-    await userEvent.setup().click(screen.getByRole("button", { name: /Añadir Unidad/ }))
+    await userEvent.setup().click(screen.getByRole("button", { name: /Añadir alojamiento/ }))
     return screen.getByRole("switch", { name: "Alojamiento activo" })
 }
 
