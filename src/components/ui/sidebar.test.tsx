@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { Home, Settings } from "lucide-react"
 
-import { SIDEBAR_STORAGE_KEY, SidebarGroupLabel, SidebarItem, SidebarProvider, SidebarRoot, SidebarTrigger } from "./sidebar"
+import { SIDEBAR_COOKIE_NAME, SIDEBAR_STORAGE_KEY, SidebarGroupLabel, SidebarItem, SidebarProvider, SidebarRoot, SidebarTrigger } from "./sidebar"
 import { TooltipProvider } from "./tooltip"
 
 // Radix Tooltip mide el disparador; jsdom no trae ResizeObserver.
@@ -13,12 +13,12 @@ vi.mock("next/link", () => ({
     default: ({ href, children, ...props }: React.ComponentProps<"a"> & { href: string }) => <a href={href} {...props}>{children}</a>,
 }))
 
-function Demo({ collapsible = true }: { collapsible?: boolean }) {
+function Demo({ collapsible = true, defaultCollapsed, onTrigger }: { collapsible?: boolean; defaultCollapsed?: boolean; onTrigger?: (event: React.MouseEvent) => void }) {
     return (
         <TooltipProvider delayDuration={0}>
-            <SidebarProvider collapsible={collapsible}>
-                <SidebarRoot>
-                    <SidebarTrigger />
+            <SidebarProvider collapsible={collapsible} defaultCollapsed={defaultCollapsed}>
+                <SidebarRoot id="lo-que-diga-el-consumidor">
+                    <SidebarTrigger onClick={onTrigger} aria-label="nombre ajeno" />
                     <nav aria-label="Principal">
                         <ul>
                             <SidebarItem href="/dashboard/properties" icon={Home} label="Propiedades" active />
@@ -54,6 +54,8 @@ describe("Sidebar (primitiva) — contraer y expandir", () => {
         expect(panel).toHaveAttribute("data-state", "collapsed")
         expect(panel.className).toContain("w-16")
         expect(window.localStorage.getItem(SIDEBAR_STORAGE_KEY)).toBe("1")
+        // La misma preferencia en la cookie, para que el servidor pinte la barra ya contraída.
+        expect(document.cookie).toContain(`${SIDEBAR_COOKIE_NAME}=collapsed`)
         expect(screen.getByRole("button", { name: "Expandir menú" })).toHaveAttribute("aria-expanded", "false")
         // Nombre accesible intacto (texto sr-only); el rótulo del grupo y la marca ya no se ven.
         expect(screen.getByRole("link", { name: "Propiedades" })).toHaveAttribute("aria-current", "page")
@@ -91,5 +93,48 @@ describe("Sidebar (primitiva) — contraer y expandir", () => {
         expect(screen.getByRole("complementary")).toHaveAttribute("data-state", "expanded")
         expect(screen.queryByRole("button", { name: /menú/ })).toBeNull()
         expect(within(screen.getByRole("navigation")).getByText("Propiedades")).toBeVisible()
+    })
+})
+
+
+describe("Sidebar (primitiva) — servidor y consumidores", () => {
+    beforeEach(() => {
+        window.localStorage.clear()
+        document.cookie = `${SIDEBAR_COOKIE_NAME}=; path=/; max-age=0`
+    })
+
+    it("defaultCollapsed (la cookie) manda cuando no hay nada en localStorage: nace contraída, sin salto", () => {
+        render(<Demo defaultCollapsed />)
+        const panel = screen.getByRole("complementary")
+        expect(panel).toHaveAttribute("data-state", "collapsed")
+        expect(panel.className).toContain("w-16")
+        expect(screen.getByRole("button", { name: "Expandir menú" })).toBeInTheDocument()
+    })
+
+    it("localStorage gana sobre la cookie cuando ambos existen", () => {
+        window.localStorage.setItem(SIDEBAR_STORAGE_KEY, "0")
+        render(<Demo defaultCollapsed />)
+        expect(screen.getByRole("complementary")).toHaveAttribute("data-state", "expanded")
+    })
+
+    it("el consumidor no pisa lo que define al control: id del panel, nombre y toggle; su onClick se compone", async () => {
+        const user = userEvent.setup()
+        const onTrigger = vi.fn()
+        render(<Demo onTrigger={onTrigger} />)
+        const panel = screen.getByRole("complementary")
+        const trigger = screen.getByRole("button", { name: "Contraer menú" })
+        expect(screen.queryByRole("button", { name: "nombre ajeno" })).toBeNull()
+        expect(panel.id).not.toBe("lo-que-diga-el-consumidor")
+        expect(trigger).toHaveAttribute("aria-controls", panel.id)
+        await user.click(trigger)
+        expect(onTrigger).toHaveBeenCalledTimes(1)
+        expect(panel).toHaveAttribute("data-state", "collapsed")
+    })
+
+    it("un onClick externo con preventDefault evita el cambio", async () => {
+        const user = userEvent.setup()
+        render(<Demo onTrigger={(event) => event.preventDefault()} />)
+        await user.click(screen.getByRole("button", { name: "Contraer menú" }))
+        expect(screen.getByRole("complementary")).toHaveAttribute("data-state", "expanded")
     })
 })

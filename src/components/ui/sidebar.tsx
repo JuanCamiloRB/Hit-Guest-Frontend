@@ -5,6 +5,8 @@ import Link from "next/link"
 import { PanelLeftClose, PanelLeftOpen, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { SIDEBAR_COOKIE_COLLAPSED, SIDEBAR_COOKIE_EXPANDED, SIDEBAR_COOKIE_NAME, SIDEBAR_STORAGE_KEY } from "@/lib/sidebar-preference"
+import { useHasHydrated } from "@/hooks/useHasHydrated"
 import { Button } from "./button"
 import { Icon } from "./icon"
 import { Badge } from "./badge"
@@ -26,7 +28,12 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip"
  * en `primary`, igual que la selección en el resto del panel.
  */
 
-const STORAGE_KEY = "hitguest:sidebar-collapsed"
+// La misma preferencia en localStorage y en una cookie: el layout (servidor)
+// lee la cookie y pinta la barra ya contraída desde el primer HTML, sin saltar
+// de 256 a 64 px al hidratar. Los nombres viven en `lib/sidebar-preference`
+// (sin "use client") para que el servidor reciba el valor y no una referencia.
+const STORAGE_KEY = SIDEBAR_STORAGE_KEY
+const COOKIE_NAME = SIDEBAR_COOKIE_NAME
 const listeners = new Set<() => void>()
 
 function writeCollapsed(value: boolean) {
@@ -34,6 +41,11 @@ function writeCollapsed(value: boolean) {
     window.localStorage.setItem(STORAGE_KEY, value ? "1" : "0")
   } catch {
     // Sin almacenamiento (ventana privada, bloqueado): la sesión actual sigue sirviendo.
+  }
+  try {
+    document.cookie = `${COOKIE_NAME}=${value ? SIDEBAR_COOKIE_COLLAPSED : SIDEBAR_COOKIE_EXPANDED}; path=/; max-age=31536000; SameSite=Lax`
+  } catch {
+    // Sin cookies: la próxima carga arranca ancha y se ajusta al hidratar.
   }
   listeners.forEach((listener) => listener())
 }
@@ -50,16 +62,15 @@ function subscribe(listener: () => void) {
   }
 }
 
-// Sin almacenamiento el valor no cambia por fuera: una sola instantánea en memoria.
-let memoryCollapsed = false
-function readSnapshot(): boolean {
+// Solo SIN almacenamiento (ventana privada, bloqueado) el valor vive en memoria.
+let memoryCollapsed: boolean | null = null
+function readSnapshot(fallback: boolean): boolean {
   try {
     const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored !== null) return stored === "1"
+    return stored === null ? fallback : stored === "1"
   } catch {
-    // ignorado: cae a memoria
+    return memoryCollapsed ?? fallback
   }
-  return memoryCollapsed
 }
 
 interface SidebarContextValue {
@@ -88,12 +99,15 @@ function useSidebar(): SidebarContextValue {
 
 function SidebarProvider({
   collapsible = true,
+  defaultCollapsed = false,
   children,
 }: {
   collapsible?: boolean
+  /** Lo que dice la cookie `hitguest_sidebar` (la lee el layout en el servidor). */
+  defaultCollapsed?: boolean
   children: React.ReactNode
 }) {
-  const stored = React.useSyncExternalStore(subscribe, readSnapshot, () => false)
+  const stored = React.useSyncExternalStore(subscribe, () => readSnapshot(defaultCollapsed), () => defaultCollapsed)
   const panelId = React.useId()
   const collapsed = collapsible && stored
   const setCollapsed = React.useCallback((value: boolean) => {
@@ -107,20 +121,27 @@ function SidebarProvider({
   return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>
 }
 
-/** El `<aside>` que ocupa la columna; su ancho sigue al estado con transición. */
+/**
+ * El `<aside>` que ocupa la columna; su ancho sigue al estado. La transición
+ * se activa después de hidratar: así, si la preferencia guardada y la cookie
+ * no coinciden, el ajuste inicial es instantáneo y no un salto animado.
+ * `id` y `data-state` son de la primitiva: van después de `...props`.
+ */
 function SidebarRoot({ className, children, ...props }: React.ComponentProps<"aside">) {
   const { collapsed, panelId } = useSidebar()
+  const hydrated = useHasHydrated()
   return (
     <aside
+      {...props}
       id={panelId}
       data-slot="sidebar"
       data-state={collapsed ? "collapsed" : "expanded"}
       className={cn(
-        "flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out motion-reduce:transition-none",
+        "flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground",
+        hydrated && "transition-[width] duration-200 ease-out motion-reduce:transition-none",
         collapsed ? "w-16" : "w-64",
         className,
       )}
-      {...props}
     >
       {children}
     </aside>
@@ -132,7 +153,7 @@ function SidebarRoot({ className, children, ...props }: React.ComponentProps<"as
  * propia (caja `sidebar-accent` con borde) para que se vea como un control y
  * no como un ícono suelto sobre el navy.
  */
-function SidebarTrigger({ className, ...props }: Omit<React.ComponentProps<typeof Button>, "children">) {
+function SidebarTrigger({ className, onClick, ...props }: Omit<React.ComponentProps<typeof Button>, "children">) {
   const { collapsed, collapsible, toggle, panelId } = useSidebar()
   if (!collapsible) return null
   const label = collapsed ? "Expandir menú" : "Contraer menú"
@@ -143,17 +164,23 @@ function SidebarTrigger({ className, ...props }: Omit<React.ComponentProps<typeo
           type="button"
           variant="ghost"
           size="icon-sm"
+          {...props}
+          // Lo que define al control va DESPUÉS de `...props`: un consumidor no
+          // puede pisar el nombre, el estado ni el `aria-controls`. Su `onClick`
+          // se compone; solo con `preventDefault` evita el cambio.
           data-slot="sidebar-trigger"
           aria-label={label}
           aria-expanded={!collapsed}
           aria-controls={panelId}
-          onClick={toggle}
+          onClick={(event) => {
+            onClick?.(event)
+            if (!event.defaultPrevented) toggle()
+          }}
           className={cn(
-            "border border-sidebar-border bg-sidebar-accent text-sidebar-foreground shadow-xs",
-            "hover:border-sidebar-foreground/40 hover:bg-sidebar-foreground/20 hover:text-sidebar-foreground focus-visible:outline-sidebar-ring",
+            "border border-sidebar-control-border bg-sidebar-control text-sidebar-foreground shadow-xs",
+            "hover:border-sidebar-foreground/50 hover:bg-sidebar-foreground/25 hover:text-sidebar-foreground focus-visible:outline-sidebar-ring",
             className,
           )}
-          {...props}
         >
           <Icon icon={collapsed ? PanelLeftOpen : PanelLeftClose} size="md" />
         </Button>
@@ -227,5 +254,6 @@ function SidebarItem({ href, icon, label, active = false, badge }: SidebarItemPr
   )
 }
 
-export { SidebarProvider, SidebarRoot, SidebarTrigger, SidebarGroupLabel, SidebarItem, useSidebar, STORAGE_KEY as SIDEBAR_STORAGE_KEY }
+export { SidebarProvider, SidebarRoot, SidebarTrigger, SidebarGroupLabel, SidebarItem, useSidebar }
+export { SIDEBAR_STORAGE_KEY, SIDEBAR_COOKIE_NAME } from "@/lib/sidebar-preference"
 export type { SidebarItemProps }
