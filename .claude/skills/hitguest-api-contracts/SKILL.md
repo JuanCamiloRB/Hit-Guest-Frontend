@@ -2537,10 +2537,15 @@ Cómo lo trata el front (`reservations-service.ts`, `lib/not-ready-retry.ts`,
   Network para saber qué página fue.
 - El reintento repite **la lista completa** (las reservas se mueven entre
   páginas mientras sincroniza), 3 veces cada 2,5 s (`NOT_READY_RETRIES`,
-  `NOT_READY_RETRY_MS`), tanto en Operaciones (`useCachedLoad`) como en el
-  Tablero (`loadWhileNotReady` sobre `reservationsCache.load()`, que comparte
-  una petición en curso en vez de cancelarla). La espera se corta en el acto al
-  desmontar, pulsar «Reintentar» o empezar otra carga.
+  `NOT_READY_RETRY_MS`), tanto en Operaciones (`useCachedLoad`, modo `retry`)
+  como en el Tablero (`loadWhileNotReady`). **Los reintentos automáticos de los
+  dos usan `reservationsCache.load()`**, que comparte una petición en curso del
+  otro consumidor en vez de cancelarla; `refresh()` queda solo para acciones y
+  eventos que invalidan de verdad (`reservationCreated`, el botón de refrescar).
+  Con Tablero y Operaciones montados, un 202 produce exactamente dos
+  peticiones y ninguna cancelada (prueba en `useBillingData.test.tsx`). La
+  espera se corta en el acto al desmontar, pulsar «Reintentar» o empezar otra
+  carga.
 - Un 202 **no pasa por `console.error`** en ninguna capa: un solo
   `console.info` por intento con página y número de intento. Agotados los
   reintentos queda «sincronizando» con el reintento manual; con datos

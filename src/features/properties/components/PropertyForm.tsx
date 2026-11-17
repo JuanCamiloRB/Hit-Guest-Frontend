@@ -231,14 +231,26 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
         setActiveTab(tab)
         const firstField = Object.keys(source).find((field) => (PROPERTY_FIELD_META[field]?.tab ?? "details") === tab)
         if (!firstField) return
-        requestAnimationFrame(() => {
-            try {
-                form.setFocus(firstField as Parameters<typeof form.setFocus>[0])
-            } catch {
-                // Un campo sin ref registrado (por ejemplo una lista): basta con la pestaña.
-            }
-        })
+        // El campo puede no estar montado todavía (otra pestaña): el foco lo da el
+        // efecto de abajo cuando la pestaña ya pintó. Determinista, sin rAF.
+        pendingFocusRef.current = { tab, field: firstField }
+        setFocusTick((tick) => tick + 1)
     }
+
+    const pendingFocusRef = useRef<{ tab: FormTabId; field: string } | null>(null)
+    const [focusTick, setFocusTick] = useState(0)
+    useEffect(() => {
+        const pending = pendingFocusRef.current
+        if (!pending || pending.tab !== activeTab) return
+        pendingFocusRef.current = null
+        try {
+            form.setFocus(pending.field as Parameters<typeof form.setFocus>[0])
+        } catch {
+            // Un campo sin ref registrado (por ejemplo una lista): basta con la pestaña.
+        }
+        // `focusTick` es la señal; `form` es estable.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [focusTick, activeTab])
 
     function onInvalid(invalid: Record<string, unknown>) {
         setShowErrorSummary(true)
@@ -365,7 +377,7 @@ export function PropertyForm({ initialData }: PropertyFormProps) {
             {/* `pb-24`: el formulario reserva el alto de la barra fija para que nunca tape un campo. */}
             {/* `noValidate`: zod es el único validador. Sin esto, `type="email"`/`type="url"`
                 disparan la burbuja nativa y `onInvalid` (aviso, pestaña, foco) nunca corre. */}
-            <form noValidate onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6 pb-24">
+            <form noValidate onSubmit={(event) => void form.handleSubmit(onSubmit, onInvalid)(event)} className="space-y-6 pb-24">
                 {showErrorSummary && totalErrors > 0 && (
                     <FeedbackBanner tone="danger" mode="blocking" title={totalErrors === 1 ? "Falta 1 campo" : `Faltan ${totalErrors} campos`}>
                         <span className="flex flex-wrap items-center gap-x-2 gap-y-1">

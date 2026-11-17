@@ -41,7 +41,13 @@ export interface CachedLoadState<T> {
     refresh: () => void
 }
 
-type Run = (mode: "load" | "refresh", attempt?: number) => Promise<void>
+/**
+ * `load`: primera carga; `retry`: reintento automático de un 202 — ambos con
+ * `cache.load()`, que comparte la petición que otro consumidor (el Tablero)
+ * tenga en vuelo en vez de cancelarla. `refresh`: solo acciones y eventos que
+ * invalidan de verdad lo anterior (`refresh()`, `refreshOn`): `cache.refresh()`.
+ */
+type Run = (mode: "load" | "retry" | "refresh", attempt?: number) => Promise<void>
 
 const serverSnapshot = () => null
 
@@ -101,7 +107,7 @@ export function useCachedLoad<T>(cache: StaleCache<T>, options: CachedLoadOption
                     setIssue({ kind: "retrying" })
                     if (attempt < retries) {
                         retryScheduled = true
-                        retryTimer = setTimeout(() => void run("refresh", attempt + 1), retryMs)
+                        retryTimer = setTimeout(() => void run("retry", attempt + 1), retryMs)
                     }
                 } else {
                     console.error("[useCachedLoad] no se pudo cargar:", error)

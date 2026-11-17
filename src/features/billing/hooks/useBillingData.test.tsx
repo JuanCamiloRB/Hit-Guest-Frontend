@@ -576,4 +576,34 @@ describe("useBillingData — un 202 se reintenta solo, la lista completa, como e
         expect(both.current.billing.status).toBe("ready")
         expect(both.current.ops.status).toBe("ready")
     })
+
+    it("ambos reciben un 202 y reintentan a la vez: exactamente dos peticiones y ninguna cancelada", async () => {
+        const signals: AbortSignal[] = []
+        // La segunda petición tarda (como en la red): así los dos reintentos la encuentran en vuelo.
+        const second = deferred<unknown[]>()
+        mocks.list.mockImplementation(async (signal: AbortSignal) => {
+            signals.push(signal)
+            if (signals.length === 1) throw new ReservationsNotReadyError("sync")
+            return second.promise
+        })
+        const { result: both } = renderHook(() => ({ billing: useBillingData(), ops: useReservations() }))
+        await flush()
+        expect(mocks.list).toHaveBeenCalledTimes(1)
+        expect(both.current.billing.status).toBe("syncing")
+        expect(both.current.ops.syncing).toBe(true)
+
+        // Los dos temporizadores vencen juntos: el reintento del uno es la petición del otro,
+        // y ninguno cancela al otro (antes Operaciones hacía `refresh()` y abortaba la compartida).
+        await wait(NOT_READY_RETRY_MS)
+        await flush()
+        expect(mocks.list).toHaveBeenCalledTimes(2)
+        expect(signals.map((s) => s.aborted)).toEqual([false, false])
+        await act(async () => { second.resolve([{ id: "a" }]) })
+        await flush()
+        expect(both.current.billing.status).toBe("ready")
+        expect(both.current.ops.status).toBe("ready")
+        await wait(NOT_READY_RETRY_MS * 3)
+        expect(mocks.list).toHaveBeenCalledTimes(2)
+        expect(signals.map((s) => s.aborted)).toEqual([false, false])
+    })
 })
