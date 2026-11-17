@@ -127,7 +127,11 @@ function SidebarRoot({ className, children, ...props }: React.ComponentProps<"as
   )
 }
 
-/** Contraer / expandir. Solo existe cuando la barra es contraíble. */
+/**
+ * Contraer / expandir. Solo existe cuando la barra es contraíble. Con forma
+ * propia (caja `sidebar-accent` con borde) para que se vea como un control y
+ * no como un ícono suelto sobre el navy.
+ */
 function SidebarTrigger({ className, ...props }: Omit<React.ComponentProps<typeof Button>, "children">) {
   const { collapsed, collapsible, toggle, panelId } = useSidebar()
   if (!collapsible) return null
@@ -144,10 +148,14 @@ function SidebarTrigger({ className, ...props }: Omit<React.ComponentProps<typeo
           aria-expanded={!collapsed}
           aria-controls={panelId}
           onClick={toggle}
-          className={cn("text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-sidebar-ring", className)}
+          className={cn(
+            "border border-sidebar-border bg-sidebar-accent text-sidebar-foreground shadow-xs",
+            "hover:border-sidebar-foreground/40 hover:bg-sidebar-foreground/20 hover:text-sidebar-foreground focus-visible:outline-sidebar-ring",
+            className,
+          )}
           {...props}
         >
-          <Icon icon={collapsed ? PanelLeftOpen : PanelLeftClose} />
+          <Icon icon={collapsed ? PanelLeftOpen : PanelLeftClose} size="md" />
         </Button>
       </TooltipTrigger>
       <TooltipContent side="right">{label}</TooltipContent>
