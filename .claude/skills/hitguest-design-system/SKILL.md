@@ -61,6 +61,8 @@ archivo:
 | Zona de carga | `UploadZone` (`accept`, `multiple`, `status` idle/uploading/error, `title`, `hint`, `uploadingLabel`, `errorMessage`, `onFiles`, `onRejected`, `onRetry`; botón real + `FileInput` hermano) | `ui/upload-zone.tsx` |
 | Superficie | `Surface`, `Card`, `SectionCard` (`tone` inverse/selected/warning/danger/sunk, `interactive`, `dashed`, `flat`, `floating`; el título de una tarjeta es `Heading`, no hay `CardTitle`) | `ui/card.tsx`, `ui/section-card.tsx` |
 | Pantalla | `Page`, `PageHeader`, `PageBreadcrumb` | `ui/page.tsx` |
+| Barra lateral del panel | `SidebarProvider`, `SidebarRoot`, `SidebarTrigger`, `SidebarItem`, `SidebarGroupLabel` (contraíble, preferencia en `localStorage`) | `ui/sidebar.tsx` |
+| Ayuda flotante | `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` (refuerzo visual; el nombre accesible va aparte) | `ui/tooltip.tsx` |
 | Barra fija al pie (portal) | `BottomBar` (superficie compartida: `bottomBarSurface`) | `ui/bottom-bar.tsx` |
 | Barra de acciones de un formulario (panel) | `FormActionBar` (`status` a la izquierda, `Button` a la derecha; `sticky bottom-0 z-20`, ancho de la `Page`; el formulario reserva `pb-24`) | `ui/form-action-bar.tsx` |
 | Título y rótulo | `Heading`, `Overline` | `ui/heading.tsx`, `ui/overline.tsx` |

@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, within } from "@testing-library/react"
 import { Sidebar } from "./Sidebar"
+import { SIDEBAR_STORAGE_KEY, SidebarProvider } from "@/components/ui/sidebar"
+import { TooltipProvider } from "@/components/ui/tooltip"
+
+globalThis.ResizeObserver = globalThis.ResizeObserver ?? class { observe() {} unobserve() {} disconnect() {} }
 
 const mockUser = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 const mockPathname = vi.hoisted(() => ({ current: "/dashboard" }))
@@ -138,5 +142,24 @@ describe("Sidebar — consola de soporte (contrato §5b)", () => {
         render(<Sidebar />)
         expect(screen.queryByRole("link", { name: /Consola de soporte/ })).toBeNull()
         expect(screen.getByRole("link", { name: "Tablero" })).toBeInTheDocument()
+    })
+})
+
+
+describe("Sidebar — contraída", () => {
+    it("con la preferencia guardada arranca contraída: ítems con nombre, rótulo oculto, avatar solo, y se expande desde el disparador", async () => {
+        window.localStorage.setItem(SIDEBAR_STORAGE_KEY, "1")
+        const user = (await import("@testing-library/user-event")).default.setup()
+        render(<TooltipProvider><SidebarProvider><Sidebar /></SidebarProvider></TooltipProvider>)
+        expect(screen.getByRole("link", { name: "Operaciones" })).toBeInTheDocument()
+        expect(screen.getByRole("link", { name: "Configuración" })).toBeInTheDocument()
+        expect(screen.queryByText("Sistema")).toBeNull()
+        // El rol sigue en el DOM pero su bloque va oculto (jsdom no aplica CSS: se mira la clase).
+        expect(screen.getByText("Dueño de la cuenta").parentElement).toHaveClass("hidden")
+        expect(screen.getByRole("button", { name: /Juan Camilo Rodriguez/ })).toBeInTheDocument()
+        await user.click(screen.getByRole("button", { name: "Expandir menú" }))
+        expect(screen.getByText("Sistema")).toBeInTheDocument()
+        expect(screen.getByText("Dueño de la cuenta").parentElement).not.toHaveClass("hidden")
+        window.localStorage.removeItem(SIDEBAR_STORAGE_KEY)
     })
 })

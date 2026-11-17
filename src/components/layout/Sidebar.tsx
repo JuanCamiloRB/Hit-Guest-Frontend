@@ -18,6 +18,8 @@ import {
     UserCog,
     type LucideIcon,
 } from "lucide-react"
+import { SidebarGroupLabel, SidebarItem, SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import { Icon } from "@/components/ui/icon"
 import {
     DropdownMenu,
@@ -34,8 +36,6 @@ import { useHasHydrated } from "@/hooks/useHasHydrated"
 import { useIsSupportAgentOnly } from "@/features/support/hooks/useIsSupportAgentOnly"
 import { Avatar as UiAvatar, AvatarFallback } from "@/components/ui/avatar"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
-import { Overline } from "@/components/ui/overline"
-import { Badge } from "@/components/ui/badge"
 
 interface NavEntry {
     label: string
@@ -46,54 +46,16 @@ interface NavEntry {
     badge?: string
 }
 
-/**
- * Una entrada de navegación.
- *
- * Los dos grupos renderizaban este mismo bloque copiado carácter por carácter,
- * así que cualquier ajuste había que hacerlo dos veces (y el foco, que no
- * existía en ninguno, había que añadirlo dos veces).
- */
+/** Una entrada de navegación: la pinta la primitiva (`SidebarItem`), ancha o contraída. */
 function NavItem({ item }: { item: NavEntry }) {
-    return (
-        <li>
-            <Link
-                href={item.href}
-                // Sin esto, quien navega con lector de pantalla no tiene forma
-                // de saber en qué sección está: el color no se lee.
-                aria-current={item.active ? "page" : undefined}
-                className={cn(
-                    "group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-colors",
-                    "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white",
-                    item.active
-                        // Se quitó `shadow-sm shadow-black/20`: una sombra negra
-                        // sobre el navy del sidebar no se ve, solo ensucia el borde.
-                        ? "bg-primary font-semibold text-white"
-                        // Antes TODO era font-bold, activo e inactivo por igual,
-                        // así que el peso no distinguía nada.
-                        : "font-medium text-white/70 hover:bg-white/5 hover:text-white",
-                )}
-            >
-                <Icon
-                    icon={item.icon}
-                    size="lg"
-                    className={cn(
-                        "transition-colors",
-                        item.active ? "text-white" : "text-white/50 group-hover:text-white",
-                    )}
-                />
-                <span className="flex-1">{item.label}</span>
-                {item.badge && (
-                    <Badge tone="surface">{item.badge}</Badge>
-                )}
-            </Link>
-        </li>
-    )
+    return <SidebarItem href={item.href} icon={item.icon} label={item.label} active={item.active} badge={item.badge} />
 }
 
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname()
     const { user, logout, isInSupportSession } = useAuth()
     const isMounted = useHasHydrated()
+    const { collapsed } = useSidebar()
     // Solo con el flag explícito (contrato §5b) y FUERA del modo soporte: el
     // token de soporte es el del usuario del cliente.
     const outsideSupport = isMounted && !isInSupportSession
@@ -169,13 +131,15 @@ export function Sidebar({ className }: { className?: string }) {
             .toUpperCase() || "U"
 
     return (
-        <div className={cn("flex h-screen flex-col border-r border-white/5 bg-sidebar text-sidebar-foreground", className)}>
-            <div className="no-scrollbar flex-1 space-y-6 overflow-y-auto px-4 py-6">
-                <div className="flex justify-center px-3 pb-2">
+        <div className={cn("flex h-full flex-col bg-sidebar text-sidebar-foreground", className)}>
+            <div className={cn("no-scrollbar flex-1 space-y-6 overflow-y-auto py-6", collapsed ? "px-2" : "px-4")}>
+                {/* Logo y, a su derecha, el disparador para contraer; contraída, el logo
+                    chico arriba y el disparador debajo (no cabe al lado). */}
+                <div className={cn("flex items-center gap-2 pb-2", collapsed ? "flex-col px-0" : "justify-between px-3")}>
                     <Link
                         href="/dashboard"
                         aria-label="HIT Guest — ir al tablero"
-                        className="rounded-xs focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+                        className="rounded-xs focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sidebar-ring"
                     >
                         {/* Marca HIT (hit.tools), un poco MAYOR que el logo de
                             HIT GUEST del header interno (pedido 2026-08-27). */}
@@ -185,9 +149,10 @@ export function Sidebar({ className }: { className?: string }) {
                             width={468}
                             height={292}
                             priority
-                            className="h-11 w-auto object-contain"
+                            className={cn("w-auto object-contain", collapsed ? "h-8" : "h-11")}
                         />
                     </Link>
+                    <SidebarTrigger />
                 </div>
 
                 {/* Se eliminó el rótulo "MENÚ PRINCIPAL": en un sidebar de cuatro
@@ -205,14 +170,9 @@ export function Sidebar({ className }: { className?: string }) {
                 )}
 
                 <nav aria-label="Sistema" className="space-y-2">
-                    {/* Las dos pastillas moradas eran el problema: el morado es el
-                        color del ítem ACTIVO, y usarlo también en un rótulo que no
-                        hace nada ponía dos moradas compitiendo, con la que no se
-                        puede pulsar gritando igual de fuerte. Ahora es un simple
-                        antetítulo apagado sobre una regla que separa el grupo. */}
-                    <Overline className="border-t border-white/10 px-4 pt-4 text-white/70">
-                        Sistema
-                    </Overline>
+                    {/* Un antetítulo apagado sobre una regla, nunca una pastilla morada
+                        (el morado es el ítem ACTIVO). Contraída, queda solo la regla. */}
+                    <SidebarGroupLabel>Sistema</SidebarGroupLabel>
                     <ul className="space-y-1">
                         {systemMenu.map((item) => (
                             <NavItem key={item.href} item={item} />
@@ -222,14 +182,17 @@ export function Sidebar({ className }: { className?: string }) {
             </div>
 
             {/* Profile Footer */}
-            <div className="p-4 border-t border-white/10 bg-white/5">
+            <div className={cn("border-t border-sidebar-border bg-sidebar-accent", collapsed ? "p-2" : "p-4")}>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <UnstyledButton
                             // `focus:outline-none` quitaba el anillo sin poner nada
                             // en su lugar: quien navega con teclado perdía el rastro
                             // del foco justo en el único control del pie.
-                            className="flex w-full items-center gap-2.5 rounded-lg p-2 text-left transition-colors hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                            className={cn(
+                                "flex w-full items-center gap-2.5 rounded-lg p-2 text-left transition-colors hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sidebar-ring",
+                                collapsed && "justify-center",
+                            )}
                             // El nombre se corta ("Juan Camilo Ro…") porque el ancho
                             // del sidebar es fijo; al menos que se pueda leer entero
                             // al pasar el mouse.
@@ -240,7 +203,9 @@ export function Sidebar({ className }: { className?: string }) {
                                     {isMounted ? initials : "H"}
                                 </AvatarFallback>
                             </UiAvatar>
-                            <div className="flex min-w-0 flex-1 flex-col">
+                            {/* Contraída: solo el avatar; el nombre sigue en `title` y para el lector. */}
+                            {collapsed && <span className="sr-only">{isMounted ? displayName : "HIT Guest"}</span>}
+                            <div className={cn("flex min-w-0 flex-1 flex-col", collapsed && "hidden")}>
                                 <p className="truncate text-sm font-semibold text-white">
                                     {isMounted ? displayName : "HIT Guest"}
                                 </p>
@@ -256,7 +221,7 @@ export function Sidebar({ className }: { className?: string }) {
                                           : (user?.email ?? "")}
                                 </p>
                             </div>
-                            <Icon icon={MoreVertical} className="text-white/30" />
+                            {!collapsed && <Icon icon={MoreVertical} className="text-sidebar-foreground/30" />}
                         </UnstyledButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56" side="top">
@@ -306,7 +271,12 @@ export function MobileSidebar() {
                 {/* Radix exige un título en el diálogo; sin él avisa por consola
                     y el panel se abre sin nombre para un lector de pantalla. */}
                 <SheetTitle className="sr-only">Menú de navegación</SheetTitle>
-                <Sidebar className="h-full w-full" />
+                {/* En el panel móvil no se contrae: su propio proveedor, siempre ancho. */}
+                <TooltipProvider>
+                    <SidebarProvider collapsible={false}>
+                        <Sidebar className="h-full w-full" />
+                    </SidebarProvider>
+                </TooltipProvider>
             </SheetContent>
         </Sheet>
     )
