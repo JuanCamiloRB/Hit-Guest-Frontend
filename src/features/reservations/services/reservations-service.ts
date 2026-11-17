@@ -545,8 +545,9 @@ function readCount(raw: unknown): number | undefined {
  * pantalla conserva lo que tenía y vuelve a intentar.
  */
 export class ReservationsNotReadyError extends Error {
-    constructor(public readonly body: unknown) {
-        super("reservations_not_ready")
+    /** La página de `GET /reservations?page=N` que respondió 202 (si se sabe). */
+    constructor(public readonly body: unknown, public readonly page?: number) {
+        super(page === undefined ? "reservations_not_ready" : `reservations_not_ready (page ${page})`)
         this.name = "ReservationsNotReadyError"
     }
 }
@@ -1037,7 +1038,7 @@ export class ReservationsService {
         const json: unknown = await res.json().catch(() => ({}))
         // Cancelada mientras se leía el cuerpo: es una cancelación, no «sin arreglo».
         signal?.throwIfAborted()
-        if (res.status === 202) throw new ReservationsNotReadyError(json)
+        if (res.status === 202) throw new ReservationsNotReadyError(json, page)
         if (!res.ok) {
             if (res.status === 401) handleSessionExpired()
             throw new ApiError(res.status, (json ?? { message: `HTTP ${res.status}` }) as ApiErrorResponse)
@@ -1225,8 +1226,11 @@ export class ReservationsService {
             // `loadAutomationStatus`.
             return reservations
         } catch (error) {
-            // Cancelar (refresco que reemplaza, nadie mirando) no es un fallo que reportar.
-            if ((error as { name?: string })?.name !== "AbortError") {
+            // Cancelar (refresco que reemplaza, nadie mirando) no es un fallo que
+            // reportar, y un 202 tampoco: es «todavía no», lo reintenta quien pidió
+            // la lista y lo registra una sola vez (con página e intento).
+            const expected = (error as { name?: string })?.name === "AbortError" || error instanceof ReservationsNotReadyError
+            if (!expected) {
                 console.error("[ReservationsService] Error listing reservations:", error)
             }
             throw error

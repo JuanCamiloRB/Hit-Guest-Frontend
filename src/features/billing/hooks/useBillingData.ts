@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react"
 import { startOfMonth } from "date-fns"
 import { ReservationsNotReadyError } from "@/features/reservations/services/reservations-service"
+import { NOT_READY_RETRIES, NOT_READY_RETRY_MS } from "@/features/reservations/lib/load-policy"
+import { loadWhileNotReady } from "@/features/reservations/lib/not-ready-retry"
 import { reservationsCache } from "@/features/reservations/hooks/useReservations"
 import { withListingNames } from "@/features/reservations/lib/listing-names"
 import { useListingPortfolio } from "@/features/reservations/hooks/useListingPortfolio"
@@ -187,6 +189,8 @@ export function useBillingData(): BillingData {
     // Arranca en true: la primera carga sale del efecto de montaje.
     const [inFlight, setInFlight] = useState(true)
     const [lastLoadIssue, setLastLoadIssue] = useState<"error" | "syncing" | "rate-limited" | null>(null)
+    /** La lista respondió 202 y se está esperando el siguiente intento automático. */
+    const [awaitingSync, setAwaitingSync] = useState(false)
     /** Solo la solicitud más reciente escribe el estado. */
     const requestId = useRef(0)
     const activeController = useRef<AbortController | null>(null)
@@ -209,8 +213,31 @@ export function useBillingData(): BillingData {
             // Dentro de la ventana se usa la lista ya cargada, sin pedirla.
             const cachedList = reservationsCache.read()
             const listFresh = !force && cachedList !== null && Date.now() - listFetchedAt < LIST_FRESH_MS
-            const reservations = listFresh ? cachedList : await reservationsCache.load()
-            if (!listFresh) listFetchedAt = Date.now()
+            // Un 202 («sincronizando») se reintenta solo, la LISTA COMPLETA y con
+            // `load()` (comparte una petición en curso de Operaciones en vez de
+            // cancelarla, como haría `refresh()`), igual que hace Operaciones.
+            // La espera se corta en el acto al desmontar, pulsar «Reintentar» o
+            // empezar otra carga (es el mismo `controller`).
+            let reservations = cachedList ?? []
+            if (!listFresh) {
+                reservations = await loadWhileNotReady(() => reservationsCache.load(), {
+                    retries: NOT_READY_RETRIES,
+                    retryMs: NOT_READY_RETRY_MS,
+                    signal: controller.signal,
+                    onNotReady: (error, attempt) => {
+                        if (id !== requestId.current) return
+                        console.info(
+                            `[useBillingData] GET /reservations${error.page === undefined ? "" : `?page=${error.page}`} respondió 202 (sincronizando): `
+                            + (attempt < NOT_READY_RETRIES
+                                ? `intento ${attempt + 1} de ${NOT_READY_RETRIES + 1}; se repite la lista completa en ${NOT_READY_RETRY_MS} ms.`
+                                : `intento ${attempt + 1} de ${NOT_READY_RETRIES + 1}; se deja el reintento manual.`),
+                        )
+                        setAwaitingSync(true)
+                    },
+                })
+                setAwaitingSync(false)
+                listFetchedAt = Date.now()
+            }
             if (controller.signal.aborted) return
             // Solo lo que no está fresco. Sin datos previos, todo.
             const known = lastResult
@@ -254,7 +281,10 @@ export function useBillingData(): BillingData {
             setLastLoadIssue(loaded.rateLimited ? "rate-limited" : stale > 0 ? "error" : null)
         } catch (error) {
             if (id !== requestId.current || controller.signal.aborted) return
-            console.error("[useBillingData] consumo no disponible:", error)
+            // Un 202 agotado no es un error (ya quedó registrado en `onNotReady`).
+            if (!(error instanceof ReservationsNotReadyError)) {
+                console.error("[useBillingData] consumo no disponible:", error)
+            }
             // Lo anterior se conserva: un fallo no reemplaza datos por ceros.
             const rateLimited = isRateLimitError(error) || (error instanceof AllCostRequestsFailedError && error.rateLimited)
             setLastLoadIssue(error instanceof ReservationsNotReadyError ? "syncing" : rateLimited ? "rate-limited" : "error")
@@ -262,6 +292,7 @@ export function useBillingData(): BillingData {
             if (id === requestId.current) {
                 if (activeController.current === controller) activeController.current = null
                 setPartial(null)
+                setAwaitingSync(false)
                 setInFlight(false)
             }
         }
@@ -310,8 +341,11 @@ export function useBillingData(): BillingData {
     const costs = useMemo(() => withNames(data?.costs ?? partialCosts, names), [data, partialCosts, names])
     const failedReservations = useMemo(() => withNames(data?.failedReservations ?? [], names), [data, names])
 
+    // Esperando un reintento del 202: sin datos es «sincronizando» (no un
+    // esqueleto eterno); con datos anteriores, siguen a la vista como refresco
+    // y el aviso de sincronización lo dice.
     const status: ConsumptionStatus = !data
-        ? inFlight ? "loading" : lastLoadIssue === "syncing" ? "syncing" : "error"
+        ? awaitingSync ? "syncing" : inFlight ? "loading" : lastLoadIssue === "syncing" ? "syncing" : "error"
         : inFlight ? "refreshing"
         : data.failedReservations.length > 0 ? "partial" : "ready"
 
@@ -322,7 +356,7 @@ export function useBillingData(): BillingData {
         failedReservations,
         refreshFailed: data !== null && (lastLoadIssue === "error" || lastLoadIssue === "rate-limited") && !inFlight,
         rateLimited: lastLoadIssue === "rate-limited" && !inFlight,
-        syncing: lastLoadIssue === "syncing" && !inFlight,
+        syncing: awaitingSync || (lastLoadIssue === "syncing" && !inFlight),
         summary: analytics?.summary ?? null,
         monthly: analytics?.monthly ?? [],
         topNodes: analytics?.topNodes ?? [],

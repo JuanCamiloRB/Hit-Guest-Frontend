@@ -2523,6 +2523,29 @@ tolerante por fila (campo desconocido muestra su clave, fila malformada se
 descarta sin tirar la lista) y el detalle muestra «El PMS revirtió N cambios».
 La lista conserva `origin` en el tipo aunque aún no lo pinte.
 
+## 2h. `GET /reservations` → 202 `reservations_not_ready` (sincronizando)
+
+✅ Observado en producción (2026-10-08 y de nuevo 2026-11-18): mientras corre una
+sincronización, CUALQUIER página de `GET /reservations?page=N` puede responder
+**202** con cuerpo `{ message }`. No es una lista vacía ni un error.
+
+Cómo lo trata el front (`reservations-service.ts`, `lib/not-ready-retry.ts`,
+`lib/load-policy.ts`):
+- Una página en 202 lanza `ReservationsNotReadyError(body, page)` y cancela las
+  demás: **nunca se entrega una lista parcial**. El `page` va en el error y en
+  su `message` («reservations_not_ready (page 3)»): ya no hace falta ir a
+  Network para saber qué página fue.
+- El reintento repite **la lista completa** (las reservas se mueven entre
+  páginas mientras sincroniza), 3 veces cada 2,5 s (`NOT_READY_RETRIES`,
+  `NOT_READY_RETRY_MS`), tanto en Operaciones (`useCachedLoad`) como en el
+  Tablero (`loadWhileNotReady` sobre `reservationsCache.load()`, que comparte
+  una petición en curso en vez de cancelarla). La espera se corta en el acto al
+  desmontar, pulsar «Reintentar» o empezar otra carga.
+- Un 202 **no pasa por `console.error`** en ninguna capa: un solo
+  `console.info` por intento con página y número de intento. Agotados los
+  reintentos queda «sincronizando» con el reintento manual; con datos
+  anteriores, se conservan y se avisa.
+
 ## 2e-bis. Reserva manual: el link de check-in NO sale solo — lo pide el front
 
 ⚠️ *`API_DOCUMENTATION.md` («Envío automático: al importar una reserva de

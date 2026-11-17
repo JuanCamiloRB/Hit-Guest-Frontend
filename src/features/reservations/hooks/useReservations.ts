@@ -6,6 +6,7 @@ import { createStaleCache } from "@/lib/stale-cache"
 import type { Reservation } from "@/types"
 import { ReservationsNotReadyError, reservationsService } from "../services/reservations-service"
 import { withListingNames } from "../lib/listing-names"
+import { NOT_READY_RETRIES, NOT_READY_RETRY_MS } from "../lib/load-policy"
 import { useListingPortfolio } from "./useListingPortfolio"
 
 /**
@@ -20,9 +21,8 @@ export function resetReservationsCache(): void {
     reservationsCache.reset()
 }
 
-/** Reintentos ante un «todavía no» (202) de la lista, y la espera entre ellos. */
-export const NOT_READY_RETRIES = 3
-export const NOT_READY_RETRY_MS = 2500
+/** La política de reintentos del 202 vive en `lib/load-policy` (sin React); se re-exporta por compatibilidad. */
+export { NOT_READY_RETRIES, NOT_READY_RETRY_MS }
 /**
  * Al volver a la pestaña se relee la lista (un huésped puede terminar su
  * check-in desde su celular mientras el PM tiene esto abierto), pero no más de

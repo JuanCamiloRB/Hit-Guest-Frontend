@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react"
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { ReservationCost, ReservationCostFailure, ReservationCostsResult } from "../types"
 
 const mocks = vi.hoisted(() => ({
@@ -30,6 +30,8 @@ import { resetReservationsCache } from "@/features/reservations/hooks/useReserva
 import { resetPropertiesCaches } from "@/features/properties/lib/properties-cache"
 import { COSTS_FRESH_MS, expireBillingDataCache, expireBillingListCache, resetBillingDataCache, useBillingData } from "./useBillingData"
 import { ReservationsNotReadyError } from "@/features/reservations/services/reservations-service"
+import { NOT_READY_RETRIES, NOT_READY_RETRY_MS } from "@/features/reservations/lib/load-policy"
+import { useReservations } from "@/features/reservations/hooks/useReservations"
 
 const thisMonth = new Date()
 
@@ -456,5 +458,122 @@ describe("useBillingData — la carga inicial pinta lo que ya llegó", () => {
         expect(hook.current.costs.map((c) => c.reservationId)).toEqual(["a"])
         await act(async () => pending.resolve(result([cost("a", 2.5), cost("b", 1)])))
         await waitFor(() => expect(hook.current.costs).toHaveLength(2))
+    })
+})
+
+
+describe("useBillingData — un 202 se reintenta solo, la lista completa, como en Operaciones", () => {
+    const flush = () => act(async () => { await vi.advanceTimersByTimeAsync(0) })
+    const wait = (ms: number) => act(async () => { await vi.advanceTimersByTimeAsync(ms) })
+
+    beforeEach(() => {
+        vi.useFakeTimers()
+        vi.clearAllMocks()
+        resetBillingDataCache()
+        resetReservationsCache()
+        resetPropertiesCaches()
+        mocks.bffFetch.mockRejectedValue(new Error("BFF error 503"))
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        vi.spyOn(console, "info").mockImplementation(() => {})
+        mocks.getReservationCosts.mockResolvedValue(result([cost("a", 2.5)]))
+    })
+    afterEach(() => { vi.useRealTimers() })
+
+    it("sin datos: «sincronizando» mientras espera, se recupera en el segundo intento y NINGÚN console.error", async () => {
+        mocks.list.mockRejectedValueOnce(new ReservationsNotReadyError("sync")).mockResolvedValueOnce([{ id: "a" }])
+        const { result: hook } = renderHook(() => useBillingData())
+        await flush()
+        expect(hook.current.status).toBe("syncing")
+        expect(hook.current.syncing).toBe(true)
+        expect(mocks.list).toHaveBeenCalledTimes(1)
+
+        await wait(NOT_READY_RETRY_MS)
+        await flush()
+        expect(mocks.list).toHaveBeenCalledTimes(2)
+        expect(hook.current.status).toBe("ready")
+        expect(hook.current.syncing).toBe(false)
+        expect(hook.current.summary?.monthTotal).toBe(2.5)
+        expect(console.error).not.toHaveBeenCalled()
+        expect(console.info).toHaveBeenCalledTimes(1)
+    })
+
+    it("se recupera en el cuarto intento (el último)", async () => {
+        mocks.list
+            .mockRejectedValueOnce(new ReservationsNotReadyError("sync"))
+            .mockRejectedValueOnce(new ReservationsNotReadyError("sync"))
+            .mockRejectedValueOnce(new ReservationsNotReadyError("sync"))
+            .mockResolvedValueOnce([{ id: "a" }])
+        const { result: hook } = renderHook(() => useBillingData())
+        await flush()
+        await wait(NOT_READY_RETRY_MS * NOT_READY_RETRIES)
+        await flush()
+        expect(mocks.list).toHaveBeenCalledTimes(NOT_READY_RETRIES + 1)
+        expect(hook.current.status).toBe("ready")
+    })
+
+    it("agotados los reintentos: syncing, sin más peticiones, y el reintento manual vuelve a pedir", async () => {
+        mocks.list.mockRejectedValue(new ReservationsNotReadyError("sync"))
+        const { result: hook } = renderHook(() => useBillingData())
+        await flush()
+        await wait(NOT_READY_RETRY_MS * (NOT_READY_RETRIES + 2))
+        await flush()
+        expect(mocks.list).toHaveBeenCalledTimes(NOT_READY_RETRIES + 1)
+        expect(hook.current.status).toBe("syncing")
+        expect(hook.current.syncing).toBe(true)
+        expect(console.error).not.toHaveBeenCalled()
+
+        mocks.list.mockResolvedValue([{ id: "a" }])
+        await act(async () => { hook.current.retry() })
+        await flush()
+        expect(mocks.list).toHaveBeenCalledTimes(NOT_READY_RETRIES + 2)
+        expect(hook.current.status).toBe("ready")
+    })
+
+    it("con datos anteriores: siguen a la vista (refreshing + aviso de sincronización) durante la espera", async () => {
+        mocks.list.mockResolvedValueOnce([{ id: "a" }])
+        const { result: hook } = renderHook(() => useBillingData())
+        await flush()
+        expect(hook.current.status).toBe("ready")
+
+        mocks.list.mockRejectedValue(new ReservationsNotReadyError("sync"))
+        await act(async () => { hook.current.retry() })
+        await flush()
+        expect(hook.current.status).toBe("refreshing")
+        expect(hook.current.syncing).toBe(true)
+        expect(hook.current.summary?.monthTotal).toBe(2.5)
+        expect(hook.current.costs).toHaveLength(1)
+    })
+
+    it("desmontar durante la espera corta el reintento pendiente", async () => {
+        mocks.list.mockRejectedValue(new ReservationsNotReadyError("sync"))
+        const { result: hook, unmount } = renderHook(() => useBillingData())
+        await flush()
+        expect(hook.current.status).toBe("syncing")
+        unmount()
+        await wait(NOT_READY_RETRY_MS * (NOT_READY_RETRIES + 1))
+        expect(mocks.list).toHaveBeenCalledTimes(1)
+    })
+
+    it("«Reintentar» durante la espera la reemplaza en el acto (no se suma al temporizador)", async () => {
+        mocks.list.mockRejectedValueOnce(new ReservationsNotReadyError("sync")).mockResolvedValue([{ id: "a" }])
+        const { result: hook } = renderHook(() => useBillingData())
+        await flush()
+        expect(hook.current.status).toBe("syncing")
+        await act(async () => { hook.current.retry() })
+        await flush()
+        expect(hook.current.status).toBe("ready")
+        // La espera anterior se canceló: al vencer su plazo no hay otra petición.
+        await wait(NOT_READY_RETRY_MS * 2)
+        expect(mocks.list).toHaveBeenCalledTimes(2)
+    })
+
+    it("Tablero y Operaciones montados a la vez: una sola carga de la lista, sin cancelarse entre sí", async () => {
+        mocks.list.mockResolvedValue([{ id: "a" }])
+        const { result: both } = renderHook(() => ({ billing: useBillingData(), ops: useReservations() }))
+        await flush()
+        await flush()
+        expect(mocks.list).toHaveBeenCalledTimes(1)
+        expect(both.current.billing.status).toBe("ready")
+        expect(both.current.ops.status).toBe("ready")
     })
 })
