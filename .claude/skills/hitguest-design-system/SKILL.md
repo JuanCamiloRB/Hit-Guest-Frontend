@@ -75,7 +75,7 @@ archivo:
 | Cifra protagonista | `Figure` (`size`, `tone`, `kind`, `as`) | `ui/figure.tsx` |
 | Término y definición | `DefinitionItem` (dentro de un `<dl>`) | `ui/definition-list.tsx` |
 | Vacío | `EmptyState` | `ui/empty-state.tsx` |
-| Tabla | `Table` (composición), `DataTable` (ordenar y paginar) | `ui/table.tsx`, `shared/data-table.tsx` |
+| Tabla | `Table` (composición), `DataTable` (ordenar y paginar; `pageSize`, `itemLabel`, `getRowHref`, `renderMobileRow` para la fila apilada en móvil) | `ui/table.tsx`, `shared/data-table.tsx` |
 | Modal | `Dialog`, `AlertDialog`, `Sheet`, `Popover`, `DropdownMenu`; formulario largo: `DialogContent layout="panel"` + `DialogHeader divided` + `DialogBody` (scroll) + `DialogFooter divided` (fijo) (`Dialog`/`AlertDialog` devuelven el foco a quien abrió aunque se abran por estado: `useRestoreFocusToOpener`) | `ui/dialog.tsx`, `ui/alert-dialog.tsx`, `ui/sheet.tsx`, `ui/popover.tsx`, `ui/dropdown-menu.tsx` |
 | Ícono | `Icon`, `IconBadge` (`interactive` dentro de un pulsable con `group`) | `ui/icon.tsx`, `ui/icon-badge.tsx` |
 | Persona | `Avatar` | `ui/avatar.tsx` |

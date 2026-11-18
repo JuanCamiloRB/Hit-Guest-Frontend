@@ -67,9 +67,13 @@ export interface Unit {
     name: string
     number: string
     type: "ENTIRE_PLACE" | "PRIVATE_ROOM" | "SHARED_ROOM"
-    capacity: number
+    /** `null` = sin capacidad declarada (la tabla muestra «—», no un 2 inventado). */
+    capacity: number | null
     amenities: string[]
-    pricePerNight: number
+    /** `null` = sin precio (la tabla muestra «—», no «$0»). */
+    pricePerNight: number | null
+    /** Código ISO (`extra.currency`), si el alojamiento lo tiene. */
+    currency: string | null
     status: "ACTIVE" | "INACTIVE"
     inheritWifi: boolean
     wifiNetwork?: string

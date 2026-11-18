@@ -40,6 +40,7 @@ import {
 import { Plus, Trash2, Edit2, Settings2, Zap, Info, KeyRound } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useFormContext, useFieldArray } from "react-hook-form"
+import { useSearchParams } from "next/navigation"
 import { useCallback, useState, useEffect, useRef } from "react"
 import { SwitchField } from "@/components/ui/switch-field"
 import { toast } from "sonner"
@@ -601,7 +602,7 @@ export function PropertiesUnits() {
 
         saveLockRef.current = false
         setIsSavingUnit(false)
-        setIsDialogOpen(false)
+        closeDialog()
     }
 
     // Un alojamiento ya guardado se borra en el backend: antes ocurría al
@@ -644,6 +645,48 @@ export function PropertiesUnits() {
         }
     }
 
+    // Llegar con `?unit=<uuid>` (desde la lista de alojamientos) abre ese
+    // alojamiento una sola vez, cuando sus filas ya están en el formulario.
+    const searchParams = useSearchParams()
+    const requestedUnit = searchParams?.get("unit") ?? null
+    const openedFromQueryRef = useRef<string | null>(null)
+    /**
+     * Al cerrar, la URL deja de decir que hay un alojamiento abierto: se quita
+     * solo `unit` (queda `tab=units`). Con la History API nativa, que el App
+     * Router sincroniza con `useSearchParams`, sin una entrada más en el historial.
+     */
+    const clearUnitParam = () => {
+        if (typeof window === "undefined") return
+        const url = new URL(window.location.href)
+        if (!url.searchParams.has("unit")) return
+        url.searchParams.delete("unit")
+        window.history.replaceState(window.history.state, "", url.toString())
+    }
+    /** Cerrar desde cualquier camino (Cancelar, guardado, X/Escape) con la URL al día. */
+    const closeDialog = () => {
+        setIsDialogOpen(false)
+        clearUnitParam()
+    }
+    useEffect(() => {
+        // Sin `unit` en la URL se vuelve a poder abrir por URL (p. ej. «atrás» del navegador).
+        if (!requestedUnit) {
+            openedFromQueryRef.current = null
+            return
+        }
+        if (openedFromQueryRef.current === requestedUnit) return
+        const index = fields.findIndex((f) => (f as { uuid?: string }).uuid === requestedUnit)
+        if (index < 0) return
+        // En el siguiente tick, como el clic en «Editar»: abrir en el acto desde el
+        // efecto sería un setState síncrono (react-hooks/set-state-in-effect).
+        const timer = setTimeout(() => {
+            openedFromQueryRef.current = requestedUnit
+            handleOpenEditDialog(index)
+        }, 0)
+        return () => clearTimeout(timer)
+        // `handleOpenEditDialog` se rehace en cada render; lo que decide es `requestedUnit` + `fields`.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [requestedUnit, fields])
+
     return (
         <SectionCard
             title="Alojamientos"
@@ -660,7 +703,9 @@ export function PropertiesUnits() {
                     <Dialog
                         open={isDialogOpen}
                         onOpenChange={(open) => {
-                            if (!isSavingUnit) setIsDialogOpen(open)
+                            if (isSavingUnit) return
+                            if (open) setIsDialogOpen(true)
+                            else closeDialog()
                         }}
                     >
                         {/* Formulario largo: encabezado y pie fijos, el cuerpo con scroll propio
@@ -1231,7 +1276,7 @@ export function PropertiesUnits() {
                             </DialogBody>
 
                             <DialogFooter divided>
-                                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSavingUnit}>Cancelar</Button>
+                                <Button type="button" variant="outline" onClick={closeDialog} disabled={isSavingUnit}>Cancelar</Button>
                                 <Button type="button" onClick={() => void handleSaveUnit()} disabled={roomTypesLoading || roomTypes.length === 0} loading={isSavingUnit} loadingLabel="Guardando…">
                                     {editingIndex !== null ? "Guardar cambios" : "Añadir alojamiento"}
                                 </Button>

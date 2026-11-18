@@ -50,11 +50,23 @@ describe("properties-cache", () => {
 })
 
 describe("toListing — misma lectura que siempre tuvo la tabla de alojamientos", () => {
-    it("sin capacidad declarada o en 0 asume 2; un número en texto se respeta", async () => {
+    it("sin capacidad declarada o en 0 es `null` (no un 2 inventado); un número en texto se respeta", async () => {
         const { toListing } = await import("./properties-cache")
-        expect(toListing({ uuid: "l1", extra: {} }, 0).capacity).toBe(2)
-        expect(toListing({ uuid: "l1", extra: { maxOccupancy: 0 } }, 0).capacity).toBe(2)
+        expect(toListing({ uuid: "l1", extra: {} }, 0).capacity).toBeNull()
+        expect(toListing({ uuid: "l1", extra: { maxOccupancy: 0 } }, 0).capacity).toBeNull()
         expect(toListing({ uuid: "l1", extra: { maxOccupancy: "4" } }, 0).capacity).toBe(4)
+    })
+
+    // Un 0 NO es «gratis»: el diálogo de alojamiento guarda `Number(price) || 0`, así que
+    // todo alojamiento sin precio llega como 0 (17 de 29 en la cuenta real). Mientras el
+    // formulario escriba 0 para «vacío», 0 se lee como «sin precio». Si algún día se
+    // quiere «Sin costo» de verdad, primero hay que dejar de escribir 0 por omisión.
+    it("precio: 0 o ausente es `null` (el formulario guarda 0 cuando el PM lo deja vacío); la moneda sale de `extra.currency` en mayúsculas, o `null`", async () => {
+        const { toListing } = await import("./properties-cache")
+        expect(toListing({ uuid: "l1", extra: {} }, 0)).toMatchObject({ pricePerNight: null, currency: null })
+        expect(toListing({ uuid: "l1", price: 0, extra: { currency: "cop" } }, 0)).toMatchObject({ pricePerNight: null, currency: "COP" })
+        expect(toListing({ uuid: "l1", extra: { startPrice: "850000", currency: "COP" } }, 0)).toMatchObject({ pricePerNight: 850000, currency: "COP" })
+        expect(toListing({ uuid: "l1", price: 150, currency: "USD", extra: {} }, 0)).toMatchObject({ pricePerNight: 150, currency: "USD" })
     })
 
     it("activo si cualquiera de las formas del estado lo dice", async () => {

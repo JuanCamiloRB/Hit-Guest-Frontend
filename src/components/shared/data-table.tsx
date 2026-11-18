@@ -29,6 +29,39 @@ import { ChevronLeft, ChevronRight, ArrowDown, ArrowUp, ChevronsUpDown } from "l
 import { Icon } from "@/components/ui/icon"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Surface } from "@/components/ui/card"
+import { SMALL_SCREEN_QUERY, useMediaQuery } from "@/hooks/useMediaQuery"
+
+/** Lo que cuenta el pie («Mostrando 1–10 de 28 alojamientos»). */
+export interface DataTableItemLabel {
+    singular: string
+    plural: string
+}
+
+/**
+ * Un clic dentro de un control no es un clic en la fila: enlaces, botones,
+ * campos, los roles de control de Radix y cualquier zona marcada con
+ * `data-row-interactive` (para un control que no entre en esta lista).
+ */
+const INTERACTIVE_SELECTOR = [
+    "a", "button", "input", "select", "textarea", "label", "[contenteditable]",
+    "[role=button]", "[role=link]", "[role=menuitem]", "[role=checkbox]", "[role=switch]",
+    "[role=radio]", "[role=combobox]", "[role=tab]", "[role=option]", "[data-row-interactive]",
+].join(", ")
+function isInteractive(target: EventTarget | null): boolean {
+    return target instanceof Element && target.closest(INTERACTIVE_SELECTOR) !== null
+}
+
+/**
+ * El clic en el resto de la fila se reenvía al enlace REAL de la fila (el
+ * `TextLink` de la celda): misma navegación de `next/link`, sin router propio.
+ * Sin enlace dentro, navega a `href` tal cual.
+ */
+function followRow(event: React.MouseEvent<HTMLElement>, href: string) {
+    if (isInteractive(event.target)) return
+    const link = event.currentTarget.querySelector<HTMLAnchorElement>("a[href]")
+    if (link) link.click()
+    else window.location.assign(href)
+}
 
 interface DataTableProps<TData, TValue> {
     columns: ColumnDef<TData, TValue>[]
@@ -64,6 +97,25 @@ interface DataTableProps<TData, TValue> {
      * `no-results`). Sin él, «No hay resultados.» como siempre.
      */
     empty?: React.ReactNode
+    /** Filas por página. 10 por omisión. */
+    pageSize?: number
+    /**
+     * Qué se cuenta en el pie: con esto dice «Mostrando 1–10 de 28 alojamientos»
+     * (y «Página 1 de 3» como dato secundario); sin esto, solo la página.
+     */
+    itemLabel?: DataTableItemLabel
+    /**
+     * A dónde lleva la fila entera. El enlace REAL (teclado, lector) va en una
+     * celda (`TextLink`); esto solo hace pulsable el resto de la fila, sin
+     * robarle el clic a un control que haya dentro.
+     */
+    getRowHref?: (row: TData) => string
+    /**
+     * Cómo se ve una fila por debajo de `md`: en vez de seis columnas con
+     * scroll, una fila apilada (nombre, estado, metadatos). Misma página, orden
+     * y filtro que la tabla. Sin esto, la tabla con scroll horizontal.
+     */
+    renderMobileRow?: (row: TData) => React.ReactNode
 }
 
 export function DataTable<TData, TValue>({
@@ -76,7 +128,12 @@ export function DataTable<TData, TValue>({
     onVisibleRowsChange,
     getRowId,
     empty,
+    pageSize: pageSizeOption = 10,
+    itemLabel,
+    getRowHref,
+    renderMobileRow,
 }: DataTableProps<TData, TValue>) {
+    const stacked = useMediaQuery(SMALL_SCREEN_QUERY) && renderMobileRow !== undefined
     const [ownSorting, setOwnSorting] = React.useState<SortingState>(defaultSorting ?? [])
     const sorting = controlledSorting ?? ownSorting
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -93,6 +150,7 @@ export function DataTable<TData, TValue>({
         // devolvía a la 1 en cuanto llegaban sus datos. La página se reinicia
         // solo cuando cambia lo que se ve (efecto de abajo).
         autoResetPageIndex: false,
+        initialState: { pagination: { pageSize: pageSizeOption } },
         getSortedRowModel: getSortedRowModel(),
         onColumnFiltersChange: setColumnFilters,
         getFilteredRowModel: getFilteredRowModel(),
@@ -114,6 +172,7 @@ export function DataTable<TData, TValue>({
 
     // La página siguiente, con el mismo orden y filtro que la actual.
     const { pageIndex, pageSize } = table.getState().pagination
+    const total = table.getPrePaginationRowModel().rows.length
     const nextRows = table.getPrePaginationRowModel().rows.slice((pageIndex + 1) * pageSize, (pageIndex + 2) * pageSize)
     // La clave resume las filas visibles y las siguientes: con los mismos
     // conjuntos no se vuelve a avisar aunque `data` cambie de identidad (p. ej.
@@ -142,6 +201,29 @@ export function DataTable<TData, TValue>({
                     />
                 </div>
             )}
+            {stacked ? (
+                <Surface flat className="overflow-hidden">
+                    {table.getRowModel().rows.length ? (
+                        <ul className="divide-y divide-rule">
+                            {table.getRowModel().rows.map((row) => {
+                                const href = getRowHref?.(row.original)
+                                return (
+                                    <li
+                                        key={row.id}
+                                        data-slot="data-table-mobile-row"
+                                        className={cn("px-4 py-3", href && "cursor-pointer transition-colors hover:bg-primary/5")}
+                                        onClick={href ? (event) => followRow(event, href) : undefined}
+                                    >
+                                        {renderMobileRow!(row.original)}
+                                    </li>
+                                )
+                            })}
+                        </ul>
+                    ) : (
+                        <div className="whitespace-normal">{empty ?? <p className="p-6 text-center text-sm text-ink-3">No hay resultados.</p>}</div>
+                    )}
+                </Surface>
+            ) : (
             <Surface flat className="overflow-hidden">
                 <div className="overflow-x-auto">
                     <Table>
@@ -220,10 +302,14 @@ export function DataTable<TData, TValue>({
                         </TableHeader>
                         <TableBody>
                             {table.getRowModel().rows?.length ? (
-                                table.getRowModel().rows.map((row) => (
+                                table.getRowModel().rows.map((row) => {
+                                    const href = getRowHref?.(row.original)
+                                    return (
                                     <TableRow
                                         key={row.id}
                                         data-state={row.getIsSelected() && "selected"}
+                                        className={href ? "cursor-pointer" : undefined}
+                                        onClick={href ? (event) => followRow(event, href) : undefined}
                                     >
                                         {row.getVisibleCells().map((cell) => (
                                             <TableCell key={cell.id} className="whitespace-nowrap">
@@ -231,7 +317,8 @@ export function DataTable<TData, TValue>({
                                             </TableCell>
                                         ))}
                                     </TableRow>
-                                ))
+                                    )
+                                })
                             ) : (
                                 <TableRow>
                                     {/* `empty` deja que la pantalla distinga «sin datos» de «sin
@@ -245,14 +332,23 @@ export function DataTable<TData, TValue>({
                     </Table>
                 </div>
             </Surface>
+            )}
             {/* Con una sola página (o ninguna fila) no hay nada que paginar: antes
                 decía «Página 1 de 0». Mismo criterio que el detalle del Tablero. */}
             {table.getPageCount() > 1 && (
-            <div className="flex items-center justify-between space-x-2 py-4">
-                <div className="text-sm text-ink-3">
-                    Página {table.getState().pagination.pageIndex + 1} de {table.getPageCount()}
+            // En móvil el pie se apila: rango y página en líneas propias, botones debajo.
+            <div data-slot="data-table-footer" className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-0.5 text-sm text-ink-3 sm:flex-row sm:items-center sm:gap-3">
+                    {itemLabel ? (
+                        <>
+                            <span className="text-ink-2">Mostrando {pageIndex * pageSize + 1}–{Math.min((pageIndex + 1) * pageSize, total)} de {total} {total === 1 ? itemLabel.singular : itemLabel.plural}</span>
+                            <span>Página {pageIndex + 1} de {table.getPageCount()}</span>
+                        </>
+                    ) : (
+                        <span>Página {pageIndex + 1} de {table.getPageCount()}</span>
+                    )}
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                     <Button
                         variant="outline"
                         size="sm"

@@ -4,12 +4,11 @@ import { useState, useMemo, useCallback } from "react"
 import { Property, Unit } from "@/types"
 import { PropertyCard } from "./PropertyCard"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, Home, List } from "lucide-react"
+import { Plus, Search, Filter, Home, List, X } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { EmptyState } from "@/components/ui/empty-state"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
-import { SectionCard } from "@/components/ui/section-card"
 import { LoadingState, RefreshIndicator } from "@/components/ui/loading-state"
 import {
     Select,
@@ -24,15 +23,11 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
-import { cn } from "@/lib/utils"
+import type { ColumnDef } from "@tanstack/react-table"
+import { DataTable } from "@/components/shared/data-table"
+import { TextLink } from "@/components/ui/text-link"
+import { formatMoney } from "@/lib/money"
+import { propertyEditHref } from "../lib/property-tabs"
 import { useCachedLoad } from "@/hooks/useCachedLoad"
 import { portfolioCache, propertiesCache } from "../lib/properties-cache"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
@@ -40,6 +35,117 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { StatusPill } from "@/components/ui/status-pill"
 import { PageHeader } from "@/components/ui/page"
 import { Surface } from "@/components/ui/card"
+
+/** Una fila de la tabla de alojamientos: el alojamiento con su propiedad ya resuelta. */
+interface ListingRow {
+    unit: Unit
+    propertyName: string
+    /** A dónde lleva la fila: la pestaña Alojamientos de su propiedad (y ese alojamiento). */
+    href: string | null
+}
+
+export const LISTINGS_PAGE_SIZE = 10
+const LISTINGS_LABEL = { singular: "alojamiento", plural: "alojamientos" }
+
+const STATUS_LABEL: Record<Unit["status"], string> = { ACTIVE: "Activo", INACTIVE: "Inactivo" }
+
+/** «—» en `ink-4` es «no aplica» (manual §3): sin precio o sin capacidad declarada. */
+function Absent() {
+    return <span className="text-ink-4">—</span>
+}
+
+function capacityText(capacity: number | null): string | null {
+    if (capacity === null) return null
+    return `${capacity} ${capacity === 1 ? "huésped" : "huéspedes"}`
+}
+
+/**
+ * Orden por nombre, propiedad, estado, capacidad y precio. Un dato ausente es
+ * `undefined` para TanStack y `sortUndefined: "last"` lo deja al final en los
+ * DOS sentidos (con -1 subía primero al ordenar ascendente).
+ */
+const LISTING_COLUMNS: ColumnDef<ListingRow>[] = [
+    {
+        id: "name",
+        accessorFn: (row) => row.unit.name,
+        header: "Alojamiento",
+        cell: ({ row }) => {
+            const { unit, href } = row.original
+            const name = unit.name || "Sin nombre"
+            return (
+                <div className="flex min-w-0 flex-col">
+                    {/* El enlace REAL (teclado, lector) es el nombre; la fila entera lo acompaña. */}
+                    {href ? <TextLink href={href} className="truncate">{name}</TextLink> : <span className="font-medium text-ink">{name}</span>}
+                    {unit.number && <span className="text-xs text-ink-3">{unit.number}</span>}
+                </div>
+            )
+        },
+    },
+    {
+        id: "property",
+        accessorFn: (row) => row.propertyName,
+        header: "Propiedad",
+        cell: ({ row }) => <span className="text-ink-2">{row.original.propertyName}</span>,
+    },
+    {
+        id: "status",
+        accessorFn: (row) => STATUS_LABEL[row.unit.status],
+        header: "Estado",
+        cell: ({ row }) => (
+            <StatusPill tone={row.original.unit.status === "ACTIVE" ? "success" : "idle"}>
+                {STATUS_LABEL[row.original.unit.status]}
+            </StatusPill>
+        ),
+    },
+    {
+        id: "capacity",
+        accessorFn: (row) => row.unit.capacity ?? undefined,
+        sortUndefined: "last",
+        // Como las columnas de texto: el primer clic ordena de menor a mayor.
+        sortDescFirst: false,
+        header: "Capacidad",
+        cell: ({ row }) => capacityText(row.original.unit.capacity) ?? <Absent />,
+    },
+    {
+        id: "price",
+        accessorFn: (row) => row.unit.pricePerNight ?? undefined,
+        sortUndefined: "last",
+        sortDescFirst: false,
+        header: () => <span className="block text-right">Precio por noche</span>,
+        cell: ({ row }) => {
+            const { pricePerNight, currency } = row.original.unit
+            return (
+                <span className="block text-right font-semibold tabular-nums text-ink">
+                    {pricePerNight === null ? <Absent /> : formatMoney(pricePerNight, currency)}
+                </span>
+            )
+        },
+    },
+]
+
+/** La fila apilada en móvil: nombre + estado, metadatos, capacidad y precio. */
+function ListingMobileRow({ row }: { row: ListingRow }) {
+    const { unit, href, propertyName } = row
+    const name = unit.name || "Sin nombre"
+    return (
+        <div className="space-y-1">
+            <div className="flex items-start justify-between gap-3">
+                {href ? <TextLink href={href}>{name}</TextLink> : <span className="font-medium text-ink">{name}</span>}
+                <StatusPill tone={unit.status === "ACTIVE" ? "success" : "idle"}>{STATUS_LABEL[unit.status]}</StatusPill>
+            </div>
+            {unit.number && <p className="text-xs text-ink-3">{unit.number}</p>}
+            <p className="text-sm text-ink-2">{propertyName}</p>
+            <div className="flex items-center justify-between gap-3 pt-1 text-sm">
+                <span className="text-ink-2">{capacityText(unit.capacity) ?? <Absent />}</span>
+                <span className="font-semibold tabular-nums text-ink">{unit.pricePerNight === null ? <Absent /> : formatMoney(unit.pricePerNight, unit.currency)}</span>
+            </div>
+        </div>
+    )
+}
+
+const rowId = (row: ListingRow) => String(row.unit.id)
+const rowHref = (row: ListingRow) => row.href ?? ""
+const renderMobileRow = (row: ListingRow) => <ListingMobileRow row={row} />
 
 // ── Component ──────────────────────────────────────────────────────────
 
@@ -104,17 +210,32 @@ export function PropertiesList() {
         })
     }, [properties, searchQuery, statusFilter])
 
-    const filteredUnits = useMemo(() => {
-        return units.filter((unit: Unit) => {
-            const matchesSearch =
-                unit.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (unit.number || "").toLowerCase().includes(searchQuery.toLowerCase())
+    const propertyById = useMemo(() => new Map(properties.map((p: Property) => [String(p.id), p])), [properties])
+    const listingRows = useMemo<ListingRow[]>(() => units.map((unit: Unit) => {
+        const property = propertyById.get(String(unit.propertyId))
+        const propertyUuid = property?.uuid ?? property?.id
+        return {
+            unit,
+            propertyName: property?.name ?? "",
+            // `?unit=` abre ese alojamiento en la pestaña (PropertiesUnits lo lee).
+            href: propertyUuid ? `${propertyEditHref(propertyUuid, "units")}${unit.uuid ? `&unit=${encodeURIComponent(unit.uuid)}` : ""}` : null,
+        }
+    }), [units, propertyById])
 
+    const filteredRows = useMemo(() => {
+        const needle = searchQuery.trim().toLowerCase()
+        return listingRows.filter(({ unit, propertyName }) => {
+            const matchesSearch = needle === ""
+                || unit.name?.toLowerCase().includes(needle)
+                || (unit.number || "").toLowerCase().includes(needle)
+                || propertyName.toLowerCase().includes(needle)
             const matchesStatus = statusFilter === "ALL" || unit.status === statusFilter
-            const matchesProperty = propertyFilter === "ALL" || unit.propertyId === propertyFilter
+            const matchesProperty = propertyFilter === "ALL" || String(unit.propertyId) === propertyFilter
             return matchesSearch && matchesStatus && matchesProperty
         })
-    }, [units, searchQuery, statusFilter, propertyFilter])
+    }, [listingRows, searchQuery, statusFilter, propertyFilter])
+
+    const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "ALL" || (activeTab === "units" && propertyFilter !== "ALL")
 
     return (
         <div className="space-y-6">
@@ -153,12 +274,13 @@ export function PropertiesList() {
                         </TabsTrigger>
                     </TabsList>
 
-                    <div className="flex flex-1 items-center gap-3 px-2">
+                    {/* Solo los filtros de la pestaña activa; «Limpiar» solo cuando hay alguno. */}
+                    <div className="flex flex-1 flex-wrap items-center gap-3 px-2">
                         <div className="relative flex-1 max-w-sm">
                             <Icon icon={Search} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" />
                             <Input
-                                placeholder="Buscar por nombre o número..."
-                                aria-label="Buscar propiedades y alojamientos"
+                                placeholder={activeTab === "units" ? "Buscar por nombre, número o propiedad…" : "Buscar por nombre o ciudad…"}
+                                aria-label={activeTab === "units" ? "Buscar alojamientos" : "Buscar propiedades"}
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="pl-9 h-10"
@@ -178,6 +300,27 @@ export function PropertiesList() {
                                 <SelectItem value="INACTIVE">Inactivos</SelectItem>
                             </SelectContent>
                         </Select>
+                        {activeTab === "units" && (
+                            <Select value={propertyFilter} onValueChange={setPropertyFilter}>
+                                <SelectTrigger className="min-w-45 shrink-0 h-10" aria-label="Filtrar por propiedad">
+                                    <div className="flex items-center gap-2 pointer-events-none min-w-0">
+                                        <Icon icon={Home} className="text-ink-3" />
+                                        <SelectValue placeholder="Propiedad" />
+                                    </div>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="ALL">Todas las propiedades</SelectItem>
+                                    {properties.map((p: Property) => (
+                                        <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                        {hasActiveFilters && (
+                            <Button type="button" variant="ghost" size="sm" onClick={clearFilters} aria-label="Limpiar filtros aplicados">
+                                <Icon icon={X} /> Limpiar
+                            </Button>
+                        )}
                     </div>
                 </Surface>
 
@@ -242,9 +385,8 @@ export function PropertiesList() {
 
                 <TabsContent value="units" className="space-y-6 outline-none">
                     {isLoadingListings ? (
-                        <SectionCard flush title="Listado de Alojamientos">
-                            <LoadingState rows={5} label="Cargando alojamientos" />
-                        </SectionCard>
+                        // Esqueleto con la geometría final: una página de filas.
+                        <LoadingState rows={LISTINGS_PAGE_SIZE} label="Cargando alojamientos" />
                     ) : listingsFailed ? (
                         <FeedbackBanner
                             tone="danger"
@@ -255,77 +397,37 @@ export function PropertiesList() {
                             Revisa tu conexión e intenta de nuevo.
                         </FeedbackBanner>
                     ) : (
-                        <SectionCard
-                            flush
-                            title="Listado de Alojamientos"
-                            actions={
-                                <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-                                    <SelectTrigger className="w-50 h-9 text-xs" aria-label="Filtrar por propiedad">
-                                        <SelectValue placeholder="Propiedad" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="ALL">Todas las Propiedades</SelectItem>
-                                        {properties.map((p: Property) => (
-                                            <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            }
-                        >
-                            <Table>
-                                {/* Lenguaje de tabla compartido (Fase 3): el encabezado lo pone
-                                    la primitiva; antes iba en 10 px, mayúsculas y navy. */}
-                                <TableHeader>
-                                    <TableRow className="hover:bg-transparent">
-                                        <TableHead className="w-25">Número</TableHead>
-                                        <TableHead>Nombre del alojamiento</TableHead>
-                                        <TableHead>Propiedad</TableHead>
-                                        <TableHead>Estado</TableHead>
-                                        <TableHead>Capacidad</TableHead>
-                                        <TableHead className="text-right">Precio</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredUnits.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell colSpan={6} className="p-0 whitespace-normal">
-                                                {units.length === 0 ? (
-                                                    <EmptyState
-                                                        title="Todavía no hay alojamientos"
-                                                        description="Los alojamientos se crean dentro de cada propiedad."
-                                                    />
-                                                ) : (
-                                                    <EmptyState
-                                                        kind="no-results"
-                                                        title={searchQuery.trim() ? `Sin resultados para «${searchQuery.trim()}»` : "Ningún alojamiento coincide con los filtros"}
-                                                        description="Prueba con otra búsqueda o quita algún filtro."
-                                                        action={<Button variant="outline" size="sm" onClick={clearFilters}>Limpiar filtros</Button>}
-                                                    />
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        filteredUnits.map((unit: Unit) => {
-                                            const property = properties.find((p: Property) => p.id === unit.propertyId)
-                                            return (
-                                                <TableRow key={unit.id}>
-                                                    <TableCell className="font-bold text-primary">{unit.number}</TableCell>
-                                                    <TableCell className="font-bold text-ink">{unit.name}</TableCell>
-                                                    <TableCell className="text-ink-2 text-sm font-medium">{property?.name}</TableCell>
-                                                    <TableCell>
-                                                        <StatusPill tone={unit.status === "ACTIVE" ? "success" : "idle"}>{unit.status === "ACTIVE" ? "Activo" : "Inactivo"}</StatusPill>
-                                                    </TableCell>
-                                                    <TableCell className="text-sm font-medium text-ink-2">{unit.capacity} Huéspedes</TableCell>
-                                                    <TableCell className="text-right font-bold text-ink">
-                                                        ${unit.pricePerNight?.toLocaleString()}
-                                                    </TableCell>
-                                                </TableRow>
-                                            )
-                                        })
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </SectionCard>
+                        <div className="space-y-3">
+                            {/* El conteo se anuncia sin interrumpir: «8 de 28 alojamientos» al filtrar. */}
+                            <p role="status" className="text-sm text-ink-3">
+                                {hasActiveFilters
+                                    ? `${filteredRows.length} de ${units.length} ${units.length === 1 ? "alojamiento" : "alojamientos"}`
+                                    : `${units.length} ${units.length === 1 ? "alojamiento" : "alojamientos"}`}
+                            </p>
+                            <DataTable
+                                columns={LISTING_COLUMNS}
+                                data={filteredRows}
+                                getRowId={rowId}
+                                getRowHref={rowHref}
+                                renderMobileRow={renderMobileRow}
+                                pageSize={LISTINGS_PAGE_SIZE}
+                                itemLabel={LISTINGS_LABEL}
+                                defaultSorting={[{ id: "name", desc: false }]}
+                                empty={units.length === 0 ? (
+                                    <EmptyState
+                                        title="Todavía no hay alojamientos"
+                                        description="Los alojamientos se crean dentro de cada propiedad."
+                                    />
+                                ) : (
+                                    <EmptyState
+                                        kind="no-results"
+                                        title={searchQuery.trim() ? `Sin resultados para «${searchQuery.trim()}»` : "Ningún alojamiento coincide con los filtros"}
+                                        description="Prueba con otra búsqueda o quita algún filtro."
+                                        action={<Button variant="outline" size="sm" onClick={clearFilters}>Limpiar filtros</Button>}
+                                    />
+                                )}
+                            />
+                        </div>
                     )}
                 </TabsContent>
             </Tabs>

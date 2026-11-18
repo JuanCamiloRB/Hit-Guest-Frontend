@@ -78,9 +78,12 @@ export function toProperty(raw: any, index: number): Property {
 
 export function toListing(raw: any, index: number): PortfolioListing {
     const extra = readExtra(raw)
-    const price = Number(
-        raw.price || raw.start_price || raw.startPrice || raw.total_price || extra.startPrice || 0,
-    )
+    // 0 o ausente = sin precio: la tabla decía «$0» y lo leía como un precio.
+    const rawPrice = Number(raw.price || raw.start_price || raw.startPrice || raw.total_price || extra.startPrice || 0)
+    const price = Number.isFinite(rawPrice) && rawPrice > 0 ? rawPrice : null
+    const rawCurrency = extra.currency ?? raw.currency
+    const currency = typeof rawCurrency === "string" && rawCurrency.trim() ? rawCurrency.trim().toUpperCase() : null
+    const rawCapacity = Number(extra.maxOccupancy || extra.max_occupancy || raw.maxOccupancy || 0)
     // Activo si cualquiera de las formas del estado lo dice (la tabla de
     // alojamientos siempre lo leyó así).
     const isActive = [raw.statusRecordId, raw.status_record_id, raw.statusRecord?.id].some((id) => id === 1 || id === 6)
@@ -94,10 +97,12 @@ export function toListing(raw: any, index: number): PortfolioListing {
         name: raw.name ?? "",
         number: raw.internalName || raw.internal_name || "",
         type: "ENTIRE_PLACE",
-        // Sin capacidad declarada (o 0) se asume 2, como siempre mostró la tabla.
-        capacity: Number(extra.maxOccupancy || extra.max_occupancy || raw.maxOccupancy || 2),
+        // Sin capacidad declarada (o 0): `null`. Antes se asumía 2 y la tabla lo
+        // mostraba como dato en casi todas las filas.
+        capacity: Number.isFinite(rawCapacity) && rawCapacity > 0 ? rawCapacity : null,
         amenities: [],
         pricePerNight: price,
+        currency,
         status: isActive ? "ACTIVE" : "INACTIVE",
         inheritWifi: false,
         lockId: lockId ? String(lockId) : null,
