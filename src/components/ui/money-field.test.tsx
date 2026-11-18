@@ -53,13 +53,15 @@ function Field({
 }
 
 describe("sanitizeAmount", () => {
-    it("deja dígitos y un solo separador decimal; la coma pasa a punto; no agrupa miles", () => {
-        expect(sanitizeAmount("1a2,5")).toBe("12.5")
-        expect(sanitizeAmount("1.2.3")).toBe("1.23")
-        expect(sanitizeAmount("1,234,56")).toBe("1.23456")
+    it("deja dígitos, puntos y comas tal como se escriben; el campo no decide el separador decimal", () => {
+        expect(sanitizeAmount("1a2,5")).toBe("12,5")
+        expect(sanitizeAmount("1.2.3")).toBe("1.2.3")
+        expect(sanitizeAmount("1,234,56")).toBe("1,234,56")
+        // «650.000» escrito a la colombiana se conserva: lo lee `parseAmountText` como 650000.
+        expect(sanitizeAmount("650.000")).toBe("650.000")
         expect(sanitizeAmount("$ 1500")).toBe("1500")
         expect(sanitizeAmount("")).toBe("")
-        expect(sanitizeAmount(",")).toBe(".")
+        expect(sanitizeAmount(",")).toBe(",")
     })
 })
 
@@ -74,14 +76,14 @@ describe("MoneyField", () => {
         expect(box).toHaveClass("border-input", "rounded-md", "h-10", "focus-within:border-ring", "focus-within:ring-[3px]")
     })
 
-    it("escribir «1a2,5» emite «12.5»", async () => {
+    it("escribir «1a2,5» emite «12,5» (la letra se descarta, la coma se conserva)", async () => {
         const onAmount = vi.fn()
         const user = userEvent.setup()
         render(<Field onAmount={onAmount} />)
         const input = screen.getByRole("textbox", { name: "Precio total" })
         await user.type(input, "1a2,5")
-        expect(input).toHaveValue("12.5")
-        expect(onAmount).toHaveBeenLastCalledWith("12.5")
+        expect(input).toHaveValue("12,5")
+        expect(onAmount).toHaveBeenLastCalledWith("12,5")
     })
 
     it("la moneda es un Select con nombre que lista las monedas y emite al cambiar", async () => {

@@ -8,13 +8,13 @@ window.HTMLElement.prototype.releasePointerCapture = () => {}
 window.HTMLElement.prototype.scrollIntoView = () => {}
 globalThis.ResizeObserver = globalThis.ResizeObserver ?? class { observe() {} unobserve() {} disconnect() {} }
 
-const mocks = vi.hoisted(() => ({ params: new URLSearchParams() }))
+const mocks = vi.hoisted(() => ({ params: new URLSearchParams(), update: vi.fn() }))
 vi.mock("next/navigation", () => ({ useSearchParams: () => mocks.params }))
 import userEvent from "@testing-library/user-event"
 vi.mock("@/features/auth/services/catalog-service", () => ({
     catalogService: { getRoomTypes: async () => [{ id: 3, name: "Suite" }], getCurrencies: async () => [], getAmenities: async () => [], getPmsSources: async () => [] },
 }))
-vi.mock("../services/listings-service", () => ({ listingsService: {} }))
+vi.mock("../services/listings-service", () => ({ listingsService: { update: mocks.update } }))
 vi.mock("../services/automation-service", async (importOriginal) => {
     const actual = await importOriginal<typeof import("../services/automation-service")>()
     return { ...actual, automationService: { listGlobal: async () => [], listListingOverrides: async () => [] } }
@@ -25,7 +25,7 @@ import { PropertiesUnits } from "./PropertiesUnits"
 
 const UNITS = [
     { uuid: "l-1", name: "Suite 101", internalName: "101", isActive: true, extra: {} },
-    { uuid: "l-2", name: "Suite 202", internalName: "202", isActive: true, extra: {} },
+    { uuid: "l-2", name: "Suite 202", internalName: "202", isActive: true, roomTypeId: 3, contactEmail: "suite@mirador.co", extra: {} },
 ]
 
 function Wrapper({ children }: { children: ReactNode }) {
@@ -46,12 +46,19 @@ describe("PropertiesUnits — `?unit=` abre ese alojamiento al llegar", () => {
 
     it("cerrar el diálogo quita solo `unit` de la URL (conserva `tab`), por Escape o por Cancelar", async () => {
         const user = userEvent.setup()
-        window.history.replaceState(null, "", "/dashboard/properties/p-1?tab=units&unit=l-2")
+        // Como en el App Router real: su propio estado en `history.state`.
+        window.history.replaceState({ __NA: true, __PRIVATE_NEXTJS_INTERNALS_TREE: {} }, "", "/dashboard/properties/p-1?tab=units&unit=l-2")
         mocks.params = new URLSearchParams("tab=units&unit=l-2")
         const { rerender } = render(<Wrapper><PropertiesUnits /></Wrapper>)
         await screen.findByRole("dialog", { name: "Editar alojamiento" })
         const entries = window.history.length
+        const replaceState = vi.spyOn(window.history, "replaceState")
         await user.keyboard("{Escape}")
+        // `state` en null A PROPÓSITO: con su propio `history.state` (`__NA`) el App
+        // Router lo toma por llamada interna y no actualiza `useSearchParams`.
+        expect(replaceState).toHaveBeenCalledTimes(1)
+        expect(replaceState.mock.calls[0][0]).toBeNull()
+        replaceState.mockRestore()
         // Solo `unit` se va; `tab` se queda; sin entrada nueva en el historial.
         expect(window.location.pathname + window.location.search).toBe("/dashboard/properties/p-1?tab=units")
         expect(window.history.length).toBe(entries)
@@ -78,5 +85,22 @@ describe("PropertiesUnits — `?unit=` abre ese alojamiento al llegar", () => {
         render(<Wrapper><PropertiesUnits /></Wrapper>)
         await screen.findByRole("button", { name: "Editar Suite 101" })
         expect(screen.queryByRole("dialog")).toBeNull()
+    })
+
+    it("editar y guardar «250.000» envía 250000 (raíz y extra), no 250", async () => {
+        const user = userEvent.setup()
+        mocks.update.mockResolvedValue({ uuid: "l-2", name: "Suite 202" })
+        mocks.params = new URLSearchParams("tab=units&unit=l-2")
+        render(<Wrapper><PropertiesUnits /></Wrapper>)
+        const dialog = await screen.findByRole("dialog", { name: "Editar alojamiento" })
+        const price = within(dialog).getByLabelText(/Precio inicial por noche/)
+        await user.clear(price)
+        await user.type(price, "250.000")
+        await user.click(within(dialog).getByRole("button", { name: /Guardar/ }))
+        await vi.waitFor(() => expect(mocks.update).toHaveBeenCalledTimes(1))
+        const payload = mocks.update.mock.calls[0][1]
+        expect(payload).toMatchObject({ price: 250000, start_price: 250000 })
+        expect(payload.extra.startPrice).toBe(250000)
+        await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)) })
     })
 })

@@ -45,11 +45,15 @@ interface MoneyFieldProps {
     className?: string
 }
 
-/** Dígitos y un solo punto decimal: «1a2,5» → «12.5». No formatea miles. */
+/**
+ * Dígitos, puntos y comas, tal como se escriben: «1a2,5» → «12,5»; «650.000»
+ * queda «650.000». El campo NO decide qué separador es decimal: eso lo hace
+ * `parseAmountText` (`lib/amount-text`) al leer el valor, y el formulario
+ * muestra cómo lo leyó. Antes la coma pasaba a punto y «650.000» viajaba como
+ * 650: seiscientos cincuenta mil escrito a la colombiana se cobraba por 650.
+ */
 function sanitizeAmount(raw: string): string {
-    const digitsAndDots = raw.replace(/,/g, ".").replace(/[^0-9.]/g, "")
-    const [integer, ...decimals] = digitsAndDots.split(".")
-    return decimals.length === 0 ? integer : `${integer}.${decimals.join("")}`
+    return raw.replace(/[^0-9.,]/g, "")
 }
 
 function MoneyField({

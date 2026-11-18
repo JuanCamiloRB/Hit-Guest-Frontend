@@ -159,12 +159,20 @@ describe("Combobox", () => {
         expect(screen.getByRole("option", { name: /México/ })).toHaveAttribute("aria-selected", "false")
     })
 
-    it("loading: el disparador queda deshabilitado y dice loadingText", () => {
+    it("loading: el disparador dice loadingText, sigue ENFOCABLE (no deshabilitado) y no abre", async () => {
+        const user = userEvent.setup()
         render(<Field loading loadingText="Cargando países…" />)
         const trigger = screen.getByRole("combobox", { name: "País" })
-        expect(trigger).toBeDisabled()
+        // Deshabilitado no recibe foco, y el salto al primer campo inválido del
+        // formulario de propiedad llegaba mientras el catálogo cargaba.
+        expect(trigger).not.toBeDisabled()
+        trigger.focus()
+        expect(trigger).toHaveFocus()
         expect(trigger).toHaveTextContent("Cargando países…")
         expect(trigger).toHaveAttribute("aria-busy", "true")
+        await user.click(trigger)
+        await user.keyboard("{ArrowDown}")
+        expect(screen.queryByRole("listbox")).toBeNull()
     })
 
     it("disabled: toBeDisabled y no se abre", async () => {

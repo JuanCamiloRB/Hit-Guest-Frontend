@@ -116,6 +116,17 @@ describe("reservationSchema — qué es requerido", () => {
         expect(decimal.success && decimal.data.totalPrice).toBe(12.5)
     })
 
+    it("el precio se lee como se escribe: «650.000» es seiscientos cincuenta mil, no 650", () => {
+        const read = (totalPrice: string) => { const r = reservationSchema.safeParse({ ...base, totalPrice }); return r.success ? r.data.totalPrice : r.error.issues[0].message }
+        expect(read("650.000")).toBe(650000)
+        expect(read("650,000")).toBe(650000)
+        expect(read("1.234,56")).toBe(1234.56)
+        expect(read("1,234.56")).toBe(1234.56)
+        expect(read("650,5")).toBe(650.5)
+        expect(read("650.0000")).toBe("El precio debe ser un número, por ejemplo 650000, 650.000 o 650.000,50")
+        expect(read("1.23.4")).toBe("El precio debe ser un número, por ejemplo 650000, 650.000 o 650.000,50")
+    })
+
     it("huéspedes se convierte a número y exige al menos 1", () => {
         expect(reservationSchema.safeParse({ ...base, totalGuests: "0" }).success).toBe(false)
         const two = reservationSchema.safeParse(base)

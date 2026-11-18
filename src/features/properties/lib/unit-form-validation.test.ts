@@ -86,8 +86,12 @@ describe("validateUnitForm", () => {
             expect(fields({ ...valid, price: "-1" })).toContain("price")
         })
 
-        it("rechaza texto que no es número", () => {
+        it("rechaza texto que no es número, o separadores que no se pueden leer sin adivinar", () => {
             expect(fields({ ...valid, price: "doscientos mil" })).toContain("price")
+            expect(fields({ ...valid, price: "1.23.4" })).toContain("price")
+            // «650.000» (miles a la colombiana) y «650,50» sí son números.
+            expect(fields({ ...valid, price: "650.000" })).not.toContain("price")
+            expect(fields({ ...valid, price: "650,50" })).not.toContain("price")
         })
 
         it("acepta vacío (el precio no es obligatorio) y acepta 0", () => {

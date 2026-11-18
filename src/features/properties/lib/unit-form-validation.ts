@@ -17,6 +17,8 @@
  * que merece pruebas.
  */
 
+import { AMOUNT_FORMAT_EXAMPLES, parseAmountText } from "@/lib/amount-text"
+
 /** Pestaña donde vive cada campo — permite saltar a la que tiene el error. */
 export type UnitFormTab = "general" | "amenities" | "rooms" | "policies"
 
@@ -163,9 +165,9 @@ export function validateUnitForm(form: UnitFormValues): UnitFieldError[] {
     // publicada sin precio, sin que nadie lo notara hasta la primera reserva.
     const rawPrice = text(typeof form.price === "number" ? String(form.price) : form.price)
     if (rawPrice) {
-        const price = Number(rawPrice)
-        if (!Number.isFinite(price)) {
-            errors.push({ field: "price", message: "El precio debe ser un número.", tab: "general" })
+        const price = parseAmountText(rawPrice)
+        if (price === null) {
+            errors.push({ field: "price", message: `El precio debe ser un número, por ejemplo ${AMOUNT_FORMAT_EXAMPLES}.`, tab: "general" })
         } else if (price < 0) {
             errors.push({ field: "price", message: "El precio no puede ser negativo.", tab: "general" })
         }

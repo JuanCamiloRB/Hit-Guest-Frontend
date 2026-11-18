@@ -1,6 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { parseAmountText } from "@/lib/amount-text"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Plus, Send } from "lucide-react"
@@ -177,7 +178,8 @@ export function ReservationDialog({ mode = "create", reservationUuid, trigger }:
     const currency = form.watch("currency")
     const sendLinkNow = form.watch("sendLinkNow") === true
     const nights = nightsBetween(selectedDates?.from, selectedDates?.to)
-    const total = rawPrice === "" || Number.isNaN(Number(rawPrice)) ? null : Number(rawPrice)
+    // El mismo criterio que el payload (`lib/amount-text`): «650.000» resume 650000, no 650.
+    const total = parseAmountText(rawPrice)
 
     const markTouched = useCallback((key: keyof PrefillTouched) => {
         touchedRef.current[key] = true

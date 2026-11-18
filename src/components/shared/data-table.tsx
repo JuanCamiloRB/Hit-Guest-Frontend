@@ -58,8 +58,18 @@ function isInteractive(target: EventTarget | null): boolean {
  */
 function followRow(event: React.MouseEvent<HTMLElement>, href: string) {
     if (isInteractive(event.target)) return
+    // Soltar el ratón tras seleccionar texto de la fila también llega como `click`.
+    if (window.getSelection()?.toString()) return
+    const { metaKey, ctrlKey, shiftKey, altKey } = event
     const link = event.currentTarget.querySelector<HTMLAnchorElement>("a[href]")
-    if (link) link.click()
+    if (link) {
+        // Con los modificadores del clic original: `link.click()` los perdía y
+        // Cmd/Ctrl+clic en la fila abría en la MISMA pestaña (next/link solo cede
+        // al navegador cuando el evento viene modificado).
+        link.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0, metaKey, ctrlKey, shiftKey, altKey }))
+        return
+    }
+    if (metaKey || ctrlKey) window.open(href, "_blank", "noopener")
     else window.location.assign(href)
 }
 

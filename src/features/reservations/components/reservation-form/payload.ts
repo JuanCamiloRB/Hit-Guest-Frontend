@@ -1,4 +1,5 @@
 import * as z from "zod"
+import { AMOUNT_FORMAT_EXAMPLES, parseAmountText } from "@/lib/amount-text"
 import { addDays, format } from "date-fns"
 import { hasUsablePhone } from "../../lib/checkin-link-delivery-status"
 
@@ -51,9 +52,11 @@ export const reservationSchema = z.object({
                 ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Escribe el precio total (0 si no tiene costo)" })
                 return z.NEVER
             }
-            const value = Number(text)
-            if (Number.isNaN(value)) {
-                ctx.addIssue({ code: z.ZodIssueCode.custom, message: "El precio debe ser un número" })
+            // `Number("650.000")` es 650: se lee con el mismo criterio que el valor
+            // declarado por el huésped (`lib/amount-text`), sin adivinar separadores.
+            const value = parseAmountText(text)
+            if (value === null) {
+                ctx.addIssue({ code: z.ZodIssueCode.custom, message: `El precio debe ser un número, por ejemplo ${AMOUNT_FORMAT_EXAMPLES}` })
                 return z.NEVER
             }
             if (value < 0) {

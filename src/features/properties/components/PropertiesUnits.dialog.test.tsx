@@ -77,7 +77,11 @@ describe("PropertiesUnits — el diálogo rediseñado escribe lo mismo de siempr
         await user.click(within(dialog).getByRole("button", { name: "Un huésped más" }))
         expect(capacity).toHaveValue("3")
 
-        await user.type(within(dialog).getByLabelText(/Precio inicial por noche/), "250000")
+        const price = within(dialog).getByLabelText(/Precio inicial por noche/)
+        // Escrito a la colombiana: se conserva en el campo, se dice cómo se leyó y viaja como 250000.
+        await user.type(price, "250.000")
+        expect(price).toHaveValue("250.000")
+        expect(within(dialog).getByText(/Se registra como/)).toHaveTextContent("250.000")
         await user.click(within(dialog).getByRole("combobox", { name: "Moneda" }))
         await user.click(await screen.findByRole("option", { name: "USD - Dólar" }))
 

@@ -115,6 +115,23 @@ describe("UploadZone", () => {
         expect(screen.queryByRole("button", { name: "Reintentar" })).toBeNull()
     })
 
+    it("dentro de un <form>, «Reintentar» reintenta y NO envía el formulario", async () => {
+        const user = userEvent.setup()
+        const onRetry = vi.fn()
+        const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault())
+        render(
+            <form onSubmit={onSubmit}>
+                <UploadZone status="error" errorMessage="No se pudieron subir las fotos" onRetry={onRetry} onFiles={() => {}} />
+            </form>,
+        )
+        const retry = screen.getByRole("button", { name: "Reintentar" })
+        expect(retry).toHaveAttribute("type", "button")
+        await user.click(retry)
+        expect(onRetry).toHaveBeenCalledTimes(1)
+        // Sin `type="button"` esto enviaba la PROPIEDAD entera (PUT + salida de la pantalla).
+        expect(onSubmit).not.toHaveBeenCalled()
+    })
+
     it("deshabilitada: no abre, no acepta soltar y se ve hundida", () => {
         const onFiles = vi.fn()
         render(<UploadZone disabled onFiles={onFiles} />)

@@ -9,6 +9,16 @@ window.HTMLElement.prototype.scrollIntoView = () => {}
 const mocks = vi.hoisted(() => ({ bffFetch: vi.fn(), small: false }))
 vi.mock("@/lib/bff-client", () => ({ bffFetch: mocks.bffFetch }))
 const followed: string[] = []
+const modifiers: { metaKey: boolean; ctrlKey: boolean }[] = []
+// El enlace de la fila recibe un `click` real (con los modificadores del original):
+// se registra y se cancela para que jsdom no intente navegar.
+document.addEventListener("click", (event) => {
+    const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null
+    if (!anchor) return
+    followed.push(anchor.getAttribute("href") ?? "")
+    modifiers.push({ metaKey: event.metaKey, ctrlKey: event.ctrlKey })
+    event.preventDefault()
+})
 vi.mock("@/hooks/useMediaQuery", () => ({ SMALL_SCREEN_QUERY: "(max-width: 767px)", useMediaQuery: () => mocks.small }))
 vi.mock("./PropertyCard", () => ({ PropertyCard: ({ property }: { property: { name: string } }) => <div>{property.name}</div> }))
 
@@ -47,9 +57,9 @@ describe("PropertiesList — Alojamientos paginados", () => {
         vi.clearAllMocks()
         mocks.small = false
         followed.length = 0
+        modifiers.length = 0
         resetPropertiesCaches()
         vi.spyOn(console, "error").mockImplementation(() => {})
-        vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) { followed.push(this.getAttribute("href") ?? "") })
     })
 
     it("10 por página, ordenados por nombre, con conteo y rango; la fila lleva a la pestaña Alojamientos de su propiedad", async () => {
@@ -163,5 +173,34 @@ describe("PropertiesList — Alojamientos paginados", () => {
         expect(items[0]).toHaveTextContent("850.000")
         expect(screen.queryByRole("table")).toBeNull()
         expect(screen.getByText("Mostrando 1–10 de 28 alojamientos")).toBeInTheDocument()
+    })
+})
+
+describe("PropertiesList — orden por nombre fijo (no el muestreo de TanStack)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.small = false
+        resetPropertiesCaches()
+        vi.spyOn(console, "error").mockImplementation(() => {})
+    })
+
+    it("con 5 filas (≤10) ordena como un diccionario: acentos y mayúsculas no cuentan, los números van por valor", async () => {
+        const names = ["Zebra", "Álamo", "casa 10", "casa 2", "Casa 3"]
+        const data = {
+            properties: [property("p1", "Pullman Miami")],
+            listings: names.map((name, i) => ({ ...listing(i + 1, "p1"), name })),
+            automationsByProperty: {},
+        }
+        mocks.bffFetch.mockImplementation((path: string) => Promise.resolve(path === LIGHT ? { data: data.properties } : data))
+        render(<PropertiesList />)
+        await screen.findByText("Pullman Miami")
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Alojamientos/ }), { button: 0 })
+        await screen.findByRole("table")
+        await act(async () => {})
+        const first = () => within(screen.getByRole("table")).getAllByRole("row").slice(1).map((r) => within(r).getAllByRole("cell")[0].textContent?.replace(/N-\d+$/, ""))
+        expect(first()).toEqual(["Álamo", "casa 2", "Casa 3", "casa 10", "Zebra"])
+        fireEvent.click(within(screen.getByRole("table")).getByRole("button", { name: /Alojamiento/ }))
+        await act(async () => {})
+        expect(first()).toEqual(["Zebra", "casa 10", "Casa 3", "casa 2", "Álamo"])
     })
 })

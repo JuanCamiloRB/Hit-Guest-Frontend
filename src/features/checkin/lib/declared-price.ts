@@ -15,6 +15,7 @@
  */
 
 import { formatMoney } from "@/lib/money"
+import { splitAmountText } from "@/lib/amount-text"
 
 export type DeclaredPriceFailure =
     | "empty"
@@ -61,32 +62,9 @@ function extractNumberText(raw: string, expectedCurrency: string | null): { numb
     return { number }
 }
 
-const DECIMAL_TAIL = /^\d{1,2}$/
-const FIRST_GROUP = /^\d{1,3}$/
-const GROUP = /^\d{3}$/
-
-function isThousandsGrouped(integerPart: string, separator: string): boolean {
-    const groups = integerPart.split(separator)
-    return groups.length >= 2 && FIRST_GROUP.test(groups[0]) && groups.slice(1).every((g) => GROUP.test(g))
-}
-
-/** Un solo separador presente: decide si es decimal o de miles. `null` = ambiguo/inválido. */
-function splitSingle(text: string, separator: string): { integer: string; fraction: string } | null {
-    const parts = text.split(separator)
-    if (parts.length === 2 && /^\d+$/.test(parts[0]) && DECIMAL_TAIL.test(parts[1])) {
-        return { integer: parts[0], fraction: parts[1] }
-    }
-    if (isThousandsGrouped(text, separator)) return { integer: parts.join(""), fraction: "" }
-    return null
-}
-
 /**
- * Reglas de separadores, en este orden:
- *  - Los dos presentes: el que aparece de último es el decimal (una sola vez,
- *    1–2 dígitos); el otro tiene que agrupar miles de a 3.
- *  - Uno solo: si va una vez seguido de 1–2 dígitos, es decimal; si agrupa
- *    miles de a 3 (primer grupo de 1–3), son miles; cualquier otra cosa es
- *    inválido — nunca se adivina.
+ * Las reglas de separadores (nunca se adivina) viven en `lib/amount-text`,
+ * compartidas con el precio de la reserva manual y el del alojamiento.
  */
 export function analyzeDeclaredPrice(raw: string, expectedCurrency: string | null): DeclaredPriceAnalysis {
     if (raw.trim() === "") return { ok: false, reason: "empty" }
@@ -94,26 +72,8 @@ export function analyzeDeclaredPrice(raw: string, expectedCurrency: string | nul
     if ("reason" in extracted) return { ok: false, reason: extracted.reason }
     const text = extracted.number
 
-    const lastComma = text.lastIndexOf(",")
-    const lastDot = text.lastIndexOf(".")
-    let split: { integer: string; fraction: string } | null
-
-    if (lastComma >= 0 && lastDot >= 0) {
-        const decimal = lastComma > lastDot ? "," : "."
-        const thousands = decimal === "," ? "." : ","
-        const parts = text.split(decimal)
-        split = parts.length === 2 && DECIMAL_TAIL.test(parts[1]) && isThousandsGrouped(parts[0], thousands)
-            ? { integer: parts[0].split(thousands).join(""), fraction: parts[1] }
-            : null
-    } else if (lastComma >= 0) {
-        split = splitSingle(text, ",")
-    } else if (lastDot >= 0) {
-        split = splitSingle(text, ".")
-    } else {
-        split = { integer: text, fraction: "" }
-    }
-
-    if (!split || !/^\d+$/.test(split.integer)) return { ok: false, reason: "invalid_format" }
+    const split = splitAmountText(text)
+    if (!split) return { ok: false, reason: "invalid_format" }
     const value = Number(split.fraction ? `${split.integer}.${split.fraction}` : split.integer)
     return Number.isFinite(value) && value > 0 ? { ok: true, value } : { ok: false, reason: "out_of_range" }
 }

@@ -156,6 +156,25 @@ describe("ReservationDialog — crear (rediseño 2026-11-16)", () => {
         await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull())
     })
 
+    it("«650.000» escrito a la colombiana: el campo lo conserva, dice cómo lo leyó, el resumen y el payload llevan 650000", async () => {
+        const user = await openCreate()
+        await fillStay(user)
+        await fillGuest(user)
+        const price = screen.getByLabelText(/Precio total/)
+        await user.clear(price)
+        await user.type(price, "650.000")
+        expect(price).toHaveValue("650.000")
+        expect(screen.getByText(/Se registra como/)).toHaveTextContent("650.000")
+        // El resumen lateral: 650000 en 3 noches, no 650.
+        const summary = screen.getByRole("complementary", { name: "Resumen" })
+        expect(summary).toHaveTextContent("$ 650.000")
+        expect(summary).toHaveTextContent("216.666,67 por noche")
+
+        await user.click(screen.getByRole("button", { name: "Crear y enviar link" }))
+        await waitFor(() => expect(mocks.createWithFollowUp).toHaveBeenCalledTimes(1))
+        expect(mocks.createWithFollowUp.mock.calls[0][0].payload.totalPrice).toBe(650000)
+    })
+
     it("lo que el PM ya escribió no lo pisa la precarga del alojamiento", async () => {
         const user = await openCreate()
         const price = screen.getByLabelText(/Precio total/)

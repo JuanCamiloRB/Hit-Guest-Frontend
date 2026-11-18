@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, type AriaAttributes, type Ref } from "react"
 import { MapPin, Search } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { cn } from "@/lib/utils"
@@ -30,6 +30,16 @@ interface AddressAutocompleteProps {
     onSelect: (details: PlaceDetails) => void
     placeholder?: string
     className?: string
+    /**
+     * Lo que `FormControl` le pasa al campo: `ref` (para `form.setFocus`), `id`
+     * (el `for` de la `FormLabel`) y los `aria-*` del error. Sin reenviarlos, la
+     * etiqueta apuntaba a un id inexistente y el foco al primer campo inválido
+     * no llegaba a Dirección.
+     */
+    ref?: Ref<HTMLInputElement>
+    id?: string
+    "aria-invalid"?: AriaAttributes["aria-invalid"]
+    "aria-describedby"?: string
 }
 
 type UnavailableReason = "manual_search_required" | "provider_error" | null
@@ -50,6 +60,10 @@ export function AddressAutocomplete({
     onSelect,
     placeholder,
     className,
+    ref,
+    id,
+    "aria-invalid": ariaInvalid,
+    "aria-describedby": ariaDescribedBy,
 }: AddressAutocompleteProps) {
     const [suggestions, setSuggestions] = useState<Suggestion[]>([])
     const [open, setOpen] = useState(false)
@@ -218,6 +232,10 @@ export function AddressAutocomplete({
             <div className="relative">
                 <Icon icon={MapPin} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
                 <Input
+                    ref={ref}
+                    id={id}
+                    aria-invalid={ariaInvalid}
+                    aria-describedby={ariaDescribedBy}
                     type="text"
                     value={value}
                     onChange={(e) => handleInputChange(e.target.value)}

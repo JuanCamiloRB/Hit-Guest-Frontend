@@ -23,7 +23,7 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs"
-import type { ColumnDef } from "@tanstack/react-table"
+import type { ColumnDef, SortingFn } from "@tanstack/react-table"
 import { DataTable } from "@/components/shared/data-table"
 import { TextLink } from "@/components/ui/text-link"
 import { formatMoney } from "@/lib/money"
@@ -64,10 +64,20 @@ function capacityText(capacity: number | null): string | null {
  * `undefined` para TanStack y `sortUndefined: "last"` lo deja al final en los
  * DOS sentidos (con -1 subía primero al ordenar ascendente).
  */
+const TEXT_COLLATOR = new Intl.Collator("es", { sensitivity: "base", numeric: true })
+/**
+ * Sin esto TanStack ELIGE la función de orden muestreando las filas a partir de
+ * la 11.ª: con ≤10 resultados ordena por código de carácter (mayúsculas antes,
+ * «Álamo» después de «Zebra») y con más cambia de criterio bajo el usuario.
+ */
+const byText: SortingFn<ListingRow> = (a, b, columnId) =>
+    TEXT_COLLATOR.compare(String(a.getValue(columnId) ?? ""), String(b.getValue(columnId) ?? ""))
+
 const LISTING_COLUMNS: ColumnDef<ListingRow>[] = [
     {
         id: "name",
         accessorFn: (row) => row.unit.name,
+        sortingFn: byText,
         header: "Alojamiento",
         cell: ({ row }) => {
             const { unit, href } = row.original
@@ -84,12 +94,14 @@ const LISTING_COLUMNS: ColumnDef<ListingRow>[] = [
     {
         id: "property",
         accessorFn: (row) => row.propertyName,
+        sortingFn: byText,
         header: "Propiedad",
         cell: ({ row }) => <span className="text-ink-2">{row.original.propertyName}</span>,
     },
     {
         id: "status",
         accessorFn: (row) => STATUS_LABEL[row.unit.status],
+        sortingFn: byText,
         header: "Estado",
         cell: ({ row }) => (
             <StatusPill tone={row.original.unit.status === "ACTIVE" ? "success" : "idle"}>

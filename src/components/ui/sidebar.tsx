@@ -6,12 +6,11 @@ import { PanelLeftClose, PanelLeftOpen, type LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { SIDEBAR_COOKIE_COLLAPSED, SIDEBAR_COOKIE_EXPANDED, SIDEBAR_COOKIE_NAME, SIDEBAR_STORAGE_KEY } from "@/lib/sidebar-preference"
-import { useHasHydrated } from "@/hooks/useHasHydrated"
 import { Button } from "./button"
 import { Icon } from "./icon"
 import { Badge } from "./badge"
 import { Overline } from "./overline"
-import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./tooltip"
 
 /**
  * La barra lateral del panel, contraíble: ancha (`w-64`) con ícono + texto, o
@@ -36,17 +35,21 @@ const STORAGE_KEY = SIDEBAR_STORAGE_KEY
 const COOKIE_NAME = SIDEBAR_COOKIE_NAME
 const listeners = new Set<() => void>()
 
+function writeCookie(value: boolean) {
+  try {
+    document.cookie = `${COOKIE_NAME}=${value ? SIDEBAR_COOKIE_COLLAPSED : SIDEBAR_COOKIE_EXPANDED}; path=/; max-age=31536000; SameSite=Lax`
+  } catch {
+    // Sin cookies: la próxima carga arranca ancha y se ajusta al hidratar.
+  }
+}
+
 function writeCollapsed(value: boolean) {
   try {
     window.localStorage.setItem(STORAGE_KEY, value ? "1" : "0")
   } catch {
     // Sin almacenamiento (ventana privada, bloqueado): la sesión actual sigue sirviendo.
   }
-  try {
-    document.cookie = `${COOKIE_NAME}=${value ? SIDEBAR_COOKIE_COLLAPSED : SIDEBAR_COOKIE_EXPANDED}; path=/; max-age=31536000; SameSite=Lax`
-  } catch {
-    // Sin cookies: la próxima carga arranca ancha y se ajusta al hidratar.
-  }
+  writeCookie(value)
   listeners.forEach((listener) => listener())
 }
 
@@ -110,6 +113,13 @@ function SidebarProvider({
   const stored = React.useSyncExternalStore(subscribe, () => readSnapshot(defaultCollapsed), () => defaultCollapsed)
   const panelId = React.useId()
   const collapsed = collapsible && stored
+  // La cookie solo se escribía al pulsar el disparador: quien guardó la
+  // preferencia antes de que existiera la cookie (o la perdió) tenía las dos
+  // fuentes en desacuerdo y el servidor pintaba ancha una barra que el cliente
+  // contraía en CADA carga. Al montar, la cookie se pone de acuerdo con lo guardado.
+  React.useEffect(() => {
+    if (collapsible && stored !== defaultCollapsed) writeCookie(stored)
+  }, [collapsible, stored, defaultCollapsed])
   const setCollapsed = React.useCallback((value: boolean) => {
     memoryCollapsed = value
     writeCollapsed(value)
@@ -118,18 +128,37 @@ function SidebarProvider({
     () => ({ collapsed, collapsible, setCollapsed, toggle: () => setCollapsed(!collapsed), panelId }),
     [collapsed, collapsible, setCollapsed, panelId],
   )
-  return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>
+  // Cada ítem monta un `Tooltip` (con contenido solo contraída), así que el
+  // proveedor va aquí: la barra funciona igual con o sin el del layout.
+  return (
+    <SidebarContext.Provider value={value}>
+      <TooltipProvider>{children}</TooltipProvider>
+    </SidebarContext.Provider>
+  )
 }
 
 /**
  * El `<aside>` que ocupa la columna; su ancho sigue al estado. La transición
- * se activa después de hidratar: así, si la preferencia guardada y la cookie
- * no coinciden, el ajuste inicial es instantáneo y no un salto animado.
+ * se activa un cuadro DESPUÉS del ajuste inicial: si la preferencia guardada y
+ * la cookie no coinciden, el ancho corrige en el mismo commit de la hidratación
+ * y, con la transición ya activa en ese commit, se veía deslizar 200 ms. Dos
+ * `requestAnimationFrame` garantizan una pintura en medio.
  * `id` y `data-state` son de la primitiva: van después de `...props`.
  */
 function SidebarRoot({ className, children, ...props }: React.ComponentProps<"aside">) {
   const { collapsed, panelId } = useSidebar()
-  const hydrated = useHasHydrated()
+  const [animated, setAnimated] = React.useState(false)
+  React.useEffect(() => {
+    if (typeof requestAnimationFrame !== "function") return
+    let inner = 0
+    const outer = requestAnimationFrame(() => {
+      inner = requestAnimationFrame(() => setAnimated(true))
+    })
+    return () => {
+      cancelAnimationFrame(outer)
+      cancelAnimationFrame(inner)
+    }
+  }, [])
   return (
     <aside
       {...props}
@@ -138,7 +167,7 @@ function SidebarRoot({ className, children, ...props }: React.ComponentProps<"as
       data-state={collapsed ? "collapsed" : "expanded"}
       className={cn(
         "flex h-screen shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground",
-        hydrated && "transition-[width] duration-200 ease-out motion-reduce:transition-none",
+        animated && "transition-[width] duration-200 ease-out motion-reduce:transition-none",
         collapsed ? "w-16" : "w-64",
         className,
       )}
@@ -217,7 +246,7 @@ interface SidebarItemProps {
  * solo el ícono centrado, la etiqueta en `sr-only` y en el `Tooltip`.
  */
 function SidebarItem({ href, icon, label, active = false, badge }: SidebarItemProps) {
-  const { collapsed } = useSidebar()
+  const { collapsed, collapsible } = useSidebar()
   const link = (
     <Link
       href={href}
@@ -243,12 +272,16 @@ function SidebarItem({ href, icon, label, active = false, badge }: SidebarItemPr
       {badge && !collapsed && <Badge tone="surface">{badge}</Badge>}
     </Link>
   )
-  if (!collapsed) return <li>{link}</li>
+  // Sin capacidad de contraerse (Sheet móvil, vistas sueltas) nunca conmuta: enlace a secas.
+  if (!collapsible) return <li>{link}</li>
+  // El mismo árbol en los dos estados: si ancha fuera `<li>{link}</li>` y contraída
+  // `<li><Tooltip>…</Tooltip></li>`, React recrearía el `<a>` al conmutar y el foco
+  // que tuviera caería a `body`. El Tooltip queda sin contenido cuando está ancha.
   return (
     <li>
       <Tooltip>
         <TooltipTrigger asChild>{link}</TooltipTrigger>
-        <TooltipContent side="right">{badge ? `${label} · ${badge}` : label}</TooltipContent>
+        {collapsed && <TooltipContent side="right">{badge ? `${label} · ${badge}` : label}</TooltipContent>}
       </Tooltip>
     </li>
   )

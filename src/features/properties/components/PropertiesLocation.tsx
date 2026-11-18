@@ -224,6 +224,9 @@ export function PropertiesLocation() {
                             <FormLabel>Dirección <RequiredMark /></FormLabel>
                             <FormControl>
                                 <AddressAutocomplete
+                                    // El ref que `form.setFocus("address")` usa para llevar el foco aquí
+                                    // cuando la dirección es el primer campo inválido.
+                                    ref={field.ref}
                                     value={field.value ?? ""}
                                     onChange={(nextAddress) => {
                                         if (nextAddress !== field.value) {

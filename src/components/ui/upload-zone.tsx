@@ -191,7 +191,9 @@ function UploadZone({
                     density="compact"
                     action={
                         onRetry && (
-                            <Button variant="link" size="inline" onClick={onRetry}>
+                            // `type="button"`: dentro del <form> de la propiedad, sin esto el
+                            // reintento de la foto ENVIABA la propiedad entera (PUT + salida).
+                            <Button type="button" variant="link" size="inline" onClick={onRetry}>
                                 Reintentar
                             </Button>
                         )

@@ -26,17 +26,19 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.f
 // texto más un botón que entrega la sugerencia preparada por la prueba.
 vi.mock("./AddressAutocomplete", async () => {
     const React = await import("react")
-    function AddressAutocomplete({ value, onChange, onSelect, placeholder }: {
+    function AddressAutocomplete({ value, onChange, onSelect, placeholder, ref }: {
         value: string
         onChange: (value: string) => void
         onSelect: (details: PlaceDetails) => void
         placeholder?: string
+        ref?: React.Ref<HTMLInputElement>
     }) {
         return React.createElement(
             "div",
             null,
             React.createElement("input", {
                 "aria-label": "Buscar dirección",
+                ref,
                 value,
                 placeholder,
                 onChange: (e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.value),
@@ -111,9 +113,9 @@ function renderLocation(overrides: Partial<typeof DEFAULTS> = {}) {
     return { ...view, form: () => form }
 }
 
-/** Los catálogos ya llegaron: el país se puede abrir. */
+/** Los catálogos ya llegaron: el país se puede abrir (cargando sigue habilitado pero `aria-busy`). */
 async function catalogsReady() {
-    await waitFor(() => expect(screen.getByRole("combobox", { name: /País/ })).toBeEnabled())
+    await waitFor(() => expect(screen.getByRole("combobox", { name: /País/ })).not.toHaveAttribute("aria-busy"))
 }
 
 beforeEach(() => {
@@ -155,6 +157,25 @@ describe("PropertiesLocation — campos y marcas", () => {
         await user.click(screen.getByRole("combobox", { name: "Zona horaria" }))
         await user.click(await screen.findByRole("option", { name: /New_York/ }))
         expect(form().getValues("timezone")).toBe("America/New_York")
+    })
+})
+
+describe("PropertiesLocation — foco al primer campo inválido", () => {
+    it("form.setFocus llega a la Dirección (el ref se reenvía) y al País aunque su catálogo siga cargando", async () => {
+        let resolveCountries!: (value: typeof COUNTRIES) => void
+        mocks.getCountries.mockReset().mockReturnValue(new Promise((resolve) => { resolveCountries = resolve }))
+        const { form } = renderLocation()
+        const input = screen.getByRole("textbox", { name: "Buscar dirección" })
+        // `setFocus` de react-hook-form 7.71 enfoca en un `setTimeout`.
+        form().setFocus("address")
+        await waitFor(() => expect(input).toHaveFocus())
+        // Cargando: antes el disparador estaba deshabilitado y el foco no llegaba.
+        const country = screen.getByRole("combobox", { name: /País/ })
+        expect(country).toHaveAttribute("aria-busy", "true")
+        form().setFocus("countryId")
+        await waitFor(() => expect(country).toHaveFocus())
+        resolveCountries(COUNTRIES)
+        await catalogsReady()
     })
 })
 

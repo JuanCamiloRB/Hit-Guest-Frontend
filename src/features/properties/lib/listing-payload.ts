@@ -1,4 +1,5 @@
 import type { ExternalPmsId } from "../types"
+import { parseAmountText } from "@/lib/amount-text"
 import type { ListingApiPayload } from "../services/listings-service"
 import { toExternalPmsIdsPayload } from "./external-pms-ids"
 
@@ -81,8 +82,10 @@ export function toListingPayload(propertyUuid: string, draft: ListingDraft): Lis
     // Siempre ids al escribir, venga lo que venga del GET o del formulario.
     if (!inheritAmenities) persistedExtra.amenities = toAmenityIds(amenities)
 
-    const price = Number(draft.price ?? 0)
-    persistedExtra.startPrice = Number.isFinite(price) ? price : 0
+    // Texto del formulario («650.000») o número ya guardado: mismo criterio de
+    // separadores que la reserva (`lib/amount-text`); lo ilegible sigue siendo 0.
+    const price = typeof draft.price === "number" ? draft.price : parseAmountText(String(draft.price ?? ""))
+    persistedExtra.startPrice = price !== null && Number.isFinite(price) ? price : 0
 
     return {
         propertyUuid,

@@ -9,6 +9,8 @@ import { SectionCard } from "@/components/ui/section-card"
 import { CheckboxCard } from "@/components/ui/checkbox-card"
 import { NumberStepper } from "@/components/ui/number-stepper"
 import { MoneyField } from "@/components/ui/money-field"
+import { hasAmountSeparator, parseAmountText } from "@/lib/amount-text"
+import { formatMoney } from "@/lib/money"
 import { CatalogError } from "@/components/shared/catalog-error"
 import { RequiredMark } from "@/components/shared/required-mark"
 import {
@@ -94,7 +96,7 @@ import { invalidatePropertiesCaches } from "../lib/properties-cache"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
 import { EmptyState } from "@/components/ui/empty-state"
-import { FieldError } from "@/components/ui/form"
+import { FieldError, FieldHint } from "@/components/ui/form"
 
 const defaultUnit = {
     name: "",
@@ -184,6 +186,9 @@ export function PropertiesUnits() {
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [editingIndex, setEditingIndex] = useState<number | null>(null)
     const [unitForm, setUnitForm] = useState({ ...defaultUnit })
+    const unitPriceText = String(unitForm.price ?? "")
+    const unitPriceValue = parseAmountText(unitPriceText)
+    const unitPriceInterpreted = unitPriceValue !== null && hasAmountSeparator(unitPriceText) ? formatMoney(unitPriceValue, unitForm.extra.currency ?? "COP") : null
     const [roomTypes, setRoomTypes] = useState<CatalogOption[]>([])
     const [currencies, setCurrencies] = useState<CatalogOption[]>([])
     /** `null` = cargando; `[]` puede ser catálogo vacío o fallo (ver flag). */
@@ -468,7 +473,7 @@ export function PropertiesUnits() {
         // ── Existing property: persist via API immediately ──
         if (propertyUuid) {
             try {
-                const unitPrice = Number(unitForm.price) || 0
+                const unitPrice = (parseAmountText(String(unitForm.price ?? "")) ?? 0)
                 // Dirty-gating del contrato 2026-08-23: `externalPmsIds` solo
                 // viaja si la sección cambió respecto a lo cargado — `[]` borra
                 // todas las filas y la clave omitida no toca nada.
@@ -510,8 +515,8 @@ export function PropertiesUnits() {
                         extra: {
                             ...unitForm.extra,
                             ...(apiData.extra || {}),
-                            startPrice: Number(unitForm.price) || 0,
-                            price: Number(unitForm.price) || 0,
+                            startPrice: (parseAmountText(String(unitForm.price ?? "")) ?? 0),
+                            price: (parseAmountText(String(unitForm.price ?? "")) ?? 0),
                             currency:   apiData.extra?.currency || unitForm.extra.currency,
                         },
                     }
@@ -539,8 +544,8 @@ export function PropertiesUnits() {
                                 extra: {
                                     ...unitForm.extra,
                                     ...(apiData.extra || {}),
-                                    startPrice: Number(unitForm.price) || 0,
-                                    price: Number(unitForm.price) || 0,
+                                    startPrice: (parseAmountText(String(unitForm.price ?? "")) ?? 0),
+                                    price: (parseAmountText(String(unitForm.price ?? "")) ?? 0),
                                     currency:   apiData.extra?.currency || unitForm.extra.currency,
                                 },
                             }
@@ -652,15 +657,17 @@ export function PropertiesUnits() {
     const openedFromQueryRef = useRef<string | null>(null)
     /**
      * Al cerrar, la URL deja de decir que hay un alojamiento abierto: se quita
-     * solo `unit` (queda `tab=units`). Con la History API nativa, que el App
-     * Router sincroniza con `useSearchParams`, sin una entrada más en el historial.
+     * solo `unit` (queda `tab=units`), sin una entrada más en el historial. El
+     * `state` va en `null` A PROPÓSITO: el App Router parchea `replaceState` y,
+     * si recibe su propio `history.state` (`__NA`), lo toma por una llamada
+     * interna y NO actualiza `useSearchParams`; con `null` copia su árbol y sí.
      */
     const clearUnitParam = () => {
         if (typeof window === "undefined") return
         const url = new URL(window.location.href)
         if (!url.searchParams.has("unit")) return
         url.searchParams.delete("unit")
-        window.history.replaceState(window.history.state, "", url.toString())
+        window.history.replaceState(null, "", url.toString())
     }
     /** Cerrar desde cualquier camino (Cancelar, guardado, X/Escape) con la URL al día. */
     const closeDialog = () => {
@@ -882,6 +889,8 @@ export function PropertiesUnits() {
                                                     placeholder="250000"
                                                     aria-invalid={!!fieldErrors.price}
                                                 />
+                                                {/* Con separadores se dice cómo se leyó: «650.000» es 650000, no 650. */}
+                                                {unitPriceInterpreted && <FieldHint data-slot="amount-interpreted">Se registra como {unitPriceInterpreted}</FieldHint>}
                                                 <FieldError role="alert">{fieldErrors.price}</FieldError>
                                             </div>
 

@@ -228,7 +228,10 @@ function Combobox({
                     aria-describedby={ariaDescribedBy}
                     aria-label={ariaLabel}
                     aria-busy={loading || undefined}
-                    disabled={unavailable}
+                    // Cargando NO deshabilita: un botón deshabilitado no recibe foco, y el
+                    // salto al primer campo inválido (PropertyForm) llegaba mientras el
+                    // catálogo de países estaba en vuelo. Abrir sí espera (`unavailable`).
+                    disabled={disabled}
                     data-slot="combobox-trigger"
                     data-size={size}
                     data-state={open ? "open" : "closed"}

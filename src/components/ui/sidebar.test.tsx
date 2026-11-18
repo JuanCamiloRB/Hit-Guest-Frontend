@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { render, screen, within } from "@testing-library/react"
+import { act, render, screen, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { Home, Settings } from "lucide-react"
 
@@ -129,6 +129,37 @@ describe("Sidebar (primitiva) — servidor y consumidores", () => {
         await user.click(trigger)
         expect(onTrigger).toHaveBeenCalledTimes(1)
         expect(panel).toHaveAttribute("data-state", "collapsed")
+    })
+
+    it("al montar, la cookie se pone de acuerdo con lo guardado en localStorage (sin pulsar nada)", () => {
+        // Quien contrajo la barra antes de que existiera la cookie: el servidor la
+        // pintaba ancha y el cliente la contraía en CADA carga.
+        window.localStorage.setItem(SIDEBAR_STORAGE_KEY, "1")
+        render(<Demo defaultCollapsed={false} />)
+        expect(screen.getByRole("complementary")).toHaveAttribute("data-state", "collapsed")
+        expect(document.cookie).toContain(`${SIDEBAR_COOKIE_NAME}=collapsed`)
+    })
+
+    it("conmutar no recrea los enlaces: el mismo nodo <a> y el foco se conserva", async () => {
+        render(<Demo />)
+        const before = screen.getByRole("link", { name: "Propiedades" })
+        before.focus()
+        // Como un clic de ratón en Safari/Firefox: el disparador se activa sin recibir foco.
+        await act(async () => { screen.getByRole("button", { name: "Contraer menú" }).click() })
+        const after = screen.getByRole("link", { name: "Propiedades" })
+        expect(after).toBe(before)
+        expect(after).toHaveFocus()
+        expect(screen.getByRole("complementary")).toHaveAttribute("data-state", "collapsed")
+    })
+
+    it("ancha, enfocar un ítem NO muestra tooltip", async () => {
+        const user = userEvent.setup()
+        render(<Demo />)
+        // Disparador → Propiedades → Consola de soporte (ancha, el nombre incluye la marca visible).
+        await user.tab(); await user.tab(); await user.tab()
+        expect(screen.getByRole("link", { name: /Consola de soporte/ })).toHaveFocus()
+        await new Promise((r) => setTimeout(r, 20))
+        expect(screen.queryByRole("tooltip")).toBeNull()
     })
 
     it("un onClick externo con preventDefault evita el cambio", async () => {

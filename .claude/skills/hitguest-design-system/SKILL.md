@@ -46,9 +46,9 @@ archivo:
 | Pulsable sin forma de botón | `UnstyledButton` | `ui/unstyled-button.tsx` |
 | Enlace de dato | `TextLink` | `ui/text-link.tsx` |
 | Campo | `Input`, `Textarea`, `PasswordInput`, `Select`, `PhoneInputField`, `FileInput` | `ui/input.tsx`, `ui/textarea.tsx`, `ui/password-input.tsx`, `ui/select.tsx`, `ui/phone-input-field.tsx`, `ui/file-input.tsx` |
-| Selector con buscador | `Combobox` (`value`, `onValueChange`, `options`, `placeholder`, `loading`, `size`, `name`) — reemplaza a `Select` con listas largas | `ui/combobox.tsx` |
+| Selector con buscador | `Combobox` (`value`, `onValueChange`, `options`, `placeholder`, `loading`, `size`, `name`) — reemplaza a `Select` con listas largas; `loading` no deshabilita (sigue enfocable) | `ui/combobox.tsx` |
 | Entero con − y + | `NumberStepper` (`value`, `onValueChange`, `min`, `max`, `step`, `decrementLabel`, `incrementLabel`) | `ui/number-stepper.tsx` |
-| Monto con moneda | `MoneyField` (`amount`, `onAmountChange`, `currency`, `onCurrencyChange`, `currencies`, `currencyLabel`, `loadingCurrencies`) | `ui/money-field.tsx` |
+| Monto con moneda | `MoneyField` (`amount`, `onAmountChange`, `currency`, `onCurrencyChange`, `currencies`, `currencyLabel`, `loadingCurrencies`); el texto se lee con `parseAmountText` (`lib/amount-text`), nunca `Number()`: «650.000» = 650000 | `ui/money-field.tsx`, `lib/amount-text.ts` |
 | Campo de solo lectura | `ReadOnlyField` (`label`, `value`, `hint`, `locked`) | `ui/read-only-field.tsx` |
 | Error y ayuda de campo | `FormMessage`, `FieldError`, `FieldHint` | `ui/form.tsx` |
 | Catálogo que no cargó | `CatalogError` (`what`, `consequence`, `retrying`, `onRetry`; error + «Reintentar» junto al campo) | `shared/catalog-error.tsx` |

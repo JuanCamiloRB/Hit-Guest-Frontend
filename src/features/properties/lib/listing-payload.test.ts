@@ -25,6 +25,15 @@ describe("toListingPayload", () => {
         expect(payload.extra).toEqual({ currency: "COP", startPrice: 250000 })
     })
 
+    it("lee el precio como se escribe: «250.000» → 250000, «1.234,5» → 1234.5, ilegible → 0", () => {
+        const at = (price: string | number | undefined) => toListingPayload("property-1", { name: "S", roomTypeId: 1, price, extra: { inheritWifi: true, inheritSchedule: true, inheritPolicies: true, inheritAmenities: true } }).extra.startPrice
+        expect(at("250.000")).toBe(250000)
+        expect(at("1.234,5")).toBe(1234.5)
+        expect(at(250000)).toBe(250000)
+        expect(at("1.23.4")).toBe(0)
+        expect(at(undefined)).toBe(0)
+    })
+
     it("persists explicit overrides and normalizes optional text", () => {
         const payload = toListingPayload("property-1", {
             name: "Suite",

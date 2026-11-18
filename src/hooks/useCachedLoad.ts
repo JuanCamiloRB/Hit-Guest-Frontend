@@ -67,7 +67,9 @@ export function useCachedLoad<T>(cache: StaleCache<T>, options: CachedLoadOption
     const data = useSyncExternalStore(cache.subscribe, cache.read, serverSnapshot)
     // Arranca en true: la primera carga sale del efecto de montaje.
     const [inFlight, setInFlight] = useState(true)
-    const [issue, setIssue] = useState<{ kind: "error"; message: string } | { kind: "retrying" } | null>(null)
+    // `exhausted`: era reintentable pero se agotó el tope; ya no se está reintentando
+    // y hay que decirlo (antes quedaba «retrying» para siempre, sin aviso ni botón).
+    const [issue, setIssue] = useState<{ kind: "error"; message: string } | { kind: "retrying" } | { kind: "exhausted" } | null>(null)
     const [version, setVersion] = useState(0)
     // Otra caché (otro uuid) arranca limpia en el mismo render: sin esto habría
     // un frame «sin datos y sin carga» (error) y heredaría el fallo anterior.
@@ -104,10 +106,12 @@ export function useCachedLoad<T>(cache: StaleCache<T>, options: CachedLoadOption
             } catch (error) {
                 if (cancelled || id !== latest) return
                 if (isRetryable?.(error)) {
-                    setIssue({ kind: "retrying" })
                     if (attempt < retries) {
+                        setIssue({ kind: "retrying" })
                         retryScheduled = true
                         retryTimer = setTimeout(() => void run("retry", attempt + 1), retryMs)
+                    } else {
+                        setIssue({ kind: "exhausted" })
                     }
                 } else {
                     console.error("[useCachedLoad] no se pudo cargar:", error)
@@ -147,8 +151,8 @@ export function useCachedLoad<T>(cache: StaleCache<T>, options: CachedLoadOption
     return {
         data,
         status,
-        retrying: issue?.kind === "retrying",
-        refreshFailed: data !== null && issue?.kind === "error" && !inFlight,
+        retrying: issue?.kind === "retrying" || issue?.kind === "exhausted",
+        refreshFailed: data !== null && (issue?.kind === "error" || issue?.kind === "exhausted") && !inFlight,
         errorMessage: issue?.kind === "error" ? issue.message : null,
         version,
         refresh,

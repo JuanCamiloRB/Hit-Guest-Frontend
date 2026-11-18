@@ -6,6 +6,16 @@ const mocks = vi.hoisted(() => ({ small: false }))
 vi.mock("@/hooks/useMediaQuery", () => ({ SMALL_SCREEN_QUERY: "(max-width: 767px)", useMediaQuery: () => mocks.small }))
 /** A qué enlace llegó el clic reenviado por la fila. */
 const followed: string[] = []
+const modifiers: { metaKey: boolean; ctrlKey: boolean }[] = []
+// El enlace de la fila recibe un `click` real (con los modificadores del original):
+// se registra y se cancela para que jsdom no intente navegar.
+document.addEventListener("click", (event) => {
+    const anchor = event.target instanceof Element ? event.target.closest("a[href]") : null
+    if (!anchor) return
+    followed.push(anchor.getAttribute("href") ?? "")
+    modifiers.push({ metaKey: event.metaKey, ctrlKey: event.ctrlKey })
+    event.preventDefault()
+})
 
 import { DataTable } from "./data-table"
 
@@ -22,7 +32,7 @@ describe("DataTable — tamaño de página, rango en el pie, fila enlazada y fil
         vi.clearAllMocks()
         mocks.small = false
         followed.length = 0
-        vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) { followed.push(this.getAttribute("href") ?? "") })
+        modifiers.length = 0
     })
 
     it("pageSize=10 e itemLabel: «Mostrando 1–10 de 28 alojamientos» y «Página 1 de 3»; la última página cierra el rango", async () => {
@@ -57,9 +67,23 @@ describe("DataTable — tamaño de página, rango en el pie, fila enlazada y fil
         const cell = screen.getByText("Fila 2").closest("td")!
         fireEvent.click(cell)
         expect(followed).toEqual(["/x/2"])
-        // El clic directo en el enlace es del enlace: la fila no lo repite.
+        // El clic directo en el enlace es del enlace (una entrada más): la fila no lo repite.
         fireEvent.click(screen.getByText("Fila 2"))
+        expect(followed).toEqual(["/x/2", "/x/2"])
+    })
+
+    it("Cmd/Ctrl+clic en la fila llega al enlace CON el modificador (pestaña nueva); seleccionar texto no navega", async () => {
+        render(<DataTable columns={columns} data={rows.slice(0, 3)} getRowId={getRowId} getRowHref={(r) => `/x/${r.id}`} />)
+        await act(async () => {})
+        const cell = screen.getByText("Fila 2").closest("td")!
+        fireEvent.click(cell, { metaKey: true })
         expect(followed).toEqual(["/x/2"])
+        expect(modifiers).toEqual([{ metaKey: true, ctrlKey: false }])
+        // Soltar el ratón tras seleccionar texto también es un «click»: no es navegar.
+        const selection = vi.spyOn(window, "getSelection").mockReturnValue({ toString: () => "Fila" } as unknown as Selection)
+        fireEvent.click(cell)
+        expect(followed).toEqual(["/x/2"])
+        selection.mockRestore()
     })
 
     it("un control dentro de la fila (role=button, data-row-interactive) no dispara la navegación de la fila", async () => {
