@@ -173,3 +173,32 @@ por reserva. Nota: «Se envía por correo a los destinatarios de la propiedad»;
 si falló con el check-in completo, «Puedes reenviarlo desde la ficha de la
 reserva» (el panel tiene «Reenviar»). `buildTrafficLight` deja de avisar en
 consola que no tiene columna. Mutaciones 4/4.
+
+## Detalle del Link más informativo (2026-11-19, pedido del usuario)
+
+Pregunta: ¿se puede saber a dónde salió el link (WhatsApp, OTA, correo) sin
+revisar la configuración de cada alojamiento, y ver si WhatsApp falló?
+
+- Cada canal enviado dice su entrega, la hora (Bogotá) y a quién salió
+  (`checkinLinkSentTo`, `checkinLinkWhatsappTo`); la OTA dice por dónde
+  (`checkinLinkOtaVia`: Kunas o Calry). Todo del `extra` de la lista.
+- Un canal que FALLÓ con registro en la reserva (p. ej. WhatsApp `failed`) se
+  ve en rojo con el motivo y la celda pasa a «un canal necesita revisión».
+- Un canal que el backend SALTÓ (sin teléfono, WhatsApp no habilitado, sin
+  conversación en la OTA, …) no queda en la reserva sino en el historial
+  (`automation-records` de `whatsapp_checkin_link`, `responsePayload.channel`
+  + `skipped`). Se pide al ABRIR el detalle del Link (`useLinkAttempts`), una
+  vez por reserva, filtrado por la automatización, 2 minutos en memoria. Nunca
+  una petición por fila. Motivos con el mismo mapa cerrado del historial
+  (movido a `lib/skipped-reasons.ts`).
+- Sin la automatización de envío en el estado de la reserva: «Esta reserva
+  envía el link solo por correo» (tabla de verdad del contrato), salvo que ya
+  haya salido por WhatsApp u OTA.
+
+Límite: el backend no expone los canales EFECTIVOS de una reserva (gap #4).
+Si un canal estaba configurado y no hay ni envío ni registro de salto, el
+detalle no puede afirmar que «falta»: no lo menciona.
+
+Verificación: mutaciones 8/8; verify dos veces 261 archivos / 2334 pruebas;
+con sesión, 0 peticiones de historial al cargar la tabla y 3 al abrir cinco
+detalles (las dos sin automatización no piden nada).

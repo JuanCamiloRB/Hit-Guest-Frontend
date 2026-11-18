@@ -8,8 +8,13 @@ import { readCheckinLinkDelivery } from "../lib/checkin-link-delivery-status"
 import { readDigitalContract } from "../lib/automation-cells"
 
 globalThis.ResizeObserver = globalThis.ResizeObserver ?? class { observe() {} unobserve() {} disconnect() {} }
-const media = vi.hoisted(() => ({ small: false }))
+const media = vi.hoisted(() => ({ small: false, listUsageRecords: vi.fn() }))
 vi.mock("@/hooks/useMediaQuery", () => ({ SMALL_SCREEN_QUERY: "(max-width: 767px)", useMediaQuery: () => media.small }))
+vi.mock("@/features/properties/services/automation-service", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/features/properties/services/automation-service")>()
+    return { ...actual, automationService: { ...actual.automationService, listUsageRecords: media.listUsageRecords } }
+})
+import { resetLinkAttemptsMemory } from "../hooks/useLinkAttempts"
 
 import { getColumns, ReservationMobileRow } from "./columns"
 
@@ -137,5 +142,58 @@ describe("Operaciones — celdas de automatización", () => {
         expect(screen.queryByRole("table")).toBeNull()
         expect(screen.getByRole("list", { name: "Automatizaciones y reportes" })).toBeInTheDocument()
         media.small = false
+    })
+})
+
+describe("Operaciones — el detalle del Link dice por dónde salió y por qué no salió por los otros canales", () => {
+    const linkRecord = (channel: "whatsapp" | "ota_inbox" | null, payload: Record<string, unknown> | null, status: "completed" | "failed" = "completed") => ({
+        id: 1, status, triggeredBy: null, automationUuid: "whatsapp_checkin_link-Check-in Link Delivery", automationName: "Check-in Link Delivery",
+        providerSlug: "whatsapp_checkin_link", guestUuid: null, billable: false, unitCost: null, lastError: null,
+        responsePayload: payload, channel, createdAt: "2026-11-18 10:40:00", updatedAt: "2026-11-18 10:40:00",
+    })
+
+    it("correo y OTA enviados, WhatsApp saltado: el detalle lo dice con el motivo (pedido al abrir, una sola vez, filtrado por la automatización)", async () => {
+        resetLinkAttemptsMemory()
+        media.listUsageRecords.mockReset().mockResolvedValue([linkRecord("whatsapp", { skipped: true, reason: "no_whatsapp_phone" })])
+        const row: Reservation = {
+            ...ROW,
+            checkinLinkDelivery: readCheckinLinkDelivery({
+                checkinLinkSentAt: "2026-11-18T15:42:00Z", checkinLinkSentTo: "laura@correo.com", mailDeliveryStatus: "delivered",
+                checkinLinkOtaSentAt: "2026-11-18T15:42:00Z", checkinLinkOtaVia: "calry",
+            }),
+        }
+        renderTable([row])
+        // Nada se pide sin abrir el detalle.
+        expect(media.listUsageRecords).not.toHaveBeenCalled()
+        const link = screen.getByRole("button", { name: /^Link:/ })
+        await act(async () => { link.focus() })
+        expect(await screen.findByText("WhatsApp · no se envió · 18 nov, 10:40: la reserva no tiene un teléfono utilizable")).toBeInTheDocument()
+        expect(screen.getByText("Correo · entregado · 18 nov, 10:42 · a laura@correo.com")).toBeInTheDocument()
+        expect(screen.getByText("Mensaje en la OTA · publicado · 18 nov, 10:42 · vía Calry")).toBeInTheDocument()
+        expect(media.listUsageRecords).toHaveBeenCalledTimes(1)
+        expect(media.listUsageRecords.mock.calls[0][0]).toBe("r1")
+        expect(media.listUsageRecords.mock.calls[0][1]).toBe("whatsapp_checkin_link-Check-in Link Delivery")
+        // Cerrar y volver a abrir: no se vuelve a pedir.
+        await act(async () => { link.blur() })
+        await act(async () => { link.focus() })
+        await screen.findByText(/WhatsApp · no se envió/)
+        expect(media.listUsageRecords).toHaveBeenCalledTimes(1)
+    })
+
+    it("si el historial no responde, se dice que puede faltar algún canal (sin inventarlo)", async () => {
+        resetLinkAttemptsMemory()
+        media.listUsageRecords.mockReset().mockRejectedValue(new Error("503"))
+        renderTable([ROW])
+        await act(async () => { screen.getByRole("button", { name: /^Link:/ }).focus() })
+        expect(await screen.findByText("No se pudo leer el historial de envíos: puede haber canales que no aparecen aquí.")).toBeInTheDocument()
+    })
+
+    it("sin automatización de envío no se pide nada: la reserva envía solo por correo y se dice", async () => {
+        resetLinkAttemptsMemory()
+        media.listUsageRecords.mockReset()
+        renderTable([{ ...ROW, automationItems: ROW.automationItems!.filter((i) => i.providerSlug !== "whatsapp_checkin_link"), checkinLinkDelivery: readCheckinLinkDelivery({ checkinLinkSentAt: "2026-11-18T15:42:00Z" }) }])
+        await act(async () => { screen.getByRole("button", { name: /^Link:/ }).focus() })
+        expect(await screen.findByText("Esta reserva envía el link solo por correo: no tiene WhatsApp ni OTA activos")).toBeInTheDocument()
+        expect(media.listUsageRecords).not.toHaveBeenCalled()
     })
 })

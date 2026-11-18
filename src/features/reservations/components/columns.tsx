@@ -26,12 +26,15 @@ import { TextLink } from "@/components/ui/text-link"
 import { StatusTile, StatusTileSkeleton, type StatusTileTone } from "@/components/ui/status-tile"
 import { Toggletip, ToggletipLine, ToggletipNote, ToggletipTitle, type ToggletipTone } from "@/components/ui/toggletip"
 import { DeliveryChannelIcon } from "@/components/brand/DeliveryChannelIcon"
+import { useLinkAttempts } from "../hooks/useLinkAttempts"
+import { attemptLines } from "../lib/link-attempts"
 import {
     CELL_KEYS,
     CELL_LABELS,
     CELL_SEVERITY,
     buildAutomationCells,
     cellAccessibleName,
+    classifyItem,
     type AutomationCell,
     type CellKey,
     type CellState,
@@ -115,6 +118,33 @@ function CellHeader({ cellKey }: { cellKey: CellKey }) {
     )
 }
 
+/**
+ * El detalle del Link: lo que trae la reserva (cada canal con su entrega, hora
+ * y destinatario) MÁS los canales que se saltaron y por qué, que solo están en
+ * el historial y se piden al abrir este detalle.
+ */
+function LinkCellDetail({ reservation, cell }: { reservation: Reservation; cell: AutomationCell }) {
+    const linkItem = reservation.automationItems?.find((item) => classifyItem(item) === "link")
+    const attempts = useLinkAttempts(reservation.id, linkItem?.automationUuid ?? null)
+    const extra = attempts.status === "ready" ? attemptLines(attempts.attempts, reservation.checkinLinkDelivery) : []
+    return (
+        <>
+            <ToggletipTitle>{CELL_TITLES.link}</ToggletipTitle>
+            {cell.lines.map((line, index) => (
+                <ToggletipLine key={`d${index}`} tone={TILE_TONE[line.state]}>{line.text}</ToggletipLine>
+            ))}
+            {extra.map((line, index) => (
+                <ToggletipLine key={`h${index}`} tone={TILE_TONE[line.state]}>{line.text}</ToggletipLine>
+            ))}
+            {attempts.status === "loading" && <ToggletipLine tone="idle">Buscando los otros canales…</ToggletipLine>}
+            {attempts.status === "error" && (
+                <ToggletipNote>No se pudo leer el historial de envíos: puede haber canales que no aparecen aquí.</ToggletipNote>
+            )}
+            {cell.note && <ToggletipNote>{cell.note}</ToggletipNote>}
+        </>
+    )
+}
+
 function CellDetail({ cellKey, cell }: { cellKey: CellKey; cell: AutomationCell }) {
     return (
         <>
@@ -174,7 +204,10 @@ function AutomationCellView({ cellKey, reservation, onRetry }: {
             ) : undefined}
         </StatusTile>
     )
-    return <Toggletip label={CELL_TITLES[cellKey]} content={<CellDetail cellKey={cellKey} cell={cell} />}>{tile}</Toggletip>
+    const detail = cellKey === "link"
+        ? <LinkCellDetail reservation={reservation} cell={cell} />
+        : <CellDetail cellKey={cellKey} cell={cell} />
+    return <Toggletip label={CELL_TITLES[cellKey]} content={detail}>{tile}</Toggletip>
 }
 
 /** Una columna de automatización: encabezado con ícono y nombre, orden por severidad. */

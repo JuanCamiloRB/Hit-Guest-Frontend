@@ -365,3 +365,30 @@ describe("Reporte PDF de huéspedes", () => {
     })
 })
 
+describe("Link — a quién salió y por qué canales", () => {
+    it("cada línea dice el destinatario (correo o teléfono) y la OTA dice por dónde", () => {
+        const delivery = readCheckinLinkDelivery({
+            checkinLinkSentAt: "2026-11-18T15:42:00Z", checkinLinkSentTo: "ana@correo.com", mailDeliveryStatus: "delivered",
+            checkinLinkWhatsappSentAt: "2026-11-18T15:42:00Z", checkinLinkWhatsappTo: "+573001234567", whatsappDeliveryStatus: "delivered",
+            checkinLinkOtaSentAt: "2026-11-18T15:43:00Z", checkinLinkOtaVia: "kunas_pms",
+        })
+        const cell = buildAutomationCells(src({ delivery, items: [item({ providerSlug: "whatsapp_checkin_link", automationName: "Check-in Link Delivery", status: "completed" })] })).link!
+        expect(cell.lines.map((l) => l.text)).toEqual([
+            "WhatsApp · entregado · 18 nov, 10:42 · a +573001234567",
+            "Correo · entregado · 18 nov, 10:42 · a ana@correo.com",
+            "Mensaje en la OTA · publicado · 18 nov, 10:43 · vía Kunas",
+        ])
+    })
+
+    it("sin automatización de envío: dice que la reserva envía solo por correo (no hay que revisar la configuración)", () => {
+        const delivery = readCheckinLinkDelivery({ checkinLinkSentAt: "2026-11-18T15:42:00Z" })
+        expect(buildAutomationCells(src({ delivery, items: [] })).link!.note).toBe("Esta reserva envía el link solo por correo: no tiene WhatsApp ni OTA activos")
+        expect(buildAutomationCells(src({ items: [] })).link!.note).toBe("Esta reserva envía el link solo por correo: no tiene WhatsApp ni OTA activos")
+    })
+
+    it("si ya salió por WhatsApp, la nota de «solo correo» no aparece aunque la automatización ya no esté", () => {
+        const delivery = readCheckinLinkDelivery({ checkinLinkWhatsappSentAt: "2026-11-18T15:42:00Z", whatsappDeliveryStatus: "read" })
+        expect(buildAutomationCells(src({ delivery, items: [] })).link!.note).toBeUndefined()
+    })
+})
+

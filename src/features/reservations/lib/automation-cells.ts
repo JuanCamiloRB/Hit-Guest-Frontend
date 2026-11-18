@@ -336,17 +336,25 @@ function linkCell(delivery: CheckinLinkDeliveryStatus | undefined, items: Automa
     if (delivery?.whatsapp) {
         const meta = whatsappStatusMeta(delivery.whatsapp)
         channels.push("whatsapp")
-        lines.push({ state: deliveryState(meta.tone, delivery.whatsapp.status), text: `WhatsApp · ${meta.label.toLowerCase()}${at(delivery.whatsapp.statusAt ?? delivery.whatsapp.sentAt)}${meta.detail ? `: ${meta.detail}` : ""}` })
+        lines.push({ state: deliveryState(meta.tone, delivery.whatsapp.status), text: `WhatsApp · ${meta.label.toLowerCase()}${at(delivery.whatsapp.statusAt ?? delivery.whatsapp.sentAt)}${to(delivery.whatsapp.to)}${meta.detail ? `: ${meta.detail}` : ""}` })
     }
     if (delivery?.email) {
         const meta = mailStatusMeta(delivery.email)
         channels.push("email")
-        lines.push({ state: deliveryState(meta.tone, delivery.email.status), text: `Correo · ${meta.label.toLowerCase()}${at(delivery.email.sentAt)}${meta.detail ? `: ${meta.detail}` : ""}` })
+        lines.push({ state: deliveryState(meta.tone, delivery.email.status), text: `Correo · ${meta.label.toLowerCase()}${at(delivery.email.sentAt)}${to(delivery.email.to)}${meta.detail ? `: ${meta.detail}` : ""}` })
     }
     if (delivery?.ota) {
         channels.push("ota")
-        lines.push({ state: "success", text: `Mensaje en la OTA · publicado${at(delivery.ota.sentAt)}` })
+        lines.push({ state: "success", text: `Mensaje en la OTA · publicado${at(delivery.ota.sentAt)}${delivery.ota.via ? ` · vía ${OTA_VIA[delivery.ota.via] ?? delivery.ota.via}` : ""}` })
     }
+    // Sin la automatización de envío en el estado de la reserva, el link sale
+    // solo por correo (tabla de verdad del contrato): se dice, para que nadie
+    // tenga que ir a revisar la configuración del alojamiento.
+    // Si ya salió por WhatsApp o la OTA, la nota sería falsa aunque la
+    // automatización se haya apagado después.
+    const emailOnly = items !== undefined && !items.some((item) => classifyItem(item) === "link")
+        && !delivery?.whatsapp && !delivery?.ota
+    const onlyEmailNote = "Esta reserva envía el link solo por correo: no tiene WhatsApp ni OTA activos"
     if (lines.length > 0) {
         const states = lines.map((l) => l.state)
         const ok = states.filter((s) => s === "success").length
@@ -360,7 +368,7 @@ function linkCell(delivery: CheckinLinkDeliveryStatus | undefined, items: Automa
                 ? `enviado por ${channels.map((c) => CHANNEL_NAME[c]).join(" y ")}`
                 : state === "failed" ? "no se pudo entregar" : "un canal necesita revisión",
             lines,
-            note: delivery?.ota ? "La OTA no confirma si el huésped leyó el mensaje" : undefined,
+            note: emailOnly ? onlyEmailNote : delivery?.ota ? "La OTA no confirma si el huésped leyó el mensaje" : undefined,
         }
     }
     // Sin envío registrado: lo dice la automatización, si ya llegó su estado.
@@ -369,13 +377,19 @@ function linkCell(delivery: CheckinLinkDeliveryStatus | undefined, items: Automa
     // Sin envío ni automatización de WhatsApp el link igual sale por correo
     // (contrato, tabla de verdad del envío): «no configurado» sería falso.
     if (own.length === 0) {
-        return { state: "idle", channels: [], summary: "todavía no se envía", lines: [{ state: "idle", text: "Sin envío registrado todavía" }] }
+        return { state: "idle", channels: [], summary: "todavía no se envía", lines: [{ state: "idle", text: "Sin envío registrado todavía" }], note: onlyEmailNote }
     }
     const cell = itemCell(own, "")
     return { ...cell, channels: [] }
 }
 
 const CHANNEL_NAME: Record<LinkChannel, string> = { whatsapp: "WhatsApp", email: "correo", ota: "la OTA" }
+const OTA_VIA: Record<string, string> = { kunas_pms: "Kunas", calry: "Calry" }
+
+/** « · a ana@correo.com»: a quién salió, que el detalle lo diga sin abrir la ficha. */
+function to(recipient: string | null | undefined): string {
+    return recipient && recipient.trim() ? ` · a ${recipient.trim()}` : ""
+}
 
 function checkinCell(count: CheckinCount, items: AutomationStatusItem[] | undefined): AutomationCell | null {
     const identity = (items ?? []).filter((item) => classifyItem(item) === "identity")
