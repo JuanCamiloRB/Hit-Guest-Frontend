@@ -57,7 +57,7 @@ archivo:
 | Selección | `Checkbox`, `Radio`, `Switch`, `Tabs` (`TabsList size="default" \| "sm"`) | `ui/checkbox.tsx`, `ui/radio.tsx`, `ui/switch.tsx`, `ui/tabs.tsx` |
 | Interruptor con texto | `SwitchField` (título = nombre del control; texto y error unidos; `variant`, `tone`, `size`) | `ui/switch-field.tsx` |
 | Casilla con texto | `CheckboxField` (`label`, `action` fuera de la etiqueta) | `ui/checkbox-field.tsx` |
-| Casilla en tarjeta | `CheckboxCard` (`label`, `description`, `checked`, `onCheckedChange`, `disabled`, `name`, `value`; la tarjeta entera es la etiqueta, `Label htmlFor` hermana del control) | `ui/checkbox-card.tsx` |
+| Casilla en tarjeta | `CheckboxCard` (`label`, `description`, `checked`, `onCheckedChange`, `disabled`, `name`, `value`; la tarjeta entera es la etiqueta, `Label htmlFor` hermana del control; dentro de un `<form>` Radix emite un `<input>` oculto que despacha su propio `click`: el `onClick` de la tarjeta lo ignora, si no se forma un bucle de re-marcado, React #185, corregido 2026-11-18) | `ui/checkbox-card.tsx` |
 | Zona de carga | `UploadZone` (`accept`, `multiple`, `status` idle/uploading/error, `title`, `hint`, `uploadingLabel`, `errorMessage`, `onFiles`, `onRejected`, `onRetry`; botón real + `FileInput` hermano) | `ui/upload-zone.tsx` |
 | Superficie | `Surface`, `Card`, `SectionCard` (`tone` inverse/selected/warning/danger/sunk, `interactive`, `dashed`, `flat`, `floating`; el título de una tarjeta es `Heading`, no hay `CardTitle`) | `ui/card.tsx`, `ui/section-card.tsx` |
 | Pantalla | `Page`, `PageHeader`, `PageBreadcrumb` | `ui/page.tsx` |

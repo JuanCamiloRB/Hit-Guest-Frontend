@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from "vitest"
 import { render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
+import { useState } from "react"
+
+globalThis.ResizeObserver = globalThis.ResizeObserver ?? class { observe() {} unobserve() {} disconnect() {} }
+
 import { CheckboxCard } from "./checkbox-card"
 
 describe("CheckboxCard", () => {
@@ -99,5 +103,35 @@ describe("CheckboxCard", () => {
         expect(onPool).toHaveBeenCalledTimes(1)
         expect(onWifi).not.toHaveBeenCalled()
         expect(onParking).not.toHaveBeenCalled()
+    })
+})
+
+describe("CheckboxCard dentro de un <form> (Radix emite un <input> oculto que despacha su propio click)", () => {
+    function Form() {
+        const [checked, setChecked] = useState(false)
+        return (
+            <form onSubmit={(e) => e.preventDefault()}>
+                <CheckboxCard label="Wifi" name="amenities" value="1" checked={checked} onCheckedChange={setChecked} />
+            </form>
+        )
+    }
+
+    it("un clic en el texto marca UNA vez y se queda marcada (sin bucle de re-marcado)", async () => {
+        const user = userEvent.setup()
+        render(<Form />)
+        await user.click(screen.getByText("Wifi"))
+        expect(screen.getByRole("checkbox", { name: "Wifi" })).toHaveAttribute("aria-checked", "true")
+        // El input oculto del formulario refleja el valor, y no vuelve a disparar la tarjeta.
+        expect(document.querySelector<HTMLInputElement>('input[name="amenities"]')?.checked).toBe(true)
+    })
+
+    it("un clic en la caja también marca una vez, y el siguiente desmarca", async () => {
+        const user = userEvent.setup()
+        render(<Form />)
+        const box = screen.getByRole("checkbox", { name: "Wifi" })
+        await user.click(box)
+        expect(box).toHaveAttribute("aria-checked", "true")
+        await user.click(box)
+        expect(box).toHaveAttribute("aria-checked", "false")
     })
 })

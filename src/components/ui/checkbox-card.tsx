@@ -65,7 +65,14 @@ function CheckboxCard({
             )}
             onClick={(event) => {
                 const control = controlRef.current
-                if (!control || control.contains(event.target as Node)) return
+                const target = event.target as Node
+                if (!control || control.contains(target)) return
+                // Dentro de un <form>, Radix emite un <input type="checkbox"> oculto
+                // (hermano del botón) y le despacha un `click` propio en cada cambio
+                // para que el formulario se entere. Ese clic sube hasta aquí y NO es
+                // del usuario: reenviarlo al control volvería a cambiar el valor y
+                // dispararía otro clic oculto, sin fin (React #185).
+                if (target instanceof HTMLInputElement) return
                 // El clic en el texto o en el relleno de la tarjeta: se cancela el
                 // default del <label> (que en Chrome no activa un botón de forma
                 // consistente) y se pulsa el control una sola vez.
