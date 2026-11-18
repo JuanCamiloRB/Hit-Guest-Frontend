@@ -163,9 +163,9 @@ describe("columnas de estado — cargando, listo y «No disponible»", () => {
         )
 
         const failedRow = screen.getByText("Bruno Perez").closest("tr")!
-        // LINK lleva el reintento; las otras seis celdas solo lo dicen (nunca «no configurado»).
+        // LINK lleva el reintento; las otras siete celdas solo lo dicen (nunca «no configurado»).
         const unavailable = within(failedRow).getAllByRole("button", { name: /: no disponible$/ })
-        expect(unavailable).toHaveLength(6)
+        expect(unavailable).toHaveLength(7)
         expect(within(failedRow).queryByRole("button", { name: /no configurado/ })).toBeNull()
         // Y se VE distinto de «no configurada»: ni guion ni borde punteado, su propio ícono.
         for (const tile of unavailable) {
@@ -181,7 +181,7 @@ describe("columnas de estado — cargando, listo y «No disponible»", () => {
         expect(tiles[0]).toHaveAccessibleName("No disponible. Reintentar el estado de Bruno Perez")
 
         const loadingRow = screen.getByText("Ana Torres").closest("tr")!
-        expect(within(loadingRow).getAllByText("Cargando estado")).toHaveLength(7)
+        expect(within(loadingRow).getAllByText("Cargando estado")).toHaveLength(8)
         expect(within(loadingRow).queryByRole("button", { name: /no disponible/i })).toBeNull()
     })
 })

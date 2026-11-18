@@ -51,7 +51,7 @@ describe("classifyItem — a qué columna va cada automatización", () => {
         expect(classifyItem({ providerSlug: "otro", automationName: "Check-in Link Delivery" })).toBe("link")
     })
 
-    it("identidad, firma, acceso, TRA y SIRE in/out por slug; pdf_report y desconocidos sin columna", () => {
+    it("identidad, firma, acceso, TRA, SIRE in/out y reporte PDF por slug; desconocidos sin columna", () => {
         expect(classifyItem({ providerSlug: "didit", automationName: "Identity Verification - Main Guest" })).toBe("identity")
         expect(classifyItem({ providerSlug: "textract", automationName: "Identity Verification - Secondary Guests" })).toBe("identity")
         expect(classifyItem({ providerSlug: "hitguest_signature", automationName: "Digital Signature for Contract" })).toBe("contract")
@@ -60,7 +60,7 @@ describe("classifyItem — a qué columna va cada automatización", () => {
         expect(classifyItem({ providerSlug: "tra_colombia", automationName: "TRA Colombia" })).toBe("tra")
         expect(classifyItem({ providerSlug: "sire_colombia", automationName: "SIRE Colombia — Check-in" })).toBe("sireIn")
         expect(classifyItem({ providerSlug: "sire_colombia", automationName: "SIRE Colombia — Check-out" })).toBe("sireOut")
-        expect(classifyItem({ providerSlug: "pdf_report", automationName: "Guest Report PDF" })).toBeNull()
+        expect(classifyItem({ providerSlug: "pdf_report", automationName: "Guest Report PDF" })).toBe("pdf")
         expect(classifyItem({ providerSlug: "nuevo", automationName: "Algo nuevo" })).toBeNull()
     })
 })
@@ -341,6 +341,27 @@ describe("auditoría 2026-11-19 — lo que el dato no dice no se afirma", () => 
         expect(formatMoment("2026-11-18T15:42:00.000000Z")).toBe("18 nov, 10:42")
         // La hora de pared no pasa por `Date`: no cae en un cambio de horario.
         expect(formatMoment("2026-03-29 02:30:00")).toBe("29 mar, 02:30")
+    })
+})
+
+describe("Reporte PDF de huéspedes", () => {
+    const pdf = (overrides: Partial<AutomationStatusItem>) => item({ providerSlug: "pdf_report", automationName: "Guest Report PDF", ...overrides })
+
+    it("enviado: completado con su fecha y a quién va", () => {
+        const cell = buildAutomationCells(src({ items: [pdf({ status: "completed", lastSuccessAt: "2026-11-18 12:00:00" })] })).pdf!
+        expect(cell).toMatchObject({ state: "success", note: "Se envía por correo a los destinatarios de la propiedad" })
+        expect(cell.lines[0].text).toBe("Completado · 18 nov, 12:00")
+        expect(cellAccessibleName("pdf", cell)).toBe("PDF: completado")
+    })
+
+    it("falló con el check-in completo: dice que se puede reenviar desde la ficha", () => {
+        const cell = buildAutomationCells(src({ items: [pdf({ status: "failed", reservationCheckinCompleted: true })] })).pdf!
+        expect(cell).toMatchObject({ state: "failed", note: "Puedes reenviarlo desde la ficha de la reserva" })
+    })
+
+    it("sin la automatización: «—» («no configurado»), y cargando mientras no llega el estado", () => {
+        expect(buildAutomationCells(src({ items: [] })).pdf).toMatchObject({ state: "none" })
+        expect(buildAutomationCells(src({ items: undefined })).pdf).toBeNull()
     })
 })
 

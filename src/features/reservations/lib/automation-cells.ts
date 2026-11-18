@@ -31,7 +31,7 @@ import {
 } from "./checkin-link-delivery-status"
 
 /** Las columnas, en el orden de la tabla. */
-export const CELL_KEYS = ["link", "checkin", "contract", "code", "tra", "sireIn", "sireOut"] as const
+export const CELL_KEYS = ["link", "checkin", "contract", "code", "tra", "sireIn", "sireOut", "pdf"] as const
 export type CellKey = (typeof CELL_KEYS)[number]
 
 /**
@@ -103,6 +103,7 @@ export const CELL_LABELS: Record<CellKey, string> = {
     tra: "TRA",
     sireIn: "SIRE in",
     sireOut: "SIRE out",
+    pdf: "PDF",
 }
 
 // ───────────────────────── fechas ─────────────────────────
@@ -156,7 +157,7 @@ type ItemKind = CellKey | "identity" | null
 /**
  * A qué columna va un ítem. El envío del link se reconoce ANTES que la
  * identidad: «Check-in Link Delivery» contiene «check-in» y antes caía en la
- * luz de Check-in. `pdf_report` y los desconocidos no tienen columna (`null`).
+ * luz de Check-in. Los desconocidos no tienen columna (`null`).
  */
 export function classifyItem(item: Pick<AutomationStatusItem, "providerSlug" | "automationName">): ItemKind {
     const slug = canonicalSlug(item.providerSlug ?? "")
@@ -166,6 +167,7 @@ export function classifyItem(item: Pick<AutomationStatusItem, "providerSlug" | "
     if (SIGNATURE_SLUGS.has(slug)) return "contract"
     if (slug === "ttlock") return "code"
     if (slug === "tra_colombia") return "tra"
+    if (slug === "pdf_report") return "pdf"
     if (IDENTITY_SLUGS.has(slug) || IDENTITY_NAME_RE.test(name)) return "identity"
     if (CONTRACT_NAME_RE.test(name)) return "contract"
     return null
@@ -459,15 +461,32 @@ function contractCell(contract: DigitalContractSummary | null | undefined, items
     return { ...cell, note: cell.note ?? provider }
 }
 
-const NOT_CONFIGURED: Record<"code" | "tra" | "sireIn" | "sireOut", string> = {
+const NOT_CONFIGURED: Record<"code" | "tra" | "sireIn" | "sireOut" | "pdf", string> = {
     code: "El acceso no está configurado",
     tra: "TRA no está configurado",
     sireIn: "SIRE no está configurado",
     sireOut: "SIRE no está configurado",
+    pdf: "El reporte PDF no está configurado",
 }
 
 /**
- * Las siete celdas de una reserva. Una celda es `null` mientras su fuente no
+ * El reporte PDF de huéspedes: sale por correo a los destinatarios de la
+ * propiedad al completar el check-in. Si falló o no llegó, la ficha de la
+ * reserva tiene «Reenviar» (con el check-in completo): se dice dónde.
+ */
+function pdfCell(items: AutomationStatusItem[]): AutomationCell {
+    const cell = itemCell(items, NOT_CONFIGURED.pdf)
+    if (cell.state === "none") return cell
+    const canResend = items.some((item) => item.reservationCheckinCompleted)
+    const note = cell.note
+        ?? (cell.state === "failed" && canResend
+            ? "Puedes reenviarlo desde la ficha de la reserva"
+            : "Se envía por correo a los destinatarios de la propiedad")
+    return { ...cell, note }
+}
+
+/**
+ * Las ocho celdas de una reserva. Una celda es `null` mientras su fuente no
  * llegó (la tabla la pinta cargando); el envío del link y el contrato pueden
  * estar listos antes que el estado de automatizaciones.
  */
@@ -482,6 +501,7 @@ export function buildAutomationCells(source: CellSources): Record<CellKey, Autom
         tra: items === undefined ? null : itemCell(of("tra"), NOT_CONFIGURED.tra),
         sireIn: items === undefined ? null : itemCell(of("sireIn"), NOT_CONFIGURED.sireIn),
         sireOut: items === undefined ? null : itemCell(of("sireOut"), NOT_CONFIGURED.sireOut),
+        pdf: items === undefined ? null : pdfCell(of("pdf")),
     }
 }
 

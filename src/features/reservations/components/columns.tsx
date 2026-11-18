@@ -3,7 +3,7 @@
 import { ColumnDef, SortingFn } from "@tanstack/react-table"
 import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
 import { cancelDetailPrefetch, startDetailPrefetch } from "../lib/detail-prefetch"
-import { CircleHelp, FileSignature, KeyRound, Landmark, Link2, LogIn, LogOut, MoreVertical, RefreshCw, Trash2, Users, type LucideIcon } from "lucide-react"
+import { CircleHelp, FileSignature, FileText, KeyRound, Landmark, Link2, LogIn, LogOut, MoreVertical, RefreshCw, Trash2, Users, type LucideIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import Link from "next/link"
@@ -69,6 +69,7 @@ const CELL_ICONS: Record<CellKey, LucideIcon> = {
     tra: Landmark,
     sireIn: LogIn,
     sireOut: LogOut,
+    pdf: FileText,
 }
 
 /** El título del detalle: más largo que el encabezado, que tiene que caber en 76 px. */
@@ -80,6 +81,7 @@ const CELL_TITLES: Record<CellKey, string> = {
     tra: "Reporte TRA",
     sireIn: "SIRE entrada",
     sireOut: "SIRE salida",
+    pdf: "Reporte PDF de huéspedes",
 }
 
 const TILE_TONE: Record<CellState, StatusTileTone & ToggletipTone> = {
@@ -90,7 +92,7 @@ const TILE_TONE: Record<CellState, StatusTileTone & ToggletipTone> = {
     none: "none",
 }
 
-/** Las siete celdas de una fila, de lo que ya trae (sin peticiones). */
+/** Las ocho celdas de una fila, de lo que ya trae (sin peticiones). */
 function cellsOf(reservation: Reservation, forSort = false) {
     return buildAutomationCells({
         items: forSort ? reservation.automationItemsForSort : reservation.automationItems,
@@ -251,7 +253,7 @@ function ReservationActions({ reservation, onDelete }: { reservation: Reservatio
 
 /**
  * La fila apilada de móvil (bajo `md`): quién, dónde, cuándo y el estado arriba;
- * debajo las siete celdas con su nombre escrito, porque aquí no hay
+ * debajo las ocho celdas con su nombre escrito, porque aquí no hay
  * encabezados. Las mismas celdas y el mismo detalle que en la tabla.
  */
 export function ReservationMobileRow({ reservation, onDelete, onRetryStatus }: { reservation: Reservation } & ColumnsOptions) {
@@ -315,7 +317,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         accessorKey: "guestName",
         header: "Huésped / Alojamiento",
         sortingFn: sortByGuest,
-        // Fija al desplazar la tabla de lado: con siete celdas de estado la
+        // Fija al desplazar la tabla de lado: con ocho celdas de estado la
         // tabla no cabe en una laptop y el huésped no puede perderse.
         meta: { sticky: "left" },
         cell: ({ row }) => {
@@ -418,7 +420,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         id: "reports",
         header: "Reportes",
         meta: { headerClassName: "text-center" },
-        columns: (["tra", "sireIn", "sireOut"] as const).map((key) => automationColumn(key, onRetryStatus)),
+        columns: (["tra", "sireIn", "sireOut", "pdf"] as const).map((key) => automationColumn(key, onRetryStatus)),
     },
     {
         id: "actions",

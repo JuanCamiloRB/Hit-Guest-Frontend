@@ -273,6 +273,9 @@ export function buildTrafficLight(items: AutomationStatusItem[], checkinComplete
         } else if (CONTRACT_NAME_RE.test(item.automationName || "")) {
             base.contract = liveStatusToLight(item.status)
         } else {
+            // El reporte PDF tiene su celda en Operaciones (`lib/automation-cells`);
+            // este semáforo viejo no tiene luz para él, pero no es una sobra.
+            if (slug === "pdf_report") continue
             // A row that matches no key and no name regex lights NOTHING — the
             // column silently reads as "not configured". That is how the CONTRATO
             // dash survived unnoticed, so make the leftovers visible instead.

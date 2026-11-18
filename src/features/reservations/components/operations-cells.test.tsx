@@ -56,10 +56,10 @@ const ROW: Reservation = {
 const renderTable = (rows: Reservation[] = [ROW]) => render(<DataTable columns={getColumns()} data={rows} />)
 
 describe("Operaciones — celdas de automatización", () => {
-    it("encabezados agrupados: «Automatizaciones» sobre 4 columnas y «Reportes» sobre 3", () => {
+    it("encabezados agrupados: «Automatizaciones» sobre 4 columnas y «Reportes» sobre 4 (con el PDF)", () => {
         renderTable()
         expect(screen.getByRole("columnheader", { name: "Automatizaciones" })).toHaveAttribute("colspan", "4")
-        expect(screen.getByRole("columnheader", { name: "Reportes" })).toHaveAttribute("colspan", "3")
+        expect(screen.getByRole("columnheader", { name: "Reportes" })).toHaveAttribute("colspan", "4")
     })
 
     it("cada celda dice su estado en el nombre accesible, con la marca de forma del tono", () => {
@@ -73,6 +73,7 @@ describe("Operaciones — celdas de automatización", () => {
         // No configuradas: «—», sin detalle que abrir.
         expect(screen.getByRole("button", { name: "Acceso: no configurado" })).toBeDisabled()
         expect(screen.getByRole("button", { name: "SIRE out: no configurado" })).toBeDisabled()
+        expect(screen.getByRole("button", { name: "PDF: no configurado" })).toBeDisabled()
     })
 
     it("el contador va en la celda y el link muestra sus canales en lugar del ícono", () => {
@@ -108,16 +109,16 @@ describe("Operaciones — celdas de automatización", () => {
     it("todas las celdas miden lo mismo (el ancho ya no depende del texto)", () => {
         renderTable()
         const tiles = document.querySelectorAll('[data-slot="status-tile"]')
-        expect(tiles).toHaveLength(7)
+        expect(tiles).toHaveLength(8)
         tiles.forEach((tile) => expect(tile).toHaveClass("w-19", "h-8"))
     })
 
-    it("móvil: la fila apilada lleva las siete celdas con su nombre escrito debajo", () => {
+    it("móvil: la fila apilada lleva las ocho celdas con su nombre escrito debajo", () => {
         render(<ReservationMobileRow reservation={ROW} />)
         const list = screen.getByRole("list", { name: "Automatizaciones y reportes" })
         const items = within(list).getAllByRole("listitem")
-        expect(items.map((li) => li.textContent?.trim())).toEqual(expect.arrayContaining(["Link", "SIRE out"]))
-        expect(items).toHaveLength(7)
+        expect(items.map((li) => li.textContent?.trim())).toEqual(expect.arrayContaining(["Link", "SIRE out", "PDF"]))
+        expect(items).toHaveLength(8)
         expect(screen.getByRole("link", { name: "Laura Méndez" })).toHaveAttribute("href", "/dashboard/reservations/r1")
         expect(screen.getByRole("button", { name: "Acciones de la reserva de Laura Méndez" })).toBeInTheDocument()
         // El logo es decorativo: el nombre del canal va al lado; sin canal, se dice.

@@ -27,7 +27,7 @@ const bodyRows = () => within(screen.getAllByRole("rowgroup")[1]).getAllByRole("
 describe("tabla de Operaciones — lenguaje compartido", () => {
     it("encabezados en caso de oración, no en mayúsculas forzadas", () => {
         renderRows([reservation()])
-        for (const name of ["Huésped / Alojamiento", "Fechas", "Origen", "Estado", "Automatizaciones", "Link", "Check-in", "Contrato", "Acceso", "Reportes", "TRA", "SIRE in", "SIRE out", "Acciones"]) {
+        for (const name of ["Huésped / Alojamiento", "Fechas", "Origen", "Estado", "Automatizaciones", "Link", "Check-in", "Contrato", "Acceso", "Reportes", "TRA", "SIRE in", "SIRE out", "PDF", "Acciones"]) {
             expect(screen.getByRole("columnheader", { name: new RegExp(`^${name}`) })).toBeInTheDocument()
         }
     })
@@ -67,7 +67,7 @@ describe("tabla de Operaciones — Reportes", () => {
     // tiene su columna (con la sigla en el encabezado) y su celda dice el estado.
     it("un reporte no configurado es «—» con su nombre accesible, nunca una celda vacía", () => {
         renderRows([reservation({ automationStatus: {} as Reservation["automationStatus"], automationItems: [] })])
-        for (const name of ["TRA", "SIRE in", "SIRE out"]) {
+        for (const name of ["TRA", "SIRE in", "SIRE out", "PDF"]) {
             const tile = screen.getByRole("button", { name: `${name}: no configurado` })
             expect(tile).toBeDisabled()
             expect(tile).toHaveAttribute("data-tone", "none")

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest"
+import { describe, it, expect, vi } from "vitest"
 import { buildTrafficLight } from "./reservations-service"
 import type { AutomationStatusItem } from "@/features/properties/types/automation"
 
@@ -93,5 +93,14 @@ describe("buildTrafficLight — contract light", () => {
 
         expect(light.checkin).toBe("success")
         expect(light.contract).toBe("none")
+    })
+})
+
+describe("buildTrafficLight — el reporte PDF ya tiene su celda", () => {
+    it("no avisa «sin columna asignada» por pdf_report (lo pinta lib/automation-cells)", () => {
+        const warn = vi.spyOn(console, "warn").mockImplementation(() => {})
+        buildTrafficLight([row({ providerSlug: "pdf_report", automationName: "Guest Report PDF", status: "not_started" })], false)
+        expect(warn).not.toHaveBeenCalled()
+        warn.mockRestore()
     })
 })

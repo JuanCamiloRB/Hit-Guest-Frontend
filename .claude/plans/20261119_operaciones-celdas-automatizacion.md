@@ -76,8 +76,6 @@ del huésped queda fija al desplazar la tabla.
 
 ## Fuera de alcance (anotado para después)
 
-- Columna «Reporte PDF» (`pdf_report`): existe en el backend pero hoy no tiene
-  columna. Didier la tenía en su boceto.
 - Garantía con tarjeta en el detalle de Contrato: no llega en la lista.
 - Pregunta a Didier: ¿una verificación de identidad fallida debe poner la
   celda de Check-in en rojo? Hoy la decisión vigente dice que no.
@@ -166,3 +164,12 @@ Decisiones que quedan: `rowSpan` en la fila de grupos, mosaico 3+3+1 en
 
 Mutaciones tras las dos auditorías: 41/41. `verify` dos veces: 260 archivos,
 2318 pruebas.
+
+## Reporte PDF (2026-11-19, pedido del usuario)
+
+Octava celda dentro de «Reportes» (`pdf`, ícono `FileText`, encabezado «PDF»,
+detalle «Reporte PDF de huéspedes»). Sale de la fila `pdf_report` del estado
+por reserva. Nota: «Se envía por correo a los destinatarios de la propiedad»;
+si falló con el check-in completo, «Puedes reenviarlo desde la ficha de la
+reserva» (el panel tiene «Reenviar»). `buildTrafficLight` deja de avisar en
+consola que no tiene columna. Mutaciones 4/4.
