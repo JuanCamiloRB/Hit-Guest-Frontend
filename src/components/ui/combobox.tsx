@@ -52,7 +52,7 @@ interface ComboboxProps {
     placeholder?: string
     searchPlaceholder?: string
     emptyText?: string
-    /** Catálogo cargando: disparador deshabilitado con el indicador y `loadingText`. */
+    /** Catálogo cargando: indicador, `loadingText` y `aria-busy`; no abre, pero sigue enfocable (no deshabilitado). */
     loading?: boolean
     loadingText?: string
     disabled?: boolean
