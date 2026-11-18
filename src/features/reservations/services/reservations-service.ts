@@ -25,6 +25,7 @@ import {
     type ReservationOrigin,
 } from "../lib/reservation-origin"
 import { readCheckinLinkDelivery, type CheckinLinkDeliveryStatus } from "../lib/checkin-link-delivery-status"
+import { readDigitalContract } from "../lib/digital-contract"
 import { readPriceDeclaration, type GuestPriceDeclaration } from "../lib/guest-price-declaration"
 import { readCurrencyCode } from "@/lib/money"
 import { Reservation } from "@/types"
@@ -1112,12 +1113,18 @@ export class ReservationsService {
      * automatizaciones» mostraba un 500 como si el backend hubiera dicho «no
      * configurada». Quien lo pide decide cómo decirlo.
      */
+    /**
+     * El estado de automatizaciones de una reserva: el semáforo de siempre
+     * (`status`) y los ítems de los que salen las celdas de Operaciones
+     * (`lib/automation-cells`), que muestran proveedor, fechas, error y cada
+     * huésped. Una sola petición por reserva, como antes.
+     */
     async loadAutomationStatus(
         reservation: Pick<Reservation, "id" | "isCheckinCompleted">,
         signal?: AbortSignal,
-    ): Promise<AutomationStatus> {
+    ): Promise<{ status: AutomationStatus; items: AutomationStatusItem[] }> {
         const items = await automationService.getReservationStatus(reservation.id, signal)
-        return buildTrafficLight(items, reservation.isCheckinCompleted === true)
+        return { status: buildTrafficLight(items, reservation.isCheckinCompleted === true), items }
     }
 
     private async fetchList(signal?: AbortSignal): Promise<Reservation[]> {
@@ -1209,6 +1216,10 @@ export class ReservationsService {
                     // estado global CHECKED_IN solo como respaldo de payloads viejos.
                     // Lo lee `loadAutomationStatus` al armar el semáforo.
                     isCheckinCompleted: readCheckinCompleted(r, status),
+                    // Ya vienen en el `extra` de la lista (observado 2026-11-19): las
+                    // celdas de Link y Contrato los muestran sin pedir la ficha.
+                    checkinLinkDelivery: readCheckinLinkDelivery(r.extra),
+                    digitalContract: readDigitalContract(r.extra),
                 }]
                 } catch (error) {
                     skipped.push(String(r?.uuid ?? r?.id ?? "?"))

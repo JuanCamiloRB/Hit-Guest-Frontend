@@ -1,10 +1,9 @@
 "use client"
 
-import { ColumnDef, Row, SortingFn } from "@tanstack/react-table"
-import { Skeleton } from "@/components/ui/skeleton"
+import { ColumnDef, SortingFn } from "@tanstack/react-table"
 import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
 import { cancelDetailPrefetch, startDetailPrefetch } from "../lib/detail-prefetch"
-import { MoreVertical, Trash2, RefreshCw } from "lucide-react"
+import { CircleHelp, FileSignature, KeyRound, Landmark, Link2, LogIn, LogOut, MoreVertical, RefreshCw, Trash2, Users, type LucideIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import Link from "next/link"
@@ -22,24 +21,27 @@ import { Reservation } from "@/types"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { getReservationStatusMeta } from "./reservation-status-meta"
-import { getAutomationCellMeta, getCheckinCellMeta, REPORT_LIGHTS } from "./automation-cell-meta"
-import { compareText, compareDates, compareStatus, compareLight } from "./reservation-sorting"
-import { UnstyledButton } from "@/components/ui/unstyled-button"
+import { compareText, compareDates, compareStatus } from "./reservation-sorting"
 import { TextLink } from "@/components/ui/text-link"
+import { StatusTile, StatusTileSkeleton, type StatusTileTone } from "@/components/ui/status-tile"
+import { Toggletip, ToggletipLine, ToggletipNote, ToggletipTitle, type ToggletipTone } from "@/components/ui/toggletip"
+import { DeliveryChannelIcon } from "@/components/brand/DeliveryChannelIcon"
+import {
+    CELL_KEYS,
+    CELL_LABELS,
+    CELL_SEVERITY,
+    buildAutomationCells,
+    cellAccessibleName,
+    type AutomationCell,
+    type CellKey,
+    type CellState,
+} from "../lib/automation-cells"
 
 export interface ColumnsOptions {
     onDelete?: (reservation: Reservation) => void
     /** Reintenta el semáforo de una fila cuya consulta falló. */
     onRetryStatus?: (reservation: Reservation) => void
 }
-
-/** Column headers for the per-automation status columns. */
-const AUTOMATION_HEADERS = {
-    link: "Link",
-    checkin: "Check-in",
-    contract: "Contrato",
-    code: "Acceso",
-} as const
 
 // Los comparadores viven en reservation-sorting.ts (puros y testeados); aquí
 // solo se adaptan a la firma que espera TanStack.
@@ -58,43 +60,250 @@ const sortBySource: SortingFn<Reservation> = (a, b) =>
 const sortByStatus: SortingFn<Reservation> = (a, b) =>
     compareStatus(a.original.status, b.original.status)
 
-/**
- * La consulta del semáforo de la fila falló: «No disponible», nunca «—» (que
- * significa «no configurada»). Una sola consulta trae todas las luces de la
- * fila, así que el reintento va solo en la primera columna.
- */
-function StatusUnavailable({ reservation, onRetry }: { reservation?: Reservation; onRetry?: (reservation: Reservation) => void }) {
-    if (!reservation || !onRetry) return <StatusPill tone="idle">No disponible</StatusPill>
-    // La misma píldora que las demás celdas, dentro de un botón: se ven iguales
-    // y el reintento no duplica estilos.
+/** El ícono de lo que mide cada columna; el nombre va escrito debajo, en el encabezado. */
+const CELL_ICONS: Record<CellKey, LucideIcon> = {
+    link: Link2,
+    checkin: Users,
+    contract: FileSignature,
+    code: KeyRound,
+    tra: Landmark,
+    sireIn: LogIn,
+    sireOut: LogOut,
+}
+
+/** El título del detalle: más largo que el encabezado, que tiene que caber en 76 px. */
+const CELL_TITLES: Record<CellKey, string> = {
+    link: "Link de check-in",
+    checkin: "Check-in",
+    contract: "Contrato",
+    code: "Acceso",
+    tra: "Reporte TRA",
+    sireIn: "SIRE entrada",
+    sireOut: "SIRE salida",
+}
+
+const TILE_TONE: Record<CellState, StatusTileTone & ToggletipTone> = {
+    success: "success",
+    pending: "warning",
+    failed: "danger",
+    idle: "idle",
+    none: "none",
+}
+
+/** Las siete celdas de una fila, de lo que ya trae (sin peticiones). */
+function cellsOf(reservation: Reservation, forSort = false) {
+    return buildAutomationCells({
+        items: forSort ? reservation.automationItemsForSort : reservation.automationItems,
+        delivery: reservation.checkinLinkDelivery,
+        contract: reservation.digitalContract,
+        checkin: {
+            completed: reservation.completedGuests ?? null,
+            total: reservation.totalGuests,
+            isCheckinCompleted: reservation.isCheckinCompleted === true,
+        },
+    })
+}
+
+function CellHeader({ cellKey }: { cellKey: CellKey }) {
     return (
-        <UnstyledButton
-            type="button"
-            onClick={() => onRetry(reservation)}
-            // El nombre empieza por lo que se ve (WCAG 2.5.3): «No disponible».
-            aria-label={`No disponible. Reintentar el estado de ${reservation.guestName}`}
-            title="Reintentar"
-            className="rounded-md transition-opacity hover:opacity-80 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-            <StatusPill tone="idle">
-                No disponible
-                <Icon icon={RefreshCw} size="xs" />
-            </StatusPill>
-        </UnstyledButton>
+        <span className="inline-flex flex-col items-center gap-0.5">
+            <Icon icon={CELL_ICONS[cellKey]} size="sm" />
+            <span>{CELL_LABELS[cellKey]}</span>
+        </span>
+    )
+}
+
+function CellDetail({ cellKey, cell }: { cellKey: CellKey; cell: AutomationCell }) {
+    return (
+        <>
+            <ToggletipTitle>{CELL_TITLES[cellKey]}</ToggletipTitle>
+            {cell.lines.map((line, index) => (
+                <ToggletipLine key={index} tone={TILE_TONE[line.state]}>{line.text}</ToggletipLine>
+            ))}
+            {cell.note && <ToggletipNote>{cell.note}</ToggletipNote>}
+        </>
     )
 }
 
 /**
- * El semáforo se carga por fila visible después de la lista: hasta que llega,
- * la celda dice que está cargando, nunca «—» (que significa «no configurada»).
+ * Una celda: ícono + marca de estado + contador, del mismo ancho en todas las
+ * columnas, con el detalle al pasar, enfocar o tocar. Mientras su fuente no
+ * llega, el esqueleto del mismo tamaño; si la consulta falló, «no disponible»
+ * (nunca «—», que significa «no configurada») y, en la primera celda que falte,
+ * el reintento: una sola consulta trae todas las celdas de la fila.
  */
-function StatusLoading() {
-    // Sin `role="status"`: una región viva por celda anunciaría «cargando»
-    // diez veces por página. El texto queda para quien navegue la tabla.
+function AutomationCellView({ cellKey, reservation, onRetry }: {
+    cellKey: CellKey
+    reservation: Reservation
+    onRetry?: (reservation: Reservation) => void
+}) {
+    const cells = cellsOf(reservation)
+    const cell = cells[cellKey]
+    if (cell === null) {
+        if (!reservation.automationStatusFailed) return <StatusTileSkeleton />
+        const retryHere = onRetry && CELL_KEYS.find((key) => cells[key] === null) === cellKey
+        return retryHere ? (
+            <StatusTile
+                tone="idle"
+                icon={RefreshCw}
+                label={`No disponible. Reintentar el estado de ${reservation.guestName}`}
+                title="Reintentar"
+                onClick={() => onRetry(reservation)}
+            />
+        ) : (
+            // NO el guion de «no configurada»: sin dato es «no sabemos», con su propio ícono.
+            <StatusTile tone="idle" icon={CircleHelp} label={`${CELL_LABELS[cellKey]}: no disponible`} title="No disponible" disabled />
+        )
+    }
+    const tone = TILE_TONE[cell.state]
+    const label = cellAccessibleName(cellKey, cell)
+    if (cell.state === "none") return <StatusTile tone="none" label={label} disabled />
+    const tile = (
+        <StatusTile
+            tone={tone}
+            label={label}
+            icon={cell.channels?.length ? undefined : CELL_ICONS[cellKey]}
+            count={cell.count ? `${cell.count.done}/${cell.count.total}` : undefined}
+        >
+            {cell.channels?.length ? (
+                <span className="inline-flex items-center gap-0.5">
+                    {cell.channels.map((channel) => <DeliveryChannelIcon key={channel} channel={channel} />)}
+                </span>
+            ) : undefined}
+        </StatusTile>
+    )
+    return <Toggletip label={CELL_TITLES[cellKey]} content={<CellDetail cellKey={cellKey} cell={cell} />}>{tile}</Toggletip>
+}
+
+/** Una columna de automatización: encabezado con ícono y nombre, orden por severidad. */
+function automationColumn(cellKey: CellKey, onRetry?: (reservation: Reservation) => void): ColumnDef<Reservation> {
+    return {
+        id: cellKey,
+        header: () => <CellHeader cellKey={cellKey} />,
+        meta: { headerClassName: "text-center", cellClassName: "text-center" },
+        // Sin `accessorFn` sería una display column y TanStack no la dejaría
+        // ordenar. El valor es la SEVERIDAD de la celda en la foto de orden:
+        // pulsar CONTRATO responde «¿cuáles me faltan?». Sin dato todavía
+        // (cargando o fallido) queda al final en los dos sentidos.
+        accessorFn: (row: Reservation) => {
+            const cell = cellsOf(row, true)[cellKey]
+            return cell ? CELL_SEVERITY[cell.state] : undefined
+        },
+        sortUndefined: "last",
+        // TanStack decide la primera dirección mirando el valor de la primera
+        // fila; sin dato todavía empezaría al revés. Primero lo que pide atención.
+        sortDescFirst: false,
+        cell: ({ row }) => <AutomationCellView cellKey={cellKey} reservation={row.original} onRetry={onRetry} />,
+    }
+}
+
+/** El menú de acciones de una reserva: en la fila de la tabla y en la fila apilada de móvil. */
+function ReservationActions({ reservation, onDelete }: { reservation: Reservation; onDelete?: (reservation: Reservation) => void }) {
     return (
-        <div className="inline-flex">
-            <Skeleton className="h-5 w-16 rounded-full" />
-            <span className="sr-only">Cargando estado</span>
+        <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Acciones de la reserva de ${reservation.guestName}`}
+                >
+                    <Icon icon={MoreVertical} />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                    onClick={() => navigator.clipboard.writeText(reservation.id)}
+                >
+                    Copiar ID
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    <Link href={`/dashboard/reservations/${reservation.id}`}>
+                        Ver detalles
+                    </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                    disabled={!reservation.email}
+                    onClick={() => {
+                        if (!reservation.email) return
+                        const subject = encodeURIComponent(`Tu reserva ${reservation.id}`)
+                        const body = encodeURIComponent(`Hola ${reservation.guestName ?? ""},\n\n`)
+                        window.open(`mailto:${reservation.email}?subject=${subject}&body=${body}`, "_blank", "noopener,noreferrer")
+                    }}
+                >
+                    Mensaje
+                </DropdownMenuItem>
+                {onDelete && (
+                    <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            className="text-danger focus:bg-danger-sunk focus:text-danger"
+                            onClick={() => onDelete(reservation)}
+                        >
+                            <Icon icon={Trash2} className="mr-2" />
+                            Eliminar
+                        </DropdownMenuItem>
+                    </>
+                )}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    )
+}
+
+/**
+ * La fila apilada de móvil (bajo `md`): quién, dónde, cuándo y el estado arriba;
+ * debajo las siete celdas con su nombre escrito, porque aquí no hay
+ * encabezados. Las mismas celdas y el mismo detalle que en la tabla.
+ */
+export function ReservationMobileRow({ reservation, onDelete, onRetryStatus }: { reservation: Reservation } & ColumnsOptions) {
+    const meta = getReservationStatusMeta(reservation.status, reservation.statusLabel, reservation.statusId)
+    return (
+        <div className="flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                    <TextLink
+                        href={`/dashboard/reservations/${reservation.id}`}
+                        className="truncate text-sm"
+                        // Como en la fila de escritorio: enfocar (o tocar) precarga la ficha.
+                        onMouseEnter={() => startDetailPrefetch(reservation.id)}
+                        onMouseLeave={() => cancelDetailPrefetch(reservation.id)}
+                        onFocus={() => startDetailPrefetch(reservation.id)}
+                        onBlur={() => cancelDetailPrefetch(reservation.id)}
+                    >
+                        {reservation.guestName}
+                    </TextLink>
+                    <span className="truncate text-xs text-ink-2">
+                        {reservation.unitName}
+                        {reservation.propertyName && reservation.unitName !== reservation.propertyName && <> · {reservation.propertyName}</>}
+                    </span>
+                    <span className="text-xs text-ink-3 tabular-nums">
+                        {format(new Date(reservation.checkIn), "d MMM", { locale: es })} – {format(new Date(reservation.checkOut), "d MMM", { locale: es })}
+                        {" · "}{reservation.nights} {reservation.nights === 1 ? "noche" : "noches"}
+                    </span>
+                    {/* El logo es decorativo: el nombre del canal va siempre al lado. */}
+                    <span className="flex items-center gap-1.5 text-xs text-ink-2">
+                        {reservation.source ? (
+                            <>
+                                <ChannelLogo channel={reservation.sourceSlug ?? reservation.source} className="h-3.5 w-3.5" />
+                                {reservation.source}
+                            </>
+                        ) : (
+                            <span className="text-ink-4">{UNKNOWN_CHANNEL_LABEL}</span>
+                        )}
+                    </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                    <StatusPill tone={meta.tone}>{meta.label}</StatusPill>
+                    <ReservationActions reservation={reservation} onDelete={onDelete} />
+                </div>
+            </div>
+            <ul className="flex flex-wrap gap-x-2 gap-y-3" aria-label="Automatizaciones y reportes">
+                {CELL_KEYS.map((key) => (
+                    <li key={key} className="flex flex-col items-center gap-1">
+                        <AutomationCellView cellKey={key} reservation={reservation} onRetry={onRetryStatus} />
+                        <span className="text-xs text-ink-3" aria-hidden="true">{CELL_LABELS[key]}</span>
+                    </li>
+                ))}
+            </ul>
         </div>
     )
 }
@@ -106,6 +315,9 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         accessorKey: "guestName",
         header: "Huésped / Alojamiento",
         sortingFn: sortByGuest,
+        // Fija al desplazar la tabla de lado: con siete celdas de estado la
+        // tabla no cabe en una laptop y el huésped no puede perderse.
+        meta: { sticky: "left" },
         cell: ({ row }) => {
             const reservation = row.original
             // Sin avatar de iniciales: repetía el nombre de al lado («H2» por
@@ -194,135 +406,29 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             return <StatusPill tone={meta.tone}>{meta.label}</StatusPill>
         },
     },
-    // Una columna por automatización, en vez de una celda de ~700px con siete
-    // pastillas en mayúsculas compitiendo con el mismo peso. Cada encabezado
-    // nombra la automatización y cada pastilla dice qué le pasó.
-    ...(["link", "checkin", "contract", "code"] as const).map((key) => ({
-        id: key,
-        header: AUTOMATION_HEADERS[key],
-        // Sin `accessorFn` esto sería una display column, y TanStack le da
-        // `getCanSort() === false` porque no hay valor que ordenar: el
-        // encabezado se quedaría sin control de orden.
-        // Sin semáforo (cargando o fallido) no hay valor: `sortUndefined: "last"`
-        // lo deja al final en los dos sentidos, nunca mezclado con «—».
-        // `ForSort`: mientras se completa un orden, el valor de cuando empezó.
-        accessorFn: (row: Reservation) => row.automationStatusForSort?.[key],
-        sortUndefined: "last" as const,
-        // TanStack decide la primera dirección mirando el valor de la primera
-        // fila; sin semáforo todavía sería `undefined` y empezaría al revés.
-        sortDescFirst: false,
-        // Ordena por severidad, no por el texto de la pastilla: pulsar CONTRATO
-        // responde "¿cuáles me faltan por firmar?" y sube esos al principio.
-        sortingFn: ((a: Row<Reservation>, b: Row<Reservation>) =>
-            compareLight(key, a.original.automationStatusForSort, b.original.automationStatusForSort)) as SortingFn<Reservation>,
-        cell: ({ row }: { row: Row<Reservation> }) => {
-            const res = row.original
-            if (res.automationStatusFailed) {
-                return key === "link"
-                    ? <StatusUnavailable reservation={res} onRetry={onRetryStatus} />
-                    : <StatusUnavailable />
-            }
-            if (res.automationStatus === undefined) return <StatusLoading />
-            // CHECK-IN dice cuántos huéspedes TERMINARON su check-in ("1 de 3
-            // completados") — solo ese eje, por decisión de producto (2026-08-21):
-            // la verificación de identidad se mira en el detalle, no en la lista.
-            // El resto de columnas solo tienen un estado que mostrar.
-            const { tone, label } = key === "checkin"
-                ? getCheckinCellMeta(res.automationStatus, {
-                    completed: res.completedGuests ?? null,
-                    total: res.totalGuests ?? 0,
-                })
-                : getAutomationCellMeta(key, res.automationStatus)
-            return <StatusPill tone={tone}>{label}</StatusPill>
-        },
-    })),
+    // Una columna por automatización, agrupadas como las lee el PM: lo que pasa
+    // con el huésped y lo que se reporta a las autoridades.
+    {
+        id: "automations",
+        header: "Automatizaciones",
+        meta: { headerClassName: "text-center" },
+        columns: (["link", "checkin", "contract", "code"] as const).map((key) => automationColumn(key, onRetryStatus)),
+    },
     {
         id: "reports",
         header: "Reportes",
-        // Tres luces distintas en una celda: no hay un único criterio por el
-        // que ordenarla, así que no se ofrece el control.
-        enableSorting: false,
-        cell: ({ row }) => {
-            const status = row.original.automationStatus
-            if (row.original.automationStatusFailed) return <StatusUnavailable />
-            if (status === undefined) return <StatusLoading />
-            return (
-                // En una línea: apiladas, las tres pastillas hacían cada fila de 85 px.
-                // La tabla ya tiene su propio scroll horizontal.
-                <div className="flex flex-nowrap items-center gap-1">
-                    {REPORT_LIGHTS.map(({ key, short }) => {
-                        const { tone } = getAutomationCellMeta(key, status)
-                        return (
-                            // Sin reporte la pastilla sigue diciendo cuál es («TRA»):
-                            // es texto real, no el guion decorativo de `ink-4`
-                            // (2,35:1), así que va en `ink-3` (AA).
-                            <StatusPill key={key} tone={tone} emptyLabel={short}>
-                                {short}
-                            </StatusPill>
-                        )
-                    })}
-                </div>
-            )
-        },
+        meta: { headerClassName: "text-center" },
+        columns: (["tra", "sireIn", "sireOut"] as const).map((key) => automationColumn(key, onRetryStatus)),
     },
     {
         id: "actions",
         header: () => <div className="text-center">Acciones</div>,
         enableSorting: false,
-        cell: ({ row }) => {
-            const reservation = row.original
-
-            return (
-                <div className="flex justify-center min-w-25">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="icon-sm"
-                                aria-label={`Acciones de la reserva de ${reservation.guestName}`}
-                            >
-                                <Icon icon={MoreVertical} />
-                            </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                                onClick={() => navigator.clipboard.writeText(reservation.id)}
-                            >
-                                Copiar ID
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/reservations/${reservation.id}`}>
-                                    Ver detalles
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                disabled={!reservation.email}
-                                onClick={() => {
-                                    if (!reservation.email) return
-                                    const subject = encodeURIComponent(`Tu reserva ${reservation.id}`)
-                                    const body = encodeURIComponent(`Hola ${reservation.guestName ?? ""},\n\n`)
-                                    window.open(`mailto:${reservation.email}?subject=${subject}&body=${body}`, "_blank", "noopener,noreferrer")
-                                }}
-                            >
-                                Mensaje
-                            </DropdownMenuItem>
-                            {onDelete && (
-                                <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                        className="text-danger focus:bg-danger-sunk focus:text-danger"
-                                        onClick={() => onDelete(reservation)}
-                                    >
-                                        <Icon icon={Trash2} className="mr-2" />
-                                        Eliminar
-                                    </DropdownMenuItem>
-                                </>
-                            )}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                </div>
-            )
-        },
+        cell: ({ row }) => (
+            <div className="flex justify-center min-w-25">
+                <ReservationActions reservation={row.original} onDelete={onDelete} />
+            </div>
+        ),
     },
   ]
 }

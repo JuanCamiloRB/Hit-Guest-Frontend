@@ -63,10 +63,12 @@ archivo:
 | Pantalla | `Page`, `PageHeader`, `PageBreadcrumb` | `ui/page.tsx` |
 | Barra lateral del panel | `SidebarProvider`, `SidebarRoot`, `SidebarTrigger`, `SidebarItem`, `SidebarGroupLabel` (contraíble, preferencia en `localStorage`) | `ui/sidebar.tsx` |
 | Ayuda flotante | `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` (refuerzo visual; el nombre accesible va aparte) | `ui/tooltip.tsx` |
+| Detalle al pasar, enfocar o tocar | `Toggletip` + `ToggletipTitle`, `ToggletipLine tone`, `ToggletipNote` (sobre `Popover`: el `Tooltip` de Radix no abre al tocar y se cierra con el clic) | `ui/toggletip.tsx` |
 | Barra fija al pie (portal) | `BottomBar` (superficie compartida: `bottomBarSurface`) | `ui/bottom-bar.tsx` |
 | Barra de acciones de un formulario (panel) | `FormActionBar` (`status` a la izquierda, `Button` a la derecha; `sticky bottom-0 z-20`, ancho de la `Page`; el formulario reserva `pb-24`) | `ui/form-action-bar.tsx` |
 | Título y rótulo | `Heading`, `Overline` | `ui/heading.tsx`, `ui/overline.tsx` |
 | Estado y etiqueta | `StatusPill`, `Badge` | `ui/status-pill.tsx`, `ui/badge.tsx` |
+| Celda de estado en tabla densa | `StatusTile` (`tone` success/warning/danger/idle/none, `icon`, `count`, `label`; marca ✓ reloj ✕ según el tono; ancho fijo) + `StatusTileSkeleton` | `ui/status-tile.tsx` |
 | Aviso | `FeedbackBanner` | `ui/feedback-banner.tsx` |
 | Plegable | `Disclosure` (`row` | `inline`) | `ui/disclosure.tsx` |
 | Nota | `Note` (`tone` neutral/accent, `density`, `icon`, `as`) | `ui/note.tsx` |
@@ -75,11 +77,11 @@ archivo:
 | Cifra protagonista | `Figure` (`size`, `tone`, `kind`, `as`) | `ui/figure.tsx` |
 | Término y definición | `DefinitionItem` (dentro de un `<dl>`) | `ui/definition-list.tsx` |
 | Vacío | `EmptyState` | `ui/empty-state.tsx` |
-| Tabla | `Table` (composición), `DataTable` (ordenar y paginar; `pageSize`, `itemLabel`, `getRowHref`, `renderMobileRow` para la fila apilada en móvil) | `ui/table.tsx`, `shared/data-table.tsx` |
+| Tabla | `Table` (composición), `DataTable` (ordenar y paginar; `pageSize`, `itemLabel`, `getRowHref`, `renderMobileRow` para la fila apilada en móvil; columnas agrupadas con `colSpan`; `meta.headerClassName`/`cellClassName` de layout y `meta.sticky: "left"`) | `ui/table.tsx`, `shared/data-table.tsx` |
 | Modal | `Dialog`, `AlertDialog`, `Sheet`, `Popover`, `DropdownMenu`; formulario largo: `DialogContent layout="panel"` + `DialogHeader divided` + `DialogBody` (scroll) + `DialogFooter divided` (fijo) (`Dialog`/`AlertDialog` devuelven el foco a quien abrió aunque se abran por estado: `useRestoreFocusToOpener`) | `ui/dialog.tsx`, `ui/alert-dialog.tsx`, `ui/sheet.tsx`, `ui/popover.tsx`, `ui/dropdown-menu.tsx` |
 | Ícono | `Icon`, `IconBadge` (`interactive` dentro de un pulsable con `group`) | `ui/icon.tsx`, `ui/icon-badge.tsx` |
 | Persona | `Avatar` | `ui/avatar.tsx` |
-| Marca | `Logo`, `ChannelLogo`, `ProviderMarks` | `ui/Logo.tsx`, `brand/ChannelLogo.tsx`, `brand/ProviderMarks.tsx` |
+| Marca | `Logo`, `ChannelLogo`, `ProviderMarks`, `DeliveryChannelIcon` | `ui/Logo.tsx`, `brand/ChannelLogo.tsx`, `brand/ProviderMarks.tsx`, `brand/DeliveryChannelIcon.tsx` |
 
 **Si la pantalla necesita una pieza que no está en el catálogo, primero se
 crea como primitiva y después se usa.** No se arma a mano dentro de la feature

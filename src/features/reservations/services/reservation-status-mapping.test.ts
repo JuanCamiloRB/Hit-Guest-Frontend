@@ -77,6 +77,22 @@ describe("reservationsService.list — lo que llega del backend no tumba ni reco
         mocks.getReservationStatus.mockResolvedValue([])
     })
 
+    it("la fila conserva del `extra` el envío del link por canal y el contrato (las celdas no piden la ficha)", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(page([{
+            ...NUEVA,
+            extra: {
+                ...NUEVA.extra,
+                checkinLinkSentAt: "2026-11-18T15:42:00Z", mailDeliveryStatus: "delivered",
+                checkinLinkWhatsappSentAt: "2026-11-18T15:42:00Z", whatsappDeliveryStatus: "read",
+                digitalContract: { provider: "tufirma", status: "completed", signedAt: "2026-11-18 11:05:00", contractType: "guarantee_only" },
+            },
+        }])))
+        const [row] = await reservationsService.list()
+        expect(row.checkinLinkDelivery?.email).toMatchObject({ status: "delivered" })
+        expect(row.checkinLinkDelivery?.whatsapp).toMatchObject({ status: "read" })
+        expect(row.digitalContract).toMatchObject({ provider: "tufirma", contractType: "guarantee_only", status: "completed" })
+    })
+
     it("la reserva recién creada aparece, con su estado resuelto por id aunque el nombre sea un objeto", async () => {
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(page([NUEVA])))
         const list = await reservationsService.list()
@@ -167,14 +183,16 @@ describe("reservationsService.list — bordes de la paginación y de las filas",
         expect(mocks.getReservationStatus).not.toHaveBeenCalled()
     })
 
-    it("loadAutomationStatus consulta UNA reserva con la señal y arma su semáforo", async () => {
+    it("loadAutomationStatus consulta UNA reserva con la señal y arma su semáforo, conservando los ítems", async () => {
         const controller = new AbortController()
-        const status = await reservationsService.loadAutomationStatus(
+        const { status, items } = await reservationsService.loadAutomationStatus(
             { id: "res-nueva", isCheckinCompleted: true },
             controller.signal,
         )
         expect(mocks.getReservationStatus).toHaveBeenCalledWith("res-nueva", controller.signal)
         expect(status.checkin).toBe("success")
+        // Los mismos ítems que respondió el backend: de ahí salen las celdas de Operaciones.
+        expect(items).toBe(await mocks.getReservationStatus.mock.results[0].value)
     })
 
     it("loadAutomationStatus: un fallo se lanza, nunca se convierte en «sin automatizaciones»", async () => {

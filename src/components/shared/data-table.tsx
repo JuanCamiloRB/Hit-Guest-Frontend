@@ -12,6 +12,8 @@ import {
     getFilteredRowModel,
     ColumnFiltersState,
     OnChangeFn,
+    type Column,
+    type RowData,
 } from "@tanstack/react-table"
 
 import {
@@ -35,6 +37,42 @@ import { SMALL_SCREEN_QUERY, useMediaQuery } from "@/hooks/useMediaQuery"
 export interface DataTableItemLabel {
     singular: string
     plural: string
+}
+
+declare module "@tanstack/react-table" {
+    // Los genéricos tienen que coincidir con la declaración de TanStack.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    interface ColumnMeta<TData extends RowData, TValue> {
+        /** Solo layout del encabezado (alineación). */
+        headerClassName?: string
+        /** Solo layout de cada celda de la columna (alineación, ancho). */
+        cellClassName?: string
+        /** Columna fija a la izquierda al desplazar la tabla de lado (el huésped). */
+        sticky?: "left"
+    }
+}
+
+/**
+ * La columna fija necesita fondo opaco (si no, lo que pasa por debajo se ve) y
+ * el MISMO hover que la fila: `TableRow` pinta `primary/5` translúcido sobre la
+ * fila, así que aquí una capa detrás del contenido lo repite sobre `card`.
+ */
+// El borde derecho avisa que lo de al lado pasa por debajo al desplazar.
+const STICKY_HEAD = "sticky left-0 z-20 border-r border-rule bg-sunk"
+const STICKY_CELL = [
+    "sticky left-0 z-10 border-r border-rule bg-card",
+    "before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-primary/5 before:opacity-0 before:transition-opacity",
+    "group-hover/row:before:opacity-100 group-data-[state=selected]/row:before:opacity-100",
+].join(" ")
+
+function headClasses<TData>(column: Column<TData, unknown>): string {
+    const meta = column.columnDef.meta
+    return cn("whitespace-nowrap", meta?.sticky === "left" && STICKY_HEAD, meta?.headerClassName)
+}
+
+function cellClasses<TData>(column: Column<TData, unknown>): string {
+    const meta = column.columnDef.meta
+    return cn("whitespace-nowrap", meta?.sticky === "left" && STICKY_CELL, meta?.cellClassName)
 }
 
 /**
@@ -241,8 +279,11 @@ export function DataTable<TData, TValue>({
                             {table.getHeaderGroups().map((headerGroup) => (
                                 <TableRow key={headerGroup.id}>
                                     {headerGroup.headers.map((header) => {
+                                        // Con columnas agrupadas («Automatizaciones», «Reportes») el
+                                        // grupo ocupa las columnas que agrupa; sin `colSpan` el
+                                        // encabezado quedaba corrido respecto de sus celdas.
                                         if (header.isPlaceholder) {
-                                            return <TableHead key={header.id} className="whitespace-nowrap" />
+                                            return <TableHead key={header.id} colSpan={header.colSpan} className={headClasses(header.column)} />
                                         }
 
                                         const content = flexRender(
@@ -252,7 +293,7 @@ export function DataTable<TData, TValue>({
 
                                         if (!header.column.getCanSort()) {
                                             return (
-                                                <TableHead key={header.id} className="whitespace-nowrap">
+                                                <TableHead key={header.id} colSpan={header.colSpan} className={headClasses(header.column)}>
                                                     {content}
                                                 </TableHead>
                                             )
@@ -263,7 +304,8 @@ export function DataTable<TData, TValue>({
                                         return (
                                             <TableHead
                                                 key={header.id}
-                                                className="whitespace-nowrap"
+                                                colSpan={header.colSpan}
+                                                className={headClasses(header.column)}
                                                 // Comunica el orden vigente a un lector de
                                                 // pantalla, que no ve la flecha.
                                                 aria-sort={
@@ -322,7 +364,7 @@ export function DataTable<TData, TValue>({
                                         onClick={href ? (event) => followRow(event, href) : undefined}
                                     >
                                         {row.getVisibleCells().map((cell) => (
-                                            <TableCell key={cell.id} className="whitespace-nowrap">
+                                            <TableCell key={cell.id} className={cellClasses(cell.column)}>
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                             </TableCell>
                                         ))}
@@ -333,7 +375,7 @@ export function DataTable<TData, TValue>({
                                 <TableRow>
                                     {/* `empty` deja que la pantalla distinga «sin datos» de «sin
                                         resultados» (EmptyState); sin él, el texto de siempre. */}
-                                    <TableCell colSpan={columns.length} className={empty ? "p-0 whitespace-normal" : "h-24 text-center"}>
+                                    <TableCell colSpan={table.getVisibleLeafColumns().length} className={empty ? "p-0 whitespace-normal" : "h-24 text-center"}>
                                         {empty ?? "No hay resultados."}
                                     </TableCell>
                                 </TableRow>

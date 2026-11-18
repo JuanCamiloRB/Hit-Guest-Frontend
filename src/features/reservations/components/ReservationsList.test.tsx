@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
     getReservationCost: vi.fn(),
     loadAutomationStatus: vi.fn(),
 }))
+// Lo que devuelve `loadAutomationStatus`: el semáforo y los ítems de las celdas.
+const statusResult = (contract: string) => ({ status: { contract }, items: [] })
 
 vi.mock("./columns", () => ({
     getColumns: ({ onDelete, onRetryStatus }: { onDelete: (reservation: Reservation) => void; onRetryStatus: (reservation: Reservation) => void }) => {
@@ -42,6 +44,7 @@ vi.mock("@/components/shared/data-table", () => ({
             <span data-testid="sort-values">{data.map((r) => `${r.id}:${r.automationStatusForSort?.contract ?? "-"}`).join(",")}</span>
             <button type="button" onClick={() => mocks.deleteHandler?.(data[0])}>Solicitar eliminación</button>
             <button type="button" onClick={() => onSortingChange?.([{ id: "contract", desc: false }])}>Ordenar por contrato</button>
+            <button type="button" onClick={() => onSortingChange?.([{ id: "sireOut", desc: false }])}>Ordenar por SIRE out</button>
             <button type="button" onClick={() => onSortingChange?.([{ id: "guestName", desc: false }])}>Ordenar por huésped</button>
             <button type="button" onClick={() => onSortingChange?.([{ id: "guestName", desc: false }, { id: "checkin", desc: false }])}>Ordenar múltiple</button>
             <button type="button" onClick={() => onVisibleRowsChange?.(data.slice(0, 10), data.slice(10, 20))}>Mostrar primera página</button>
@@ -412,8 +415,8 @@ describe("ReservationsList — ordenar por un estado espera a tenerlos todos", (
         await waitFor(() => expect(pending).toHaveLength(3))
 
         await act(async () => {
-            pending[0].resolve({ contract: "success" })
-            pending[1].resolve({ contract: "pending" })
+            pending[0].resolve(statusResult("success"))
+            pending[1].resolve(statusResult("pending"))
             pending[2].reject(new Error("503"))
         })
         await waitFor(() => expect(screen.getByTestId("sorting")).toHaveTextContent("contract"))
@@ -431,7 +434,7 @@ describe("ReservationsList — ordenar por un estado espera a tenerlos todos", (
         fireEvent.click(await screen.findByRole("button", { name: "Cancelar orden" }))
         expect(screen.queryByText(/Preparando/)).toBeNull()
         await waitFor(() => expect(pending).toHaveLength(3))
-        await act(async () => pending.forEach((resolve) => resolve({ contract: "success" })))
+        await act(async () => pending.forEach((resolve) => resolve(statusResult("success"))))
         expect(screen.getByTestId("sorting")).toHaveTextContent("checkIn")
     })
 
@@ -439,7 +442,7 @@ describe("ReservationsList — ordenar por un estado espera a tenerlos todos", (
         const many = Array.from({ length: 500 }, (_, i) => ({ ...reservation, id: `r${i}` }))
         mocks.list.mockResolvedValue(many)
         const gates: Array<() => void> = []
-        mocks.loadAutomationStatus.mockImplementation(() => new Promise((resolve) => gates.push(() => resolve({ contract: "success" }))))
+        mocks.loadAutomationStatus.mockImplementation(() => new Promise((resolve) => gates.push(() => resolve(statusResult("success")))))
         render(<ReservationsList />)
         await screen.findByTestId("row-count")
         fireEvent.click(screen.getByRole("button", { name: "Mostrar primera página" }))
@@ -468,7 +471,7 @@ describe("ReservationsList — ordenar por un estado espera a tenerlos todos", (
         fireEvent.click(screen.getByRole("button", { name: "Ordenar por huésped" }))
         expect(screen.getByTestId("sorting")).toHaveTextContent("guestName")
         await waitFor(() => expect(pending).toHaveLength(3))
-        await act(async () => pending.forEach((resolve) => resolve({ contract: "success" })))
+        await act(async () => pending.forEach((resolve) => resolve(statusResult("success"))))
         expect(screen.getByTestId("sorting")).toHaveTextContent("guestName")
     })
 
@@ -483,7 +486,7 @@ describe("ReservationsList — ordenar por un estado espera a tenerlos todos", (
     })
 
     it("con el orden por estado activo, una reserva nueva también recibe su estado (el orden no queda a medias)", async () => {
-        mocks.loadAutomationStatus.mockResolvedValue({ contract: "success" })
+        mocks.loadAutomationStatus.mockResolvedValue(statusResult("success"))
         render(<ReservationsList />)
         await screen.findByTestId("row-count")
         fireEvent.click(screen.getByRole("button", { name: "Ordenar por contrato" }))
@@ -510,7 +513,7 @@ describe("ReservationsList — el conjunto cambia con un orden por estado activo
         mocks.list.mockResolvedValue(rowsOf("a", "b", "c"))
         mocks.loadAutomationStatus.mockImplementation((r: Reservation) =>
             ["a", "b", "c"].includes(r.id)
-                ? Promise.resolve({ contract: "success" })
+                ? Promise.resolve(statusResult("success"))
                 : new Promise((resolve) => gates.set(r.id, resolve)))
     })
 
@@ -528,6 +531,14 @@ describe("ReservationsList — el conjunto cambia con un orden por estado activo
         await waitFor(() => expect(screen.getByTestId("row-count")).toHaveTextContent(String(ids.length)))
     }
 
+    it("ordenar por un REPORTE (SIRE out) también es un orden por estado: prepara las filas que falten", async () => {
+        render(<ReservationsList />)
+        await screen.findByTestId("row-count")
+        await listBecomes("a", "b", "c", "d")
+        fireEvent.click(screen.getByRole("button", { name: "Ordenar por SIRE out" }))
+        expect(await screen.findByText(/Preparando todos los estados para ordenar… 3 de 4/)).toBeInTheDocument()
+    })
+
     it("filas nuevas: vuelve «Preparando…», el orden sigue y lo que llega no mueve nada; al completar, se aplica una vez", async () => {
         await sortedByContract()
         await listBecomes("a", "b", "c", "d", "e")
@@ -536,12 +547,12 @@ describe("ReservationsList — el conjunto cambia con un orden por estado activo
         expect(screen.getByTestId("sorting")).toHaveTextContent("contract")
         await waitFor(() => expect(gates.has("e")).toBe(true))
 
-        await act(async () => gates.get("d")!({ contract: "pending" }))
+        await act(async () => gates.get("d")!(statusResult("pending")))
         expect(await screen.findByText(/4 de 5/)).toBeInTheDocument()
         // Se ordena con lo que se sabía al empezar: «d» sigue sin valor (al final).
         expect(screen.getByTestId("sort-values")).toHaveTextContent("d:-")
 
-        await act(async () => gates.get("e")!({ contract: "success" }))
+        await act(async () => gates.get("e")!(statusResult("success")))
         await waitFor(() => expect(screen.queryByText(/Preparando/)).toBeNull())
         expect(screen.getByTestId("sort-values")).toHaveTextContent("d:pending")
         expect(screen.getByTestId("sorting")).toHaveTextContent("contract")
@@ -566,12 +577,12 @@ describe("ReservationsList — el conjunto cambia con un orden por estado activo
         await listBecomes("a", "b", "c", "m1", "m2")
         expect(await screen.findByText(/Preparando todos los estados para ordenar… 3 de 5/)).toBeInTheDocument()
         // Se liberan los seis en vuelo de la preparación anterior.
-        await act(async () => ["n1", "n2", "n3", "n4", "n5", "n6"].forEach((id) => gates.get(id)!({ contract: "success" })))
+        await act(async () => ["n1", "n2", "n3", "n4", "n5", "n6"].forEach((id) => gates.get(id)!(statusResult("success"))))
         await waitFor(() => expect(started()).toEqual(expect.arrayContaining(["m1", "m2"])))
         expect(started()).not.toEqual(expect.arrayContaining(["n7"]))
         expect(started().filter((id) => ["n7", "n8", "n9", "n10"].includes(id))).toEqual([])
 
-        await act(async () => { gates.get("m1")!({ contract: "success" }); gates.get("m2")!({ contract: "pending" }) })
+        await act(async () => { gates.get("m1")!(statusResult("success")); gates.get("m2")!(statusResult("pending")) })
         await waitFor(() => expect(screen.queryByText(/Preparando/)).toBeNull())
         expect(screen.getByTestId("sorting")).toHaveTextContent("contract")
     })
@@ -593,7 +604,7 @@ describe("ReservationsList — el conjunto cambia con un orden por estado activo
 
     it("reintentar la fallida con el orden ya completo no vuelve a «Preparando…» ni pone «Cancelar orden»", async () => {
         mocks.loadAutomationStatus.mockImplementation((r: Reservation) =>
-            r.id === "a" ? Promise.reject(new Error("503")) : Promise.resolve({ contract: "success" }))
+            r.id === "a" ? Promise.reject(new Error("503")) : Promise.resolve(statusResult("success")))
         await sortedByContract()
         expect(screen.getByText(/No se pudo cargar el estado de 1 reserva/)).toBeInTheDocument()
 
@@ -607,7 +618,7 @@ describe("ReservationsList — el conjunto cambia con un orden por estado activo
         expect(screen.queryByText(/No se pudo cargar el estado/)).toBeNull()
 
         await waitFor(() => expect(finish).toBeDefined())
-        await act(async () => finish({ contract: "pending" }))
+        await act(async () => finish(statusResult("pending")))
         expect(screen.getByTestId("sort-values")).toHaveTextContent("a:pending")
         expect(screen.getByTestId("sorting")).toHaveTextContent("contract")
     })
@@ -624,7 +635,7 @@ describe("ReservationsList — el conjunto cambia con un orden por estado activo
         expect(screen.getByTestId("sorting")).toHaveTextContent("checkIn")
         await waitFor(() => expect(gates.has("y")).toBe(true))
 
-        await act(async () => gates.get("y")!({ contract: "pending" }))
+        await act(async () => gates.get("y")!(statusResult("pending")))
         await waitFor(() => expect(screen.getByTestId("sorting")).toHaveTextContent("contract"))
         expect(screen.queryByText(/Preparando/)).toBeNull()
     })

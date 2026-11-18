@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest"
 import { render, screen, fireEvent, within } from "@testing-library/react"
 import type { Reservation } from "@/types"
+import type { AutomationStatusItem } from "@/features/properties/types/automation"
 import { DataTable } from "@/components/shared/data-table"
 import { getColumns } from "./columns"
 import { DEFAULT_SORTING } from "./reservation-sorting"
@@ -31,7 +32,17 @@ const makeReservation = (
     ...overrides,
     // Como `withStatus` fuera de una preparación: se ordena por el valor vivo.
     automationStatusForSort: overrides.automationStatusForSort ?? overrides.automationStatus,
+    automationItemsForSort: overrides.automationItemsForSort ?? overrides.automationItems,
 }) as Reservation
+
+/** Un ítem de `automation-status` con lo mínimo para una celda. */
+const statusItem = (providerSlug: string, automationName: string, status: AutomationStatusItem["status"]) => ({
+    automationUuid: `${providerSlug}-${status}`, automationName, providerSlug, status,
+    lastError: null, lastRunAt: null, usageRecordId: null, contractPdfPath: null, wasSuccessful: status === "completed",
+    lastSuccessAt: null, requiresCheckin: null, redispatchRequiresCheckin: null, canManualDispatch: false,
+    isPerGuest: false, guests: [], reservationCheckinCompleted: false, mainGuestCheckinCompleted: false,
+    canDispatch: false, canRedispatch: false,
+}) as AutomationStatusItem
 
 const ROWS: Reservation[] = [
     makeReservation("r1", "Bruno Perez", "2026-07-23"),
@@ -41,7 +52,8 @@ const ROWS: Reservation[] = [
 
 /** Nombres de huésped en el orden en que la tabla los está pintando. */
 function renderedGuests(): string[] {
-    const rows = screen.getAllByRole("row").slice(1) // fuera el encabezado
+    // Solo el cuerpo: el encabezado tiene dos filas (grupos y columnas).
+    const rows = within(screen.getAllByRole("rowgroup")[1]).getAllByRole("row")
     return rows.map((r) => within(r).getAllByRole("cell")[0].textContent ?? "")
 }
 
@@ -124,19 +136,17 @@ describe("ordenamiento de la tabla de reservas", () => {
         ).toBeNull()
     })
 
-    it("ordena la columna CONTRATO poniendo lo pendiente primero", () => {
+    it("ordena la columna CONTRATO por severidad: lo que falló primero, luego lo pendiente, lo firmado después", () => {
+        const sign = (status: AutomationStatusItem["status"]) => [statusItem("hitguest_signature", "Digital Signature for Contract", status)]
         const withContracts: Reservation[] = [
-            makeReservation("c1", "Firmado Uno", "2026-08-01", {
-                automationStatus: { link: "success", checkin: "success", contract: "success", code: "none", tra: "none", sireIn: "none", sireOut: "none" },
-            }),
-            makeReservation("c2", "Pendiente Dos", "2026-08-02", {
-                automationStatus: { link: "success", checkin: "success", contract: "pending", code: "none", tra: "none", sireIn: "none", sireOut: "none" },
-            }),
+            makeReservation("c1", "Firmado Uno", "2026-08-01", { automationItems: sign("completed") }),
+            makeReservation("c2", "Pendiente Dos", "2026-08-02", { automationItems: sign("pending") }),
+            makeReservation("c3", "Fallido Tres", "2026-08-03", { automationItems: sign("failed") }),
         ]
         render(<DataTable columns={getColumns()} data={withContracts} />)
-        fireEvent.click(screen.getByRole("button", { name: /CONTRATO/i }))
+        fireEvent.click(screen.getByRole("button", { name: "Contrato" }))
 
-        expect(renderedGuests()[0]).toContain("Pendiente Dos")
+        expect(renderedGuests().map((g) => g.split(/(?=Habitare|H402)/)[0])).toEqual(["Fallido Tres", "Pendiente Dos", "Firmado Uno"])
     })
 })
 
@@ -153,14 +163,40 @@ describe("columnas de estado — cargando, listo y «No disponible»", () => {
         )
 
         const failedRow = screen.getByText("Bruno Perez").closest("tr")!
-        // LINK lleva el reintento; CHECK-IN, CONTRATO, ACCESO y REPORTES solo lo dicen.
-        expect(within(failedRow).getAllByText("No disponible")).toHaveLength(5)
+        // LINK lleva el reintento; las otras seis celdas solo lo dicen (nunca «no configurado»).
+        const unavailable = within(failedRow).getAllByRole("button", { name: /: no disponible$/ })
+        expect(unavailable).toHaveLength(6)
+        expect(within(failedRow).queryByRole("button", { name: /no configurado/ })).toBeNull()
+        // Y se VE distinto de «no configurada»: ni guion ni borde punteado, su propio ícono.
+        for (const tile of unavailable) {
+            expect(tile).not.toHaveAttribute("data-tone", "none")
+            expect(tile).not.toHaveClass("border-dashed")
+            expect(tile.querySelector(".lucide-circle-question-mark, .lucide-circle-help")).not.toBeNull()
+        }
         fireEvent.click(within(failedRow).getByRole("button", { name: "No disponible. Reintentar el estado de Bruno Perez" }))
         expect(retried).toEqual(["r1"])
 
+        // El reintento va en la PRIMERA celda que falta (Link), no en cualquiera.
+        const tiles = within(failedRow).getAllByRole("button").filter((b) => b.getAttribute("data-slot") === "status-tile")
+        expect(tiles[0]).toHaveAccessibleName("No disponible. Reintentar el estado de Bruno Perez")
+
         const loadingRow = screen.getByText("Ana Torres").closest("tr")!
-        expect(within(loadingRow).getAllByText("Cargando estado")).toHaveLength(5)
-        expect(within(loadingRow).queryByText("No disponible")).toBeNull()
+        expect(within(loadingRow).getAllByText("Cargando estado")).toHaveLength(7)
+        expect(within(loadingRow).queryByRole("button", { name: /no disponible/i })).toBeNull()
+    })
+})
+
+describe("columnas de estado — el reintento va donde falta el dato", () => {
+    it("con el link ya conocido (viene en la lista), el reintento pasa a Check-in, la primera que falta", () => {
+        const failed = makeReservation("r1", "Bruno Perez", "2026-07-23", {
+            automationStatusFailed: true,
+            checkinLinkDelivery: { email: { sentAt: "2026-07-20T10:00:00Z", to: null, status: "delivered", reason: null, statusAt: null }, whatsapp: null, ota: null },
+        })
+        render(<DataTable columns={getColumns({ onRetryStatus: () => {} })} data={[failed]} />)
+        const row = screen.getByText("Bruno Perez").closest("tr")!
+        expect(within(row).getByRole("button", { name: "Link: enviado por correo" })).toBeInTheDocument()
+        const tiles = within(row).getAllByRole("button").filter((b) => b.getAttribute("data-slot") === "status-tile")
+        expect(tiles[1]).toHaveAccessibleName("No disponible. Reintentar el estado de Bruno Perez")
     })
 })
 
@@ -187,10 +223,10 @@ describe("columnas de estado — el primer clic ordena hacia arriba aunque haya 
     it("CONTRATO con la primera fila todavía sin semáforo: ascendente, no al revés", () => {
         const data = [
             makeReservation("r1", "Bruno Perez", "2026-07-23"),
-            makeReservation("r2", "Ana Torres", "2026-08-05", { automationStatus: { link: "none", checkin: "none", contract: "pending", code: "none", tra: "none", sireIn: "none", sireOut: "none" } }),
+            makeReservation("r2", "Ana Torres", "2026-08-05", { automationItems: [statusItem("tufirma", "Digital Signature for Contract", "pending")] }),
         ]
         render(<DataTable columns={getColumns()} data={data} />)
-        fireEvent.click(screen.getByRole("button", { name: /CONTRATO/i }))
-        expect(screen.getByRole("columnheader", { name: /CONTRATO/i })).toHaveAttribute("aria-sort", "ascending")
+        fireEvent.click(screen.getByRole("button", { name: "Contrato" }))
+        expect(screen.getByRole("columnheader", { name: "Contrato" })).toHaveAttribute("aria-sort", "ascending")
     })
 })

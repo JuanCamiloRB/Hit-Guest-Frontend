@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { PriorityLoadQueue } from "@/lib/priority-load-queue"
 import { throwIfRateLimited } from "@/lib/rate-limit"
 import type { AutomationStatus, Reservation } from "@/types"
+import type { AutomationStatusItem } from "@/features/properties/types/automation"
 import { reservationsService } from "../services/reservations-service"
 
 /** Consultas de semáforo en vuelo a la vez (una por reserva). */
@@ -42,7 +43,7 @@ function freshEntries(now = Date.now()): Map<string, StatusEntry> {
  * celda muestra que carga, pero un orden por estado ya completo no vuelve a
  * «Preparando…» por un reintento.
  */
-type StatusEntry = { ok: true; status: AutomationStatus } | { ok: false; retrying?: true }
+type StatusEntry = { ok: true; status: AutomationStatus; items: readonly AutomationStatusItem[] } | { ok: false; retrying?: true }
 
 /**
  * Lo que se sabía de los semáforos en un momento dado: para ordenar con esos
@@ -106,8 +107,8 @@ export function useAutomationStatusLoader() {
                 try {
                     // Tras un 429, lo que esperaba turno no sale: recibiría lo mismo.
                     throwIfRateLimited()
-                    const status = await reservationsService.loadAutomationStatus(reservation, signal)
-                    if (!signal.aborted) write(reservation.id, { ok: true, status })
+                    const { status, items } = await reservationsService.loadAutomationStatus(reservation, signal)
+                    if (!signal.aborted) write(reservation.id, { ok: true, status, items })
                 } catch {
                     // Cancelar (desmontaje) no es un fallo que mostrar.
                     if (!signal.aborted) write(reservation.id, { ok: false })
@@ -206,11 +207,13 @@ export function useAutomationStatusLoader() {
                 const entry = entries.get(row.id)
                 const sortEntry = sortBy ? sortBy.get(row.id) : entry
                 const automationStatusForSort = sortEntry?.ok ? sortEntry.status : undefined
+                const automationItemsForSort = sortEntry?.ok ? sortEntry.items : undefined
+                const forSort = { automationStatusForSort, automationItemsForSort }
                 // Sin resultado, o reintentando: la celda dice que carga.
-                if (!entry || (!entry.ok && entry.retrying)) return sortBy || entry ? { ...row, automationStatusForSort } : row
+                if (!entry || (!entry.ok && entry.retrying)) return sortBy || entry ? { ...row, ...forSort } : row
                 return entry.ok
-                    ? { ...row, automationStatus: entry.status, automationStatusForSort }
-                    : { ...row, automationStatusFailed: true, automationStatusForSort }
+                    ? { ...row, automationStatus: entry.status, automationItems: entry.items, ...forSort }
+                    : { ...row, automationStatusFailed: true, ...forSort }
             }),
         [entries],
     )

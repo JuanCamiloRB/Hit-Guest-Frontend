@@ -1,8 +1,9 @@
 "use client"
 
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
+import { CELL_KEYS } from "../lib/automation-cells"
 import { Reservation } from "@/types"
-import { getColumns } from "./columns"
+import { getColumns, ReservationMobileRow } from "./columns"
 import { consumptionService } from "@/features/billing/services/consumption-service"
 import { formatUsd } from "@/features/billing/types"
 import { DEFAULT_SORTING } from "./reservation-sorting"
@@ -90,7 +91,7 @@ import { Surface } from "@/components/ui/card"
 
 
 /** Columnas que ordenan por el semáforo: necesitan el de todas las filas antes de ordenar. */
-const STATUS_SORT_COLUMNS = new Set(["link", "checkin", "contract", "code"])
+const STATUS_SORT_COLUMNS = new Set<string>(CELL_KEYS)
 /** `some`, no solo el primero: el orden múltiple (shift + clic) también cuenta. */
 const hasStatusSort = (sorting: SortingState) => sorting.some((s) => STATUS_SORT_COLUMNS.has(s.id))
 
@@ -259,6 +260,10 @@ export default function ReservationsList() {
         }
     }
 
+    const renderMobileRow = useCallback(
+        (reservation: Reservation) => <ReservationMobileRow reservation={reservation} onDelete={requestDelete} onRetryStatus={retryStatus} />,
+        [requestDelete, retryStatus],
+    )
     const columns = useMemo(
         () => getColumns({ onDelete: requestDelete, onRetryStatus: retryStatus }),
         [requestDelete, retryStatus]
@@ -509,6 +514,8 @@ export default function ReservationsList() {
                 onSortingChange={handleSortingChange}
                 getRowId={rowId}
                 onVisibleRowsChange={handleVisibleRows}
+                // Bajo `md`: una fila apilada con las mismas celdas, sin scroll lateral.
+                renderMobileRow={renderMobileRow}
             />
 
             {/* Mientras se elimina no se cierra: el resultado tiene que verse. */}

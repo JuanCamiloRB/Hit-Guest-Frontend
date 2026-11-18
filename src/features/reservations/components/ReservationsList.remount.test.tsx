@@ -13,6 +13,8 @@ vi.mock("../services/reservations-service", () => ({
     reservationsService: { list: mocks.list, loadAutomationStatus: mocks.loadAutomationStatus, delete: vi.fn() },
     ReservationsNotReadyError: class ReservationsNotReadyError extends Error {},
 }))
+// Lo que devuelve `loadAutomationStatus`: el semáforo y los ítems de las celdas.
+const statusResult = (contract: string) => ({ status: { contract }, items: [] })
 vi.mock("@/lib/bff-client", () => ({ bffFetch: () => new Promise(() => {}) }))
 vi.mock("@/features/billing/services/consumption-service", () => ({ consumptionService: { getReservationCost: vi.fn() } }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() } }))
@@ -50,7 +52,7 @@ describe("Operaciones — volver con la lista en caché carga los semáforos sin
         resetAutomationStatusMemory()
         vi.clearAllMocks()
         mocks.list.mockResolvedValue(ROWS)
-        mocks.loadAutomationStatus.mockResolvedValue({ contract: "success" })
+        mocks.loadAutomationStatus.mockResolvedValue(statusResult("success"))
     })
 
     it("primera entrada (caché vacía): pide lo visible y la página siguiente", async () => {

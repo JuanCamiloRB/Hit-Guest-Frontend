@@ -314,3 +314,13 @@
     appearance: textfield;
   }
 }
+
+/*
+ * Toggletip abierto por hover o teclado (sin fijar): ni el panel ni el
+ * envoltorio posicionado que le pone Radix capturan el puntero. El envoltorio
+ * tapaba la celda de la fila de abajo y bajar por una columna dejaba una celda
+ * sí y otra no sin abrir (visto en el build de producción, 2026-11-19).
+ */
+[data-radix-popper-content-wrapper]:has(> [data-slot="toggletip-content"]:not([data-pinned])) {
+  pointer-events: none;
+}

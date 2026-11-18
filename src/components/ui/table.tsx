@@ -62,7 +62,8 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
         // Lenguaje de tabla compartido (Fase 3): separador y hover con tokens.
         // Hover con el morado de interacción al 5 %: se nota sin cambiar el
         // contraste de ningún texto de la fila (ink-3 sigue en 4,85:1).
-        "hover:bg-primary/5 data-[state=selected]:bg-primary/5 border-b border-rule transition-colors",
+        // `group/row`: la columna fija de `DataTable` repite este hover sobre fondo opaco.
+        "group/row hover:bg-primary/5 data-[state=selected]:bg-primary/5 border-b border-rule transition-colors",
         className
       )}
       {...props}

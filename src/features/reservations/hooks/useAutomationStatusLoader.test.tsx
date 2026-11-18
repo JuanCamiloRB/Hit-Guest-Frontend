@@ -1,5 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import type { AutomationStatusItem } from "@/features/properties/types/automation"
 import type { AutomationStatus, Reservation } from "@/types"
 
 const mocks = vi.hoisted(() => ({ loadAutomationStatus: vi.fn() }))
@@ -12,7 +13,9 @@ import { resetAutomationStatusMemory, useAutomationStatusLoader } from "./useAut
 
 const row = (id: string) => ({ id } as Reservation)
 const rows = (...ids: string[]) => ids.map(row)
-const light = (checkin: AutomationStatus["checkin"]) => ({ checkin } as AutomationStatus)
+// El servicio devuelve el semáforo y los ítems de los que salen las celdas.
+const light = (checkin: AutomationStatus["checkin"]) => ({ status: { checkin } as AutomationStatus, items: [] as AutomationStatusItem[] })
+type StatusResult = ReturnType<typeof light>
 
 function deferred<T>() {
     let resolve!: (value: T) => void
@@ -34,10 +37,10 @@ describe("useAutomationStatusLoader — solo lo necesario", () => {
 
     it("lo visible se adelanta a la página siguiente que todavía espera turno", async () => {
         const order: string[] = []
-        const gates = new Map<string, ReturnType<typeof deferred<AutomationStatus>>>()
+        const gates = new Map<string, ReturnType<typeof deferred<StatusResult>>>()
         mocks.loadAutomationStatus.mockImplementation((reservation: Reservation) => {
             order.push(reservation.id)
-            const gate = deferred<AutomationStatus>()
+            const gate = deferred<StatusResult>()
             gates.set(reservation.id, gate)
             return gate.promise
         })
@@ -58,6 +61,19 @@ describe("useAutomationStatusLoader — solo lo necesario", () => {
         expect(order.slice(8)).toEqual(["n7", "n8"])
     })
 
+    it("conserva los ítems de cada fila (de ellos salen las celdas) y los usa también en la foto de orden", async () => {
+        const items = [{ providerSlug: "tra_colombia", automationName: "TRA Colombia", status: "failed" }] as AutomationStatusItem[]
+        mocks.loadAutomationStatus.mockResolvedValueOnce({ status: { checkin: "pending" } as AutomationStatus, items })
+        const { result } = renderHook(() => useAutomationStatusLoader())
+        act(() => result.current.prioritize(rows("a")))
+        await waitFor(() => expect(statusOf(result, "a").automationItems).toBe(items))
+        expect(statusOf(result, "a").automationItemsForSort).toBe(items)
+        // Una foto de orden tomada ANTES de que llegara: el orden no usa los ítems nuevos.
+        const frozen = new Map()
+        expect(result.current.withStatus([row("a")], frozen)[0].automationItemsForSort).toBeUndefined()
+        expect(result.current.withStatus([row("a")], frozen)[0].automationItems).toBe(items)
+    })
+
     it("lo ya cargado no se vuelve a pedir al verlo; renew sí, sin borrarlo hasta que llega lo nuevo", async () => {
         mocks.loadAutomationStatus.mockResolvedValueOnce(light("pending"))
         const { result } = renderHook(() => useAutomationStatusLoader())
@@ -67,7 +83,7 @@ describe("useAutomationStatusLoader — solo lo necesario", () => {
         act(() => result.current.prioritize(rows("a")))
         expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(1)
 
-        const fresh = deferred<AutomationStatus>()
+        const fresh = deferred<StatusResult>()
         mocks.loadAutomationStatus.mockReturnValueOnce(fresh.promise)
         act(() => result.current.renew(rows("a")))
         await waitFor(() => expect(mocks.loadAutomationStatus).toHaveBeenCalledTimes(2))
@@ -114,7 +130,7 @@ describe("useAutomationStatusLoader — solo lo necesario", () => {
         let seen: AbortSignal | undefined
         mocks.loadAutomationStatus.mockImplementation((_r: Reservation, signal: AbortSignal) => {
             seen = signal
-            return new Promise<AutomationStatus>((resolve) => signal.addEventListener("abort", () => resolve(light("none"))))
+            return new Promise<StatusResult>((resolve) => signal.addEventListener("abort", () => resolve(light("none"))))
         })
         const { result, unmount } = renderHook(() => useAutomationStatusLoader())
         act(() => result.current.prioritize(rows("a")))
@@ -129,7 +145,7 @@ describe("useAutomationStatusLoader — solo lo necesario", () => {
         const gates: Array<() => void> = []
         mocks.loadAutomationStatus.mockImplementation((reservation: Reservation) => {
             started.push(reservation.id)
-            return new Promise<AutomationStatus>((resolve) => gates.push(() => resolve(light("success"))))
+            return new Promise<StatusResult>((resolve) => gates.push(() => resolve(light("success"))))
         })
         const { result } = renderHook(() => useAutomationStatusLoader())
         const all = Array.from({ length: 500 }, (_, i) => row(`r${i}`))

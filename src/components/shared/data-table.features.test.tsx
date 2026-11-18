@@ -137,3 +137,44 @@ describe("DataTable — tamaño de página, rango en el pie, fila enlazada y fil
         expect(screen.getByRole("table")).toBeInTheDocument()
     })
 })
+
+describe("DataTable — encabezados agrupados y columna fija", () => {
+    const grouped: ColumnDef<Row>[] = [
+        { accessorKey: "name", header: "Nombre", meta: { sticky: "left" } },
+        {
+            id: "grupo",
+            header: "Automatizaciones",
+            meta: { headerClassName: "text-center" },
+            columns: [
+                { id: "a", header: "Link", cell: () => "✓", meta: { cellClassName: "text-center" } },
+                { id: "b", header: "Contrato", cell: () => "✓" },
+            ],
+        },
+    ]
+
+    it("el grupo ocupa sus columnas (colSpan) y la fila vacía ocupa todas las columnas reales", async () => {
+        const { rerender } = render(<DataTable columns={grouped} data={rows.slice(0, 2)} getRowId={getRowId} />)
+        await act(async () => {})
+        const group = screen.getByRole("columnheader", { name: "Automatizaciones" })
+        expect(group).toHaveAttribute("colspan", "2")
+        expect(group).toHaveClass("text-center")
+        rerender(<DataTable columns={grouped} data={[]} getRowId={getRowId} />)
+        expect(screen.getByRole("cell", { name: "No hay resultados." })).toHaveAttribute("colspan", "3")
+    })
+
+    it("meta.cellClassName llega a cada celda de la columna", async () => {
+        render(<DataTable columns={grouped} data={rows.slice(0, 2)} getRowId={getRowId} />)
+        await act(async () => {})
+        const firstRow = screen.getAllByRole("row")[2]
+        expect(within(firstRow).getAllByRole("cell")[1]).toHaveClass("text-center")
+    })
+
+    it("sticky: encabezado y celdas fijos a la izquierda con fondo opaco y el hover de la fila", async () => {
+        render(<DataTable columns={grouped} data={rows.slice(0, 2)} getRowId={getRowId} />)
+        await act(async () => {})
+        expect(screen.getByRole("columnheader", { name: /Nombre/ })).toHaveClass("sticky", "left-0", "bg-sunk")
+        const cell = screen.getByRole("cell", { name: "Fila 1" })
+        expect(cell).toHaveClass("sticky", "left-0", "bg-card", "group-hover/row:before:opacity-100")
+        expect(cell.closest("tr")).toHaveClass("group/row")
+    })
+})

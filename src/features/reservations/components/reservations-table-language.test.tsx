@@ -21,18 +21,20 @@ const reservation = (over: Partial<Reservation> = {}): Reservation => ({
 }) as Reservation
 
 const renderRows = (rows: Reservation[]) => render(<DataTable columns={getColumns()} data={rows} />)
+/** Filas del cuerpo: el encabezado tiene dos (grupos y columnas). */
+const bodyRows = () => within(screen.getAllByRole("rowgroup")[1]).getAllByRole("row")
 
 describe("tabla de Operaciones — lenguaje compartido", () => {
     it("encabezados en caso de oración, no en mayúsculas forzadas", () => {
         renderRows([reservation()])
-        for (const name of ["Huésped / Alojamiento", "Fechas", "Origen", "Estado", "Link", "Check-in", "Contrato", "Acceso", "Reportes", "Acciones"]) {
+        for (const name of ["Huésped / Alojamiento", "Fechas", "Origen", "Estado", "Automatizaciones", "Link", "Check-in", "Contrato", "Acceso", "Reportes", "TRA", "SIRE in", "SIRE out", "Acciones"]) {
             expect(screen.getByRole("columnheader", { name: new RegExp(`^${name}`) })).toBeInTheDocument()
         }
     })
 
     it("el estado se dice con palabra (StatusPill), sin aria-label sobre un span sin rol", () => {
         renderRows([reservation(), reservation({ id: "r2", status: "CANCELLED" })])
-        const [confirmed, cancelled] = screen.getAllByRole("row").slice(1)
+        const [confirmed, cancelled] = bodyRows()
         const pill = within(confirmed).getByText("Confirmada").closest("[data-slot=status-pill]")!
         expect(pill).toHaveAttribute("data-tone", "success")
         // Sin afirmar «automatizaciones activas»: la reserva sola no lo sabe.
@@ -44,7 +46,7 @@ describe("tabla de Operaciones — lenguaje compartido", () => {
 
     it("la fila no lleva avatar de iniciales: nombre (enlace) y debajo alojamiento · propiedad", () => {
         renderRows([reservation()])
-        const cell = within(screen.getAllByRole("row")[1]).getAllByRole("cell")[0]
+        const cell = within(bodyRows()[0]).getAllByRole("cell")[0]
         expect(within(cell).queryByText("HP")).toBeNull()
         expect(cell.querySelector("[data-slot=avatar]")).toBeNull()
         expect(within(cell).getByRole("link", { name: "Huésped 26 Prueba" })).toHaveAttribute("href", "/dashboard/reservations/r1")
@@ -61,11 +63,14 @@ describe("tabla de Operaciones — lenguaje compartido", () => {
 })
 
 describe("tabla de Operaciones — Reportes", () => {
-    it("un reporte que no aplica dice su sigla en ink-3 (texto real, AA), no en ink-4", () => {
-        renderRows([reservation({ automationStatus: {} as Reservation["automationStatus"] })])
-        const cell = within(screen.getAllByRole("row")[1]).getAllByRole("cell")[8]
-        const pills = cell.querySelectorAll("[data-slot=status-pill][data-tone=none]")
-        expect(pills.length).toBeGreaterThan(0)
-        pills.forEach((pill) => expect(pill).toHaveClass("text-ink-3"))
+    // Antes los tres reportes compartían una celda con sus siglas; ahora cada uno
+    // tiene su columna (con la sigla en el encabezado) y su celda dice el estado.
+    it("un reporte no configurado es «—» con su nombre accesible, nunca una celda vacía", () => {
+        renderRows([reservation({ automationStatus: {} as Reservation["automationStatus"], automationItems: [] })])
+        for (const name of ["TRA", "SIRE in", "SIRE out"]) {
+            const tile = screen.getByRole("button", { name: `${name}: no configurado` })
+            expect(tile).toBeDisabled()
+            expect(tile).toHaveAttribute("data-tone", "none")
+        }
     })
 })

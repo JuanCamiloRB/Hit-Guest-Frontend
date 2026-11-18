@@ -1,5 +1,9 @@
 export type Role = "ADMIN" | "STAFF" | "GUEST"
 
+import type { AutomationStatusItem } from "@/features/properties/types/automation"
+import type { CheckinLinkDeliveryStatus } from "@/features/reservations/lib/checkin-link-delivery-status"
+import type { DigitalContractSummary } from "@/features/reservations/lib/digital-contract"
+
 export interface AutomationStatus {
     link: "success" | "pending" | "none"
     checkin: "success" | "pending" | "none"
@@ -131,6 +135,17 @@ export interface Reservation {
      * es el que había al empezar, para que la tabla no salte con cada llegada.
      */
     automationStatusForSort?: AutomationStatus
+    /**
+     * Solo de pantalla: los ítems de `automation-status` de los que salen las
+     * celdas (proveedor, estado, fechas, error, por huésped). Llegan con
+     * `automationStatus`; `ForSort` sigue la misma foto que el orden.
+     */
+    automationItems?: readonly AutomationStatusItem[]
+    automationItemsForSort?: readonly AutomationStatusItem[]
+    /** El envío del link por canal (`extra` de la lista). */
+    checkinLinkDelivery?: CheckinLinkDeliveryStatus
+    /** Qué se firmó (`extra.digitalContract` de la lista); `null` si no hay. */
+    digitalContract?: DigitalContractSummary | null
     /** Check-in de la reserva completo (`isCheckinCompleted` del backend). */
     isCheckinCompleted?: boolean
     /** Huéspedes esperados en la reserva (`total_guests`). */
