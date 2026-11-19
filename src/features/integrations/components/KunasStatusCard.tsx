@@ -34,8 +34,11 @@ export function KunasStatusCard({
 }: Props) {
     const [isToggling, setIsToggling] = useState(false)
     const active = computeIsActive(integration)
-    const email = integration.parameters.email ?? "—"
-    const properties = integration.parameters.pmsProperties ?? []
+    // El servicio garantiza `parameters` como objeto; se lee con respaldo igual
+    // porque una tarjeta que revienta tumba toda la pantalla.
+    const parameters = integration.parameters ?? {}
+    const email = parameters.email ?? "—"
+    const properties = parameters.pmsProperties ?? []
     const isSyncing = properties.length === 0 && justConnected
 
     async function handleToggle() {
@@ -94,7 +97,7 @@ export function KunasStatusCard({
                     abierto y el foco caía al body. Con la pausa, el mismo botón
                     dice qué hacer. */}
                 <KunasCredentialsDialog
-                    currentEmail={integration.parameters.email ?? ""}
+                    currentEmail={parameters.email ?? ""}
                     onSave={onUpdateCredentials}
                     trigger={
                         <Button variant="outline" size="sm">

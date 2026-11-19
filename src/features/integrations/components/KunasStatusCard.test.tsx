@@ -1,6 +1,7 @@
-import { act, render, renderHook, screen, waitFor } from "@testing-library/react"
+import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { KunasStatusCard } from "./KunasStatusCard"
+import { KunasIntegrationPanel } from "./KunasIntegrationPanel"
 import { useKunasIntegration } from "../hooks/useKunasIntegration"
 import type { Integration } from "../types"
 
@@ -9,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     activate: vi.fn(),
     deactivate: vi.fn(),
     updateConfiguration: vi.fn(),
+    connect: vi.fn(),
 }))
 
 vi.mock("../services/integrations-service", () => ({
@@ -17,7 +19,7 @@ vi.mock("../services/integrations-service", () => ({
         activate: mocks.activate,
         deactivate: mocks.deactivate,
         updateConfiguration: mocks.updateConfiguration,
-        connect: vi.fn(),
+        connect: mocks.connect,
         disconnect: vi.fn(),
     },
 }))
@@ -88,5 +90,60 @@ describe("KunasStatusCard — el diálogo no se desmonta al levantar la pausa", 
         rerender(<KunasStatusCard integration={{ ...rejected, credentialsStatus: null }} justConnected={false} onSetActive={noop} onUpdateCredentials={noop} onDisconnect={noop} />)
         expect(screen.queryByText(/Credenciales rechazadas/)).toBeNull()
         expect(screen.getByRole("dialog")).toBeInTheDocument()
+    })
+})
+
+describe("Integraciones — respuestas sin la integración completa (crash de producción 2026-11-18)", () => {
+    beforeEach(() => vi.clearAllMocks())
+
+    it("la tarjeta no revienta si `parameters` faltara: dice «—» en el correo", () => {
+        const broken = { ...rejected, credentialsStatus: null, parameters: undefined } as unknown as Integration
+        render(<KunasStatusCard integration={broken} justConnected={false} onSetActive={noop} onUpdateCredentials={noop} onDisconnect={noop} />)
+        expect(screen.getByText("—")).toBeInTheDocument()
+    })
+
+    it("conectar con un 202 sin la integración: se vuelve a pedir; si todavía no existe, se dice que se está procesando", async () => {
+        mocks.getKunas.mockResolvedValueOnce(null).mockResolvedValueOnce(null)
+        mocks.connect.mockResolvedValueOnce(null)
+        const { result } = renderHook(() => useKunasIntegration())
+        await waitFor(() => expect(result.current.isLoading).toBe(false))
+        await act(async () => { await result.current.connect({ token: "t", email: "a@b.co", password: "x" }) })
+        await waitFor(() => expect(mocks.getKunas).toHaveBeenCalledTimes(2))
+        expect(result.current.justConnected).toBe(true)
+        expect(result.current.integration).toBeNull()
+    })
+
+    it("conectar con un 202 sin la integración y el GET ya la trae: se muestra la integración", async () => {
+        mocks.getKunas.mockResolvedValueOnce(null).mockResolvedValueOnce({ ...rejected, credentialsStatus: null })
+        mocks.connect.mockResolvedValueOnce(null)
+        const { result } = renderHook(() => useKunasIntegration())
+        await waitFor(() => expect(result.current.isLoading).toBe(false))
+        await act(async () => { await result.current.connect({ token: "t", email: "a@b.co", password: "x" }) })
+        await waitFor(() => expect(result.current.integration?.token).toBe("int-1"))
+    })
+
+    it("pausar con una respuesta sin la integración: se conserva lo que se veía y se relee", async () => {
+        mocks.getKunas.mockResolvedValue({ ...rejected, credentialsStatus: null })
+        mocks.deactivate.mockResolvedValueOnce(null)
+        const { result } = renderHook(() => useKunasIntegration())
+        await waitFor(() => expect(result.current.integration?.token).toBe("int-1"))
+        await act(async () => { await result.current.setActive(false) })
+        await waitFor(() => expect(mocks.getKunas).toHaveBeenCalledTimes(2))
+        expect(result.current.integration?.token).toBe("int-1")
+    })
+
+    it("el panel, tras conectar sin que la integración exista todavía, avisa y no pide reconectar", async () => {
+        mocks.getKunas.mockResolvedValue(null)
+        mocks.connect.mockResolvedValueOnce(null)
+        render(<KunasIntegrationPanel />)
+        await screen.findByRole("button", { name: /Conectar/ })
+        await act(async () => {
+            fireEvent.change(screen.getByLabelText(/Token/), { target: { value: "tok" } })
+            fireEvent.change(screen.getByLabelText(/Email/), { target: { value: "pm@x.co" } })
+            fireEvent.change(screen.getByLabelText(/Contraseña/), { target: { value: "secreto" } })
+        })
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: /Conectar/ })) })
+        expect(await screen.findByText("Recibimos la conexión con KunasPMS")).toBeInTheDocument()
+        expect(screen.getByText(/No hace falta volver a conectar/)).toBeInTheDocument()
     })
 })

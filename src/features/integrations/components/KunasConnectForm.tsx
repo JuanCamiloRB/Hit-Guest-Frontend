@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import { useState } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
@@ -125,7 +126,12 @@ function hasAnyFieldError(errors: IntegrationFieldErrors): boolean {
     return Object.values(errors).some(Boolean)
 }
 
-/** Small labelled field wrapper with an optional inline error. */
+/**
+ * Campo con etiqueta y error en línea. La etiqueta NOMBRA el control
+ * (`htmlFor` + `id`) y el error lo describe (`aria-describedby`): antes la
+ * etiqueta era un texto suelto y los cuatro campos quedaban sin nombre para un
+ * lector de pantalla.
+ */
 function Field({
     label,
     icon,
@@ -137,17 +143,23 @@ function Field({
     icon: React.ReactNode
     required?: boolean
     error?: string
-    children: React.ReactNode
+    children: React.ReactElement<{ id?: string; "aria-invalid"?: boolean; "aria-describedby"?: string }>
 }) {
+    const id = React.useId()
+    const errorId = `${id}-error`
     return (
         <div className="space-y-1.5">
-            <Label variant="plain" className="flex items-center gap-1.5 text-sm font-semibold text-ink-2">
+            <Label htmlFor={id} variant="plain" className="flex items-center gap-1.5 text-sm font-semibold text-ink-2">
                 <span className="text-ink-3">{icon}</span>
                 {label}
-                {required && <span className="text-danger">*</span>}
+                {required && <span className="text-danger" aria-hidden="true">*</span>}
             </Label>
-            {children}
-            {error && <FieldError>{error}</FieldError>}
+            {React.cloneElement(children, {
+                id,
+                "aria-invalid": error ? true : undefined,
+                "aria-describedby": error ? errorId : undefined,
+            })}
+            {error && <FieldError id={errorId}>{error}</FieldError>}
         </div>
     )
 }

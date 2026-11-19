@@ -7,6 +7,7 @@ import { useKunasIntegration } from "../hooks/useKunasIntegration"
 import { KunasConnectForm } from "./KunasConnectForm"
 import { KunasStatusCard } from "./KunasStatusCard"
 import { LoadingState } from "@/components/ui/loading-state"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
 
 /**
  * Kunas PMS integration screen. Owns the integration state and renders the
@@ -48,7 +49,24 @@ export function KunasIntegrationPanel() {
     }
 
     if (!integration) {
-        return <KunasConnectForm onConnect={connect} />
+        return (
+            <div className="flex flex-col gap-4">
+                {/* Conectó pero el backend todavía no expone la integración (la
+                    crea en segundo plano): se dice, en vez de volver al formulario
+                    como si nada hubiera pasado. */}
+                {justConnected && (
+                    <FeedbackBanner
+                        tone="info"
+                        mode="dynamic"
+                        title="Recibimos la conexión con KunasPMS"
+                        action={<Button type="button" variant="outline" size="sm" onClick={refetch}>Actualizar</Button>}
+                    >
+                        Puede tardar unos segundos en aparecer. No hace falta volver a conectar.
+                    </FeedbackBanner>
+                )}
+                <KunasConnectForm onConnect={connect} />
+            </div>
+        )
     }
 
     return (

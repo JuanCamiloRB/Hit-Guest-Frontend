@@ -38,37 +38,51 @@ export function useKunasIntegration(): UseKunasIntegration {
     const [loadError, setLoadError] = useState<unknown | null>(null)
     const [justConnected, setJustConnected] = useState(false)
 
-    const load = useCallback(() => {
-        setIsLoading(true)
-        setLoadError(null)
+    // Cadena `.then()`: `react-hooks/set-state-in-effect` solo acepta setState
+    // en callbacks. La primera carga arranca con `isLoading: true` desde el
+    // estado inicial; los reintentos (`load`) lo marcan antes de pedir.
+    const fetchIntegration = useCallback(() =>
         integrationsService
             .getKunas()
-            .then((data) => setIntegration(data))
+            .then((data) => {
+                setIntegration(data)
+                setLoadError(null)
+            })
             .catch((err) => {
                 setIntegration(null)
                 setLoadError(err)
             })
-            .finally(() => setIsLoading(false))
-    }, [])
+            .finally(() => setIsLoading(false)), [])
 
     useEffect(() => {
-        load()
-    }, [load])
+        void fetchIntegration()
+    }, [fetchIntegration])
+
+    const load = useCallback(() => {
+        setIsLoading(true)
+        setLoadError(null)
+        void fetchIntegration()
+    }, [fetchIntegration])
 
     const connect = useCallback(async (payload: KunasConnectPayload) => {
         const result = await integrationsService.connect(payload)
-        setIntegration(result)
         setJustConnected(true)
-    }, [])
+        // El 202 no trajo la integración: se pide. Si todavía no existe, el
+        // panel dice que la conexión se está procesando.
+        if (result) setIntegration(result)
+        else load()
+    }, [load])
 
     const updateCredentials = useCallback(
         async (payload: KunasConfigurationPayload) => {
             const result = await integrationsService.updateConfiguration(payload)
+            // Una respuesta sin la integración: se conserva lo que se veía y se relee.
+            if (!result) return load()
             // Guardar credenciales SIEMPRE levanta la pausa (nota 2026-11-11 §5):
             // si la respuesta no trae el campo, la pausa ya no aplica.
             setIntegration({ ...result, credentialsStatus: result.credentialsStatus ?? null })
         },
-        [],
+        [load],
     )
 
     const setActive = useCallback(
@@ -77,13 +91,14 @@ export function useKunasIntegration(): UseKunasIntegration {
             const result = active
                 ? await integrationsService.activate(integration.token)
                 : await integrationsService.deactivate(integration.token)
+            if (!result) return load()
             // Pausar o activar no levanta un rechazo de credenciales: si la
             // respuesta no trae el campo, se conserva el que ya se veía.
             setIntegration(result.credentialsStatus !== undefined
                 ? result
                 : { ...result, credentialsStatus: integration.credentialsStatus })
         },
-        [integration],
+        [integration, load],
     )
 
     const disconnect = useCallback(async () => {

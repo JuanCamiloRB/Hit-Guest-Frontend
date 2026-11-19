@@ -12,7 +12,7 @@ vi.mock("@/lib/api-client", () => ({
     },
 }))
 
-import { integrationsService } from "./integrations-service"
+import { UnreadableIntegrationError, integrationsService, readIntegration } from "./integrations-service"
 import { INTEGRATION_STATUS } from "../types"
 
 /**
@@ -80,9 +80,39 @@ describe("integrationsService — credentialsStatus (nota backend 2026-11-11)", 
         expect((await integrationsService.getKunas())?.credentialsStatus).toEqual(STATUS)
 
         patch.mockResolvedValueOnce({ ...base, credentialsStatus: null })
-        expect((await integrationsService.updateConfiguration({ email: "a@b.co", password: "x" })).credentialsStatus).toBeNull()
+        expect((await integrationsService.updateConfiguration({ email: "a@b.co", password: "x" }))?.credentialsStatus).toBeNull()
 
         patch.mockResolvedValueOnce({ ...base })
-        expect("credentialsStatus" in await integrationsService.activate(ROOT_TOKEN)).toBe(false)
+        expect("credentialsStatus" in (await integrationsService.activate(ROOT_TOKEN))!).toBe(false)
+    })
+})
+
+describe("readIntegration — la respuesta se lee en el borde (crash de producción 2026-11-18)", () => {
+    const base = { token: ROOT_TOKEN, providerId: 5, name: "Kunas", statusProviderId: 8 }
+
+    it("sin `parameters` (o con basura) queda un objeto vacío: la tarjeta no puede reventar al leer el correo", () => {
+        expect(readIntegration({ ...base })!.parameters).toEqual({})
+        expect(readIntegration({ ...base, parameters: null })!.parameters).toEqual({})
+        expect(readIntegration({ ...base, parameters: ["x"] })!.parameters).toEqual({})
+        expect(readIntegration({ ...base, parameters: { email: "pm@x.co" } })!.parameters).toEqual({ email: "pm@x.co" })
+    })
+
+    it("sin el token raíz no es una integración: null (un 202 que solo dice «aceptado»)", () => {
+        expect(readIntegration({ message: "Conectando" })).toBeNull()
+        expect(readIntegration({ ...base, token: "" })).toBeNull()
+        expect(readIntegration(null)).toBeNull()
+        expect(readIntegration("ok")).toBeNull()
+    })
+
+    it("getKunas: un 200 que no es una integración se lanza (no se presenta como «no conectado»)", async () => {
+        const { apiClient } = await import("@/lib/api-client")
+        vi.mocked(apiClient.get).mockResolvedValueOnce({ message: "ok" })
+        await expect(integrationsService.getKunas()).rejects.toBeInstanceOf(UnreadableIntegrationError)
+    })
+
+    it("connect: un 202 sin la integración devuelve null para que el hook la pida", async () => {
+        const { apiClient } = await import("@/lib/api-client")
+        vi.mocked(apiClient.post).mockResolvedValueOnce({ message: "Sincronización iniciada" })
+        expect(await integrationsService.connect({ token: "t", email: "a@b.co", password: "x" })).toBeNull()
     })
 })
