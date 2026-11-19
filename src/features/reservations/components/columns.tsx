@@ -41,6 +41,8 @@ import {
 } from "../lib/automation-cells"
 
 export interface ColumnsOptions {
+    /** Las columnas de automatización que se muestran (`visibleCellKeys`); sin esto, todas. */
+    cellKeys?: readonly CellKey[]
     onDelete?: (reservation: Reservation) => void
     /** Reintenta el semáforo de una fila cuya consulta falló. */
     onRetryStatus?: (reservation: Reservation) => void
@@ -75,7 +77,7 @@ const CELL_ICONS: Record<CellKey, LucideIcon> = {
     pdf: FileText,
 }
 
-/** El título del detalle: más largo que el encabezado, que tiene que caber en 76 px. */
+/** El título del detalle: más largo que el encabezado, que tiene que caber en 64 px. */
 const CELL_TITLES: Record<CellKey, string> = {
     link: "Link de check-in",
     checkin: "Check-in",
@@ -190,13 +192,12 @@ function AutomationCellView({ cellKey, reservation, onRetry }: {
     const tone = TILE_TONE[cell.state]
     const label = cellAccessibleName(cellKey, cell)
     if (cell.state === "none") return <StatusTile tone="none" label={label} disabled />
+    const count = cell.count ? `${cell.count.done}/${cell.count.total}` : undefined
+    // «0/13» ya no cabe junto al ícono en 64 px (medido en producción): ahí manda
+    // el número; el ícono ya está en el encabezado de la columna.
+    const icon = cell.channels?.length || (count && count.length >= 4) ? undefined : CELL_ICONS[cellKey]
     const tile = (
-        <StatusTile
-            tone={tone}
-            label={label}
-            icon={cell.channels?.length ? undefined : CELL_ICONS[cellKey]}
-            count={cell.count ? `${cell.count.done}/${cell.count.total}` : undefined}
-        >
+        <StatusTile tone={tone} label={label} icon={icon} count={count}>
             {cell.channels?.length ? (
                 <span className="inline-flex items-center gap-0.5">
                     {cell.channels.map((channel) => <DeliveryChannelIcon key={channel} channel={channel} />)}
@@ -215,7 +216,8 @@ function automationColumn(cellKey: CellKey, onRetry?: (reservation: Reservation)
     return {
         id: cellKey,
         header: () => <CellHeader cellKey={cellKey} />,
-        meta: { headerClassName: "text-center", cellClassName: "text-center" },
+        // Relleno lateral mínimo: ocho columnas de estado tienen que caber en 1440 px.
+        meta: { headerClassName: "px-1 text-center", cellClassName: "px-1 text-center" },
         // Sin `accessorFn` sería una display column y TanStack no la dejaría
         // ordenar. El valor es la SEVERIDAD de la celda en la foto de orden:
         // pulsar CONTRATO responde «¿cuáles me faltan?». Sin dato todavía
@@ -289,7 +291,7 @@ function ReservationActions({ reservation, onDelete }: { reservation: Reservatio
  * debajo las ocho celdas con su nombre escrito, porque aquí no hay
  * encabezados. Las mismas celdas y el mismo detalle que en la tabla.
  */
-export function ReservationMobileRow({ reservation, onDelete, onRetryStatus }: { reservation: Reservation } & ColumnsOptions) {
+export function ReservationMobileRow({ reservation, onDelete, onRetryStatus, cellKeys = CELL_KEYS }: { reservation: Reservation } & ColumnsOptions) {
     const meta = getReservationStatusMeta(reservation.status, reservation.statusLabel, reservation.statusId)
     return (
         <div className="flex flex-col gap-3">
@@ -332,7 +334,7 @@ export function ReservationMobileRow({ reservation, onDelete, onRetryStatus }: {
                 </div>
             </div>
             <ul className="flex flex-wrap gap-x-2 gap-y-3" aria-label="Automatizaciones y reportes">
-                {CELL_KEYS.map((key) => (
+                {cellKeys.map((key) => (
                     <li key={key} className="flex flex-col items-center gap-1">
                         <AutomationCellView cellKey={key} reservation={reservation} onRetry={onRetryStatus} />
                         <span className="text-xs text-ink-3" aria-hidden="true">{CELL_LABELS[key]}</span>
@@ -344,7 +346,10 @@ export function ReservationMobileRow({ reservation, onDelete, onRetryStatus }: {
 }
 
 export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
-  const { onDelete, onRetryStatus } = options || {}
+  const { onDelete, onRetryStatus, cellKeys = CELL_KEYS } = options || {}
+  const shown = (keys: readonly CellKey[]) => keys.filter((key) => cellKeys.includes(key))
+  const automations = shown(["link", "checkin", "contract", "code"])
+  const reports = shown(["tra", "sireIn", "sireOut", "pdf"])
   return [
     {
         accessorKey: "guestName",
@@ -358,7 +363,7 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             // Sin avatar de iniciales: repetía el nombre de al lado («H2» por
             // «Huésped 26») y hacía cada fila de 85 px. Dos líneas: quién y dónde.
             return (
-                <div className="flex min-w-0 max-w-64 flex-col py-0.5">
+                <div className="flex min-w-0 max-w-44 flex-col py-0.5">
                     <TextLink
                         href={`/dashboard/reservations/${reservation.id}`}
                         className="truncate text-sm"
@@ -447,20 +452,22 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
         id: "automations",
         header: "Automatizaciones",
         meta: { headerClassName: "text-center" },
-        columns: (["link", "checkin", "contract", "code"] as const).map((key) => automationColumn(key, onRetryStatus)),
+        columns: automations.map((key) => automationColumn(key, onRetryStatus)),
     },
-    {
+    // Un grupo sin columnas (ninguna propiedad reporta nada) no se dibuja.
+    ...(reports.length > 0 ? [{
         id: "reports",
         header: "Reportes",
         meta: { headerClassName: "text-center" },
-        columns: (["tra", "sireIn", "sireOut", "pdf"] as const).map((key) => automationColumn(key, onRetryStatus)),
-    },
+        columns: reports.map((key) => automationColumn(key, onRetryStatus)),
+    }] : []),
     {
         id: "actions",
-        header: () => <div className="text-center">Acciones</div>,
+        // Solo el botón: el encabezado existe para lectores de pantalla, no ocupa ancho.
+        header: () => <span className="sr-only">Acciones</span>,
         enableSorting: false,
         cell: ({ row }) => (
-            <div className="flex justify-center min-w-25">
+            <div className="flex justify-center">
                 <ReservationActions reservation={row.original} onDelete={onDelete} />
             </div>
         ),

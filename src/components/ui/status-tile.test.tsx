@@ -45,7 +45,7 @@ describe("StatusTile", () => {
 
     it("ancho y alto fijos para todas: la columna no cambia según el texto", () => {
         render(<><StatusTile tone="success" label="a" /><StatusTile tone="none" label="b" /></>)
-        for (const tile of screen.getAllByRole("button")) expect(tile).toHaveClass("h-8", "w-19")
+        for (const tile of screen.getAllByRole("button")) expect(tile).toHaveClass("h-8", "w-16")
     })
 
     it("tonos con tokens del sistema, nunca colores sueltos", () => {
@@ -69,7 +69,7 @@ describe("StatusTile", () => {
     it("esqueleto del mismo tamaño mientras carga, con texto para lectores", () => {
         render(<StatusTileSkeleton />)
         const sk = document.querySelector('[data-slot="status-tile-skeleton"]')!
-        expect(sk).toHaveClass("h-8", "w-19")
+        expect(sk).toHaveClass("h-8", "w-16")
         expect(sk).toHaveTextContent("Cargando estado")
     })
 })

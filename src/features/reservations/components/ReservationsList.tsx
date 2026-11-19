@@ -2,6 +2,8 @@
 
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import { CELL_KEYS } from "../lib/automation-cells"
+import { useVisibleCellKeys } from "../hooks/useVisibleCellKeys"
+import { useListingPortfolio } from "../hooks/useListingPortfolio"
 import { Reservation } from "@/types"
 import { getColumns, ReservationMobileRow } from "./columns"
 import { consumptionService } from "@/features/billing/services/consumption-service"
@@ -92,6 +94,8 @@ import { Surface } from "@/components/ui/card"
 
 /** Columnas que ordenan por el semáforo: necesitan el de todas las filas antes de ordenar. */
 const STATUS_SORT_COLUMNS = new Set<string>(CELL_KEYS)
+/** Mientras el portafolio carga: ninguna automatización confirmada todavía. */
+const NOTHING_ACTIVE: ReadonlySet<string> = new Set()
 /** `some`, no solo el primero: el orden múltiple (shift + clic) también cuenta. */
 const hasStatusSort = (sorting: SortingState) => sorting.some((s) => STATUS_SORT_COLUMNS.has(s.id))
 
@@ -260,14 +264,6 @@ export default function ReservationsList() {
         }
     }
 
-    const renderMobileRow = useCallback(
-        (reservation: Reservation) => <ReservationMobileRow reservation={reservation} onDelete={requestDelete} onRetryStatus={retryStatus} />,
-        [requestDelete, retryStatus],
-    )
-    const columns = useMemo(
-        () => getColumns({ onDelete: requestDelete, onRetryStatus: retryStatus }),
-        [requestDelete, retryStatus]
-    )
     // Ordenar por una columna de estado necesita el semáforo de TODAS las filas
     // del filtro. Con datos a medias el orden sería falso, así que mientras
     // falten se «prepara»: se piden y la tabla sigue con el último orden
@@ -295,6 +291,24 @@ export default function ReservationsList() {
     const tableSorting = preparing ? shown.sorting : sorting
     const sortValues = preparing ? shown.frozen : null
     const rows = useMemo(() => withStatus(filtered, sortValues), [filtered, sortValues, withStatus])
+    // Las columnas de automatización que la cuenta usa (las demás no ocupan
+    // ancho): de las propiedades del portafolio y de lo que ya corrió en
+    // CUALQUIER reserva de la lista, no solo en las filtradas: buscar o filtrar
+    // no puede quitar columnas. Mientras el portafolio no llega (`null`, solo en
+    // una carga en frío) se arranca con las mínimas y la tabla CRECE al llegar;
+    // pintar todas y contraerlas 300 ms después se veía saltar. Si el portafolio
+    // falló, no se sabe: todas.
+    const portfolio = useListingPortfolio()
+    const allRows = useMemo(() => withStatus(loaded ?? []), [loaded, withStatus])
+    const cellKeys = useVisibleCellKeys(portfolio === null ? NOTHING_ACTIVE : portfolio.automationSlugs, allRows)
+    const renderMobileRow = useCallback(
+        (reservation: Reservation) => <ReservationMobileRow reservation={reservation} onDelete={requestDelete} onRetryStatus={retryStatus} cellKeys={cellKeys} />,
+        [requestDelete, retryStatus, cellKeys],
+    )
+    const columns = useMemo(
+        () => getColumns({ onDelete: requestDelete, onRetryStatus: retryStatus, cellKeys }),
+        [requestDelete, retryStatus, cellKeys]
+    )
 
     // La carga de lo que falta, para el conjunto MÁS RECIENTE: si el filtro
     // cambia en medio, la limpieza retira lo que la anterior dejó esperando

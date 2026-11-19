@@ -18,9 +18,9 @@ del huésped queda fija al desplazar la tabla.
 - Ningún cambio de payloads, escrituras ni lógica de carga por fila visible.
 - Primitivas nuevas en `components/ui` antes de usarlas, con pruebas, catálogo
   (§5 del doc y skill) y plugin de Figma.
-- Se mantiene la decisión de producto del 2026-08-21: Check-in cuenta
-  check-ins COMPLETOS; la verificación de identidad va al detalle, no cambia
-  el color de la celda.
+- Check-in cuenta check-ins COMPLETOS. Decisión del 2026-11-19 (Didier, vía
+  el usuario), que reemplaza la del 2026-08-21: una verificación de identidad
+  FALLIDA pone la celda en rojo mientras falten huéspedes por completar.
 - Commit solo cuando el usuario lo pida.
 
 ## Datos verificados (2026-11-19, sesión de PM, solo nombres de campos)
@@ -202,3 +202,50 @@ detalle no puede afirmar que «falta»: no lo menciona.
 Verificación: mutaciones 8/8; verify dos veces 261 archivos / 2334 pruebas;
 con sesión, 0 peticiones de historial al cargar la tabla y 3 al abrir cinco
 detalles (las dos sin automatización no piden nada).
+
+## Check-in en rojo y la tabla en 1440 px (2026-11-19)
+
+- **Check-in:** una verificación de identidad fallida pone la celda en rojo
+  mientras falten huéspedes por completar (decisión de Didier, vía el usuario).
+  Con todos completos, verde. Sin conteo, rojo si falló; nunca verde.
+- **Ancho.** Medido con sesión: hacían falta 1478 px y había 1119 (1440 con la
+  barra lateral abierta). Se combinó:
+  - celdas de 76 a 64 px, relleno lateral mínimo en las columnas de estado, y
+    sin ícono cuando el contador tiene 4 caracteres o más («0/13»);
+  - Acciones solo con su botón (encabezado `sr-only`); huésped `max-w-44`;
+  - se ocultan las columnas que la cuenta no usa: una automatización ACTIVA
+    (8) en alguna propiedad (del portafolio, sin peticiones nuevas) o que ya
+    CORRIÓ en alguna reserva de TODA la lista (no de las filtradas: buscar no
+    quita columnas). Mientras el portafolio carga (solo en frío), las mínimas
+    y la tabla crece al llegar; si falló, todas. En la cuenta del usuario
+    TTLock, TRA, SIRE y PDF están apagados en las 15 propiedades: quedan Link,
+    Check-in y Contrato.
+  - Resultado: 1440 / 1366 / 1280 px sin desplazamiento ni celdas recortadas.
+    Una cuenta con las ocho automatizaciones activas todavía necesita unos
+    1190 px: desplaza con el huésped fijo (o con la barra lateral contraída).
+
+## Hallazgo abierto (no corregido)
+
+El estado por reserva (`automation-status`) lista también automatizaciones
+APAGADAS en la propiedad, como `not_started`. La celda dice «todavía no
+corre» cuando en realidad nunca va a correr. Corregirlo necesita cruzar cada
+reserva con el estado de la automatización en SU propiedad (el portafolio lo
+trae: `providerSlug` + `statusProviderId` por propiedad) y tener en cuenta las
+excepciones por alojamiento, que el portafolio no trae.
+
+## Auditoría de las columnas ocultas (2026-11-19)
+
+- Defecto corregido: las columnas salían de las filas FILTRADAS; buscar
+  «Bruno» quitaba la columna TRA que solo tenía la reserva de Ana. Ahora salen
+  de todas las reservas cargadas (`withStatus(loaded)`). Prueba en
+  `ReservationsList.columns.test.tsx` (antes fallaba).
+- Carga en frío medida con sesión: la tabla pintaba 13 columnas y 300 ms
+  después se contraía a 8 (reservas antes que portafolio). Ahora arranca con
+  las mínimas y crece: 0 → 8, sin contracción. En caliente el portafolio está
+  en memoria y no hay cambio. El portafolio se pide UNA vez aunque lo usen dos
+  hooks (`stale-cache` comparte la petición en vuelo).
+- Limpieza: `readAutomationSlugs` usa `AUTOMATION_STATUS.ACTIVE` y
+  `canonicalSlug` (antes un 8 y una normalización a mano); el truco de
+  identidad estable (firma en texto) queda encapsulado en
+  `hooks/useVisibleCellKeys.ts` con prueba de identidad.
+- Mutaciones 6/6. Verify dos veces: 263 archivos / 2352 pruebas.

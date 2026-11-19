@@ -7,6 +7,7 @@ import {
     classifyItem,
     formatMoment,
     readDigitalContract,
+    visibleCellKeys,
     type CellSources,
 } from "./automation-cells"
 import { readCheckinLinkDelivery } from "./checkin-link-delivery-status"
@@ -83,8 +84,8 @@ describe("estados de una automatización", () => {
         const tra = buildAutomationCells(src({ items: [item({ status: "failed", lastError: "rnt_mismatch" })] })).tra!
         expect(tra.lines[0].text).toBe("Falló")
         const checkin = buildAutomationCells(src({ items: [item({ providerSlug: "didit", automationName: "Identity Verification - Main Guest", status: "failed", lastError: "identity_not_verified" })] })).checkin!
-        // La identidad no pone Check-in en rojo (decisión 2026-08-21): va al detalle.
-        expect(checkin.state).toBe("pending")
+        // Decisión 2026-11-19 (Didier): una verificación fallida pone Check-in en rojo.
+        expect(checkin.state).toBe("failed")
         expect(checkin.lines[1].state).toBe("failed")
         expect(checkin.lines[1].text).toMatch(/falló: La identidad no se verificó$/)
     })
@@ -182,15 +183,28 @@ describe("Link — el envío real por canal, no «corrió algo»", () => {
     })
 })
 
-describe("Check-in — cuenta check-ins COMPLETOS (decisión 2026-08-21)", () => {
-    it("1 de 2: pendiente con contador; la identidad va al detalle y no cambia el color", () => {
+describe("Check-in — cuenta check-ins completos; una verificación fallida es rojo (decisión 2026-11-19)", () => {
+    it("1 de 2 sin fallos: pendiente con contador", () => {
+        const items = [item({ providerSlug: "didit", automationName: "Identity Verification - Main Guest", status: "pending" })]
+        expect(buildAutomationCells(src({ items, checkin: { completed: 1, total: 2, isCheckinCompleted: false } })).checkin)
+            .toMatchObject({ state: "pending", count: { done: 1, total: 2 } })
+    })
+
+    it("1 de 2 con una verificación fallida: ROJO, con el contador, qué falló y qué hacer", () => {
         const items = [item({ providerSlug: "didit", automationName: "Identity Verification - Main Guest", status: "failed", lastError: "identity_not_verified" })]
         const cell = buildAutomationCells(src({ items, checkin: { completed: 1, total: 2, isCheckinCompleted: false } })).checkin!
-        expect(cell.state).toBe("pending")
+        expect(cell.state).toBe("failed")
+        expect(cell.summary).toBe("1 de 2 huéspedes completaron el check-in; una verificación de identidad falló")
+        expect(cell.note).toBe("Revisa la verificación en la ficha de la reserva")
         expect(cell.count).toEqual({ done: 1, total: 2 })
         expect(cell.lines[0].text).toBe("1 de 2 huéspedes completaron su check-in")
         expect(cell.lines[1].state).toBe("failed")
         expect(cell.lines[1].text).toMatch(/^Verificación .* · falló: La identidad no se verificó$/)
+    })
+
+    it("con TODOS completos (p. ej. exonerado) es verde aunque una verificación haya fallado: la reserva está lista", () => {
+        const items = [item({ providerSlug: "didit", automationName: "Identity Verification - Main Guest", status: "failed" })]
+        expect(buildAutomationCells(src({ items, checkin: { completed: 2, total: 2, isCheckinCompleted: false } })).checkin!.state).toBe("success")
     })
 
     it("todos completos o el flag de la reserva: verde con total/total", () => {
@@ -202,11 +216,11 @@ describe("Check-in — cuenta check-ins COMPLETOS (decisión 2026-08-21)", () =>
         expect(buildAutomationCells(src({ checkin: { completed: 3, total: 2, isCheckinCompleted: false } })).checkin!.count).toEqual({ done: 2, total: 2 })
     })
 
-    it("sin conteo: el flag dice que NO está completo, así que nunca es verde ni rojo; en curso o sin empezar; sin identidad, «—»", () => {
+    it("sin conteo: el flag dice que NO está completo, así que nunca es verde; rojo si una verificación falló; en curso o sin empezar; sin identidad, «—»", () => {
         const done = [item({ providerSlug: "textract", automationName: "Identity Verification - Main Guest", status: "completed" })]
         expect(buildAutomationCells(src({ items: done })).checkin).toMatchObject({ state: "pending", summary: "check-in en curso" })
         const failed = [item({ providerSlug: "didit", automationName: "Identity Verification - Main Guest", status: "failed" })]
-        expect(buildAutomationCells(src({ items: failed })).checkin!.state).toBe("pending")
+        expect(buildAutomationCells(src({ items: failed })).checkin).toMatchObject({ state: "failed", summary: "una verificación de identidad falló" })
         const notStarted = [item({ providerSlug: "textract", automationName: "Identity Verification - Main Guest", status: "not_started" })]
         expect(buildAutomationCells(src({ items: notStarted })).checkin!.state).toBe("idle")
         expect(buildAutomationCells(src({ items: [] })).checkin!.state).toBe("none")
@@ -389,6 +403,29 @@ describe("Link — a quién salió y por qué canales", () => {
     it("si ya salió por WhatsApp, la nota de «solo correo» no aparece aunque la automatización ya no esté", () => {
         const delivery = readCheckinLinkDelivery({ checkinLinkWhatsappSentAt: "2026-11-18T15:42:00Z", whatsappDeliveryStatus: "read" })
         expect(buildAutomationCells(src({ delivery, items: [] })).link!.note).toBeUndefined()
+    })
+})
+
+describe("visibleCellKeys — solo las columnas que la cuenta usa", () => {
+    it("sin certeza sobre la cuenta (null): todas; nunca se oculta por no saber", () => {
+        expect(visibleCellKeys(null, [])).toEqual(["link", "checkin", "contract", "code", "tra", "sireIn", "sireOut", "pdf"])
+        expect(visibleCellKeys(undefined, [])).toHaveLength(8)
+    })
+
+    it("Link y Check-in siempre; el resto según los proveedores de la cuenta; SIRE cuenta para entrada y salida", () => {
+        expect(visibleCellKeys(new Set(["textract", "tra_colombia", "sire_colombia"]), [])).toEqual(["link", "checkin", "tra", "sireIn", "sireOut"])
+        expect(visibleCellKeys(new Set(), [])).toEqual(["link", "checkin"])
+        expect(visibleCellKeys(new Set(["tufirma", "pdf_report"]), [])).toEqual(["link", "checkin", "contract", "pdf"])
+    })
+
+    it("una fila donde la automatización YA CORRIÓ la muestra aunque la cuenta no la tenga activa (portafolio viejo)", () => {
+        const rows = [{ automationItems: [{ providerSlug: "ttlock", automationName: "Smart Lock Codes", status: "completed" as const }], digitalContract: readDigitalContract({ digitalContract: { status: "completed" } }) }]
+        expect(visibleCellKeys(new Set(), rows)).toEqual(["link", "checkin", "contract", "code"])
+    })
+
+    it("un `not_started` no cuenta: el estado por reserva lista automatizaciones apagadas que nunca van a correr", () => {
+        const rows = [{ automationItems: [{ providerSlug: "tra_colombia", automationName: "TRA Colombia", status: "not_started" as const }] }]
+        expect(visibleCellKeys(new Set(), rows)).toEqual(["link", "checkin"])
     })
 })
 

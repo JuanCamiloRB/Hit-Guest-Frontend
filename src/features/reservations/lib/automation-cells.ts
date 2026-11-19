@@ -394,38 +394,44 @@ function to(recipient: string | null | undefined): string {
 function checkinCell(count: CheckinCount, items: AutomationStatusItem[] | undefined): AutomationCell | null {
     const identity = (items ?? []).filter((item) => classifyItem(item) === "identity")
     const identityLines = identity.map((item) => itemLine(item, automationTitle(item.providerSlug, item.automationName)))
+    // Decisión de producto (Didier, 2026-11-19, reemplaza la del 2026-08-21):
+    // una verificación de identidad FALLIDA pone Check-in en rojo mientras
+    // falten huéspedes por completar. El contador sigue diciendo cuántos
+    // completaron. Con todos completos (p. ej. exonerado) la reserva está lista:
+    // verde, y el fallo queda en el detalle.
+    const identityFailed = identity.some((item) => itemState(item) === "failed")
+    const failedNote = identityFailed ? "Revisa la verificación en la ficha de la reserva" : undefined
     const total = typeof count.total === "number" && count.total > 0 ? count.total : null
     const completed = typeof count.completed === "number" ? Math.min(Math.max(count.completed, 0), total ?? count.completed) : null
 
     if (total !== null && (completed !== null || count.isCheckinCompleted)) {
-        // Decisión de producto (2026-08-21): la columna cuenta check-ins COMPLETOS.
-        // La verificación de identidad va al detalle; no cambia el color.
         const done = count.isCheckinCompleted ? total : completed!
-        const state: CellState = done >= total ? "success" : "pending"
+        const allDone = done >= total
+        const state: CellState = allDone ? "success" : identityFailed ? "failed" : "pending"
+        const progress = `${done} de ${total} ${total === 1 ? "huésped completó" : "huéspedes completaron"}`
         return {
             state,
             count: { done, total },
-            summary: `${done} de ${total} ${total === 1 ? "huésped completó" : "huéspedes completaron"} el check-in`,
-            lines: [
-                { state, text: `${done} de ${total} ${total === 1 ? "huésped completó" : "huéspedes completaron"} su check-in` },
-                ...identityLines,
-            ],
+            summary: `${progress} el check-in${state === "failed" ? "; una verificación de identidad falló" : ""}`,
+            lines: [{ state: allDone ? "success" : "pending", text: `${progress} su check-in` }, ...identityLines],
+            note: state === "failed" ? failedNote : undefined,
         }
     }
     if (count.isCheckinCompleted) {
         return { state: "success", summary: "check-in completo", lines: [{ state: "success", text: "Check-in completo" }, ...identityLines] }
     }
     // Sin conteo: el flag de la reserva dice que NO está completo, así que nunca
-    // es verde; y la identidad no pone la celda en rojo (decisión 2026-08-21):
-    // con algo empezado está en curso, si no, todavía no corre.
+    // es verde. Una verificación fallida es rojo; con algo empezado, en curso;
+    // si no, todavía no corre.
     if (items === undefined) return null
     if (identity.length === 0) return NONE("La verificación de identidad no está configurada")
     const started = identity.some((item) => item.status !== "not_started")
-    const state: CellState = started ? "pending" : "idle"
+    const state: CellState = identityFailed ? "failed" : started ? "pending" : "idle"
     return {
         state,
-        summary: started ? "check-in en curso" : STATE_WORD.idle,
-        lines: [{ state, text: started ? "Check-in en curso" : "Check-in sin empezar" }, ...identityLines],
+        summary: identityFailed ? "una verificación de identidad falló" : started ? "check-in en curso" : STATE_WORD.idle,
+        lines: [{ state: started ? "pending" : "idle", text: started ? "Check-in en curso" : "Check-in sin empezar" }, ...identityLines],
+        note: failedNote,
     }
 }
 
@@ -517,6 +523,37 @@ export function buildAutomationCells(source: CellSources): Record<CellKey, Autom
         sireOut: items === undefined ? null : itemCell(of("sireOut"), NOT_CONFIGURED.sireOut),
         pdf: items === undefined ? null : pdfCell(of("pdf")),
     }
+}
+
+/**
+ * Las columnas que se muestran: Link y Check-in siempre (el link sale por
+ * correo aunque no haya nada configurado; el check-in es de toda reserva); el
+ * resto, solo si ALGUNA propiedad de la cuenta la tiene ACTIVA o si en alguna
+ * fila ya CORRIÓ (un `not_started` no cuenta: el estado por reserva lista
+ * también automatizaciones apagadas en la propiedad, que nunca van a correr).
+ * Sin certeza sobre la cuenta (`null`), todas: nunca se oculta por no saber.
+ */
+export function visibleCellKeys(
+    accountSlugs: ReadonlySet<string> | null | undefined,
+    rows: readonly { automationItems?: readonly Pick<AutomationStatusItem, "providerSlug" | "automationName" | "status">[]; digitalContract?: DigitalContractSummary | null }[],
+): CellKey[] {
+    if (!accountSlugs) return [...CELL_KEYS]
+    const present = new Set<CellKey>(["link", "checkin"])
+    for (const slug of accountSlugs) {
+        // El slug de SIRE es el mismo para entrada y salida: cuenta para las dos.
+        if (canonicalSlug(slug) === "sire_colombia") { present.add("sireIn"); present.add("sireOut"); continue }
+        const kind = classifyItem({ providerSlug: slug, automationName: "" })
+        if (kind && kind !== "identity") present.add(kind)
+    }
+    for (const row of rows) {
+        if (row.digitalContract) present.add("contract")
+        for (const item of row.automationItems ?? []) {
+            if (item.status === "not_started") continue
+            const kind = classifyItem(item)
+            if (kind && kind !== "identity") present.add(kind)
+        }
+    }
+    return CELL_KEYS.filter((key) => present.has(key))
 }
 
 /** El nombre accesible de una celda: «Contrato: firmado». */

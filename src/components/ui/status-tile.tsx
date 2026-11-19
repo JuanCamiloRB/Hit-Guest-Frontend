@@ -13,8 +13,9 @@ import { Icon } from "./icon"
  * ✕ falló; sin marca = todavía no corre) y, si aplica, un contador corto
  * («1/2»). El estado nunca depende solo del color (WCAG 1.4.1).
  *
- * Todas miden lo mismo: «2 de 2 completados» y «Enviado» ya no ocupan anchos
- * distintos. Lo que dice cada una se lee en el encabezado de su columna y en su
+ * Todas miden lo mismo (64 × 32 px): «2 de 2 completados» y «Enviado» ya no
+ * ocupan anchos distintos. Con ocho columnas la tabla tiene que caber en 1440 px
+ * con la barra lateral abierta: por eso 64 y no más. Lo que dice cada una se lee en el encabezado de su columna y en su
  * nombre accesible (`label`, obligatorio); el detalle va en un `Toggletip`.
  *
  * Es un `<button>`: se enfoca y se pulsa para abrir el detalle. `none` («no
@@ -23,7 +24,7 @@ import { Icon } from "./icon"
  */
 const statusTileVariants = cva(
     [
-        "inline-flex h-8 w-19 shrink-0 items-center justify-center gap-1 rounded-md border px-2",
+        "inline-flex h-8 w-16 shrink-0 items-center justify-center gap-0.5 overflow-hidden rounded-md border px-1",
         "text-xs font-semibold tabular-nums transition-colors outline-none select-none",
         "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
         "enabled:cursor-pointer enabled:hover:border-primary/30 disabled:cursor-default",
@@ -100,7 +101,7 @@ function StatusTile({ tone, label, icon, count, children, className, type = "but
  */
 function StatusTileSkeleton({ label = "Cargando estado" }: { label?: string }) {
     return (
-        <span data-slot="status-tile-skeleton" className="inline-flex h-8 w-19 animate-pulse rounded-md bg-sunk motion-reduce:animate-none">
+        <span data-slot="status-tile-skeleton" className="inline-flex h-8 w-16 animate-pulse rounded-md bg-sunk motion-reduce:animate-none">
             <span className="sr-only">{label}</span>
         </span>
     )

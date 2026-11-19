@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({ bffFetch: vi.fn() }))
 vi.mock("@/lib/bff-client", () => ({ bffFetch: mocks.bffFetch }))
 
-import { invalidatePropertiesCaches, portfolioCache, propertiesCache, resetPropertiesCaches } from "./properties-cache"
+import { readAutomationSlugs, invalidatePropertiesCaches, portfolioCache, propertiesCache, resetPropertiesCaches } from "./properties-cache"
 
 const rawProperty = (uuid: string, statusRecordId = 6) => ({ uuid, name: `Propiedad ${uuid}`, statusRecordId, extra: {} })
 const rawListing = (uuid: string, propertyUuid: string, statusRecordId = 6) => ({ uuid, name: `Unidad ${uuid}`, _propertyUuid: propertyUuid, statusRecordId, extra: {} })
@@ -74,5 +74,21 @@ describe("toListing — misma lectura que siempre tuvo la tabla de alojamientos"
         expect(toListing({ uuid: "l1", statusRecordId: 7, statusRecord: { id: 6 } }, 0).status).toBe("ACTIVE")
         expect(toListing({ uuid: "l1", status_record_id: 6 }, 0).status).toBe("ACTIVE")
         expect(toListing({ uuid: "l1", statusRecordId: 7 }, 0).status).toBe("INACTIVE")
+    })
+})
+
+describe("readAutomationSlugs — qué proveedores usa la cuenta", () => {
+    it("une los slugs ACTIVOS de todas las propiedades, normalizados; apagados en todas no cuentan", () => {
+        const slugs = readAutomationSlugs({ automationsByProperty: {
+            p1: [{ providerSlug: "tra_colombia", statusProviderId: 8 }, { providerSlug: "Hitguest-Signature", statusProviderId: 8 }],
+            p2: [{ providerSlug: "sire_colombia", statusProviderId: 10 }, { providerSlug: "tra_colombia", statusProviderId: 10 }],
+        } })
+        // SIRE solo está apagado (10): no cuenta como usado.
+        expect([...slugs!].sort()).toEqual(["hitguest_signature", "tra_colombia"])
+    })
+
+    it("una propiedad cuya consulta falló (null) o un agregado sin el mapa: null, no «nada configurado»", () => {
+        expect(readAutomationSlugs({ automationsByProperty: { p1: [{ providerSlug: "tra_colombia", statusProviderId: 8 }], p2: null } })).toBeNull()
+        expect(readAutomationSlugs({})).toBeNull()
     })
 })

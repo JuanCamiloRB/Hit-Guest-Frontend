@@ -115,7 +115,7 @@ describe("Operaciones — celdas de automatización", () => {
         renderTable()
         const tiles = document.querySelectorAll('[data-slot="status-tile"]')
         expect(tiles).toHaveLength(8)
-        tiles.forEach((tile) => expect(tile).toHaveClass("w-19", "h-8"))
+        tiles.forEach((tile) => expect(tile).toHaveClass("w-16", "h-8"))
     })
 
     it("móvil: la fila apilada lleva las ocho celdas con su nombre escrito debajo", () => {
@@ -195,5 +195,37 @@ describe("Operaciones — el detalle del Link dice por dónde salió y por qué 
         await act(async () => { screen.getByRole("button", { name: /^Link:/ }).focus() })
         expect(await screen.findByText("Esta reserva envía el link solo por correo: no tiene WhatsApp ni OTA activos")).toBeInTheDocument()
         expect(media.listUsageRecords).not.toHaveBeenCalled()
+    })
+})
+
+describe("Operaciones — ancho: columnas que la cuenta usa y celdas compactas", () => {
+    it("getColumns con cellKeys oculta las columnas que nadie usa y no dibuja un grupo vacío", () => {
+        render(<DataTable columns={getColumns({ cellKeys: ["link", "checkin", "contract"] })} data={[ROW]} />)
+        expect(screen.getByRole("columnheader", { name: "Automatizaciones" })).toHaveAttribute("colspan", "3")
+        expect(screen.queryByRole("columnheader", { name: "Reportes" })).toBeNull()
+        expect(screen.queryByRole("button", { name: /^TRA:/ })).toBeNull()
+        expect(document.querySelectorAll('[data-slot="status-tile"]')).toHaveLength(3)
+    })
+
+    it("un contador de cuatro caracteres o más («0/13») va sin el ícono para caber en 64 px; «1/2» lo lleva", () => {
+        const { unmount } = render(<DataTable columns={getColumns()} data={[{ ...ROW, completedGuests: 0, totalGuests: 13 }]} />)
+        const tile = screen.getByRole("button", { name: /^Check-in:/ })
+        expect(tile).toHaveTextContent("0/13")
+        expect(tile.querySelector(".lucide-users")).toBeNull()
+        unmount()
+        renderTable()
+        expect(screen.getByRole("button", { name: /^Check-in:/ }).querySelector(".lucide-users")).not.toBeNull()
+    })
+
+    it("Acciones solo ocupa su botón: el encabezado es para lectores de pantalla", () => {
+        renderTable()
+        const header = screen.getByRole("columnheader", { name: "Acciones" })
+        expect(header.querySelector(".sr-only")).toHaveTextContent("Acciones")
+    })
+
+    it("una verificación de identidad fallida pone Check-in en rojo (decisión 2026-11-19)", () => {
+        const items = [...ROW.automationItems!.filter((i) => i.providerSlug !== "textract"), statusItem("didit", "Identity Verification - Main Guest", "failed")]
+        renderTable([{ ...ROW, automationItems: items }])
+        expect(screen.getByRole("button", { name: "Check-in: 1 de 2 huéspedes completaron el check-in; una verificación de identidad falló" })).toHaveAttribute("data-tone", "danger")
     })
 })

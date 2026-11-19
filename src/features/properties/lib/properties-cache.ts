@@ -2,6 +2,8 @@ import { bffFetch } from "@/lib/bff-client"
 import { createStaleCache } from "@/lib/stale-cache"
 import type { Property, Unit } from "@/types"
 import { derivePropertyBadges, type PropertyAutomationOverviewRow, type PropertyBadge } from "./property-badges"
+import { canonicalSlug } from "../services/automation-service"
+import { AUTOMATION_STATUS } from "../types/automation"
 import { readPropertyTypeId } from "./property-type"
 import { apiResponseToFormData } from "../types"
 
@@ -22,6 +24,12 @@ export interface Portfolio {
     listings: PortfolioListing[]
     /** Por uuid de propiedad: alojamientos activos e insignias de automatizaciones. */
     overview: Record<string, PropertyOverview>
+    /**
+     * Los proveedores con una automatización ACTIVA (8) en alguna propiedad de la
+     * cuenta (slug canónico). `null` = no se sabe (el agregado no lo trajo o falló
+     * la consulta de una propiedad): quien lo use no puede concluir «no se usa».
+     */
+    automationSlugs?: ReadonlySet<string> | null
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -159,8 +167,32 @@ export const portfolioCache = createStaleCache(async (): Promise<Portfolio> => {
         properties: (response.properties ?? []).map(toProperty),
         listings,
         overview: buildOverview(response, listings),
+        automationSlugs: readAutomationSlugs(response),
     }
 })
+
+/**
+ * Qué proveedores tiene ACTIVOS la cuenta, sumando todas sus propiedades
+ * (Operaciones oculta las columnas que nadie usa). Una automatización creada
+ * pero apagada (10) en todas las propiedades no cuenta: es lo habitual (visto
+ * en producción el 2026-11-19: TTLock, TRA, SIRE y PDF apagados en las 15
+ * propiedades de una cuenta). Una propiedad cuya consulta falló (`null`) deja
+ * todo en `null`: sin certeza no se oculta nada.
+ */
+export function readAutomationSlugs(response: { automationsByProperty?: Record<string, PropertyAutomationOverviewRow[] | null> }): ReadonlySet<string> | null {
+    const map = response.automationsByProperty
+    if (!map) return null
+    const slugs = new Set<string>()
+    for (const rows of Object.values(map)) {
+        if (rows === null || !Array.isArray(rows)) return null
+        for (const row of rows) {
+            if (row?.statusProviderId === AUTOMATION_STATUS.ACTIVE && typeof row.providerSlug === "string" && row.providerSlug.trim()) {
+                slugs.add(canonicalSlug(row.providerSlug))
+            }
+        }
+    }
+    return slugs
+}
 
 /**
  * Tras crear, editar o borrar una propiedad o un alojamiento, lo guardado se
