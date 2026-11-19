@@ -229,3 +229,16 @@ describe("Operaciones — ancho: columnas que la cuenta usa y celdas compactas",
         expect(screen.getByRole("button", { name: "Check-in: 1 de 2 huéspedes completaron el check-in; una verificación de identidad falló" })).toHaveAttribute("data-tone", "danger")
     })
 })
+
+describe("Operaciones — automatización apagada en la propiedad de la reserva", () => {
+    it("la celda dice «apagada en la propiedad», no «todavía no corre», cuando la fila trae ese dato", () => {
+        const items = [
+            ...ROW.automationItems!.filter((i) => i.providerSlug !== "tra_colombia"),
+            statusItem("tra_colombia", "TRA Colombia", "not_started"),
+        ]
+        renderTable([{ ...ROW, automationItems: items, propertyInactiveAutomations: new Set(["tra_colombia"]) }])
+        const tra = screen.getByRole("button", { name: "TRA: apagada en la propiedad" })
+        expect(tra).toBeDisabled()
+        expect(tra).toHaveAttribute("data-tone", "none")
+    })
+})

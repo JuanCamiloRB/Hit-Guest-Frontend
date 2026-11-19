@@ -31,9 +31,18 @@ export function withListingNames(rows: Reservation[], portfolio: Portfolio | nul
         const listing = row.unitId ? listings.get(row.unitId) : undefined
         const propertyUuid = listing?.propertyId ? String(listing.propertyId) : ""
         const propertyName = propertyNames.get(propertyUuid)
-        if (!listing) return row.propertyName ? row : { ...row, propertyName: UNKNOWN_PROPERTY_LABEL }
+        // Qué automatizaciones están apagadas en SU propiedad: la celda no dice
+        // «todavía no corre» de algo que nunca va a correr.
+        const inactive = portfolio.inactiveSlugsByProperty?.[propertyUuid || row.propertyId]
+        const withInactive = inactive ? { propertyInactiveAutomations: inactive } : {}
+        if (!listing) {
+            // Sin nada que mejorar, la MISMA fila (no un objeto nuevo en cada render).
+            if (!inactive && row.propertyName) return row
+            return { ...row, ...withInactive, ...(row.propertyName ? {} : { propertyName: UNKNOWN_PROPERTY_LABEL }) }
+        }
         return {
             ...row,
+            ...withInactive,
             propertyId: propertyName ? propertyUuid : row.propertyId,
             propertyName: propertyName || row.propertyName || UNKNOWN_PROPERTY_LABEL,
             unitName: unitLabel(listing.name, listing.number),

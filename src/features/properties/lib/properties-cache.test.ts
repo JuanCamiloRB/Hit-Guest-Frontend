@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({ bffFetch: vi.fn() }))
 vi.mock("@/lib/bff-client", () => ({ bffFetch: mocks.bffFetch }))
 
-import { readAutomationSlugs, invalidatePropertiesCaches, portfolioCache, propertiesCache, resetPropertiesCaches } from "./properties-cache"
+import { readAutomationSlugs, readInactiveSlugsByProperty, invalidatePropertiesCaches, portfolioCache, propertiesCache, resetPropertiesCaches } from "./properties-cache"
 
 const rawProperty = (uuid: string, statusRecordId = 6) => ({ uuid, name: `Propiedad ${uuid}`, statusRecordId, extra: {} })
 const rawListing = (uuid: string, propertyUuid: string, statusRecordId = 6) => ({ uuid, name: `Unidad ${uuid}`, _propertyUuid: propertyUuid, statusRecordId, extra: {} })
@@ -90,5 +90,20 @@ describe("readAutomationSlugs — qué proveedores usa la cuenta", () => {
     it("una propiedad cuya consulta falló (null) o un agregado sin el mapa: null, no «nada configurado»", () => {
         expect(readAutomationSlugs({ automationsByProperty: { p1: [{ providerSlug: "tra_colombia", statusProviderId: 8 }], p2: null } })).toBeNull()
         expect(readAutomationSlugs({})).toBeNull()
+    })
+})
+
+describe("readInactiveSlugsByProperty — lo apagado en cada propiedad", () => {
+    it("por propiedad, los proveedores con TODAS sus filas apagadas; con una encendida (SIRE entrada/salida) no se afirma", () => {
+        const map = readInactiveSlugsByProperty({ automationsByProperty: {
+            p1: [{ providerSlug: "tra_colombia", statusProviderId: 10 }, { providerSlug: "ttlock", statusProviderId: 8 }],
+            p2: [{ providerSlug: "sire_colombia", statusProviderId: 8 }, { providerSlug: "sire_colombia", statusProviderId: 10 }],
+            p3: null,
+        } })!
+        expect([...map.p1]).toEqual(["tra_colombia"])
+        expect([...map.p2]).toEqual([])
+        // La que falló no aparece: no se sabe.
+        expect(map.p3).toBeUndefined()
+        expect(readInactiveSlugsByProperty({})).toBeNull()
     })
 })

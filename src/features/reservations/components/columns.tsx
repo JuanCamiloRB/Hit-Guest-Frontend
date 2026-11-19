@@ -108,6 +108,7 @@ function cellsOf(reservation: Reservation, forSort = false) {
             total: reservation.totalGuests,
             isCheckinCompleted: reservation.isCheckinCompleted === true,
         },
+        inactiveSlugs: reservation.propertyInactiveAutomations,
     })
 }
 

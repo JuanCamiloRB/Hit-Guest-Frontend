@@ -52,3 +52,12 @@ describe("withListingNames — el portafolio completa las filas", () => {
         expect(x).toBe(conPropiedad)
     })
 })
+
+describe("withListingNames — automatizaciones apagadas en la propiedad de cada fila", () => {
+    it("la fila de un alojamiento de p-1 recibe lo apagado en p-1; sin dato de su propiedad, nada", () => {
+        const withInactive = { ...portfolio, inactiveSlugsByProperty: { "p-1": new Set(["tra_colombia"]) } } as Portfolio
+        const [inP1, other] = withListingNames([row({ unitId: "l-1" }), row({ unitId: "l-3" })], withInactive)
+        expect(inP1.propertyInactiveAutomations).toEqual(new Set(["tra_colombia"]))
+        expect(other.propertyInactiveAutomations).toBeUndefined()
+    })
+})

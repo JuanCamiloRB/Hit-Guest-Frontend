@@ -30,6 +30,12 @@ export interface Portfolio {
      * la consulta de una propiedad): quien lo use no puede concluir «no se usa».
      */
     automationSlugs?: ReadonlySet<string> | null
+    /**
+     * Por uuid de propiedad: los proveedores cuyas automatizaciones existen en
+     * ella y están TODAS apagadas. Una propiedad cuya consulta falló no aparece
+     * (no se sabe). `null` = el agregado no lo trajo.
+     */
+    inactiveSlugsByProperty?: Readonly<Record<string, ReadonlySet<string>>> | null
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -168,6 +174,7 @@ export const portfolioCache = createStaleCache(async (): Promise<Portfolio> => {
         listings,
         overview: buildOverview(response, listings),
         automationSlugs: readAutomationSlugs(response),
+        inactiveSlugsByProperty: readInactiveSlugsByProperty(response),
     }
 })
 
@@ -192,6 +199,30 @@ export function readAutomationSlugs(response: { automationsByProperty?: Record<s
         }
     }
     return slugs
+}
+
+/**
+ * Por propiedad, los proveedores que existen ahí y están apagados en TODAS sus
+ * filas. Con dos filas del mismo proveedor (SIRE entrada y salida comparten
+ * slug) y una encendida, no se afirma nada: el slug no dice cuál es cuál.
+ */
+export function readInactiveSlugsByProperty(response: { automationsByProperty?: Record<string, PropertyAutomationOverviewRow[] | null> }): Record<string, ReadonlySet<string>> | null {
+    const map = response.automationsByProperty
+    if (!map) return null
+    const result: Record<string, ReadonlySet<string>> = {}
+    for (const [propertyUuid, rows] of Object.entries(map)) {
+        if (rows === null || !Array.isArray(rows)) continue
+        const active = new Set<string>()
+        const seen = new Set<string>()
+        for (const row of rows) {
+            if (typeof row?.providerSlug !== "string" || !row.providerSlug.trim()) continue
+            const slug = canonicalSlug(row.providerSlug)
+            seen.add(slug)
+            if (row.statusProviderId === AUTOMATION_STATUS.ACTIVE) active.add(slug)
+        }
+        result[propertyUuid] = new Set([...seen].filter((slug) => !active.has(slug)))
+    }
+    return result
 }
 
 /**

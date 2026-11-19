@@ -76,6 +76,8 @@ export interface CellSources {
     delivery: CheckinLinkDeliveryStatus | undefined
     contract: DigitalContractSummary | null | undefined
     checkin: CheckinCount
+    /** Proveedores apagados en la propiedad de la reserva (portafolio). Ausente = no se sabe. */
+    inactiveSlugs?: ReadonlySet<string>
 }
 
 /** Severidad para ordenar: lo que pide atención primero, lo no configurado al final. */
@@ -274,6 +276,9 @@ function combine(states: CellState[]): CellState {
 
 const NONE = (text: string, summary = STATE_WORD.none): AutomationCell => ({ state: "none", summary, lines: [{ state: "none", text }] })
 
+const OFF_TEXT = "Está apagada en la propiedad de esta reserva"
+const OFF = (): AutomationCell => NONE(OFF_TEXT, "apagada en la propiedad")
+
 // ───────────────────────── columnas ─────────────────────────
 
 function perGuestCell(item: AutomationStatusItem): AutomationCell {
@@ -294,8 +299,8 @@ function perGuestCell(item: AutomationStatusItem): AutomationCell {
     }
 }
 
-function itemCell(items: AutomationStatusItem[], notConfigured: string): AutomationCell {
-    if (items.length === 0) return NONE(notConfigured)
+function itemCell(items: AutomationStatusItem[], notConfigured: string | AutomationCell): AutomationCell {
+    if (items.length === 0) return typeof notConfigured === "string" ? NONE(notConfigured) : notConfigured
     if (items.length === 1 && items[0].isPerGuest && items[0].guests.length > 0) return perGuestCell(items[0])
     // Varias filas para la misma columna (no se observó, pero si llegan, un
     // fallo de cualquiera no puede quedar oculto detrás de la primera).
@@ -511,17 +516,30 @@ function pdfCell(items: AutomationStatusItem[]): AutomationCell {
  * estar listos antes que el estado de automatizaciones.
  */
 export function buildAutomationCells(source: CellSources): Record<CellKey, AutomationCell | null> {
-    const items = source.items ? [...source.items] : undefined
+    // Una automatización APAGADA en la propiedad que no corrió nunca va a correr:
+    // para esta reserva cuenta como no configurada, con su propio texto. Si ya
+    // corrió, manda lo que dice la reserva (una excepción del alojamiento pudo
+    // encenderla).
+    const isOff = (item: AutomationStatusItem) =>
+        item.status === "not_started" && !!source.inactiveSlugs?.has(canonicalSlug(item.providerSlug ?? ""))
+    const all = source.items ? [...source.items] : undefined
+    const items = all?.filter((item) => !isOff(item))
+    const offKinds = new Set((all ?? []).filter(isOff).map((item) => classifyItem(item)))
     const of = (key: CellKey) => (items ?? []).filter((item) => classifyItem(item) === key)
+    const none = (key: Exclude<CellKey, "link" | "checkin" | "contract">) => (offKinds.has(key) ? OFF() : NOT_CONFIGURED[key])
+    const checkin = checkinCell(source.checkin, items)
+    const contract = contractCell(source.contract, items)
     return {
         link: linkCell(source.delivery, items),
-        checkin: checkinCell(source.checkin, items),
-        contract: contractCell(source.contract, items),
-        code: items === undefined ? null : itemCell(of("code"), NOT_CONFIGURED.code),
-        tra: items === undefined ? null : itemCell(of("tra"), NOT_CONFIGURED.tra),
-        sireIn: items === undefined ? null : itemCell(of("sireIn"), NOT_CONFIGURED.sireIn),
-        sireOut: items === undefined ? null : itemCell(of("sireOut"), NOT_CONFIGURED.sireOut),
-        pdf: items === undefined ? null : pdfCell(of("pdf")),
+        checkin: checkin?.state === "none" && offKinds.has("identity")
+            ? NONE("La verificación de identidad está apagada en la propiedad de esta reserva", "apagada en la propiedad")
+            : checkin,
+        contract: contract?.state === "none" && offKinds.has("contract") ? OFF() : contract,
+        code: items === undefined ? null : itemCell(of("code"), none("code")),
+        tra: items === undefined ? null : itemCell(of("tra"), none("tra")),
+        sireIn: items === undefined ? null : itemCell(of("sireIn"), none("sireIn")),
+        sireOut: items === undefined ? null : itemCell(of("sireOut"), none("sireOut")),
+        pdf: items === undefined ? null : (offKinds.has("pdf") && of("pdf").length === 0 ? OFF() : pdfCell(of("pdf"))),
     }
 }
 

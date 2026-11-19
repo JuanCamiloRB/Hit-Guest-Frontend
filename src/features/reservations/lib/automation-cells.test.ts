@@ -429,3 +429,34 @@ describe("visibleCellKeys — solo las columnas que la cuenta usa", () => {
     })
 })
 
+describe("automatizaciones apagadas en la propiedad de la reserva", () => {
+    const off = new Set(["tra_colombia", "pdf_report", "textract", "hitguest_signature"])
+
+    it("apagada y sin correr: no es «todavía no corre» (nunca va a correr); dice que está apagada en la propiedad", () => {
+        const cells = buildAutomationCells(src({ inactiveSlugs: off, items: [
+            item({ status: "not_started" }),
+            item({ providerSlug: "pdf_report", automationName: "Guest Report PDF", status: "not_started" }),
+            item({ providerSlug: "hitguest_signature", automationName: "Digital Signature for Contract", status: "not_started" }),
+        ] }))
+        expect(cells.tra).toMatchObject({ state: "none", summary: "apagada en la propiedad" })
+        expect(cells.tra!.lines[0].text).toBe("Está apagada en la propiedad de esta reserva")
+        expect(cells.pdf).toMatchObject({ state: "none", summary: "apagada en la propiedad" })
+        expect(cells.contract).toMatchObject({ state: "none", summary: "apagada en la propiedad" })
+        expect(cellAccessibleName("tra", cells.tra!)).toBe("TRA: apagada en la propiedad")
+    })
+
+    it("la identidad apagada en la propiedad y sin conteo: Check-in lo dice", () => {
+        const cells = buildAutomationCells(src({ inactiveSlugs: off, items: [item({ providerSlug: "textract", automationName: "Identity Verification - Main Guest", status: "not_started" })] }))
+        expect(cells.checkin).toMatchObject({ state: "none", summary: "apagada en la propiedad" })
+    })
+
+    it("apagada en la propiedad pero YA corrió en esta reserva: manda la reserva (una excepción del alojamiento pudo encenderla)", () => {
+        const cells = buildAutomationCells(src({ inactiveSlugs: off, items: [item({ status: "completed" })] }))
+        expect(cells.tra!.state).toBe("success")
+    })
+
+    it("sin dato de la propiedad: igual que siempre, «todavía no corre»", () => {
+        expect(buildAutomationCells(src({ items: [item({ status: "not_started" })] })).tra!.state).toBe("idle")
+    })
+})
+

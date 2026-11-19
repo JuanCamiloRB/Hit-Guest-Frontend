@@ -146,6 +146,11 @@ export interface Reservation {
     checkinLinkDelivery?: CheckinLinkDeliveryStatus
     /** Qué se firmó (`extra.digitalContract` de la lista); `null` si no hay. */
     digitalContract?: DigitalContractSummary | null
+    /**
+     * Solo de pantalla: proveedores con su automatización APAGADA en la
+     * propiedad de esta reserva (del portafolio). Ausente = no se sabe.
+     */
+    propertyInactiveAutomations?: ReadonlySet<string>
     /** Check-in de la reserva completo (`isCheckinCompleted` del backend). */
     isCheckinCompleted?: boolean
     /** Huéspedes esperados en la reserva (`total_guests`). */

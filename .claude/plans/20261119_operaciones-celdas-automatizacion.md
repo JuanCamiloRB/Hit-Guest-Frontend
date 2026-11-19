@@ -249,3 +249,32 @@ excepciones por alojamiento, que el portafolio no trae.
   identidad estable (firma en texto) queda encapsulado en
   `hooks/useVisibleCellKeys.ts` con prueba de identidad.
 - Mutaciones 6/6. Verify dos veces: 263 archivos / 2352 pruebas.
+
+## Pendientes cerrados (2026-11-19)
+
+- **Automatizaciones apagadas en la propiedad.** El portafolio da, por
+  propiedad, los proveedores con TODAS sus filas apagadas
+  (`readInactiveSlugsByProperty`); `withListingNames` lo pone en cada fila
+  (`propertyInactiveAutomations`). Una automatización apagada ahí que no corrió
+  cuenta como no configurada para esa reserva: «Está apagada en la propiedad
+  de esta reserva». Si ya corrió, manda la reserva. SIRE con entrada activa y
+  salida apagada (mismo slug): no se afirma nada.
+- **Crash de Integraciones.** `readIntegration` lee la respuesta en el borde:
+  `parameters` siempre objeto; sin `token` raíz no es una integración (`null`).
+  `getKunas` con un 200 ilegible lanza (Reintentar, no «sin integración»).
+  `connect`/`setStatus`/`updateConfiguration` sin recurso → el hook relee y
+  conserva lo que se veía; tras conectar sin que exista todavía, aviso «Recibimos
+  la conexión…». La tarjeta lee `parameters` con respaldo.
+- **Límite de error del panel** `app/(dashboard)/dashboard/error.tsx`: dentro
+  del layout, Reintentar e Ir al tablero, sube el error a `/api/client-error`.
+- **Formulario de Kunas:** las etiquetas no nombraban los campos (`htmlFor` +
+  `id`, error en `aria-describedby`). El efecto inicial del hook sigue el patrón
+  `.then()` (`react-hooks/set-state-in-effect`).
+- **Logo de Airbnb:** al último tramo `s` le faltaba un número; ahora sin
+  error de consola.
+- **Configuración** tenía un `<main>` dentro del `<main>` del layout: ahora `<div>`.
+- **Duplicados de macOS:** 88 archivos (todos ignorados por git y fuera del
+  patrón de vitest: no corrían) movidos a
+  `~/Desktop/Hit-Guest-Frontend-duplicados-2026-11-19/`, con su estructura.
+
+Mutaciones 12/12. Verify dos veces: 264 archivos / 2369 pruebas.
