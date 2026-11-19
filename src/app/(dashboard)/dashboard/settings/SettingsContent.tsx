@@ -96,8 +96,10 @@ export function SettingsContent() {
                 </div>
             </aside>
 
-            {/* Content Area */}
-            <main className="flex-1 w-full min-w-0">
+            {/* Content Area. Un <div>: el <main> de la página ya lo pone
+                AdminLayout, y dos regiones principales anidadas confunden a un
+                lector de pantalla. */}
+            <div className="flex-1 w-full min-w-0">
                 <Card className="overflow-hidden">
                     <CardHeader divided>
                         <Heading level={2} size="title">
@@ -117,7 +119,7 @@ export function SettingsContent() {
                         {activeTab === "billing" && <BillingSettings />}
                     </CardContent>
                 </Card>
-            </main>
+            </div>
         </div>
     )
 }
