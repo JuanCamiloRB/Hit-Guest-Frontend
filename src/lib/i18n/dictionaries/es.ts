@@ -8,6 +8,7 @@ export const es = {
     retry: "Reintentar",
     previous: "Anterior",
     next: "Siguiente",
+    updating: "Actualizando…",
     /** Formato de fechas y montos (Intl). */
     dateLocale: "es-CO",
     search: "Buscar...",

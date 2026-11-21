@@ -8,6 +8,7 @@ export const en = {
     retry: "Retry",
     previous: "Previous",
     next: "Next",
+    updating: "Updating…",
     dateLocale: "en-US",
     search: "Search...",
   },

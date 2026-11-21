@@ -27,6 +27,19 @@ describe("StatusTile", () => {
         expect(screen.getByRole("button").querySelector(".lucide-file-text")).not.toBeNull()
     })
 
+    it("data: un dato con su ícono y su cifra en el morado claro (texto primary-hover, AA sobre fila en hover), sin marca de forma", () => {
+        render(<StatusTile tone="data" icon={FileText} count="6" label="Capacidad: 6" />)
+        const tile = screen.getByRole("button", { name: "Capacidad: 6" })
+        expect(tile).toHaveAttribute("data-tone", "data")
+        expect(tile).toHaveClass("bg-primary/10", "border-primary/30", "text-primary-hover", "h-8", "w-16")
+        // El hover propio reemplaza al de la base (mismo borde que el reposo): tailwind-merge deja uno.
+        expect(tile).toHaveClass("enabled:hover:border-primary/50")
+        expect(tile).not.toHaveClass("enabled:hover:border-primary/30")
+        expect(tile).toHaveTextContent("6")
+        expect(tile.querySelector('[data-slot="status-tile-glyph"]')).toBeNull()
+        expect(tile.querySelector(".lucide-file-text")).not.toBeNull()
+    })
+
     it("none: solo el guion, borde punteado; sin el ícono ni el contador", () => {
         render(<StatusTile tone="none" icon={FileText} count="1/2" label="Contrato: no configurado" disabled />)
         const tile = screen.getByRole("button")

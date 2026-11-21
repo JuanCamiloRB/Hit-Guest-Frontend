@@ -10,6 +10,15 @@ import { cn } from "@/lib/utils"
  * enlace («Regístrate aquí», «Volver al inicio») no es esto: es
  * `Button variant="link" asChild`.
  */
+/** El aspecto del dato que navega; `IdentityCell` lo usa también para un nombre que ABRE (un diálogo). */
+function textLinkClasses(tone: "ink" | "muted" = "ink") {
+    return cn(
+        "rounded-xs font-medium underline-offset-2 transition-colors hover:text-primary hover:underline",
+        "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+        tone === "ink" ? "text-ink" : "text-ink-2",
+    )
+}
+
 function TextLink({
     className,
     tone = "ink",
@@ -21,15 +30,10 @@ function TextLink({
     return (
         <Link
             data-slot="text-link"
-            className={cn(
-                "rounded-xs font-medium underline-offset-2 transition-colors hover:text-primary hover:underline",
-                "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                tone === "ink" ? "text-ink" : "text-ink-2",
-                className,
-            )}
+            className={cn(textLinkClasses(tone), className)}
             {...props}
         />
     )
 }
 
-export { TextLink }
+export { TextLink, textLinkClasses }

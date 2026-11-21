@@ -75,6 +75,21 @@ describe("toListing — misma lectura que siempre tuvo la tabla de alojamientos"
         expect(toListing({ uuid: "l1", status_record_id: 6 }, 0).status).toBe("ACTIVE")
         expect(toListing({ uuid: "l1", statusRecordId: 7 }, 0).status).toBe("INACTIVE")
     })
+
+    it("habitaciones y baños: solo un entero positivo declarado; ausente o 0 es `null`", async () => {
+        const { toListing } = await import("./properties-cache")
+        expect(toListing({ uuid: "l1", extra: { bedRoom: 3, bathRoom: "2" } }, 0)).toMatchObject({ bedrooms: 3, bathrooms: 2 })
+        expect(toListing({ uuid: "l1", extra: { bedRoom: 0, bathRoom: null } }, 0)).toMatchObject({ bedrooms: null, bathrooms: null })
+        expect(toListing({ uuid: "l1", extra: { bed_room: { bedsCount: 2 }, bath_room: { count: 1 } } }, 0)).toMatchObject({ bedrooms: 2, bathrooms: 1 })
+    })
+
+    it("conexiones: las de `pmsIdentifiers` con el nombre del origen; `[]` afirma ninguna; sin la clave, `null`", async () => {
+        const { toListing } = await import("./properties-cache")
+        const linked = toListing({ uuid: "l1", pmsIdentifiers: [{ id: 9, sourcePmsId: 134, sourcePms: "KunasPMS", externalId: "123" }] }, 0)
+        expect(linked.connections).toEqual([{ id: 9, sourcePmsId: 134, externalId: "123", sourceName: "KunasPMS" }])
+        expect(toListing({ uuid: "l1", pmsIdentifiers: [] }, 0).connections).toEqual([])
+        expect(toListing({ uuid: "l1" }, 0).connections).toBeNull()
+    })
 })
 
 describe("readAutomationSlugs — qué proveedores usa la cuenta", () => {

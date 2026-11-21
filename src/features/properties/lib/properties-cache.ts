@@ -6,12 +6,25 @@ import { canonicalSlug } from "../services/automation-service"
 import { AUTOMATION_STATUS } from "../types/automation"
 import { readPropertyTypeId } from "./property-type"
 import { apiResponseToFormData } from "../types"
+import { readExternalPmsConnections, type ExternalPmsConnection } from "./external-pms-ids"
+import { readDeclaredCapacity } from "./declared-capacity"
 
 /** A listing plus the raw API fields the listings table reads (lock id, locale…). */
 export interface PortfolioListing extends Unit {
     /** Lock identifier configured for this listing, when the PM set one. */
     lockId: string | null
+    /** `extra.bedRoom` («Habitaciones o camas» en el formulario); `null` = sin declarar. */
+    bedrooms: number | null
+    /** `extra.bathRoom`; `null` = sin declarar. */
+    bathrooms: number | null
+    /**
+     * Con qué PMS o canal está vinculado (`pmsIdentifiers`). `[]` = la respuesta
+     * afirma que no tiene ninguno; `null` = la respuesta no trajo la clave.
+     */
+    connections: ExternalPmsConnection[] | null
 }
+
+
 
 /** Resumen por propiedad para las tarjetas. `badges: null` = no se pudo saber. */
 export interface PropertyOverview {
@@ -120,6 +133,10 @@ export function toListing(raw: any, index: number): PortfolioListing {
         status: isActive ? "ACTIVE" : "INACTIVE",
         inheritWifi: false,
         lockId: lockId ? String(lockId) : null,
+        // Nunca el 1 por omisión del formulario (`declared-capacity`).
+        bedrooms: readDeclaredCapacity(raw).bedrooms,
+        bathrooms: readDeclaredCapacity(raw).bathrooms,
+        connections: readExternalPmsConnections(raw),
     }
 }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
-import { Property, Unit } from "@/types"
+import { Property } from "@/types"
 import { PropertyCard } from "./PropertyCard"
 import { Button } from "@/components/ui/button"
 import { Plus, Search, Filter, Home, List, X } from "lucide-react"
@@ -23,141 +23,25 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs"
-import type { ColumnDef, SortingFn } from "@tanstack/react-table"
 import { DataTable } from "@/components/shared/data-table"
-import { TextLink } from "@/components/ui/text-link"
-import { formatMoney } from "@/lib/money"
 import { propertyEditHref } from "../lib/property-tabs"
 import { useCachedLoad } from "@/hooks/useCachedLoad"
 import { portfolioCache, propertiesCache } from "../lib/properties-cache"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { Skeleton } from "@/components/ui/skeleton"
-import { StatusPill } from "@/components/ui/status-pill"
 import { PageHeader } from "@/components/ui/page"
 import { Surface } from "@/components/ui/card"
-
-/** Una fila de la tabla de alojamientos: el alojamiento con su propiedad ya resuelta. */
-interface ListingRow {
-    unit: Unit
-    propertyName: string
-    /** A dónde lleva la fila: la pestaña Alojamientos de su propiedad (y ese alojamiento). */
-    href: string | null
-}
+import { listingColumns, ListingMobileRow, toListingTableRow, type ListingTableRow } from "./listing-columns"
 
 export const LISTINGS_PAGE_SIZE = 10
 const LISTINGS_LABEL = { singular: "alojamiento", plural: "alojamientos" }
 
-const STATUS_LABEL: Record<Unit["status"], string> = { ACTIVE: "Activo", INACTIVE: "Inactivo" }
+/** Las mismas columnas que la pestaña Alojamientos de cada propiedad (`listing-columns`). */
+const LISTING_COLUMNS = listingColumns({ withProperty: true })
 
-/** «—» en `ink-4` es «no aplica» (manual §3): sin precio o sin capacidad declarada. */
-function Absent() {
-    return <span className="text-ink-4">—</span>
-}
-
-function capacityText(capacity: number | null): string | null {
-    if (capacity === null) return null
-    return `${capacity} ${capacity === 1 ? "huésped" : "huéspedes"}`
-}
-
-/**
- * Orden por nombre, propiedad, estado, capacidad y precio. Un dato ausente es
- * `undefined` para TanStack y `sortUndefined: "last"` lo deja al final en los
- * DOS sentidos (con -1 subía primero al ordenar ascendente).
- */
-const TEXT_COLLATOR = new Intl.Collator("es", { sensitivity: "base", numeric: true })
-/**
- * Sin esto TanStack ELIGE la función de orden muestreando las filas a partir de
- * la 11.ª: con ≤10 resultados ordena por código de carácter (mayúsculas antes,
- * «Álamo» después de «Zebra») y con más cambia de criterio bajo el usuario.
- */
-const byText: SortingFn<ListingRow> = (a, b, columnId) =>
-    TEXT_COLLATOR.compare(String(a.getValue(columnId) ?? ""), String(b.getValue(columnId) ?? ""))
-
-const LISTING_COLUMNS: ColumnDef<ListingRow>[] = [
-    {
-        id: "name",
-        accessorFn: (row) => row.unit.name,
-        sortingFn: byText,
-        header: "Alojamiento",
-        cell: ({ row }) => {
-            const { unit, href } = row.original
-            const name = unit.name || "Sin nombre"
-            return (
-                <div className="flex min-w-0 flex-col">
-                    {/* El enlace REAL (teclado, lector) es el nombre; la fila entera lo acompaña. */}
-                    {href ? <TextLink href={href} className="truncate">{name}</TextLink> : <span className="font-medium text-ink">{name}</span>}
-                    {unit.number && <span className="text-xs text-ink-3">{unit.number}</span>}
-                </div>
-            )
-        },
-    },
-    {
-        id: "property",
-        accessorFn: (row) => row.propertyName,
-        sortingFn: byText,
-        header: "Propiedad",
-        cell: ({ row }) => <span className="text-ink-2">{row.original.propertyName}</span>,
-    },
-    {
-        id: "status",
-        accessorFn: (row) => STATUS_LABEL[row.unit.status],
-        sortingFn: byText,
-        header: "Estado",
-        cell: ({ row }) => (
-            <StatusPill tone={row.original.unit.status === "ACTIVE" ? "success" : "idle"}>
-                {STATUS_LABEL[row.original.unit.status]}
-            </StatusPill>
-        ),
-    },
-    {
-        id: "capacity",
-        accessorFn: (row) => row.unit.capacity ?? undefined,
-        sortUndefined: "last",
-        // Como las columnas de texto: el primer clic ordena de menor a mayor.
-        sortDescFirst: false,
-        header: "Capacidad",
-        cell: ({ row }) => capacityText(row.original.unit.capacity) ?? <Absent />,
-    },
-    {
-        id: "price",
-        accessorFn: (row) => row.unit.pricePerNight ?? undefined,
-        sortUndefined: "last",
-        sortDescFirst: false,
-        header: () => <span className="block text-right">Precio por noche</span>,
-        cell: ({ row }) => {
-            const { pricePerNight, currency } = row.original.unit
-            return (
-                <span className="block text-right font-semibold tabular-nums text-ink">
-                    {pricePerNight === null ? <Absent /> : formatMoney(pricePerNight, currency)}
-                </span>
-            )
-        },
-    },
-]
-
-/** La fila apilada en móvil: nombre + estado, metadatos, capacidad y precio. */
-function ListingMobileRow({ row }: { row: ListingRow }) {
-    const { unit, href, propertyName } = row
-    const name = unit.name || "Sin nombre"
-    return (
-        <div className="space-y-1">
-            <div className="flex items-start justify-between gap-3">
-                {href ? <TextLink href={href}>{name}</TextLink> : <span className="font-medium text-ink">{name}</span>}
-                <StatusPill tone={unit.status === "ACTIVE" ? "success" : "idle"}>{STATUS_LABEL[unit.status]}</StatusPill>
-            </div>
-            {unit.number && <p className="text-xs text-ink-3">{unit.number}</p>}
-            <p className="text-sm text-ink-2">{propertyName}</p>
-            <div className="flex items-center justify-between gap-3 pt-1 text-sm">
-                <span className="text-ink-2">{capacityText(unit.capacity) ?? <Absent />}</span>
-                <span className="font-semibold tabular-nums text-ink">{unit.pricePerNight === null ? <Absent /> : formatMoney(unit.pricePerNight, unit.currency)}</span>
-            </div>
-        </div>
-    )
-}
-
-const rowId = (row: ListingRow) => String(row.unit.id)
-const rowHref = (row: ListingRow) => row.href ?? ""
-const renderMobileRow = (row: ListingRow) => <ListingMobileRow row={row} />
+const rowId = (row: ListingTableRow) => row.id
+const rowHref = (row: ListingTableRow) => row.href ?? ""
+const renderMobileRow = (row: ListingTableRow) => <ListingMobileRow row={row} />
 
 // ── Component ──────────────────────────────────────────────────────────
 
@@ -223,28 +107,32 @@ export function PropertiesList() {
     }, [properties, searchQuery, statusFilter])
 
     const propertyById = useMemo(() => new Map(properties.map((p: Property) => [String(p.id), p])), [properties])
-    const listingRows = useMemo<ListingRow[]>(() => units.map((unit: Unit) => {
+    // Cada fila con su propiedad resuelta; `propertyId` solo para el filtro.
+    const listingRows = useMemo(() => units.map((unit) => {
         const property = propertyById.get(String(unit.propertyId))
         const propertyUuid = property?.uuid ?? property?.id
         return {
-            unit,
-            propertyName: property?.name ?? "",
-            // `?unit=` abre ese alojamiento en la pestaña (PropertiesUnits lo lee).
-            href: propertyUuid ? `${propertyEditHref(propertyUuid, "units")}${unit.uuid ? `&unit=${encodeURIComponent(unit.uuid)}` : ""}` : null,
+            propertyId: String(unit.propertyId),
+            row: toListingTableRow(unit, {
+                propertyName: property?.name ?? "",
+                propertyHref: propertyUuid ? propertyEditHref(propertyUuid) : null,
+                // `?unit=` abre ese alojamiento en la pestaña (PropertiesUnits lo lee).
+                href: propertyUuid ? `${propertyEditHref(propertyUuid, "units")}${unit.uuid ? `&unit=${encodeURIComponent(unit.uuid)}` : ""}` : null,
+            }),
         }
     }), [units, propertyById])
 
     const filteredRows = useMemo(() => {
         const needle = searchQuery.trim().toLowerCase()
-        return listingRows.filter(({ unit, propertyName }) => {
+        return listingRows.filter(({ row, propertyId }) => {
             const matchesSearch = needle === ""
-                || unit.name?.toLowerCase().includes(needle)
-                || (unit.number || "").toLowerCase().includes(needle)
-                || propertyName.toLowerCase().includes(needle)
-            const matchesStatus = statusFilter === "ALL" || unit.status === statusFilter
-            const matchesProperty = propertyFilter === "ALL" || String(unit.propertyId) === propertyFilter
+                || row.name.toLowerCase().includes(needle)
+                || row.number.toLowerCase().includes(needle)
+                || (row.propertyName ?? "").toLowerCase().includes(needle)
+            const matchesStatus = statusFilter === "ALL" || row.status === statusFilter
+            const matchesProperty = propertyFilter === "ALL" || propertyId === propertyFilter
             return matchesSearch && matchesStatus && matchesProperty
-        })
+        }).map(({ row }) => row)
     }, [listingRows, searchQuery, statusFilter, propertyFilter])
 
     const hasActiveFilters = searchQuery.trim() !== "" || statusFilter !== "ALL" || (activeTab === "units" && propertyFilter !== "ALL")
@@ -419,6 +307,7 @@ export function PropertiesList() {
                             <DataTable
                                 columns={LISTING_COLUMNS}
                                 data={filteredRows}
+                                resetPageOn={`${searchQuery.trim()}|${statusFilter}|${propertyFilter}`}
                                 getRowId={rowId}
                                 getRowHref={rowHref}
                                 renderMobileRow={renderMobileRow}

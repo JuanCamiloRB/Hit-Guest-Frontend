@@ -175,12 +175,21 @@ const LINE_GLYPH: Record<ToggletipTone, { icon: LucideIcon; className: string }>
     none: { icon: Minus, className: "text-ink-4" },
 }
 
-/** Una línea del detalle con la misma marca de forma que la celda. */
-function ToggletipLine({ tone, className, children, ...props }: React.ComponentProps<"p"> & { tone: ToggletipTone }) {
-    const glyph = LINE_GLYPH[tone]
+type ToggletipLineProps = React.ComponentProps<"p"> & (
+    /** Un estado: la misma marca de forma que la celda. */
+    | { tone: ToggletipTone; icon?: never }
+    /** Un dato (celda `neutral`): el ícono de lo que es, en tinta tenue. */
+    | { icon: LucideIcon; tone?: never }
+)
+
+/** Una línea del detalle: con la marca del estado, o con el ícono del dato. */
+function ToggletipLine({ tone, icon, className, children, ...props }: ToggletipLineProps) {
+    const glyph = tone ? LINE_GLYPH[tone] : null
     return (
-        <p data-slot="toggletip-line" data-tone={tone} className={cn("flex items-start gap-2 leading-snug", className)} {...props}>
-            <Icon icon={glyph.icon} size="xs" weight="bold" className={cn("mt-0.5", glyph.className)} />
+        <p data-slot="toggletip-line" data-tone={tone ?? "neutral"} className={cn("flex items-start gap-2 leading-snug", className)} {...props}>
+            {glyph
+                ? <Icon icon={glyph.icon} size="xs" weight="bold" className={cn("mt-0.5", glyph.className)} />
+                : icon && <Icon icon={icon} size="xs" className="mt-0.5 text-ink-3" />}
             <span className="min-w-0">{children}</span>
         </p>
     )

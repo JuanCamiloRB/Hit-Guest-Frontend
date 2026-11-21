@@ -3,19 +3,12 @@
 import { ColumnDef, SortingFn } from "@tanstack/react-table"
 import { UNKNOWN_CHANNEL_LABEL } from "@/lib/reservation-channel"
 import { cancelDetailPrefetch, startDetailPrefetch } from "../lib/detail-prefetch"
-import { CircleHelp, FileSignature, FileText, KeyRound, Landmark, Link2, LogIn, LogOut, MoreVertical, RefreshCw, Trash2, Users, type LucideIcon } from "lucide-react"
+import { CircleHelp, RefreshCw, Trash2, type LucideIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
 import Link from "next/link"
 
-import { Button } from "@/components/ui/button"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { StatusPill } from "@/components/ui/status-pill"
 import { Reservation } from "@/types"
 import { format } from "date-fns"
@@ -24,6 +17,8 @@ import { getReservationStatusMeta } from "./reservation-status-meta"
 import { compareText, compareDates, compareStatus } from "./reservation-sorting"
 import { TextLink } from "@/components/ui/text-link"
 import { StatusTile, StatusTileSkeleton, type StatusTileTone } from "@/components/ui/status-tile"
+import { AUTOMATION_ICONS } from "@/components/shared/automation-icons"
+import { ChannelCell, ColumnHeader, IdentityCell, MobileTileList, RowActionsMenu } from "@/components/shared/table-cells"
 import { Toggletip, ToggletipLine, ToggletipNote, ToggletipTitle, type ToggletipTone } from "@/components/ui/toggletip"
 import { DeliveryChannelIcon } from "@/components/brand/DeliveryChannelIcon"
 import { useLinkAttempts } from "../hooks/useLinkAttempts"
@@ -66,15 +61,16 @@ const sortByStatus: SortingFn<Reservation> = (a, b) =>
     compareStatus(a.original.status, b.original.status)
 
 /** El ícono de lo que mide cada columna; el nombre va escrito debajo, en el encabezado. */
+/** Los íconos de toda la app (`AUTOMATION_ICONS`): los mismos en el Tablero. */
 const CELL_ICONS: Record<CellKey, LucideIcon> = {
-    link: Link2,
-    checkin: Users,
-    contract: FileSignature,
-    code: KeyRound,
-    tra: Landmark,
-    sireIn: LogIn,
-    sireOut: LogOut,
-    pdf: FileText,
+    link: AUTOMATION_ICONS.link,
+    checkin: AUTOMATION_ICONS.identity,
+    contract: AUTOMATION_ICONS.contract,
+    code: AUTOMATION_ICONS.access,
+    tra: AUTOMATION_ICONS.tra,
+    sireIn: AUTOMATION_ICONS.sire,
+    sireOut: AUTOMATION_ICONS.sireOut,
+    pdf: AUTOMATION_ICONS.pdf,
 }
 
 /** El título del detalle: más largo que el encabezado, que tiene que caber en 64 px. */
@@ -113,12 +109,7 @@ function cellsOf(reservation: Reservation, forSort = false) {
 }
 
 function CellHeader({ cellKey }: { cellKey: CellKey }) {
-    return (
-        <span className="inline-flex flex-col items-center gap-0.5">
-            <Icon icon={CELL_ICONS[cellKey]} size="sm" />
-            <span>{CELL_LABELS[cellKey]}</span>
-        </span>
-    )
+    return <ColumnHeader icon={CELL_ICONS[cellKey]} label={CELL_LABELS[cellKey]} />
 }
 
 /**
@@ -177,17 +168,18 @@ function AutomationCellView({ cellKey, reservation, onRetry }: {
     if (cell === null) {
         if (!reservation.automationStatusFailed) return <StatusTileSkeleton />
         const retryHere = onRetry && CELL_KEYS.find((key) => cells[key] === null) === cellKey
+        // Sin `title` y sin detalle: es una ACCIÓN (un Toggletip la fijaba con el
+        // mismo clic que reintenta); su nombre accesible ya dice qué hace.
         return retryHere ? (
             <StatusTile
                 tone="idle"
                 icon={RefreshCw}
                 label={`No disponible. Reintentar el estado de ${reservation.guestName}`}
-                title="Reintentar"
                 onClick={() => onRetry(reservation)}
             />
         ) : (
             // NO el guion de «no configurada»: sin dato es «no sabemos», con su propio ícono.
-            <StatusTile tone="idle" icon={CircleHelp} label={`${CELL_LABELS[cellKey]}: no disponible`} title="No disponible" disabled />
+            <StatusTile tone="idle" icon={CircleHelp} label={`${CELL_LABELS[cellKey]}: no disponible`} disabled />
         )
     }
     const tone = TILE_TONE[cell.state]
@@ -238,17 +230,7 @@ function automationColumn(cellKey: CellKey, onRetry?: (reservation: Reservation)
 /** El menú de acciones de una reserva: en la fila de la tabla y en la fila apilada de móvil. */
 function ReservationActions({ reservation, onDelete }: { reservation: Reservation; onDelete?: (reservation: Reservation) => void }) {
     return (
-        <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Acciones de la reserva de ${reservation.guestName}`}
-                >
-                    <Icon icon={MoreVertical} />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+        <RowActionsMenu label={`Acciones de la reserva de ${reservation.guestName}`}>
                 <DropdownMenuItem
                     onClick={() => navigator.clipboard.writeText(reservation.id)}
                 >
@@ -282,8 +264,7 @@ function ReservationActions({ reservation, onDelete }: { reservation: Reservatio
                         </DropdownMenuItem>
                     </>
                 )}
-            </DropdownMenuContent>
-        </DropdownMenu>
+        </RowActionsMenu>
     )
 }
 
@@ -334,14 +315,14 @@ export function ReservationMobileRow({ reservation, onDelete, onRetryStatus, cel
                     <ReservationActions reservation={reservation} onDelete={onDelete} />
                 </div>
             </div>
-            <ul className="flex flex-wrap gap-x-2 gap-y-3" aria-label="Automatizaciones y reportes">
-                {cellKeys.map((key) => (
-                    <li key={key} className="flex flex-col items-center gap-1">
-                        <AutomationCellView cellKey={key} reservation={reservation} onRetry={onRetryStatus} />
-                        <span className="text-xs text-ink-3" aria-hidden="true">{CELL_LABELS[key]}</span>
-                    </li>
-                ))}
-            </ul>
+            <MobileTileList
+                label="Automatizaciones y reportes"
+                items={cellKeys.map((key) => ({
+                    key,
+                    label: CELL_LABELS[key],
+                    tile: <AutomationCellView cellKey={key} reservation={reservation} onRetry={onRetryStatus} />,
+                }))}
+            />
         </div>
     )
 }
@@ -364,29 +345,28 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             // Sin avatar de iniciales: repetía el nombre de al lado («H2» por
             // «Huésped 26») y hacía cada fila de 85 px. Dos líneas: quién y dónde.
             return (
-                <div className="flex min-w-0 max-w-44 flex-col py-0.5">
-                    <TextLink
-                        href={`/dashboard/reservations/${reservation.id}`}
-                        className="truncate text-sm"
-                        // Quedarse sobre la fila (o enfocarla) precarga la ficha.
-                        onMouseEnter={() => startDetailPrefetch(reservation.id)}
-                        onMouseLeave={() => cancelDetailPrefetch(reservation.id)}
-                        onFocus={() => startDetailPrefetch(reservation.id)}
-                        onBlur={() => cancelDetailPrefetch(reservation.id)}
-                    >
-                        {reservation.guestName}
-                    </TextLink>
-                    {/* Alojamiento primero y propiedad después: el PM identifica la
-                        unidad concreta, no el edificio. La propiedad queda vacía
-                        mientras el portafolio no responde: sin texto que parezca un
-                        fallo mientras solo está cargando. */}
-                    <span className="truncate text-xs text-ink-3">
+                <IdentityCell
+                    name={reservation.guestName}
+                    href={`/dashboard/reservations/${reservation.id}`}
+                    className="max-w-44"
+                    // Quedarse sobre la fila (o enfocarla) precarga la ficha.
+                    linkProps={{
+                        onMouseEnter: () => startDetailPrefetch(reservation.id),
+                        onMouseLeave: () => cancelDetailPrefetch(reservation.id),
+                        onFocus: () => startDetailPrefetch(reservation.id),
+                        onBlur: () => cancelDetailPrefetch(reservation.id),
+                    }}
+                    // Alojamiento primero y propiedad después: el PM identifica la
+                    // unidad concreta, no el edificio. La propiedad queda vacía
+                    // mientras el portafolio no responde: sin texto que parezca un
+                    // fallo mientras solo está cargando.
+                    secondary={<>
                         <span className="text-ink-2">{reservation.unitName}</span>
                         {reservation.propertyName && reservation.unitName !== reservation.propertyName && (
                             <> · {reservation.propertyName}</>
                         )}
-                    </span>
-                </div>
+                    </>}
+                />
             )
         }
     },
@@ -419,14 +399,9 @@ export function getColumns(options?: ColumnsOptions): ColumnDef<Reservation>[] {
             const { source, sourceSlug } = row.original
             // Sin canal informado se dice; nunca se asume «Directo».
             if (!source) return <span className="text-sm text-ink-4">{UNKNOWN_CHANNEL_LABEL}</span>
-            // Logo real de la marca (simple-icons), el mismo de las demás pantallas.
-            const icon = <ChannelLogo channel={sourceSlug ?? source} className="h-4 w-4" />
-            return (
-                <div className="flex items-center gap-2">
-                    {icon}
-                    <span className="text-sm text-ink-2">{source}</span>
-                </div>
-            )
+            // Logo real de la marca (simple-icons) y su nombre: la misma celda que
+            // la conexión de un alojamiento.
+            return <ChannelCell channel={sourceSlug ?? source} name={source} />
         }
     },
     {

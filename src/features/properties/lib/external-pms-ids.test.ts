@@ -3,6 +3,7 @@ import {
     hasIncompleteExternalPmsId,
     normalizeExternalPmsIds,
     readExternalPmsIds,
+    readExternalPmsConnections,
     readExternalIdentifierServerErrors,
     mapExternalIdentifierErrorKey,
     sameExternalPmsIds,
@@ -165,5 +166,26 @@ describe("errores del backend — externalIdentifiers.N.campo (tercer nombre del
         expect(readExternalIdentifierServerErrors(undefined)).toEqual([])
         expect(readExternalIdentifierServerErrors(["mensaje suelto"])).toEqual([])
         expect(readExternalIdentifierServerErrors({ "externalIdentifiers.0.externalId": [] })).toEqual([])
+    })
+})
+
+describe("readExternalPmsConnections — lo que muestra la tabla de alojamientos", () => {
+    it("conserva el nombre del origen (texto u objeto con `name`); sin nombre, `null`", () => {
+        expect(readExternalPmsConnections({ pmsIdentifiers: [
+            { id: 1, sourcePmsId: 134, sourcePms: "KunasPMS", externalId: "26118" },
+            { id: 2, sourcePmsId: 100, sourcePms: { name: " Airbnb " }, externalId: "999" },
+            { id: 3, sourcePmsId: 101, externalId: "77" },
+        ] })).toEqual([
+            { id: 1, sourcePmsId: 134, externalId: "26118", sourceName: "KunasPMS" },
+            { id: 2, sourcePmsId: 100, externalId: "999", sourceName: "Airbnb" },
+            { id: 3, sourcePmsId: 101, externalId: "77", sourceName: null },
+        ])
+    })
+
+    it("descarta las filas incompletas como el lector del formulario; `[]` y clave ausente se distinguen", () => {
+        expect(readExternalPmsConnections({ pmsIdentifiers: [{ sourcePmsId: 134, sourcePms: "KunasPMS", externalId: "" }] })).toEqual([])
+        expect(readExternalPmsConnections({ pmsIdentifiers: [] })).toEqual([])
+        expect(readExternalPmsConnections({})).toBeNull()
+        expect(readExternalPmsConnections(null)).toBeNull()
     })
 })

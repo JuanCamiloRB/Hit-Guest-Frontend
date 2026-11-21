@@ -11,7 +11,9 @@ const mocks = vi.hoisted(() => ({
     listClientUsers: vi.fn(),
     params: new URLSearchParams(),
     toastInfo: vi.fn(),
+    small: false,
 }))
+vi.mock("@/hooks/useMediaQuery", () => ({ SMALL_SCREEN_QUERY: "(max-width: 767px)", useMediaQuery: () => mocks.small }))
 vi.mock("next/navigation", () => ({ useSearchParams: () => mocks.params }))
 vi.mock("sonner", () => ({ toast: { info: mocks.toastInfo, success: vi.fn(), error: vi.fn() } }))
 vi.mock("../services/support-service", () => ({
@@ -25,13 +27,13 @@ const CLIENT = { uuid: "c-1", name: "Casa Rentals252a2", email: "contacto@casa.t
 const INTERNAL = { uuid: "c-hit", name: "HiTGuest -", email: "it@hitguest.com", identificationNumber: "100200300-4", usersCount: 0 }
 const ANA = { uuid: "u-1", name: "Ana Pérez", email: "ana@casa.test", role: "property_manager", isAccountOwner: true, verified: true, canOpenSession: true }
 
-/** jsdom no aplica CSS: tabla (md+) y tarjetas (móvil) conviven en el DOM; se consulta cada una por separado. */
+/** La tabla compartida pinta la tabla (md+) o las filas apiladas (móvil), según el ancho. */
 const table = () => screen.getByRole("table")
-const cards = () => screen.getAllByRole("list").find((list) => list.tagName === "UL")!
 
 describe("SupportConsole — tabla a todo el ancho + panel lateral (auditorías 2026-10-16)", () => {
     beforeEach(() => {
         vi.clearAllMocks()
+        mocks.small = false
         mocks.params = new URLSearchParams()
         mocks.listClients.mockResolvedValue({ items: [CLIENT, INTERNAL], meta: { currentPage: 1, lastPage: 1, total: 2 } })
         mocks.listClientUsers.mockResolvedValue([ANA])
@@ -53,10 +55,12 @@ describe("SupportConsole — tabla a todo el ancho + panel lateral (auditorías 
         expect(within(row).getByText("3 usuarios")).toBeInTheDocument()
     })
 
-    it("en móvil la misma información va en tarjetas, con su botón", async () => {
+    it("en móvil la misma información va en filas apiladas, con su botón", async () => {
+        mocks.small = true
         render(<SupportConsole />)
-        await screen.findByRole("table")
-        const card = within(cards()).getByText("Casa Rentals252a2").closest("li")!
+        const card = (await screen.findByText("Casa Rentals252a2")).closest("li")!
+        expect(screen.queryByRole("table")).toBeNull()
+        expect(card).toHaveTextContent("contacto@casa.test")
         expect(card).toHaveTextContent("ID 900123456")
         expect(within(card).getByRole("button", { name: "Ver usuarios de Casa Rentals252a2" })).toBeInTheDocument()
     })
@@ -66,8 +70,6 @@ describe("SupportConsole — tabla a todo el ancho + panel lateral (auditorías 
         const row = (await within(await screen.findByRole("table")).findByText("HiTGuest -")).closest("tr")!
         expect(within(row).getByText("Sin usuarios")).toBeInTheDocument()
         expect(within(row).queryByRole("button")).toBeNull()
-        // Las iniciales ya no toman el guion: «HiTGuest -» → «H».
-        expect(within(row).getByText("H")).toBeInTheDocument()
     })
 
     it("la fila no abre nada: la única acción es «Ver usuarios»", async () => {
@@ -101,5 +103,42 @@ describe("SupportConsole — tabla a todo el ancho + panel lateral (auditorías 
         mocks.params = new URLSearchParams("session=ended")
         render(<SupportConsole />)
         expect(mocks.toastInfo).toHaveBeenCalledWith("La sesión de soporte se cerró", expect.anything())
+    })
+})
+
+describe("SupportConsole — tabla compartida con paginación del servidor", () => {
+    beforeEach(() => {
+        vi.clearAllMocks()
+        mocks.small = false
+        mocks.params = new URLSearchParams()
+        mocks.listClientUsers.mockResolvedValue([ANA])
+    })
+
+    it("Siguiente pide la página 2 con la misma búsqueda y deja la 1 a la vista mientras llega; el pie dice solo la página", async () => {
+        let release!: (value: unknown) => void
+        mocks.listClients
+            .mockResolvedValueOnce({ items: [CLIENT], meta: { currentPage: 1, lastPage: 2, total: 30 } })
+            .mockReturnValueOnce(new Promise((resolve) => { release = resolve }))
+        render(<SupportConsole />)
+        await within(await screen.findByRole("table")).findByText("Casa Rentals252a2")
+        // Sin «por página» del backend, el rango sería inventado: solo la página.
+        expect(screen.queryByText(/Mostrando/)).toBeNull()
+        fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }))
+        await waitFor(() => expect(mocks.listClients).toHaveBeenLastCalledWith({ search: "", page: 2 }))
+        expect(within(table()).getByText("Casa Rentals252a2")).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: /Siguiente/ })).toBeDisabled()
+        release({ items: [INTERNAL], meta: { currentPage: 2, lastPage: 2, total: 30 } })
+        expect(await within(table()).findByText("HiTGuest -")).toBeInTheDocument()
+    })
+
+    it("la fila del cliente abierto en el panel queda marcada", async () => {
+        mocks.listClients.mockResolvedValue({ items: [CLIENT, INTERNAL], meta: { currentPage: 1, lastPage: 1, total: 2 } })
+        render(<SupportConsole />)
+        await screen.findByRole("table")
+        fireEvent.click(within(table()).getByRole("button", { name: "Ver usuarios de Casa Rentals252a2" }))
+        await screen.findByRole("dialog")
+        // El panel es modal: lo de atrás queda oculto para el lector (`hidden: true`).
+        const row = within(screen.getByRole("table", { hidden: true })).getByText("Casa Rentals252a2", { selector: "span" }).closest("tr")!
+        expect(row).toHaveAttribute("data-state", "selected")
     })
 })

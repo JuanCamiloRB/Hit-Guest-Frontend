@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { act, fireEvent, render, screen } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
+import { Users } from "lucide-react"
 
 import { Toggletip, ToggletipLine, ToggletipNote, ToggletipTitle } from "./toggletip"
 
@@ -159,3 +160,19 @@ describe("Toggletip — auditoría visual 2026-11-19", () => {
     })
 })
 
+
+describe("ToggletipLine — estado o dato", () => {
+    it("con `tone`, la marca de forma del estado; con `icon`, el ícono del dato en tinta tenue y sin marca", () => {
+        render(<>
+            <ToggletipLine tone="success">Firmado</ToggletipLine>
+            <ToggletipLine icon={Users}>Hasta 6 huéspedes</ToggletipLine>
+        </>)
+        const [state, data] = document.querySelectorAll('[data-slot="toggletip-line"]')
+        expect(state).toHaveAttribute("data-tone", "success")
+        expect(state.querySelector(".lucide-check")).not.toBeNull()
+        expect(data).toHaveAttribute("data-tone", "neutral")
+        expect(data.querySelector(".lucide-users")).toHaveClass("text-ink-3")
+        expect(data.querySelector(".lucide-check, .lucide-clock, .lucide-x")).toBeNull()
+        expect(data).toHaveTextContent("Hasta 6 huéspedes")
+    })
+})

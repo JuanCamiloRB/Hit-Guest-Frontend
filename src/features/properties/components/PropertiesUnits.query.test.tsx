@@ -83,7 +83,7 @@ describe("PropertiesUnits — `?unit=` abre ese alojamiento al llegar", () => {
     it("sin `?unit=`, o con uno que no existe, no se abre nada", async () => {
         mocks.params = new URLSearchParams("tab=units&unit=l-9")
         render(<Wrapper><PropertiesUnits /></Wrapper>)
-        await screen.findByRole("button", { name: "Editar Suite 101" })
+        await screen.findByRole("button", { name: "Acciones de Suite 101" })
         expect(screen.queryByRole("dialog")).toBeNull()
     })
 

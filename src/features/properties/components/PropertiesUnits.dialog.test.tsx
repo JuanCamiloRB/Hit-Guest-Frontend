@@ -163,9 +163,14 @@ describe("PropertiesUnits — el diálogo rediseñado escribe lo mismo de siempr
         await waitFor(() => expect(screen.getByRole("button", { name: "Añadir alojamiento" })).toHaveFocus())
     })
 
-    it("la fila de la tabla nombra sus acciones", () => {
+    it("la fila de la tabla nombra sus acciones: el nombre abre la edición y el menú «⋮» edita o elimina", async () => {
+        const user = userEvent.setup()
         render(<Wrapper units={[{ uuid: "l-1", name: "Suite 101", internalName: "101", isActive: true }]}><PropertiesUnits /></Wrapper>)
-        expect(screen.getByRole("button", { name: "Editar Suite 101" })).toBeInTheDocument()
-        expect(screen.getByRole("button", { name: "Eliminar Suite 101" })).toBeInTheDocument()
+        await user.click(screen.getByRole("button", { name: "Acciones de Suite 101" }))
+        expect(await screen.findByRole("menuitem", { name: "Editar" })).toBeInTheDocument()
+        expect(screen.getByRole("menuitem", { name: "Eliminar" })).toBeInTheDocument()
+        await user.keyboard("{Escape}")
+        await user.click(screen.getByRole("button", { name: "Suite 101" }))
+        expect(await screen.findByRole("dialog", { name: "Editar alojamiento" })).toBeInTheDocument()
     })
 })

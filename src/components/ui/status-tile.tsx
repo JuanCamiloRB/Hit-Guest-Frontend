@@ -18,6 +18,12 @@ import { Icon } from "./icon"
  * con la barra lateral abierta: por eso 64 y no más. Lo que dice cada una se lee en el encabezado de su columna y en su
  * nombre accesible (`label`, obligatorio); el detalle va en un `Toggletip`.
  *
+ * `data` es un dato contable con su ícono (Alojamientos: la capacidad): la
+ * misma celda y el mismo detalle que un estado, en el morado claro de
+ * HitGuest (como `Badge accent`) y sin marca de forma porque no hay nada hecho
+ * ni pendiente. El texto va en `primary-hover`: con `primary` bajaría a 4.41:1
+ * sobre una fila en hover; así queda en 5.38:1.
+ *
  * Es un `<button>`: se enfoca y se pulsa para abrir el detalle. `none` («no
  * configurada») muestra solo el guion y no se ofrece como control si no tiene
  * detalle que abrir (`disabled`).
@@ -37,6 +43,9 @@ const statusTileVariants = cva(
                 danger: "border-danger/30 bg-danger-sunk text-danger",
                 // Configurada pero todavía no corre: el ícono en gris, sin marca.
                 idle: "border-rule bg-card text-ink-3",
+                // Un DATO, no un estado (la capacidad): morado claro, como el
+                // ámbar de «pendiente» pero sin marca. Mismo tamaño.
+                data: "border-primary/30 bg-primary/10 text-primary-hover enabled:hover:border-primary/50",
                 // No configurada / no aplica: solo el guion, borde punteado.
                 none: "border-dashed border-rule bg-transparent text-ink-4",
             },
@@ -52,6 +61,7 @@ const GLYPH: Record<StatusTileTone, LucideIcon | null> = {
     warning: Clock,
     danger: X,
     idle: null,
+    data: null,
     none: null,
 }
 

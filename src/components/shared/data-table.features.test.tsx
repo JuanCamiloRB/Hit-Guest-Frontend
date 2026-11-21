@@ -178,3 +178,111 @@ describe("DataTable — encabezados agrupados y columna fija", () => {
         expect(cell.closest("tr")).toHaveClass("group/row")
     })
 })
+
+describe("DataTable — paginación del servidor, fila de aviso y fila seleccionada", () => {
+    beforeEach(() => { mocks.small = false })
+    const sortable: ColumnDef<Row>[] = [{ accessorKey: "name", header: "Nombre" }]
+    const page2 = rows.slice(10, 20)
+
+    it("pinta la página que mandó el servidor con su total; Siguiente/Anterior piden la página; sin orden por columna", async () => {
+        const onPageChange = vi.fn()
+        const { rerender } = render(<DataTable columns={sortable} data={page2} getRowId={getRowId} pageSize={10} itemLabel={label}
+            serverPagination={{ pageIndex: 1, pageCount: 3, total: 28, onPageChange }} />)
+        await act(async () => {})
+        expect(screen.getByText("Mostrando 11–20 de 28 alojamientos")).toBeInTheDocument()
+        expect(screen.getByText("Página 2 de 3")).toBeInTheDocument()
+        // Las 10 filas que llegaron, no un recorte de ellas, y sin volver a la página 1.
+        expect(within(screen.getByRole("table")).getAllByRole("row").slice(1)).toHaveLength(10)
+        expect(onPageChange).not.toHaveBeenCalled()
+        expect(within(screen.getByRole("table")).queryByRole("button", { name: /Nombre/ })).toBeNull()
+        fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }))
+        expect(onPageChange).toHaveBeenLastCalledWith(2)
+        fireEvent.click(screen.getByRole("button", { name: /Anterior/ }))
+        expect(onPageChange).toHaveBeenLastCalledWith(0)
+        // Mientras llega la otra página, no se puede pedir otra.
+        rerender(<DataTable columns={sortable} data={page2} getRowId={getRowId} pageSize={10} itemLabel={label}
+            serverPagination={{ pageIndex: 1, pageCount: 3, total: 28, onPageChange, loading: true }} />)
+        expect(screen.getByRole("button", { name: /Siguiente/ })).toBeDisabled()
+        expect(screen.getByRole("button", { name: /Anterior/ })).toBeDisabled()
+    })
+
+    it("sin total del servidor: el pie dice solo la página", async () => {
+        render(<DataTable columns={sortable} data={page2} getRowId={getRowId} pageSize={10} itemLabel={label}
+            serverPagination={{ pageIndex: 1, pageCount: 3, total: null, onPageChange: vi.fn() }} />)
+        await act(async () => {})
+        expect(screen.getByText("Página 2 de 3")).toBeInTheDocument()
+        expect(screen.queryByText(/Mostrando/)).toBeNull()
+    })
+
+    it("getRowTone pinta la fila de aviso; isRowSelected la marca como seleccionada", async () => {
+        render(<DataTable columns={sortable} data={rows.slice(0, 3)} getRowId={getRowId}
+            getRowTone={(r) => (r.id === 2 ? "warning" : undefined)} isRowSelected={(r) => r.id === 3} />)
+        await act(async () => {})
+        const [first, second, third] = within(screen.getByRole("table")).getAllByRole("row").slice(1)
+        expect(second).toHaveClass("bg-warning-sunk/30")
+        expect(first).not.toHaveClass("bg-warning-sunk/30")
+        expect(third).toHaveAttribute("data-state", "selected")
+        expect(first).not.toHaveAttribute("data-state")
+    })
+})
+
+describe("DataTable — cuándo vuelve a la página 1 (auditoría 2026-11-20)", () => {
+    beforeEach(() => { mocks.small = false })
+    const plain: ColumnDef<Row>[] = [{ accessorKey: "name", header: "Nombre" }]
+    const page = () => screen.getByText(/^Página \d+ de \d+$/).textContent
+
+    it("dentro de un formulario, paginar no lo envía", async () => {
+        const onSubmit = vi.fn((event: React.FormEvent) => event.preventDefault())
+        render(<form onSubmit={onSubmit}><DataTable columns={plain} data={rows} getRowId={getRowId} pageSize={10} /></form>)
+        await act(async () => {})
+        fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }))
+        expect(onSubmit).not.toHaveBeenCalled()
+        expect(page()).toBe("Página 2 de 3")
+    })
+
+    it("sin resetPageOn: filas que llegan en MEDIO de la lista no mueven la página; una que desaparece, sí", async () => {
+        const { rerender } = render(<DataTable columns={plain} data={rows.slice(0, 20)} getRowId={getRowId} pageSize={10} />)
+        await act(async () => {})
+        fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }))
+        // Llega una reserva temprana, insertada al principio (carga en paralelo).
+        rerender(<DataTable columns={plain} data={[rows[25], ...rows.slice(0, 20)]} getRowId={getRowId} pageSize={10} />)
+        await act(async () => {})
+        expect(page()).toBe("Página 2 de 3")
+        // Una búsqueda que recorta: vuelve a la 1.
+        rerender(<DataTable columns={plain} data={rows.slice(0, 12)} getRowId={getRowId} pageSize={10} />)
+        await act(async () => {})
+        expect(page()).toBe("Página 1 de 2")
+    })
+
+    it("con resetPageOn: borrar o editar filas no mueve la página (si se queda sin filas, va a la última); otra búsqueda, sí", async () => {
+        const { rerender } = render(<DataTable columns={plain} data={rows.slice(0, 21)} getRowId={getRowId} pageSize={10} resetPageOn="a" />)
+        await act(async () => {})
+        fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }))
+        rerender(<DataTable columns={plain} data={rows.slice(1, 21)} getRowId={getRowId} pageSize={10} resetPageOn="a" />)
+        await act(async () => {})
+        expect(page()).toBe("Página 2 de 2")
+        fireEvent.click(screen.getByRole("button", { name: /Anterior/ }))
+        fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }))
+        // La página 2 se queda sin filas: va a la última que existe (la 1), no a una página vacía.
+        rerender(<DataTable columns={plain} data={rows.slice(1, 9)} getRowId={getRowId} pageSize={10} resetPageOn="a" />)
+        await act(async () => {})
+        expect(within(screen.getByRole("table")).getByText("Fila 2")).toBeInTheDocument()
+        expect(screen.queryByText("No hay resultados.")).toBeNull()
+        rerender(<DataTable columns={plain} data={rows.slice(1, 25)} getRowId={getRowId} pageSize={10} resetPageOn="a" />)
+        await act(async () => {})
+        fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }))
+        expect(page()).toBe("Página 2 de 3")
+        rerender(<DataTable columns={plain} data={rows.slice(1, 25)} getRowId={getRowId} pageSize={10} resetPageOn="b" />)
+        await act(async () => {})
+        expect(page()).toBe("Página 1 de 3")
+    })
+})
+
+describe("DataTable — rango del servidor", () => {
+    it("con `range`, el pie dice el rango que mandó el servidor, no uno calculado", async () => {
+        render(<DataTable columns={[{ accessorKey: "name", header: "Nombre" }]} data={rows.slice(0, 5)} getRowId={getRowId} pageSize={20} itemLabel={label}
+            serverPagination={{ pageIndex: 1, pageCount: 3, total: 45, range: { from: 11, to: 15 }, onPageChange: vi.fn() }} />)
+        await act(async () => {})
+        expect(screen.getByText("Mostrando 11–15 de 45 alojamientos")).toBeInTheDocument()
+    })
+})

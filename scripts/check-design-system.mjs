@@ -483,6 +483,16 @@ const rules = [
         ignore: UI_ONLY,
     },
     {
+        // Estándar de tablas (plan 20261120): toda tabla de listado es DataTable,
+        // con las celdas de `shared/table-cells`. Había cinco armadas a mano con
+        // su propia paginación, sus propios estados y «0 huéspedes» / «$0».
+        id: "handmade-table",
+        description: "arma una tabla con las piezas de ui/table; usa DataTable y las celdas de shared/table-cells",
+        pattern: /^@\/components\/ui\/table$/gm,
+        input: "imports",
+        ignore: (path) => UI_ONLY(path) || path === "src/components/shared/data-table.tsx",
+    },
+    {
         id: "nonstandard-icon-library",
         description: "importa iconos fuera de lucide-react o las primitivas de marca",
         pattern: /^(?:react-icons|@heroicons|phosphor-react|@mui\/icons-material)/g,

@@ -224,6 +224,7 @@ export default function ReservationsList() {
                 .some((v) => String(v).toLowerCase().includes(q))
         })
     }, [reservations, search, statusFilter, sourceFilter, dateField, dateRange])
+    const filterKey = [search.trim(), statusFilter, sourceFilter, dateField, dateRange?.from?.getTime() ?? "", dateRange?.to?.getTime() ?? ""].join("|")
 
     const hasActiveFilters =
         search.trim() !== "" || statusFilter !== "ALL" || sourceFilter !== "ALL" || !!dateRange?.from
@@ -511,6 +512,9 @@ export default function ReservationsList() {
             <DataTable
                 columns={columns}
                 data={rows}
+                // Otra búsqueda vuelve a la página 1; que lleguen los estados de las
+                // filas o se borre una reserva, no.
+                resetPageOn={filterKey}
                 empty={reservations.length === 0 ? (
                     <EmptyState
                         title="Todavía no hay reservas"

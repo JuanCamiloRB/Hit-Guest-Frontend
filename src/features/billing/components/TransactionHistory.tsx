@@ -1,7 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { ChevronLeft, ChevronRight, Receipt } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { Receipt } from "lucide-react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { DataTable, type DataTableFooterText } from "@/components/shared/data-table"
+import { IdentityCell } from "@/components/shared/table-cells"
+import { EmptyState } from "@/components/ui/empty-state"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { LoadingState, RefreshIndicator } from "@/components/ui/loading-state"
 import { Icon } from "@/components/ui/icon"
 import { billingService } from "../services/billing-service"
 import { formatUsd, type CreditTransaction, type TransactionsPage } from "../types"
@@ -11,8 +17,6 @@ import { StatusPill, type StatusTone } from "@/components/ui/status-pill"
 import { useTranslation } from "@/hooks/useTranslation"
 import { Heading } from "@/components/ui/heading"
 import { Surface } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
 
 /** «10 jul 2026, 2:32 p. m.» en la zona horaria local del PM. */
 function formatDate(iso: string, locale: string): string {
@@ -76,7 +80,32 @@ function AmountCell({ tx }: { tx: CreditTransaction }) {
     )
 }
 
-/** Historial paginado de transacciones de crédito (20 por página, más recientes primero). */
+const PAGE_SIZE = 20
+const rowId = (tx: CreditTransaction) => tx.uuid
+
+/** La fila apilada de móvil: qué y cuándo arriba, el importe a la derecha, las etiquetas debajo. */
+function TransactionMobileRow({ tx, locale }: { tx: CreditTransaction; locale: string }) {
+    return (
+        <div className="space-y-2">
+            <div className="flex items-start justify-between gap-3">
+                <IdentityCell name={tx.description} secondary={formatDate(tx.createdAt, locale)} />
+                <AmountCell tx={tx} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+                <TypeBadge type={tx.type} />
+                <SourceBadge source={tx.source} />
+                <StatusBadge status={tx.status} />
+            </div>
+        </div>
+    )
+}
+
+/**
+ * Historial paginado de transacciones de crédito (20 por página, más recientes
+ * primero). Es la tabla compartida con paginación del SERVIDOR: el pie dice lo
+ * que contó el backend y cambiar de página deja la anterior a la vista hasta
+ * que llega la nueva (nunca vuelve al esqueleto).
+ */
 export function TransactionHistory() {
     const { t } = useTranslation()
     const [page, setPage] = useState(1)
@@ -101,91 +130,97 @@ export function TransactionHistory() {
         }
     }, [page, attempt])
 
+    const locale = t("common.dateLocale")
+    const columns = useMemo<ColumnDef<CreditTransaction>[]>(() => [
+        {
+            id: "date",
+            header: t("billing.history.columns.date"),
+            cell: ({ row }) => <span className="text-ink-3">{formatDate(row.original.createdAt, locale)}</span>,
+        },
+        {
+            id: "description",
+            header: t("billing.history.columns.description"),
+            meta: { cellClassName: "min-w-48 whitespace-normal" },
+            cell: ({ row }) => <span className="text-sm text-ink-2">{row.original.description}</span>,
+        },
+        { id: "type", header: t("billing.history.columns.type"), cell: ({ row }) => <TypeBadge type={row.original.type} /> },
+        { id: "source", header: t("billing.history.columns.source"), cell: ({ row }) => <SourceBadge source={row.original.source} /> },
+        {
+            id: "amount",
+            header: () => <span className="block text-right">{t("billing.history.columns.amount")}</span>,
+            meta: { cellClassName: "text-right" },
+            cell: ({ row }) => <AmountCell tx={row.original} />,
+        },
+        {
+            id: "balance",
+            header: () => <span className="block text-right">{t("billing.history.columns.balance")}</span>,
+            meta: { cellClassName: "text-right" },
+            cell: ({ row }) => <span className="tabular-nums text-ink-3">{formatUsd(row.original.balanceAfter)}</span>,
+        },
+        { id: "status", header: t("billing.history.columns.status"), cell: ({ row }) => <StatusBadge status={row.original.status} /> },
+    ], [t, locale])
+    const footerText = useMemo<Partial<DataTableFooterText>>(() => ({
+        range: (from, to, total) => t("billing.history.showing", { from, to, total }),
+        page: (current, last) => t("billing.history.page", { page: current, last }),
+        previous: t("common.previous"),
+        next: t("common.next"),
+    }), [t])
+
     return (
         <Surface flat>
             <div className="flex items-center gap-2 border-b border-rule px-5 py-4">
                 <Icon icon={Receipt} className="text-primary" />
                 <Heading level={3} size="subsection">{t("billing.history.title")}</Heading>
+                <RefreshIndicator active={isLoading && data !== null} label={t("common.updating")} />
             </div>
 
-            {isLoading ? (
-                <div className="divide-y divide-rule">
-                    {Array.from({ length: 6 }).map((_, i) => (
-                        <div key={i} className="flex items-center gap-4 px-5 py-3.5">
-                            <Skeleton className="h-4 flex-1" />
-                            <Skeleton className="h-4 w-16" />
-                        </div>
-                    ))}
-                </div>
-            ) : error ? (
-                <div className="flex flex-col items-center gap-3 py-12 text-center">
-                    <p className="text-sm text-ink-3">{t("billing.history.loadError")}</p>
-                    <Button type="button" variant="link" size="inline"
-                        onClick={() => setAttempt((n) => n + 1)}
-                    >
-                        {t("common.retry")}
-                    </Button>
-                </div>
-            ) : !data || data.data.length === 0 ? (
-                <div className="py-12 text-center text-sm text-ink-3">
-                    {t("billing.history.empty")}
-                </div>
-            ) : (
-                <>
-                    <Table className="min-w-180">
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="px-5 py-2.5">{t("billing.history.columns.date")}</TableHead>
-                                    <TableHead className="px-3 py-2.5">{t("billing.history.columns.description")}</TableHead>
-                                    <TableHead className="px-3 py-2.5">{t("billing.history.columns.type")}</TableHead>
-                                    <TableHead className="px-3 py-2.5">{t("billing.history.columns.source")}</TableHead>
-                                    <TableHead className="px-3 py-2.5 text-right">{t("billing.history.columns.amount")}</TableHead>
-                                    <TableHead className="px-3 py-2.5 text-right">{t("billing.history.columns.balance")}</TableHead>
-                                    <TableHead className="px-5 py-2.5">{t("billing.history.columns.status")}</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {data.data.map((tx) => (
-                                    <TableRow key={tx.uuid}>
-                                        <TableCell className="whitespace-nowrap px-5 py-3 text-ink-3">
-                                            {formatDate(tx.createdAt, t("common.dateLocale"))}
-                                        </TableCell>
-                                        <TableCell className="px-3 py-3 whitespace-normal text-ink-2">{tx.description}</TableCell>
-                                        <TableCell className="px-3 py-3"><TypeBadge type={tx.type} /></TableCell>
-                                        <TableCell className="px-3 py-3"><SourceBadge source={tx.source} /></TableCell>
-                                        <TableCell className="px-3 py-3 text-right"><AmountCell tx={tx} /></TableCell>
-                                        <TableCell className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-ink-3">
-                                            {formatUsd(tx.balanceAfter)}
-                                        </TableCell>
-                                        <TableCell className="px-5 py-3"><StatusBadge status={tx.status} /></TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-
-                    {/* Pagination */}
-                    <div className="flex items-center justify-between border-t border-rule px-5 py-3">
-                        <p className="text-xs text-ink-3">
-                            {t("billing.history.showing", { from: data.from, to: data.to, total: data.total })}
-                        </p>
-                        <div className="flex items-center gap-2">
-                            <Button type="button" variant="outline" size="sm"
-                                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                                disabled={data.currentPage <= 1 || isLoading}
-                                className="inline-flex items-center"
-                            >
-                                <Icon icon={ChevronLeft} size="sm" /> {t("common.previous")}
-                            </Button>
-                            <span className="text-xs font-medium text-ink-3">
-                                {t("billing.history.page", { page: data.currentPage, last: data.lastPage })}
-                            </span>
-                            <Button type="button" variant="outline" size="sm" onClick={() => setPage((p) => Math.min(data.lastPage, p + 1))} disabled={data.currentPage >= data.lastPage} className="inline-flex items-center" loading={isLoading}>
-                                {t("common.next")} <Icon icon={ChevronRight} size="sm" />
-                            </Button>
-                        </div>
-                    </div>
-                </>
-            )}
+            <div className="p-4">
+                {isLoading && data === null ? (
+                    <LoadingState rows={6} label={t("common.loading")} />
+                ) : error && data === null ? (
+                    <FeedbackBanner
+                        tone="danger"
+                        mode="blocking"
+                        title={t("billing.history.loadError")}
+                        action={<Button type="button" variant="outline" size="sm" onClick={() => setAttempt((n) => n + 1)}>{t("common.retry")}</Button>}
+                    />
+                ) : (
+                    <>
+                        {error && (
+                            // Una página que no llegó: se sigue viendo la anterior.
+                            <FeedbackBanner
+                                tone="warning"
+                                className="mb-3"
+                                title={t("billing.history.loadError")}
+                                action={<Button type="button" variant="outline" size="sm" onClick={() => setAttempt((n) => n + 1)}>{t("common.retry")}</Button>}
+                            />
+                        )}
+                        <DataTable
+                            columns={columns}
+                            data={data?.data ?? []}
+                            getRowId={rowId}
+                            pageSize={PAGE_SIZE}
+                            itemLabel={HISTORY_LABEL}
+                            footerText={footerText}
+                            renderMobileRow={(tx) => <TransactionMobileRow tx={tx} locale={locale} />}
+                            serverPagination={{
+                                pageIndex: (data?.currentPage ?? page) - 1,
+                                pageCount: data?.lastPage ?? 1,
+                                total: data?.total ?? null,
+                                range: data ? { from: data.from, to: data.to } : undefined,
+                                // Siempre vuelve a pedir: si la página 2 falló, `page` ya es 2
+                                // y sin esto «Siguiente» no hacía nada (solo «Reintentar»).
+                                onPageChange: (index) => { setPage(index + 1); setAttempt((n) => n + 1) },
+                                loading: isLoading,
+                            }}
+                            empty={<EmptyState title={t("billing.history.empty")} />}
+                        />
+                    </>
+                )}
+            </div>
         </Surface>
     )
 }
+
+/** El rango lo escribe el diccionario («Mostrando 1–20 de 45»): sin sustantivo propio. */
+const HISTORY_LABEL = { singular: "", plural: "" }

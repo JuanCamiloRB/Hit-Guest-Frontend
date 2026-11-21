@@ -70,6 +70,42 @@ export function readExternalPmsIds(source: unknown): ExternalPmsId[] | null {
     return null
 }
 
+/** Una conexión para MOSTRAR: el par del formulario más el nombre del origen. */
+export interface ExternalPmsConnection extends ExternalPmsId {
+    /** Nombre del origen tal como lo manda el backend («KunasPMS», «Airbnb»); `null` si no vino. */
+    sourceName: string | null
+}
+
+function readSourceName(raw: Record<string, unknown>): string | null {
+    const value = raw.sourcePms ?? raw.source_pms
+    const name = typeof value === "string" ? value
+        : value && typeof value === "object" ? (value as Record<string, unknown>).name
+            : null
+    return typeof name === "string" && name.trim() ? name.trim() : null
+}
+
+/**
+ * Las conexiones de un alojamiento o propiedad para la tabla, con el nombre
+ * del origen que trae cada fila (`pmsIdentifiers[].sourcePms`, observado
+ * 2026-11-20). El nombre no se deduce del id: los ids del catálogo no se
+ * hardcodean. Mismo `null` = «la respuesta no trae la clave» que
+ * `readExternalPmsIds`.
+ */
+export function readExternalPmsConnections(source: unknown): ExternalPmsConnection[] | null {
+    if (!source || typeof source !== "object") return null
+    const record = source as Record<string, unknown>
+
+    for (const key of RESPONSE_KEYS) {
+        const value = record[key]
+        if (!Array.isArray(value)) continue
+        return value.flatMap((raw) => {
+            const entry = toEntry(raw)
+            return entry ? [{ ...entry, sourceName: readSourceName(raw as Record<string, unknown>) }] : []
+        })
+    }
+    return null
+}
+
 /**
  * Reads the external identifiers off a property or listing API response.
  *

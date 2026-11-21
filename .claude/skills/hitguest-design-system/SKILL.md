@@ -59,16 +59,16 @@ archivo:
 | Casilla con texto | `CheckboxField` (`label`, `action` fuera de la etiqueta) | `ui/checkbox-field.tsx` |
 | Casilla en tarjeta | `CheckboxCard` (`label`, `description`, `checked`, `onCheckedChange`, `disabled`, `name`, `value`; la tarjeta entera es la etiqueta, `Label htmlFor` hermana del control; dentro de un `<form>` Radix emite un `<input>` oculto que despacha su propio `click`: el `onClick` de la tarjeta lo ignora, si no se forma un bucle de re-marcado, React #185, corregido 2026-11-18) | `ui/checkbox-card.tsx` |
 | Zona de carga | `UploadZone` (`accept`, `multiple`, `status` idle/uploading/error, `title`, `hint`, `uploadingLabel`, `errorMessage`, `onFiles`, `onRejected`, `onRetry`; botón real + `FileInput` hermano) | `ui/upload-zone.tsx` |
-| Superficie | `Surface`, `Card`, `SectionCard` (`tone` inverse/selected/warning/danger/sunk, `interactive`, `dashed`, `flat`, `floating`; el título de una tarjeta es `Heading`, no hay `CardTitle`) | `ui/card.tsx`, `ui/section-card.tsx` |
+| Superficie | `Surface`, `Card`, `SectionCard` (`tone` inverse/selected/accent/warning/danger/sunk — `accent` es lo destacado, el saldo —, `interactive`, `dashed`, `flat`, `floating`; el título de una tarjeta es `Heading`, no hay `CardTitle`) | `ui/card.tsx`, `ui/section-card.tsx` |
 | Pantalla | `Page`, `PageHeader`, `PageBreadcrumb` | `ui/page.tsx` |
 | Barra lateral del panel | `SidebarProvider`, `SidebarRoot`, `SidebarTrigger`, `SidebarItem`, `SidebarGroupLabel` (contraíble, preferencia en `localStorage`) | `ui/sidebar.tsx` |
 | Ayuda flotante | `Tooltip`, `TooltipTrigger`, `TooltipContent`, `TooltipProvider` (refuerzo visual; el nombre accesible va aparte) | `ui/tooltip.tsx` |
-| Detalle al pasar, enfocar o tocar | `Toggletip` + `ToggletipTitle`, `ToggletipLine tone`, `ToggletipNote` (sobre `Popover`: el `Tooltip` de Radix no abre al tocar y se cierra con el clic) | `ui/toggletip.tsx` |
+| Detalle al pasar, enfocar o tocar | `Toggletip` + `ToggletipTitle`, `ToggletipLine tone` (estado) o `ToggletipLine icon` (dato), `ToggletipNote` (sobre `Popover`: el `Tooltip` de Radix no abre al tocar y se cierra con el clic) | `ui/toggletip.tsx` |
 | Barra fija al pie (portal) | `BottomBar` (superficie compartida: `bottomBarSurface`) | `ui/bottom-bar.tsx` |
 | Barra de acciones de un formulario (panel) | `FormActionBar` (`status` a la izquierda, `Button` a la derecha; `sticky bottom-0 z-20`, ancho de la `Page`; el formulario reserva `pb-24`) | `ui/form-action-bar.tsx` |
 | Título y rótulo | `Heading`, `Overline` | `ui/heading.tsx`, `ui/overline.tsx` |
 | Estado y etiqueta | `StatusPill`, `Badge` | `ui/status-pill.tsx`, `ui/badge.tsx` |
-| Celda de estado en tabla densa | `StatusTile` (`tone` success/warning/danger/idle/none, `icon`, `count`, `label`; marca ✓ reloj ✕ según el tono; ancho fijo) + `StatusTileSkeleton` | `ui/status-tile.tsx` |
+| Celda de estado en tabla densa | `StatusTile` (`tone` success/warning/danger/idle/data/none — `data` es un dato contable, no un estado, en morado claro (`bg-primary/10`, texto `primary-hover`) —, `icon`, `count`, `label`; marca ✓ reloj ✕ según el tono; ancho fijo) + `StatusTileSkeleton` | `ui/status-tile.tsx` |
 | Aviso | `FeedbackBanner` | `ui/feedback-banner.tsx` |
 | Plegable | `Disclosure` (`row` | `inline`) | `ui/disclosure.tsx` |
 | Nota | `Note` (`tone` neutral/accent, `density`, `icon`, `as`) | `ui/note.tsx` |
@@ -77,7 +77,8 @@ archivo:
 | Cifra protagonista | `Figure` (`size`, `tone`, `kind`, `as`) | `ui/figure.tsx` |
 | Término y definición | `DefinitionItem` (dentro de un `<dl>`) | `ui/definition-list.tsx` |
 | Vacío | `EmptyState` | `ui/empty-state.tsx` |
-| Tabla | `Table` (composición), `DataTable` (ordenar y paginar; `pageSize`, `itemLabel`, `getRowHref`, `renderMobileRow` para la fila apilada en móvil; columnas agrupadas con `colSpan`; `meta.headerClassName`/`cellClassName` de layout y `meta.sticky: "left"`) | `ui/table.tsx`, `shared/data-table.tsx` |
+| Tabla | `DataTable`, SIEMPRE (estándar de tablas 2026-11-20; `handmade-table` rechaza importar `ui/table` fuera de la primitiva): `pageSize`, `itemLabel`, `getRowHref`, `renderMobileRow`, columnas agrupadas con `colSpan`, `meta.headerClassName`/`cellClassName`/`sticky: "left"`/`span` (celdas unidas), `serverPagination` (página del servidor), `getRowTone`, `isRowSelected`, `footerText` (otro idioma). Columnas ESTABLES (módulo o `useMemo`): una función de celda nueva por render remonta la celda | `shared/data-table.tsx` |
+| Celdas de tabla | `IdentityCell` (nombre + secundaria; `href` o `onOpen`), `ChannelCell` (logo + nombre, `detail` opcional), `DataTileCell` (`StatusTile data` + `Toggletip`; `declared` para solo el ícono), `ColumnHeader` (ícono sobre nombre), `AbsentValue`, `ActionsHeader` + `RowActionsMenu` (menú «⋮»), `MobileTileList`. El detalle va en `Toggletip`, nunca en `title`. Íconos de automatizaciones: `AUTOMATION_ICONS` (uno por cosa en toda la app) | `shared/table-cells.tsx`, `shared/automation-icons.ts` |
 | Modal | `Dialog`, `AlertDialog`, `Sheet`, `Popover`, `DropdownMenu`; formulario largo: `DialogContent layout="panel"` + `DialogHeader divided` + `DialogBody` (scroll) + `DialogFooter divided` (fijo) (`Dialog`/`AlertDialog` devuelven el foco a quien abrió aunque se abran por estado: `useRestoreFocusToOpener`) | `ui/dialog.tsx`, `ui/alert-dialog.tsx`, `ui/sheet.tsx`, `ui/popover.tsx`, `ui/dropdown-menu.tsx` |
 | Ícono | `Icon`, `IconBadge` (`interactive` dentro de un pulsable con `group`) | `ui/icon.tsx`, `ui/icon-badge.tsx` |
 | Persona | `Avatar` | `ui/avatar.tsx` |

@@ -31,19 +31,16 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+import { DataTable } from "@/components/shared/data-table"
+import { ActionsHeader, RowActionsMenu } from "@/components/shared/table-cells"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
+import type { ColumnDef } from "@tanstack/react-table"
+import { listingColumns, ListingMobileRow, toListingTableRow, type ListingTableRow } from "./listing-columns"
 import { Plus, Trash2, Edit2, Settings2, Zap, Info, KeyRound } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { useFormContext, useFieldArray } from "react-hook-form"
 import { useSearchParams } from "next/navigation"
-import { useCallback, useState, useEffect, useRef } from "react"
+import { useCallback, useMemo, useState, useEffect, useRef } from "react"
 import { SwitchField } from "@/components/ui/switch-field"
 import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
@@ -65,6 +62,7 @@ import {
     hasIncompleteExternalPmsId,
     normalizeExternalPmsIds,
     readExternalPmsIds,
+    readExternalPmsConnections,
     readExternalIdentifierServerErrors,
     sameExternalPmsIds,
 } from "../lib/external-pms-ids"
@@ -92,7 +90,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { buttonVariants } from "@/components/ui/button"
 import type { ExternalPmsId } from "../types"
-import { invalidatePropertiesCaches } from "../lib/properties-cache"
+import { invalidatePropertiesCaches, toListing } from "../lib/properties-cache"
+import { readDeclaredCapacity, type DeclaredCapacity } from "../lib/declared-capacity"
 import { FeedbackBanner } from "@/components/ui/feedback-banner"
 import { LoadingState } from "@/components/ui/loading-state"
 import { EmptyState } from "@/components/ui/empty-state"
@@ -169,6 +168,37 @@ const FALLBACK_CURRENCIES = [
 function unitDisplayName(unit: { name?: string; internalName?: string; internal_name?: string }, fallback: string): string {
     return unit.name || unit.internalName || unit.internal_name || fallback
 }
+
+const UNITS_LABEL = { singular: "alojamiento", plural: "alojamientos" }
+
+/**
+ * Una fila del editor como fila de la tabla compartida. Los valores salen del
+ * mismo lector que la pestaña Alojamientos (`toListing`): sin «0 huéspedes» ni
+ * «$0» inventados. La capacidad sale de `declaredCapacity` (lo que dijo la
+ * respuesta), NO de `extra`, que el formulario rellena con 2/1/1; una fila
+ * nueva todavía sin guardar no lo trae y usa lo que escribió el PM. Dos datos
+ * son del formulario y mandan sobre la respuesta: `isActive` (el interruptor
+ * del diálogo) y `externalPmsIds` (lo que se va a guardar); el nombre de cada
+ * origen se toma de `pmsIdentifiers` cuando vino.
+ */
+function toUnitRow(field: Record<string, unknown> & { id: string }, index: number): ListingTableRow {
+    const listing = toListing(field, index)
+    const named = readExternalPmsConnections(field)
+    const formIds = Array.isArray(field.externalPmsIds) ? readExternalPmsConnections({ externalPmsIds: field.externalPmsIds }) : null
+    const names = new Map((named ?? []).map((c) => [c.sourcePmsId, c.sourceName]))
+    const connections = formIds ? formIds.map((c) => ({ ...c, sourceName: names.get(c.sourcePmsId) ?? null })) : named
+    const declared = (field.declaredCapacity as DeclaredCapacity | undefined) ?? readDeclaredCapacity(field)
+    return {
+        ...toListingTableRow(listing, { propertyName: null, href: null }),
+        ...declared,
+        // El uuid cuando existe: `update()` de useFieldArray le da a la fila
+        // editada un id nuevo, y con él la tabla perdía la página en la que estaba.
+        id: typeof field.uuid === "string" && field.uuid ? field.uuid : field.id,
+        status: field.isActive === false ? "INACTIVE" : field.isActive === true ? "ACTIVE" : listing.status,
+        connections,
+    }
+}
+const unitRowId = (row: ListingTableRow) => row.id
 
 export function PropertiesUnits() {
     const { control, watch } = useFormContext()
@@ -510,6 +540,8 @@ export function PropertiesUnits() {
                         // 422). `null` = la respuesta no trajo la clave: se
                         // conserva lo local en vez de inventar un vacío.
                         externalPmsIds: readExternalPmsIds(apiData) ?? unitForm.externalPmsIds,
+                        // Lo que la respuesta declara ahora (la tabla lo muestra).
+                        declaredCapacity: readDeclaredCapacity(apiData),
                         // Restore price checking root and extra
                         price:         apiData.price || apiData.startPrice || apiData.start_price || apiData.extra?.price || apiData.extra?.startPrice || unitForm.price,
                         extra: {
@@ -539,6 +571,7 @@ export function PropertiesUnits() {
                                 // respuesta del POST; sin rehidratarlos, editar sin
                                 // recargar la página fallaría con 422 (contrato §1).
                                 externalPmsIds: readExternalPmsIds(apiData) ?? unitForm.externalPmsIds,
+                                declaredCapacity: readDeclaredCapacity(apiData),
                                 // Restore price checking root and extra
                                 price: apiData.price || apiData.startPrice || apiData.start_price || apiData.extra?.price || apiData.extra?.startPrice || unitForm.price,
                                 extra: {
@@ -693,6 +726,60 @@ export function PropertiesUnits() {
         // `handleOpenEditDialog` se rehace en cada render; lo que decide es `requestedUnit` + `fields`.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [requestedUnit, fields])
+
+    // La tabla: mismas columnas que la pestaña Alojamientos de Propiedades, sin
+    // la columna Propiedad; el nombre abre la edición y el menú «⋮» edita o
+    // elimina. La fila se ubica por su id de `useFieldArray`, no por posición
+    // de cuando se pintó.
+    const unitRows = useMemo(
+        () => fields.map((field, index) => toUnitRow(field as unknown as Record<string, unknown> & { id: string }, index)),
+        [fields],
+    )
+    // Las columnas tienen que ser ESTABLES: TanStack monta cada celda como un
+    // componente, y una función de celda nueva en cada render es otro
+    // componente: React remontaba la celda y el clic en el nombre caía sobre un
+    // botón que ya no existía. Los manejadores cambian en cada render, así que
+    // las columnas los leen de una ref.
+    const rowHandlersRef = useRef<{ open: (row: ListingTableRow) => void; remove: (row: ListingTableRow) => void }>({ open: () => {}, remove: () => {} })
+    useEffect(() => {
+        const indexOfRow = (row: ListingTableRow) => fields.findIndex((field) => (field as { uuid?: string }).uuid === row.id || field.id === row.id)
+        rowHandlersRef.current = {
+            open: (row) => {
+                const index = indexOfRow(row)
+                if (index >= 0) handleOpenEditDialog(index)
+            },
+            remove: (row) => {
+                const index = indexOfRow(row)
+                if (index >= 0) handleRemoveUnit(index)
+            },
+        }
+    })
+    const { unitColumns, renderUnitMobileRow } = useMemo(() => {
+        const open = (row: ListingTableRow) => rowHandlersRef.current.open(row)
+        const actions = (row: ListingTableRow) => (
+            <RowActionsMenu label={`Acciones de ${row.name || row.number || "este alojamiento"}`}>
+                <DropdownMenuItem onClick={() => rowHandlersRef.current.open(row)}>
+                    <Icon icon={Edit2} /> Editar
+                </DropdownMenuItem>
+                <DropdownMenuItem className="text-danger" onClick={() => rowHandlersRef.current.remove(row)}>
+                    <Icon icon={Trash2} /> Eliminar
+                </DropdownMenuItem>
+            </RowActionsMenu>
+        )
+        const actionsColumn: ColumnDef<ListingTableRow> = {
+            id: "actions",
+            header: () => <ActionsHeader />,
+            enableSorting: false,
+            meta: { cellClassName: "text-center" },
+            cell: ({ row }) => actions(row.original),
+        }
+        return {
+            unitColumns: listingColumns({ withProperty: false, actions: actionsColumn, onOpen: open }),
+            renderUnitMobileRow: (row: ListingTableRow) => (
+                <ListingMobileRow row={row} onOpen={() => open(row)} actions={actions(row)} />
+            ),
+        }
+    }, [])
 
     return (
         <SectionCard
@@ -1355,58 +1442,23 @@ export function PropertiesUnits() {
                             }}
                         />
                     )}
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead className="w-30">Número</TableHead>
-                            <TableHead>Nombre</TableHead>
-                            <TableHead>Capacidad</TableHead>
-                            <TableHead>Estado</TableHead>
-                            <TableHead className="text-right">Precio</TableHead>
-                            <TableHead className="w-25 text-right">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {fields.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={6} className="text-center py-6 text-ink-3">
-                                    Aún no hay alojamientos. Añade el primero para poder recibir reservas.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            fields.map((field: any, index) => (
-                                <TableRow key={field.id}>
-                                    <TableCell className="font-bold text-primary">{field.internalName || field.internal_name || '-'}</TableCell>
-                                    <TableCell className="font-medium text-ink">{field.name || 'Sin nombre'}</TableCell>
-                                    <TableCell className="text-sm">
-                                        {field.extra?.maxOccupancy || field.extra?.max_occupancy || 0} huéspedes
-                                    </TableCell>
-                                    <TableCell>
-                                        <StatusPill tone={field.isActive !== false ? "success" : "idle"}>{field.isActive !== false ? "Activo" : "Inactivo"}</StatusPill>
-                                    </TableCell>
-                                    <TableCell className="text-right font-semibold text-ink-2">
-                                        ${Number(field.price || field.extra?.startPrice || field.extra?.price || 0).toLocaleString()}
-                                    </TableCell>
-                                    <TableCell className="text-right space-x-1 flex justify-end">
-                                        <Button type="button" variant="ghost" size="icon-sm" aria-label={`Editar ${unitDisplayName(field, "alojamiento")}`} className="w-8" onClick={() => handleOpenEditDialog(index)}>
-                                            <Icon icon={Edit2} />
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost-destructive"
-                                            size="icon-sm"
-                                            aria-label={`Eliminar ${unitDisplayName(field, "alojamiento")}`}
-                                            className="w-8"
-                                            onClick={() => handleRemoveUnit(index)}
-                                        >
-                                            <Icon icon={Trash2} />
-                                        </Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
+                {/* Las mismas columnas que la pestaña Alojamientos de Propiedades (`listing-columns`). */}
+                <DataTable
+                    columns={unitColumns}
+                    data={unitRows}
+                    getRowId={unitRowId}
+                    // Sin búsqueda: editar o borrar un alojamiento no cambia de página.
+                    resetPageOn="units"
+                    renderMobileRow={renderUnitMobileRow}
+                    pageSize={10}
+                    itemLabel={UNITS_LABEL}
+                    empty={
+                        <EmptyState
+                            title="Aún no hay alojamientos"
+                            description="Añade el primero para poder recibir reservas."
+                        />
+                    }
+                />
 
             <AlertDialog
                 open={unitToDelete !== null}

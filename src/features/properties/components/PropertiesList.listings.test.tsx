@@ -52,6 +52,13 @@ async function openListings(count = 28) {
     await act(async () => {})
 }
 
+/** Las filas del cuerpo. */
+const bodyRows = (table: HTMLElement = screen.getByRole("table")) => within(within(table).getAllByRole("rowgroup")[1]).getAllByRole("row")
+/** Columnas: 0 Alojamiento, 1 Propiedad, 2 Conexión, 3 Estado, 4 Capacidad, 5 Precio. */
+const cellOf = (row: HTMLElement, index: number) => within(row).getAllByRole("cell")[index]
+/** El nombre accesible de la celda de dato (la cifra sola no dice qué es). */
+const tileName = (row: HTMLElement, index: number) => within(cellOf(row, index)).getByRole("button").getAttribute("aria-label")
+
 describe("PropertiesList — Alojamientos paginados", () => {
     beforeEach(() => {
         vi.clearAllMocks()
@@ -62,10 +69,21 @@ describe("PropertiesList — Alojamientos paginados", () => {
         vi.spyOn(console, "error").mockImplementation(() => {})
     })
 
+    it("la propiedad lleva a su ficha con el edificio en primary", async () => {
+        await openListings()
+        const first = bodyRows()[0]
+        const link = within(cellOf(first, 1)).getByRole("link", { name: "Pullman Miami" })
+        expect(link).toHaveAttribute("href", "/dashboard/properties/p1")
+        expect(link.querySelector(".lucide-building-2, .lucide-building2")).toHaveClass("text-primary")
+        // Abrir la propiedad no es abrir el alojamiento: el clic no sigue también el enlace de la fila.
+        await userEvent.setup().click(link)
+        expect(followed).toEqual(["/dashboard/properties/p1"])
+    })
+
     it("10 por página, ordenados por nombre, con conteo y rango; la fila lleva a la pestaña Alojamientos de su propiedad", async () => {
         await openListings()
         expect(screen.getByText("28 alojamientos")).toHaveAttribute("role", "status")
-        const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1)
+        const rows = bodyRows()
         expect(rows).toHaveLength(LISTINGS_PAGE_SIZE)
         expect(rows[0]).toHaveTextContent("Alojamiento 01")
         expect(rows[9]).toHaveTextContent("Alojamiento 10")
@@ -81,14 +99,93 @@ describe("PropertiesList — Alojamientos paginados", () => {
 
     it("precio con su moneda; sin precio o sin capacidad, «—» (nunca «$0» ni «2 huéspedes» inventados)", async () => {
         await openListings()
-        const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1)
-        expect(rows[0]).toHaveTextContent("4 huéspedes")
+        const rows = bodyRows()
+        expect(tileName(rows[0], 4)).toBe("Capacidad: Hasta 4 huéspedes, habitaciones sin declarar, baños sin declarar")
         expect(rows[0]).toHaveTextContent("850.000")
         expect(rows[1]).toHaveTextContent("US$")
         expect(rows[1]).toHaveTextContent("150")
+        // Sin conexión informada y sin precio: «—»; sin capacidad, la celda punteada «sin declarar».
         expect(within(rows[2]).getAllByText("—")).toHaveLength(2)
+        expect(tileName(rows[2], 4)).toBe("Capacidad: sin declarar")
         expect(screen.queryByText(/\$\s?0\b/)).toBeNull()
-        expect(screen.queryByText("2 huéspedes")).toBeNull()
+        expect(screen.queryByRole("button", { name: /Hasta 2 huéspedes/ })).toBeNull()
+    })
+
+    it("conexión: logo y nombre de cada origen vinculado; «Sin vincular» si la respuesta afirma que no hay; «—» si no lo dice", async () => {
+        const data = portfolio(3)
+        const byName = (n: string) => data.listings.find((l) => l.name === n)!
+        Object.assign(byName("Alojamiento 01"), { pmsIdentifiers: [
+            { id: 1, sourcePmsId: 134, sourcePms: "KunasPMS", externalId: "26118" },
+            { id: 2, sourcePmsId: 100, sourcePms: "Airbnb", externalId: "999" },
+        ] })
+        Object.assign(byName("Alojamiento 02"), { pmsIdentifiers: [] })
+        mocks.bffFetch.mockImplementation((path: string) => Promise.resolve(path === LIGHT ? { data: data.properties } : data))
+        render(<PropertiesList />)
+        await screen.findByText("Pullman Miami")
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Alojamientos/ }), { button: 0 })
+        const table = await screen.findByRole("table")
+        await act(async () => {})
+        expect(within(table).getByRole("columnheader", { name: /Conexión/ })).toBeInTheDocument()
+        const connection = (i: number) => cellOf(bodyRows(table)[i], 2)
+        expect(connection(0)).toHaveTextContent("KunasPMS")
+        expect(connection(0)).toHaveTextContent("Airbnb")
+        // Airbnb con su logo de marca; KunasPMS (sin asset aprobado) con la marca neutra.
+        expect(connection(0).querySelectorAll("svg")).toHaveLength(2)
+        expect(connection(1)).toHaveTextContent("Sin vincular")
+        expect(connection(2)).toHaveTextContent("—")
+        // El id externo va en el detalle de la conexión, como el de cualquier celda.
+        fireEvent.click(within(connection(0)).getByRole("button", { name: /KunasPMS/ }))
+        await act(async () => {})
+        expect(await screen.findByText("ID en KunasPMS: 26118")).toBeInTheDocument()
+    })
+
+    it("ordenar por conexión: el primer clic va de A a Z aunque la primera fila no la informe; «Sin vincular» por su texto y los «—» al final", async () => {
+        const data = portfolio(5)
+        const byName = (n: string) => data.listings.find((l) => l.name === n)!
+        Object.assign(byName("Alojamiento 01"), { pmsIdentifiers: [{ id: 1, sourcePmsId: 134, sourcePms: "KunasPMS", externalId: "1" }] })
+        Object.assign(byName("Alojamiento 02"), { pmsIdentifiers: [] })
+        Object.assign(byName("Alojamiento 03"), { pmsIdentifiers: [{ id: 2, sourcePmsId: 100, sourcePms: "Airbnb", externalId: "2" }] })
+        // La primera fila que llega (Alojamiento 05, por el orden inverso) no trae la clave.
+        mocks.bffFetch.mockImplementation((path: string) => Promise.resolve(path === LIGHT ? { data: data.properties } : data))
+        render(<PropertiesList />)
+        await screen.findByText("Pullman Miami")
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Alojamientos/ }), { button: 0 })
+        const table = await screen.findByRole("table")
+        await act(async () => {})
+        fireEvent.click(within(table).getByRole("button", { name: /Conexión/ }))
+        await act(async () => {})
+        const cells = bodyRows(table).map((r) => cellOf(r, 2).textContent)
+        expect(cells).toEqual(["Airbnb", "KunasPMS", "Sin vincular", "—", "—"])
+    })
+
+    it("capacidad: UNA columna con la celda de dato (ícono + huéspedes) y en el detalle huéspedes, habitaciones y baños; lo no declarado, punteado", async () => {
+        const data = portfolio(2)
+        Object.assign(data.listings.find((l) => l.name === "Alojamiento 01")!, { extra: { maxOccupancy: 6, bedRoom: 3 } })
+        mocks.bffFetch.mockImplementation((path: string) => Promise.resolve(path === LIGHT ? { data: data.properties } : data))
+        render(<PropertiesList />)
+        await screen.findByText("Pullman Miami")
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Alojamientos/ }), { button: 0 })
+        const table = await screen.findByRole("table")
+        await act(async () => {})
+        // Una sola columna y una sola fila de encabezado (ya no agrupa tres).
+        expect(within(table).getByRole("columnheader", { name: "Capacidad" })).toHaveAttribute("colspan", "1")
+        expect(within(table).queryByRole("columnheader", { name: /Habitaciones|Baños/ })).toBeNull()
+        expect(within(within(table).getAllByRole("rowgroup")[0]).getAllByRole("row")).toHaveLength(1)
+        const [first, second] = bodyRows(table)
+        const capacity = within(cellOf(first, 4)).getByRole("button", { name: "Capacidad: Hasta 6 huéspedes, 3 habitaciones o camas, baños sin declarar" })
+        expect(capacity).toHaveAttribute("data-tone", "data")
+        expect(capacity).toHaveTextContent(/^6$/)
+        // Ninguna celda usa `title`: el detalle va en el Toggletip.
+        expect(table.querySelector("td [title]")).toBeNull()
+        fireEvent.click(capacity)
+        await act(async () => {})
+        expect(await screen.findByText("Capacidad · Alojamiento 01")).toBeInTheDocument()
+        expect(screen.getByText("Hasta 6 huéspedes", { selector: "span" })).toBeInTheDocument()
+        expect(screen.getByText("3 habitaciones o camas", { selector: "span" })).toBeInTheDocument()
+        expect(screen.getByText("Baños: sin declarar")).toBeInTheDocument()
+        // El segundo no declara nada: una celda punteada y deshabilitada, sin cifras inventadas.
+        expect(tileName(second, 4)).toBe("Capacidad: sin declarar")
+        expect(within(cellOf(second, 4)).getByRole("button")).toBeDisabled()
     })
 
     it("buscar por propiedad filtra, cuenta «N de 28», vuelve a la página 1 y «Limpiar filtros» aparece solo con filtro", async () => {
@@ -102,27 +199,28 @@ describe("PropertiesList — Alojamientos paginados", () => {
         await act(async () => {})
         expect(screen.getByText("10 de 28 alojamientos")).toBeInTheDocument()
         expect(screen.queryByText(/Página/)).toBeNull()
-        expect(within(screen.getByRole("table")).getAllByRole("row").slice(1)).toHaveLength(10)
+        expect(bodyRows()).toHaveLength(10)
 
         await user.click(screen.getByRole("button", { name: "Limpiar filtros aplicados" }))
         expect(screen.getByText("28 alojamientos")).toBeInTheDocument()
         expect(screen.getByText("Página 1 de 3")).toBeInTheDocument()
     })
 
-    it("ordenar por capacidad o precio deja los «—» al final en los dos sentidos", async () => {
+    it("ordenar por capacidad (huéspedes) o precio deja lo no declarado al final en los dos sentidos", async () => {
         await openListings(12)
         const table = screen.getByRole("table")
-        const firstCells = () => within(table).getAllByRole("row").slice(1).map((r) => within(r).getAllByRole("cell")[3].textContent)
-        fireEvent.click(within(table).getByRole("button", { name: /Capacidad/ }))
+        const guests = () => bodyRows(table).map((r) => tileName(r, 4))
+        const FOUR = "Capacidad: Hasta 4 huéspedes, habitaciones sin declarar, baños sin declarar"
+        fireEvent.click(within(within(table).getAllByRole("rowgroup")[0]).getByRole("button", { name: /Capacidad/ }))
         await act(async () => {})
-        expect(firstCells()[0]).toBe("4 huéspedes")
-        expect(firstCells().slice(1).every((c) => c === "—")).toBe(true)
-        fireEvent.click(within(table).getByRole("button", { name: /Capacidad/ }))
+        expect(guests()[0]).toBe(FOUR)
+        expect(guests().slice(1).every((c) => c === "Capacidad: sin declarar")).toBe(true)
+        fireEvent.click(within(within(table).getAllByRole("rowgroup")[0]).getByRole("button", { name: /Capacidad/ }))
         await act(async () => {})
-        expect(firstCells()[0]).toBe("4 huéspedes")
-        expect(firstCells().slice(1).every((c) => c === "—")).toBe(true)
+        expect(guests()[0]).toBe(FOUR)
+        expect(guests().slice(1).every((c) => c === "Capacidad: sin declarar")).toBe(true)
 
-        const priceCells = () => within(table).getAllByRole("row").slice(1).map((r) => within(r).getAllByRole("cell")[4].textContent)
+        const priceCells = () => bodyRows(table).map((r) => cellOf(r, 5).textContent)
         // Primer clic: de menor a mayor (como en las columnas de texto); los «—» al final.
         fireEvent.click(within(table).getByRole("button", { name: /Precio por noche/ }))
         await act(async () => {})
@@ -161,15 +259,18 @@ describe("PropertiesList — Alojamientos paginados", () => {
         render(<PropertiesList />)
         await screen.findByText("Pullman Miami")
         fireEvent.mouseDown(screen.getByRole("tab", { name: /Alojamientos/ }), { button: 0 })
-        const list = await screen.findByRole("list")
+        await screen.findAllByRole("list")
         await act(async () => {})
-        const items = within(list).getAllByRole("listitem")
+        // Las filas apiladas; dentro, cada una lleva su lista de capacidad.
+        const items = [...document.querySelectorAll<HTMLElement>('[data-slot="data-table-mobile-row"]')]
         expect(items).toHaveLength(10)
         expect(items[0]).toHaveTextContent("Alojamiento 01")
         expect(items[0]).toHaveTextContent("Activo")
         expect(items[0]).toHaveTextContent("N-1")
         expect(items[0]).toHaveTextContent("Pullman Miami")
-        expect(items[0]).toHaveTextContent("4 huéspedes")
+        expect(within(items[0]).getByRole("button", { name: /^Capacidad: Hasta 4 huéspedes/ })).toBeInTheDocument()
+        // Sin encabezados en móvil: la celda lleva su nombre debajo, como en Operaciones.
+        expect(within(within(items[0]).getByRole("list", { name: "Capacidad" })).getAllByRole("listitem").map((li) => li.textContent)).toEqual(["4Capacidad"])
         expect(items[0]).toHaveTextContent("850.000")
         expect(screen.queryByRole("table")).toBeNull()
         expect(screen.getByText("Mostrando 1–10 de 28 alojamientos")).toBeInTheDocument()
@@ -197,7 +298,7 @@ describe("PropertiesList — orden por nombre fijo (no el muestreo de TanStack)"
         fireEvent.mouseDown(screen.getByRole("tab", { name: /Alojamientos/ }), { button: 0 })
         await screen.findByRole("table")
         await act(async () => {})
-        const first = () => within(screen.getByRole("table")).getAllByRole("row").slice(1).map((r) => within(r).getAllByRole("cell")[0].textContent?.replace(/N-\d+$/, ""))
+        const first = () => bodyRows().map((r) => cellOf(r, 0).textContent?.replace(/N-\d+$/, ""))
         expect(first()).toEqual(["Álamo", "casa 2", "Casa 3", "casa 10", "Zebra"])
         fireEvent.click(within(screen.getByRole("table")).getByRole("button", { name: /Alojamiento/ }))
         await act(async () => {})

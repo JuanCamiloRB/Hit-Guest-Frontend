@@ -120,6 +120,39 @@ describe.each([
     })
 })
 
+/** `color` al `alpha` sobre `base` (dos hex), como lo pinta el navegador. */
+function over(color: string, alpha: number, base: string): string {
+    const channels = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
+    const [c, b] = [channels(color), channels(base)]
+    return `#${c.map((v, i) => Math.round(alpha * v + (1 - alpha) * b[i]).toString(16).padStart(2, "0")).join("")}`
+}
+
+describe("saldo destacado: Button accent y Surface accent", () => {
+    // El chip del header va sobre el fondo; su hover sube el tinte a primary/20.
+    it.each([["en reposo", 0.1], ["en hover", 0.2]])("chip %s: cifra ink y «USD» ink-2 a 4.5:1", (_, alpha) => {
+        const surface = over(light.primary, alpha as number, light.background)
+        expect(contrast(light.ink, surface)).toBeGreaterThanOrEqual(4.5)
+        expect(contrast(light["ink-2"], surface)).toBeGreaterThanOrEqual(4.5)
+    })
+    it("tarjeta del Tablero (primary/5 sobre el fondo): rótulo ink-3 y aviso warning a 4.5:1", () => {
+        const surface = over(light.primary, 0.05, light.background)
+        expect(contrast(light["ink-3"], surface)).toBeGreaterThanOrEqual(4.5)
+        expect(contrast(light.warning, surface)).toBeGreaterThanOrEqual(4.5)
+    })
+})
+
+describe("celda de dato (StatusTile data): morado claro con texto primary-hover", () => {
+    // bg-primary/10 sobre la card, y sobre una fila en hover (hover:bg-primary/5 de TableRow).
+    const resting = over(light.primary, 0.1, light.card)
+    const hovered = over(light.primary, 0.1, over(light.primary, 0.05, light.card))
+    it.each([["en reposo", resting], ["sobre una fila en hover", hovered]])("texto %s: AA 4.5:1", (_, surface) => {
+        expect(contrast(light["primary-hover"], surface)).toBeGreaterThanOrEqual(4.5)
+    })
+    it("con primary no alcanzaría sobre la fila en hover (por eso primary-hover)", () => {
+        expect(contrast(light.primary, hovered)).toBeLessThan(4.5)
+    })
+})
+
 describe("borde de campo en tema claro: azul de marca, hover primary", () => {
     it("el borde del campo es el azul de marca (--color-brand-blue)", () => {
         expect(light.input.toLowerCase()).toBe("#5467fa")

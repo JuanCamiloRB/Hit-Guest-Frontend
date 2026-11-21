@@ -49,6 +49,12 @@ declare module "@tanstack/react-table" {
         cellClassName?: string
         /** Columna fija a la izquierda al desplazar la tabla de lado (el huésped). */
         sticky?: "left"
+        /**
+         * Celdas unidas en una fila (una leyenda en lugar de siete guiones):
+         * cuántas columnas ocupa esta celda; `0` = la cubre una anterior y no se
+         * pinta. Sin esto, 1.
+         */
+        span?: (row: TData) => number
     }
 }
 
@@ -164,6 +170,60 @@ interface DataTableProps<TData, TValue> {
      * y filtro que la tabla. Sin esto, la tabla con scroll horizontal.
      */
     renderMobileRow?: (row: TData) => React.ReactNode
+    /**
+     * Paginación del SERVIDOR (Historial de transacciones, Clientes): `data` es
+     * solo la página actual y el pie dice lo que el servidor contó. Sin orden
+     * por columna: ordenar una página suelta parecería ordenar toda la lista.
+     */
+    serverPagination?: ServerPagination
+    /**
+     * Una fila que es un aviso («Consumo no disponible»): el color ES el
+     * mensaje, por eso es la única que no lleva el hover de siempre.
+     */
+    getRowTone?: (row: TData) => "warning" | undefined
+    /** La fila abierta en un panel lateral (Clientes → usuarios). */
+    isRowSelected?: (row: TData) => boolean
+    /** Los textos del pie en otro idioma (Facturación usa el diccionario); por omisión, español. */
+    footerText?: Partial<DataTableFooterText>
+    /**
+     * Lo que define «otra búsqueda» en la pantalla (texto y filtros, en un
+     * string o un valor estable): al cambiar, vuelve a la página 1. Con esto,
+     * que lleguen, se editen o se borren filas no mueve la página que se lee.
+     */
+    resetPageOn?: unknown
+}
+
+/** Los textos del pie de paginación. */
+export interface DataTableFooterText {
+    range: (from: number, to: number, total: number, items: string) => string
+    page: (page: number, last: number) => string
+    previous: string
+    next: string
+}
+
+const FOOTER_TEXT: DataTableFooterText = {
+    range: (from, to, total, items) => `Mostrando ${from}–${to} de ${total} ${items}`,
+    page: (page, last) => `Página ${page} de ${last}`,
+    previous: "Anterior",
+    next: "Siguiente",
+}
+
+/** Lo que el servidor dice de la página que mandó. */
+export interface ServerPagination {
+    /** Página actual, desde 0. */
+    pageIndex: number
+    pageCount: number
+    /** Total de filas que contó el servidor; `null` si no lo dice (el pie dice solo la página). */
+    total: number | null
+    onPageChange: (pageIndex: number) => void
+    /** El rango que dice el servidor («from»/«to»); sin él se calcula con `pageSize`. */
+    range?: { from: number; to: number }
+    /** Mientras llega otra página: los botones no se pueden pulsar dos veces. */
+    loading?: boolean
+}
+
+const ROW_TONE: Record<"warning", string> = {
+    warning: "bg-warning-sunk/30 hover:bg-warning-sunk/50",
 }
 
 export function DataTable<TData, TValue>({
@@ -180,7 +240,13 @@ export function DataTable<TData, TValue>({
     itemLabel,
     getRowHref,
     renderMobileRow,
+    serverPagination,
+    getRowTone,
+    isRowSelected,
+    footerText,
+    resetPageOn,
 }: DataTableProps<TData, TValue>) {
+    const text = { ...FOOTER_TEXT, ...footerText }
     const stacked = useMediaQuery(SMALL_SCREEN_QUERY) && renderMobileRow !== undefined
     const [ownSorting, setOwnSorting] = React.useState<SortingState>(defaultSorting ?? [])
     const sorting = controlledSorting ?? ownSorting
@@ -199,28 +265,67 @@ export function DataTable<TData, TValue>({
         // solo cuando cambia lo que se ve (efecto de abajo).
         autoResetPageIndex: false,
         initialState: { pagination: { pageSize: pageSizeOption } },
+        ...(serverPagination ? {
+            manualPagination: true,
+            pageCount: serverPagination.pageCount,
+            enableSorting: false,
+            onPaginationChange: (updater) => {
+                const current = { pageIndex: serverPagination.pageIndex, pageSize: pageSizeOption }
+                const next = typeof updater === "function" ? updater(current) : updater
+                if (next.pageIndex !== serverPagination.pageIndex) serverPagination.onPageChange(next.pageIndex)
+            },
+        } : {}),
         getSortedRowModel: getSortedRowModel(),
         onColumnFiltersChange: setColumnFilters,
         getFilteredRowModel: getFilteredRowModel(),
         state: {
             sorting,
             columnFilters,
+            ...(serverPagination ? { pagination: { pageIndex: serverPagination.pageIndex, pageSize: pageSizeOption } } : {}),
         },
     })
 
-    // Volver a la primera página solo si cambian las filas (búsqueda, filtro,
-    // altas y bajas), el orden o un filtro de columna; no cuando llegan datos
-    // nuevos para las mismas filas.
     const rowsKey = getRowId ? data.map(getRowId).join("|") : String(data.length)
     const sortingKey = sorting.map((s) => `${s.id}:${s.desc}`).join(",")
     const filtersKey = JSON.stringify(columnFilters)
+    // Cuándo se vuelve a la página 1. Con paginación de servidor, nunca: cada
+    // página TRAE filas nuevas y reiniciar pediría la primera en cuanto llegara
+    // la segunda.
+    //  - Si la pantalla dice qué es «otra búsqueda» (`resetPageOn`: su texto y
+    //    sus filtros), se reinicia cuando eso cambia o cambia el orden; las
+    //    filas que llegan, se editan o se borran NO mueven la página.
+    //  - Sin eso, se reinicia cuando desaparece alguna fila que se veía en la
+    //    lista (una búsqueda que la recorta) o cambia el orden. Filas que solo
+    //    se agregan (carga progresiva, en cualquier posición) no la mueven.
+    // En los dos casos, si la página quedó más allá de la última, va a la última.
+    const serverPaged = serverPagination !== undefined
+    const rowIds = getRowId ? data.map(getRowId) : null
+    const lastSeen = React.useRef({ ids: rowIds, sortingKey, filtersKey, resetPageOn })
     React.useEffect(() => {
-        table.setPageIndex(0)
-    }, [table, rowsKey, sortingKey, filtersKey])
+        const last = lastSeen.current
+        lastSeen.current = { ids: rowIds, sortingKey, filtersKey, resetPageOn }
+        if (serverPaged) return
+        const orderChanged = last.sortingKey !== sortingKey || last.filtersKey !== filtersKey
+        const screenReset = resetPageOn !== undefined
+            ? !Object.is(last.resetPageOn, resetPageOn)
+            : rowIds === null || last.ids === null
+                ? last.ids?.length !== rowIds?.length
+                : (() => { const now = new Set(rowIds); return last.ids.some((id) => !now.has(id)) })()
+        if (orderChanged || screenReset) {
+            table.setPageIndex(0)
+            return
+        }
+        const lastPage = Math.max(0, table.getPageCount() - 1)
+        if (table.getState().pagination.pageIndex > lastPage) table.setPageIndex(lastPage)
+        // `rowIds` se rehace en cada render; `rowsKey` lo resume.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [table, rowsKey, sortingKey, filtersKey, serverPaged, resetPageOn])
 
     // La página siguiente, con el mismo orden y filtro que la actual.
     const { pageIndex, pageSize } = table.getState().pagination
-    const total = table.getPrePaginationRowModel().rows.length
+    const total = serverPagination ? serverPagination.total : table.getPrePaginationRowModel().rows.length
+    const pageRowCount = table.getRowModel().rows.length
+    const busy = serverPagination?.loading === true
     const nextRows = table.getPrePaginationRowModel().rows.slice((pageIndex + 1) * pageSize, (pageIndex + 2) * pageSize)
     // La clave resume las filas visibles y las siguientes: con los mismos
     // conjuntos no se vuelve a avisar aunque `data` cambie de identidad (p. ej.
@@ -255,11 +360,13 @@ export function DataTable<TData, TValue>({
                         <ul className="divide-y divide-rule">
                             {table.getRowModel().rows.map((row) => {
                                 const href = getRowHref?.(row.original)
+                                const tone = getRowTone?.(row.original)
                                 return (
                                     <li
                                         key={row.id}
                                         data-slot="data-table-mobile-row"
-                                        className={cn("px-4 py-3", href && "cursor-pointer transition-colors hover:bg-primary/5")}
+                                        data-state={isRowSelected?.(row.original) ? "selected" : undefined}
+                                        className={cn("px-4 py-3", href && "cursor-pointer transition-colors hover:bg-primary/5", tone && ROW_TONE[tone])}
                                         onClick={href ? (event) => followRow(event, href) : undefined}
                                     >
                                         {renderMobileRow!(row.original)}
@@ -356,18 +463,24 @@ export function DataTable<TData, TValue>({
                             {table.getRowModel().rows?.length ? (
                                 table.getRowModel().rows.map((row) => {
                                     const href = getRowHref?.(row.original)
+                                    const tone = getRowTone?.(row.original)
+                                    const selected = row.getIsSelected() || isRowSelected?.(row.original) === true
                                     return (
                                     <TableRow
                                         key={row.id}
-                                        data-state={row.getIsSelected() && "selected"}
-                                        className={href ? "cursor-pointer" : undefined}
+                                        data-state={selected ? "selected" : undefined}
+                                        className={cn(href && "cursor-pointer", tone && ROW_TONE[tone])}
                                         onClick={href ? (event) => followRow(event, href) : undefined}
                                     >
-                                        {row.getVisibleCells().map((cell) => (
-                                            <TableCell key={cell.id} className={cellClasses(cell.column)}>
-                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                            </TableCell>
-                                        ))}
+                                        {row.getVisibleCells().map((cell) => {
+                                            const span = cell.column.columnDef.meta?.span?.(row.original) ?? 1
+                                            if (span === 0) return null
+                                            return (
+                                                <TableCell key={cell.id} colSpan={span > 1 ? span : undefined} className={cellClasses(cell.column)}>
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </TableCell>
+                                            )
+                                        })}
                                     </TableRow>
                                     )
                                 })
@@ -391,32 +504,42 @@ export function DataTable<TData, TValue>({
             // En móvil el pie se apila: rango y página en líneas propias, botones debajo.
             <div data-slot="data-table-footer" className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-col gap-0.5 text-sm text-ink-3 sm:flex-row sm:items-center sm:gap-3">
-                    {itemLabel ? (
+                    {itemLabel && total !== null ? (
                         <>
-                            <span className="text-ink-2">Mostrando {pageIndex * pageSize + 1}–{Math.min((pageIndex + 1) * pageSize, total)} de {total} {total === 1 ? itemLabel.singular : itemLabel.plural}</span>
-                            <span>Página {pageIndex + 1} de {table.getPageCount()}</span>
+                            <span className="text-ink-2">{text.range(
+                                serverPagination?.range?.from ?? pageIndex * pageSize + 1,
+                                serverPagination?.range?.to ?? pageIndex * pageSize + pageRowCount,
+                                total,
+                                total === 1 ? itemLabel.singular : itemLabel.plural,
+                            )}</span>
+                            <span>{text.page(pageIndex + 1, table.getPageCount())}</span>
                         </>
                     ) : (
-                        <span>Página {pageIndex + 1} de {table.getPageCount()}</span>
+                        <span>{text.page(pageIndex + 1, table.getPageCount())}</span>
                     )}
                 </div>
                 <div className="flex items-center gap-2">
+                    {/* `type="button"`: la tabla puede vivir dentro de un formulario
+                        (los alojamientos en el editor de la propiedad) y paginar
+                        no puede enviarlo. */}
                     <Button
+                        type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => table.previousPage()}
-                        disabled={!table.getCanPreviousPage()}
+                        disabled={!table.getCanPreviousPage() || busy}
                     >
                         <Icon icon={ChevronLeft} className="mr-1" />
-                        Anterior
+                        {text.previous}
                     </Button>
                     <Button
+                        type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => table.nextPage()}
-                        disabled={!table.getCanNextPage()}
+                        disabled={!table.getCanNextPage() || busy}
                     >
-                        Siguiente
+                        {text.next}
                         <Icon icon={ChevronRight} className="ml-1" />
                     </Button>
                 </div>

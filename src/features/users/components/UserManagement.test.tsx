@@ -76,12 +76,22 @@ describe("UserManagement — la lista de usuarios con caché", () => {
         render(<UserManagement />)
         await screen.findByText("Luis")
 
-        fireEvent.keyDown(screen.getByRole("button", { name: "Acciones para Luis" }), { key: "Enter" })
+        fireEvent.keyDown(screen.getByRole("button", { name: "Acciones de Luis" }), { key: "Enter" })
         fireEvent.click(await screen.findByRole("menuitem", { name: /Eliminar/ }))
 
         await waitFor(() => expect(screen.queryByText("Luis")).toBeNull())
         expect(mocks.deleteUser).toHaveBeenCalledWith("u2")
         expect(mocks.getUsers).toHaveBeenCalledTimes(2)
         await act(async () => release([user("u1", "Ana")]))
+    })
+
+    it("una fila sin acciones posibles (otro dueño) muestra el guion, no un menú vacío", async () => {
+        mocks.getUsers.mockResolvedValue([{ ...user("me", "Camila"), isAccountOwner: true }, { ...user("u9", "Otra dueña"), isAccountOwner: true }, user("u2", "Luis")])
+        render(<UserManagement />)
+        await screen.findByText("Otra dueña")
+        expect(screen.queryByRole("button", { name: "Acciones de Otra dueña" })).toBeNull()
+        expect(screen.getByRole("button", { name: "Acciones de Luis" })).toBeInTheDocument()
+        const row = screen.getByText("Otra dueña").closest("tr")!
+        expect(row).toHaveTextContent("—")
     })
 })

@@ -129,7 +129,7 @@ describe("ReservationCostsList — jerarquía: quién costó y cuánto", () => {
     it("si no corrió ningún nodo, una sola leyenda en vez de una fila de guiones", () => {
         render(<ReservationCostsList costs={[{ ...withItems(1, {}), total: 0 }]} isLoading={false} />)
         const row = screen.getAllByRole("row")[1]
-        expect(within(row).getByText("Sin ejecuciones facturables")).toHaveAttribute("colspan", String(COST_CATEGORIES.length))
+        expect(within(row).getByText("Sin ejecuciones facturables").closest("td")).toHaveAttribute("colspan", String(COST_CATEGORIES.length))
         expect(within(row).queryByText("—")).toBeNull()
     })
 
@@ -149,12 +149,12 @@ describe("ReservationCostsList — jerarquía: quién costó y cuánto", () => {
         const [billed, zero] = screen.getAllByRole("row").slice(1)
         // La franja morada se repetía en cada fila y se leía como decoración.
         for (const row of [billed, zero]) {
-            expect(within(row).getAllByRole("cell")[0].className).not.toMatch(/inset|brand-purple/)
+            expect(within(row).getAllByRole("cell")[0].className).not.toMatch(/shadow-\[inset|brand-purple/)
         }
         const billedTotal = within(billed).getByText("0,75 USD")
         expect(billedTotal).toHaveClass("font-bold", "text-brand-navy")
         // La columna Total, apenas teñida del morado de interacción.
-        expect(billedTotal).toHaveClass("bg-primary/[0.03]")
+        expect(billedTotal.closest("td")).toHaveClass("bg-primary/[0.03]")
         expect(within(zero).getByText("0,00 USD")).toHaveClass("text-ink-3")
     })
 
@@ -163,5 +163,62 @@ describe("ReservationCostsList — jerarquía: quién costó y cuánto", () => {
         expect(screen.getByRole("link", { name: "Huésped 1" })).toHaveAttribute("href", "/dashboard/reservations/r-1")
         const link = screen.getByRole("link", { name: "Huésped 1" })
         expect(link.nextElementSibling).toHaveTextContent("101 · check-in 1 nov 2026")
+    })
+})
+
+describe("ReservationCostsList — tabla compartida", () => {
+    it("la fallida une sus celdas en «Consumo no disponible» y va en tono de aviso; nunca 0 USD", () => {
+        render(<ReservationCostsList costs={[cost(1)]} failedReservations={[failure(1)]} isLoading={false} />)
+        const failed = screen.getAllByRole("row")[1]
+        expect(failed).toHaveTextContent("Fallida 1")
+        expect(failed).toHaveClass("bg-warning-sunk/30")
+        // Huésped + una celda que cubre las categorías y el total.
+        expect(within(failed).getAllByRole("cell")).toHaveLength(2)
+        expect(within(failed).getByText("Consumo no disponible").closest("td")).toHaveAttribute("colspan", String(COST_CATEGORIES.length + 1))
+        expect(within(failed).queryByText(/USD/)).toBeNull()
+    })
+
+    it("se ordena por cualquier columna; el total vuelve a mayor primero y las fallidas quedan arriba en los dos sentidos", () => {
+        render(<ReservationCostsList costs={[cost(1), cost(3), cost(2)]} failedReservations={[failure(1)]} isLoading={false} />)
+        const firstCells = () => screen.getAllByRole("row").slice(1).map((r) => within(r).getByRole("link").textContent)
+        expect(firstCells()).toEqual(["Fallida 1", "Huésped 3", "Huésped 2", "Huésped 1"])
+        fireEvent.click(screen.getByRole("button", { name: /Total/ }))
+        expect(firstCells()).toEqual(["Fallida 1", "Huésped 1", "Huésped 2", "Huésped 3"])
+    })
+
+    it("mientras carga en página 2, llegar más filas no la devuelve a la 1", () => {
+        const { rerender } = render(<ReservationCostsList costs={many(PAGE_SIZE + 3)} isLoading loadingProgress={{ done: 18, total: 40 }} />)
+        fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }))
+        expect(screen.getByText("Página 2 de 2")).toBeInTheDocument()
+        rerender(<ReservationCostsList costs={many(PAGE_SIZE * 2 + 3)} isLoading loadingProgress={{ done: 33, total: 40 }} />)
+        expect(screen.getByText("Página 2 de 3")).toBeInTheDocument()
+    })
+})
+
+describe("ReservationCostsList — mismos íconos que Operaciones", () => {
+    it("cada categoría lleva en su encabezado el ícono de su automatización; WhatsApp y OTA, la marca del canal", () => {
+        render(<ReservationCostsList costs={[cost(1)]} isLoading={false} />)
+        const header = (name: string) => screen.getByRole("columnheader", { name: new RegExp(name) })
+        expect(header("Verificación").querySelector(".lucide-users")).not.toBeNull()
+        expect(header("Contrato").querySelector(".lucide-file-pen-line")).not.toBeNull()
+        expect(header("TRA").querySelector(".lucide-landmark")).not.toBeNull()
+        expect(header("Accesos").querySelector(".lucide-key-round")).not.toBeNull()
+        expect(header("WhatsApp").querySelector('[data-channel="whatsapp"]')).not.toBeNull()
+        expect(header("Mensaje OTA").querySelector('[data-channel="ota"]')).not.toBeNull()
+    })
+})
+
+describe("ReservationCostsList — carga en paralelo y móvil (auditoría 2026-11-20)", () => {
+    it("una reserva que llega tarde y se ubica en medio de la lista no devuelve a la página 1", () => {
+        const all = many(PAGE_SIZE * 2)
+        const { rerender } = render(<ReservationCostsList costs={all.slice(1)} isLoading loadingProgress={{ done: 29, total: 30 }} />)
+        fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }))
+        rerender(<ReservationCostsList costs={all} isLoading loadingProgress={{ done: 30, total: 30 }} />)
+        expect(screen.getByText("Página 2 de 2")).toBeInTheDocument()
+    })
+
+    it("el avance se ve desde el principio, antes de que llegue la primera reserva", () => {
+        render(<ReservationCostsList costs={[]} isLoading loadingProgress={{ done: 0, total: 10 }} />)
+        expect(screen.getByText("Cargando el consumo · 0 de 10 reservas")).toBeInTheDocument()
     })
 })

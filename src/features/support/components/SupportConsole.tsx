@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Building2, RefreshCw, Search } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
@@ -11,15 +11,14 @@ import { Input } from "@/components/ui/input"
 import { LoadingState } from "@/components/ui/loading-state"
 import { SectionCard } from "@/components/ui/section-card"
 import { StatusPill } from "@/components/ui/status-pill"
-import { cn } from "@/lib/utils"
 import { getErrorMessage } from "@/lib/notify-error"
 import { supportService } from "../services/support-service"
 import type { PageMeta, SupportClient } from "../lib/support-readers"
-import { initialsOf } from "../lib/support-display"
 import { ClientUsersDrawer } from "./ClientUsersDrawer"
 import { Label } from "@/components/ui/label"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@/components/ui/table"
+import type { ColumnDef } from "@tanstack/react-table"
+import { DataTable } from "@/components/shared/data-table"
+import { AbsentValue, ActionsHeader, IdentityCell } from "@/components/shared/table-cells"
 
 type ClientsState =
     | { kind: "loading" }
@@ -47,13 +46,18 @@ export function SupportConsole() {
     const [page, setPage] = useState(1)
     const [reloadKey, setReloadKey] = useState(0)
     const [clients, setClients] = useState<ClientsState>({ kind: "loading" })
+    // Cambiar de página deja la anterior a la vista hasta que llega la nueva.
+    const [paging, setPaging] = useState(false)
     const [opened, setOpened] = useState<SupportClient | null>(null)
     // El botón «Ver usuarios» que abrió el panel: recibe el foco al cerrarlo.
-    const openerRef = useRef<HTMLElement | null>(null)
-    const open = (client: SupportClient, opener: HTMLElement) => {
-        openerRef.current = opener
+    const [opener, setOpener] = useState<HTMLElement | null>(null)
+    // Estable: las columnas se arman una vez (una celda nueva por render se
+    // remontaría y el foco no podría volver al botón que abrió el panel).
+    const open = useCallback((client: SupportClient, from: HTMLElement) => {
+        setOpener(from)
         setOpened(client)
-    }
+    }, [])
+    const columns = useMemo(() => clientColumns(open), [open])
 
     // El 401 de una sesión de soporte cerrada trae de vuelta acá (api-client).
     useEffect(() => {
@@ -71,6 +75,7 @@ export function SupportConsole() {
             .catch((error) => {
                 if (active) setClients({ kind: "error", message: getErrorMessage(error, "No se pudo buscar clientes.") })
             })
+            .finally(() => { if (active) setPaging(false) })
         return () => { active = false }
     }, [query, page, reloadKey])
 
@@ -82,7 +87,7 @@ export function SupportConsole() {
     }
 
     const goTo = (next: number) => {
-        setClients({ kind: "loading" })
+        setPaging(true)
         setPage(next)
     }
 
@@ -131,63 +136,38 @@ export function SupportConsole() {
                     </div>
                 )}
 
-                {clients.kind === "ready" && clients.items.length === 0 && (
-                    <EmptyState
-                        icon={Building2}
-                        title={query ? "Ningún cliente coincide con la búsqueda" : "Todavía no hay clientes"}
-                        description={query ? "Prueba con el correo, la identificación o el nombre de uno de sus usuarios." : undefined}
-                    />
-                )}
-
-                {clients.kind === "ready" && clients.items.length > 0 && (
-                    <>
-                        {/* Desde md, tabla; en pantallas angostas, tarjetas (sin scroll horizontal). */}
-                        <div className="hidden md:block">
-                            <Table className="table-fixed">
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead scope="col" className="w-[34%] px-5 py-3">Cliente</TableHead>
-                                        <TableHead scope="col" className="px-5 py-3">Correo</TableHead>
-                                        <TableHead scope="col" className="hidden w-[14%] px-5 py-3 lg:table-cell">Identificación</TableHead>
-                                        <TableHead scope="col" className="w-[13%] px-5 py-3">Usuarios</TableHead>
-                                        <TableHead scope="col" className="w-[15%] px-5 py-3"><span className="sr-only">Acción</span></TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {clients.items.map((client) => (
-                                        <ClientRow
-                                            key={client.uuid}
-                                            client={client}
-                                            opened={opened?.uuid === client.uuid}
-                                            onOpen={(opener) => open(client, opener)}
-                                        />
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
-                        <ul className="divide-y divide-rule md:hidden">
-                            {clients.items.map((client) => (
-                                <ClientCard key={client.uuid} client={client} onOpen={(opener) => open(client, opener)} />
-                            ))}
-                        </ul>
-                        {clients.meta.lastPage > 1 && (
-                            <div className="flex items-center justify-between border-t border-rule px-5 py-3 text-xs text-ink-2">
-                                <span>Página {clients.meta.currentPage} de {clients.meta.lastPage}</span>
-                                <div className="flex gap-2">
-                                    <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => goTo(page - 1)}>
-                                        Anterior
-                                    </Button>
-                                    <Button variant="outline" size="sm" disabled={page >= clients.meta.lastPage} onClick={() => goTo(page + 1)}>
-                                        Siguiente
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-                    </>
+                {clients.kind === "ready" && (
+                    <div className="p-4">
+                        <DataTable
+                            columns={columns}
+                            data={clients.items}
+                            getRowId={clientRowId}
+                            isRowSelected={(client) => opened?.uuid === client.uuid}
+                            renderMobileRow={(client) => <ClientMobileRow client={client} onOpen={(opener) => open(client, opener)} />}
+                            itemLabel={CLIENTS_LABEL}
+                            serverPagination={{
+                                pageIndex: clients.meta.currentPage - 1,
+                                pageCount: clients.meta.lastPage,
+                                // El backend no dice cuántos van por página: sin eso, el rango
+                                // «Mostrando X–Y» sería una cuenta inventada. El total ya está
+                                // en la línea de la búsqueda; el pie dice la página.
+                                total: null,
+                                onPageChange: (index) => goTo(index + 1),
+                                loading: paging,
+                            }}
+                            empty={
+                                <EmptyState
+                                    icon={Building2}
+                                    title={query ? "Ningún cliente coincide con la búsqueda" : "Todavía no hay clientes"}
+                                    description={query ? "Prueba con el correo, la identificación o el nombre de uno de sus usuarios." : undefined}
+                                />
+                            }
+                        />
+                    </div>
                 )}
             </SectionCard>
 
-            <ClientUsersDrawer client={opened} onClose={() => setOpened(null)} returnFocusTo={() => openerRef.current} />
+            <ClientUsersDrawer client={opened} onClose={() => setOpened(null)} returnFocusTo={() => opener} />
         </div>
     )
 }
@@ -203,54 +183,61 @@ function OpenUsersButton({ client, onOpen, className }: { client: SupportClient;
 }
 
 function UsersCountPill({ count }: { count: number | null }) {
-    if (count == null) return <>—</>
+    if (count == null) return <AbsentValue />
     return <StatusPill tone={count === 0 ? "idle" : "info"}>{usersCountLabel(count)}</StatusPill>
 }
 
+const CLIENTS_LABEL = { singular: "cliente", plural: "clientes" }
+const clientRowId = (client: SupportClient) => client.uuid
+
 /**
- * Fila de cliente. Una sola acción explícita («Ver usuarios»): la fila entera
- * clicable duplicaba la interacción y complicaba el teclado y los lectores de
- * pantalla. Un cliente sin usuarios sigue legible, solo sin la acción.
+ * Las columnas de la tabla. Una sola acción explícita («Ver usuarios»): la fila
+ * entera clicable duplicaba la interacción y complicaba el teclado y los
+ * lectores de pantalla. Un cliente sin usuarios sigue legible, solo sin la
+ * acción. Se arman una vez por `open` estable del componente.
  */
-function ClientRow({ client, opened, onOpen }: { client: SupportClient; opened: boolean; onOpen: (opener: HTMLElement) => void }) {
-    const empty = client.usersCount === 0
-    return (
-        <TableRow data-state={opened ? "selected" : undefined}>
-            <TableCell className="px-5 py-3.5">
-                <div className="flex min-w-0 items-center gap-3">
-                    <Avatar aria-hidden>
-                        <AvatarFallback>{initialsOf(client.name)}</AvatarFallback>
-                    </Avatar>
-                    {/* Truncado solo a la vista: el texto completo sigue en el DOM. */}
-                    <p className={cn("truncate font-semibold", empty ? "text-ink-2" : "text-ink")} title={client.name}>
-                        {client.name}
-                    </p>
-                </div>
-            </TableCell>
-            <TableCell className="truncate px-5 py-3.5 text-ink-2" title={client.email ?? undefined}>{client.email ?? "—"}</TableCell>
-            <TableCell className="hidden px-5 py-3.5 tabular-nums text-ink-2 lg:table-cell">{client.identificationNumber ?? "—"}</TableCell>
-            <TableCell className="px-5 py-3.5"><UsersCountPill count={client.usersCount} /></TableCell>
-            <TableCell className="px-5 py-3.5 text-right"><OpenUsersButton client={client} onOpen={onOpen} /></TableCell>
-        </TableRow>
-    )
+function clientColumns(open: (client: SupportClient, opener: HTMLElement) => void): ColumnDef<SupportClient>[] {
+    return [
+        {
+            id: "name",
+            header: "Cliente",
+            meta: { sticky: "left" },
+            cell: ({ row }) => <IdentityCell name={row.original.name} className="max-w-72" />,
+        },
+        {
+            id: "email",
+            header: "Correo",
+            cell: ({ row }) => row.original.email
+                ? <span className="block max-w-64 truncate text-sm text-ink-2">{row.original.email}</span>
+                : <AbsentValue />,
+        },
+        {
+            id: "identification",
+            header: "Identificación",
+            cell: ({ row }) => row.original.identificationNumber
+                ? <span className="tabular-nums text-ink-2">{row.original.identificationNumber}</span>
+                : <AbsentValue />,
+        },
+        { id: "users", header: "Usuarios", cell: ({ row }) => <UsersCountPill count={row.original.usersCount} /> },
+        {
+            id: "actions",
+            header: () => <ActionsHeader />,
+            meta: { cellClassName: "text-right" },
+            cell: ({ row }) => <OpenUsersButton client={row.original} onOpen={(opener) => open(row.original, opener)} />,
+        },
+    ]
 }
 
-/** La misma información en pantallas angostas, como tarjeta. */
-function ClientCard({ client, onOpen }: { client: SupportClient; onOpen: (opener: HTMLElement) => void }) {
-    const empty = client.usersCount === 0
+/** La misma información en la fila apilada de móvil. */
+function ClientMobileRow({ client, onOpen }: { client: SupportClient; onOpen: (opener: HTMLElement) => void }) {
     return (
-        <li className="space-y-2 px-5 py-4">
-            <div className="min-w-0">
-                <p className={cn("truncate font-semibold", empty ? "text-ink-2" : "text-ink")} title={client.name}>
-                    {client.name}
-                </p>
-                {client.email && <p className="truncate text-sm text-ink-2">{client.email}</p>}
-                <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink-2">
-                    {client.identificationNumber && <span className="tabular-nums">ID {client.identificationNumber}</span>}
-                    <UsersCountPill count={client.usersCount} />
-                </p>
-            </div>
+        <div className="space-y-2">
+            <IdentityCell name={client.name} secondary={client.email ?? undefined} />
+            <p className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
+                {client.identificationNumber && <span className="tabular-nums">ID {client.identificationNumber}</span>}
+                <UsersCountPill count={client.usersCount} />
+            </p>
             <OpenUsersButton client={client} onOpen={onOpen} className="h-10 w-full" />
-        </li>
+        </div>
     )
 }

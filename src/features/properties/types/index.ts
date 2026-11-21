@@ -2,6 +2,7 @@ import { readPropertyTypeId } from "../lib/property-type"
 import { z } from "zod"
 import { normalizeLocale, DEFAULT_COMMUNICATION_LOCALE, type CommunicationLocale } from "@/lib/locales"
 import { normalizeExternalPmsIds, toExternalPmsIdsPayload } from "../lib/external-pms-ids"
+import { readDeclaredCapacity } from "../lib/declared-capacity"
 
 export type {
     PropertyAutomation,
@@ -518,6 +519,10 @@ export function apiResponseToFormData(apiData: PropertyApiResponse): PropertyFor
                 // The key a listing response carries these under is not confirmed
                 // against a live payload, so the normalizer reads every plausible one.
                 externalPmsIds: normalizeExternalPmsIds(u),
+                // Solo para MOSTRAR (tabla del editor): lo que la respuesta declara,
+                // antes de los 2/1/1 por omisión de `extra`. No viaja al guardar:
+                // `toListingPayload` arma el cuerpo campo por campo.
+                declaredCapacity: readDeclaredCapacity(u),
                 customFields: u.customFields || [],
                 extra: {
                     maxOccupancy: extraData.maxOccupancy || extraData.max_occupancy || 2,

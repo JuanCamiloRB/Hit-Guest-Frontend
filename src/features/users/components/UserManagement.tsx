@@ -1,25 +1,16 @@
 "use client"
 
-import { useState, useMemo } from "react"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+import { useEffect, useMemo, useRef, useState } from "react"
+import type { ColumnDef } from "@tanstack/react-table"
+import { DataTable } from "@/components/shared/data-table"
+import { ActionsHeader, IdentityCell, RowActionsMenu } from "@/components/shared/table-cells"
+import { FeedbackBanner } from "@/components/ui/feedback-banner"
+import { EmptyState } from "@/components/ui/empty-state"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Crown, MoreHorizontal, UserPlus, Trash2 } from "lucide-react"
+import { Crown, UserPlus, Trash2 } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu"
 import { TEAM_ROLE_LABELS, type TeamRole, type User } from "@/features/auth/types"
 import { userService } from "../services/user-service"
 import { usersCache } from "../lib/users-cache"
@@ -59,7 +50,7 @@ import { toast } from "sonner"
 import { notifyError } from "@/lib/notify-error"
 import { ApiError } from "@/types/api"
 import { Heading } from "@/components/ui/heading"
-import { Spinner } from "@/components/ui/loading-state"
+import { LoadingState } from "@/components/ui/loading-state"
 
 /**
  * Team users = CREATE + DELETE only. Editing a user is intentionally NOT offered:
@@ -190,6 +181,56 @@ export function UserManagement() {
     // Transfer is offered on the owner's OWN row (they hand ownership to someone else).
     const canTransferFrom = (user: User) => isOwner && user.id === meUuid && !!user.isAccountOwner
 
+    // Cada fila lleva lo que se puede hacer con ella (depende de quién mira).
+    const rows = useMemo<UserRow[]>(
+        () => users.map((user) => ({ user, canDelete: canDelete(user), canTransfer: canTransferFrom(user) })),
+        // `canDelete`/`canTransferFrom` solo leen `isOwner` y `meUuid`.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [users, isOwner, meUuid],
+    )
+    // Columnas ESTABLES (TanStack monta cada celda como componente: una función
+    // nueva por render remontaba la celda). Los manejadores cambian en cada
+    // render: se leen de una ref, solo al pulsar.
+    const handlersRef = useRef<UserRowHandlers>({ remove: () => {}, transfer: () => {} })
+    useEffect(() => {
+        handlersRef.current = { remove: handleDelete, transfer: () => setTransferOpen(true) }
+    })
+    const { columns, renderMobileRow } = useMemo(() => {
+        const actions = (row: UserRow) => <UserActions row={row} handlersRef={handlersRef} />
+        const columns: ColumnDef<UserRow>[] = [
+            {
+                id: "name",
+                accessorFn: (row) => row.user.firstName,
+                header: "Usuario",
+                meta: { sticky: "left" },
+                cell: ({ row }) => <IdentityCell name={row.original.user.firstName} secondary={row.original.user.email} className="max-w-72" />,
+            },
+            {
+                id: "account",
+                accessorFn: (row) => (row.user.isAccountOwner ? 0 : 1),
+                header: "Cuenta",
+                cell: ({ row }) => <AccountBadge user={row.original.user} />,
+            },
+            {
+                id: "actions",
+                header: () => <ActionsHeader />,
+                enableSorting: false,
+                meta: { headerClassName: "w-12", cellClassName: "text-center" },
+                cell: ({ row }) => actions(row.original),
+            },
+        ]
+        const renderMobileRow = (row: UserRow) => (
+            <div className="flex items-start justify-between gap-3">
+                <IdentityCell name={row.user.firstName} secondary={row.user.email} />
+                <div className="flex shrink-0 items-center gap-2">
+                    <AccountBadge user={row.user} />
+                    {actions(row)}
+                </div>
+            </div>
+        )
+        return { columns, renderMobileRow }
+    }, [])
+
     return (
         <div className="space-y-4">
             <div className="flex justify-between items-center">
@@ -295,103 +336,43 @@ export function UserManagement() {
             </div>
 
             {refreshFailed && (
-                // Mismo aviso que las demás listas, fuera del borde de la tabla: se ve la última cargada.
-                <div role="status" className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-warning-sunk px-3 py-2 text-sm text-ink-2">
-                    <span>No pudimos actualizar la lista. Se muestra la última cargada.</span>
-                    <Button variant="link" size="inline" type="button" onClick={fetchUsers}>
-                        Reintentar
-                    </Button>
-                </div>
+                // Datos parciales (escala de estados): se ve la última lista cargada.
+                <FeedbackBanner
+                    tone="warning"
+                    title="No pudimos actualizar la lista"
+                    action={<Button variant="outline" size="sm" type="button" onClick={fetchUsers}>Reintentar</Button>}
+                >
+                    Se muestra la última cargada.
+                </FeedbackBanner>
             )}
 
             {/* Role column intentionally omitted: the backend doesn't expose the role
                 per user yet. Only the account-owner badge is available today. */}
-            <div className="rounded-md border overflow-hidden">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Usuario</TableHead>
-                            <TableHead>Cuenta</TableHead>
-                            <TableHead className="text-right">Acciones</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            <TableRow>
-                                <TableCell colSpan={3} className="h-24 text-center">
-                                    <Spinner size="xl" tone="muted" />
-                                </TableCell>
-                            </TableRow>
-                        ) : status === "error" ? (
-                            // Un fallo se dice: «no hay usuarios» sería falso.
-                            <TableRow>
-                                <TableCell colSpan={3} className="h-24 text-center">
-                                    <p className="text-sm font-semibold text-ink">No pudimos cargar los usuarios</p>
-                                    {/* El motivo del servidor (p. ej. un 403 por permisos), tal cual. */}
-                                    {errorMessage && <p className="mt-1 text-xs text-ink-3">{errorMessage}</p>}
-                                    <Button variant="outline" size="sm" className="mt-2" onClick={fetchUsers}>Reintentar</Button>
-                                </TableCell>
-                            </TableRow>
-                        ) : users.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={3} className="h-24 text-center text-ink-3">
-                                    No hay usuarios registrados en esta cuenta.
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            users.map((user) => (
-                                <TableRow key={user.id}>
-                                    <TableCell>
-                                        <div className="flex flex-col">
-                                            <span className="font-medium text-ink">{user.firstName}</span>
-                                            <span className="text-xs text-ink-3">{user.email}</span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        {user.isAccountOwner ? (
-                                            <Badge tone="warning">
-                                                <Icon icon={Crown} size="xs" /> Dueño de la cuenta
-                                            </Badge>
-                                        ) : (
-                                            <Badge>Miembro</Badge>
-                                        )}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        {canDelete(user) || canTransferFrom(user) ? (
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    {/* Solo ícono: sin nombre, un lector de pantalla diría «botón». */}
-                                                    <Button variant="ghost" size="icon-sm" aria-label={`Acciones para ${user.firstName}`}>
-                                                        <Icon icon={MoreHorizontal} />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                                                    {canTransferFrom(user) && (
-                                                        <DropdownMenuItem onClick={() => setTransferOpen(true)}>
-                                                            <Icon icon={Crown} className="mr-2" /> Transferir propiedad de la cuenta
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                    {canDelete(user) && (
-                                                        <DropdownMenuItem
-                                                            className="text-danger"
-                                                            onClick={() => handleDelete(user)}
-                                                        >
-                                                            <Icon icon={Trash2} className="mr-2" /> Eliminar
-                                                        </DropdownMenuItem>
-                                                    )}
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        ) : (
-                                            <span className="text-xs text-ink-3">—</span>
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-            </div>
+            {isLoading ? (
+                <LoadingState rows={3} label="Cargando usuarios" />
+            ) : status === "error" ? (
+                // Un fallo se dice: «no hay usuarios» sería falso.
+                <FeedbackBanner
+                    tone="danger"
+                    mode="blocking"
+                    title="No pudimos cargar los usuarios"
+                    action={<Button variant="outline" size="sm" onClick={fetchUsers}>Reintentar</Button>}
+                >
+                    {/* El motivo del servidor (p. ej. un 403 por permisos), tal cual. */}
+                    {errorMessage ?? "Revisa tu conexión e intenta de nuevo."}
+                </FeedbackBanner>
+            ) : (
+                <DataTable
+                    columns={columns}
+                    data={rows}
+                    getRowId={userRowId}
+                    resetPageOn="users"
+                    renderMobileRow={renderMobileRow}
+                    itemLabel={USERS_LABEL}
+                    defaultSorting={[{ id: "name", desc: false }]}
+                    empty={<EmptyState title="Todavía no hay usuarios" description="Crea el primero con «Nuevo usuario»." />}
+                />
+            )}
 
             <TransferOwnershipDialog
                 open={transferOpen}
@@ -401,5 +382,47 @@ export function UserManagement() {
                 onTransferred={handleTransferred}
             />
         </div>
+    )
+}
+
+const USERS_LABEL = { singular: "usuario", plural: "usuarios" }
+
+interface UserRow {
+    user: User
+    canDelete: boolean
+    canTransfer: boolean
+}
+interface UserRowHandlers {
+    remove: (user: User) => void
+    transfer: () => void
+}
+const userRowId = (row: UserRow) => row.user.id
+
+function AccountBadge({ user }: { user: User }) {
+    return user.isAccountOwner ? (
+        <Badge tone="warning">
+            <Icon icon={Crown} size="xs" /> Dueño de la cuenta
+        </Badge>
+    ) : (
+        <Badge>Miembro</Badge>
+    )
+}
+
+/** El menú «⋮» de la fila, como en todas las tablas; sin acciones posibles, el guion. */
+function UserActions({ row, handlersRef }: { row: UserRow; handlersRef: React.RefObject<UserRowHandlers> }) {
+    if (!row.canDelete && !row.canTransfer) return <span className="text-xs text-ink-4">—</span>
+    return (
+        <RowActionsMenu label={`Acciones de ${row.user.firstName}`}>
+            {row.canTransfer && (
+                <DropdownMenuItem onClick={() => handlersRef.current.transfer()}>
+                    <Icon icon={Crown} /> Transferir propiedad de la cuenta
+                </DropdownMenuItem>
+            )}
+            {row.canDelete && (
+                <DropdownMenuItem className="text-danger" onClick={() => handlersRef.current.remove(row.user)}>
+                    <Icon icon={Trash2} /> Eliminar
+                </DropdownMenuItem>
+            )}
+        </RowActionsMenu>
     )
 }

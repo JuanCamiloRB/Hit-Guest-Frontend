@@ -37,6 +37,12 @@ function renderUnits(units: unknown[] = [SAVED]) {
     return user
 }
 
+/** Las acciones de la fila están en su menú «⋮», como en todas las tablas. */
+async function rowAction(user: ReturnType<typeof userEvent.setup>, unit: string, action: "Editar" | "Eliminar") {
+    await user.click(screen.getByRole("button", { name: `Acciones de ${unit}` }))
+    await user.click(await screen.findByRole("menuitem", { name: action }))
+}
+
 describe("PropertiesUnits — eliminar un alojamiento pide confirmación", () => {
     beforeEach(() => {
         vi.clearAllMocks()
@@ -45,7 +51,7 @@ describe("PropertiesUnits — eliminar un alojamiento pide confirmación", () =>
 
     it("la papelera tiene nombre, abre la confirmación con la consecuencia y no borra nada todavía; Cancelar no borra", async () => {
         const user = renderUnits()
-        await user.click(screen.getByRole("button", { name: "Eliminar Suite 101" }))
+        await rowAction(user, "Suite 101", "Eliminar")
 
         const dialog = await screen.findByRole("alertdialog", { name: "¿Eliminar este alojamiento?" })
         expect(dialog).toHaveTextContent("Se elimina Suite 101 de esta propiedad")
@@ -64,7 +70,7 @@ describe("PropertiesUnits — eliminar un alojamiento pide confirmación", () =>
         let finish!: () => void
         mocks.deleteListing.mockReturnValue(new Promise<void>((resolve) => { finish = resolve }))
         const user = renderUnits()
-        await user.click(screen.getByRole("button", { name: "Eliminar Suite 101" }))
+        await rowAction(user, "Suite 101", "Eliminar")
         const dialog = await screen.findByRole("alertdialog")
         const action = within(dialog).getByRole("button", { name: "Eliminar alojamiento" })
 
@@ -86,7 +92,7 @@ describe("PropertiesUnits — eliminar un alojamiento pide confirmación", () =>
     it("si falla: avisa, el diálogo sigue abierto para reintentar o cancelar y la fila no se va", async () => {
         mocks.deleteListing.mockRejectedValueOnce(new Error("500"))
         const user = renderUnits()
-        await user.click(screen.getByRole("button", { name: "Eliminar Suite 101" }))
+        await rowAction(user, "Suite 101", "Eliminar")
         const dialog = await screen.findByRole("alertdialog")
         await user.click(within(dialog).getByRole("button", { name: "Eliminar alojamiento" }))
 
@@ -94,12 +100,12 @@ describe("PropertiesUnits — eliminar un alojamiento pide confirmación", () =>
         expect(screen.getByRole("alertdialog")).toBeInTheDocument()
         expect(within(dialog).getByRole("button", { name: "Eliminar alojamiento" })).toBeEnabled()
         // La fila sigue en la tabla (el nombre también aparece dentro del diálogo).
-        expect(screen.getByRole("cell", { name: "Suite 101", hidden: true })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Suite 101", hidden: true })).toBeInTheDocument()
     })
 
     it("una fila sin guardar sale del formulario sin preguntar (no hay nada que borrar en el backend)", async () => {
         const user = renderUnits([{ name: "Borrador" }])
-        await user.click(screen.getByRole("button", { name: "Eliminar Borrador" }))
+        await rowAction(user, "Borrador", "Eliminar")
         expect(screen.queryByRole("alertdialog")).toBeNull()
         expect(screen.queryByText("Borrador")).toBeNull()
         expect(mocks.deleteListing).not.toHaveBeenCalled()
@@ -108,7 +114,7 @@ describe("PropertiesUnits — eliminar un alojamiento pide confirmación", () =>
     it("el foco empieza en «Cancelar» y, tras un fallo, reintentar funciona", async () => {
         mocks.deleteListing.mockRejectedValueOnce(new Error("500")).mockResolvedValueOnce(undefined)
         const user = renderUnits()
-        await user.click(screen.getByRole("button", { name: "Eliminar Suite 101" }))
+        await rowAction(user, "Suite 101", "Eliminar")
         const dialog = await screen.findByRole("alertdialog")
         await waitFor(() => expect(within(dialog).getByRole("button", { name: "Cancelar" })).toHaveFocus())
 
@@ -117,25 +123,25 @@ describe("PropertiesUnits — eliminar un alojamiento pide confirmación", () =>
         await user.click(within(dialog).getByRole("button", { name: "Eliminar alojamiento" }))
         await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull())
         expect(mocks.deleteListing).toHaveBeenCalledTimes(2)
-        expect(screen.queryByRole("cell", { name: "Suite 101" })).toBeNull()
+        expect(screen.queryByRole("button", { name: "Suite 101" })).toBeNull()
     })
 
     it("cancelar después de un fallo no borra nada", async () => {
         mocks.deleteListing.mockRejectedValueOnce(new Error("500"))
         const user = renderUnits()
-        await user.click(screen.getByRole("button", { name: "Eliminar Suite 101" }))
+        await rowAction(user, "Suite 101", "Eliminar")
         const dialog = await screen.findByRole("alertdialog")
         await user.click(within(dialog).getByRole("button", { name: "Eliminar alojamiento" }))
         await waitFor(() => expect(mocks.notifyError).toHaveBeenCalled())
         await user.click(within(dialog).getByRole("button", { name: "Cancelar" }))
         await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull())
         expect(mocks.deleteListing).toHaveBeenCalledTimes(1)
-        expect(screen.getByRole("cell", { name: "Suite 101" })).toBeInTheDocument()
+        expect(screen.getByRole("button", { name: "Suite 101" })).toBeInTheDocument()
     })
 
     it("la sugerencia de desactivar solo aparece si el alojamiento está activo", async () => {
         const user = renderUnits([{ ...SAVED, isActive: false }])
-        await user.click(screen.getByRole("button", { name: "Eliminar Suite 101" }))
+        await rowAction(user, "Suite 101", "Eliminar")
         const dialog = await screen.findByRole("alertdialog")
         expect(dialog).not.toHaveTextContent("puedes desactivarlo")
 
