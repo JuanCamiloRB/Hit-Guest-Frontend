@@ -56,6 +56,10 @@ const buttonVariants = cva(
           "border border-danger/30 bg-background text-danger shadow-xs hover:bg-danger-sunk active:bg-danger-sunk disabled:border-rule disabled:bg-transparent",
         "outline-warning":
           "border border-warning/40 bg-background text-warning shadow-xs hover:bg-warning-sunk active:bg-warning-sunk disabled:border-rule disabled:bg-transparent",
+        // Lo destacado de HitGuest que además se pulsa (el saldo del header): el
+        // tinte de `Badge accent` con borde; el texto sigue en tinta (13:1).
+        accent:
+          "border border-primary/30 bg-primary/10 text-ink shadow-xs hover:border-primary/50 hover:bg-primary/20 active:bg-primary/20 disabled:border-rule disabled:bg-transparent",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary-hover active:bg-secondary-hover disabled:bg-sunk aria-disabled:not-data-loading:bg-sunk",
         ghost:

@@ -6,7 +6,8 @@ import { Wallet, AlertTriangle } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { Button } from "@/components/ui/button"
 import { useBalanceStore } from "../hooks/useBalanceStore"
-import { formatUsd, getBalanceState } from "../types"
+import { formatUsdNumber, getBalanceState } from "../types"
+import { Figure } from "@/components/ui/figure"
 import { Skeleton } from "@/components/ui/skeleton"
 
 const BILLING_HREF = "/dashboard/settings?tab=billing"
@@ -31,19 +32,22 @@ export function BalanceWidget() {
     if (amount === null) return null
 
     const state = getBalanceState(amount)
+    // Con saldo, el morado claro de lo destacado; bajo o agotado, el color del estado.
     const variant =
-        state === "depleted" ? "outline-destructive" : state === "low" ? "outline-warning" : "outline"
+        state === "depleted" ? "outline-destructive" : state === "low" ? "outline-warning" : "accent"
+    const tone = state === "depleted" ? "danger" : state === "low" ? "warning" : "ink"
 
     return (
         <Button asChild variant={variant}>
-            <Link href={BILLING_HREF} aria-label="Ver saldo y recargar">
+            <Link href={BILLING_HREF} aria-label="Ver saldo y recargar" data-balance-state={state}>
                 {state === "normal" ? (
-                    <Icon icon={Wallet} />
+                    <Icon icon={Wallet} className="text-primary-hover" />
                 ) : (
                     <Icon icon={AlertTriangle} />
                 )}
-                <span className="tabular-nums">{formatUsd(amount)}</span>
-                <span className="hidden md:inline text-xs font-semibold text-ink-3">USD</span>
+                {/* La cifra en Gabarito, como el saldo del Tablero; «USD» una sola vez. */}
+                <Figure size="md" tone={tone}>{formatUsdNumber(amount)}</Figure>
+                <span className={state === "normal" ? "text-xs font-semibold text-ink-2" : "text-xs font-semibold"}>USD</span>
             </Link>
         </Button>
     )

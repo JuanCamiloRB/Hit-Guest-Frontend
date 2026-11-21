@@ -195,6 +195,28 @@ describe("BillingDashboard — el saldo es el mismo del header", () => {
         expect(screen.getAllByText(/^6,49$/).length).toBeGreaterThanOrEqual(1)
     })
 
+    it.each([
+        [10, "normal", "accent", "ink"],
+        [3, "low", "warning", "warning"],
+        [0, "depleted", "danger", "danger"],
+    ])("saldo %s: la tarjeta es «%s» (superficie %s, cifra %s) con la billetera al lado", async (amount, state, surface, figure) => {
+        mocks.getBalance.mockResolvedValue({ amount, currency: "USD" })
+        render(<BillingDashboard />)
+        const card = screen.getByRole("region", { name: "Saldo disponible" })
+        await waitFor(() => expect(card).toHaveAttribute("data-balance-state", state))
+        expect(card).toHaveAttribute("data-tone", surface)
+        expect(card.querySelector('[data-slot="figure"]')).toHaveAttribute("data-tone", figure)
+        expect(card.querySelector(".lucide-wallet")).not.toBeNull()
+    })
+
+    it("con saldo, la tarjeta lleva el morado claro de lo destacado (accent: primary/5, borde primary/20)", async () => {
+        mocks.getBalance.mockResolvedValue({ amount: 10, currency: "USD" })
+        render(<BillingDashboard />)
+        const card = screen.getByRole("region", { name: "Saldo disponible" })
+        await waitFor(() => expect(card).toHaveAttribute("data-tone", "accent"))
+        expect(card).toHaveClass("bg-primary/5", "border-primary/20")
+    })
+
     it("sin saldo disponible dice «Saldo no disponible» (nunca 0) y Reintentar vuelve a consultar", async () => {
         mocks.getBalance.mockRejectedValue(new Error("network down"))
         render(<BillingDashboard />)

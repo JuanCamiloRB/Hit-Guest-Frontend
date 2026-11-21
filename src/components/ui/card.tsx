@@ -13,7 +13,9 @@ import { cn } from "@/lib/utils"
  *   rápidas»); adentro, `Heading tone="inverse"` y `Button variant="inverse"`.
  * - `tone="warning"` / `"danger"`: una tarjeta que se tiñe por su estado (el
  *   borde al /30, como una fila teñida: es estado, no un aviso; el texto que
- *   lo dice va adentro). `tone="sunk"`: la superficie hundida (un panel dentro de una tarjeta, un documento
+ *   lo dice va adentro). `tone="accent"`: lo destacado de HitGuest (el saldo
+ *   de la cuenta): el tinte `primary/5` con borde `primary/20` de `Note accent`;
+ *   adentro no va una selección `primary/5`, que se perdería. `tone="sunk"`: la superficie hundida (un panel dentro de una tarjeta, un documento
  *   eliminado): superficie `sunk`, sin sombra, sin opacidad.
  * - `interactive`: una tarjeta que lleva a algo o se elige; al pasar, el borde
  *   toma `input-hover`, el hover de tarjetas y opciones (§4). También sigue el
@@ -25,13 +27,15 @@ import { cn } from "@/lib/utils"
  */
 const cardSurface = "bg-card text-ink rounded-xl border border-rule shadow-sm transition-colors"
 
-type SurfaceTone = "default" | "inverse" | "selected" | "warning" | "danger" | "sunk"
+type SurfaceTone = "default" | "inverse" | "selected" | "accent" | "warning" | "danger" | "sunk"
 
 const SURFACE_TONE: Record<SurfaceTone, string | undefined> = {
   default: undefined,
   inverse: "border-primary bg-primary text-white",
   /** La tarjeta activa o elegida: borde de selección `primary/30` (Regla 3 del skill). */
   selected: "border-primary/30 bg-primary/5",
+  /** Lo destacado (el saldo): el tinte de `Note accent`, más suave que la selección. */
+  accent: "border-primary/20 bg-primary/5",
   warning: "border-warning/30",
   danger: "border-danger/30",
   sunk: "bg-sunk/50 shadow-none",

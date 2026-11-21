@@ -172,11 +172,18 @@ export function getBalanceState(amount: number | null | undefined): BalanceState
  * balance widget can use it without pulling an API service into every page bundle.
  */
 export function formatUsd(amount: number | null | undefined): string {
-    const formatted = Number(amount ?? 0).toLocaleString("es-CO", {
+    return `${formatUsdNumber(amount)} USD`
+}
+
+/**
+ * La cifra sola («1.234,56»), para cuando la pantalla escribe «USD» aparte
+ * (en otro tamaño). Así el saldo no dice «USD» dos veces.
+ */
+export function formatUsdNumber(amount: number | null | undefined): string {
+    return Number(amount ?? 0).toLocaleString("es-CO", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     })
-    return `${formatted} USD`
 }
 
 /**
