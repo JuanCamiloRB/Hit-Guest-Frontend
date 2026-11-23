@@ -211,6 +211,11 @@ Así se descartó `primary/10` en la pestaña activa.
 - Archivo «Hit-Hospitality», página «Manual de marca»: variables `Marca`,
   `Color` (modo «Claro») y `Forma`; estilos `Titular/*`, `Cuerpo/*`,
   `Overline` y `Sombra/*`; componentes en «Componentes · maestros».
+  Además de las primitivas, tiene maestros de los componentes de pantalla
+  que fijan una decisión visual (doc §5, «Componentes de pantalla»):
+  `Saldo · header`, `Saldo · Tablero`, `Celda · propiedad`,
+  `Celda · capacidad` y `Toggletip · capacidad` (2026-11-24). Para un set
+  nuevo, `ensureSet` crea las variantes que falten sin rehacer las que existen.
 - Se genera con un plugin local que está en `build/figma-manual-de-marca/`
   (git lo ignora, no está versionado). Se edita `code.src.js` y se regenera
   `code.js` con `node build/figma-manual-de-marca/build.mjs`. El usuario lo

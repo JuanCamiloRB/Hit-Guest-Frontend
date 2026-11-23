@@ -172,6 +172,22 @@ escala en hover.
 | Celdas de tabla | `components/shared/table-cells.tsx`, las mismas en todas las tablas: `IdentityCell` (primera columna: nombre como `TextLink` si la fila navega, o `onOpen` con el mismo aspecto si abre un diálogo, y una línea secundaria; recortadas al ancho), `ChannelCell` (logo + nombre; con `detail`, se pulsa y abre su `Toggletip`), `DataTileCell` (`StatusTile data` + `Toggletip`; sin nada declarado, `none` deshabilitada «sin declarar»; con `declared` y sin cifra, solo el ícono y sigue abriendo su detalle). En Alojamientos la capacidad es UNA columna: la cifra de huéspedes en la celda y huéspedes, habitaciones y baños en el detalle, `ColumnHeader` (ícono sobre el nombre para columnas de íconos), la propiedad de un alojamiento como `TextLink` muted a su ficha con el edificio en `primary` (`ListingProperty`; sin enlace, el ícono en ink-3: morado = se pulsa), `AbsentValue` («—» ink-4), `ActionsHeader` + `RowActionsMenu` (el menú «⋮» de la fila, última columna, con nombre propio) y `MobileTileList` (las celdas de íconos con su nombre debajo en la fila apilada, porque ahí no hay encabezados). Los íconos de cada automatización salen de UN mapa, `shared/automation-icons.ts` (`AUTOMATION_ICONS`): Operaciones y las columnas de consumo del Tablero usan los mismos. El detalle de una celda va SIEMPRE en `Toggletip`, nunca en `title` |
 | Marca | `Logo`, `ChannelLogo`, `DeliveryChannelIcon` (WhatsApp, correo u OTA, monocromo para tomar el color del estado) |
 
+### Componentes de pantalla (armados con primitivas)
+
+No son primitivas nuevas: componen las de arriba y viven en su feature. Tienen
+maestro en el manual de Figma porque se repiten en varias vistas o fijan una
+decisión visual que no se puede perder (2026-11-24).
+
+| Componente (código) | Maestro en Figma | Qué fija |
+|---|---|---|
+| `BalanceWidget` (`features/billing`) | `Saldo · header`, variante Estado: Con saldo · Bajo · Agotado | `Button accent` con saldo; `outline-warning` bajo (≤ 5 USD); `outline-destructive` agotado. Cifra `Figure md` y «USD» una sola vez. Sin saldo conocido no se muestra |
+| `AccountBalanceStrip` (`features/dashboard`) | `Saldo · Tablero`, variante Estado: Con saldo · Bajo · Agotado · Sin dato | `Surface accent` / `warning` / `danger`, `IconBadge` con la billetera, cifra `Figure xl`; sin dato «—» en ink-4, nunca 0. La tarjeta de Facturación no se tiñe |
+| `ListingProperty` (`features/properties/listing-columns`) | `Celda · propiedad`, variante Estado: Enlace · Enlace hover · Sin enlace | `TextLink muted` a la ficha con el edificio en `primary`; sin enlace, ícono ink-3 |
+| `CapacityCell` + `CapacityDetail` (ídem) | `Celda · capacidad` (Con huéspedes · Solo ícono · Sin declarar) y `Toggletip · capacidad` | UNA columna: `DataTileCell` con los huéspedes; habitaciones y baños en el detalle; lo no declarado se dice |
+
+Si uno de estos cambia en el código, se actualiza su maestro en el plugin
+(`build/figma-manual-de-marca/code.src.js`, sección 8f).
+
 No se crean botones, inputs, selects, textareas, avisos, spinners o pastillas a
 mano dentro de una feature. Una excepción técnica debe quedar documentada junto
 al código y no puede convertirse en un patrón visual alternativo.
