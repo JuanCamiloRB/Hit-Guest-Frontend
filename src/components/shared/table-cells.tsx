@@ -4,6 +4,7 @@ import type * as React from "react"
 import { MoreVertical, type LucideIcon } from "lucide-react"
 
 import { ChannelLogo } from "@/components/brand/ChannelLogo"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Icon } from "@/components/ui/icon"
@@ -33,14 +34,25 @@ import { cn } from "@/lib/utils"
 /**
  * Encabezado de una columna de íconos: el ícono sobre el nombre. `mark` en
  * lugar de `icon` para una marca que no es de lucide (WhatsApp). Centrado sobre
- * celdas de estado; `align="end"` sobre montos, que van a la derecha.
+ * celdas de estado; `align="end"` sobre montos, que van a la derecha. `inline`
+ * pone el ícono a la izquierda del nombre, en una línea: la tabla cómoda
+ * (Alojamientos), donde la columna va alineada a la izquierda.
  */
-export function ColumnHeader({ icon, mark, label, align = "center" }: {
+export function ColumnHeader({ icon, mark, label, align = "center", inline = false }: {
     icon?: LucideIcon
     mark?: React.ReactNode
     label: string
     align?: "center" | "end"
+    inline?: boolean
 }) {
+    if (inline) {
+        return (
+            <span data-slot="column-header" data-layout="inline" className="inline-flex items-center gap-1.5">
+                {mark ?? (icon && <Icon icon={icon} size="sm" />)}
+                <span>{label}</span>
+            </span>
+        )
+    }
     return (
         <span data-slot="column-header" className={cn("inline-flex flex-col gap-0.5", align === "end" ? "items-end" : "items-center")}>
             {mark ?? (icon && <Icon icon={icon} size="sm" />)}
@@ -53,6 +65,8 @@ export function ColumnHeader({ icon, mark, label, align = "center" }: {
 export function AbsentValue() {
     return <span data-slot="absent-value" className="text-ink-4">—</span>
 }
+
+const NAME_OPENS = "font-semibold group-hover/row:text-primary-hover"
 
 /**
  * Quién o qué es la fila: el nombre (enlace real si la fila navega) y una
@@ -71,11 +85,13 @@ export function IdentityCell({ name, href, onOpen, secondary, linkProps, classNa
 }) {
     return (
         <div data-slot="identity-cell" className={cn("flex min-w-0 flex-col py-0.5", className)}>
+            {/* El nombre en semibold. Si navega o abre, al pasar por la fila se
+                pone en primary-hover: la fila entera dice «esto se abre». */}
             {href
-                ? <TextLink href={href} {...linkProps} className="truncate text-sm">{name}</TextLink>
+                ? <TextLink href={href} {...linkProps} className={cn("truncate text-sm", NAME_OPENS)}>{name}</TextLink>
                 : onOpen
-                    ? <UnstyledButton onClick={onOpen} className={cn(textLinkClasses(), "truncate text-left text-sm")}>{name}</UnstyledButton>
-                    : <span className="truncate text-sm font-medium text-ink">{name}</span>}
+                    ? <UnstyledButton onClick={onOpen} className={cn(textLinkClasses(), "truncate text-left text-sm", NAME_OPENS)}>{name}</UnstyledButton>
+                    : <span className="truncate text-sm font-semibold text-ink">{name}</span>}
             {secondary && <span className="truncate text-xs text-ink-3">{secondary}</span>}
         </div>
     )
@@ -86,19 +102,28 @@ export function IdentityCell({ name, href, onOpen, secondary, linkProps, classNa
  * marca neutra de `ChannelLogo`). Con `detail`, el nombre se pulsa y abre el
  * detalle como cualquier celda.
  */
-export function ChannelCell({ channel, name, detail, detailLabel }: {
+export function ChannelCell({ channel, name, detail, detailLabel, chip = false }: {
     /** Slug o nombre con el que `ChannelLogo` busca la marca. */
     channel: string | null | undefined
     name: string
     detail?: React.ReactNode
     detailLabel?: string
+    /** Dentro de un `Badge integration` (la conexión de un alojamiento con su PMS). */
+    chip?: boolean
 }) {
-    const body = (
-        <>
-            <ChannelLogo channel={channel} className="h-4 w-4" />
-            <span className="text-sm text-ink-2">{name}</span>
-        </>
-    )
+    const body = chip
+        ? (
+            <Badge tone="integration" size="md">
+                <ChannelLogo channel={channel} className="h-4 w-4" />
+                <span>{name}</span>
+            </Badge>
+        )
+        : (
+            <>
+                <ChannelLogo channel={channel} className="h-4 w-4" />
+                <span className="text-sm text-ink-2">{name}</span>
+            </>
+        )
     if (!detail) return <span data-slot="channel-cell" className="inline-flex items-center gap-2">{body}</span>
     return (
         <Toggletip label={detailLabel ?? name} content={detail}>

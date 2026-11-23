@@ -5,6 +5,7 @@ import type { ColumnDef, SortingFn } from "@tanstack/react-table"
 import { Bath, BedDouble, Building2, Hash, Users, type LucideIcon } from "lucide-react"
 
 import { AbsentValue, ChannelCell, ColumnHeader, DataTileCell, IdentityCell, MobileTileList } from "@/components/shared/table-cells"
+import { Badge } from "@/components/ui/badge"
 import { Icon } from "@/components/ui/icon"
 import { StatusPill } from "@/components/ui/status-pill"
 import { TextLink } from "@/components/ui/text-link"
@@ -138,7 +139,7 @@ function ConnectionDetail({ connection }: { connection: ExternalPmsConnection })
 /** Con qué PMS o canal está vinculado: logo + nombre, y el id externo en el detalle. */
 export function ListingConnections({ connections }: { connections: ListingTableRow["connections"] }) {
     if (connections === null) return <AbsentValue />
-    if (connections.length === 0) return <span className="text-sm text-ink-3">{UNLINKED_LABEL}</span>
+    if (connections.length === 0) return <Badge tone="neutral" size="md">{UNLINKED_LABEL}</Badge>
     return (
         <span className="flex flex-col items-start gap-1">
             {connections.map((connection) => (
@@ -147,6 +148,7 @@ export function ListingConnections({ connections }: { connections: ListingTableR
                     channel={connection.sourceName}
                     name={connectionName(connection)}
                     detail={<ConnectionDetail connection={connection} />}
+                    chip
                 />
             ))}
         </span>
@@ -184,12 +186,10 @@ export function ListingCapacityTile({ row }: { row: ListingTableRow }) {
     return <MobileTileList label="Capacidad" items={[{ key: "capacity", label: "Capacidad", tile: <CapacityCell row={row} /> }]} />
 }
 
+/** El precio por noche en el chip de dato (morado claro; se llena al pasar por la fila). Sin precio, «—». */
 export function ListingPrice({ row }: { row: ListingTableRow }) {
-    return (
-        <span className="font-semibold tabular-nums text-ink">
-            {row.pricePerNight === null ? <AbsentValue /> : formatMoney(row.pricePerNight, row.currency)}
-        </span>
-    )
+    if (row.pricePerNight === null) return <AbsentValue />
+    return <Badge tone="data" size="md" className="tabular-nums">{formatMoney(row.pricePerNight, row.currency)}</Badge>
 }
 
 /**
@@ -219,8 +219,11 @@ export function ListingStatus({ status }: { status: ListingTableRow["status"] })
     return <StatusPill tone={status === "ACTIVE" ? "success" : "idle"}>{STATUS_LABEL[status]}</StatusPill>
 }
 
-/** El ancho de las columnas de texto: con más, la tabla no cabe a 1280 px. */
-const TEXT_COLUMN = "max-w-56"
+/**
+ * El ancho de las columnas de texto: 224 px desde 1024 px de tabla; 192 px por
+ * debajo, que es lo que deja caber la tabla cómoda a 1280 px de ventana.
+ */
+const TEXT_COLUMN = "max-w-48 @5xl:max-w-56"
 
 /**
  * Las columnas, en este orden: Alojamiento, Propiedad (si se pide), Conexión,
@@ -241,7 +244,7 @@ export function listingColumns({ withProperty, actions, onOpen }: {
             sortingFn: byText,
             header: "Alojamiento",
             // Fija al desplazar la tabla de lado, como el huésped en Operaciones.
-            meta: { sticky: "left" },
+            meta: { sticky: "left", headerTone: "accent" },
             cell: ({ row }) => (
                 <IdentityCell
                     name={row.original.name || "Sin nombre"}
@@ -283,8 +286,7 @@ export function listingColumns({ withProperty, actions, onOpen }: {
             // Ordena por huéspedes; sin dato, al final en los dos sentidos; el primer clic, de menor a mayor.
             sortUndefined: "last",
             sortDescFirst: false,
-            header: () => <ColumnHeader icon={Users} label="Capacidad" />,
-            meta: { headerClassName: "px-1 text-center", cellClassName: "px-1 text-center" },
+            header: () => <ColumnHeader icon={Users} label="Capacidad" inline />,
             cell: ({ row }) => <CapacityCell row={row.original} />,
         },
         {
@@ -292,8 +294,8 @@ export function listingColumns({ withProperty, actions, onOpen }: {
             accessorFn: (row) => row.pricePerNight ?? undefined,
             sortUndefined: "last",
             sortDescFirst: false,
-            header: () => <span className="block text-right">Precio por noche</span>,
-            meta: { cellClassName: "text-right" },
+            header: "Precio por noche",
+            meta: { headerTone: "soft", headerClassName: "text-right", cellClassName: "text-right" },
             cell: ({ row }) => <ListingPrice row={row.original} />,
         },
         ...(actions ? [actions] : []),

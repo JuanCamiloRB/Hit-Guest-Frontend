@@ -306,6 +306,7 @@ export function PropertiesList() {
                             </p>
                             <DataTable
                                 columns={LISTING_COLUMNS}
+                                density="comfortable"
                                 data={filteredRows}
                                 resetPageOn={`${searchQuery.trim()}|${statusFilter}|${propertyFilter}`}
                                 getRowId={rowId}

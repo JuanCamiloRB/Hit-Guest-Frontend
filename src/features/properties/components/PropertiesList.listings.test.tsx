@@ -80,6 +80,45 @@ describe("PropertiesList — Alojamientos paginados", () => {
         expect(followed).toEqual(["/dashboard/properties/p1"])
     })
 
+    it("diseño 2026-11-24: tabla cómoda, encabezado de identidad y de precio en morado, capacidad con el ícono al lado, «Siguiente» resaltado", async () => {
+        await openListings()
+        const table = screen.getByRole("table")
+        const head = (name: RegExp) => within(table).getByRole("columnheader", { name })
+        expect(head(/Alojamiento/)).toHaveClass("bg-table-head-accent", "text-primary-hover", "h-11", "@5xl:px-4")
+        expect(head(/Precio por noche/)).toHaveClass("bg-table-head-soft", "text-primary-hover", "text-right")
+        expect(head(/Estado/)).not.toHaveClass("bg-table-head-accent", "bg-table-head-soft")
+        expect(head(/Capacidad/).querySelector('[data-slot="column-header"]')).toHaveAttribute("data-layout", "inline")
+        expect(cellOf(bodyRows()[0], 0)).toHaveClass("h-14", "@5xl:px-4")
+        // Columnas de texto: 192 px en una tabla angosta (1280 px de ventana), 224 px desde 1024 px de tabla.
+        expect(cellOf(bodyRows()[0], 0).querySelector('[data-slot="identity-cell"]')).toHaveClass("max-w-48", "@5xl:max-w-56")
+        expect(screen.getByRole("link", { name: "Alojamiento 01" })).toHaveClass("font-semibold", "group-hover/row:text-primary-hover")
+        expect(screen.getByRole("button", { name: /Siguiente/ })).toHaveClass("border-primary", "ring-primary/10")
+    })
+
+    it("precio en el chip de dato (se llena al pasar por la fila); conexión y «Sin vincular» en chips", async () => {
+        const data = portfolio(3)
+        Object.assign(data.listings.find((l) => l.name === "Alojamiento 01")!, { pmsIdentifiers: [{ id: 1, sourcePmsId: 134, sourcePms: "KunasPMS", externalId: "26118" }] })
+        Object.assign(data.listings.find((l) => l.name === "Alojamiento 02")!, { pmsIdentifiers: [] })
+        mocks.bffFetch.mockImplementation((path: string) => Promise.resolve(path === LIGHT ? { data: data.properties } : data))
+        render(<PropertiesList />)
+        await screen.findByText("Pullman Miami")
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Alojamientos/ }), { button: 0 })
+        const table = await screen.findByRole("table")
+        await act(async () => {})
+        const rows = bodyRows(table)
+        const price = cellOf(rows[0], 5).querySelector('[data-slot="badge"]')!
+        expect(price).toHaveAttribute("data-tone", "data")
+        expect(price).toHaveTextContent("850.000")
+        expect(price).toHaveClass("tabular-nums", "group-hover/row:bg-primary-hover")
+        // Sin precio: el guion, sin chip.
+        expect(cellOf(rows[2], 5).querySelector('[data-slot="badge"]')).toBeNull()
+        expect(cellOf(rows[2], 5)).toHaveTextContent("—")
+        expect(cellOf(rows[0], 2).querySelector('[data-slot="badge"]')).toHaveAttribute("data-tone", "integration")
+        const unlinked = within(cellOf(rows[1], 2)).getByText("Sin vincular")
+        expect(unlinked).toHaveAttribute("data-slot", "badge")
+        expect(unlinked).toHaveAttribute("data-tone", "neutral")
+    })
+
     it("10 por página, ordenados por nombre, con conteo y rango; la fila lleva a la pestaña Alojamientos de su propiedad", async () => {
         await openListings()
         expect(screen.getByText("28 alojamientos")).toHaveAttribute("role", "status")

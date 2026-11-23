@@ -8,7 +8,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: 
 
 const VARIANTS = [
     "default", "destructive", "outline", "secondary", "ghost", "link",
-    "outline-destructive", "outline-warning", "ghost-destructive", "link-inherit", "inverse", "overlay", "field",
+    "outline-destructive", "outline-warning", "outline-accent", "ghost-destructive", "link-inherit", "inverse", "overlay", "field",
 ] as const
 
 describe("Button — estados", () => {
@@ -242,6 +242,20 @@ describe("Button — variantes de DS-6", () => {
         expect(buttonVariants({ variant: "ghost-destructive" })).toMatch(/hover:bg-danger-sunk/)
         expect(buttonVariants({ variant: "outline-warning" })).toMatch(/text-warning/)
         for (const variant of VARIANTS) expect(buttonVariants({ variant })).not.toMatch(/-(?:red|amber|orange)-\d/)
+    })
+})
+
+describe("Button outline-accent — el paso siguiente de una secuencia", () => {
+    it("borde primary, texto primary-hover y halo primary/10 en reposo; el foco sigue siendo el contorno sólido", () => {
+        render(<Button variant="outline-accent">Siguiente</Button>)
+        const button = screen.getByRole("button", { name: "Siguiente" })
+        expect(button).toHaveClass("border-primary", "text-primary-hover", "ring-3", "ring-primary/10", "hover:bg-primary/10")
+        expect(button).toHaveClass("focus-visible:outline-2", "focus-visible:outline-ring")
+    })
+
+    it("deshabilitado pierde el halo y el borde morado", () => {
+        render(<Button variant="outline-accent" disabled>Siguiente</Button>)
+        expect(screen.getByRole("button", { name: "Siguiente" })).toHaveClass("disabled:ring-0", "disabled:border-rule")
     })
 })
 

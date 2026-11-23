@@ -14,6 +14,16 @@ describe("Celdas compartidas de las tablas", () => {
         const header = document.querySelector('[data-slot="column-header"]')!
         expect(header).toHaveTextContent("Huéspedes")
         expect(header.querySelector(".lucide-users")).not.toBeNull()
+        expect(header).toHaveClass("flex-col")
+    })
+
+    it("ColumnHeader inline: el ícono a la izquierda del nombre, en una línea", () => {
+        render(<ColumnHeader icon={Users} label="Capacidad" inline />)
+        const header = document.querySelector('[data-slot="column-header"]')!
+        expect(header).toHaveAttribute("data-layout", "inline")
+        expect(header).not.toHaveClass("flex-col")
+        expect(header.firstElementChild).toHaveClass("lucide-users")
+        expect(header).toHaveTextContent("Capacidad")
     })
 
     it("AbsentValue: el guion en ink-4", () => {
@@ -27,7 +37,25 @@ describe("Celdas compartidas de las tablas", () => {
         expect(screen.getByText("HAB-DOB")).toHaveClass("text-xs", "text-ink-3")
         rerender(<IdentityCell name="Habitación Doble" />)
         expect(screen.queryByRole("link")).toBeNull()
-        expect(screen.getByText("Habitación Doble")).toHaveClass("font-medium")
+        expect(screen.getByText("Habitación Doble")).toHaveClass("font-semibold", "text-ink")
+        // Sin enlace no se pone morado al pasar por la fila: no se abre.
+        expect(screen.getByText("Habitación Doble")).not.toHaveClass("group-hover/row:text-primary-hover")
+    })
+
+    it("IdentityCell que navega o abre: semibold y morado al pasar por la fila", () => {
+        const { rerender } = render(<IdentityCell name="Habitación Doble" href="/x" />)
+        expect(screen.getByRole("link", { name: "Habitación Doble" })).toHaveClass("font-semibold", "group-hover/row:text-primary-hover")
+        rerender(<IdentityCell name="Habitación Doble" onOpen={() => {}} />)
+        expect(screen.getByRole("button", { name: "Habitación Doble" })).toHaveClass("font-semibold", "group-hover/row:text-primary-hover")
+    })
+
+    it("ChannelCell chip: logo y nombre dentro de un Badge integration", () => {
+        render(<ChannelCell channel="KunasPMS" name="KunasPMS" chip />)
+        const badge = document.querySelector('[data-slot="badge"]')!
+        expect(badge).toHaveAttribute("data-tone", "integration")
+        expect(badge).toHaveClass("bg-secondary/10", "text-secondary-hover")
+        expect(badge).toHaveTextContent("KunasPMS")
+        expect(badge.querySelector("svg")).not.toBeNull()
     })
 
     it("ChannelCell: logo y nombre; con detalle se puede enfocar y lo abre", async () => {

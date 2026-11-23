@@ -28,6 +28,9 @@
   --color-ink-4: var(--ink-4);
   --color-rule: var(--rule);
   --color-sunk: var(--sunk);
+  --color-table-head: var(--table-head);
+  --color-table-head-accent: var(--table-head-accent);
+  --color-table-head-soft: var(--table-head-soft);
 
   --color-success: var(--success);
   --color-success-sunk: var(--success-sunk);
@@ -123,6 +126,16 @@
   --ink-4: #A2A8C4; /* ausencia: el guion de "no aplica" */
   --rule: #E4E7F0;  /* separadores */
   --sunk: #F1F3F7;  /* superficie hundida */
+  /* Encabezado de tabla (diseño de Alojamientos, 2026-11-24). Opacos: la
+     columna fija pasa por encima del resto al desplazar, y un tinte
+     translúcido dejaría ver lo de abajo. Teñidos desde la interacción:
+     head = lavanda (el azul secundario al ~10 % sobre blanco);
+     head-accent = primary al ~18 % (la columna de identidad);
+     head-soft = primary al ~10 % (la cifra que importa, el precio).
+     Texto ink sobre head; primary-hover sobre los dos morados (globals-contrast). */
+  --table-head: #ECEEFA;
+  --table-head-accent: #EADCF9;
+  --table-head-soft: #F2E9FC;
 
   /* ── Estado ─────────────────────────────────────────────────────────
      Cada uno con su fondo de pastilla. Reservados para estado: nunca son

@@ -95,3 +95,19 @@ Pedido: más color y la capacidad en una sola columna, «como el amarillo pero m
   columna «Capacidad». La celda muestra los huéspedes y el Toggletip las tres
   cosas. Sin huéspedes pero con otro dato: solo el ícono. Sin nada: punteada.
 - La columna Propiedad es un enlace a la ficha, con el edificio en `primary`.
+
+## Ajuste (2026-11-24) — diseño `work/hitguest-tabla-alojamientos-v2.html`
+
+Pedido: «quiero que implementes esto». Implementado con tokens y primitivas:
+
+- Todas las tablas: encabezado `table-head` (lavanda) con divisores, ordenada en
+  `primary-hover`, «Siguiente» en `Button outline-accent`, nombre de la primera
+  columna en semibold (morado al pasar por la fila si navega o abre).
+- Alojamientos (las dos tablas): `density="comfortable"`, encabezado de identidad
+  `table-head-accent` y de precio `table-head-soft`, capacidad con el ícono al
+  lado (`ColumnHeader inline`), conexión en `Badge integration`, «Sin vincular»
+  en `Badge neutral`, precio en `Badge data` (se llena al pasar por la fila).
+- Desviaciones del HTML: texto de celda 14 px (la escala no tiene 13); 12 px de
+  relleno y columnas de texto de 192 px cuando la tabla mide menos de 1024 px
+  (a 1280 px de ventana se pasaba 53 px); el logo de KunasPMS conserva su color.
+- Mutaciones 10/10. Contraste fijado en `globals-contrast.test.ts`.

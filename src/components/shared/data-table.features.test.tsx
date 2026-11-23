@@ -172,10 +172,67 @@ describe("DataTable — encabezados agrupados y columna fija", () => {
     it("sticky: encabezado y celdas fijos a la izquierda con fondo opaco y el hover de la fila", async () => {
         render(<DataTable columns={grouped} data={rows.slice(0, 2)} getRowId={getRowId} />)
         await act(async () => {})
-        expect(screen.getByRole("columnheader", { name: /Nombre/ })).toHaveClass("sticky", "left-0", "bg-sunk")
+        expect(screen.getByRole("columnheader", { name: /Nombre/ })).toHaveClass("sticky", "left-0", "bg-table-head")
         const cell = screen.getByRole("cell", { name: "Fila 1" })
         expect(cell).toHaveClass("sticky", "left-0", "bg-card", "group-hover/row:before:opacity-100")
         expect(cell.closest("tr")).toHaveClass("group/row")
+    })
+})
+
+describe("DataTable — diseño de Alojamientos (2026-11-24): densidad, encabezado teñido y pie", () => {
+    beforeEach(() => { mocks.small = false })
+    const tinted: ColumnDef<Row>[] = [
+        { accessorKey: "name", header: "Alojamiento", meta: { sticky: "left", headerTone: "accent" } },
+        { id: "price", header: "Precio por noche", cell: () => "1", meta: { headerTone: "soft", headerClassName: "text-right" } },
+        { id: "plain", header: "Estado", cell: () => "x" },
+    ]
+
+    it("compacta por omisión: sin las medidas cómodas y la tarjeta sin sombra", async () => {
+        render(<DataTable columns={tinted} data={rows.slice(0, 2)} getRowId={getRowId} />)
+        await act(async () => {})
+        expect(screen.getByRole("columnheader", { name: "Estado" })).not.toHaveClass("h-11", "px-4")
+        expect(screen.getByRole("cell", { name: "Fila 1" })).not.toHaveClass("h-14")
+        expect(document.querySelector('[data-slot="surface"]')).toHaveAttribute("data-flat")
+    })
+
+    it("cómoda: encabezado de 44 px, filas de 56 px, 16 px a los lados desde 1024 px de tabla (12 px debajo) y la sombra de una tarjeta", async () => {
+        render(<DataTable columns={tinted} data={rows.slice(0, 2)} getRowId={getRowId} density="comfortable" />)
+        await act(async () => {})
+        expect(screen.getByRole("columnheader", { name: "Estado" })).toHaveClass("h-11", "px-3", "@5xl:px-4")
+        expect(screen.getByRole("cell", { name: "Fila 1" })).toHaveClass("h-14", "px-3", "@5xl:px-4")
+        // La consulta mide el ancho de la tabla, no el de la ventana.
+        expect(document.querySelector(".\\@container")).not.toBeNull()
+        expect(document.querySelector('[data-slot="surface"]')).not.toHaveAttribute("data-flat")
+    })
+
+    it("headerTone: identidad en morado (accent), la cifra en morado suave (soft), texto primary-hover; el resto, lavanda", async () => {
+        render(<DataTable columns={tinted} data={rows.slice(0, 2)} getRowId={getRowId} density="comfortable" />)
+        await act(async () => {})
+        const name = screen.getByRole("columnheader", { name: /Alojamiento/ })
+        expect(name).toHaveClass("bg-table-head-accent", "text-primary-hover", "sticky")
+        expect(name).not.toHaveClass("bg-table-head")
+        expect(screen.getByRole("columnheader", { name: /Precio por noche/ })).toHaveClass("bg-table-head-soft", "text-primary-hover", "text-right")
+        const plain = screen.getByRole("columnheader", { name: "Estado" })
+        expect(plain).not.toHaveClass("bg-table-head-accent", "bg-table-head-soft")
+        expect(plain.closest("thead")).toHaveClass("bg-table-head")
+        // Divisor tenue entre columnas (no antes de la primera).
+        expect(plain).toHaveClass("border-l", "border-rule/70", "first:border-l-0")
+    })
+
+    it("la columna ordenada va en primary-hover (AA sobre los tres fondos del encabezado)", async () => {
+        render(<DataTable columns={[{ accessorKey: "name", header: "Nombre" }]} data={rows.slice(0, 3)} getRowId={getRowId} />)
+        await act(async () => {})
+        const sort = screen.getByRole("button", { name: /Nombre/ })
+        expect(sort).not.toHaveClass("text-primary-hover")
+        fireEvent.click(sort)
+        expect(sort).toHaveClass("text-primary-hover")
+    })
+
+    it("pie: «Siguiente» resaltado (outline-accent) y «Anterior» neutro", async () => {
+        render(<DataTable columns={tinted} data={rows} getRowId={getRowId} itemLabel={label} />)
+        await act(async () => {})
+        expect(screen.getByRole("button", { name: /Siguiente/ })).toHaveClass("border-primary", "text-primary-hover", "ring-primary/10")
+        expect(screen.getByRole("button", { name: /Anterior/ })).not.toHaveClass("border-primary")
     })
 })
 

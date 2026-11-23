@@ -50,6 +50,11 @@ declare module "@tanstack/react-table" {
         /** Columna fija a la izquierda al desplazar la tabla de lado (el huésped). */
         sticky?: "left"
         /**
+         * Encabezado teñido de morado: `accent` para la columna de identidad,
+         * `soft` para la cifra que importa (el precio). Texto en primary-hover.
+         */
+        headerTone?: "accent" | "soft"
+        /**
          * Celdas unidas en una fila (una leyenda en lugar de siete guiones):
          * cuántas columnas ocupa esta celda; `0` = la cubre una anterior y no se
          * pinta. Sin esto, 1.
@@ -64,21 +69,39 @@ declare module "@tanstack/react-table" {
  * fila, así que aquí una capa detrás del contenido lo repite sobre `card`.
  */
 // El borde derecho avisa que lo de al lado pasa por debajo al desplazar.
-const STICKY_HEAD = "sticky left-0 z-20 border-r border-rule bg-sunk"
+const STICKY_HEAD = "sticky left-0 z-20 border-r border-rule bg-table-head"
 const STICKY_CELL = [
     "sticky left-0 z-10 border-r border-rule bg-card",
     "before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:bg-primary/5 before:opacity-0 before:transition-opacity",
     "group-hover/row:before:opacity-100 group-data-[state=selected]/row:before:opacity-100",
 ].join(" ")
 
-function headClasses<TData>(column: Column<TData, unknown>): string {
-    const meta = column.columnDef.meta
-    return cn("whitespace-nowrap", meta?.sticky === "left" && STICKY_HEAD, meta?.headerClassName)
+const HEADER_TONE: Record<"accent" | "soft", string> = {
+    accent: "bg-table-head-accent text-primary-hover",
+    soft: "bg-table-head-soft text-primary-hover",
 }
 
-function cellClasses<TData>(column: Column<TData, unknown>): string {
+/**
+ * Densidad de la tabla. `compact` (por omisión) es la de Operaciones: muchas
+ * columnas en 1280 px. `comfortable` es la de un listado de pocas columnas
+ * (Alojamientos): encabezado de 44 px, filas de 56 px y 16 px a los lados
+ * desde 1024 px de tabla (`@5xl`); por debajo, 12 px, para que a 1280 px de
+ * ventana (959 px de tabla) no aparezca el desplazamiento lateral.
+ */
+export type DataTableDensity = "compact" | "comfortable"
+const DENSITY: Record<DataTableDensity, { head: string; cell: string }> = {
+    compact: { head: "", cell: "" },
+    comfortable: { head: "h-11 px-3 @5xl:px-4", cell: "h-14 px-3 py-2 @5xl:px-4" },
+}
+
+function headClasses<TData>(column: Column<TData, unknown>, density: DataTableDensity): string {
     const meta = column.columnDef.meta
-    return cn("whitespace-nowrap", meta?.sticky === "left" && STICKY_CELL, meta?.cellClassName)
+    return cn("whitespace-nowrap", DENSITY[density].head, meta?.sticky === "left" && STICKY_HEAD, meta?.headerTone && HEADER_TONE[meta.headerTone], meta?.headerClassName)
+}
+
+function cellClasses<TData>(column: Column<TData, unknown>, density: DataTableDensity): string {
+    const meta = column.columnDef.meta
+    return cn("whitespace-nowrap", DENSITY[density].cell, meta?.sticky === "left" && STICKY_CELL, meta?.cellClassName)
 }
 
 /**
@@ -191,6 +214,8 @@ interface DataTableProps<TData, TValue> {
      * que lleguen, se editen o se borren filas no mueve la página que se lee.
      */
     resetPageOn?: unknown
+    /** `comfortable` para un listado de pocas columnas (Alojamientos); por omisión, `compact`. */
+    density?: DataTableDensity
 }
 
 /** Los textos del pie de paginación. */
@@ -245,6 +270,7 @@ export function DataTable<TData, TValue>({
     isRowSelected,
     footerText,
     resetPageOn,
+    density = "compact",
 }: DataTableProps<TData, TValue>) {
     const text = { ...FOOTER_TEXT, ...footerText }
     const stacked = useMediaQuery(SMALL_SCREEN_QUERY) && renderMobileRow !== undefined
@@ -341,7 +367,9 @@ export function DataTable<TData, TValue>({
     }, [table, visibleKey, onVisibleRowsChange])
 
     return (
-        <div className="w-full">
+        // Contenedor de consulta: la densidad cómoda mide el ANCHO DE LA TABLA,
+        // no el de la ventana (el sidebar contraído o abierto lo cambia).
+        <div className="@container w-full">
             {filterColumn && (
                 <div className="flex items-center py-4 px-1">
                     <Input
@@ -379,7 +407,8 @@ export function DataTable<TData, TValue>({
                     )}
                 </Surface>
             ) : (
-            <Surface flat className="overflow-hidden">
+            // Cómoda, la tabla es la tarjeta de la vista: lleva la sombra de una tarjeta.
+            <Surface flat={density === "compact"} className="overflow-hidden">
                 <div className="overflow-x-auto">
                     <Table>
                         <TableHeader>
@@ -390,7 +419,7 @@ export function DataTable<TData, TValue>({
                                         // grupo ocupa las columnas que agrupa; sin `colSpan` el
                                         // encabezado quedaba corrido respecto de sus celdas.
                                         if (header.isPlaceholder) {
-                                            return <TableHead key={header.id} colSpan={header.colSpan} className={headClasses(header.column)} />
+                                            return <TableHead key={header.id} colSpan={header.colSpan} className={headClasses(header.column, density)} />
                                         }
 
                                         const content = flexRender(
@@ -400,7 +429,7 @@ export function DataTable<TData, TValue>({
 
                                         if (!header.column.getCanSort()) {
                                             return (
-                                                <TableHead key={header.id} colSpan={header.colSpan} className={headClasses(header.column)}>
+                                                <TableHead key={header.id} colSpan={header.colSpan} className={headClasses(header.column, density)}>
                                                     {content}
                                                 </TableHead>
                                             )
@@ -412,7 +441,7 @@ export function DataTable<TData, TValue>({
                                             <TableHead
                                                 key={header.id}
                                                 colSpan={header.colSpan}
-                                                className={headClasses(header.column)}
+                                                className={headClasses(header.column, density)}
                                                 // Comunica el orden vigente a un lector de
                                                 // pantalla, que no ve la flecha.
                                                 aria-sort={
@@ -435,8 +464,8 @@ export function DataTable<TData, TValue>({
                                                     }
                                                     className={cn(
                                                         "group -mx-1 inline-flex items-center gap-1.5 rounded-xs px-1 py-0.5 transition-colors",
-                                                        "hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
-                                                        sorted && "text-primary",
+                                                        "hover:text-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                                                        sorted && "text-primary-hover",
                                                     )}
                                                 >
                                                     {content}
@@ -450,7 +479,7 @@ export function DataTable<TData, TValue>({
                                                         <Icon icon={ArrowDown} size="sm" />
                                                     ) : (
                                                         <Icon icon={ChevronsUpDown} size="sm"
-                                                            className="text-ink-4 opacity-50 transition-opacity group-hover:opacity-100" />
+                                                            className="text-ink-4 transition-colors group-hover:text-primary-hover" />
                                                     )}
                                                 </UnstyledButton>
                                             </TableHead>
@@ -476,7 +505,7 @@ export function DataTable<TData, TValue>({
                                             const span = cell.column.columnDef.meta?.span?.(row.original) ?? 1
                                             if (span === 0) return null
                                             return (
-                                                <TableCell key={cell.id} colSpan={span > 1 ? span : undefined} className={cellClasses(cell.column)}>
+                                                <TableCell key={cell.id} colSpan={span > 1 ? span : undefined} className={cellClasses(cell.column, density)}>
                                                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                                 </TableCell>
                                             )
@@ -532,9 +561,10 @@ export function DataTable<TData, TValue>({
                         <Icon icon={ChevronLeft} className="mr-1" />
                         {text.previous}
                     </Button>
+                    {/* El paso hacia adelante va resaltado; «Anterior», neutro. */}
                     <Button
                         type="button"
-                        variant="outline"
+                        variant="outline-accent"
                         size="sm"
                         onClick={() => table.nextPage()}
                         disabled={!table.getCanNextPage() || busy}

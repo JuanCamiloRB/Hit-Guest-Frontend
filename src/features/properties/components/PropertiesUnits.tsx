@@ -1445,6 +1445,7 @@ export function PropertiesUnits() {
                 {/* Las mismas columnas que la pestaña Alojamientos de Propiedades (`listing-columns`). */}
                 <DataTable
                     columns={unitColumns}
+                    density="comfortable"
                     data={unitRows}
                     getRowId={unitRowId}
                     // Sin búsqueda: editar o borrar un alojamiento no cambia de página.

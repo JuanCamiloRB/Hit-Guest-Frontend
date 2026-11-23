@@ -153,6 +153,30 @@ describe("celda de dato (StatusTile data): morado claro con texto primary-hover"
     })
 })
 
+describe("tabla (diseño de Alojamientos 2026-11-24): encabezado, chips de conexión y de precio", () => {
+    it("encabezado lavanda: texto ink y la columna ordenada en primary-hover a 4.5:1", () => {
+        expect(contrast(light.ink, light["table-head"])).toBeGreaterThanOrEqual(4.5)
+        expect(contrast(light["primary-hover"], light["table-head"])).toBeGreaterThanOrEqual(4.5)
+    })
+    it.each([["accent", "table-head-accent"], ["soft", "table-head-soft"]])("encabezado %s: texto primary-hover a 4.5:1 (primary no alcanza en accent)", (_, token) => {
+        expect(contrast(light["primary-hover"], light[token])).toBeGreaterThanOrEqual(4.5)
+    })
+    it("en el morado fuerte, primary no llegaría (por eso primary-hover)", () => {
+        expect(contrast(light.primary, light["table-head-accent"])).toBeLessThan(4.5)
+    })
+    const rowHover = over(light.primary, 0.05, light.card)
+    it.each([["en reposo", light.card], ["sobre una fila en hover", rowHover]])("chip de conexión (secondary/10) %s: texto secondary-hover a 4.5:1", (_, base) => {
+        expect(contrast(light["secondary-hover"], over(light.secondary, 0.1, base))).toBeGreaterThanOrEqual(4.5)
+    })
+    it("chip de precio en la fila en hover: blanco sobre primary-hover a 4.5:1", () => {
+        expect(contrast(WHITE, light["primary-hover"])).toBeGreaterThanOrEqual(4.5)
+    })
+    it("Siguiente (outline-accent): primary-hover sobre el fondo y sobre su hover primary/10", () => {
+        expect(contrast(light["primary-hover"], light.background)).toBeGreaterThanOrEqual(4.5)
+        expect(contrast(light["primary-hover"], over(light.primary, 0.1, light.background))).toBeGreaterThanOrEqual(4.5)
+    })
+})
+
 describe("borde de campo en tema claro: azul de marca, hover primary", () => {
     it("el borde del campo es el azul de marca (--color-brand-blue)", () => {
         expect(light.input.toLowerCase()).toBe("#5467fa")

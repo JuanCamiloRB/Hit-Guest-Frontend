@@ -171,6 +171,9 @@ llega a los controles a través de tokens semánticos como `--input` o `--ring`.
 | `--input-hover` | `#636B8D`, solo para tarjetas y opciones seleccionables (borde `rule` → hover) | Ya no es el hover de los campos. |
 | Pestaña activa (`Tabs`, variante default) | card + `text-primary` + `border-primary/30`, en TODAS las pestañas de la app | `ui/tabs.tsx`. Sin relleno `primary/10`: sobre la pista `sunk` el texto primary bajaría a 4.25:1. Los íconos dentro de la pestaña toman su color (`currentColor`); no se colorean a mano. |
 | Hover de fila | `hover:bg-primary/5` en `TableRow` | `ui/table.tsx`. Ninguna tabla lo reemplaza (Regla 2). |
+| Encabezado de tabla (2026-11-24) | `bg-table-head` (lavanda opaca) + divisor `rule/70`; ordenada en `primary-hover`; `meta.headerTone` `accent`/`soft` = `table-head-accent`/`-soft` con texto `primary-hover` | `ui/table.tsx`, `shared/data-table.tsx`. Opacos porque la columna fija pasa por encima. Con `primary` el morado fuerte daba 4.0:1. Diseño: `work/hitguest-tabla-alojamientos-v2.html`. |
+| Tabla cómoda (2026-11-24) | `DataTable density="comfortable"`: 44/56 px, `px-3 @5xl:px-4` medido en la TABLA (`@container`), columnas de texto `max-w-48 @5xl:max-w-56` | Alojamientos (las dos tablas). Con 16 px fijos se pasaba 53 px a 1280 px de ventana; medido en el navegador. |
+| Chips de dato en tabla (2026-11-24) | Precio = `Badge data size="md"` (se llena de `primary-hover` al pasar por la fila, `group-hover/row`); conexión = `ChannelCell chip` (`Badge integration`); «Sin vincular» = `Badge neutral` | `listing-columns.tsx`. Pastilla a mano = `handmade-pill`: el chip sale de `Badge`. |
 | Botón conmutador | `outline` o `ghost` con `aria-pressed` → `border-primary bg-primary/10 text-primary` | `ui/button.tsx` («Solo con consumo» en el Tablero). |
 
 **Morado claro = selección o interacción.** Cuando el usuario pide «morado

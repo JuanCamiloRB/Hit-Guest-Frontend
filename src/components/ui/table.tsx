@@ -23,9 +23,10 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      // Encabezado en `sunk`: se separa de las filas sin otra línea ni sombra.
-      // Su fila no reacciona al hover (no es un dato que se pueda abrir).
-      className={cn("bg-sunk [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
+      // Encabezado en `table-head` (lavanda opaca): se separa de las filas sin
+      // otra línea ni sombra. Su fila no reacciona al hover (no es un dato que
+      // se pueda abrir).
+      className={cn("bg-table-head [&_tr]:border-b [&_tr]:hover:bg-transparent", className)}
       {...props}
     />
   )
@@ -76,9 +77,9 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        // Encabezado en caso de oración (sin mayúsculas forzadas), 12 px, ink-2:
-        // se lee como rótulo y no compite con los datos.
-        "text-ink h-10 px-2 text-left align-middle text-xs font-semibold whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+        // Encabezado en caso de oración (sin mayúsculas forzadas), 12 px, ink
+        // semibold. Un divisor tenue entre columnas (no antes de la primera).
+        "text-ink h-10 px-2 text-left border-l border-rule/70 first:border-l-0 align-middle text-xs font-semibold whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
         className
       )}
       {...props}

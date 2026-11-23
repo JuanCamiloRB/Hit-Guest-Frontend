@@ -60,6 +60,12 @@ const buttonVariants = cva(
         // tinte de `Badge accent` con borde; el texto sigue en tinta (13:1).
         accent:
           "border border-primary/30 bg-primary/10 text-ink shadow-xs hover:border-primary/50 hover:bg-primary/20 active:bg-primary/20 disabled:border-rule disabled:bg-transparent",
+        // El siguiente paso de una secuencia junto a su par neutro («Siguiente»
+        // al lado de «Anterior» en el pie de las tablas): borde primary, texto
+        // primary-hover y un halo primary/10 en reposo. El foco sigue siendo el
+        // contorno sólido de 2 px (outline), distinto del halo.
+        "outline-accent":
+          "border border-primary bg-background text-primary-hover shadow-xs ring-3 ring-primary/10 hover:bg-primary/10 active:bg-primary/10 disabled:border-rule disabled:bg-transparent disabled:ring-0",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary-hover active:bg-secondary-hover disabled:bg-sunk aria-disabled:not-data-loading:bg-sunk",
         ghost:
