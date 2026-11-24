@@ -234,7 +234,7 @@ describe("PropertiesList — Alojamientos paginados", () => {
         fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }))
         expect(screen.getByText("Página 2 de 3")).toBeInTheDocument()
 
-        await user.type(screen.getByRole("textbox", { name: "Buscar alojamientos" }), "Pullman")
+        await user.type(screen.getByRole("searchbox", { name: "Buscar alojamientos" }), "Pullman")
         await act(async () => {})
         expect(screen.getByText("10 de 28 alojamientos")).toBeInTheDocument()
         expect(screen.queryByText(/Página/)).toBeNull()
@@ -285,7 +285,7 @@ describe("PropertiesList — Alojamientos paginados", () => {
     it("sin resultados: aviso con «Limpiar filtros» que restaura la lista", async () => {
         const user = userEvent.setup()
         await openListings()
-        await user.type(screen.getByRole("textbox", { name: "Buscar alojamientos" }), "zzz")
+        await user.type(screen.getByRole("searchbox", { name: "Buscar alojamientos" }), "zzz")
         expect(await screen.findByText("Sin resultados para «zzz»")).toBeInTheDocument()
         expect(screen.getByText("0 de 28 alojamientos")).toBeInTheDocument()
         await user.click(within(screen.getByRole("table")).getByRole("button", { name: "Limpiar filtros" }))

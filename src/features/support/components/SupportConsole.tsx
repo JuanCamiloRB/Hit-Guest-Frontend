@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { Building2, RefreshCw, Search } from "lucide-react"
+import { Building2, RefreshCw } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Input } from "@/components/ui/input"
+import { SearchField } from "@/components/ui/search-field"
 import { LoadingState } from "@/components/ui/loading-state"
 import { SectionCard } from "@/components/ui/section-card"
 import { StatusPill } from "@/components/ui/status-pill"
@@ -104,17 +104,14 @@ export function SupportConsole() {
         <div className="space-y-4">
             <form onSubmit={search} className="flex max-w-3xl flex-wrap gap-3" role="search">
                 <Label variant="plain" htmlFor="support-client-search" className="sr-only">Buscar cliente</Label>
-                <div className="relative min-w-55 flex-1">
-                    <Icon icon={Search} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
-                    <Input
-                        id="support-client-search"
-                        type="search"
-                        value={draft}
-                        onChange={(e) => setDraft(e.target.value)}
-                        placeholder="Nombre, correo, identificación o usuario del cliente…"
-                        className="h-11 pl-9"
-                    />
-                </div>
+                <SearchField
+                    id="support-client-search"
+                    size="lg"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Nombre, correo, identificación o usuario del cliente…"
+                    className="min-w-55 flex-1"
+                />
                 <Button size="lg" type="submit">Buscar</Button>
             </form>
 

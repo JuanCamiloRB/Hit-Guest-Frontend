@@ -8,11 +8,11 @@ import { StatusPill } from "@/components/ui/status-pill"
 import { SectionCard } from "@/components/ui/section-card"
 import { EmptyState } from "@/components/ui/empty-state"
 import { LoadingState } from "@/components/ui/loading-state"
-import { Input } from "@/components/ui/input"
 import type { ColumnDef, SortingState } from "@tanstack/react-table"
 import { DataTable } from "@/components/shared/data-table"
-import { Search, type LucideIcon } from "lucide-react"
+import { type LucideIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { SearchField } from "@/components/ui/search-field"
 import { COST_CATEGORIES } from "@/features/billing/lib/pricing"
 import { formatUsd, type CostCategory, type ReservationCost, type ReservationCostFailure } from "@/features/billing/types"
 import { cn } from "@/lib/utils"
@@ -252,16 +252,14 @@ export function ReservationCostsList({
                             <span className="tabular-nums">Solo con consumo ({billedCount})</span>
                         </Button>
                     )}
-                    <div className="relative w-full sm:w-64">
-                        <Icon icon={Search} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4" />
-                        <Input
-                            placeholder="Buscar huésped, alojamiento…"
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            className="pl-9 h-9"
-                            aria-label="Buscar en el consumo por reserva"
-                        />
-                    </div>
+                    <SearchField
+                        size="sm"
+                        placeholder="Buscar huésped, alojamiento…"
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        label="Buscar en el consumo por reserva"
+                        className="w-full sm:w-64"
+                    />
                 </div>
             }
         >

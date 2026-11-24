@@ -23,6 +23,8 @@ const iconBadgeVariants = cva("inline-flex shrink-0 items-center justify-center"
         tone: {
             neutral: "bg-sunk text-ink-2",
             primary: "bg-primary/10 text-primary",
+            // Relleno sólido sobre una superficie oscura (la barra navy del periodo).
+            strong: "bg-primary text-primary-foreground",
             success: "bg-success-sunk text-success",
             warning: "bg-warning-sunk text-warning",
             danger: "bg-danger-sunk text-danger",

@@ -71,6 +71,14 @@ describe("DefinitionItem", () => {
 })
 
 describe("Surface y Card — variantes", () => {
+    it("brand: la barra navy (el periodo del calendario) con texto blanco", () => {
+        render(<Surface tone="brand" data-testid="brand">Periodo</Surface>)
+        const brand = screen.getByTestId("brand")
+        expect(brand).toHaveAttribute("data-tone", "brand")
+        expect(brand).toHaveClass("bg-sidebar", "text-sidebar-foreground", "border-sidebar")
+        expect(brand).not.toHaveClass("bg-card")
+    })
+
     it("inverse pinta sobre primary con texto blanco; interactive toma el borde input-hover; dashed es el hueco punteado", () => {
         render(
             <>

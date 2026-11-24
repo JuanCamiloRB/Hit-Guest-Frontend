@@ -4,11 +4,11 @@ import { useState, useMemo, useCallback } from "react"
 import { Property } from "@/types"
 import { PropertyCard } from "./PropertyCard"
 import { Button } from "@/components/ui/button"
-import { Plus, Search, Filter, Home, List, X } from "lucide-react"
+import { Plus, Filter, Home, List, X } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { SearchField } from "@/components/ui/search-field"
 import { EmptyState } from "@/components/ui/empty-state"
 import Link from "next/link"
-import { Input } from "@/components/ui/input"
 import { LoadingState, RefreshIndicator } from "@/components/ui/loading-state"
 import {
     Select,
@@ -176,16 +176,13 @@ export function PropertiesList() {
 
                     {/* Solo los filtros de la pestaña activa; «Limpiar» solo cuando hay alguno. */}
                     <div className="flex flex-1 flex-wrap items-center gap-3 px-2">
-                        <div className="relative flex-1 max-w-sm">
-                            <Icon icon={Search} className="absolute left-3 top-1/2 -translate-y-1/2 text-primary" />
-                            <Input
-                                placeholder={activeTab === "units" ? "Buscar por nombre, número o propiedad…" : "Buscar por nombre o ciudad…"}
-                                aria-label={activeTab === "units" ? "Buscar alojamientos" : "Buscar propiedades"}
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-9 h-10"
-                            />
-                        </div>
+                        <SearchField
+                            placeholder={activeTab === "units" ? "Buscar por nombre, número o propiedad…" : "Buscar por nombre o ciudad…"}
+                            label={activeTab === "units" ? "Buscar alojamientos" : "Buscar propiedades"}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="flex-1 max-w-sm"
+                        />
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
                             {/* min-w, no w fijo: con ícono, flecha y «Cualquier estado» no cabía en 180 px y la flecha pisaba el texto. */}
                             <SelectTrigger className="min-w-45 shrink-0 h-10" aria-label="Filtrar por estado">

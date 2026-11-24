@@ -1,11 +1,11 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { ChevronDown, Search, Check } from "lucide-react"
+import { ChevronDown, Check } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { SearchField } from "@/components/ui/search-field"
 import { UnstyledButton } from "@/components/ui/unstyled-button"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { Surface } from "@/components/ui/card"
 
 interface Option {
@@ -116,17 +116,13 @@ export function SearchableSelect({
           <Surface floating className="absolute top-full left-0 right-0 mt-1.5 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
             {/* Search Input */}
             <div className="p-2 border-b border-rule">
-              <div className="relative">
-                <Icon icon={Search} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-3" />
-                <Input
-                  ref={inputRef}
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm text-ink"
-                  placeholder="Buscar..."
-                />
-              </div>
+              <SearchField
+                ref={inputRef}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                label={`Buscar ${label.toLowerCase()}`}
+                placeholder="Buscar..."
+              />
             </div>
 
             {/* Options List */}

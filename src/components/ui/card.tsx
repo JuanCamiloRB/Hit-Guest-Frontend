@@ -17,6 +17,9 @@ import { cn } from "@/lib/utils"
  *   de la cuenta): el tinte `primary/5` con borde `primary/20` de `Note accent`;
  *   adentro no va una selección `primary/5`, que se perdería. `tone="sunk"`: la superficie hundida (un panel dentro de una tarjeta, un documento
  *   eliminado): superficie `sunk`, sin sombra, sin opacidad.
+ * - `tone="brand"`: la barra navy de la marca (el periodo del calendario de
+ *   Operaciones): el navy del sidebar con texto blanco; adentro, `Heading
+ *   tone="inverse"`, `Button variant="inverse"` y la acción principal en `default`.
  * - `interactive`: una tarjeta que lleva a algo o se elige; al pasar, el borde
  *   toma `input-hover`, el hover de tarjetas y opciones (§4). También sigue el
  *   hover de un `group` que la contenga. Sin sombra extra ni escala. Si además
@@ -27,11 +30,13 @@ import { cn } from "@/lib/utils"
  */
 const cardSurface = "bg-card text-ink rounded-xl border border-rule shadow-sm transition-colors"
 
-type SurfaceTone = "default" | "inverse" | "selected" | "accent" | "warning" | "danger" | "sunk"
+type SurfaceTone = "default" | "inverse" | "brand" | "selected" | "accent" | "warning" | "danger" | "sunk"
 
 const SURFACE_TONE: Record<SurfaceTone, string | undefined> = {
   default: undefined,
   inverse: "border-primary bg-primary text-white",
+  /** La barra navy de la marca (el periodo del calendario): `sidebar` es el navy como superficie. */
+  brand: "border-sidebar bg-sidebar text-sidebar-foreground",
   /** La tarjeta activa o elegida: borde de selección `primary/30` (Regla 3 del skill). */
   selected: "border-primary/30 bg-primary/5",
   /** Lo destacado (el saldo): el tinte de `Note accent`, más suave que la selección. */

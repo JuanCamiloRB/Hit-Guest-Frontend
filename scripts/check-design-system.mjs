@@ -279,6 +279,18 @@ const rules = [
         ignore: UI_ONLY,
     },
     {
+        // El buscador de una lista con la lupa dentro (2026-11-25): había seis
+        // armados a mano con tres colores de lupa y tres alturas distintas.
+        // Detecta la lupa de lucide (`Icon icon={Search}`, `<Search />`, también
+        // con alias) posicionada con `absolute`. NO detecta otras formas (una
+        // envoltura propia, un ícono por CSS, otra lupa): la revisión sigue.
+        id: "handmade-search",
+        description: "pone la lupa a mano dentro de un campo; usa SearchField",
+        pattern: /^.+$/gm,
+        input: "searchIcons",
+        ignore: UI_ONLY,
+    },
+    {
         // DS-7d: un spinner es `Button loading` (acción), `LoadingState` (carga,
         // en bloque o en línea), `RefreshIndicator` (datos ya en pantalla) o
         // `Spinner` (el indicador solo). Había 93 armados con <Icon animate-spin>.
@@ -531,6 +543,7 @@ function inspect() {
         const fieldClasses = []
         const lucideElements = []
         const iconClasses = []
+        const searchIcons = []
         const buttonClasses = []
         const pressableClasses = []
         const linkClasses = []
@@ -553,11 +566,16 @@ function inspect() {
         const noteElements = []
         const sunkSurfaceElements = []
         const lucideNames = new Set()
+        // Nombre local → nombre en lucide (`Search as SearchIcon` también es la lupa).
+        const lucideImported = new Map()
         for (const statement of sourceFile.statements) {
             if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)
                 && statement.moduleSpecifier.text === "lucide-react") {
                 const bindings = statement.importClause?.namedBindings
-                if (bindings && ts.isNamedImports(bindings)) for (const el of bindings.elements) lucideNames.add(el.name.text)
+                if (bindings && ts.isNamedImports(bindings)) for (const el of bindings.elements) {
+                    lucideNames.add(el.name.text)
+                    lucideImported.set(el.name.text, (el.propertyName ?? el.name).text)
+                }
             }
         }
         const classTexts = (node) => {
@@ -610,7 +628,15 @@ function inspect() {
                 const tag = node.tagName.getText(sourceFile)
                 // Un componente de lucide importado, o uno elegido por dato (`<item.icon />`).
                 if (lucideNames.has(tag) || /\.icon$/i.test(tag)) lucideElements.push(`<${tag}>`)
-                if (tag === "Icon") iconClasses.push(...classTexts(node))
+                if (tag === "Icon") {
+                    iconClasses.push(...classTexts(node))
+                    // La lupa puesta a mano dentro de un campo: eso es SearchField.
+                    const iconAttr = node.attributes.properties.find((a) => ts.isJsxAttribute(a) && a.name.getText(sourceFile) === "icon")
+                    const glyph = iconAttr?.initializer && ts.isJsxExpression(iconAttr.initializer) ? iconAttr.initializer.expression?.getText(sourceFile) : null
+                    if (glyph && lucideImported.get(glyph) === "Search" && classTexts(node).some((c) => /(?<![\w-])absolute(?![\w-])/.test(c))) searchIcons.push(`<Icon icon={${glyph}} absolute>`)
+                }
+                // La lupa de lucide usada directo (`<Search className="absolute …" />`).
+                if (lucideImported.get(tag) === "Search" && classTexts(node).some((c) => /(?<![\w-])absolute(?![\w-])/.test(c))) searchIcons.push(`<${tag} absolute>`)
                 if (tag === "Button") buttonClasses.push(...classTexts(node))
                 // Un Switch sin nombre: un lector de pantalla dice solo «interruptor».
                 // El nombre llega por `id` (un Label con htmlFor, o SwitchField) o por aria-label.
@@ -746,6 +772,7 @@ function inspect() {
             fieldClasses: fieldClasses.join("\n"),
             lucideElements: lucideElements.join("\n"),
             iconClasses: iconClasses.join("\n"),
+            searchIcons: searchIcons.join("\n"),
             buttonClasses: buttonClasses.join("\n"),
             pressableClasses: pressableClasses.join("\n"),
             linkClasses: linkClasses.join("\n"),

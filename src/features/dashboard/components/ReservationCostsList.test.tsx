@@ -50,7 +50,7 @@ describe("ReservationCostsList — paginada: la tarjeta mide siempre lo mismo", 
         fireEvent.click(screen.getByRole("button", { name: /Siguiente/ }))
         expect(screen.getByText("Página 3 de 3")).toBeInTheDocument()
 
-        fireEvent.change(screen.getByRole("textbox", { name: "Buscar en el consumo por reserva" }), { target: { value: "Huésped 1" } })
+        fireEvent.change(screen.getByRole("searchbox", { name: "Buscar en el consumo por reserva" }), { target: { value: "Huésped 1" } })
         // «Huésped 1», «Huésped 10»…«Huésped 19»: 11 filas, una sola página.
         expect(dataRows()).toBe(11)
         expect(screen.queryByText(/Página/)).toBeNull()
@@ -113,7 +113,7 @@ describe("ReservationCostsList — jerarquía: quién costó y cuánto", () => {
         expect(chip).toHaveAttribute("aria-pressed", "true")
         expect(names()).toEqual(["Huésped 2"])
 
-        fireEvent.change(screen.getByRole("textbox", { name: "Buscar en el consumo por reserva" }), { target: { value: "nadie" } })
+        fireEvent.change(screen.getByRole("searchbox", { name: "Buscar en el consumo por reserva" }), { target: { value: "nadie" } })
         const empty = screen.getByText("Ninguna reserva coincide con la búsqueda").closest("[data-slot=empty-state]")
         expect(empty).toHaveAttribute("data-kind", "no-results")
         fireEvent.click(screen.getByRole("button", { name: "Limpiar filtros" }))

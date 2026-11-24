@@ -110,7 +110,7 @@ describe("ReservationsList — columnas de automatización que la cuenta usa", (
         await screen.findByText("Ana Torres")
         await waitFor(() => expect(lastKeys()).toEqual(["link", "checkin", "tra"]))
         // Buscar «Bruno» deja fuera a Ana, la única con TRA: la columna se queda.
-        await act(async () => { fireEvent.change(screen.getByRole("textbox", { name: "Buscar reservas" }), { target: { value: "Bruno" } }) })
+        await act(async () => { fireEvent.change(screen.getByRole("searchbox", { name: "Buscar reservas" }), { target: { value: "Bruno" } }) })
         await waitFor(() => expect(screen.queryByText("Ana Torres")).toBeNull())
         expect(lastKeys()).toEqual(["link", "checkin", "tra"])
     })

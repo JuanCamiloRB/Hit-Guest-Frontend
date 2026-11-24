@@ -12,7 +12,6 @@ import { DEFAULT_SORTING } from "./reservation-sorting"
 import type { OnChangeFn, SortingState } from "@tanstack/react-table"
 import { DataTable } from "@/components/shared/data-table"
 import { Button, buttonVariants } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import {
     Select,
     SelectContent,
@@ -26,8 +25,9 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover"
-import { Search, X, CalendarIcon } from "lucide-react"
+import { X, CalendarIcon } from "lucide-react"
 import { Icon } from "@/components/ui/icon"
+import { SearchField } from "@/components/ui/search-field"
 import { LoadingState, RefreshIndicator } from "@/components/ui/loading-state"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { format, isValid, isWithinInterval, startOfDay, endOfDay } from "date-fns"
@@ -377,16 +377,13 @@ export default function ReservationsList() {
             {/* `flex-wrap`: a 768 px los filtros pasan a otra línea en vez de
                 desbordar la página (Fase 3). La búsqueda nunca baja de 16rem. */}
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-                <div className="relative min-w-0 flex-1 sm:min-w-64 sm:max-w-sm">
-                    <Icon icon={Search} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-4" />
-                    <Input
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Buscar huésped, propiedad, correo o ID..."
-                        aria-label="Buscar reservas"
-                        className="pl-9"
-                    />
-                </div>
+                <SearchField
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Buscar huésped, propiedad, correo o ID..."
+                    label="Buscar reservas"
+                    className="min-w-0 flex-1 sm:min-w-64 sm:max-w-sm"
+                />
                 <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
                     <SelectTrigger className="w-full sm:w-45" aria-label="Filtrar por estado">
                         <SelectValue placeholder="Estado" />

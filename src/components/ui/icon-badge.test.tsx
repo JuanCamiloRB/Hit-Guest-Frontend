@@ -34,6 +34,15 @@ describe("IconBadge", () => {
     })
 })
 
+describe("IconBadge strong", () => {
+    it("relleno primary con el ícono blanco, para una superficie oscura (la barra navy del periodo)", () => {
+        const { container } = render(<IconBadge icon={CheckCircle2} tone="strong" shape="square" size="sm" />)
+        const badge = container.firstElementChild!
+        expect(badge).toHaveAttribute("data-tone", "strong")
+        expect(badge).toHaveClass("bg-primary", "text-primary-foreground", "rounded-lg", "size-8")
+    })
+})
+
 describe("Avatar — tono y tamaño desde la primitiva", () => {
     it("primary e inverse salen de `tone`, xl de `size`", () => {
         render(<><Avatar tone="primary" size="xl" data-testid="a"><AvatarFallback>AP</AvatarFallback></Avatar><Avatar tone="inverse" data-testid="b"><AvatarFallback>HG</AvatarFallback></Avatar></>)
