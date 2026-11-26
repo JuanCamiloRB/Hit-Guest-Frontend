@@ -938,6 +938,18 @@ WhatsApp cobra**). 422 de configure: `parameters.channels` (ninguno) o
 `parameters.channels.{i}` (valor desconocido); solo valida al ACTIVAR.
 Permiso: `automation.configure`, solo dueño de la propiedad; `property_staff` no.
 
+**Reenvío sin correo (aviso del backend, 2026-11-27; ⚠️ no verificado por
+curl):** `send-checkin-link` acepta una reserva SIN email cuando un canal
+cobrado (chat de la OTA o WhatsApp) puede llegarle al titular. Si no hay
+ningún camino responde **422 `reservation.checkin_link.no_email`** con el texto
+«La reserva no tiene correo del huésped, y ningún otro canal configurado puede
+hacerle llegar el link.» Regla del front: el botón «Enviar link de check-in»
+NO se deshabilita por falta de correo (el backend decide) y el 422 se muestra
+tal cual (`notifyError` → `message`); nunca se detecta por el texto. Ya era
+así desde la auditoría del 2026-10-01 (`OperationsPanel.tsx`: el botón depende
+solo de `canUseCheckinLink`, el correo del diálogo es opcional). «Escribir al
+huésped» sí exige correo: abre un `mailto:`.
+
 **Estado del envío en `GET /reservations/{uuid}` → `extra`** (camelCase al leer):
 `checkinLinkSentAt/To`, `mailDeliveryStatus` (`delivered|failed|complained`) +
 `mailDeliveryReason`; `checkinLinkWhatsappSentAt/To` (E.164),
