@@ -70,9 +70,24 @@ describe("ReservationsCalendar — diseño 2026-11-25: ocupación y mes", () => 
         expect(bar).toHaveTextContent("Kayla · 2 noches")
         expect(screen.getByRole("region", { name: "Ocupación por alojamiento" })).toHaveTextContent("Suite 1")
         expect(screen.getByText("Mostrando 1 de 1 alojamiento con reservas")).toBeInTheDocument()
-        expect(screen.getByRole("list", { name: "Leyenda" })).toHaveTextContent("Check-inEstadíaCheckout")
+        expect(screen.getByRole("list", { name: "Leyenda" })).toHaveTextContent("Check-inCheckoutConfirmadaEn progresoFinalizadaAbandonada o incompletaSin estado")
         // El filtro de movimientos es de la vista Mes.
         expect(screen.queryByRole("group", { name: "Filtrar movimientos" })).toBeNull()
+    })
+
+    it("la barra toma el trazo de su estado y lo dice en su nombre; un estado sin mapear muestra el nombre del backend", async () => {
+        const base = reservation("r-1", "Kayla")
+        await renderWith([
+            { ...base, status: "CONFIRMED" },
+            { ...base, id: "r-2", guestName: "Luis", unitId: "u-2", unitName: "Suite 2", status: "IN_PROGRESS" },
+            { ...base, id: "r-3", guestName: "Pedro", unitId: "u-3", unitName: "Suite 3", status: "ABANDONED" },
+            { ...base, id: "r-4", guestName: "Sara", unitId: "u-4", unitName: "Suite 4", status: "UNKNOWN", statusLabel: "En revisión", statusId: 861 },
+        ] as Reservation[])
+        const tone = (name: RegExp) => screen.getByRole("link", { name }).getAttribute("data-tone")
+        expect(tone(/^Kayla, .*\. Confirmada$/)).toBe("default")
+        expect(tone(/^Luis, .*\. En progreso$/)).toBe("progress")
+        expect(tone(/^Pedro, .*\. Abandonada$/)).toBe("attention")
+        expect(tone(/^Sara, .*\. En revisión$/)).toBe("unknown")
     })
 
     it("las flechas mueven 14 días y «Hoy» vuelve; fuera del periodo, el vacío lo dice", async () => {

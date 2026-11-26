@@ -36,6 +36,8 @@ import type { Reservation } from "@/types"
 import { useReservations } from "../hooks/useReservations"
 import { cancelDetailPrefetch, startDetailPrefetch } from "../lib/detail-prefetch"
 import {
+    BAR_LEGEND,
+    barTone,
     filterReservations,
     guestText,
     nightsOf,
@@ -50,6 +52,7 @@ import {
     windowDays,
 } from "../lib/occupancy"
 import { UNKNOWN_PROPERTY_LABEL } from "../lib/listing-names"
+import { getReservationStatusMeta } from "./reservation-status-meta"
 
 /** El nombre de la propiedad para el filtro; sin dato, se dice así (no el texto de reemplazo). */
 function knownPropertyName(r: Reservation): string {
@@ -231,7 +234,7 @@ export function ReservationsCalendar() {
                 </div>
                 <div className="flex items-center gap-3">
                     <RefreshIndicator active={status === "refreshing"} label="Actualizando reservas…" />
-                    <TimelineLegend stay={occupancy} />
+                    <TimelineLegend stay={occupancy} tones={BAR_LEGEND} />
                 </div>
             </Surface>
 
@@ -327,6 +330,8 @@ function OccupancyBoard({ reservations, days }: { reservations: Reservation[]; d
                             label={stayLabel(bar.reservation)}
                             checkin={bar.checkin}
                             checkout={bar.checkout}
+                            tone={barTone(bar.reservation.status)}
+                            status={getReservationStatusMeta(bar.reservation.status, bar.reservation.statusLabel, bar.reservation.statusId)}
                             detailTitle={guestText(bar.reservation)}
                             details={stayDetails(bar.reservation)}
                             linkProps={prefetchProps(bar.reservation.id)}

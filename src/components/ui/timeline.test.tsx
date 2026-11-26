@@ -55,7 +55,7 @@ describe("Timeline", () => {
         render(board())
         const bar = screen.getByRole("link", { name: /Kayla, 704 Casa Roma: check-in/ })
         expect(bar).toHaveAttribute("href", "/r/1")
-        expect(bar).toHaveClass("bg-primary", "text-primary-foreground", "hover:bg-primary-hover", "focus-visible:outline-ring")
+        expect(bar).toHaveClass("bg-timeline-bar", "text-ink", "border-primary/30", "hover:bg-timeline-bar-strong", "focus-visible:outline-ring")
         // Del centro del día 1 (0.5 / 7 = 7.14 %) a dos días después (2 / 7 = 28.57 %), 4 px de aire a cada lado.
         expect(bar.style.left).toBe("calc(7.14286% + 4px)")
         expect(bar.style.width).toBe("calc(28.5714% - 8px)")
@@ -92,7 +92,7 @@ describe("Timeline", () => {
         expect(bar).toHaveAttribute("data-touch", "true")
         expect(bar).toHaveAttribute("data-compact", "true")
         // Un <button> centra el texto por omisión: la barra lo alinea a la izquierda, como el enlace.
-        expect(bar).toHaveClass("bg-primary", "text-left")
+        expect(bar).toHaveClass("bg-timeline-bar", "text-left")
         await act(async () => { fireEvent.click(bar) })
         expect(await screen.findByText("Duración")).toBeInTheDocument()
         expect(screen.getByRole("link", { name: "Ver reserva" })).toHaveAttribute("href", "/r/1")
@@ -152,11 +152,79 @@ describe("Timeline", () => {
         expect(lane.style.minHeight).toBe("108px")
     })
 
+    it("sin tone, la barra es la sólida de siempre y no lleva ícono de estado", () => {
+        render(board())
+        const bar = screen.getByRole("link")
+        expect(bar).toHaveAttribute("data-tone", "default")
+        expect(bar).toHaveClass("bg-timeline-bar", "text-ink")
+        expect(bar.querySelector('[data-status-icon]')).toBeNull()
+    })
+
+    it.each([
+        ["progress", ["bg-timeline-bar", "pattern-progress", "text-ink", "hover:bg-timeline-bar-strong"], "lucide-clock"],
+        ["past", ["bg-success-sunk", "text-success", "border-success/30", "hover:border-success"], "lucide-check"],
+        ["attention", ["border-2", "border-dashed", "border-primary", "bg-card", "text-ink", "hover:bg-table-head-soft"], "lucide-triangle-alert"],
+        ["unknown", ["border-rule", "bg-sunk", "pattern-unknown", "text-ink-2", "hover:bg-rule"], "lucide-circle-question-mark"],
+    ] as const)("tone=%s: el trazo, su hover y su ícono; nunca un relleno sólido de estado (compite con las marcas)", (tone, classes, icon) => {
+        render(board({ tone }))
+        const bar = screen.getByRole("link")
+        expect(bar).toHaveAttribute("data-tone", tone)
+        expect(bar).toHaveClass(...classes)
+        expect(bar.className).not.toMatch(/\bbg-(success|warning|info|danger)(?![-\w])/)
+        const mark = bar.querySelector('[data-status-icon]')
+        expect(mark?.getAttribute("class")).toContain(icon)
+        // Las marcas de entrada y salida no cambian con el estado.
+        expect([...bar.querySelectorAll('[data-slot="movement-mark"]')].map((m) => m.getAttribute("data-kind"))).toEqual(["checkin", "checkout"])
+    })
+
+    it.each([
+        ["progress", "text-primary-hover"],
+        ["attention", "text-warning"],
+        ["unknown", "text-ink-3"],
+    ] as const)("tone=%s: el ícono lleva su color (%s), no el del texto", (tone, color) => {
+        render(board({ tone }))
+        expect(screen.getByRole("link").querySelector("[data-status-icon]")).toHaveClass(color)
+    })
+
+    it("compacta (una noche): sin ícono de estado, el trazo se mantiene", () => {
+        render(board({ tone: "attention", start: 1.5, end: 2.5 }))
+        const bar = screen.getByRole("link")
+        expect(bar).toHaveClass("border-dashed")
+        expect(bar.querySelector('[data-status-icon]')).toBeNull()
+    })
+
+    it("el estado va en el nombre accesible y en el detalle como StatusPill", async () => {
+        render(board({ tone: "progress", status: { label: "En progreso", tone: "info" } }))
+        const bar = screen.getByRole("link", { name: /2 noches\. En progreso$/ })
+        await act(async () => { fireEvent.focus(bar) })
+        const pills = await screen.findAllByText("En progreso")
+        const pill = pills.map((el) => el.closest('[data-slot="status-pill"]')).find(Boolean)
+        expect(pill).toHaveAttribute("data-tone", "info")
+    })
+
+    it("táctil: el estado también va en el nombre del botón y en el Popover", async () => {
+        media.touch = true
+        render(board({ status: { label: "Finalizada", tone: "idle" }, tone: "past" }))
+        const button = screen.getByRole("button", { name: /2 noches\. Finalizada\. Ver detalle$/ })
+        await act(async () => { fireEvent.click(button) })
+        expect(await screen.findByText("Finalizada")).toBeInTheDocument()
+    })
+
     it("TimelineLegend: las mismas marcas y la barra, con su palabra", () => {
         render(<TimelineLegend />)
         const legend = screen.getByRole("list", { name: "Leyenda" })
-        expect(legend).toHaveTextContent("Check-inEstadíaCheckout")
+        expect(legend).toHaveTextContent("Check-inCheckoutEstadía")
         expect(legend.querySelectorAll('[data-slot="movement-mark"]')).toHaveLength(2)
+    })
+
+    it("TimelineLegend con tones: una muestra por estado, con la misma clase que la barra", () => {
+        render(<TimelineLegend tones={[{ tone: "default", label: "Confirmada" }, { tone: "attention", label: "Abandonada o incompleta" }]} />)
+        const legend = screen.getByRole("list", { name: "Leyenda" })
+        expect(legend).toHaveTextContent("Check-inCheckoutConfirmadaAbandonada o incompleta")
+        expect(legend).not.toHaveTextContent("Estadía")
+        const swatches = legend.querySelectorAll('[data-slot="timeline-legend-swatch"]')
+        expect([...swatches].map((s) => s.getAttribute("data-tone"))).toEqual(["default", "attention"])
+        expect(swatches[1]).toHaveClass("border-dashed", "border-primary", "bg-card")
     })
 
     it("TimelineLegend sin barra (vista Mes): solo las dos marcas", () => {

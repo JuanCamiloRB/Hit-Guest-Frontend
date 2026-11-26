@@ -1,6 +1,7 @@
 import { addDays, differenceInCalendarDays, format, isSameMonth, isSameYear, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 
+import type { TimelineBarTone, TimelineLegendTone } from "@/components/ui/timeline"
 import type { Reservation } from "@/types"
 import { UNKNOWN_PROPERTY_LABEL } from "./listing-names"
 
@@ -75,9 +76,50 @@ export function stayDetails(reservation: Reservation): [string, string][] {
     if (reservation.totalGuests && reservation.totalGuests > 0) {
         rows.push(["Huéspedes", String(reservation.totalGuests)])
     }
-    if (reservation.statusLabel) rows.push(["Estado", reservation.statusLabel])
+    // El estado no va como fila: lo muestra el StatusPill del detalle.
     return rows.filter(([, value]) => value !== "")
 }
+
+/**
+ * El trazo de la barra según el estado (TimelineBar `tone`). El morado siempre
+ * dice «ocupado»; el trazo dice en qué está la reserva:
+ * - Confirmada y los estados de check-in que siguen en curso: sólida.
+ * - En progreso (y «Link enviado»): rayada. No se interpreta qué la dispara.
+ * - Finalizada (y «Check-out realizado»): tenue.
+ * - Abandonada, Incompleta y los pendientes de check-in: punteada. El backend
+ *   no dijo si Abandonada e Incompleta son terminales; se piden mirar.
+ * - Desconocido o un estado que el front no mapea: tramada.
+ * Canceladas y eliminadas no se dibujan (`NOT_OCCUPYING`); si llegaran, tenues.
+ */
+const BAR_TONE: Record<Reservation["status"], TimelineBarTone> = {
+    CONFIRMED: "default",
+    CHECKED_IN: "default",
+    NO_STARTED: "default",
+    IN_PROGRESS: "progress",
+    LINK_SENT: "progress",
+    CLOSED: "past",
+    CHECKED_OUT: "past",
+    CANCELLED: "past",
+    DELETED: "past",
+    ABANDONED: "attention",
+    INCOMPLETE: "attention",
+    PENDING: "attention",
+    PENDING_CONTRACT: "attention",
+    UNKNOWN: "unknown",
+}
+
+export function barTone(status: Reservation["status"]): TimelineBarTone {
+    return BAR_TONE[status] ?? "unknown"
+}
+
+/** La leyenda de la vista de ocupación: un trazo por grupo de estados. */
+export const BAR_LEGEND: readonly TimelineLegendTone[] = [
+    { tone: "default", label: "Confirmada" },
+    { tone: "progress", label: "En progreso" },
+    { tone: "past", label: "Finalizada" },
+    { tone: "attention", label: "Abandonada o incompleta" },
+    { tone: "unknown", label: "Sin estado" },
+]
 
 export interface OccupancyBar {
     reservation: Reservation

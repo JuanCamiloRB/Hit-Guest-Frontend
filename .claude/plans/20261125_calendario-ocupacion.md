@@ -66,3 +66,19 @@ navegador a 1440 con datos reales: ocupación, detalle y mes.
    sola marca sin relleno en medio día; el mismo día ocupa el día entero.
 3. Media: un listener de media query por barra. Ahora una consulta por tablero.
 4. Baja: el vacío nombra los tres filtros.
+
+
+## Barra por estado de la reserva (2026-11-25, propuesta B aprobada)
+
+Prototipo con tres opciones en `work/hitguest-calendario-estados-v1.html`; el usuario eligió la B.
+
+- Primitiva: `TimelineBar tone` (`default | progress | past | attention | unknown`) + `status {label, tone}`; `TimelineLegend tones`.
+- Mapeo de estado → trazo en `barTone` (`lib/occupancy.ts`); la etiqueta y el tono del `StatusPill` salen de `getReservationStatusMeta` (respeta el nombre del backend para un estado sin mapear).
+- Patrones como utilidades de `globals.css`: `pattern-progress`, `pattern-unknown`.
+- Pruebas: `timeline.test.tsx` (trazo, hover, ícono, compacta sin ícono, nombre accesible, Popover táctil, leyenda), `occupancy.test.ts` (`barTone`, leyenda, sin fila «Estado»), `ReservationsCalendar.test.tsx` (trazo y nombre por estado, estado sin mapear), `globals-contrast.test.ts` (8 pares).
+- Abierto con backend: qué dispara «En progreso»; si Abandonada e Incompleta son terminales. Canceladas siguen sin dibujarse.
+
+### Ajuste de tonos (2026-11-26, aprobado sobre `work/hitguest-calendario-estados-v2.html`)
+
+- Morado más suave: tokens nuevos `--timeline-bar` `#E4D3F8` y `--timeline-bar-strong` `#D3B8F3` (hover y rayas), texto `ink`, borde `primary/30`. Un morado sólido más claro con texto blanco no llega a 4.5:1.
+- Finalizada en verde muy suave (`success-sunk`, borde `success/30`, texto `success`). La pastilla del detalle y la Lista no cambian (Finalizada sigue gris).

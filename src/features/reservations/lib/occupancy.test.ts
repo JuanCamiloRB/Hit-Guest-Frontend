@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import type { Reservation } from "@/types"
-import { filterReservations, guestText, occupancyRows, periodLabel, pruneSelection, stayDetails, stayLabel, windowDays } from "./occupancy"
+import { BAR_LEGEND, barTone, filterReservations, guestText, occupancyRows, periodLabel, pruneSelection, stayDetails, stayLabel, windowDays } from "./occupancy"
 
 const d = (day: number, month = 10) => new Date(2026, month - 1, day)
 function res(id: string, unit: string, checkIn: Date, checkOut: Date, extra: Partial<Reservation> = {}): Reservation {
@@ -77,8 +77,23 @@ describe("ocupación: textos de la barra", () => {
         expect(stayLabel(r)).toBe("Kayla, 1201 Aiana Verde: check-in 16 oct 2026, checkout 18 oct 2026, 2 noches")
         expect(stayDetails(r)).toEqual([
             ["Alojamiento", "1201 Aiana Verde"], ["Propiedad", "Nomad House"], ["Check-in", "16 oct 2026"],
-            ["Checkout", "18 oct 2026"], ["Duración", "2 noches"], ["Estado", "Confirmada"],
+            ["Checkout", "18 oct 2026"], ["Duración", "2 noches"],
         ])
+        // El estado no es una fila: va en el StatusPill del detalle.
+        expect(stayDetails(r).map(([k]) => k)).not.toContain("Estado")
+    })
+    it("el trazo de la barra sale del estado: el morado siempre, el trazo cambia", () => {
+        expect(barTone("CONFIRMED")).toBe("default")
+        expect(barTone("IN_PROGRESS")).toBe("progress")
+        expect(barTone("CLOSED")).toBe("past")
+        expect(barTone("ABANDONED")).toBe("attention")
+        expect(barTone("INCOMPLETE")).toBe("attention")
+        expect(barTone("UNKNOWN")).toBe("unknown")
+        // Un estado que el tipo no conoce (llegó algo nuevo del backend) no se pinta como confirmado.
+        expect(barTone("NUEVO" as Reservation["status"])).toBe("unknown")
+    })
+    it("la leyenda nombra los cinco trazos, uno por grupo", () => {
+        expect(BAR_LEGEND.map((l) => l.tone)).toEqual(["default", "progress", "past", "attention", "unknown"])
     })
     it("«Propiedad no disponible» no es un dato: ni subtítulo de la fila ni línea del detalle", () => {
         const r = res("1", "Alojamiento 1", d(16), d(18), { propertyName: "Propiedad no disponible" })

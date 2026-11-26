@@ -194,3 +194,24 @@ describe("marca separada de la interacción", () => {
         expect(css).toMatch(/--color-brand-blue:\s*#5467FA;/)
     })
 })
+
+describe("barra de ocupación por estado (TimelineBar tone): el texto a 4.5:1 en cada trazo y en su hover", () => {
+    it.each([
+        ["default y progress: ink sobre timeline-bar", "ink", "timeline-bar"],
+        ["progress (raya) y hover: ink sobre timeline-bar-strong", "ink", "timeline-bar-strong"],
+        ["past: success sobre success-sunk", "success", "success-sunk"],
+        ["attention: ink sobre card", "ink", "card"],
+        ["attention en hover: ink sobre table-head-soft", "ink", "table-head-soft"],
+        ["unknown: ink-2 sobre sunk", "ink-2", "sunk"],
+        ["unknown (trama) y hover: ink-2 sobre rule", "ink-2", "rule"],
+    ])("%s", (_, fg, bg) => {
+        expect(contrast(light[fg], light[bg])).toBeGreaterThanOrEqual(4.5)
+    })
+    it("el ícono de En progreso (primary-hover) se distingue del lila a 3:1 (no es texto)", () => {
+        expect(contrast(light["primary-hover"], light["timeline-bar"])).toBeGreaterThanOrEqual(3)
+        expect(contrast(light["primary-hover"], light["timeline-bar-strong"])).toBeGreaterThanOrEqual(3)
+    })
+    it("el lila de la barra no es el del encabezado ni el de la columna de hoy (se perdería)", () => {
+        expect(light["timeline-bar"]).not.toBe(light["table-head-accent"])
+    })
+})

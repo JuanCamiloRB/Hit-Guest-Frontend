@@ -31,6 +31,8 @@
   --color-table-head: var(--table-head);
   --color-table-head-accent: var(--table-head-accent);
   --color-table-head-soft: var(--table-head-soft);
+  --color-timeline-bar: var(--timeline-bar);
+  --color-timeline-bar-strong: var(--timeline-bar-strong);
 
   --color-success: var(--success);
   --color-success-sunk: var(--success-sunk);
@@ -136,6 +138,15 @@
   --table-head: #ECEEFA;
   --table-head-accent: #EADCF9;
   --table-head-soft: #F2E9FC;
+
+  /* La barra de una estadía en el calendario de ocupación (TimelineBar):
+     lila con texto ink, más suave que el primary sólido (pedido del usuario,
+     2026-11-26). Un primary más claro con texto blanco no llega a 4.5:1, por
+     eso el texto pasa a oscuro. Distinto de table-head-accent: ese lila es el
+     del encabezado y la columna de hoy, y la barra se perdería encima.
+     -strong: el hover y las rayas de «En progreso». */
+  --timeline-bar: #E4D3F8;
+  --timeline-bar-strong: #D3B8F3;
 
   /* ── Estado ─────────────────────────────────────────────────────────
      Cada uno con su fondo de pastilla. Reservados para estado: nunca son
@@ -325,6 +336,20 @@
   .no-spinner {
     -moz-appearance: textfield;
     appearance: textfield;
+  }
+  /*
+   * Los dos trazos de la barra de ocupación (TimelineBar) que no son un relleno
+   * liso. Solo ponen la imagen: el color de fondo lo sigue dando la clase bg-*,
+   * así que el hover cambia el fondo sin tocar el patrón.
+   * - pattern-progress: rayas de timeline-bar-strong sobre timeline-bar (En
+   *   progreso). El texto ink cumple sobre las dos.
+   * - pattern-unknown: tramado de rule sobre sunk (Sin estado), texto ink-2.
+   */
+  .pattern-progress {
+    background-image: repeating-linear-gradient(135deg, transparent 0 7px, var(--timeline-bar-strong) 7px 14px);
+  }
+  .pattern-unknown {
+    background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--rule) 6px 12px);
   }
 }
 
