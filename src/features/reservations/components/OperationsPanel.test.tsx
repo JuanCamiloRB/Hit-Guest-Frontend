@@ -4,12 +4,17 @@ import type { ReservationDetailData } from "../services/reservations-service"
 import { readCheckinLinkDelivery } from "../lib/checkin-link-delivery-status"
 import { readReservationOrigin } from "../lib/reservation-origin"
 
-const mocks = vi.hoisted(() => ({ getById: vi.fn() }))
+const mocks = vi.hoisted(() => ({
+    getById: vi.fn(),
+    sendCheckinLink: vi.fn(),
+    toast: { success: vi.fn(), error: vi.fn() },
+}))
 
 vi.mock("../services/reservations-service", async (importOriginal) => ({
     ...(await importOriginal<typeof import("../services/reservations-service")>()),
-    reservationsService: { getById: mocks.getById },
+    reservationsService: { getById: mocks.getById, sendCheckinLink: mocks.sendCheckinLink },
 }))
+vi.mock("sonner", () => ({ toast: mocks.toast }))
 // Los hijos cargan sus propios datos; aquí se prueba solo cómo el panel usa la ficha.
 vi.mock("./automations", () => ({ AutomationStatusList: () => null }))
 vi.mock("./GuestDocumentsCard", () => ({ GuestDocumentsCard: () => null }))
@@ -21,6 +26,7 @@ vi.mock("../hooks/useCheckinLinkChannels", () => ({
     useCheckinLinkChannels: () => ({ channels: ["email"], resolved: false, unitCosts: { whatsapp: null, ota_inbox: null } }),
 }))
 
+import { ApiError } from "@/types/api"
 import { detailCacheFor, prefetchReservationDetail, resetReservationDetailCache } from "../lib/reservation-detail-cache"
 import { OperationsPanel } from "./OperationsPanel"
 
@@ -177,5 +183,50 @@ describe("OperationsPanel — la ficha desde la caché", () => {
         render(<OperationsPanel reservationId="r1" />)
         expect((await screen.findAllByText(/Origen no informado/)).length).toBeGreaterThan(0)
         expect(screen.queryByText(/Reserva externa/)).toBeNull()
+    })
+})
+
+describe("OperationsPanel — enviar el link sin correo del huésped", () => {
+    // Aviso del backend (2026-11-27): `send-checkin-link` acepta una reserva sin
+    // correo si WhatsApp o el chat de la OTA llegan al titular. El front no
+    // decide: el botón no depende del correo y el 422 se muestra tal cual.
+    const NO_EMAIL_MESSAGE = "La reserva no tiene correo del huésped, y ningún otro canal configurado puede hacerle llegar el link."
+
+    beforeEach(() => {
+        vi.clearAllMocks()
+        resetReservationDetailCache()
+        vi.spyOn(console, "error").mockImplementation(() => {})
+        mocks.getById.mockResolvedValue({ ...detail("Ana García"), email: "" })
+    })
+
+    async function openDialogAndSend() {
+        render(<OperationsPanel reservationId="r1" />)
+        const trigger = await screen.findByRole("button", { name: /Enviar link de check-in/ })
+        expect(trigger).toBeEnabled()
+        fireEvent.click(trigger)
+        expect(await screen.findByText(/Se envía por los canales configurados/)).toBeInTheDocument()
+        expect(screen.getByLabelText("Correo del huésped (opcional)")).toHaveValue("")
+        fireEvent.click(screen.getByRole("button", { name: "Enviar" }))
+    }
+
+    it("sin correo el botón sigue activo y el envío sale sin `email`: decide el backend", async () => {
+        mocks.sendCheckinLink.mockResolvedValue("Link enviado por WhatsApp")
+        await openDialogAndSend()
+        await waitFor(() => expect(mocks.sendCheckinLink).toHaveBeenCalledTimes(1))
+        expect(mocks.sendCheckinLink).toHaveBeenCalledWith("r1", { email: undefined, locale: undefined })
+        expect(mocks.toast.success).toHaveBeenCalledWith("Link enviado por WhatsApp")
+        expect(screen.getByRole("button", { name: /Escribir al huésped/ })).toBeDisabled()
+    })
+
+    it("el 422 `reservation.checkin_link.no_email` muestra el mensaje del backend tal cual", async () => {
+        mocks.sendCheckinLink.mockRejectedValue(
+            new ApiError(422, { message: NO_EMAIL_MESSAGE, errorType: "reservation.checkin_link.no_email" } as never),
+        )
+        await openDialogAndSend()
+        await waitFor(() => expect(mocks.toast.error).toHaveBeenCalledTimes(1))
+        expect(mocks.toast.error.mock.calls[0][0]).toBe(NO_EMAIL_MESSAGE)
+        expect(mocks.toast.success).not.toHaveBeenCalled()
+        // El diálogo queda abierto para que el PM escriba un correo y reintente.
+        expect(screen.getByLabelText("Correo del huésped (opcional)")).toBeInTheDocument()
     })
 })

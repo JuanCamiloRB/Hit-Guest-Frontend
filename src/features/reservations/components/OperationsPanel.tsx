@@ -531,7 +531,10 @@ export function OperationsPanel({ reservationId }: { reservationId: string }) {
                                         <DialogHeader>
                                             <DialogTitle>Enviar link de check-in</DialogTitle>
                                             <DialogDescription>
-                                                Se enviará al correo indicado. Por defecto, el del huésped principal.
+                                                {/* Sin correo también se puede enviar: el backend
+                                                    decide si WhatsApp o la OTA llegan al titular
+                                                    (aviso 2026-11-27) y si no, responde 422. */}
+                                                Se envía por los canales configurados. El correo es opcional: por defecto, el del huésped principal.
                                                 {/* Cada reenvío por un canal cobrado vuelve a cobrar (§8, §13.8):
                                                     se dice antes de enviar, solo con configuración resuelta. */}
                                                 {linkChannels.resolved && resendCharges ? ` ${resendCharges}` : null}
