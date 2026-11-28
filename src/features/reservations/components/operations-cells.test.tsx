@@ -61,7 +61,7 @@ const ROW: Reservation = {
 const renderTable = (rows: Reservation[] = [ROW]) => render(<DataTable columns={getColumns()} data={rows} />)
 
 describe("Operaciones — celdas de automatización", () => {
-    it("encabezados agrupados: «Automatizaciones» sobre 4 columnas y «Reportes» sobre 4 (con el PDF)", () => {
+    it("encabezados agrupados: «Automatizaciones» sobre 4 columnas y «Reportes» sobre 4 (con el de huéspedes)", () => {
         renderTable()
         expect(screen.getByRole("columnheader", { name: "Automatizaciones" })).toHaveAttribute("colspan", "4")
         expect(screen.getByRole("columnheader", { name: "Reportes" })).toHaveAttribute("colspan", "4")
@@ -78,7 +78,7 @@ describe("Operaciones — celdas de automatización", () => {
         // No configuradas: «—», sin detalle que abrir.
         expect(screen.getByRole("button", { name: "Acceso: no configurado" })).toBeDisabled()
         expect(screen.getByRole("button", { name: "SIRE out: no configurado" })).toBeDisabled()
-        expect(screen.getByRole("button", { name: "PDF: no configurado" })).toBeDisabled()
+        expect(screen.getByRole("button", { name: "Reporte de huéspedes: no configurado" })).toBeDisabled()
     })
 
     it("el contador va en la celda y el link muestra sus canales en lugar del ícono", () => {
@@ -107,7 +107,7 @@ describe("Operaciones — celdas de automatización", () => {
 
     it("la columna del huésped queda fija al desplazar la tabla", () => {
         renderTable()
-        expect(screen.getByRole("columnheader", { name: /Huésped/ })).toHaveClass("sticky", "left-0")
+        expect(screen.getByRole("columnheader", { name: /Huésped \// })).toHaveClass("sticky", "left-0")
         expect(screen.getByRole("link", { name: "Laura Méndez" }).closest("td")).toHaveClass("sticky", "left-0")
     })
 
@@ -122,7 +122,7 @@ describe("Operaciones — celdas de automatización", () => {
         render(<ReservationMobileRow reservation={ROW} />)
         const list = screen.getByRole("list", { name: "Automatizaciones y reportes" })
         const items = within(list).getAllByRole("listitem")
-        expect(items.map((li) => li.textContent?.trim())).toEqual(expect.arrayContaining(["Link", "SIRE out", "PDF"]))
+        expect(items.map((li) => li.textContent?.trim())).toEqual(expect.arrayContaining(["Link", "SIRE out", "Reporte de huéspedes"]))
         expect(items).toHaveLength(8)
         expect(screen.getByRole("link", { name: "Laura Méndez" })).toHaveAttribute("href", "/dashboard/reservations/r1")
         expect(screen.getByRole("button", { name: "Acciones de la reserva de Laura Méndez" })).toBeInTheDocument()

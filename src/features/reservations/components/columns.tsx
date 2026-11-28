@@ -26,6 +26,7 @@ import { attemptLines } from "../lib/link-attempts"
 import {
     CELL_KEYS,
     CELL_LABELS,
+    CELL_NAMES,
     CELL_SEVERITY,
     buildAutomationCells,
     cellAccessibleName,
@@ -179,7 +180,7 @@ function AutomationCellView({ cellKey, reservation, onRetry }: {
             />
         ) : (
             // NO el guion de «no configurada»: sin dato es «no sabemos», con su propio ícono.
-            <StatusTile tone="idle" icon={CircleHelp} label={`${CELL_LABELS[cellKey]}: no disponible`} disabled />
+            <StatusTile tone="idle" icon={CircleHelp} label={`${CELL_NAMES[cellKey]}: no disponible`} disabled />
         )
     }
     const tone = TILE_TONE[cell.state]
@@ -319,7 +320,7 @@ export function ReservationMobileRow({ reservation, onDelete, onRetryStatus, cel
                 label="Automatizaciones y reportes"
                 items={cellKeys.map((key) => ({
                     key,
-                    label: CELL_LABELS[key],
+                    label: CELL_NAMES[key],
                     tile: <AutomationCellView cellKey={key} reservation={reservation} onRetry={onRetryStatus} />,
                 }))}
             />

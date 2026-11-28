@@ -105,8 +105,16 @@ export const CELL_LABELS: Record<CellKey, string> = {
     tra: "TRA",
     sireIn: "SIRE in",
     sireOut: "SIRE out",
-    pdf: "PDF",
+    // «Huésped» bajo el grupo «Reportes» (pedido 2026-11-27): el reporte de
+    // huéspedes. Sigue siendo un PDF por correo; el rótulo dice de quién es.
+    pdf: "Huésped",
 }
+
+/**
+ * El nombre de la columna donde no se ve el grupo «Reportes» (lector de
+ * pantalla, lista móvil): ahí «Huésped» solo se confundiría con el check-in.
+ */
+export const CELL_NAMES: Record<CellKey, string> = { ...CELL_LABELS, pdf: "Reporte de huéspedes" }
 
 // ───────────────────────── fechas ─────────────────────────
 
@@ -576,5 +584,5 @@ export function visibleCellKeys(
 
 /** El nombre accesible de una celda: «Contrato: firmado». */
 export function cellAccessibleName(key: CellKey, cell: AutomationCell): string {
-    return `${CELL_LABELS[key]}: ${cell.summary}`
+    return `${CELL_NAMES[key]}: ${cell.summary}`
 }

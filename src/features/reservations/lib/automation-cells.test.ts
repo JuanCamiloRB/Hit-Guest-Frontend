@@ -365,7 +365,7 @@ describe("Reporte PDF de huéspedes", () => {
         const cell = buildAutomationCells(src({ items: [pdf({ status: "completed", lastSuccessAt: "2026-11-18 12:00:00" })] })).pdf!
         expect(cell).toMatchObject({ state: "success", note: "Se envía por correo a los destinatarios de la propiedad" })
         expect(cell.lines[0].text).toBe("Completado · 18 nov, 12:00")
-        expect(cellAccessibleName("pdf", cell)).toBe("PDF: completado")
+        expect(cellAccessibleName("pdf", cell)).toBe("Reporte de huéspedes: completado")
     })
 
     it("falló con el check-in completo: dice que se puede reenviar desde la ficha", () => {

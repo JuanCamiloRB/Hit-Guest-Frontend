@@ -82,13 +82,13 @@ describe("ordenamiento de la tabla de reservas", () => {
         const fechas = screen.getByRole("columnheader", { name: /FECHAS/i })
         expect(fechas).toHaveAttribute("aria-sort", "descending")
 
-        const huesped = screen.getByRole("columnheader", { name: /HUÉSPED/i })
+        const huesped = screen.getByRole("columnheader", { name: /HUÉSPED \//i })
         expect(huesped).toHaveAttribute("aria-sort", "none")
     })
 
     it("reordena al hacer clic en el título de la columna", () => {
         renderTable()
-        fireEvent.click(screen.getByRole("button", { name: /HUÉSPED/i }))
+        fireEvent.click(screen.getByRole("button", { name: /HUÉSPED \//i }))
 
         // Ascendente, con acentos y minúsculas tratados como los lee una persona.
         const guests = renderedGuests()
@@ -99,12 +99,12 @@ describe("ordenamiento de la tabla de reservas", () => {
 
     it("invierte el sentido en el segundo clic", () => {
         renderTable()
-        const header = screen.getByRole("button", { name: /HUÉSPED/i })
+        const header = screen.getByRole("button", { name: /HUÉSPED \//i })
         fireEvent.click(header)
         fireEvent.click(header)
 
         expect(
-            screen.getByRole("columnheader", { name: /HUÉSPED/i }),
+            screen.getByRole("columnheader", { name: /HUÉSPED \//i }),
         ).toHaveAttribute("aria-sort", "descending")
         expect(renderedGuests()[0]).toContain("Bruno Perez")
     })
@@ -122,7 +122,7 @@ describe("ordenamiento de la tabla de reservas", () => {
     // El ordenamiento NO es un filtro: no puede quitar filas.
     it("conserva todas las filas al reordenar", () => {
         renderTable()
-        fireEvent.click(screen.getByRole("button", { name: /HUÉSPED/i }))
+        fireEvent.click(screen.getByRole("button", { name: /HUÉSPED \//i }))
         expect(renderedGuests()).toHaveLength(ROWS.length)
     })
 
