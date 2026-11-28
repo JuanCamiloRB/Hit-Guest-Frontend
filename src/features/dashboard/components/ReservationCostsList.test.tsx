@@ -206,6 +206,19 @@ describe("ReservationCostsList — mismos íconos que Operaciones", () => {
         expect(header("WhatsApp").querySelector('[data-channel="whatsapp"]')).not.toBeNull()
         expect(header("Mensaje OTA").querySelector('[data-channel="ota"]')).not.toBeNull()
     })
+
+    it("cada monto queda bajo su encabezado: categorías y Total alineados a la derecha (2026-11-27)", () => {
+        // Antes el encabezado quedaba a la izquierda (el botón de orden se encoge
+        // al contenido) y el monto a la derecha, lejos de su rótulo.
+        render(<ReservationCostsList costs={[cost(1)]} isLoading={false} />)
+        for (const name of ["Verificación", "Contrato", "TRA", "SIRE", "Accesos", "WhatsApp", "Mensaje OTA", "Total"]) {
+            expect(screen.getByRole("columnheader", { name: new RegExp(name) })).toHaveClass("text-right")
+        }
+        expect(screen.getByRole("columnheader", { name: /Huésped/ })).not.toHaveClass("text-right")
+        const firstRow = screen.getAllByRole("row")[1]
+        const cells = firstRow.querySelectorAll("td")
+        expect(cells[cells.length - 1]).toHaveClass("text-right")
+    })
 })
 
 describe("ReservationCostsList — carga en paralelo y móvil (auditoría 2026-11-20)", () => {

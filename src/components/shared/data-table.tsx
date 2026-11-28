@@ -55,6 +55,15 @@ declare module "@tanstack/react-table" {
          */
         headerTone?: "accent" | "soft"
         /**
+         * Columna de cifras (montos, precio): encabezado y celdas a la derecha,
+         * y la flecha de orden ANTES del rótulo, para que el rótulo termine
+         * exactamente donde terminan las cifras. Con la flecha detrás, el
+         * rótulo quedaba corrido y el botón de orden (que se encoge al
+         * contenido) se iba a la izquierda aunque el contenido pidiera
+         * `justify-end` (Tablero, 2026-11-27).
+         */
+        align?: "end"
+        /**
          * Celdas unidas en una fila (una leyenda en lugar de siete guiones):
          * cuántas columnas ocupa esta celda; `0` = la cubre una anterior y no se
          * pinta. Sin esto, 1.
@@ -94,14 +103,20 @@ const DENSITY: Record<DataTableDensity, { head: string; cell: string }> = {
     comfortable: { head: "h-11 px-3 @5xl:px-4", cell: "h-14 px-3 py-2 @5xl:px-4" },
 }
 
+function SortIcon({ sorted }: { sorted: false | "asc" | "desc" }) {
+    if (sorted === "asc") return <Icon icon={ArrowUp} size="sm" />
+    if (sorted === "desc") return <Icon icon={ArrowDown} size="sm" />
+    return <Icon icon={ChevronsUpDown} size="sm" className="text-ink-4 transition-colors group-hover:text-primary-hover" />
+}
+
 function headClasses<TData>(column: Column<TData, unknown>, density: DataTableDensity): string {
     const meta = column.columnDef.meta
-    return cn("whitespace-nowrap", DENSITY[density].head, meta?.sticky === "left" && STICKY_HEAD, meta?.headerTone && HEADER_TONE[meta.headerTone], meta?.headerClassName)
+    return cn("whitespace-nowrap", DENSITY[density].head, meta?.sticky === "left" && STICKY_HEAD, meta?.headerTone && HEADER_TONE[meta.headerTone], meta?.align === "end" && "text-right", meta?.headerClassName)
 }
 
 function cellClasses<TData>(column: Column<TData, unknown>, density: DataTableDensity): string {
     const meta = column.columnDef.meta
-    return cn("whitespace-nowrap", DENSITY[density].cell, meta?.sticky === "left" && STICKY_CELL, meta?.cellClassName)
+    return cn("whitespace-nowrap", DENSITY[density].cell, meta?.sticky === "left" && STICKY_CELL, meta?.align === "end" && "text-right", meta?.cellClassName)
 }
 
 /**
@@ -436,6 +451,7 @@ export function DataTable<TData, TValue>({
                                         }
 
                                         const sorted = header.column.getIsSorted()
+                                        const alignEnd = header.column.columnDef.meta?.align === "end"
 
                                         return (
                                             <TableHead
@@ -468,19 +484,14 @@ export function DataTable<TData, TValue>({
                                                         sorted && "text-primary-hover",
                                                     )}
                                                 >
-                                                    {content}
                                                     {/* El icono está SIEMPRE presente, en gris
                                                         tenue mientras la columna no ordena: si
                                                         solo apareciera al ordenar, nada indicaría
-                                                        que el encabezado se puede pulsar. */}
-                                                    {sorted === "asc" ? (
-                                                        <Icon icon={ArrowUp} size="sm" />
-                                                    ) : sorted === "desc" ? (
-                                                        <Icon icon={ArrowDown} size="sm" />
-                                                    ) : (
-                                                        <Icon icon={ChevronsUpDown} size="sm"
-                                                            className="text-ink-4 transition-colors group-hover:text-primary-hover" />
-                                                    )}
+                                                        que el encabezado se puede pulsar. En una
+                                                        columna de cifras va antes del rótulo. */}
+                                                    {alignEnd && <SortIcon sorted={sorted} />}
+                                                    {content}
+                                                    {!alignEnd && <SortIcon sorted={sorted} />}
                                                 </UnstyledButton>
                                             </TableHead>
                                         )

@@ -127,9 +127,9 @@ const COST_COLUMNS: ColumnDef<CostRowData>[] = [
         accessorFn: (row) => (isCost(row) ? row.lineItems.find((line) => line.category === category.key)?.amount ?? 0 : undefined),
         // Un fallo no tiene monto: arriba en los dos sentidos (es lo que hay que mirar).
         sortUndefined: "first",
-        header: () => <span className="flex justify-end"><CategoryHeader category={category.key} label={category.label} /></span>,
+        header: () => <CategoryHeader category={category.key} label={category.label} />,
         meta: {
-            cellClassName: "text-right",
+            align: "end",
             span: (row) => {
                 const merged = !isCost(row) ? COST_CATEGORIES.length + 1 : !ranAny(row) ? COST_CATEGORIES.length : 1
                 if (merged === 1) return 1
@@ -143,9 +143,9 @@ const COST_COLUMNS: ColumnDef<CostRowData>[] = [
         accessorFn: (row) => (isCost(row) ? row.total : undefined),
         sortUndefined: "first",
         // La columna que responde «cuánto costó»: ancla visual de la tabla.
-        header: () => <span className="block text-right font-bold">Total</span>,
+        header: () => <span className="font-bold">Total</span>,
         // La columna Total, apenas teñida del morado de interacción (3 %).
-        meta: { cellClassName: "bg-primary/[0.03] text-right", span: (row) => (isCost(row) ? 1 : 0) },
+        meta: { align: "end", cellClassName: "bg-primary/[0.03]", span: (row) => (isCost(row) ? 1 : 0) },
         cell: ({ row }) => {
             const cost = row.original as ReservationCost
             // La que facturó destaca en navy y negrita; la de cero, apagada.

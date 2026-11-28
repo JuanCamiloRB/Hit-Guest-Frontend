@@ -77,3 +77,32 @@ describe("DataTable — onVisibleRowsChange", () => {
         expect(screen.getAllByRole("row")[1]).toHaveTextContent("Fila 1")
     })
 })
+
+describe("DataTable — columna de cifras (`meta.align: \"end\"`)", () => {
+    interface Money { id: number; label: string; amount: number }
+    const moneyColumns: ColumnDef<Money>[] = [
+        { accessorKey: "label", header: "Concepto" },
+        { accessorKey: "amount", header: "Monto", meta: { align: "end" } },
+    ]
+    const money: Money[] = [{ id: 1, label: "A", amount: 10 }, { id: 2, label: "B", amount: 5 }]
+
+    it("encabezado y celdas a la derecha; la flecha de orden va ANTES del rótulo", () => {
+        render(<DataTable columns={moneyColumns} data={money} />)
+        const head = screen.getByRole("columnheader", { name: "Monto" })
+        expect(head).toHaveClass("text-right")
+        expect(screen.getByRole("cell", { name: "10" })).toHaveClass("text-right")
+        const sortButton = head.querySelector("button")!
+        // El rótulo es lo último: termina donde terminan las cifras.
+        expect(sortButton.lastChild?.textContent).toBe("Monto")
+        expect(sortButton.firstElementChild).toHaveClass("lucide-chevrons-up-down")
+    })
+
+    it("sin `align`, todo sigue igual: rótulo primero y flecha después, a la izquierda", () => {
+        render(<DataTable columns={moneyColumns} data={money} />)
+        const head = screen.getByRole("columnheader", { name: "Concepto" })
+        expect(head).not.toHaveClass("text-right")
+        const sortButton = head.querySelector("button")!
+        expect(sortButton.firstChild?.textContent).toBe("Concepto")
+        expect(sortButton.lastElementChild).toHaveClass("lucide-chevrons-up-down")
+    })
+})

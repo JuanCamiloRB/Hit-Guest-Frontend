@@ -295,7 +295,7 @@ export function listingColumns({ withProperty, actions, onOpen }: {
             sortUndefined: "last",
             sortDescFirst: false,
             header: "Precio por noche",
-            meta: { headerTone: "soft", headerClassName: "text-right", cellClassName: "text-right" },
+            meta: { headerTone: "soft", align: "end" },
             cell: ({ row }) => <ListingPrice row={row.original} />,
         },
         ...(actions ? [actions] : []),
